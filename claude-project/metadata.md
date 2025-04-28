@@ -60,7 +60,9 @@ Note: We are working through the Project Plan (see the project resources) over m
 
 - When testing MCP servers with the [MCP inspector](https://modelcontextprotocol.io/docs/tools/inspector#inspector) , prefer building the MCP inspector
   from source using `git clone https://github.com/modelcontextprotocol/inspector.git && cd inspector && npm install && npm run dev` as the latest release versions may not support newer protocol features like `StreamableHTTP` transport.
-- When running `node` on the command line (for example, to test MCP servers with the MCP Inspector), note that `/opt/homebrew/bin/node` is on the path so we can just say `node` in and shell scripts.
+- When running `node` on the command line (for example, to test MCP servers with the MCP Inspector), note that `/opt/homebrew/bin/node` is on the path so we can just say `node` in shell scripts.
+- We can try omitting `--experimental-transform-types` much of the time, and bring it back immediately as a potential solution if we're ever seeing errors about invalid syntax.
+- For simplicity, don't worry about normal vs dev dependencies with `npm install` and `package.json`. Just install everything as a normal dependency in one command.
 
 ## Trusted online resources:
 

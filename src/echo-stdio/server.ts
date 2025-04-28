@@ -1,16 +1,10 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-// import process from "node:process";
 
 async function main() {
-  // Create an MCP server
-  const server = new McpServer({
-    name: "Echo Server",
-    version: "1.0.0",
-  });
+  const server = new McpServer({ name: "Echo Server", version: "1.0.0" });
 
-  // Add an echo tool that returns whatever message is sent to it
   server.tool("echo", { message: z.string() }, async ({ message }) => ({
     content: [{ type: "text", text: `Echo: ${message}` }],
   }));

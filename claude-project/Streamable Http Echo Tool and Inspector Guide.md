@@ -1,107 +1,65 @@
-# HTTP-Based MCP Server Setup and Testing Guide
+# Minimal MCP Streamable HTTP Server
 
-This guide explains how to create and test an HTTP-based MCP server implementation with StreamableHTTP transport.
+This guide demonstrates how to create a minimal MCP server that exposes a simple "echo" tool using the Streamable HTTP transport.
 
-## 1. Create the HTTP-based MCP Server
+## Prerequisites
 
-Create a new file `src/echo-http/server.ts` with the following content:
+- Node.js 23+ with TypeScript support
+- For testing: the latest MCP Inspector code is running locally (the project was cloned with `git clone https://github.com/modelcontextprotocol/inspector.git`)
+
+## Installation
+
+```bash
+npm install @modelcontextprotocol/sdk express @types/node
+```
+
+Assumptions:
+
+- `package.json` uses `"type": "module"` to enable ESM `import`
+- `npm install` was run in the `inspector` project
+
+## Implementation
 
 ```typescript
+// src/echo-http/server.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 import { z } from "zod";
-import { randomUUID } from "node:crypto";
 
 async function main() {
-  // Create Express app
   const app = express();
   app.use(express.json());
 
-  // Map to store transports by session ID
-  const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+  const server = new McpServer({ name: "Echo Server", version: "1.0.0" });
 
-  // Create the MCP server
-  const getServer = () => {
-    const server = new McpServer({
-      name: "Echo Server HTTP",
-      version: "1.0.0",
-    });
+  server.tool("echo", { message: z.string() }, async ({ message }) => ({
+    content: [{ type: "text", text: `Echo: ${message}` }],
+  }));
 
-    // Add echo tool
-    server.tool("echo", { message: z.string() }, async ({ message }) => ({
-      content: [{ type: "text", text: `Echo: ${message}` }],
-    }));
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
-    return server;
-  };
+  await server.connect(transport);
 
-  // Handle MCP endpoint for all HTTP methods
-  app.all("/mcp", async (req, res) => {
-    console.error(`Received ${req.method} MCP request`);
-
-    // Check for existing session ID
-    const sessionId = req.headers["mcp-session-id"] as string | undefined;
-    let transport: StreamableHTTPServerTransport;
-
-    if (sessionId && transports[sessionId]) {
-      // Reuse existing transport
-      transport = transports[sessionId];
-    } else if (req.method === "POST" && (!sessionId || !transports[sessionId])) {
-      // New session or initialization request
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (newSessionId) => {
-          console.error(`Session initialized: ${newSessionId}`);
-          transports[newSessionId] = transport;
-        },
-      });
-
-      // Clean up transport when closed
-      transport.onclose = () => {
-        if (transport.sessionId) {
-          console.error(`Session closed: ${transport.sessionId}`);
-          delete transports[transport.sessionId];
-        }
-      };
-
-      const server = getServer();
-      await server.connect(transport);
-    } else {
-      // Invalid request
-      res.status(400).json({
-        jsonrpc: "2.0",
-        error: {
-          code: -32000,
-          message: "Bad Request: No valid session ID provided",
-        },
-        id: null,
-      });
-      return;
-    }
-
-    // Handle the request
+  app.post("/mcp", async (req, res) => {
     try {
-      await transport.handleRequest(req, res, req.method === "POST" ? req.body : undefined);
+      await transport.handleRequest(req, res, req.body);
     } catch (error) {
-      console.error("Error handling request:", error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: "2.0",
-          error: {
-            code: -32603,
-            message: "Internal server error",
-          },
-          id: null,
-        });
-      }
+      res.status(500).end();
     }
   });
 
-  // Start the server
+  app.get("/mcp", async (req, res) => {
+    try {
+      await transport.handleRequest(req, res);
+    } catch (error) {
+      res.status(500).end();
+    }
+  });
+
   const PORT = 3000;
   app.listen(PORT, () => {
-    console.error(`MCP Echo Server listening on http://localhost:${PORT}/mcp`);
+    console.log(`MCP Echo Server listening on http://localhost:${PORT}/mcp`);
   });
 }
 
@@ -111,48 +69,34 @@ main().catch((error) => {
 });
 ```
 
-## 2. Install Dependencies
+## Running the Server
+
+Run the server with:
 
 ```bash
-npm install express
+node src/echo-http/server.ts
 ```
 
-## 3. Run the HTTP Server
+## Testing with MCP Inspector
 
-```bash
-node --experimental-transform-types src/echo-http/server.ts
-```
+1. Build and run the MCP Inspector:
 
-## 4. Build and Run the MCP Inspector from Source
+   ```bash
+   npm run dev
+   ```
 
-The latest MCP Inspector releases may not support newer protocol features like StreamableHTTP. Build from source instead:
+2. Open the Inspector in your browser (typically at http://localhost:6274/)
 
-```bash
-# Clone the repository
-git clone https://github.com/modelcontextprotocol/inspector.git
-cd inspector
+3. Configure the connection:
 
-# Install dependencies
-npm install
+   - Select "Streamable HTTP" as the Transport Type
+   - Enter `http://localhost:3000/mcp` as the URL
+   - Click "Connect"
 
-# Start the development version
-npm run dev
-```
-
-This will output something like `➜  Local:   http://localhost:6274/`. Open this URL in your browser.
-
-## 5. Test with the MCP Inspector
-
-1. Select Transport Type: `Streamable HTTP`
-2. Enter the URL `http://localhost:3000/mcp`
-3. Click "Connect"
-4. In the "Tools" tab, click "List Tools", and select the "echo" tool
-5. Send a test message
-
-## 6. Troubleshooting
-
-If you encounter connection issues:
-
-1. Check server console logs for detailed error messages
-2. Ensure the server is running and accessible at http://localhost:3000/mcp
-3. Try restarting both the server and the Inspector
+4. Test the echo tool:
+   - Go to the "Tools" tab
+   - Click "List Tools" to see available tools
+   - Select the "echo" tool
+   - Enter a message in the "message" field
+   - Click "Run Tool"
+   - You should see your message echoed back in the "Tool Result"
