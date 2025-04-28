@@ -63,6 +63,9 @@ Note: We are working through the Project Plan (see the project resources) over m
 - When running `node` on the command line (for example, to test MCP servers with the MCP Inspector), note that `/opt/homebrew/bin/node` is on the path so we can just say `node` in shell scripts.
 - We can try omitting `--experimental-transform-types` much of the time, and bring it back immediately as a potential solution if we're ever seeing errors about invalid syntax.
 - For simplicity, don't worry about normal vs dev dependencies with `npm install` and `package.json`. Just install everything as a normal dependency in one command.
+- You never need to mention things we'll install with `npm install` in prerequisites.
+- When generating shell script code samples, use `sh` instead of `bash`
+- Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to resolve confusion or clarify answers to questions.
 
 ## Trusted online resources:
 

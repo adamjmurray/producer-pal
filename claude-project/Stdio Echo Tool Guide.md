@@ -14,7 +14,7 @@ This is a proof-of-concept of a very simple MCP server with an "echo" tool that 
 
 Inside our project (currently located at `/Users/adammurray/workspace/ableton-live-composition-assistant`):
 
-```bash
+```sh
 mkdir src/echo-stdio
 touch src/echo-stdio/server.ts
 ```

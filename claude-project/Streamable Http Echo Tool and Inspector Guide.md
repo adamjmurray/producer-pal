@@ -9,7 +9,7 @@ This guide demonstrates how to create a minimal MCP server that exposes a simple
 
 ## Installation
 
-```bash
+```sh
 npm install @modelcontextprotocol/sdk express @types/node
 ```
 
@@ -73,7 +73,7 @@ main().catch((error) => {
 
 Run the server with:
 
-```bash
+```sh
 node src/echo-http/server.ts
 ```
 
@@ -81,7 +81,7 @@ node src/echo-http/server.ts
 
 1. Build and run the MCP Inspector:
 
-   ```bash
+   ```sh
    npm run dev
    ```
 
