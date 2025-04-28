@@ -2,8 +2,8 @@
 
 ## Phase 1: Basic MCP Server (outside Max/Live)
 
-- ✅ Build a simple MCP server with Node.js 23 native TypeScript support and call a custom tool from Claude Desktop. Use the stdio transport to keep things simple for this first version.
-- ✅ Use the official [MCP inspector](https://modelcontextprotocol.io/docs/tools/inspector#inspector) to test our simple MCP server (confirm we know how to use this inspector tool). This requires converting the stdio transport to an HTTP transport. We'll use the new, preferred StreamableHTTP transport.
+- ✅ Build a simple MCP server with Node.js 23's native TypeScript support. Use the stdio transport for this first version. Test it by calling an "echo" tool in the MCP server from Claude Desktop.
+- ✅ Use the official [MCP inspector](https://modelcontextprotocol.io/docs/tools/inspector#inspector) to test our simple MCP server and "echo" tool (confirm we know how to use this inspector tool). This requires converting the stdio transport to an HTTP transport. We'll use the new, preferred StreamableHTTP transport.
 - Setup mcp-proxy integration and get the StreamableHTTP transport MCP server to work with Claude Desktop
 
 ## Phase 2: Ableton Live Integration

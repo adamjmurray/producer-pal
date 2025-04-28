@@ -31,8 +31,8 @@ Note: We are working through the Project Plan (see the project resources) over m
 - We are using the 2025-03-26 version of the model context protocol (MCP). Project resources include relevant specs with up-to-date info
 - The UI for interacting with the AI will be the Claude Desktop app
 - All functionality within Live should be provided by a single Max for Live device
-- The MCP server must communicate over SSE (Server-Sent Events) using HTTP
-- Claude Desktop requires mcp-proxy to bridge between stdio and SSE
+- The MCP server must communicate over HTTP. We plan to use the new StreamableHttp tranport because the [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
+- Claude Desktop requires an adapter between its stdio transport and an HTTP MCP server. We plan to use the TypeScript library [mcp-proxy](https://github.com/punkpeye/mcp-proxy) to accomplish this.
 - We are using Live 12.2 and Max 9
 - We are using Node.js 23 with native TypeScript support, including the `--experimental-transform-types` option that allows for use of TypeScript enums and other "non-erasable" syntax (see https://nodejs.org/docs/latest/api/typescript.html#type-stripping). It has been installed via Homebrew on macOS, with the executable located at `/opt/homebrew/bin/node`
 - We do not want to setup any build process. Leverage the native TypeScript support and keep things simple.
@@ -60,6 +60,7 @@ Note: We are working through the Project Plan (see the project resources) over m
 
 - When testing MCP servers with the [MCP inspector](https://modelcontextprotocol.io/docs/tools/inspector#inspector) , prefer building the MCP inspector
   from source using `git clone https://github.com/modelcontextprotocol/inspector.git && cd inspector && npm install && npm run dev` as the latest release versions may not support newer protocol features like `StreamableHTTP` transport.
+- When running `node` on the command line (for example, to test MCP servers with the MCP Inspector), note that `/opt/homebrew/bin/node` is on the path so we can just say `node` in and shell scripts.
 
 ## Trusted online resources:
 
