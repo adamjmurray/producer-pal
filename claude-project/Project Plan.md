@@ -1,18 +1,39 @@
-# MVP Project Plan
+# Project Plan v1
 
 ## Phase 1: Basic MCP Server (outside Max/Live)
+
+Goal: Prove we can build tools in HTTP-based MCP servers and call those tools from Claude Desktop. Learn how to test MCP servers.
 
 - ✅ Build an "echo" tool in an MCP server using stdio transport (because it's the simplest). Call the tool directly from Claude Desktop.
 - ✅ Build a "greet" tool in an MCP server using the Streamable HTTP transport. Call it with Claude Desktop via `mcp-remote` adaptor.
 - ✅ Learn how to use the MCP Inspector.
 
-## Phase 2: Ableton Live Integration
+## Phase 2: Basic MCP capabilities inside Ableton Live
 
-- ✅ Create the Max for Live device shell, bootstrap Node for Max with an entry script that loads our simple MCP from phase 1, and call the custom MCP tool running inside Ableton Live from Claude Desktop
-- Hook up the Max for Live device's MCP server to the Live API and rework the custom tool from phase 2 to create a MIDI clip in session view. Create a clip from Claude Desktop
-- Build out MIDI clip generation capability to generates notes
-- Add another tool for transforming notes in existing MIDI clips
+Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for Live device using Node for Max. Do preliminary, basic integration with the Live API and confirm we can read and write the state of the Ableton Live Set from Claude Desktop. We will focus on Live's Session View in this phase.
+
+- ✅ Create the Max for Live device shell, bootstrap Node for Max with an entry script that loads our simple MCP "greet" tool from phase 1, and call the custom MCP tool running inside Ableton Live from Claude Desktop
+- Add a basic ability to call the Live API in the Max for Live shell from the previous step. Simply trigger creating a new empty MIDI clip in track 0, clip slot 0 in Live's Session View
+- Expand the ability to create a new empty MIDI clip to create include some hard-coded notes inside the clip
+- Allow for the MIDI clip to be created in any existing track or clip slot
+- Allow for arbitrary notes to be created in the MIDI clip in the simplest way possible
+- Allow for the state of a MIDI clip to be read (i.e. add a new MCP tool for reading from the Live API). Hard-code reading a MIDI clip to track 0, clip slot 0 in Session View
+- Allow for session view MIDI clips to be listed
+- Allow for arbitrary MIDI clips to be read (take track index and clip slot as parameters)
+- Allow for all MIDI clips in Session View to be read
+- Allow for MIDI clips to be deleted
+- Allow for existing MIDI clips to be updated
+
+## Phase 3: Deeper Ableton Live Integration
+
+Goal: Build towards the desired music composition assistant feature set, working end-to-end in Ableton Live with control from Claude Desktop. We will shift focus to Live's Arrangement View in this phase.
+
+Rough sketch (to be expanded as we make more progress on the previous phase):
+
+- Consider introducing support for [ABC Music Notation Syntax](https://abcwiki.org/abc:syntax) or something similar, so MIDI pitch can be represented by semantic pitch class + octave (such as "C4") instead of raw numbers (such as 60).
+- Expand the phase 2 functionality to work in Arrangement View in Live
 - Expand on the clip generation capabilities (TBD once we have a working prototype)
 - Expand on the clip transformation capabilities (TBD once we have a working prototype)
+- Add another tool for transforming notes in existing MIDI clips
 
-## Phrase 3: TBD, pending more brainstorming after progress on the above
+## Phrase 4: TBD, pending more brainstorming after progress on the above. Possible focus: additional advanced features, and polish and "productization" of feature built in the previous phases.
