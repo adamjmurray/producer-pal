@@ -20,10 +20,9 @@
   "homepage": "https://github.com/adamjmurray/ableton-live-composition-assistant#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.10.2",
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.15.3",
     "express": "^5.1.0",
-    "mcp-proxy": "^2.13.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.15.2"
+    "zod": "^3.24.3"
   }
 }
