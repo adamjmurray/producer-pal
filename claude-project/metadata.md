@@ -33,7 +33,7 @@ We are working through the Project Plan over many conversations. The goal of eac
 - The path to the source code is `/Users/adammurray/workspace/ableton-live-composition-assistant/src`
 - The TypeScript MCP SDK was installed with `npm install @modelcontextprotocol/sdk`
 - Other dependencies were installed `npm i zod express`
-- Type definitions were installed with `npm i --save-dev @types/node @types/express`
+- Type definitions were installed with `npm i --save-dev @types/node @types/express @types/max-api`
 - The `package.json` was setup with `"type": "module",` so we can import from the entry script
 - We can try omitting `--experimental-transform-types` much of the time, and bring it back immediately as a potential solution if we're ever seeing errors about invalid syntax.
 - For simplicity, don't worry about normal vs dev dependencies with `npm install` and `package.json`. Just install everything as a normal dependency in one command.
