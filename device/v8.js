@@ -1,6 +1,7 @@
 // device/v8.js
 // The tool implementations with direct Live API access
 const { createClip } = require("create-clip");
+const { listTracks } = require("list-tracks");
 
 const toString = (any) => {
   const s = String(any);
@@ -20,13 +21,18 @@ function mcp_request(serializedJSON) {
     let result;
 
     // Route to appropriate function based on tool name
-    if (tool === "create-clip") {
-      result = createClip(args.track, args.clipSlot, args.notes);
-    } else {
-      result = {
-        success: false,
-        message: `Unknown tool: ${tool}`,
-      };
+    switch (tool) {
+      case "create-clip":
+        result = createClip(args.track, args.clipSlot, args.notes);
+        break;
+      case "list-tracks":
+        result = listTracks();
+        break;
+      default:
+        result = {
+          success: false,
+          message: `Unknown tool: ${tool}`,
+        };
     }
 
     // Send response back to Node for Max

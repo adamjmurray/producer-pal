@@ -1,6 +1,7 @@
 // device/server/create-mpc-server.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerCreateClipTool } from "./tools/register-create-clip-tool.ts";
+import { registerListTracksTool } from "./tools/register-list-tracks-tool.ts";
 
 export function createMcpServer(pendingRequests: Map<string, Function>) {
   const server = new McpServer({
@@ -9,6 +10,7 @@ export function createMcpServer(pendingRequests: Map<string, Function>) {
   });
 
   registerCreateClipTool(server, pendingRequests);
+  registerListTracksTool(server, pendingRequests);
 
   return server;
 }

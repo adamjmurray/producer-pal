@@ -29,7 +29,7 @@ We are working through the Project Plan over many conversations. The goal of eac
 - The repository root is `/Users/adammurray/workspace/ableton-live-composition-assistant`
 - The path to the Max for Live device and source code is `/Users/adammurray/workspace/ableton-live-composition-assistant/device`
 - The Node for Max and Max v8 code have different behaviors and requirements we need to follow:
-  - In Node for Max, after bootstrapping the loader script `index.mjs`, we can `import` code with the modern ESM approach. Code can be organized into subfolders.
+  - In Node for Max, after bootstrapping the loader script `index.mjs`, we can `import` code with the modern ESM approach. Code can be organized into subfolders. TypeScript files must always be imported with the explicit `.ts` file extension.
   - In v8, we must use `require` and `module.exports` with the older CommonJS (CJS) approach. IMPORTANT: All code loaded by the v8 object must be in the same folder (`ableton-live-composition-assistant/device`). This is because v8 uses it's own custom loader for `require`, and it is very limited.
 - We are using the 2025-03-26 version of the model context protocol (MCP).
 - The UI for interacting with the AI will be the Claude Desktop app
