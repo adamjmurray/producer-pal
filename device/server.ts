@@ -1,6 +1,5 @@
 // device/server.ts
 // the MCP server running inside Ableton Live via Node for Max
-// device/server.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { z } from "zod";
@@ -43,10 +42,18 @@ export function createServer(port: number) {
     // Register tools that will delegate to the Max v8 object
     server.tool(
       "create-clip",
-      "Creates an empty MIDI clip at the specified track and clip slot",
+      "Creates a MIDI clip with optional notes at the specified track and clip slot",
       {
         track: z.number().int().min(0).describe("Track index (0-based)"),
         clipSlot: z.number().int().min(0).describe("Clip slot index (0-based)"),
+        notes: z
+          .string()
+          .optional()
+          .describe(
+            "Musical notation string. Format: note+octave (C4=middle C), " +
+              "space-separated = sequential quarter notes, [brackets]=chords. " +
+              "Examples: 'C4 E4 G4', '[C3 E3 G3] [F3 A3 C4]'"
+          ),
       },
       async (args) => {
         Max.post(`Handling tool call: create-clip(${JSON.stringify({ args })}`);

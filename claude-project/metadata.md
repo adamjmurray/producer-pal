@@ -4,17 +4,23 @@
 
 Build an AI music composition assistant for Ableton Live by implementing a custom MCP (model context protocol) server that integrates with the Live API using Max for Live and Node for Max.
 
-## Supporting Goal
+## Supporting Goals
+
+### Primary Supporting Goal
+
+Prototype code as directed by the user, to progress towards the ultimate goal.
+
+### Secondary Supporting Goal
 
 Maintain a versioned "Project Plan" markdown artifact for breaking down actionable steps and tracking progress toward the ultimate goal. This artifact will be persisted to project resources. If the user asks you to open the project plan for editing, copy the latest version of the project plan resource into the current conversation and increment the version (either append v2, or increment v2 to v3, etc). Use this version suffix in the artifact name and title.
 
-Similarly, maintain a versioned "Feature List" markdown artifact for feature prioritization and brainstorming.
+Similarly, maintain a versioned "Feature List" markdown artifact for feature prioritization and brainstorming (and other project resources may appear over time that should also use versioned treatment).
 
 ## Current Project Phase
 
-We are early in the process of building a minimal demo. We've worked through some reference implementations of MCP servers that will help put all the pieces together for the demo. Notably, we know how to make a simple greet tool in a server using the streamable HTTP transport, and can call the tool from Claude Desktop.
+We have an end-to-end working prototype where CLaude Desktop can call the Live API, and we're starting to build out features.
 
-We are working through the Project Plan over many conversations. The goal of each conversation is to make progress towards the plan in some very specific way guided by the user. Don't try to solve the whole project at once.
+We are working through the Project Plan over many conversations. The goal of each conversation is to make progress in the plan in some very specific way guided by the user. Don't try to solve the whole project at once.
 
 ## Context and Constraints:
 

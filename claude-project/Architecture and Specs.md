@@ -50,6 +50,11 @@ The main parts of the system are:
 +-----------------------------+
 ```
 
+## Implementation Details
+
+- the Node for Max MCP server is implemented in `device/server.ts` bootstrapped by `device/index.mjs`
+- the v8 Max object runs the code in `v8.js`
+
 ## Message Format Specification
 
 ### Max Message Request Format (Node for Max → v8)
