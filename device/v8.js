@@ -8,7 +8,7 @@ const log = (...any) => post(...any.map(toString), "\n");
 const error = (...any) => globalThis.error(...any.map(toString), "\n");
 log("----------------- v8.js reloaded ---------------------,\n", new Date());
 
-// Parse note name (e.g. "C4", "Bb3") to MIDI pitch
+// Parse note name (e.g. "C3", "Bb2") to MIDI pitch
 function parseNote(note) {
   const pitchClasses = {
     C: 0,
@@ -40,8 +40,8 @@ function parseNote(note) {
 
   if (pitchClass === undefined) return null;
 
-  // MIDI formula: (octave + 1) * 12 + pitch class
-  return (Number(octave) + 1) * 12 + pitchClass;
+  // MIDI formula: (octave + 2) * 12 + pitch class
+  return (Number(octave) + 2) * 12 + pitchClass;
 }
 
 // Parse musical string format into notes/chords

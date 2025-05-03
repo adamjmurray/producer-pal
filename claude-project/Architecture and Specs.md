@@ -135,7 +135,7 @@ Messages sent from v8 back to Node for Max:
 
 To be used with tools that can create notes.
 
-- Basic format: Note names with octave numbers (C4 is middle C)
+- Basic format: Note names with octave numbers (C3 is middle C)
 - Notes are represented as letter + optional accidental (# or b) + octave number
 - Space-separated notes represent sequential notes (default rhythm: quarter notes)
 - Square brackets group notes into chords: [C3 E3 G3]
