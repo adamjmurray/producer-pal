@@ -15,14 +15,13 @@ Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for L
 - ✅ Create the Max for Live device shell, bootstrap Node for Max with an entry script that loads our simple MCP "greet" tool from phase 1, and call the custom MCP tool running inside Ableton Live from Claude Desktop
 - ✅ Add a basic ability to call the Live API in the Max for Live shell from the previous step. Simply trigger creating a new empty MIDI clip in track 0, clip slot 0 in Live's Session View
 - ✅ Allow for the MIDI clip to be created in any existing track or clip slot
-- Expand the ability to create a new empty MIDI clip with a single note inside the clip
-- Allow for arbitrary notes to be created in the MIDI clip in the simplest way possible (maybe list C4 D4 E4 etc and everything is one beat)
-- Allow for the state of a MIDI clip to be read (i.e. add a new MCP tool for reading from the Live API). Hard-code reading a MIDI clip to track 0, clip slot 0 in Session View
-- Allow for session view MIDI clips to be listed
-- Allow for arbitrary MIDI clips to be read (take track index and clip slot as parameters)
-- Allow for all MIDI clips in Session View to be read
+- Expand the ability to create a new empty MIDI clip with notes inside it using a simple syntax for pitches and chords (no control over rhythm yet)
+- Expose the state of the Ableton Live set via additional MCP tools
+  - list all tracks and their clips in Session View (but probably not clip contents)
+  - read the state of a MIDI clip at a given track and clipSlot index
 - Allow for MIDI clips to be deleted
 - Allow for existing MIDI clips to be updated
+- Support Arrangement View
 
 ## Phase 3: Deeper Ableton Live Integration
 
