@@ -23,7 +23,13 @@ Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for L
 - Allow for existing MIDI clips to be updated
 - Support Arrangement View
 
-## Phase 3: Deeper Ableton Live Integration
+## Phase 3: Cleanup, Stabilization, Testing (establish a strong foundation)
+
+- Stop using TypeScript and get running on Node.js 20 with the built-in version for Node for Max
+- Extract stable elements (like boilerplate MCP server setup) into separate files that don't change often (so we can focus on the in-flux code)
+- Add tests, tentatively with vitest
+
+## Phase 4: Deeper Ableton Live Integration
 
 Goal: Build towards the desired music composition assistant feature set, working end-to-end in Ableton Live with control from Claude Desktop. We will shift focus to Live's Arrangement View in this phase.
 
@@ -35,4 +41,4 @@ Rough sketch (to be expanded as we make more progress on the previous phase):
 - Expand on the clip transformation capabilities (TBD once we have a working prototype)
 - Add another tool for transforming notes in existing MIDI clips
 
-## Phrase 4: TBD, pending more brainstorming after progress on the above. Possible focus: additional advanced features, and polish and "productization" of feature built in the previous phases.
+## Phrase 5: TBD, pending more brainstorming after progress on the above. Possible focus: additional advanced features, and polish and "productization" of feature built in the previous phases.
