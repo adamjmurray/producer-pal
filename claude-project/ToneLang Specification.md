@@ -131,13 +131,14 @@ R  G2 A2 B2
 
 ---
 
-## Future Extensions (Planned)
+## Future Extensions (tentative)
 
 - Add a global setting for default articulation behavior
 - Note overlap/duration (`~`) (e.g. `C4/2~1` takes up the space of an eight note w.r.t. the following note's start time,
   but is actually a quarter note in duration)
 - Tempo control (e.g., `@tempo=120`)
 - Multi-track support with `trackname:` (v1.3)
+- Bar line support for possible "harmonic modeling" use cases later (e.g. one chord every bar)
 
   **Example:**
 

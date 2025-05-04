@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 
 // Import module under test
-const { parseToneLangNote, parseToneLang } = require("./tone-lang");
+const { parseToneLangNote, parseToneLang, parseToneLangToken } = require("./tone-lang");
 
 describe("parseToneLangNote", () => {
   it("should correctly parse natural notes", () => {
@@ -46,6 +46,48 @@ describe("parseToneLangNote", () => {
     expect(parseToneLangNote("C")).toBe(null); // Missing octave
     expect(parseToneLangNote("3C")).toBe(null); // Wrong order
     expect(parseToneLangNote("")).toBe(null); // Empty string
+  });
+});
+
+describe("parseToneLangToken", () => {
+  it("should parse basic notes", () => {
+    const result = parseToneLangToken("C3");
+    expect(result.pitch).toBe(60);
+    expect(result.duration).toBe(1);
+    expect(result.velocity).toBe(100);
+    expect(result.isRest).toBeUndefined();
+  });
+
+  it("should parse note with duration modifiers", () => {
+    expect(parseToneLangToken("C3*2").duration).toBe(2);
+    expect(parseToneLangToken("D3/2").duration).toBe(0.5);
+    expect(parseToneLangToken("E3*4").duration).toBe(4);
+    expect(parseToneLangToken("F3/4").duration).toBe(0.25);
+  });
+
+  it("should parse note with velocity", () => {
+    expect(parseToneLangToken("C3:v64").velocity).toBe(64);
+    expect(parseToneLangToken("D3:v127").velocity).toBe(127);
+    expect(parseToneLangToken("E3:v1").velocity).toBe(1);
+  });
+
+  it("should parse note with both duration and velocity", () => {
+    const result = parseToneLangToken("C3*2:v80");
+    expect(result.pitch).toBe(60);
+    expect(result.duration).toBe(2);
+    expect(result.velocity).toBe(80);
+  });
+
+  it("should parse rests", () => {
+    const rest = parseToneLangToken("R");
+    expect(rest.isRest).toBe(true);
+    expect(rest.duration).toBe(1);
+    expect(rest.velocity).toBe(0);
+  });
+
+  it("should parse rests with duration modifiers", () => {
+    expect(parseToneLangToken("R*2").duration).toBe(2);
+    expect(parseToneLangToken("R/2").duration).toBe(0.5);
   });
 });
 
@@ -96,8 +138,8 @@ describe("parseToneLang", () => {
     expect(result[5].start_time).toBe(1);
   });
 
-  it("should apply custom duration correctly", () => {
-    const result = parseToneLang("C3 D3", 0.5);
+  it("should apply duration modifiers correctly", () => {
+    const result = parseToneLang("C3/2 D3/2");
 
     expect(result.length).toBe(2);
     expect(result[0].duration).toBe(0.5);
@@ -122,6 +164,36 @@ describe("parseToneLang", () => {
     expect(result[3].start_time).toBe(2);
   });
 
+  it("should handle rests correctly", () => {
+    const result = parseToneLang("C3 R D3");
+
+    expect(result.length).toBe(2); // Rests don't create notes
+    expect(result[0].pitch).toBe(60); // C3
+    expect(result[0].start_time).toBe(0);
+
+    expect(result[1].pitch).toBe(62); // D3
+    expect(result[1].start_time).toBe(2); // After C3 (1 beat) + rest (1 beat)
+  });
+
+  it("should handle velocity modifiers", () => {
+    const result = parseToneLang("C3:v80 D3:v40");
+
+    expect(result[0].velocity).toBe(80);
+    expect(result[1].velocity).toBe(40);
+  });
+
+  it("should handle chords with duration and velocity modifiers", () => {
+    const result = parseToneLang("[C3 E3 G3]*2:v90");
+
+    expect(result.length).toBe(3);
+    expect(result[0].duration).toBe(2);
+    expect(result[0].velocity).toBe(90);
+    expect(result[1].duration).toBe(2);
+    expect(result[1].velocity).toBe(90);
+    expect(result[2].duration).toBe(2);
+    expect(result[2].velocity).toBe(90);
+  });
+
   it("should ignore invalid notes", () => {
     const result = parseToneLang("C3 X9 E3");
 
@@ -129,6 +201,5 @@ describe("parseToneLang", () => {
     expect(result[0].pitch).toBe(60); // C3
     expect(result[1].pitch).toBe(64); // E3
     expect(result[1].start_time).toBe(1); // Invalid note is skipped but takes up no time
-    // TODO: reconsider if invalid notes should be treated like rests
   });
 });

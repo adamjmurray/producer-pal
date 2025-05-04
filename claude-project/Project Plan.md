@@ -33,6 +33,14 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 ## Phase 3: Establish a strong foundation: Round-out feature set, cleanup/refactor, automated testing
 
 - Keep refactoring and cleaning things up as needed
+- Fix bugs. Current known issues:
+  - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
+    gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
+    error, maybe we should auto-add a new scene whenever slotIndex > scene count (but note this may result in the index
+    being different if it's much larger than the scene count, so the return value could confirm the index)
+  - Haiku model tried to do `C3:v40*2 E3:v60*2 G3:v80*2 C4:v100*2` and got an empty clip. I think the duration/velocity
+    syntax may be backwards? We should either make that extremely clear in the tool description, or make the parser
+    flexible enough to handle it.
 - Add tests, tentatively with vitest
   - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
     Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet
@@ -43,8 +51,8 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     ```
     We will revisit this soon.
   - ✅ Test create-clip
+  - ✅ Test ToneLang
   - Test list-tracks
-  - More coverage
 - More clip CRUD operations:
   - set clip name when creating
   - set clip color when creating. Use "CSS syntax" for the MCP interface
@@ -62,15 +70,12 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - delete tracks
   - set/update track name and color (using "CSS syntax")
 - Flesh out custom note pattern syntax, now called TongLang v1.0
-  - support duration (assuming legato)
-  - support note off timing (legato vs staccato)
-  - support rests
-  - support velocity
-  - support for articulations and multiple voices (counterpoint that's not block chords) will come a little later (see
-    ToneLang spec)
-  - pitch bends, modulation, envelopes, and MPE are all out of scope
+  - ✅ support duration (assuming legato)
+  - ✅ support rests
+  - ✅ support velocity
+  - support multiple voices (counterpoint that's not block chords)
+  - support articulations
   - support reading the notes of a clip using this syntax
-  - consider (optional?) bar line support for possible "harmonic modeling" use cases later
 - When the Node for Max code creates Promises, it should also make them timeout after a little while
 - Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 

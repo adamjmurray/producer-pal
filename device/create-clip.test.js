@@ -53,8 +53,7 @@ describe("createClip", () => {
     const args = {
       track: 1,
       clipSlot: 2,
-      notes: "C3 E3 G3",
-      duration: 0.5,
+      notes: "C3/2 E3/2 G3/2",
     };
 
     // Act
@@ -81,7 +80,6 @@ describe("createClip", () => {
       track: 0,
       clipSlot: 0,
       notes: "[C3 E3 G3] [F3 A3 C4]",
-      duration: 1.0,
     };
 
     // Act
@@ -98,9 +96,52 @@ describe("createClip", () => {
     const firstChordNotes = addNotesCall[1].notes.slice(0, 3);
     expect(firstChordNotes.every((n) => n.start_time === 0)).toBe(true);
 
-    // Second chord notes should start at duration 1.0
+    // Second chord notes should start at time 1.0
     const secondChordNotes = addNotesCall[1].notes.slice(3, 6);
     expect(secondChordNotes.every((n) => n.start_time === 1.0)).toBe(true);
+  });
+
+  it("should create a clip with various ToneLang features", () => {
+    // Arrange
+    const args = {
+      track: 0,
+      clipSlot: 0,
+      notes: "C3:v80 D3*2 R E3/2 [F3 A3 C4]:v120",
+    };
+
+    // Act
+    const result = createClip(args);
+
+    // Assert
+    expect(result).toContain("Created clip with");
+
+    // Second call should be add_new_notes
+    const addNotesCall = mockLiveApiCall.mock.calls[1];
+    const notes = addNotesCall[1].notes;
+
+    // We should have 6 notes (no note for the rest)
+    expect(notes.length).toBe(6);
+
+    // First note: C3 with velocity 80
+    expect(notes[0].pitch).toBe(60);
+    expect(notes[0].velocity).toBe(80);
+    expect(notes[0].start_time).toBe(0);
+
+    // Second note: D3 with double duration
+    expect(notes[1].pitch).toBe(62);
+    expect(notes[1].duration).toBe(2);
+    expect(notes[1].start_time).toBe(1);
+
+    // Third note: E3 with half duration after the rest
+    expect(notes[2].pitch).toBe(64);
+    expect(notes[2].duration).toBe(0.5);
+    expect(notes[2].start_time).toBe(4); // 1 + 2 + 1 (rest)
+
+    // Chord notes
+    expect(notes[3].start_time).toBe(4.5);
+    expect(notes[3].velocity).toBe(120);
+    expect(notes[4].velocity).toBe(120);
+    expect(notes[5].velocity).toBe(120);
   });
 
   it("should throw an error if clip slot already has a clip", () => {

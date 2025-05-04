@@ -7,14 +7,16 @@ const { parseToneLang } = require("./tone-lang");
  * @param {number} args.track - Track index (0-based)
  * @param {number} args.clipSlot - Clip slot index (0-based)
  * @param {string} [args.notes] - ToneLang musical notation string
- * @param {number} [args.duration=1.0] - Duration of each note in quarter notes
  * @returns {string} Result message
  */
-function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: musicNotationString, duration = 1.0 }) {
+function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: musicNotationString }) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
   if (clipSlot.get("has_clip") == 0) {
-    const notes = parseToneLang(musicNotationString, duration);
-    const clipLength = Math.max(4, Math.ceil(notes.length * duration));
+    const notes = parseToneLang(musicNotationString);
+
+    // Calculate clip length based on the end time of the last note
+    const lastNoteEndTime = notes.length > 0 ? Math.max(...notes.map((note) => note.start_time + note.duration)) : 0;
+    const clipLength = Math.max(4, Math.ceil(lastNoteEndTime));
 
     clipSlot.call("create_clip", clipLength);
 
@@ -22,7 +24,7 @@ function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: musicNo
       const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
       clip.call("add_new_notes", { notes });
 
-      return `Created clip with ${notes.length} notes at track ${trackIndex}, clip slot ${clipSlotIndex} with duration ${duration}`;
+      return `Created clip with ${notes.length} notes at track ${trackIndex}, clip slot ${clipSlotIndex}`;
     } else {
       return `Created empty clip at track ${trackIndex}, clip slot ${clipSlotIndex}`;
     }
