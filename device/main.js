@@ -16,6 +16,7 @@ const { createClip } = require("create-clip");
 const { listTracks } = require("list-tracks");
 
 // Format a successful response with the standard MCP content structure
+// non-string results will be JSON-stringified
 function formatSuccessResponse(result) {
   return {
     content: [
@@ -48,7 +49,7 @@ function mcp_request(serializedJSON) {
       // Route to appropriate function based on tool name
       switch (tool) {
         case "create-clip":
-          const clipResult = createClip(args.track, args.clipSlot, args.notes, args.duration);
+          const clipResult = createClip(args);
           result = formatSuccessResponse(clipResult);
           break;
         case "list-tracks":

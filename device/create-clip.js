@@ -37,8 +37,8 @@ function parseNote(note) {
   return (Number(octave) + 2) * 12 + pitchClass;
 }
 
-// Parse musical string format into notes/chords
-function parseMusicString(musicString, duration = 1.0) {
+// Parse musical notation string format into notes/chords
+function parseMusicNotationString(musicString, duration = 1.0) {
   if (!musicString) return [];
 
   const notes = [];
@@ -81,10 +81,19 @@ function parseMusicString(musicString, duration = 1.0) {
   return notes;
 }
 
-function createClip(trackIndex, clipSlotIndex, musicalNotes, duration = 1.0) {
+/**
+ * Creates a MIDI clip with optional notes at the specified track and clip slot
+ * @param {Object} args - The clip creation parameters
+ * @param {number} args.track - Track index (0-based)
+ * @param {number} args.clipSlot - Clip slot index (0-based)
+ * @param {string} [args.notes] - Musical notation string (space-separated notes/chords)
+ * @param {number} [args.duration=1.0] - Duration of each note in quarter notes
+ * @returns {string} Result message
+ */
+function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: musicNotationString, duration = 1.0 }) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
   if (clipSlot.get("has_clip") == 0) {
-    const notes = parseMusicString(musicalNotes, duration);
+    const notes = parseMusicNotationString(musicNotationString, duration);
     const clipLength = Math.max(4, Math.ceil(notes.length * duration));
 
     clipSlot.call("create_clip", clipLength);
