@@ -1,11 +1,9 @@
 // device/server/add-tool-create-clip.ts
-import Max from "max-api";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import crypto from "node:crypto";
 import { z } from "zod";
+import { callLiveApi } from "./call-live-api.ts";
 
 export function addToolCreateClip(server: McpServer, pendingRequests: Map<string, Function>) {
-  // Register tools that will delegate to the Max v8 object
   server.tool(
     "create-clip",
     "Creates a MIDI clip with optional notes at the specified track and clip slot",
@@ -22,24 +20,6 @@ export function addToolCreateClip(server: McpServer, pendingRequests: Map<string
         ),
       duration: z.number().positive().default(1.0).describe("Duration of each note in quarter notes (default: 1.0)"),
     },
-    async (args) => {
-      Max.post(`Handling tool call: create-clip(${JSON.stringify({ args })}`);
-
-      // Create a request with a unique ID
-      const requestId = crypto.randomUUID();
-      const request = {
-        requestId,
-        tool: "create-clip",
-        args,
-      };
-
-      // Send the request to Max as JSON
-      Max.outlet("mcp_request", JSON.stringify(request));
-
-      // Return a promise that will be resolved when Max responds
-      return new Promise((resolve) => {
-        pendingRequests.set(requestId, resolve);
-      });
-    }
+    async (args) => callLiveApi("create-clip", args, pendingRequests)
   );
 }
