@@ -61,13 +61,13 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - update tracks
   - delete tracks
   - set/update track name and color (using "CSS syntax")
-- Flesh out custom note pattern syntax
-  - Give this syntax an official name
+- Flesh out custom note pattern syntax, now called TongLang v1.0
   - support duration (assuming legato)
   - support note off timing (legato vs staccato)
   - support rests
   - support velocity
-  - support multiple voices (counterpoint that's not block chords)
+  - support for articulations and multiple voices (counterpoint that's not block chords) will come a little later (see
+    ToneLang spec)
   - pitch bends, modulation, envelopes, and MPE are all out of scope
   - support reading the notes of a clip using this syntax
   - consider (optional?) bar line support for possible "harmonic modeling" use cases later
