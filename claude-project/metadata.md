@@ -50,6 +50,8 @@ We are working through the Project Plan over many conversations. The goal of eac
 - You never need to mention things we'll install with `npm install` in prerequisites in this project, unless it's a new dependency we haven't seen before.
 - Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to resolve confusion or clarify answers to questions.
 - When calling the Live API to get properties of an object like a Track or Clip, it seems that single item responses are usually (always?) arrays, so we need to do things like `track.get("name")?.[0]` to get the track name as a string. In cases where we are trying to compute a boolean, we can rely on JavaScript's type coercion to do things like `clip.get("looping") > 0`, but note that `clip.get("looping")` is actually either `[0]` or `[1]` and it's being converted to a number.
+- source code files must always include the relative path to the file in a comment on the first line, so the context is clear when these files are added to project knowledge
+- `package.json` must use `"type": "commonjs"` for the vitest test suite to be able to test the CJS code for v8 (which contains the tool implementations we are primarily interested in testing)
 
 ## Trusted online resources:
 

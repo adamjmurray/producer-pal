@@ -25,6 +25,12 @@ Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for L
 
 - Keep refactoring and cleaning things up as needed
 - Add tests, tentatively with vitest
+  - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet supported (there does not appear to be any way to specify the transport and it is not correctly auto-detected):
+    ```
+    % npx @modelcontextprotocol/inspector --cli http://localhost:3000 --method tools/list
+    Failed to connect to MCP server: SSE error: Non-200 status code (404)
+    ```
+    We will revisit this soon.
 - More clip CRUD operations:
   - set clip name when creating
   - update name of existing clips
