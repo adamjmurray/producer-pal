@@ -1,4 +1,4 @@
-// device/server/call-live-api.ts
+// device/mcp-server/call-live-api.ts
 import Max from "max-api";
 import crypto from "node:crypto";
 

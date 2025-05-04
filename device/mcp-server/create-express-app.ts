@@ -1,4 +1,4 @@
-// device/server/create-express-app.ts
+// device/mcp-server/create-express-app.ts
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import express from "express";
 import Max from "max-api";

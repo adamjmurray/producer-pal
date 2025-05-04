@@ -16,5 +16,5 @@ const appServer = createExpressApp();
 
 const PORT = 3000;
 appServer.listen(PORT, () => {
-  Max.post(`[${localTimeStamp()}]: MCP Server running at http://localhost:${PORT}/mcp`);
+  Max.post(`[${localTimeStamp()}] MCP Server running at http://localhost:${PORT}/mcp`);
 });

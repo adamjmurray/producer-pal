@@ -82,57 +82,23 @@ function parseMusicString(musicString, duration = 1.0) {
 }
 
 function createClip(trackIndex, clipSlotIndex, musicalNotes, duration = 1.0) {
-  try {
-    const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
-    if (clipSlot.get("has_clip") == 0) {
-      const notes = parseMusicString(musicalNotes, duration);
-      const clipLength = Math.max(4, Math.ceil(notes.length * duration));
+  const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
+  if (clipSlot.get("has_clip") == 0) {
+    const notes = parseMusicString(musicalNotes, duration);
+    const clipLength = Math.max(4, Math.ceil(notes.length * duration));
 
-      clipSlot.call("create_clip", clipLength);
+    clipSlot.call("create_clip", clipLength);
 
-      if (notes.length > 0) {
-        const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
-        clip.call("add_new_notes", { notes });
+    if (notes.length > 0) {
+      const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
+      clip.call("add_new_notes", { notes });
 
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Created clip with ${notes.length} notes at track ${trackIndex}, clip slot ${clipSlotIndex} with duration ${duration}`,
-            },
-          ],
-        };
-      } else {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Created empty clip at track ${trackIndex}, clip slot ${clipSlotIndex}`,
-            },
-          ],
-        };
-      }
+      return `Created clip with ${notes.length} notes at track ${trackIndex}, clip slot ${clipSlotIndex} with duration ${duration}`;
     } else {
-      return {
-        content: [
-          {
-            type: "text",
-            text: `Error: Clip slot already has a clip at track ${trackIndex}, clip slot ${clipSlotIndex}`,
-          },
-        ],
-        isError: true,
-      };
+      return `Created empty clip at track ${trackIndex}, clip slot ${clipSlotIndex}`;
     }
-  } catch (error) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Error creating clip: ${error.message}`,
-        },
-      ],
-      isError: true,
-    };
+  } else {
+    throw new Error(`Clip slot already has a clip at track ${trackIndex}, clip slot ${clipSlotIndex}`);
   }
 }
 

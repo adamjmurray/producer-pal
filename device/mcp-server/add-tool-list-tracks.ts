@@ -1,4 +1,4 @@
-// device/server/add-tool-list-tracks-tool.ts
+// device/mcp-server/add-tool-list-tracks-tool.ts
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { callLiveApi } from "./call-live-api.ts";
 

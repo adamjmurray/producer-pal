@@ -20,18 +20,38 @@ Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for L
   - ✅ list all tracks and their clips in Session View (but probably not clip contents)
   - ✅ read the state of a MIDI clip at a given track and clipSlot index
 - ✅ Control the rhythm when creating clips. A simple place to start would be the pitch/chord sequence string (same syntax) and add another arg to control the baseDuration in quarter notes (1 = one quarter note).
-- Allow for MIDI clips to be optionally overwritten (it should continue to fail by default unless there is an argument `overwrite: true`)
-- Allow for MIDI clips to be deleted
-- Allow for existing MIDI clips to be updated
-- Support Arrangement View
 
-## Phase 3: Cleanup, Stabilization, Testing (establish a strong foundation)
+## Phase 3: Establish a strong foundation: Round-out feature set, cleanup/refactor, automated testing
 
-- Stop using TypeScript and get running on Node.js 20 with the built-in version for Node for Max
-- ✅ Extract stable elements (like boilerplate MCP server setup) into separate files that don't change often (so we can focus on the in-flux code)
-  - Partially done but we should keep refactoring and cleaning up
+- Keep refactoring and cleaning things up as needed
 - Add tests, tentatively with vitest
+- More clip CRUD operations:
+  - set clip name when creating
+  - update name of existing clips
+  - set clip color when creating. Use "CSS syntax" for the MCP interface
+  - update color of existing clips
+  - update clip mute state
+  - set/updated whether a clip is looping
+  - set/update normal start/end points and loop start/end points
+  - Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
+  - Allow for MIDI clips to be deleted
+- Track CRUD operations:
+  - create new tracks
+  - update tracks
+  - delete tracks
+  - set/update track name and color (using "CSS syntax")
+- Flesh out custom note pattern syntax
+  - Give this syntax an official name
+  - support duration (assuming legato)
+  - support note off timing (legato vs staccato)
+  - support rests
+  - support velocity
+  - support multiple voices (counterpoint that's not block chords)
+  - pitch bends, modulation, envelopes, and MPE are all out of scope
+  - support reading the notes of a clip using this syntax
+  - consider (optional?) bar line support for possible "harmonic modeling" use cases later
 - When the Node for Max code creates Promises, it should also make them timeout after a little while
+- Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 
 ## Phase 4: Deeper Ableton Live Integration
 
@@ -39,10 +59,9 @@ Goal: Build towards the desired music composition assistant feature set, working
 
 Rough sketch (to be expanded as we make more progress on the previous phase):
 
-- Consider introducing support for [ABC Music Notation Syntax](https://abcwiki.org/abc:syntax) or something similar, so MIDI pitch can be represented by semantic pitch class + octave (such as "C4") instead of raw numbers (such as 60).
-- Expand the phase 2 functionality to work in Arrangement View in Live
-- Expand on the clip generation capabilities (TBD once we have a working prototype)
-- Expand on the clip transformation capabilities (TBD once we have a working prototype)
+- Expand the functionality to work in Arrangement View in Live
+- Expand on the clip generation capabilities (TBD)
+- Expand on the clip transformation capabilities (TBD)
 - Add another tool for transforming notes in existing MIDI clips
 
 ## Phrase 5: TBD, pending more brainstorming after progress on the above. Possible focus: additional advanced features, and polish and "productization" of feature built in the previous phases.

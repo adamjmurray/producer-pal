@@ -1,4 +1,4 @@
-// device/server/create-mpc-server.ts
+// device/mcp-server/create-mpc-server.ts
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { addToolCreateClip } from "./add-tool-create-clip.ts";
 import { addToolListTracks } from "./add-tool-list-tracks.ts";

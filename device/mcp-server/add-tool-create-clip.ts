@@ -1,4 +1,4 @@
-// device/server/add-tool-create-clip.ts
+// device/mcp-server/add-tool-create-clip.ts
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { callLiveApi } from "./call-live-api.ts";
