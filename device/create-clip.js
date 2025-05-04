@@ -1,98 +1,19 @@
 // device/create-clip.js
-
-// Parse note name (e.g. "C3", "Bb2") to MIDI pitch
-function parseNote(note) {
-  const pitchClasses = {
-    C: 0,
-    "C#": 1,
-    Db: 1,
-    D: 2,
-    "D#": 3,
-    Eb: 3,
-    E: 4,
-    F: 5,
-    "F#": 6,
-    Gb: 6,
-    G: 7,
-    "G#": 8,
-    Ab: 8,
-    A: 9,
-    "A#": 10,
-    Bb: 10,
-    B: 11,
-  };
-
-  // Match note name, accidental, and octave
-  const match = note.match(/^([A-G])([#b]?)(-?\d+)$/);
-  if (!match) return null;
-
-  const [, letter, accidental, octave] = match;
-  const noteKey = letter + accidental;
-  const pitchClass = pitchClasses[noteKey];
-
-  if (pitchClass === undefined) return null;
-
-  // MIDI formula: (octave + 2) * 12 + pitch class
-  return (Number(octave) + 2) * 12 + pitchClass;
-}
-
-// Parse musical notation string format into notes/chords
-function parseMusicNotationString(musicString, duration = 1.0) {
-  if (!musicString) return [];
-
-  const notes = [];
-  let currentTime = 0;
-
-  // Split by whitespace but preserve chord groupings
-  const tokens = musicString.match(/\[.*?\]|\S+/g) || [];
-
-  for (const token of tokens) {
-    if (token.startsWith("[") && token.endsWith("]")) {
-      // Parse chord
-      const chordNotes = token.slice(1, -1).split(/\s+/);
-      for (const noteStr of chordNotes) {
-        const pitch = parseNote(noteStr);
-        if (pitch !== null) {
-          notes.push({
-            pitch,
-            start_time: currentTime,
-            duration,
-            velocity: 100,
-          });
-        }
-      }
-      currentTime += duration;
-    } else {
-      // Parse single note
-      const pitch = parseNote(token);
-      if (pitch !== null) {
-        notes.push({
-          pitch,
-          start_time: currentTime,
-          duration,
-          velocity: 100,
-        });
-        currentTime += duration;
-      }
-    }
-  }
-
-  return notes;
-}
+const { parseToneLang } = require("./tone-lang");
 
 /**
  * Creates a MIDI clip with optional notes at the specified track and clip slot
  * @param {Object} args - The clip creation parameters
  * @param {number} args.track - Track index (0-based)
  * @param {number} args.clipSlot - Clip slot index (0-based)
- * @param {string} [args.notes] - Musical notation string (space-separated notes/chords)
+ * @param {string} [args.notes] - ToneLang musical notation string
  * @param {number} [args.duration=1.0] - Duration of each note in quarter notes
  * @returns {string} Result message
  */
 function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: musicNotationString, duration = 1.0 }) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
   if (clipSlot.get("has_clip") == 0) {
-    const notes = parseMusicNotationString(musicNotationString, duration);
+    const notes = parseToneLang(musicNotationString, duration);
     const clipLength = Math.max(4, Math.ceil(notes.length * duration));
 
     clipSlot.call("create_clip", clipLength);
