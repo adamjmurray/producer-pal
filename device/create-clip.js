@@ -38,7 +38,7 @@ function parseNote(note) {
 }
 
 // Parse musical string format into notes/chords
-function parseMusicString(musicString) {
+function parseMusicString(musicString, duration = 1.0) {
   if (!musicString) return [];
 
   const notes = [];
@@ -57,12 +57,12 @@ function parseMusicString(musicString) {
           notes.push({
             pitch,
             start_time: currentTime,
-            duration: 1.0,
+            duration,
             velocity: 100,
           });
         }
       }
-      currentTime += 1.0;
+      currentTime += duration;
     } else {
       // Parse single note
       const pitch = parseNote(token);
@@ -70,10 +70,10 @@ function parseMusicString(musicString) {
         notes.push({
           pitch,
           start_time: currentTime,
-          duration: 1.0,
+          duration,
           velocity: 100,
         });
-        currentTime += 1.0;
+        currentTime += duration;
       }
     }
   }
@@ -81,12 +81,12 @@ function parseMusicString(musicString) {
   return notes;
 }
 
-function createClip(trackIndex, clipSlotIndex, musicalNotes) {
+function createClip(trackIndex, clipSlotIndex, musicalNotes, duration = 1.0) {
   try {
     const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
     if (clipSlot.get("has_clip") == 0) {
-      const notes = parseMusicString(musicalNotes);
-      const clipLength = Math.max(4, Math.ceil(notes.length || 0));
+      const notes = parseMusicString(musicalNotes, duration);
+      const clipLength = Math.max(4, Math.ceil(notes.length * duration));
 
       clipSlot.call("create_clip", clipLength);
 
@@ -98,7 +98,7 @@ function createClip(trackIndex, clipSlotIndex, musicalNotes) {
           content: [
             {
               type: "text",
-              text: `Created clip with ${notes.length} notes at track ${trackIndex}, clip slot ${clipSlotIndex}`,
+              text: `Created clip with ${notes.length} notes at track ${trackIndex}, clip slot ${clipSlotIndex} with duration ${duration}`,
             },
           ],
         };

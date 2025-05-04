@@ -20,6 +20,7 @@ export function registerCreateClipTool(server: McpServer, pendingRequests: Map<s
             "space-separated = sequential quarter notes, [brackets]=chords. " +
             "Examples: 'C3 E3 G3', '[C3 E3 G3] [F3 A3 C4]'"
         ),
+      duration: z.number().positive().default(1.0).describe("Duration of each note in quarter notes (default: 1.0)"),
     },
     async (args) => {
       Max.post(`Handling tool call: create-clip(${JSON.stringify({ args })}`);

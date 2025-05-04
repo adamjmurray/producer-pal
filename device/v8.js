@@ -23,7 +23,7 @@ function mcp_request(serializedJSON) {
     // Route to appropriate function based on tool name
     switch (tool) {
       case "create-clip":
-        result = createClip(args.track, args.clipSlot, args.notes);
+        result = createClip(args.track, args.clipSlot, args.notes, args.duration);
         break;
       case "list-tracks":
         result = listTracks();

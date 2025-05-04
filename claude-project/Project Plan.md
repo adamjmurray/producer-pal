@@ -19,7 +19,8 @@ Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for L
 - ✅ Expose the state of the Ableton Live set via additional MCP tools
   - ✅ list all tracks and their clips in Session View (but probably not clip contents)
   - ✅ read the state of a MIDI clip at a given track and clipSlot index
-- Control the rhythm when creating clips. A simple place to start would be the pitch/chord sequence string (same syntax) and add another arg to control the baseDuration in quarter notes (1 = one quarter note).
+- ✅ Control the rhythm when creating clips. A simple place to start would be the pitch/chord sequence string (same syntax) and add another arg to control the baseDuration in quarter notes (1 = one quarter note).
+- Allow for MIDI clips to be optionally overwritten (it should continue to fail by default unless there is an argument `overwrite: true`)
 - Allow for MIDI clips to be deleted
 - Allow for existing MIDI clips to be updated
 - Support Arrangement View
@@ -27,8 +28,10 @@ Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for L
 ## Phase 3: Cleanup, Stabilization, Testing (establish a strong foundation)
 
 - Stop using TypeScript and get running on Node.js 20 with the built-in version for Node for Max
-- Extract stable elements (like boilerplate MCP server setup) into separate files that don't change often (so we can focus on the in-flux code)
+- ✅ Extract stable elements (like boilerplate MCP server setup) into separate files that don't change often (so we can focus on the in-flux code)
+  - Partially done but we should keep refactoring and cleaning up
 - Add tests, tentatively with vitest
+- When the Node for Max code creates Promises, it should also make them timeout after a little while
 
 ## Phase 4: Deeper Ableton Live Integration
 
