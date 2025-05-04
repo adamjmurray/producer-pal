@@ -22,6 +22,13 @@ export function registerCreateClipTool(server: McpServer, pendingRequests: Map<s
         ),
       duration: z.number().positive().default(1.0).describe("Duration of each note in quarter notes (default: 1.0)"),
     },
+    {
+      // annotations
+      title: "Create MIDI Clip",
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+    },
     async (args) => {
       Max.post(`Handling tool call: create-clip(${JSON.stringify({ args })}`);
 

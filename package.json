@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/adamjmurray/ableton-live-composition-assistant#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.10.2",
+    "@modelcontextprotocol/sdk": "^1.11.0",
     "@types/express": "^5.0.1",
     "@types/max-api": "^2.0.3",
     "@types/node": "^22.15.3",

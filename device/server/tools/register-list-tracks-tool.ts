@@ -4,20 +4,31 @@ import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import crypto from "node:crypto";
 
 export function registerListTracksTool(server: McpServer, pendingRequests: Map<string, Function>) {
-  server.tool("list-tracks", "Lists all tracks and their clips in the Live session view", {}, async () => {
-    Max.post("Handling tool call: list-tracks");
+  server.tool(
+    "list-tracks",
+    "Lists all tracks and their clips in the Live session view",
+    {},
+    {
+      // annotations
+      title: "List Tracks",
+      readOnlyHint: true,
+      openWorldHint: false,
+    },
+    async () => {
+      Max.post("Handling tool call: list-tracks");
 
-    const requestId = crypto.randomUUID();
-    const request = {
-      requestId,
-      tool: "list-tracks",
-      args: {},
-    };
+      const requestId = crypto.randomUUID();
+      const request = {
+        requestId,
+        tool: "list-tracks",
+        args: {},
+      };
 
-    Max.outlet("mcp_request", JSON.stringify(request));
+      Max.outlet("mcp_request", JSON.stringify(request));
 
-    return new Promise((resolve) => {
-      pendingRequests.set(requestId, resolve);
-    });
-  });
+      return new Promise((resolve) => {
+        pendingRequests.set(requestId, resolve);
+      });
+    }
+  );
 }
