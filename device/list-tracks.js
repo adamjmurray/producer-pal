@@ -1,5 +1,5 @@
 // device/list-tracks.js
-const { parseIds, parseId, liveColorToCss } = require("utils");
+const { parseIds, parseId, liveColorToCss } = require("./utils");
 
 function listTracks() {
   const song = new LiveAPI("live_set");

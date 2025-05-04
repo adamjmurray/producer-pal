@@ -5,7 +5,7 @@ import { addToolListTracks } from "./add-tool-list-tracks.ts";
 
 export function createMcpServer(pendingRequests: Map<string, Function>) {
   const server = new McpServer({
-    name: "live-composition-assistant",
+    name: "Ableton Live Composition Assistant",
     version: "1.0.0",
   });
 

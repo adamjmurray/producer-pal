@@ -4,9 +4,9 @@
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 post(`[${now()}] loading main.js...\n`);
 
-const console = require("console");
-const { createClip } = require("create-clip");
-const { listTracks } = require("list-tracks");
+const console = require("./console");
+const { createClip } = require("./create-clip");
+const { listTracks } = require("./list-tracks");
 
 // Format a successful response with the standard MCP content structure
 // non-string results will be JSON-stringified

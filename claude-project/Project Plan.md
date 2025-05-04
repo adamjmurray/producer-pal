@@ -32,7 +32,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 
 ## Phase 3: Establish a strong foundation: Round-out feature set, cleanup/refactor, automated testing
 
-- Keep refactoring and cleaning things up as needed
+- Keep refactoring and cleaning things up as needed (~done, very happy with progress here)
 - Fix bugs. Current known issues:
   - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
     gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
@@ -42,6 +42,9 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     syntax may be backwards? We should either make that extremely clear in the tool description, or make the parser
     flexible enough to handle it.
 - Add tests, tentatively with vitest
+  - ✅ Test list-tracks
+  - ✅ Test create-clip
+  - ✅ Test ToneLang
   - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
     Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet
     supported (there does not appear to be any way to specify the transport and it is not correctly auto-detected):
@@ -50,9 +53,6 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     Failed to connect to MCP server: SSE error: Non-200 status code (404)
     ```
     We will revisit this soon.
-  - ✅ Test create-clip
-  - ✅ Test ToneLang
-  - Test list-tracks
 - More clip CRUD operations:
   - set clip name when creating
   - set clip color when creating. Use "CSS syntax" for the MCP interface
@@ -64,6 +64,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like
     `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
   - Allow for MIDI clips to be deleted
+- Ability to auto-play a clip when creating it
 - Track CRUD operations:
   - create new tracks
   - update tracks

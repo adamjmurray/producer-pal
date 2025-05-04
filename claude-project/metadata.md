@@ -91,6 +91,8 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   `error()` functions)
 - If you ever notice duplicate files in the project resources, let the user know! This is a mistake and will confuse
   you. We need to fix it proactively when it's detected.
+- When requiring other files in the v8 code, we must use `./file.js` instead of `file.js`, otherwise it will not resolve
+  correctly in the vitest test suite.
 
 ## Trusted online resources:
 
