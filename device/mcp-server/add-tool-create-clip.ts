@@ -1,10 +1,10 @@
-// device/server/tools/register-create-clip-tool.ts
+// device/server/add-tool-create-clip.ts
 import Max from "max-api";
 import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import crypto from "node:crypto";
 import { z } from "zod";
 
-export function registerCreateClipTool(server: McpServer, pendingRequests: Map<string, Function>) {
+export function addToolCreateClip(server: McpServer, pendingRequests: Map<string, Function>) {
   // Register tools that will delegate to the Max v8 object
   server.tool(
     "create-clip",
@@ -21,13 +21,6 @@ export function registerCreateClipTool(server: McpServer, pendingRequests: Map<s
             "Examples: 'C3 E3 G3', '[C3 E3 G3] [F3 A3 C4]'"
         ),
       duration: z.number().positive().default(1.0).describe("Duration of each note in quarter notes (default: 1.0)"),
-    },
-    {
-      // annotations
-      title: "Create MIDI Clip",
-      readOnlyHint: false,
-      destructiveHint: false,
-      openWorldHint: false,
     },
     async (args) => {
       Max.post(`Handling tool call: create-clip(${JSON.stringify({ args })}`);

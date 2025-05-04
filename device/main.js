@@ -1,4 +1,4 @@
-// device/v8.js
+// device/main.js
 // The tool implementations with direct Live API access
 const { createClip } = require("create-clip");
 const { listTracks } = require("list-tracks");

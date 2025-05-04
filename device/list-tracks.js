@@ -36,6 +36,7 @@ function liveColorToCss(colorValue) {
 }
 
 function listTracks() {
+  post("HERE");
   try {
     const song = new LiveAPI("live_set");
     const trackIds = parseIds(song.get("tracks"));

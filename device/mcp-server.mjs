@@ -1,7 +1,7 @@
-// device/index.mjs
+// device/mcp-server.mjs
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
-import { createExpressApp } from "./server/create-express-app.ts";
+import { createExpressApp } from "./mcp-server/create-express-app.ts";
 
 function localTimeStamp(date = new Date()) {
   const pad = (n) => String(n).padStart(2, "0");

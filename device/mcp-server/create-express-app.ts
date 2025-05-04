@@ -33,7 +33,7 @@ export function createExpressApp() {
 
   app.post("/mcp", async (req, res) => {
     try {
-      Max.post("New MCP connection: " + req.body);
+      Max.post("New MCP connection: " + JSON.stringify(req.body));
       const server = createMcpServer(pendingRequests);
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
