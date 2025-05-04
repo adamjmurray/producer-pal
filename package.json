@@ -1,6 +1,5 @@
 {
   "name": "ableton-live-composition-assistant",
-  "type": "commonjs",
   "version": "1.0.0",
   "description": "AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "repository": {
