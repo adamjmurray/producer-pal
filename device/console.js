@@ -1,5 +1,4 @@
 // device/console.js
-// CJS (require()'d by v8)
 // enhance Max v8's basic console logging functions (`post()` and `error()`) to behave more like a browser console
 const str = (any) => {
   switch (Object.getPrototypeOf(any ?? Object.prototype)) {

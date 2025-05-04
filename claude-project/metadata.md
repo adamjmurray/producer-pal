@@ -84,6 +84,11 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   require CJS code for the v8 object (which contains the tool implementations we are primarily interested in testing).
   Setting this to `"commonjs"` breaks the bootstrapping of the `mcp-server.mjs` module in the Node for Max object, which
   is needed to enable importing with modern style.
+- The `.mjs` and (non-test) `.ts` code (i.e. in `device/mcp-server`) is the Node for Max code
+- The `.js` and `.test.ts` code is the v8 code (maybe we'll add Node for Max tests at some point too)
+- In the Node for Max, log with `Max.post()` calls
+- In v8 code, we can use `const console = require("console");` to get a browser console-like logger (with `log()` and
+  `error()` functions)
 
 ## Trusted online resources:
 

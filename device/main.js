@@ -1,15 +1,8 @@
 // device/main.js
 // The tool implementations with direct Live API access
 
-function localTimeStamp(date = new Date()) {
-  const pad = (n) => String(n).padStart(2, "0");
-  return (
-    `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
-    " " +
-    `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
-  );
-}
-post(`[${localTimeStamp()}] loading main.js...\n`);
+const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
+post(`[${now()}] loading main.js...\n`);
 
 const console = require("console");
 const { createClip } = require("create-clip");
@@ -85,4 +78,4 @@ function mcp_request(serializedJSON) {
   }
 }
 
-console.log(`[${localTimeStamp()}] main.js loaded successfully`);
+console.log(`[${now()}] main.js loaded successfully`);

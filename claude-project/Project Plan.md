@@ -2,44 +2,59 @@
 
 ## Phase 1: Basic MCP Server (outside Max/Live)
 
-Goal: Prove we can build tools in HTTP-based MCP servers and call those tools from Claude Desktop. Learn how to test MCP servers.
+Goal: Prove we can build tools in HTTP-based MCP servers and call those tools from Claude Desktop. Learn how to test MCP
+servers.
 
-- ✅ Build an "echo" tool in an MCP server using stdio transport (because it's the simplest). Call the tool directly from Claude Desktop.
-- ✅ Build a "greet" tool in an MCP server using the Streamable HTTP transport. Call it with Claude Desktop via `mcp-remote` adaptor.
+- ✅ Build an "echo" tool in an MCP server using stdio transport (because it's the simplest). Call the tool directly
+  from Claude Desktop.
+- ✅ Build a "greet" tool in an MCP server using the Streamable HTTP transport. Call it with Claude Desktop via
+  `mcp-remote` adaptor.
 - ✅ Learn how to use the MCP Inspector.
 
 ## Phase 2: Basic MCP capabilities inside Ableton Live
 
-Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for Live device using Node for Max. Do preliminary, basic integration with the Live API and confirm we can read and write the state of the Ableton Live Set from Claude Desktop. We will focus on Live's Session View in this phase.
+Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for Live device using Node for Max. Do
+preliminary, basic integration with the Live API and confirm we can read and write the state of the Ableton Live Set
+from Claude Desktop. We will focus on Live's Session View in this phase.
 
-- ✅ Create the Max for Live device shell, bootstrap Node for Max with an entry script that loads our simple MCP "greet" tool from phase 1, and call the custom MCP tool running inside Ableton Live from Claude Desktop
-- ✅ Add a basic ability to call the Live API in the Max for Live shell from the previous step. Simply trigger creating a new empty MIDI clip in track 0, clip slot 0 in Live's Session View
+- ✅ Create the Max for Live device shell, bootstrap Node for Max with an entry script that loads our simple MCP "greet"
+  tool from phase 1, and call the custom MCP tool running inside Ableton Live from Claude Desktop
+- ✅ Add a basic ability to call the Live API in the Max for Live shell from the previous step. Simply trigger creating
+  a new empty MIDI clip in track 0, clip slot 0 in Live's Session View
 - ✅ Allow for the MIDI clip to be created in any existing track or clip slot
-- ✅ Expand the ability to create a new empty MIDI clip with notes inside it using a simple syntax for pitches and chords (no control over rhythm yet)
+- ✅ Expand the ability to create a new empty MIDI clip with notes inside it using a simple syntax for pitches and
+  chords (no control over rhythm yet)
 - ✅ Expose the state of the Ableton Live set via additional MCP tools
   - ✅ list all tracks and their clips in Session View (but probably not clip contents)
   - ✅ read the state of a MIDI clip at a given track and clipSlot index
-- ✅ Control the rhythm when creating clips. A simple place to start would be the pitch/chord sequence string (same syntax) and add another arg to control the baseDuration in quarter notes (1 = one quarter note).
+- ✅ Control the rhythm when creating clips. A simple place to start would be the pitch/chord sequence string (same
+  syntax) and add another arg to control the baseDuration in quarter notes (1 = one quarter note).
 
 ## Phase 3: Establish a strong foundation: Round-out feature set, cleanup/refactor, automated testing
 
 - Keep refactoring and cleaning things up as needed
 - Add tests, tentatively with vitest
-  - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet supported (there does not appear to be any way to specify the transport and it is not correctly auto-detected):
+  - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
+    Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet
+    supported (there does not appear to be any way to specify the transport and it is not correctly auto-detected):
     ```
     % npx @modelcontextprotocol/inspector --cli http://localhost:3000 --method tools/list
     Failed to connect to MCP server: SSE error: Non-200 status code (404)
     ```
     We will revisit this soon.
+  - ✅ Test create-clip
+  - Test list-tracks
+  - More coverage
 - More clip CRUD operations:
   - set clip name when creating
-  - update name of existing clips
   - set clip color when creating. Use "CSS syntax" for the MCP interface
+  - update name of existing clips
   - update color of existing clips
   - update clip mute state
   - set/updated whether a clip is looping
   - set/update normal start/end points and loop start/end points
-  - Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
+  - Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like
+    `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
   - Allow for MIDI clips to be deleted
 - Track CRUD operations:
   - create new tracks
@@ -61,7 +76,8 @@ Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for L
 
 ## Phase 4: Deeper Ableton Live Integration
 
-Goal: Build towards the desired music composition assistant feature set, working end-to-end in Ableton Live with control from Claude Desktop. We will shift focus to Live's Arrangement View in this phase.
+Goal: Build towards the desired music composition assistant feature set, working end-to-end in Ableton Live with control
+from Claude Desktop. We will shift focus to Live's Arrangement View in this phase.
 
 Rough sketch (to be expanded as we make more progress on the previous phase):
 

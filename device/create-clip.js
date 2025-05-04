@@ -1,5 +1,4 @@
 // device/create-clip.js
-// CJS (require()'d by v8)
 
 // Parse note name (e.g. "C3", "Bb2") to MIDI pitch
 function parseNote(note) {
