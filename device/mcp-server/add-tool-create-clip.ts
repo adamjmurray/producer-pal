@@ -10,6 +10,7 @@ export function addToolCreateClip(server: McpServer, pendingRequests: Map<string
     {
       track: z.number().int().min(0).describe("Track index (0-based)"),
       clipSlot: z.number().int().min(0).describe("Clip slot index (0-based)"),
+      name: z.string().optional().describe("Optional name for the clip"),
       notes: z
         .string()
         .optional()
@@ -18,7 +19,8 @@ export function addToolCreateClip(server: McpServer, pendingRequests: Map<string
             "Rhythm: */# for longer/shorter durations (C3*2, D3/2, default=quarter note). " +
             "Rests: R[*/# optional] (default duration=quarter note). " +
             "Velocity: :vNN (1-127, default=100). " +
-            "Examples: 'C3 D3*2 R E3:v80', '[C3 E3 G3]:v90 R/2 [F3 A3 C4]*4'"
+            "Rhythm must come before velocity. " +
+            "Examples: 'C3 D3*2 R E3:v80', '[C3 E3 G3]:v90 R/2 [F3 A3 C4]*4', 'C3*4:v10'"
         ),
     },
     async (args) => callLiveApi("create-clip", args, pendingRequests)

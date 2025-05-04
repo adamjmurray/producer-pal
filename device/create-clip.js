@@ -7,26 +7,33 @@ const { parseToneLang } = require("./tone-lang");
  * @param {number} args.track - Track index (0-based)
  * @param {number} args.clipSlot - Clip slot index (0-based)
  * @param {string} [args.notes] - ToneLang musical notation string
+ * @param {string} [args.name] - Optional clip name
  * @returns {string} Result message
  */
-function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: musicNotationString }) {
+function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: toneLangString, name }) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
   if (clipSlot.get("has_clip") == 0) {
-    const notes = parseToneLang(musicNotationString);
+    const notes = parseToneLang(toneLangString);
 
     // Calculate clip length based on the end time of the last note
     const lastNoteEndTime = notes.length > 0 ? Math.max(...notes.map((note) => note.start_time + note.duration)) : 0;
     const clipLength = Math.max(4, Math.ceil(lastNoteEndTime));
 
     clipSlot.call("create_clip", clipLength);
+    const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
+
+    // Set the clip name if provided
+    if (name) {
+      clip.set("name", name);
+    }
 
     if (notes.length > 0) {
-      const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
       clip.call("add_new_notes", { notes });
-
-      return `Created clip with ${notes.length} notes at track ${trackIndex}, clip slot ${clipSlotIndex}`;
+      return `Created clip${name ? ` "${name}"` : ""} with ${
+        notes.length
+      } notes at track ${trackIndex}, clip slot ${clipSlotIndex}`;
     } else {
-      return `Created empty clip at track ${trackIndex}, clip slot ${clipSlotIndex}`;
+      return `Created empty clip${name ? ` "${name}"` : ""} at track ${trackIndex}, clip slot ${clipSlotIndex}`;
     }
   } else {
     throw new Error(`Clip slot already has a clip at track ${trackIndex}, clip slot ${clipSlotIndex}`);

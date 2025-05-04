@@ -32,29 +32,9 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 
 ## Phase 3: Establish a strong foundation: Round-out feature set, cleanup/refactor, automated testing
 
-- Keep refactoring and cleaning things up as needed (~done, very happy with progress here)
-- Fix bugs. Current known issues:
-  - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
-    gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
-    error, maybe we should auto-add a new scene whenever slotIndex > scene count (but note this may result in the index
-    being different if it's much larger than the scene count, so the return value could confirm the index)
-  - Haiku model tried to do `C3:v40*2 E3:v60*2 G3:v80*2 C4:v100*2` and got an empty clip. I think the duration/velocity
-    syntax may be backwards? We should either make that extremely clear in the tool description, or make the parser
-    flexible enough to handle it.
-- Add tests, tentatively with vitest
-  - ✅ Test list-tracks
-  - ✅ Test create-clip
-  - ✅ Test ToneLang
-  - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
-    Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet
-    supported (there does not appear to be any way to specify the transport and it is not correctly auto-detected):
-    ```
-    % npx @modelcontextprotocol/inspector --cli http://localhost:3000 --method tools/list
-    Failed to connect to MCP server: SSE error: Non-200 status code (404)
-    ```
-    We will revisit this soon.
+- Ability to auto-play a clip when creating it
 - More clip CRUD operations:
-  - set clip name when creating
+  - ✅ set clip name when creating
   - set clip color when creating. Use "CSS syntax" for the MCP interface
   - update name of existing clips
   - update color of existing clips
@@ -64,7 +44,6 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like
     `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
   - Allow for MIDI clips to be deleted
-- Ability to auto-play a clip when creating it
 - Track CRUD operations:
   - create new tracks
   - update tracks
@@ -77,6 +56,28 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - support multiple voices (counterpoint that's not block chords)
   - support articulations
   - support reading the notes of a clip using this syntax
+- Keep refactoring and cleaning things up as needed (~done, very happy with progress here)
+- Fix bugs. Current known issues:
+  - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
+    gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
+    error, maybe we should auto-add a new scene whenever slotIndex > scene count (but note this may result in the index
+    being different if it's much larger than the scene count, so the return value could confirm the index)
+  - Haiku model tried to do `C3:v40*2 E3:v60*2 G3:v80*2 C4:v100*2` and got an empty clip. It has the duration/velocity
+    syntax may be backwards, only e.g. `C3*4:v60` works right now. We should either make that extremely clear in the
+    tool description (I made a small update for this, might need another look), or make the parser flexible enough to
+    handle it.
+- Add tests, tentatively with vitest
+  - ✅ Test list-tracks
+  - ✅ Test create-clip
+  - ✅ Test ToneLang
+  - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
+    Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet
+    supported (there does not appear to be any way to specify the transport and it is not correctly auto-detected):
+    ```
+    % npx @modelcontextprotocol/inspector --cli http://localhost:3000 --method tools/list
+    Failed to connect to MCP server: SSE error: Non-200 status code (404)
+    ```
+    We will revisit this soon.
 - When the Node for Max code creates Promises, it should also make them timeout after a little while
 - Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 

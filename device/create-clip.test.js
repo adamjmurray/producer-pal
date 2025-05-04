@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 // Setup mock implementation
 const mockLiveApiCall = vi.fn();
 const mockLiveApiGet = vi.fn();
+const mockLiveApiSet = vi.fn();
 
 // Mock LiveAPI class
 class MockLiveAPI {
@@ -12,6 +13,7 @@ class MockLiveAPI {
     this.unquotedpath = path;
     this.call = mockLiveApiCall;
     this.get = mockLiveApiGet;
+    this.set = mockLiveApiSet; // Add this
   }
 }
 
@@ -22,6 +24,7 @@ beforeEach(() => {
     if (prop === "has_clip") return [0];
     return [0];
   });
+  mockLiveApiSet.mockReset();
 
   // Stub global
   vi.stubGlobal("LiveAPI", MockLiveAPI);
@@ -153,6 +156,23 @@ describe("createClip", () => {
 
     // Act & Assert
     expect(() => createClip({ track: 0, clipSlot: 0 })).toThrow(/Clip slot already has a clip/);
+  });
+
+  it("should correctly set the clip name when provided", () => {
+    // Arrange
+    const args = {
+      track: 0,
+      clipSlot: 0,
+      name: "My Custom Clip",
+    };
+
+    // Act
+    const result = createClip(args);
+
+    // Assert
+    expect(result).toContain('Created empty clip "My Custom Clip"');
+    expect(mockLiveApiCall).toHaveBeenCalledWith("create_clip", expect.any(Number));
+    expect(mockLiveApiSet).toHaveBeenCalledWith("name", "My Custom Clip");
   });
 });
 
