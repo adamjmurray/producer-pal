@@ -32,9 +32,10 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 
 ## Phase 3: Establish a strong foundation: Round-out feature set, cleanup/refactor, automated testing
 
-- Ability to auto-play a clip when creating it
+- ✅ Ability to auto-play a clip when creating it
 - More clip CRUD operations:
   - ✅ set clip name when creating
+  - ✅ set clip looping state when creating
   - set clip color when creating. Use "CSS syntax" for the MCP interface
   - update name of existing clips
   - update color of existing clips
@@ -53,9 +54,10 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ support duration (assuming legato)
   - ✅ support rests
   - ✅ support velocity
+  - support articulations (suggestion: support the reverse of an accent, '<' to lower the velocity, and skip legato
+    support for now)
   - support multiple voices (counterpoint that's not block chords)
-  - support articulations
-  - support reading the notes of a clip using this syntax
+- Support reading the notes of a clip and outputting in ToneLang syntax
 - Keep refactoring and cleaning things up as needed (~done, very happy with progress here)
 - Fix bugs. Current known issues:
   - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
@@ -69,6 +71,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 - Add tests, tentatively with vitest
   - ✅ Test list-tracks
   - ✅ Test create-clip
+    - TODO: Need coverage for autoplay and clip looping
   - ✅ Test ToneLang
   - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
     Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet

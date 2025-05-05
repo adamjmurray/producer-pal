@@ -8,9 +8,17 @@ const { parseToneLang } = require("./tone-lang");
  * @param {number} args.clipSlot - Clip slot index (0-based)
  * @param {string} [args.notes] - ToneLang musical notation string
  * @param {string} [args.name] - Optional clip name
+ * @param {string} [args.autoplay] - Optional clip name
  * @returns {string} Result message
  */
-function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: toneLangString, name }) {
+function createClip({
+  track: trackIndex,
+  clipSlot: clipSlotIndex,
+  notes: toneLangString,
+  name = "",
+  loop = false,
+  autoplay = false,
+}) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
   if (clipSlot.get("has_clip") == 0) {
     const notes = parseToneLang(toneLangString);
@@ -22,13 +30,16 @@ function createClip({ track: trackIndex, clipSlot: clipSlotIndex, notes: toneLan
     clipSlot.call("create_clip", clipLength);
     const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
 
-    // Set the clip name if provided
-    if (name) {
-      clip.set("name", name);
-    }
+    clip.set("name", name);
+    clip.set("looping", loop);
 
     if (notes.length > 0) {
       clip.call("add_new_notes", { notes });
+
+      if (autoplay) {
+        clipSlot.call("fire");
+      }
+
       return `Created clip${name ? ` "${name}"` : ""} with ${
         notes.length
       } notes at track ${trackIndex}, clip slot ${clipSlotIndex}`;
