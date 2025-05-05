@@ -24,6 +24,10 @@ export function addToolCreateClip(server: McpServer, pendingRequests: Map<string
         ),
       loop: z.boolean().default(false).describe("Enabling looping for the clip"),
       autoplay: z.boolean().default(false).describe("Automatically play the clip after creating it"),
+      onExistingClip: z
+        .enum(["error", "replace", "merge"])
+        .default("error")
+        .describe("How to handle an existing clip: 'error' (default), 'replace', or 'merge'"),
     },
     async (args) => callLiveApi("create-clip", args, pendingRequests)
   );

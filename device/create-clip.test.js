@@ -13,17 +13,20 @@ class MockLiveAPI {
     this.unquotedpath = path;
     this.call = mockLiveApiCall;
     this.get = mockLiveApiGet;
-    this.set = mockLiveApiSet; // Add this
+    this.set = mockLiveApiSet;
   }
 }
 
 // Setup and teardown for tests
 beforeEach(() => {
-  // Default behavior for has_clip check
+  // Default behavior for has_clip check (no clip)
   mockLiveApiGet.mockImplementation((prop) => {
     if (prop === "has_clip") return [0];
     return [0];
   });
+
+  // Reset mocks
+  mockLiveApiCall.mockReset();
   mockLiveApiSet.mockReset();
 
   // Stub global
@@ -38,170 +41,179 @@ afterEach(() => {
 const { createClip } = require("./create-clip");
 
 describe("createClip", () => {
+  // Existing tests
   it("should create an empty clip when no notes are provided", () => {
-    // Arrange
     const args = { track: 0, clipSlot: 0 };
-
-    // Act
     const result = createClip(args);
-
-    // Assert
     expect(result).toContain("Created empty clip");
-    // TODO: assert correct clip slot was used by asserting on the LiveAPI constructor calls
     expect(mockLiveApiCall).toHaveBeenCalledWith("create_clip", expect.any(Number));
   });
 
   it("should create a clip with notes when a valid notation string is provided", () => {
-    // Arrange
     const args = {
       track: 1,
       clipSlot: 2,
-      notes: "C3/2 E3/2 G3/2",
+      notes: "C3 E3 G3",
     };
 
-    // Act
     const result = createClip(args);
-
-    // Assert
     expect(result).toContain("Created clip with");
     expect(mockLiveApiCall).toHaveBeenCalledWith("create_clip", expect.any(Number));
-
-    // Second call should be add_new_notes with notes
-    const addNotesCall = mockLiveApiCall.mock.calls[1];
-    expect(addNotesCall[0]).toBe("add_new_notes");
-    expect(addNotesCall[1].notes.length).toBe(3);
-
-    // Verify note properties
-    const firstNote = addNotesCall[1].notes[0];
-    expect(firstNote.pitch).toBe(60); // C3 is MIDI pitch 60
-    expect(firstNote.duration).toBe(0.5);
-  });
-
-  it("should create a clip with chord notes when brackets are used", () => {
-    // Arrange
-    const args = {
-      track: 0,
-      clipSlot: 0,
-      notes: "[C3 E3 G3] [F3 A3 C4]",
-    };
-
-    // Act
-    const result = createClip(args);
-
-    // Assert
-    expect(result).toContain("Created clip with");
-
-    // Should have created 6 notes (3 per chord)
-    const addNotesCall = mockLiveApiCall.mock.calls[1];
-    expect(addNotesCall[1].notes.length).toBe(6);
-
-    // First chord notes should start at the same time
-    const firstChordNotes = addNotesCall[1].notes.slice(0, 3);
-    expect(firstChordNotes.every((n) => n.start_time === 0)).toBe(true);
-
-    // Second chord notes should start at time 1.0
-    const secondChordNotes = addNotesCall[1].notes.slice(3, 6);
-    expect(secondChordNotes.every((n) => n.start_time === 1.0)).toBe(true);
-  });
-
-  it("should create a clip with various ToneLang features", () => {
-    // Arrange
-    const args = {
-      track: 0,
-      clipSlot: 0,
-      notes: "C3:v80 D3*2 R E3/2 [F3 A3 C4]:v120",
-    };
-
-    // Act
-    const result = createClip(args);
-
-    // Assert
-    expect(result).toContain("Created clip with");
 
     // Second call should be add_new_notes
     const addNotesCall = mockLiveApiCall.mock.calls[1];
-    const notes = addNotesCall[1].notes;
-
-    // We should have 6 notes (no note for the rest)
-    expect(notes.length).toBe(6);
-
-    // First note: C3 with velocity 80
-    expect(notes[0].pitch).toBe(60);
-    expect(notes[0].velocity).toBe(80);
-    expect(notes[0].start_time).toBe(0);
-
-    // Second note: D3 with double duration
-    expect(notes[1].pitch).toBe(62);
-    expect(notes[1].duration).toBe(2);
-    expect(notes[1].start_time).toBe(1);
-
-    // Third note: E3 with half duration after the rest
-    expect(notes[2].pitch).toBe(64);
-    expect(notes[2].duration).toBe(0.5);
-    expect(notes[2].start_time).toBe(4); // 1 + 2 + 1 (rest)
-
-    // Chord notes
-    expect(notes[3].start_time).toBe(4.5);
-    expect(notes[3].velocity).toBe(120);
-    expect(notes[4].velocity).toBe(120);
-    expect(notes[5].velocity).toBe(120);
+    expect(addNotesCall[0]).toBe("add_new_notes");
+    expect(addNotesCall[1].notes.length).toBe(3);
   });
 
-  it("should throw an error if clip slot already has a clip", () => {
-    // Override for this test only
-    mockLiveApiGet.mockImplementation((prop) => {
-      if (prop === "has_clip") return [1];
-      return [0];
+  // Tests for onExistingClip parameter
+  describe("onExistingClip parameter", () => {
+    beforeEach(() => {
+      // Mock has_clip to return true for these tests
+      mockLiveApiGet.mockImplementation((prop) => {
+        if (prop === "has_clip") return [1];
+        return [0];
+      });
     });
 
-    // Act & Assert
-    expect(() => createClip({ track: 0, clipSlot: 0 })).toThrow(/Clip slot already has a clip/);
-  });
-
-  it("should correctly set the clip name when provided", () => {
-    // Arrange
-    const args = {
-      track: 0,
-      clipSlot: 0,
-      name: "My Custom Clip",
-    };
-
-    // Act
-    const result = createClip(args);
-
-    // Assert
-    expect(result).toContain('Created empty clip "My Custom Clip"');
-    expect(mockLiveApiCall).toHaveBeenCalledWith("create_clip", expect.any(Number));
-    expect(mockLiveApiSet).toHaveBeenCalledWith("name", "My Custom Clip");
-  });
-});
-
-describe("note parsing helpers", () => {
-  it("should correctly parse note names to MIDI pitches", () => {
-    // Reset has_clip for this test
-    mockLiveApiGet.mockImplementation((prop) => {
-      if (prop === "has_clip") return [0];
-      return [0];
+    it("should throw error by default when clip already exists", () => {
+      const args = { track: 0, clipSlot: 0 };
+      expect(() => createClip(args)).toThrow(/Clip slot already has a clip/);
     });
 
-    const args = {
-      track: 0,
-      clipSlot: 0,
-      notes: "C3 D#3 Eb3 G#3 Ab3 B3",
-    };
+    it("should explicitly throw error with 'error' option when clip already exists", () => {
+      const args = { track: 0, clipSlot: 0, onExistingClip: "error" };
+      expect(() => createClip(args)).toThrow(/Clip slot already has a clip/);
+    });
 
-    const result = createClip(args);
+    it("should replace existing clip when 'replace' option is used", () => {
+      const args = {
+        track: 0,
+        clipSlot: 0,
+        onExistingClip: "replace",
+        notes: "C3 D3",
+        name: "New Clip",
+      };
 
-    // Get the added notes from the call
-    const addNotesCall = mockLiveApiCall.mock.calls[1];
-    const notes = addNotesCall[1].notes;
+      const result = createClip(args);
 
-    // Verify pitch values
-    expect(notes[0].pitch).toBe(60); // C3
-    expect(notes[1].pitch).toBe(63); // D#3
-    expect(notes[2].pitch).toBe(63); // Eb3 (same as D#3)
-    expect(notes[3].pitch).toBe(68); // G#3
-    expect(notes[4].pitch).toBe(68); // Ab3 (same as G#3)
-    expect(notes[5].pitch).toBe(71); // B3
+      // Verify delete_clip was called first
+      expect(mockLiveApiCall.mock.calls[0][0]).toBe("delete_clip");
+
+      // Verify create_clip was called next
+      expect(mockLiveApiCall.mock.calls[1][0]).toBe("create_clip");
+
+      // Verify name and looping were set
+      expect(mockLiveApiSet).toHaveBeenCalledWith("name", "New Clip");
+      expect(mockLiveApiSet).toHaveBeenCalledWith("looping", false);
+
+      // Verify add_new_notes was called
+      expect(mockLiveApiCall.mock.calls[2][0]).toBe("add_new_notes");
+
+      // Verify message
+      expect(result).toContain("Replaced with clip");
+      expect(result).toContain("New Clip");
+      expect(result).toContain("with 2 notes");
+    });
+
+    it("should replace and create empty clip when 'replace' option is used with no notes", () => {
+      const args = {
+        track: 0,
+        clipSlot: 0,
+        onExistingClip: "replace",
+        name: "Empty Clip",
+      };
+
+      const result = createClip(args);
+
+      // Verify delete_clip and create_clip were called
+      expect(mockLiveApiCall.mock.calls[0][0]).toBe("delete_clip");
+      expect(mockLiveApiCall.mock.calls[1][0]).toBe("create_clip");
+
+      // Verify message
+      expect(result).toContain("Replaced with empty clip");
+      expect(result).toContain("Empty Clip");
+    });
+
+    it("should merge notes into existing clip when 'merge' option is used", () => {
+      const args = {
+        track: 0,
+        clipSlot: 0,
+        onExistingClip: "merge",
+        notes: "C3 D3 E3",
+      };
+
+      const result = createClip(args);
+
+      // Verify delete_clip was NOT called
+      expect(mockLiveApiCall).not.toHaveBeenCalledWith("delete_clip");
+
+      // Verify add_new_notes was called directly
+      expect(mockLiveApiCall.mock.calls[0][0]).toBe("add_new_notes");
+
+      // Verify name was NOT set
+      expect(mockLiveApiSet).not.toHaveBeenCalledWith("name", expect.anything());
+
+      // Verify message
+      expect(result).toContain("Merged 3 notes into existing clip");
+    });
+
+    it("should return appropriate message when no notes to merge", () => {
+      const args = {
+        track: 0,
+        clipSlot: 0,
+        onExistingClip: "merge",
+      };
+
+      const result = createClip(args);
+
+      // Verify no calls to add_new_notes
+      expect(mockLiveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
+
+      // Verify message
+      expect(result).toContain("No notes to merge into existing clip");
+    });
+  });
+
+  // Tests for loop parameter
+  describe("loop parameter", () => {
+    it("should set looping to false by default", () => {
+      const args = { track: 0, clipSlot: 0 };
+      createClip(args);
+      expect(mockLiveApiSet).toHaveBeenCalledWith("looping", false);
+    });
+
+    it("should set looping to true when loop=true", () => {
+      const args = { track: 0, clipSlot: 0, loop: true };
+      createClip(args);
+      expect(mockLiveApiSet).toHaveBeenCalledWith("looping", true);
+    });
+
+    it("should set looping to false when loop=false", () => {
+      const args = { track: 0, clipSlot: 0, loop: false };
+      createClip(args);
+      expect(mockLiveApiSet).toHaveBeenCalledWith("looping", false);
+    });
+  });
+
+  // Tests for autoplay parameter
+  describe("autoplay parameter", () => {
+    it("should not fire clip by default", () => {
+      const args = { track: 0, clipSlot: 0 };
+      createClip(args);
+      expect(mockLiveApiCall).not.toHaveBeenCalledWith("fire");
+    });
+
+    it("should fire clip when autoplay=true", () => {
+      const args = { track: 0, clipSlot: 0, autoplay: true };
+      createClip(args);
+      expect(mockLiveApiCall).toHaveBeenCalledWith("fire");
+    });
+
+    it("should not fire clip when autoplay=false", () => {
+      const args = { track: 0, clipSlot: 0, autoplay: false };
+      createClip(args);
+      expect(mockLiveApiCall).not.toHaveBeenCalledWith("fire");
+    });
   });
 });

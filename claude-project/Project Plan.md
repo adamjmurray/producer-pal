@@ -42,7 +42,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - update clip mute state
   - set/updated whether a clip is looping
   - set/update normal start/end points and loop start/end points
-  - Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like
+  - ✅ Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like
     `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
   - Allow for MIDI clips to be deleted
 - Track CRUD operations:
@@ -64,10 +64,6 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
     error, maybe we should auto-add a new scene whenever slotIndex > scene count (but note this may result in the index
     being different if it's much larger than the scene count, so the return value could confirm the index)
-  - Haiku model tried to do `C3:v40*2 E3:v60*2 G3:v80*2 C4:v100*2` and got an empty clip. It has the duration/velocity
-    syntax may be backwards, only e.g. `C3*4:v60` works right now. We should either make that extremely clear in the
-    tool description (I made a small update for this, might need another look), or make the parser flexible enough to
-    handle it.
 - Add tests, tentatively with vitest
   - ✅ Test list-tracks
   - ✅ Test create-clip
