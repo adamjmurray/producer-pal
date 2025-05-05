@@ -45,7 +45,7 @@ rest
 
 // Pitch: note name + octave
 pitch
-  = noteName:[A-Ha-g] accidental:accidental? octave:[0-9] {
+  = noteName:[A-Ga-g] accidental:accidental? octave:[0-9] {
       return noteName.toUpperCase() + (accidental ?? "") + octave;
     }
 
