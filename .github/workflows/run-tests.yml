@@ -41,7 +41,7 @@ jobs:
             exit 1
           fi
 
-      - run: FORCE_COLOR=3 npm test:coverage
+      - run: FORCE_COLOR=3 npm run test:coverage
 
       - name: "Report Coverage"
         # Set if: always() to also generate the report if tests are failing
