@@ -56,6 +56,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ support duration (assuming legato)
   - ✅ support rests
   - ✅ support velocity
+  - support floating point duration multipliers
   - support articulations (suggestion: support the reverse of an accent, '<' to lower the velocity, and skip legato
     support for now)
   - support multiple voices (counterpoint that's not block chords)
@@ -66,10 +67,12 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
     error, maybe we should auto-add a new scene whenever slotIndex > scene count (but note this may result in the index
     being different if it's much larger than the scene count, so the return value could confirm the index)
+  - Claude tried the syntax "D4\*1.5", which should be supported. The error reporting was bad: "Error in create-clip:
+    Expected "R", "[", [ \t\r\n], [0-9], [A-Ga-g], or end of input but "." found.". Add tests for having good error
+    message in the syntax.
 - Add tests, tentatively with vitest
   - ✅ Test list-tracks
   - ✅ Test create-clip
-    - TODO: Need coverage for autoplay and clip looping
   - ✅ Test ToneLang
   - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
     Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet
