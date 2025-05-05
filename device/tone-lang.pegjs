@@ -1,3 +1,4 @@
+// device/tone-lang.pegjs
 // ToneLang v1.0 PEG Grammar
 
 // Entry point
@@ -44,7 +45,7 @@ rest
 
 // Pitch: note name + octave
 pitch
-  = noteName:[A-Ga-g] accidental:accidental? octave:[0-9] {
+  = noteName:[A-Ha-g] accidental:accidental? octave:[0-9] {
       return noteName.toUpperCase() + (accidental ?? "") + octave;
     }
 
