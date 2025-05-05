@@ -12,8 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      # Required to checkout the code
-      contents: read
+      # Required to checkout and write comments on commits
+      contents: write
       # Required to put a comment into the pull-request
       pull-requests: write
 
