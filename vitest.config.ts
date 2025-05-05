@@ -1,5 +1,4 @@
 // vitest.config.ts
-
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -7,5 +6,12 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["device/**/*.test.js"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "json-summary", "json", "html"],
+      include: ["device/**"],
+      exclude: ["device/main.js", "device/console.js", "device/mcp-server.mjs", "device/mcp-server/**"],
+      reportOnFailure: true,
+    },
   },
 });

@@ -46,7 +46,7 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - We are using the 2025-03-26 version of the model context protocol (MCP).
 - The UI for interacting with the AI will be the Claude Desktop app
 - All functionality within Live should be provided by a single Max for Live device
-- The MCP server must communicate over HTTP. We plan to use the new StreamableHttp transport because the
+- We use the new StreamableHttp transport for MCP because the
   [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
 - Claude Desktop requires an adapter between its stdio transport and an HTTP MCP server. We use the library `mcp-proxy`
   for this.
@@ -61,15 +61,8 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   `@node_bin_path /opt/homebrew/bin/node @npm_bin_path /opt/homebrew/bin/npm options --experimental-transform-types`
 - Node for Max will not load a `.ts` file as the entry point. We must load a .mjs file and can then
   `import "./other-code.ts";` from there to bootstrap all the TypeScript code.
-- The TypeScript MCP SDK was installed with `npm i @modelcontextprotocol/sdk`
-- Other dependencies were installed `npm i zod express peggy vitest chokidar-cli`
-- Type definitions were installed with `npm i --save-dev @types/node @types/express @types/max-api`
 - We can try omitting `--experimental-transform-types` much of the time, and bring it back immediately as a potential
   solution if we're ever seeing errors about invalid syntax.
-- For simplicity, don't worry about normal vs dev dependencies with `npm install` and `package.json`. Just install
-  everything as a normal dependency in one command.
-- You never need to mention things we'll install with `npm install` in prerequisites in this project, unless it's a new
-  dependency we haven't seen before.
 - Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to
   resolve confusion or clarify answers to questions.
 - When calling the Live API to get properties of an object like a Track or Clip, it seems that single item responses are
