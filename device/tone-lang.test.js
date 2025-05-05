@@ -77,4 +77,11 @@ describe("parseToneLang", () => {
   it("throws on invalid tokens", () => {
     expect(() => parseToneLang("C3 X9 E3")).toThrow();
   });
+
+  it("parses notes with floating point durations", () => {
+    const result = parseToneLang("C3*1.5 D3/1.5");
+    expect(result[0].duration).toBeCloseTo(1.5);
+    expect(result[1].duration).toBeCloseTo(1 / 1.5, 5);
+    expect(result[1].start_time).toBeCloseTo(1.5);
+  });
 });

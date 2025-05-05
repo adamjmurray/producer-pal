@@ -57,12 +57,12 @@ Modifiers must be applied in this specific order:
 - Default note duration is a quarter note (1 beat)
 - **Longer durations**: `*N` multiplies duration by N
   - `C3*2` = half note (2 beats)
+  - `C3*1.5` = dotted quarter note (1.5 beats)
   - `C3*4` = whole note (4 beats)
 - **Shorter durations**: `/N` divides duration by N
   - `C3/2` = eighth note (1/2 beat)
+  - `C3/1.5` = triplet eighth note (1/1.5 ≈ 0.67 beats)
   - `C3/4` = sixteenth note (1/4 beat)
-- Example: `C3*2` (C3 for 2 beats)
-- Example: `D3/2` (D3 for 1/2 beat)
 
 ### Rests
 

@@ -16,11 +16,11 @@ function addToolCreateClip(server, pendingRequests) {
         .optional()
         .describe(
           "Musical notation string. Format: note+octave (C3 = middle C). " +
-            "Durations: *N for longer, /N for shorter (C3*2, D3/2; default = quarter note). " +
+            "Durations: *N for longer, /N for shorter where N can be an integer or decimal (C3*2, C3*1.5, D3/2, D3/1.5; default = quarter note). " +
             "Rests: R[optional *N or /N] (default = quarter rest). " +
             "Velocity: :vNN (0–127; default = 100), placed before duration. " +
             "Chords: [C3 E3 G3] (group notes played together, share velocity and duration). " +
-            "Examples: 'C3 D3:v80/2 [E3 G3]:v90*2', 'C3 R D3*4', '[F3 A3 C4]:v10' "
+            "Examples: 'C3 D3:v80/2 [E3 G3]:v90*2', 'C3 R D3*4', '[F3 A3 C4]:v10', 'C3*1.5 D3/1.5' "
         ),
       loop: z.boolean().default(false).describe("Enabling looping for the clip"),
       autoplay: z.boolean().default(false).describe("Automatically play the clip after creating it"),

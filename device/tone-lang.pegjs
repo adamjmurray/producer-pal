@@ -52,13 +52,15 @@ pitch
 accidental
   = "#" / "b"
 
-// Duration: *2 or /2 etc
+// Duration: *2 or *1.5 or /2 or /1.5 etc
 duration
-  = mul:"*" num:[0-9]+ {
-      return parseFloat(num.join("")) * 1;
+  = mul:"*" num:[0-9]+ decimal:("." [0-9]+)? {
+      const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
+      return parseFloat(numStr) * 1;
     }
-  / div:"/" num:[0-9]+ {
-      return 1 / parseFloat(num.join(""));
+  / div:"/" num:[0-9]+ decimal:("." [0-9]+)? {
+      const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
+      return 1 / parseFloat(numStr);
     }
 
 // Velocity: :vNN
