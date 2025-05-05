@@ -15,7 +15,9 @@
     "@types/express": "^5.0.1",
     "@types/max-api": "^2.0.3",
     "@types/node": "^22.15.3",
+    "chokidar-cli": "^3.0.0",
     "express": "^5.1.0",
+    "peggy": "^5.0.0",
     "vitest": "^3.1.2",
     "zod": "^3.24.3"
   },
@@ -24,7 +26,10 @@
     "proseWrap": "always"
   },
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "build": "npm run parser:build",
+    "test": "npm run build && vitest run",
+    "test:watch": "npm run build && vitest",
+    "parser:build": "peggy --format commonjs --output device/tone-lang-parser.js device/tone-lang.pegjs",
+    "parser:watch": "chokidar device/tone-lang.pegjs -c 'npm run parser:build'"
   }
 }

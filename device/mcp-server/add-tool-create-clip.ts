@@ -15,12 +15,12 @@ export function addToolCreateClip(server: McpServer, pendingRequests: Map<string
         .string()
         .optional()
         .describe(
-          "Musical notation string. Format: note+octave (C3=middle C). " +
-            "Rhythm: */# for longer/shorter durations (C3*2, D3/2, default=quarter note). " +
-            "Rests: R[*/# optional] (default duration=quarter note). " +
-            "Velocity: :vNN (1-127, default=100). " +
-            "Rhythm must come before velocity. " +
-            "Examples: 'C3 D3*2 R E3:v80', '[C3 E3 G3]:v90 R/2 [F3 A3 C4]*4', 'C3*4:v10'"
+          "Musical notation string. Format: note+octave (C3 = middle C). " +
+            "Durations: *N for longer, /N for shorter (C3*2, D3/2; default = quarter note). " +
+            "Rests: R[optional *N or /N] (default = quarter rest). " +
+            "Velocity: :vNN (0–127; default = 100), placed before duration. " +
+            "Chords: [C3 E3 G3] (group notes played together, share velocity and duration). " +
+            "Examples: 'C3 D3:v80/2 [E3 G3]:v90*2', 'C3 R D3*4', '[F3 A3 C4]:v10' "
         ),
       loop: z.boolean().default(false).describe("Enabling looping for the clip"),
       autoplay: z.boolean().default(false).describe("Automatically play the clip after creating it"),

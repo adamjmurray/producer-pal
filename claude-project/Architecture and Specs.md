@@ -7,7 +7,8 @@ The main parts of the system are:
 - Claude Desktop connects to `mcp-remote`, a proxy that adapts the stdio transport to the streamable HTTP transport
 - `mcp-remote` connects to an MCP server in a Node.js process using the streamable HTTP transport
 - the Node.js process is running in a Node for Max object in a Max for Live device in Ableton Live
-- the Node.js process doesn't have direct access to the Live API, so it sends serialized JSON strings to a Max v8 object (a V8-based JavaScript engine) in the same Max for Live device (via a Max message sent over a virtual patch cable)
+- the Node.js process doesn't have direct access to the Live API, so it sends serialized JSON strings to a Max v8 object
+  (a V8-based JavaScript engine) in the same Max for Live device (via a Max message sent over a virtual patch cable)
 - the Max v8 object calls the Live API to read and write to the state of, and execute commands in Ableton Live
 
 ### Architecture Diagram
@@ -52,7 +53,8 @@ The main parts of the system are:
 
 ## Implementation Details
 
-- the Node for Max MCP server is bootstrapped by `device/mcp-server.mjs`, which `import`s files in `device/mcp-server/**.ts`
+- the Node for Max MCP server is bootstrapped by `device/mcp-server.mjs`, which `import`s files in
+  `device/mcp-server/**.ts`
 - the v8 Max object bootstraps with `main.js`, which `require()`s other JavaScript files in the same folder
 
 ## Message Format Specification
@@ -131,29 +133,9 @@ Messages sent from v8 back to Node for Max:
 })]
 ```
 
-## Musical String Format
+## ToneLang: custom Music Notation Syntax
 
-To be used with tools that can create notes.
-
-- Basic format: Note names with octave numbers (C3 is middle C)
-- Notes are represented as letter + optional accidental (# or b) + octave number
-- Space-separated notes represent sequential notes (default rhythm: quarter notes)
-- Square brackets group notes into chords: [C3 E3 G3]
-- Multiple chord/note groups are space-separated
-
-Examples:
-
-```
-C3 D3 E3 F3 G3 A3 B3 C4
-```
-
-```
-[C3 Eb3 G3] [C3 F3 Ab3] [D3 G3 B3] [C3 Eb3 G3 C4]
-```
-
-```
-C3 E3 [F3 A3 C4] G3 [C3 E3 G3]
-```
+See the dedicated ToneLang Specification. Implemented with a parser generator library `peggy`.
 
 ## MCP tool interfaces
 
