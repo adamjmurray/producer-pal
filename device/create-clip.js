@@ -1,5 +1,6 @@
 // device/create-clip.js
 const { parseToneLang } = require("./tone-lang");
+const { cssToLiveColor } = require("./utils");
 
 /**
  * Creates a MIDI clip with optional notes at the specified track and clip slot
@@ -8,6 +9,7 @@ const { parseToneLang } = require("./tone-lang");
  * @param {number} args.clipSlot - Clip slot index (0-based)
  * @param {string} [args.notes] - ToneLang musical notation string
  * @param {string?} [args.name] - Optional clip name
+ * @param {string?} [args.color] - Optional clip color (CSS format: hex, rgb(), or named color)
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @param {boolean} [args.autoplay] - Automatically play the clip after creating it
  * @param {'error' | 'replace' | 'merge'} [args.onExistingClip] - How to handle an existing clip: 'error', 'replace', or 'merge'
@@ -18,6 +20,7 @@ function createClip({
   clipSlot: clipSlotIndex,
   notes: toneLangString,
   name = null,
+  color = null,
   loop = false,
   autoplay = false,
   onExistingClip = "error",
@@ -47,14 +50,16 @@ function createClip({
   // Get the clip object (whether it's a newly created clip or an existing one)
   const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
 
+  // Allow properties to be changed on create, merge, or replace
   if (name !== null) {
     clip.set("name", name);
   }
-
-  // Only set the name and loop properties if we created a new clip or replaced an existing one
-  if (!hasClip || onExistingClip === "replace") {
-    clip.set("looping", loop);
+  if (color !== null) {
+    const liveColor = cssToLiveColor(color);
+    clip.set("color", liveColor);
   }
+
+  clip.set("looping", loop);
 
   // Add notes if there are any
   if (notes.length > 0) {

@@ -25,8 +25,28 @@ function liveColorToCss(colorValue) {
   );
 }
 
+function cssToLiveColor(cssColor) {
+  if (!cssColor.startsWith("#") || cssColor.length !== 7) {
+    throw new Error(`Invalid color format: must be "#RRGGBB"`);
+  }
+
+  // Parse hex values to RGB
+  const r = parseInt(cssColor.substring(1, 3), 16);
+  const g = parseInt(cssColor.substring(3, 5), 16);
+  const b = parseInt(cssColor.substring(5, 7), 16);
+
+  // Check for NaN values from invalid hex
+  if (isNaN(r) || isNaN(g) || isNaN(b)) {
+    throw new Error(`Invalid hex values in color: ${cssColor}`);
+  }
+
+  // Return in Live's color format (0x00RRGGBB)
+  return (r << 16) | (g << 8) | b;
+}
+
 module.exports = {
   parseIds,
   parseId,
   liveColorToCss,
+  cssToLiveColor,
 };

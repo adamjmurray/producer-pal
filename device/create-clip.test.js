@@ -216,4 +216,29 @@ describe("createClip", () => {
       expect(mockLiveApiCall).not.toHaveBeenCalledWith("fire");
     });
   });
+
+  describe("color parameter", () => {
+    it("should set clip color when provided", () => {
+      const args = {
+        track: 0,
+        clipSlot: 0,
+        color: "#FF0000",
+      };
+
+      createClip(args);
+
+      // Verify color was set
+      expect(mockLiveApiSet).toHaveBeenCalledWith("color", 16711680);
+    });
+
+    it("should throw error for invalid color format", () => {
+      const args = {
+        track: 0,
+        clipSlot: 0,
+        color: "#F00",
+      };
+
+      expect(() => createClip(args)).toThrow(/Invalid color format/);
+    });
+  });
 });

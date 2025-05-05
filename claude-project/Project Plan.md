@@ -36,14 +36,16 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 - More clip CRUD operations:
   - ✅ set clip name when creating
   - ✅ set clip looping state when creating
-  - set clip color when creating. Use "CSS syntax" for the MCP interface
-  - update name of existing clips
-  - update color of existing clips
-  - update clip mute state
-  - set/updated whether a clip is looping
-  - set/update normal start/end points and loop start/end points
+  - ✅ set clip color when creating. Use "CSS syntax" for the MCP interface
+  - ✅ update existing clips (can be handled by using `onExistingClip: merge` and leaving the notes list empty, but
+    maybe needs explanation)
+    - ✅ update name of existing clips
+    - ✅ update color of existing clips
+    - ✅ update clip mute state
+  - ✅ set/updated whether a clip is looping
   - ✅ Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like
     `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
+  - set/update normal start/end points and loop start/end points
   - Allow for MIDI clips to be deleted
 - Track CRUD operations:
   - create new tracks
