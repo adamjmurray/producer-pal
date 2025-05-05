@@ -32,17 +32,15 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 ## Context and Constraints:
 
 - Minimize dependencies to reduce complexity and maintenance
-- Use TypeScript (or JavaScript as a fallback) wherever possible. Avoid Python and other programming languages.
+- The only programming language we use is JavaScript because of constraints of running in an embedded environment. We
+  are using the MCP TypeScript but our code must be JavaScript.
 - The repository root is `/Users/adammurray/workspace/ableton-live-composition-assistant`
 - The path to the Max for Live device and source code is
   `/Users/adammurray/workspace/ableton-live-composition-assistant/device`
-- The Node for Max and Max v8 code have different behaviors and requirements we need to follow:
-  - In Node for Max, after bootstrapping the loader script `index.mjs`, we can `import` code with the modern ESM
-    approach. Code can be organized into subfolders. TypeScript files must always be imported with the explicit `.ts`
-    file extension.
-  - In v8, we must use `require` and `module.exports` with the older CommonJS (CJS) approach. IMPORTANT: All code loaded
-    by the v8 object must be in the same folder (`ableton-live-composition-assistant/device`). This is because v8 uses
-    it's own custom loader for `require`, and it is very limited.
+- All code uses CJS modules and must use the older approach of `require()`ing other files
+  - All code loaded by the v8 object must be in the same folder (`ableton-live-composition-assistant/device`) and it
+    must be required using "./filename.js" isntead of "filename.js". This is because v8 uses it's own custom loader for
+    `require`, and it is very limited.
 - We are using the 2025-03-26 version of the model context protocol (MCP).
 - The UI for interacting with the AI will be the Claude Desktop app
 - All functionality within Live should be provided by a single Max for Live device
@@ -51,18 +49,7 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - Claude Desktop requires an adapter between its stdio transport and an HTTP MCP server. We use the library `mcp-proxy`
   for this.
 - We are using Live 12.2 and Max 9
-- We are using Node.js 23 with native TypeScript support, including the `--experimental-transform-types` option that
-  allows for use of TypeScript enums and other "non-erasable" syntax (see
-  https://nodejs.org/docs/latest/api/typescript.html#type-stripping). It has been installed via Homebrew on macOS, with
-  the executable located at `/opt/homebrew/bin/node`
-- We do not want to setup any build process. Leverage the native TypeScript support and keep things simple.
-- In order to use Node.js 23 in Node for Max with full TypeScript support, we must create the Max object with the
-  attributes
-  `@node_bin_path /opt/homebrew/bin/node @npm_bin_path /opt/homebrew/bin/npm options --experimental-transform-types`
-- Node for Max will not load a `.ts` file as the entry point. We must load a .mjs file and can then
-  `import "./other-code.ts";` from there to bootstrap all the TypeScript code.
-- We can try omitting `--experimental-transform-types` much of the time, and bring it back immediately as a potential
-  solution if we're ever seeing errors about invalid syntax.
+- We are using Node.js 20
 - Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to
   resolve confusion or clarify answers to questions.
 - When calling the Live API to get properties of an object like a Track or Clip, it seems that single item responses are

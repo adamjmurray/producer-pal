@@ -1,12 +1,12 @@
-// device/mcp-server/create-express-app.ts
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import express from "express";
-import Max from "max-api";
-import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
-import { createMcpServer } from "./create-mpc-server.ts";
+// device/mcp-server/create-express-app.js
+const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
+const express = require("express");
+const Max = require("max-api");
+const { ErrorCode } = require("@modelcontextprotocol/sdk/types.js");
+const { createMcpServer } = require("./create-mpc-server.js");
 
 // Map to store pending requests and their resolve functions
-const pendingRequests = new Map<string, Function>();
+const pendingRequests = new Map();
 
 // Listen for responses from Max patch
 Max.addHandler("mcp_response", (responseJson) => {
@@ -16,7 +16,7 @@ Max.addHandler("mcp_response", (responseJson) => {
     const { requestId, result } = response;
 
     if (pendingRequests.has(requestId)) {
-      const resolve = pendingRequests.get(requestId)!;
+      const resolve = pendingRequests.get(requestId);
       pendingRequests.delete(requestId);
       resolve(result);
     } else {
@@ -27,7 +27,7 @@ Max.addHandler("mcp_response", (responseJson) => {
   }
 });
 
-export function createExpressApp() {
+function createExpressApp() {
   const app = express();
   app.use(express.json());
 
@@ -85,3 +85,5 @@ export function createExpressApp() {
 
   return app;
 }
+
+module.exports = { createExpressApp };

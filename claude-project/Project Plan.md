@@ -1,4 +1,4 @@
-# Project Plan v1
+# Project Plan
 
 ## Phase 1: Basic MCP Server (outside Max/Live)
 
@@ -80,7 +80,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     ```
     We will revisit this soon.
 - When the Node for Max code creates Promises, it should also make them timeout after a little while
-- Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
+- ✅ Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 
 ## Phase 4: Deeper Ableton Live Integration
 

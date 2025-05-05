@@ -1,9 +1,8 @@
-// device/mcp-server/add-tool-create-clip.ts
-import { type McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-import { callLiveApi } from "./call-live-api.ts";
+// device/mcp-server/add-tool-create-clip.js
+const { z } = require("zod");
+const { callLiveApi } = require("./call-live-api.js");
 
-export function addToolCreateClip(server: McpServer, pendingRequests: Map<string, Function>) {
+function addToolCreateClip(server, pendingRequests) {
   server.tool(
     "create-clip",
     "Creates a non-looping MIDI clip with optional notes at the specified track and clip slot",
@@ -33,3 +32,5 @@ export function addToolCreateClip(server: McpServer, pendingRequests: Map<string
     async (args) => callLiveApi("create-clip", args, pendingRequests)
   );
 }
+
+module.exports = { addToolCreateClip };
