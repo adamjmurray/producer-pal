@@ -2,97 +2,113 @@
 
 _A minimal, human- and LLM-friendly music notation for sequencing and MIDI._
 
----
-
 ## Overview
 
-- Compact, readable text syntax for music sequences
-- Supports notes, chords, rhythm, rests, and velocity
-- Maps cleanly to MIDI/DAW environments
-- Notes are completely legato (connected) by default, but rests can be used to create gaps
+ToneLang is a compact, readable text syntax for musical sequences that maps cleanly to MIDI/DAW environments. It
+supports notes, chords, rhythm, rests, and velocity control with a straightforward syntax that's easy for both humans
+and LLMs to understand and generate.
 
----
+## Core Syntax
 
-## Basic Syntax Rules
-
-### 1. Notes
-
-- Format: `<NoteName><Octave>`
-  - Example: `C3` = Middle C
-- Notes are case-insensitive (`c3` = `C3`)
-
-### 2. Accidentals
-
-- Sharps: `#` (e.g., `F#3`)
-- Flats: `b` (e.g., `Eb3`)
-
-### 3. Chords
-
-- Enclose notes in square brackets `[]`
-  - Example: `[C3 E3 G3]`
-
-### 4. Rhythm (Duration)
-
-- Default note = quarter note
-- Use `*` for longer durations:
-  - `*2` → half note
-  - `*4` → whole note
-- Use `/` for shorter durations:
-  - `/2` → eighth note
-  - `/4` → sixteenth note
-- Examples: `C3*2`, `D3/2`
-
-### 5. Rests
-
-- Use `R` for rests
-- Apply same duration modifiers:
-  - `R` → quarter rest
-  - `R/2` → eighth rest
-  - `R*2` → half rest
-- To create gaps between notes in v1.0, use rests
-
-### 6. Velocity (Optional)
-
-- Suffix notes/chords with `:vNN` (where NN = 1-127)
-  - Example: `C3:v90`
-- If omitted, defaults to standard value (e.g., 100)
-
----
-
-## Expressive Features (v1.1)
-
-### 7. Optional Articulation Symbols
-
-These only affect a note's duration and do not impact "time until next note" behavior. In other words, using staccato is
-like a short cut for using rests.
-
-- `^` = staccato (short)
-  - Idea: maybe this shortens a note's duration by half and you can apply it multiple times to repeatedly halve the
-    duration.
-- `_` = tie/legato (connect)
-- `>` = accent (emphasize)
-
-Open question: Notes are currently tied by default. Do we want to change that? If not, maybe we won't support legato
-syntax. In future extensions we have planned for adding a global setting for default articulation behavior. Legato may
-make more sense once that feature is implemented.
-
-**Example:**
+### Note Format
 
 ```
-C3^ D3/2_ E3> F3
+<NoteName><Accidental><Octave><Modifiers>
 ```
 
----
+Example: `C3` (Middle C), `F#4:v100*2` (F-sharp in octave 4, full velocity, double duration)
 
-## Multiple Voices (v1.2)
+### Notes
 
-- Separate each voice with a semicolon `;`
-  - Semicolons define the voice separation. Optional newlines can help with readability.
-- Each voice always starts at beat 0
+- **Basic format**: `<NoteName><Octave>` (e.g., `C3`, `D4`)
+- **Note names**: `A` through `G` (case-insensitive)
+- **Octave**: Integer specifying the octave (e.g., `C3` where `3` is the octave)
+- Middle C is defined as `C3`
 
----
+### Accidentals
 
-## Example Sequences
+- **Sharp**: `#` (e.g., `C#3`)
+- **Flat**: `b` (e.g., `Eb3`)
+- Enharmonic equivalents are treated identically (e.g., `D#3` and `Eb3` produce the same MIDI note)
+
+### Chords
+
+- Enclose multiple notes in square brackets `[]`
+- Example: `[C3 E3 G3]` (C major triad)
+- All notes in a chord share the same start time, duration, and velocity
+
+### Modifiers
+
+Modifiers must be applied in this specific order:
+
+1. **Velocity** (optional): `:vNN` where NN is 0-127
+2. **Duration** (optional): `*N` or `/N` where N is a positive integer
+
+### Velocity
+
+- Format: `:vNN` where NN is 0-127 (e.g., `:v64`)
+- Placed immediately after the note or chord, before any duration modifier
+- Example: `C3:v80` (C3 at velocity 80)
+- Example: `[C3 E3 G3]:v100` (C major chord at velocity 100)
+- Default velocity: 100
+
+### Duration
+
+- Default note duration is a quarter note (1 beat)
+- **Longer durations**: `*N` multiplies duration by N
+  - `C3*2` = half note (2 beats)
+  - `C3*4` = whole note (4 beats)
+- **Shorter durations**: `/N` divides duration by N
+  - `C3/2` = eighth note (1/2 beat)
+  - `C3/4` = sixteenth note (1/4 beat)
+- Example: `C3*2` (C3 for 2 beats)
+- Example: `D3/2` (D3 for 1/2 beat)
+
+### Rests
+
+- Format: `R` with optional duration modifier
+- Example: `R` (quarter rest)
+- Example: `R*2` (half rest)
+- Example: `R/4` (sixteenth rest)
+
+## Token Order Rules
+
+The order of modifiers is important and must follow this pattern:
+
+1. Note/Chord: First specify the note (`C3`) or chord (`[C3 E3 G3]`)
+2. Velocity: Then specify velocity if needed (`:v80`)
+3. Duration: Finally specify duration if needed (`*2` or `/2`)
+
+**Correct examples**:
+
+- `C3:v80*2` (C3 at velocity 80 for 2 beats)
+- `[C3 E3 G3]:v90/2` (C major chord at velocity 90 for 1/2 beat)
+
+**Incorrect examples**:
+
+- `C3*2:v80` ❌ (velocity must come before duration)
+- `[C3:v80 E3:v60 G3]` ❌ (velocity must be applied to the entire chord)
+
+## Sequence Syntax
+
+Notes, chords, and rests are separated by whitespace to form sequences:
+
+```
+C3 D3 E3 F3 G3 A3 B3 C4
+```
+
+```
+C3:v80 D3/2:v100 R/2 [E3 G3 B3]*2:v90
+```
+
+## Timing Behavior
+
+- Notes are non-overlapping by default (legato)
+- Each element (note, chord, or rest) advances the time cursor by its duration
+- Elements are played sequentially in the order specified
+- Rests create gaps in the sequence
+
+## Examples
 
 ### Simple Scale
 
@@ -103,50 +119,29 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ### With Rhythm and Velocity
 
 ```
-C3:v80 D3/2:v100 R/2 [E3 G3 B3]*2:v90
+C3:v80 D3:v100/2 R/2 [E3 G3 B3]:v90*2
 ```
 
-### With Articulation (v1.1)
+### Complex Pattern
 
 ```
-C3^ D3/2_ E3> F3
+C3*2 [E3 G3] R/2 F3:v120/2 R/2 [D3 F3 A3]:v90*4
 ```
 
-### Multiple Voices (v1.2)
+## Parsing & Validation Rules
 
-```
-C4 D4 E4 F4;
-R  G2 A2 B2
-```
+1. Velocity must be within 0-127 range
+2. Duration modifiers must use positive integers
+3. Note names must be valid (A-G with optional # or b)
+4. Octave must be an integer
+5. Syntax must follow the exact token order specified above
 
----
+## Future Extensions
 
-## Design Principles
+Planned for future versions:
 
-- Notes are **non-overlapping** (for now). If overlapping is needed, use multiple voices
-- All timing is quantized (16th note grid or finer)
-- Future **multi-track** support will distinguish from voices and will require explicit `trackname:` labels (planned
-  v1.3+)
-- Future-proof: features like overlap (`~`) and tempo (`@tempo`) can be added later
-
----
-
-## Future Extensions (tentative)
-
-- Add a global setting for default articulation behavior
-- Note overlap/duration (`~`) (e.g. `C4/2~1` takes up the space of an eight note w.r.t. the following note's start time,
-  but is actually a quarter note in duration)
-- Tempo control (e.g., `@tempo=120`)
-- Multi-track support with `trackname:` (v1.3)
-- Bar line support for possible "harmonic modeling" use cases later (e.g. one chord every bar)
-
-  **Example:**
-
-  ```
-  piano: C4 D4 E4 F4
-  bass:  R  G2 A2 B2
-  drums: R  R  [C2 E2]*2
-  ```
-
-- Pitch bend, modulation controls
-- Swing/groove quantization
+- Articulation symbols (staccato, legato)
+- Multiple voices/counterpoint
+- Multi-track support
+- Tempo controls
+- Pitch bend and modulation

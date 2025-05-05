@@ -62,9 +62,8 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - Node for Max will not load a `.ts` file as the entry point. We must load a .mjs file and can then
   `import "./other-code.ts";` from there to bootstrap all the TypeScript code.
 - The TypeScript MCP SDK was installed with `npm i @modelcontextprotocol/sdk`
-- Other dependencies were installed `npm i zod express`
+- Other dependencies were installed `npm i zod express peggy vitest chokidar-cli`
 - Type definitions were installed with `npm i --save-dev @types/node @types/express @types/max-api`
-- The `package.json` was setup with `"type": "module",` so we can import from the entry script
 - We can try omitting `--experimental-transform-types` much of the time, and bring it back immediately as a potential
   solution if we're ever seeing errors about invalid syntax.
 - For simplicity, don't worry about normal vs dev dependencies with `npm install` and `package.json`. Just install
@@ -107,3 +106,4 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - My tutorial on generating MIDI clips: https://adammurray.link/max-for-live/v8-in-live/generating-midi-clips/
 - Ableton Live Manual: https://www.ableton.com/en/live-manual/12/
 - MCP Documentation: https://modelcontextprotocol.io/
+- Peggy Parser Generator Documentation: https://peggyjs.org/documentation.html
