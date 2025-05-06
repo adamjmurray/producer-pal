@@ -1,0 +1,31 @@
+// device/mcp-server/add-tool-write-clip.js
+const { z } = require("zod");
+const { callLiveApi } = require("./call-live-api.js");
+const { TONE_LANG_DESCRIPTION } = require("./tone-lang-description.js");
+
+function addToolWriteClip(server, pendingRequests) {
+  server.tool(
+    "write-clip",
+    //"Creates or updates a MIDI clip at the specified track and clip slot",
+    "Creates and updates a MIDI clip at the specified track and clip slot. " +
+      "By default, this function will merge new notes with existing clip content unless 'deleteExistingNotes' is set to true. " +
+      "This means that providing notes will add to or modify the existing clip without completely replacing it, " +
+      "and you can omit notes when updating other properties like name or color",
+    {
+      trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
+      clipSlotIndex: z.number().int().min(0).describe("Clip slot index (0-based)"),
+      name: z.string().optional().describe("Name for the clip"),
+      color: z.string().optional().describe("Color in #RRGGBB hex format"),
+      notes: z.string().optional().describe(`Musical notation in ToneLang format. ${TONE_LANG_DESCRIPTION}`),
+      loop: z.boolean().default(false).describe("Enable looping for the clip"),
+      autoplay: z.boolean().default(false).describe("Automatically play the clip after creating it"),
+      deleteExistingNotes: z
+        .boolean()
+        .default(false)
+        .describe("Whether to delete existing notes before adding new ones"),
+    },
+    async (args) => callLiveApi("write-clip", args, pendingRequests)
+  );
+}
+
+module.exports = { addToolWriteClip };

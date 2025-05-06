@@ -5,14 +5,14 @@ const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 post(`[${now()}] loading main.js...\n`);
 
 const console = require("./console.js");
-const { createClip } = require("./create-clip.js");
 const { listTracks } = require("./list-tracks.js");
-const { getClip } = require("./get-clip.js");
+const { readClip } = require("./read-clip.js");
+const { writeClip } = require("./write-clip.js");
 
 const tools = {
-  "create-clip": (args) => createClip(args),
   "list-tracks": () => listTracks(),
-  "get-clip": (args) => getClip(args),
+  "read-clip": (args) => readClip(args),
+  "write-clip": (args) => writeClip(args),
 };
 
 // Route to appropriate function based on tool name

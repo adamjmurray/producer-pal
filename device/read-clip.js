@@ -1,4 +1,4 @@
-// device/get-clip.js
+// device/read-clip.js
 /**
  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
  * @param {number} pitch - MIDI pitch number
@@ -172,11 +172,11 @@ function convertClipNotesToToneLang(clipNotes) {
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a ToneLang string
  * @param {Object} args - Arguments for the function
- * @param {number} args.track - Track index (0-based)
- * @param {number} args.clipSlot - Clip slot index (0-based)
- * @returns {string} Result object. All properties will be null for non-existent clips.
+ * @param {number} args.trackIndex - Track index (0-based)
+ * @param {number} args.clipSlotIndex - Clip slot index (0-based)
+ * @returns {Object} Result object with clip information
  */
-function getClip({ track: trackIndex, clipSlot: clipSlotIndex }) {
+function readClip({ trackIndex, clipSlotIndex }) {
   try {
     // Get the clip slot
     const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
@@ -185,6 +185,9 @@ function getClip({ track: trackIndex, clipSlot: clipSlotIndex }) {
     if (clipSlot.get("has_clip") == 0) {
       // Return null values
       return {
+        success: true,
+        trackIndex,
+        clipSlotIndex,
         type: null,
         name: null,
         length: null,
@@ -199,6 +202,7 @@ function getClip({ track: trackIndex, clipSlot: clipSlotIndex }) {
     // Get clip name and length
     const clipName = clip.get("name")?.[0] || "Unnamed";
     const clipLength = clip.get("length")?.[0] || 0;
+    const isLooping = clip.get("looping") > 0;
 
     // Check if it's a MIDI clip
     const isMidiClip = clip.get("is_midi_clip") > 0;
@@ -209,25 +213,39 @@ function getClip({ track: trackIndex, clipSlot: clipSlotIndex }) {
       const clipNotes = JSON.parse(notesDictionary).notes;
 
       return {
+        success: true,
+        trackIndex,
+        clipSlotIndex,
         type: "midi",
         name: clipName,
         length: clipLength,
+        loop: isLooping,
         notes: convertClipNotesToToneLang(clipNotes),
         noteCount: clipNotes.length,
       };
     } else {
       // For audio clips, return name and length but null for notes
       return {
+        success: true,
+        trackIndex,
+        clipSlotIndex,
         type: "audio",
         name: clipName,
         length: clipLength,
+        loop: isLooping,
         notes: null,
         noteCount: null,
       };
     }
   } catch (error) {
-    return `Error: ${error.message}`;
+    return {
+      success: false,
+      trackIndex,
+      clipSlotIndex,
+      error: error.message,
+    };
   }
 }
 
-module.exports = { getClip, convertClipNotesToToneLang, midiPitchToNoteName };
+// Keep the helper functions from get-clip.js and export
+module.exports = { readClip, convertClipNotesToToneLang, midiPitchToNoteName };

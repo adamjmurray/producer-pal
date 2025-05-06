@@ -1,8 +1,8 @@
 // device/mcp-server/create-mpc-server.js
 const { McpServer } = require("@modelcontextprotocol/sdk/server/mcp.js");
-const { addToolCreateClip } = require("./add-tool-create-clip.js");
+const { addToolWriteClip } = require("./add-tool-write-clip.js");
 const { addToolListTracks } = require("./add-tool-list-tracks.js");
-const { addToolGetClip } = require("./add-tool-get-clip.js");
+const { addToolReadClip } = require("./add-tool-read-clip.js");
 
 function createMcpServer(pendingRequests) {
   const server = new McpServer({
@@ -10,9 +10,9 @@ function createMcpServer(pendingRequests) {
     version: "1.0.0",
   });
 
-  addToolCreateClip(server, pendingRequests);
+  addToolWriteClip(server, pendingRequests);
   addToolListTracks(server, pendingRequests);
-  addToolGetClip(server, pendingRequests);
+  addToolReadClip(server, pendingRequests);
 
   return server;
 }
