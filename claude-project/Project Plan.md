@@ -52,7 +52,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - update tracks
   - delete tracks
   - set/update track name and color (using "CSS syntax")
-- Flesh out custom note pattern syntax, now called TongLang v1.0
+- Implement TongLang
   - ✅ support duration (assuming legato)
   - ✅ support rests
   - ✅ support velocity
@@ -60,7 +60,8 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - support articulations (suggestion: support the reverse of an accent, '<' to lower the velocity, and skip legato
     support for now)
   - support multiple voices (counterpoint that's not block chords)
-- Support reading the notes of a clip and outputting in ToneLang syntax
+  - as support for more features in ToneLang is added, both create-clip and get-clip need to be updated
+- ✅ Support reading the notes of a clip and outputting in ToneLang syntax
 - Keep refactoring and cleaning things up as needed (~done, very happy with progress here)
 - Fix bugs. Current known issues:
   - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
@@ -82,6 +83,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     Failed to connect to MCP server: SSE error: Non-200 status code (404)
     ```
     We will revisit this soon.
+  - Since we can't script the MCP Inspector CLI we could write our own MCP client and test with that
 - When the Node for Max code creates Promises, it should also make them timeout after a little while
 - ✅ Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 

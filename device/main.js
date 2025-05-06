@@ -4,9 +4,23 @@
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 post(`[${now()}] loading main.js...\n`);
 
-const console = require("./console");
-const { createClip } = require("./create-clip");
-const { listTracks } = require("./list-tracks");
+const console = require("./console.js");
+const { createClip } = require("./create-clip.js");
+const { listTracks } = require("./list-tracks.js");
+const { getClip } = require("./get-clip.js");
+
+const tools = {
+  "create-clip": (args) => createClip(args),
+  "list-tracks": () => listTracks(),
+  "get-clip": (args) => getClip(args),
+};
+
+// Route to appropriate function based on tool name
+function callTool(toolName, args) {
+  const tool = tools[toolName];
+  if (!tool) throw new Error(`Unknown tool: ${tool}`);
+  return tool(args);
+}
 
 // Format a successful response with the standard MCP content structure
 // non-string results will be JSON-stringified
@@ -39,32 +53,20 @@ function mcp_request(serializedJSON) {
     let result;
 
     try {
-      // Route to appropriate function based on tool name
-      switch (tool) {
-        case "create-clip":
-          const clipResult = createClip(args);
-          result = formatSuccessResponse(clipResult);
-          break;
-        case "list-tracks":
-          const tracksResult = listTracks();
-          result = formatSuccessResponse(tracksResult);
-          break;
-        default:
-          throw new Error(`Unknown tool: ${tool}`);
-      }
+      result = formatSuccessResponse(callTool(tool, args));
     } catch (toolError) {
-      // Handle tool-specific errors
       result = formatErrorResponse(`Error in ${tool}: ${toolError.message}`);
     }
 
     // Send response back to Node for Max
-    const response = {
-      requestId,
-      result,
-    };
-
-    // Output the response as JSON
-    outlet(0, "mcp_response", JSON.stringify(response));
+    outlet(
+      0,
+      "mcp_response",
+      JSON.stringify({
+        requestId,
+        result,
+      })
+    );
   } catch (error) {
     // Handle JSON parsing errors or other top-level errors
     outlet(
