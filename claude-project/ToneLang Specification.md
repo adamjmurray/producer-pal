@@ -39,10 +39,10 @@ Example: `C3` (Middle C), `F#4:v100*2` (F-sharp in octave 4, full velocity, doub
 
 ### Modifiers
 
-Modifiers must be applied in this specific order:
+Modifiers must be applied in this specific order (velocity, then duration):
 
 1. **Velocity** (optional): `:vNN` where NN is 0-127
-2. **Duration** (optional): `*N` or `/N` where N is a positive integer
+2. **Duration** (optional): `*N` or `/N` where N is a positive integer or decimal
 
 ### Velocity
 
@@ -61,8 +61,8 @@ Modifiers must be applied in this specific order:
   - `C3*4` = whole note (4 beats)
 - **Shorter durations**: `/N` divides duration by N
   - `C3/2` = eighth note (1/2 beat)
-  - `C3/1.5` = triplet eighth note (1/1.5 ≈ 0.67 beats)
   - `C3/4` = sixteenth note (1/4 beat)
+  - `C3/1.5` = triplet eighth note (1/1.5 beats)
 
 ### Rests
 
@@ -70,24 +70,6 @@ Modifiers must be applied in this specific order:
 - Example: `R` (quarter rest)
 - Example: `R*2` (half rest)
 - Example: `R/4` (sixteenth rest)
-
-## Token Order Rules
-
-The order of modifiers is important and must follow this pattern:
-
-1. Note/Chord: First specify the note (`C3`) or chord (`[C3 E3 G3]`)
-2. Velocity: Then specify velocity if needed (`:v80`)
-3. Duration: Finally specify duration if needed (`*2` or `/2`)
-
-**Correct examples**:
-
-- `C3:v80*2` (C3 at velocity 80 for 2 beats)
-- `[C3 E3 G3]:v90/2` (C major chord at velocity 90 for 1/2 beat)
-
-**Incorrect examples**:
-
-- `C3*2:v80` ❌ (velocity must come before duration)
-- `[C3:v80 E3:v60 G3]` ❌ (velocity must be applied to the entire chord)
 
 ## Sequence Syntax
 
@@ -130,11 +112,11 @@ C3*2 [E3 G3] R/2 F3:v120/2 R/2 [D3 F3 A3]:v90*4
 
 ## Parsing & Validation Rules
 
-1. Velocity must be within 0-127 range
-2. Duration modifiers must use positive integers
-3. Note names must be valid (A-G with optional # or b)
-4. Octave must be an integer
-5. Syntax must follow the exact token order specified above
+1. Note names must be valid (A-G with optional # or b)
+2. Octave must be an integer
+3. Velocity must be within 0-127 range
+4. Duration modifiers must use positive integers or decimal numbers
+5. Velocity must come before duration
 
 ## Future Extensions
 
@@ -142,6 +124,3 @@ Planned for future versions:
 
 - Articulation symbols (staccato, legato)
 - Multiple voices/counterpoint
-- Multi-track support
-- Tempo controls
-- Pitch bend and modulation
