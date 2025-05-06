@@ -37,14 +37,13 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ set clip name when creating
   - ✅ set clip looping state when creating
   - ✅ set clip color when creating. Use "CSS syntax" for the MCP interface
-  - ✅ update existing clips (can be handled by using `onExistingClip: merge` and leaving the notes list empty, but
-    maybe needs explanation)
+  - ✅ update existing clips (tool was repurposed from `create-clip` to the more general `write-clip`)
     - ✅ update name of existing clips
     - ✅ update color of existing clips
     - ✅ update clip mute state
   - ✅ set/updated whether a clip is looping
-  - ✅ Allow for notes in existing MIDI clips to be updated. Maybe add a new argument like
-    `onExistingClip: error | replace | merge`, where "error" is the current/default behavior.
+  - ✅ Allow for notes in existing MIDI clips to be updated. `deleteExistingNotes: true|false` (default false) can be
+    used to clear existing clips before setting the new notes.
   - set/update normal start/end points and loop start/end points
   - Allow for MIDI clips to be deleted
 - Track CRUD operations:
@@ -59,8 +58,9 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ support floating point duration multipliers
   - support articulations (suggestion: support the reverse of an accent, '<' to lower the velocity, and skip legato
     support for now)
-  - support multiple voices (counterpoint that's not block chords)
-  - as support for more features in ToneLang is added, both create-clip and get-clip need to be updated
+  - ✅ support multiple voices (counterpoint that's not block chords)
+  - as support for more features in ToneLang is added, both `write-clip` and `read-clip` need to be updated as well the
+    the descriptions of the tools in the `mcp-server`
 - ✅ Support reading the notes of a clip and outputting in ToneLang syntax
 - Keep refactoring and cleaning things up as needed (~done, very happy with progress here)
 - Fix bugs. Current known issues:
@@ -84,7 +84,6 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     ```
     We will revisit this soon.
   - Since we can't script the MCP Inspector CLI we could write our own MCP client and test with that
-- When the Node for Max code creates Promises, it should also make them timeout after a little while
 - ✅ Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 
 ## Phase 4: Deeper Ableton Live Integration
@@ -95,6 +94,7 @@ from Claude Desktop. We will shift focus to Live's Arrangement View in this phas
 Rough sketch (to be expanded as we make more progress on the previous phase):
 
 - Expand the functionality to work in Arrangement View in Live
+- When the Node for Max code creates Promises, it should also make them timeout after a little while
 - Expand on the clip generation capabilities (TBD)
 - Expand on the clip transformation capabilities (TBD)
 - Add another tool for transforming notes in existing MIDI clips

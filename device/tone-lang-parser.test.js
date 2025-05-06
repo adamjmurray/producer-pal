@@ -5,7 +5,7 @@ import parser from "./tone-lang-parser";
 /*
 You can also manually test with:
 ```js
-const parser = require("./tonelang-parser");
+const parser = require("./tone-lang-parser");
 
 const input = "C3 D3 E3 F3 G3 A3 B3 C4";
 const ast = parser.parse(input);
@@ -123,5 +123,29 @@ describe("ToneLang Parser", () => {
     expect(() => parser.parse("InvalidNote")).toThrow();
     expect(() => parser.parse("C3**2")).toThrow();
     expect(() => parser.parse("C3:v999")).toThrow();
+  });
+
+  it("parses multiple voices separated by semicolons", () => {
+    const ast = parser.parse("C3 D3; G3 A3");
+    expect(Array.isArray(ast)).toBe(true);
+    expect(Array.isArray(ast[0])).toBe(true);
+    expect(Array.isArray(ast[1])).toBe(true);
+
+    expect(ast[0]).toEqual([
+      { type: "note", pitch: "C3", duration: 1, velocity: 100 },
+      { type: "note", pitch: "D3", duration: 1, velocity: 100 },
+    ]);
+
+    expect(ast[1]).toEqual([
+      { type: "note", pitch: "G3", duration: 1, velocity: 100 },
+      { type: "note", pitch: "A3", duration: 1, velocity: 100 },
+    ]);
+  });
+
+  it("handles newlines after semicolons", () => {
+    const ast = parser.parse("C3 D3;\nG3 A3");
+    expect(ast.length).toBe(2);
+    expect(ast[0].length).toBe(2);
+    expect(ast[1].length).toBe(2);
   });
 });

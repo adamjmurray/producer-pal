@@ -118,9 +118,51 @@ C3*2 [E3 G3] R/2 F3:v120/2 R/2 [D3 F3 A3]:v90*4
 4. Duration modifiers must use positive integers or decimal numbers
 5. Velocity must come before duration
 
+# Multi-Voice Support
+
+## Multiple Voices
+
+ToneLang supports polyphonic compositions with independent voices using semicolons:
+
+```
+<voice1>; <voice2>; <voice3>
+```
+
+- Voices are separated by semicolons (`;`)
+- Each voice starts at time zero and plays simultaneously
+- Voices can have different rhythms, note patterns, and durations
+- Whitespace including newlines after semicolons is ignored
+
+## When to Use
+
+- **Multiple Voices**: For independent musical lines that overlap or run simultaneously with different rhythms
+  (counterpoint)
+- **Chords**: For notes that should always sound together with the same rhythm and duration
+
+## Examples
+
+Basic two-voice counterpoint:
+
+```
+C3 D3 E3 F3; G2 A2 B2 C3
+```
+
+Complex rhythmic interaction:
+
+```
+C3*2 D3 E3/2 F3/2;
+G2*4 A2*2
+```
+
+Voice crossing with different rhythms:
+
+```
+C3 D3 E3 F3 G3;
+G3 F3 E3 D3 C3
+```
+
 ## Future Extensions
 
 Planned for future versions:
 
 - Articulation symbols (staccato, legato)
-- Multiple voices/counterpoint

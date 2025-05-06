@@ -84,4 +84,36 @@ describe("parseToneLang", () => {
     expect(result[1].duration).toBeCloseTo(1 / 1.5, 5);
     expect(result[1].start_time).toBeCloseTo(1.5);
   });
+
+  it("parses multiple voices into a flattened note list", () => {
+    const result = parseToneLang("C3 D3; G3 A3");
+
+    expect(result.length).toBe(4);
+
+    // Check pitches
+    expect(result[0].pitch).toBe(60); // C3
+    expect(result[1].pitch).toBe(62); // D3
+    expect(result[2].pitch).toBe(67); // G3
+    expect(result[3].pitch).toBe(69); // A3
+
+    // Check timing
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(1);
+    expect(result[2].start_time).toBe(0); // Second voice starts at 0
+    expect(result[3].start_time).toBe(1);
+  });
+
+  it("handles complex multi-voice patterns", () => {
+    const result = parseToneLang("C3*2 D3/2 E3/2; G3 A3*2 B3");
+
+    expect(result.length).toBe(6);
+
+    // Check timing
+    expect(result[0].duration).toBe(2); // C3*2
+    expect(result[1].start_time).toBe(2); // After C3*2
+    expect(result[1].duration).toBe(0.5); // D3/2
+
+    expect(result[3].start_time).toBe(0); // G3 starts at beginning of second voice
+    expect(result[4].duration).toBe(2); // A3*2
+  });
 });

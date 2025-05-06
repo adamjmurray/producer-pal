@@ -91,6 +91,19 @@ function parseToneLang(musicString) {
   if (!musicString) return [];
 
   const ast = parser.parse(musicString);
+
+  // Check if this is a multi-voice AST (array of arrays)
+  if (Array.isArray(ast) && ast.length > 0 && Array.isArray(ast[0]) && ast[0].type === undefined) {
+    // Process multiple voices
+    const allEvents = [];
+    for (const voice of ast) {
+      const voiceEvents = convertToneLangAstToEvents(voice);
+      allEvents.push(...voiceEvents);
+    }
+    return allEvents;
+  }
+
+  // Single voice (backward compatible format)
   return convertToneLangAstToEvents(ast);
 }
 

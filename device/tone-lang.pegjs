@@ -3,7 +3,19 @@
 
 // Entry point
 start
-  = _ elements:elementList _ { return elements; }
+  = _ content:multiVoiceOrSingleVoice _ { return content; }
+
+// Either a multi-voice structure or a single voice flat array
+multiVoiceOrSingleVoice
+  = voices:voiceList { return voices.length === 1 ? voices[0] : voices; }
+
+voiceList
+  = head:voice tail:(_ ";" _ voice)* {
+      return [head, ...tail.map(t => t[3])];
+    }
+
+voice
+  = elements:elementList { return elements; }
 
 elementList
   = head:element tail:(_ element)* {

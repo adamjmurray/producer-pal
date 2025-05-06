@@ -109,26 +109,56 @@ function getRest(duration) {
  * @returns {string} ToneLang representation of the notes
  */
 function convertClipNotesToToneLang(clipNotes) {
-  if (!clipNotes || clipNotes.length === 0) {
-    return "";
-  }
+  if (!clipNotes || clipNotes.length === 0) return "";
 
   // Sort notes by start time
   clipNotes.sort((a, b) => a.start_time - b.start_time);
 
+  // Separate notes into voices
+  const voices = [];
+
+  for (const note of clipNotes) {
+    // Try to find a voice where this note doesn't overlap
+    let foundVoice = false;
+
+    for (const voice of voices) {
+      const lastNote = voice[voice.length - 1];
+      const lastEndTime = lastNote.start_time + lastNote.duration;
+
+      // If note starts after or at the end of the last note in this voice
+      if (note.start_time >= lastEndTime - 0.001) {
+        // Small tolerance for floating point
+        voice.push(note);
+        foundVoice = true;
+        break;
+      }
+    }
+
+    // If no existing voice works, create a new one
+    if (!foundVoice) {
+      voices.push([note]);
+    }
+  }
+
+  // Format each voice
+  const formattedVoices = voices.map((voiceNotes) => formatVoice(voiceNotes));
+
+  // Join voices with semicolons
+  return formattedVoices.join(";\n");
+}
+
+// Helper to format a single voice
+function formatVoice(notes) {
   // Group notes by start time to identify chords
   const noteGroups = [];
-  let currentGroup = [clipNotes[0]];
-  let currentTime = clipNotes[0].start_time;
+  let currentGroup = [notes[0]];
+  let currentTime = notes[0].start_time;
 
-  for (let i = 1; i < clipNotes.length; i++) {
-    const note = clipNotes[i];
-
-    // If this note starts at the same time as the current group, add it to the group
+  for (let i = 1; i < notes.length; i++) {
+    const note = notes[i];
     if (Math.abs(note.start_time - currentTime) < 0.001) {
       currentGroup.push(note);
     } else {
-      // Otherwise, finish the current group and start a new one
       noteGroups.push({
         type: "notes",
         time: currentTime,
@@ -161,7 +191,6 @@ function convertClipNotesToToneLang(clipNotes) {
     if (group.type === "rest") {
       return getRest(group.duration);
     } else {
-      // Format as chord if multiple notes, otherwise as single note
       return group.notes.length > 1 ? formatChord(group.notes) : formatNote(group.notes[0]);
     }
   });
