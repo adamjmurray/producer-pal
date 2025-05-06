@@ -68,10 +68,12 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - In the Node for Max, log with `Max.post()` calls
 - In v8 code, we can use `const console = require("console");` to get a browser console-like logger (with `log()` and
   `error()` functions)
-- If you ever notice duplicate files in the project resources, let the user know! This is a mistake and will confuse
-  you. We need to fix it proactively when it's detected.
 - When requiring other files in the v8 code, we must use `./file.js` instead of `file.js`, otherwise it will not resolve
   correctly in the vitest test suite.
+- If you ever notice duplicate files in the project resources, let the user know! This is a mistake and will confuse
+  you. We need to fix it proactively when it's detected.
+- If you ever notice missing files in the project resources, do not try to infer their contents. Stop and ask if the
+  file is missing and should be added to project resources before continuing.
 
 ## Trusted online resources:
 
