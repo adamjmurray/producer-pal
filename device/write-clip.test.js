@@ -142,4 +142,86 @@ describe("writeClip", () => {
     writeClip(args);
     expect(mockLiveApiCall).toHaveBeenCalledWith("fire");
   });
+
+  it("handles multi-voice input and adds all notes to the clip", () => {
+    const multiVoiceInput = "C3 D3; G2 A2";
+
+    const args = {
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: multiVoiceInput,
+    };
+
+    const result = writeClip(args);
+
+    expect(result.success).toBe(true);
+    expect(result.noteCount).toBe(4); // 2 notes from each voice
+
+    const addNotesCall = mockLiveApiCall.mock.calls.find((call) => call[0] === "add_new_notes");
+    expect(addNotesCall).toBeDefined();
+
+    const addedNotes = addNotesCall[1].notes;
+    expect(addedNotes.length).toBe(4);
+
+    // First voice notes (C3, D3)
+    expect(addedNotes).toContainEqual(
+      expect.objectContaining({
+        pitch: 60, // C3
+        start_time: 0,
+      })
+    );
+    expect(addedNotes).toContainEqual(
+      expect.objectContaining({
+        pitch: 62, // D3
+        start_time: 1,
+      })
+    );
+
+    // Second voice notes (G2, A2)
+    expect(addedNotes).toContainEqual(
+      expect.objectContaining({
+        pitch: 55, // G2
+        start_time: 0,
+      })
+    );
+    expect(addedNotes).toContainEqual(
+      expect.objectContaining({
+        pitch: 57, // A2
+        start_time: 1,
+      })
+    );
+  });
+
+  it("handles complex multi-voice patterns with different rhythms", () => {
+    const complexMultiVoiceInput = "C3*2 D3/2 E3/2; G2*3 A2";
+
+    const args = {
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: complexMultiVoiceInput,
+    };
+
+    const result = writeClip(args);
+
+    expect(result.success).toBe(true);
+    expect(result.noteCount).toBe(5); // 3 notes from first voice, 2 from second
+
+    const addNotesCall = mockLiveApiCall.mock.calls.find((call) => call[0] === "add_new_notes");
+    const addedNotes = addNotesCall[1].notes;
+
+    // Check that notes from both voices are present
+    expect(addedNotes).toContainEqual(
+      expect.objectContaining({
+        pitch: 60, // C3
+        duration: 2,
+      })
+    );
+
+    expect(addedNotes).toContainEqual(
+      expect.objectContaining({
+        pitch: 55, // G2
+        duration: 3,
+      })
+    );
+  });
 });
