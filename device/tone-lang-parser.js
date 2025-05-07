@@ -172,7 +172,7 @@ function peg$parse(input, options) {
   const peg$c4 = "*";
   const peg$c5 = ".";
   const peg$c6 = "/";
-  const peg$c7 = ":v";
+  const peg$c7 = "v";
 
   const peg$r0 = /^[A-Ga-g]/;
   const peg$r1 = /^[0-9]/;
@@ -189,7 +189,7 @@ function peg$parse(input, options) {
   const peg$e7 = peg$literalExpectation("*", false);
   const peg$e8 = peg$literalExpectation(".", false);
   const peg$e9 = peg$literalExpectation("/", false);
-  const peg$e10 = peg$literalExpectation(":v", false);
+  const peg$e10 = peg$literalExpectation("v", false);
   const peg$e11 = peg$classExpectation([" ", "\t", "\r", "\n"], false, false, false);
 
   function peg$f0(content) {    return content;  }
@@ -963,9 +963,9 @@ function peg$parse(input, options) {
     let s0, s1, s2, s3;
 
     s0 = peg$currPos;
-    if (input.substr(peg$currPos, 2) === peg$c7) {
+    if (input.charCodeAt(peg$currPos) === 118) {
       s1 = peg$c7;
-      peg$currPos += 2;
+      peg$currPos++;
     } else {
       s1 = peg$FAILED;
       if (peg$silentFails === 0) { peg$fail(peg$e10); }

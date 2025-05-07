@@ -94,6 +94,9 @@ from Claude Desktop. We will shift focus to Live's Arrangement View in this phas
 Rough sketch (to be expanded as we make more progress on the previous phase):
 
 - Expand the functionality to work in Arrangement View in Live
+- Improve read-clip ToneLang algorithm for multiple voices to be smarter about creating voices from notes close to each
+  other in pitch. Consider building support for extending the duration of a note (maybe with ~N syntax) to directly
+  support overlapping notes and better represent voices with respect to proper voice leading.
 - When the Node for Max code creates Promises, it should also make them timeout after a little while
 - Expand on the clip generation capabilities (TBD)
 - Expand on the clip transformation capabilities (TBD)

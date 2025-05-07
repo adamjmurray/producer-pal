@@ -16,7 +16,9 @@ and LLMs to understand and generate.
 <NoteName><Accidental><Octave><Modifiers>
 ```
 
-Example: `C3` (Middle C), `F#4:v100*2` (F-sharp in octave 4, full velocity, double duration)
+Base/default duration is 1 quarter note (which is typically 1 beat).
+
+Example: `C3` (Middle C), `F#4v100*2` (F-sharp in octave 4, velocity 100, half note duration)
 
 ### Notes
 
@@ -41,15 +43,15 @@ Example: `C3` (Middle C), `F#4:v100*2` (F-sharp in octave 4, full velocity, doub
 
 Modifiers must be applied in this specific order (velocity, then duration):
 
-1. **Velocity** (optional): `:vNN` where NN is 0-127
+1. **Velocity** (optional): `vNN` where NN is 0-127
 2. **Duration** (optional): `*N` or `/N` where N is a positive integer or decimal
 
 ### Velocity
 
-- Format: `:vNN` where NN is 0-127 (e.g., `:v64`)
+- Format: `vNN` where NN is 0-127 (e.g., `v64`)
 - Placed immediately after the note or chord, before any duration modifier
-- Example: `C3:v80` (C3 at velocity 80)
-- Example: `[C3 E3 G3]:v100` (C major chord at velocity 100)
+- Example: `C3v80` (C3 at velocity 80)
+- Example: `[C3 E3 G3]v100` (C major chord at velocity 100)
 - Default velocity: 100
 
 ### Duration
@@ -80,7 +82,7 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ```
 
 ```
-C3:v80 D3/2:v100 R/2 [E3 G3 B3]*2:v90
+C3v80 D3v100/2 R/2 [E3 G3 B3]v90*2
 ```
 
 ## Timing Behavior
@@ -101,13 +103,13 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ### With Rhythm and Velocity
 
 ```
-C3:v80 D3:v100/2 R/2 [E3 G3 B3]:v90*2
+C3v80 D3v100/2 R/2 [E3 G3 B3]v90*2
 ```
 
 ### Complex Pattern
 
 ```
-C3*2 [E3 G3] R/2 F3:v120/2 R/2 [D3 F3 A3]:v90*4
+C3*2 [E3 G3] R/2 F3v120/2 R/2 [D3 F3 A3]v90*4
 ```
 
 ## Parsing & Validation Rules

@@ -75,9 +75,9 @@ duration
       return 1 / parseFloat(numStr);
     }
 
-// Velocity: :vNN
+// Velocity: vNN (changed from :vNN)
 velocity
-  = ":v" num:[0-9]+ {
+  = "v" num:[0-9]+ {
       const val = parseInt(num.join(""), 10);
       if (val < 0 || val > 127) {
         throw new Error("Velocity out of range (0–127)");
@@ -87,4 +87,3 @@ velocity
 
 // Whitespace
 _ = [ \t\r\n]*
-

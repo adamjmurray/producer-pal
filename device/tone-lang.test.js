@@ -25,7 +25,7 @@ describe("parseToneLang", () => {
   });
 
   it("parses notes with velocity", () => {
-    const result = parseToneLang("C3:v80 D3:v127 E3:v0");
+    const result = parseToneLang("C3v80 D3v127 E3v0");
     expect(result[0].velocity).toBe(80);
     expect(result[1].velocity).toBe(127);
     expect(result[2].velocity).toBe(0);
@@ -42,7 +42,7 @@ describe("parseToneLang", () => {
   });
 
   it("parses chords with velocity and duration", () => {
-    const result = parseToneLang("[C3 E3 G3]:v90*2");
+    const result = parseToneLang("[C3 E3 G3]v90*2");
     expect(result).toHaveLength(3);
     result.forEach((note) => {
       expect(note.duration).toBe(2);
@@ -66,8 +66,8 @@ describe("parseToneLang", () => {
   });
 
   it("handles invalid velocity range by throwing", () => {
-    expect(() => parseToneLang("C3:v999")).toThrow();
-    expect(() => parseToneLang("D3:v-5")).toThrow();
+    expect(() => parseToneLang("C3v999")).toThrow();
+    expect(() => parseToneLang("D3v-5")).toThrow();
   });
 
   it("handles invalid syntax by throwing", () => {

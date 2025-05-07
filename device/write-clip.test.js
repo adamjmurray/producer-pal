@@ -224,4 +224,45 @@ describe("writeClip", () => {
       })
     );
   });
+
+  it("handles notes with velocity modifiers", () => {
+    const args = {
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: "C3v80 D3v60 E3v40",
+    };
+
+    const result = writeClip(args);
+    expect(result.success).toBe(true);
+    expect(result.noteCount).toBe(3);
+
+    const addNotesCall = mockLiveApiCall.mock.calls.find((call) => call[0] === "add_new_notes");
+    const addedNotes = addNotesCall[1].notes;
+
+    // Verify velocities were parsed correctly
+    expect(addedNotes).toContainEqual(expect.objectContaining({ pitch: 60, velocity: 80 }));
+    expect(addedNotes).toContainEqual(expect.objectContaining({ pitch: 62, velocity: 60 }));
+    expect(addedNotes).toContainEqual(expect.objectContaining({ pitch: 64, velocity: 40 }));
+  });
+
+  it("handles chord with velocity and duration modifiers", () => {
+    const args = {
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: "[C3 E3 G3]v90*2",
+    };
+
+    const result = writeClip(args);
+    expect(result.success).toBe(true);
+    expect(result.noteCount).toBe(3);
+
+    const addNotesCall = mockLiveApiCall.mock.calls.find((call) => call[0] === "add_new_notes");
+    const addedNotes = addNotesCall[1].notes;
+
+    // All notes in chord should have the same velocity and duration
+    addedNotes.forEach((note) => {
+      expect(note.velocity).toBe(90);
+      expect(note.duration).toBe(2);
+    });
+  });
 });

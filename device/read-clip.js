@@ -25,7 +25,7 @@ function formatNote(note) {
 
   // Add velocity if not default (100)
   if (note.velocity !== 100) {
-    result += `:v${Math.round(note.velocity)}`;
+    result += `v${Math.round(note.velocity)}`;
   }
 
   // Add duration if not default (1.0)
@@ -68,7 +68,7 @@ function formatChord(notes) {
 
   // Add velocity if not default
   if (velocity !== 100) {
-    result += `:v${Math.round(velocity)}`;
+    result += `v${Math.round(velocity)}`;
   }
 
   // Add duration if not default

@@ -25,7 +25,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses notes with velocities and durations", () => {
-    const ast = parser.parse("C3:v90*2 D3:v60/2 E3:v100/4");
+    const ast = parser.parse("C3v90*2 D3v60/2 E3v100/4");
     expect(ast).toEqual([
       { type: "note", pitch: "C3", duration: 2, velocity: 90 },
       { type: "note", pitch: "D3", duration: 0.5, velocity: 60 },
@@ -34,7 +34,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses notes with velocity only", () => {
-    const ast = parser.parse("C3:v80 D3:v60");
+    const ast = parser.parse("C3v80 D3v60");
     expect(ast).toEqual([
       { type: "note", pitch: "C3", duration: 1, velocity: 80 },
       { type: "note", pitch: "D3", duration: 1, velocity: 60 },
@@ -62,7 +62,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses chords with velocity and duration", () => {
-    const ast = parser.parse("[C3 E3 G3]:v80*2");
+    const ast = parser.parse("[C3 E3 G3]v80*2");
     expect(ast).toEqual([
       {
         type: "chord",
@@ -83,7 +83,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses complex sequence", () => {
-    const ast = parser.parse("C3:v80 D3:v100/2 R/2 [E3 G3 B3]:v90*2");
+    const ast = parser.parse("C3v80 D3v100/2 R/2 [E3 G3 B3]v90*2");
     expect(ast).toEqual([
       { type: "note", pitch: "C3", duration: 1, velocity: 80 },
       { type: "note", pitch: "D3", duration: 0.5, velocity: 100 },
@@ -98,7 +98,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses accidentals", () => {
-    const ast = parser.parse("F#3:v90 Eb3:v70");
+    const ast = parser.parse("F#3v90 Eb3v70");
     expect(ast).toEqual([
       { type: "note", pitch: "F#3", duration: 1, velocity: 90 },
       { type: "note", pitch: "Eb3", duration: 1, velocity: 70 },
@@ -122,7 +122,7 @@ describe("ToneLang Parser", () => {
   it("throws on invalid input", () => {
     expect(() => parser.parse("InvalidNote")).toThrow();
     expect(() => parser.parse("C3**2")).toThrow();
-    expect(() => parser.parse("C3:v999")).toThrow();
+    expect(() => parser.parse("C3v999")).toThrow();
   });
 
   it("parses multiple voices separated by semicolons", () => {
