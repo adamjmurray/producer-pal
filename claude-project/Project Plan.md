@@ -45,12 +45,13 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ Allow for notes in existing MIDI clips to be updated. `deleteExistingNotes: true|false` (default false) can be
     used to clear existing clips before setting the new notes.
   - set/update normal start/end points and loop start/end points
-  - Allow for MIDI clips to be deleted
+  - ✅ Allow for MIDI clips to be deleted
 - Track CRUD operations:
-  - create new tracks
-  - update tracks
-  - delete tracks
+  - create new tracks (write-track?)
+  - update tracks (also a write-track? for symmetry with write-clip?)
   - set/update track name and color (using "CSS syntax")
+  - read-track
+  - delete-track
 - Implement TongLang
   - ✅ support duration (assuming legato)
   - ✅ support rests
@@ -62,7 +63,6 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - as support for more features in ToneLang is added, both `write-clip` and `read-clip` need to be updated as well the
     the descriptions of the tools in the `mcp-server`
 - ✅ Support reading the notes of a clip and outputting in ToneLang syntax
-- Keep refactoring and cleaning things up as needed (~done, very happy with progress here)
 - Fix bugs. Current known issues:
   - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
     gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
