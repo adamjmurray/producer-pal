@@ -74,6 +74,9 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   you. We need to fix it proactively when it's detected.
 - If you ever notice missing files in the project resources, do not try to infer their contents. Stop and ask if the
   file is missing and should be added to project resources before continuing.
+- If all the code is updated, tests pass, but things don't work correctly in an end-to-end test, remember that the Max
+  for Live device hosting the MCP server needs to be restarted. The easiest way to do this is delete the device and then
+  undo to restore it.
 
 ## Trusted online resources:
 

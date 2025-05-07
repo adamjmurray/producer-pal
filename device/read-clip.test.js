@@ -99,18 +99,6 @@ describe("readClip", () => {
     expect(result.notes).toBeNull();
     expect(result.noteCount).toBeNull();
   });
-
-  it("returns error information when an exception occurs", () => {
-    // Force an error
-    mockLiveApiGet.mockImplementation(() => {
-      throw new Error("Test error");
-    });
-
-    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
-
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("Test error");
-  });
 });
 
 describe("convertClipNotesToToneLang", () => {
