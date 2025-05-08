@@ -56,6 +56,61 @@ describe("writeClip", () => {
     expect(mockLiveApiCall).toHaveBeenCalledWith("create_clip", expect.any(Number));
   });
 
+  it("should set marker and loop positions when provided", () => {
+    const args = {
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      start_marker: 0.5,
+      end_marker: 4.5,
+      loop_start: 1.0,
+      loop_end: 3.0,
+    };
+
+    writeClip(args);
+    expect(mockLiveApiSet).toHaveBeenCalledWith("start_marker", 0.5);
+    expect(mockLiveApiSet).toHaveBeenCalledWith("end_marker", 4.5);
+    expect(mockLiveApiSet).toHaveBeenCalledWith("loop_start", 1.0);
+    expect(mockLiveApiSet).toHaveBeenCalledWith("loop_end", 3.0);
+  });
+
+  it("should return all clip properties including marker positions", () => {
+    // Setup mock to return expected values for get()
+    mockLiveApiGet.mockImplementation((prop) => {
+      if (prop === "has_clip") return [0];
+      if (prop === "name") return ["Test Clip"];
+      if (prop === "length") return [4];
+      if (prop === "looping") return [1];
+      if (prop === "start_marker") return [0.5];
+      if (prop === "end_marker") return [4.5];
+      if (prop === "loop_start") return [1.0];
+      if (prop === "loop_end") return [3.0];
+      return [0];
+    });
+
+    const args = {
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      name: "Test Clip",
+      loop: true,
+      start_marker: 0.5,
+      end_marker: 4.5,
+      loop_start: 1.0,
+      loop_end: 3.0,
+    };
+
+    const result = writeClip(args);
+
+    expect(result.success).toBe(true);
+    expect(result.name).toBe("Test Clip");
+    expect(result.loop).toBe(true);
+    expect(result.start_marker).toBe(0.5);
+    expect(result.end_marker).toBe(4.5);
+    expect(result.loop_start).toBe(1.0);
+    expect(result.loop_end).toBe(3.0);
+    expect(result.type).toBe("midi");
+    expect(result.notes).toBeNull();
+  });
+
   it("should create a clip with notes when a valid notation string is provided", () => {
     const args = {
       trackIndex: 1,

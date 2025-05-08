@@ -44,7 +44,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ set/updated whether a clip is looping
   - ✅ Allow for notes in existing MIDI clips to be updated. `deleteExistingNotes: true|false` (default false) can be
     used to clear existing clips before setting the new notes.
-  - set/update normal start/end points and loop start/end points
+  - ✅ set/update normal start/end points and loop start/end points
   - ✅ Allow for MIDI clips to be deleted
 - Track CRUD operations:
   - create new tracks (write-track?)

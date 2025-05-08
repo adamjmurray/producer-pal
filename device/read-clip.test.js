@@ -99,6 +99,35 @@ describe("readClip", () => {
     expect(result.notes).toBeNull();
     expect(result.noteCount).toBeNull();
   });
+
+  it("includes marker and loop positions in clip information", () => {
+    mockLiveApiGet.mockImplementation((prop) => {
+      if (prop === "has_clip") return [1];
+      if (prop === "is_midi_clip") return [1];
+      if (prop === "name") return ["Test Clip"];
+      if (prop === "length") return [4];
+      if (prop === "looping") return [0];
+      if (prop === "start_marker") return [0.5];
+      if (prop === "end_marker") return [4.5];
+      if (prop === "loop_start") return [1.0];
+      if (prop === "loop_end") return [3.0];
+      return [0];
+    });
+
+    mockLiveApiCall.mockImplementation((method) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: [] });
+      }
+      return null;
+    });
+
+    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+
+    expect(result.start_marker).toBe(0.5);
+    expect(result.end_marker).toBe(4.5);
+    expect(result.loop_start).toBe(1.0);
+    expect(result.loop_end).toBe(3.0);
+  });
 });
 
 describe("convertClipNotesToToneLang", () => {

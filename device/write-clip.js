@@ -18,10 +18,14 @@ const { cssToLiveColor } = require("./utils");
 function writeClip({
   trackIndex,
   clipSlotIndex,
-  notes: toneLangString,
+  notes: toneLangString = null,
   name = null,
   color = null,
-  loop = false,
+  start_marker = null,
+  end_marker = null,
+  loop_start = null,
+  loop_end = null,
+  loop = null,
   autoplay = false,
   deleteExistingNotes = false,
 }) {
@@ -43,6 +47,7 @@ function writeClip({
   } else {
     // Existing clip - either modify or replace based on deleteExistingNotes
     if (deleteExistingNotes) {
+      // TODO: this could cause the name or color to be lost. We should remove the notes without deleting the clip
       clipSlot.call("delete_clip");
       clipSlot.call("create_clip", clipLength);
       resultMessage =
@@ -65,7 +70,25 @@ function writeClip({
     clip.set("color", liveColor);
   }
 
-  clip.set("looping", loop);
+  if (start_marker !== null) {
+    clip.set("start_marker", start_marker);
+  }
+
+  if (end_marker !== null) {
+    clip.set("end_marker", end_marker);
+  }
+
+  if (loop_start !== null) {
+    clip.set("loop_start", loop_start);
+  }
+
+  if (loop_end !== null) {
+    clip.set("loop_end", loop_end);
+  }
+
+  if (loop !== null) {
+    clip.set("looping", loop);
+  }
 
   // Add notes if there are any
   if (notes.length > 0) {
@@ -77,20 +100,22 @@ function writeClip({
     clipSlot.call("fire");
   }
 
-  // Get actual clip name and length for returning
-  const finalName = clip.get("name")?.[0] || "Unnamed";
-  const finalLength = clip.get("length")?.[0] || clipLength;
-
   // Return detailed result
   return {
     success: true,
+    message: resultMessage,
     trackIndex,
     clipSlotIndex,
-    clipName: finalName,
     type: "midi",
-    length: finalLength,
+    name: clip.get("name")?.[0],
+    length: clip.get("length")?.[0],
+    start_marker: clip.get("start_marker")?.[0],
+    end_marker: clip.get("end_marker")?.[0],
+    loop_start: clip.get("loop_start")?.[0],
+    loop_end: clip.get("loop_end")?.[0],
+    loop: clip.get("looping") > 0,
+    notes: toneLangString,
     noteCount: notes.length,
-    message: resultMessage,
   };
 }
 
