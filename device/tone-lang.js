@@ -1,6 +1,9 @@
 // device/tone-lang.js
 const parser = require("./tone-lang-parser");
 
+const DEFAULT_DURATION = 1;
+const DEFAULT_VELOCITY = 70;
+
 /**
  * Convert parsed ToneLang AST into note events with timing
  * @param {Array} ast - Parsed AST from Peggy parser
@@ -12,25 +15,30 @@ function convertToneLangAstToEvents(ast) {
 
   for (const item of ast) {
     if (item.type === "rest") {
-      currentTime += item.duration;
+      const rest = item;
+      currentTime += rest.duration ?? DEFAULT_DURATION;
     } else if (item.type === "note") {
+      const note = item;
       events.push({
-        pitch: item.pitch,
+        pitch: note.pitch,
         start_time: currentTime,
-        duration: item.duration,
-        velocity: item.velocity,
+        duration: note.duration ?? DEFAULT_DURATION,
+        velocity: note.velocity ?? DEFAULT_VELOCITY,
       });
-      currentTime += item.duration;
+      currentTime += item.duration ?? DEFAULT_DURATION;
     } else if (item.type === "chord") {
-      for (const noteObj of item.notes) {
+      const chord = item;
+      const chordDuration = chord.duration ?? DEFAULT_DURATION;
+      const chordVelocity = chord.velocity ?? DEFAULT_VELOCITY;
+      for (const note of item.notes) {
         events.push({
-          pitch: noteObj.pitch,
+          pitch: note.pitch,
           start_time: currentTime,
-          duration: item.duration,
-          velocity: item.velocity,
+          duration: note.duration ?? chordDuration,
+          velocity: note.velocity ?? chordVelocity,
         });
       }
-      currentTime += item.duration;
+      currentTime += chordDuration;
     }
   }
 

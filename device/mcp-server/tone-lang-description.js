@@ -59,7 +59,12 @@ Durations:
 - Decimal values supported (e.g., *1.5 = dotted quarter note)
 
 Rests: R with optional duration modifier (e.g., R, R*2, R/4)
-Chords: [C3 E3 G3] (notes played together)
+
+Chords: 
+- Basic example: [C3 E3 G3] (notes played together)
+- Individual notes in chords can have their own velocity and duration modifiers that override chord-level settings
+  - Example: [C3v90 E3 G3*2]v80*4 (C3 uses v90 but *4, E3 uses v80 and *4, G3 uses v80 but *2)
+
 Multiple voices: Use semicolons to separate independent voices (e.g., C3 D3 E3; G2 A2 B2)
 
 Examples:

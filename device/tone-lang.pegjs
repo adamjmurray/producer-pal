@@ -32,24 +32,27 @@ note
         type: "note", 
         pitch: pitch.pitch,
         name: pitch.name,
-        velocity: velocity ?? 70, 
-        duration: duration ?? 1 
+        velocity, 
+        duration,
       };
     }
 
 chord
-  = "[" _ notes:noteList _ "]" velocity:velocity? duration:duration? {
-      return { type: "chord", notes, velocity: velocity ?? 70, duration: duration ?? 1 };
+  = "[" _ head:note tail:(_ note)* _ "]" velocity:velocity? duration:duration? {
+      return { 
+        type: "chord", 
+        notes: [head, ...tail.map(t => t[1])], 
+        velocity,
+        duration,
+      };
     }
-
-noteList
-  = head:pitch tail:(_ pitch)* {
-      return [head, ...tail.map(t => t[1])];
-    }
-
+    
 rest
   = "R" duration:duration? {
-      return { type: "rest", duration: duration ?? 1 };
+      return { 
+        type: "rest", 
+        duration,
+      };
     }
 
 pitch

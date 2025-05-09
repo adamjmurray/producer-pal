@@ -94,6 +94,18 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 - Example: `[C3 E3 G3]` (C major triad)
 - All notes in a chord share the same start time, duration, and velocity unless individually modified
 
+### Chords and Note Overrides
+
+- Individual notes within a chord can have their own velocity and duration modifiers
+- Priority of modifiers:
+  1. Individual note modifiers (highest priority)
+  2. Chord-level modifiers (middle priority)
+  3. Default values (lowest priority)
+- Example: `[C3v100 E3 G3*2]v80*4`
+  - C3: velocity=100 (note override), duration=4 (chord level)
+  - E3: velocity=80 (chord level), duration=4 (chord level)
+  - G3: velocity=80 (chord level), duration=2 (note override)
+
 ### Modifiers
 
 Modifiers must be applied in this specific order:
@@ -192,6 +204,12 @@ C3< D3>/2 R/2 [E3 G3 B3]<<*2
 
 ```
 C3<<*2 [E3< G3>] R/2 F3<<<v120/2 R/2 [D3 F3 A3]<<*4
+```
+
+### Chord with Note Overrides
+
+```
+[C3v90*2 E3 G3v70/2]v80*4
 ```
 
 ## Parsing & Validation Rules

@@ -62,8 +62,12 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ rests
   - ✅ multiple voices
   - ✅ shorthand velocity
-  - modifiers on individual notes on the chord, with overriding behavior
-  - support articulations (^ makes notes shorter, \_ longer)
+  - ✅ modifiers on individual notes on the chord, with overriding behavior
+    - should we allow velocity shorthand to stack between note and chord (and let the explicit setting continue to
+      override)? Maybe if the code to do this is clean...
+  - support articulations (^ makes notes shorter, \_ longer). Default duration could become 75% of the time until the
+    next note, then: ^=50%, ^^=25%, ^^^=min(5%, 32nd note), _=100%, _=125%, \_\_\_=200% (or end of next note might be
+    interesting)
   - check over whitespace handling, I suspect there are issues
   - address any discrepancies between the spec and grammar
 - ✅ Support reading the notes of a clip and outputting in ToneLang syntax
@@ -75,6 +79,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - Claude tried the syntax "D4\*1.5", which should be supported (it is now, but wasn't at the time). The error
     reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9], [A-Ga-g], or end of input but "."
     found.". Add tests for having good error message in the syntax.
+  - After starting a new voice, rests are not added to offset the voice's start time correctly
 - Add tests, tentatively with vitest
   - ✅ Test list-tracks
   - ✅ Test create-clip

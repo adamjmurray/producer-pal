@@ -18,9 +18,9 @@ describe("ToneLang Parser", () => {
   it("parses simple notes", () => {
     const ast = parser.parse("C3 D3 E3");
     expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 1, velocity: 70 },
-      { type: "note", name: "D3", pitch: 62, duration: 1, velocity: 70 },
-      { type: "note", name: "E3", pitch: 64, duration: 1, velocity: 70 },
+      { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
+      { type: "note", name: "D3", pitch: 62, duration: null, velocity: null },
+      { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
     ]);
   });
 
@@ -36,16 +36,16 @@ describe("ToneLang Parser", () => {
   it("parses notes with velocity only", () => {
     const ast = parser.parse("C3v80 D3v60");
     expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 1, velocity: 80 },
-      { type: "note", name: "D3", pitch: 62, duration: 1, velocity: 60 },
+      { type: "note", name: "C3", pitch: 60, duration: null, velocity: 80 },
+      { type: "note", name: "D3", pitch: 62, duration: null, velocity: 60 },
     ]);
   });
 
   it("parses notes with duration only", () => {
     const ast = parser.parse("C3*2 D3/2");
     expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 2, velocity: 70 },
-      { type: "note", name: "D3", pitch: 62, duration: 0.5, velocity: 70 },
+      { type: "note", name: "C3", pitch: 60, duration: 2, velocity: null },
+      { type: "note", name: "D3", pitch: 62, duration: 0.5, velocity: null },
     ]);
   });
 
@@ -55,12 +55,12 @@ describe("ToneLang Parser", () => {
       {
         type: "chord",
         notes: [
-          { name: "C3", pitch: 60 },
-          { name: "E3", pitch: 64 },
-          { name: "G3", pitch: 67 },
+          { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
+          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
+          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
         ],
-        duration: 1,
-        velocity: 70,
+        duration: null,
+        velocity: null,
       },
     ]);
   });
@@ -71,9 +71,9 @@ describe("ToneLang Parser", () => {
       {
         type: "chord",
         notes: [
-          { name: "C3", pitch: 60 },
-          { name: "E3", pitch: 64 },
-          { name: "G3", pitch: 67 },
+          { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
+          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
+          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
         ],
         duration: 2,
         velocity: 80,
@@ -84,7 +84,7 @@ describe("ToneLang Parser", () => {
   it("parses rests", () => {
     const ast = parser.parse("R R/2 R*2");
     expect(ast).toEqual([
-      { type: "rest", duration: 1 },
+      { type: "rest", duration: null },
       { type: "rest", duration: 0.5 },
       { type: "rest", duration: 2 },
     ]);
@@ -93,15 +93,15 @@ describe("ToneLang Parser", () => {
   it("parses complex sequence", () => {
     const ast = parser.parse("C3v80 D3v100/2 R/2 [E3 G3 B3]v90*2");
     expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 1, velocity: 80 },
+      { type: "note", name: "C3", pitch: 60, duration: null, velocity: 80 },
       { type: "note", name: "D3", pitch: 62, duration: 0.5, velocity: 100 },
       { type: "rest", duration: 0.5 },
       {
         type: "chord",
         notes: [
-          { name: "E3", pitch: 64 },
-          { name: "G3", pitch: 67 },
-          { name: "B3", pitch: 71 },
+          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
+          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
+          { type: "note", name: "B3", pitch: 71, duration: null, velocity: null },
         ],
         duration: 2,
         velocity: 90,
@@ -112,24 +112,24 @@ describe("ToneLang Parser", () => {
   it("parses accidentals", () => {
     const ast = parser.parse("F#3v90 Eb3v70");
     expect(ast).toEqual([
-      { type: "note", name: "F#3", pitch: 66, duration: 1, velocity: 90 },
-      { type: "note", name: "Eb3", pitch: 63, duration: 1, velocity: 70 },
+      { type: "note", name: "F#3", pitch: 66, duration: null, velocity: 90 },
+      { type: "note", name: "Eb3", pitch: 63, duration: null, velocity: 70 },
     ]);
   });
 
   it("ignores whitespace", () => {
     const ast = parser.parse(" C3  D3 \n [E3 G3] ");
     expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 1, velocity: 70 },
-      { type: "note", name: "D3", pitch: 62, duration: 1, velocity: 70 },
+      { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
+      { type: "note", name: "D3", pitch: 62, duration: null, velocity: null },
       {
         type: "chord",
         notes: [
-          { name: "E3", pitch: 64 },
-          { name: "G3", pitch: 67 },
+          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
+          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
         ],
-        duration: 1,
-        velocity: 70,
+        duration: null,
+        velocity: null,
       },
     ]);
   });
@@ -147,13 +147,13 @@ describe("ToneLang Parser", () => {
     expect(Array.isArray(ast[1])).toBe(true);
 
     expect(ast[0]).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 1, velocity: 70 },
-      { type: "note", name: "D3", pitch: 62, duration: 1, velocity: 70 },
+      { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
+      { type: "note", name: "D3", pitch: 62, duration: null, velocity: null },
     ]);
 
     expect(ast[1]).toEqual([
-      { type: "note", name: "G3", pitch: 67, duration: 1, velocity: 70 },
-      { type: "note", name: "A3", pitch: 69, duration: 1, velocity: 70 },
+      { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
+      { type: "note", name: "A3", pitch: 69, duration: null, velocity: null },
     ]);
   });
 
@@ -167,9 +167,9 @@ describe("ToneLang Parser", () => {
   it("parses notes with shorthand velocity", () => {
     const ast = parser.parse("C3< D3> E3<<");
     expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 1, velocity: 90 },
-      { type: "note", name: "D3", pitch: 62, duration: 1, velocity: 50 },
-      { type: "note", name: "E3", pitch: 64, duration: 1, velocity: 110 },
+      { type: "note", name: "C3", pitch: 60, duration: null, velocity: 90 },
+      { type: "note", name: "D3", pitch: 62, duration: null, velocity: 50 },
+      { type: "note", name: "E3", pitch: 64, duration: null, velocity: 110 },
     ]);
   });
 
@@ -179,11 +179,11 @@ describe("ToneLang Parser", () => {
       {
         type: "chord",
         notes: [
-          { name: "C3", pitch: 60 },
-          { name: "E3", pitch: 64 },
-          { name: "G3", pitch: 67 },
+          { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
+          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
+          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
         ],
-        duration: 1,
+        duration: null,
         velocity: 90,
       },
     ]);
@@ -192,8 +192,8 @@ describe("ToneLang Parser", () => {
   it("handles extreme shorthand velocity values", () => {
     const ast = parser.parse("C3<<< D3>>>");
     expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: 1, velocity: 127 },
-      { type: "note", name: "D3", pitch: 62, duration: 1, velocity: 10 },
+      { type: "note", name: "C3", pitch: 60, duration: null, velocity: 127 },
+      { type: "note", name: "D3", pitch: 62, duration: null, velocity: 10 },
     ]);
   });
 });
