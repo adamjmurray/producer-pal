@@ -8,6 +8,10 @@ const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 const appServer = createExpressApp();
 
 const PORT = 3000;
-appServer.listen(PORT, () => {
-  Max.post(`[${now()}] MCP Server running at http://localhost:${PORT}/mcp`);
-});
+appServer
+  .listen(PORT, () => {
+    Max.post(`[${now()}] MCP Server running at http://localhost:${PORT}/mcp`);
+  })
+  .on("error", (error) => {
+    throw new Error(error.code === "EADDRINUSE" ? `Port ${PORT} is already in use.` : `Server error: ${error}`);
+  });
