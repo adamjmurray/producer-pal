@@ -5,7 +5,6 @@
 start
   = _ content:multiVoiceOrSingleVoice _ { return content; }
 
-// Either a multi-voice structure or a single voice flat array
 multiVoiceOrSingleVoice
   = voices:voiceList { return voices.length === 1 ? voices[0] : voices; }
 
@@ -27,44 +26,60 @@ element
   / note
   / rest
 
-// Notes
 note
   = pitch:pitch velocity:velocity? duration:duration? {
-      return { type: "note", pitch, velocity: velocity ?? 70, duration: duration ?? 1 };
+      return { 
+        type: "note", 
+        pitch: pitch.pitch,
+        name: pitch.name,
+        velocity: velocity ?? 70, 
+        duration: duration ?? 1 
+      };
     }
 
-// Chords
 chord
   = "[" _ notes:noteList _ "]" velocity:velocity? duration:duration? {
       return { type: "chord", notes, velocity: velocity ?? 70, duration: duration ?? 1 };
     }
 
 noteList
-  = head:noteInner tail:(_ noteInner)* {
+  = head:pitch tail:(_ pitch)* {
       return [head, ...tail.map(t => t[1])];
     }
 
-noteInner
-  = pitch:pitch {
-      return { pitch };
-    }
-
-// Rest
 rest
   = "R" duration:duration? {
       return { type: "rest", duration: duration ?? 1 };
     }
 
-// Pitch: note name + octave
 pitch
-  = noteName:[A-Ga-g] accidental:accidental? octave:[0-9] {
-      return noteName.toUpperCase() + (accidental ?? "") + octave;
+  = pitchClass:pitchClass octave:integer {
+      const name = `${pitchClass.name}${octave}`;
+      const pitch = (octave + 2) * 12 + pitchClass.value;
+      if (pitch < 0 || pitch > 127) throw new Error(`MIDI pitch ${pitch} (${name}) outside valid range 0-127`);
+      return {pitch, name};
     }
 
-accidental
-  = "#" / "b"
+pitchClass
+  = pc:("C#" / "Db" / "D#" / "Eb" / "F#" / "Gb" / "G#" / "Ab" / "A#" / "Bb" / "B#" / "Cb" / 
+        "C" / "D" / "E" / "F" / "G" / "A" / "B") {
+      const values = {
+        "C": 0,
+        "C#": 1, "Db": 1,
+        "D": 2,
+        "D#": 3, "Eb": 3,
+        "E": 4, "Fb": 4,
+        "F": 5, "E#": 5,
+        "F#": 6, "Gb": 6,
+        "G": 7,
+        "G#": 8, "Ab": 8,
+        "A": 9,
+        "A#": 10, "Bb": 10,
+        "B": 11
+      };
+      return { name: pc, value: values[pc] };
+    }
 
-// Velocity: explicit or shorthand
 velocity
   = explicit_velocity
   / shorthand_velocity
@@ -96,6 +111,9 @@ duration
       const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
       return 1 / parseFloat(numStr);
     }
+
+integer
+  = "-"? [0-9]+ { return parseInt(text(), 10); }
 
 // Whitespace
 _ = [ \t\r\n]*

@@ -137,4 +137,19 @@ describe("parseToneLang", () => {
     expect(result[0].velocity).toBe(127);
     expect(result[1].velocity).toBe(10);
   });
+
+  it("parses notes with negative octaves", () => {
+    const result = parseToneLang("C-2 C-1 C0 G8");
+    expect(result).toHaveLength(4);
+    expect(result[0].pitch).toBe(0); // C-2 is MIDI pitch 0
+    expect(result[1].pitch).toBe(12); // C-1 is MIDI pitch 12
+    expect(result[2].pitch).toBe(24); // C0 is MIDI pitch 24
+    expect(result[3].pitch).toBe(127); // G8 is MIDI pitch 24
+  });
+
+  it("throws an error for pitches outside MIDI range", () => {
+    expect(() => parseToneLang("C-3")).toThrow(/outside valid range/);
+    expect(() => parseToneLang("Ab8")).toThrow(/outside valid range/);
+    expect(() => parseToneLang("C9")).toThrow(/outside valid range/);
+  });
 });

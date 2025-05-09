@@ -20,10 +20,9 @@ Sequence   ::= Element? (WS Element)*
 Element    ::= Note | Chord | Rest
 
 Note       ::= Pitch Velocity? Duration?
-Pitch      ::= NoteName Accidental? Octave
-NoteName   ::= "A" | "B" | "C" | "D" | "E" | "F" | "G"
-Accidental ::= "#" | "b"
-Octave     ::= SignedInteger
+Pitch      ::= PitchClass Octave
+PitchClass ::= "C" | "C#" | "Db" | "D" | "D#" | "Eb" | "E" | "F" | "F#" | "Gb" | "G" | "G#" | "Ab" | "A" | "A#" | "Bb" | "B"
+Octave     ::= SignedInteger  // -2 to 8 for valid MIDI range
 
 Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration?
 
@@ -79,18 +78,15 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 
 ### Pitches
 
-```
-Pitch ::= NoteName [Accidental] Octave
-```
-
-- **Note names**: `A` through `G` (case-insensitive)
-- **Octave**: Integer specifying the octave in the range -2 to 8 (e.g., `C3` where `3` is the octave. `C-2` is the
-  lowest pitch at MIDI pitch 0)
+- PitchClass is a note name and optional accidental
+  - Note names: `A` through `G` (case-sensitive)
+  - Accidentals
+    - Sharp: `#` (e.g., `C#3`)
+    - Flat: `b` (e.g., `Eb3`)
+- Octave: Integer specifying the octave in the range -2 to 8 (e.g., `C3` where `3` is the octave. `C-2` is the lowest
+  pitch at MIDI pitch 0)
 - Middle C is defined as `C3`
-- Accidentals
-  - **Sharp**: `#` (e.g., `C#3`)
-  - **Flat**: `b` (e.g., `Eb3`)
-  - Enharmonic equivalents are treated identically (e.g., `D#3` and `Eb3` produce the same MIDI note)
+- Enharmonic equivalents are treated identically (e.g., `D#3` and `Eb3` produce the same MIDI note)
 
 ### Chords
 

@@ -14,10 +14,9 @@ Sequence   ::= Element? (WS Element)*
 Element    ::= Note | Chord | Rest
 
 Note       ::= Pitch Velocity? Duration?
-Pitch      ::= NoteName Accidental? Octave
-NoteName   ::= "A" | "B" | "C" | "D" | "E" | "F" | "G"
-Accidental ::= "#" | "b"
-Octave     ::= SignedInteger
+Pitch      ::= PitchClass Octave
+PitchClass ::= "C" | "C#" | "Db" | "D" | "D#" | "Eb" | "E" | "F" | "F#" | "Gb" | "G" | "G#" | "Ab" | "A" | "A#" | "Bb" | "B"
+Octave     ::= SignedInteger  // -2 to 8 for valid MIDI range
 
 Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration?
 
@@ -34,6 +33,7 @@ Divider    ::= "/" UnsignedDecimal
 ## Constraints 
 
 - Octave can range from -2 to 8
+  - The lowest note is C-2 (MIDI pitch 0) and the highest is G8 (MIDI pitch 127). Invalid pitches throw errors.
 - Velocity ranges from 0 to 127 (default: 70)
 - Default duration is 1 quarter note
 
