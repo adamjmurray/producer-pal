@@ -18,9 +18,9 @@ describe("ToneLang Parser", () => {
   it("parses simple notes", () => {
     const ast = parser.parse("C3 D3 E3");
     expect(ast).toEqual([
-      { type: "note", pitch: "C3", duration: 1, velocity: 100 },
-      { type: "note", pitch: "D3", duration: 1, velocity: 100 },
-      { type: "note", pitch: "E3", duration: 1, velocity: 100 },
+      { type: "note", pitch: "C3", duration: 1, velocity: 70 },
+      { type: "note", pitch: "D3", duration: 1, velocity: 70 },
+      { type: "note", pitch: "E3", duration: 1, velocity: 70 },
     ]);
   });
 
@@ -44,8 +44,8 @@ describe("ToneLang Parser", () => {
   it("parses notes with duration only", () => {
     const ast = parser.parse("C3*2 D3/2");
     expect(ast).toEqual([
-      { type: "note", pitch: "C3", duration: 2, velocity: 100 },
-      { type: "note", pitch: "D3", duration: 0.5, velocity: 100 },
+      { type: "note", pitch: "C3", duration: 2, velocity: 70 },
+      { type: "note", pitch: "D3", duration: 0.5, velocity: 70 },
     ]);
   });
 
@@ -56,7 +56,7 @@ describe("ToneLang Parser", () => {
         type: "chord",
         notes: [{ pitch: "C3" }, { pitch: "E3" }, { pitch: "G3" }],
         duration: 1,
-        velocity: 100,
+        velocity: 70,
       },
     ]);
   });
@@ -108,13 +108,13 @@ describe("ToneLang Parser", () => {
   it("ignores whitespace", () => {
     const ast = parser.parse(" C3  D3 \n [E3 G3] ");
     expect(ast).toEqual([
-      { type: "note", pitch: "C3", duration: 1, velocity: 100 },
-      { type: "note", pitch: "D3", duration: 1, velocity: 100 },
+      { type: "note", pitch: "C3", duration: 1, velocity: 70 },
+      { type: "note", pitch: "D3", duration: 1, velocity: 70 },
       {
         type: "chord",
         notes: [{ pitch: "E3" }, { pitch: "G3" }],
         duration: 1,
-        velocity: 100,
+        velocity: 70,
       },
     ]);
   });
@@ -132,13 +132,13 @@ describe("ToneLang Parser", () => {
     expect(Array.isArray(ast[1])).toBe(true);
 
     expect(ast[0]).toEqual([
-      { type: "note", pitch: "C3", duration: 1, velocity: 100 },
-      { type: "note", pitch: "D3", duration: 1, velocity: 100 },
+      { type: "note", pitch: "C3", duration: 1, velocity: 70 },
+      { type: "note", pitch: "D3", duration: 1, velocity: 70 },
     ]);
 
     expect(ast[1]).toEqual([
-      { type: "note", pitch: "G3", duration: 1, velocity: 100 },
-      { type: "note", pitch: "A3", duration: 1, velocity: 100 },
+      { type: "note", pitch: "G3", duration: 1, velocity: 70 },
+      { type: "note", pitch: "A3", duration: 1, velocity: 70 },
     ]);
   });
 

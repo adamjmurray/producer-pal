@@ -2,12 +2,14 @@
 /**
  * Exports a standardized description of ToneLang syntax for use in tool descriptions
  */
+// TODO: should have something like <NoteName><Accidental><Octave><Modifiers> from the spec,
+// and separate out different types of modifiers
 const TONE_LANG_DESCRIPTION = `<tone-lang-specification>
 ToneLang is a compact music notation syntax.
 
 Format: pitchClass+octave (C3 = middle C).
 Pitch classes: C Db D Eb E F Gb G Ab A Bb B, alternately spelled as C C# D D# E F F# G G# A A# B.
-Velocity: vNN (0–127; default = 100), must be placed before duration.
+Velocity: vNN (0–127; default = 70), must be placed before duration.
 Durations: quarter note is default, /N means 1/N of a quarter note, *N means N times a quarter note. N can be an integer or decimal.
 Duration examples: C3 = quarter note, C3/2 = eighth, C3/4 = sixteenth, C3*2 = half, C3*4 = whole, C3*1.5 = dotted quarter.
 Rests: R[optional *N or /N] (default rest duration = quarter rest, just like notes).

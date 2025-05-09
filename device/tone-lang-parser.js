@@ -202,10 +202,10 @@ function peg$parse(input, options) {
     return [head, ...tail.map(t => t[1])];
   }
   function peg$f5(pitch, velocity, duration) {
-    return { type: "note", pitch, duration: duration ?? 1, velocity: velocity ?? 100 };
+    return { type: "note", pitch, velocity: velocity ?? 70, duration: duration ?? 1 };
   }
   function peg$f6(notes, velocity, duration) {
-    return { type: "chord", notes, velocity: velocity ?? 100, duration: duration ?? 1 };
+    return { type: "chord", notes, velocity: velocity ?? 70, duration: duration ?? 1 };
   }
   function peg$f7(head, tail) {
     return [head, ...tail.map(t => t[1])];

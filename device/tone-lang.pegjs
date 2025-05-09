@@ -30,13 +30,13 @@ element
 // Notes
 note
   = pitch:pitch velocity:velocity? duration:duration? {
-      return { type: "note", pitch, duration: duration ?? 1, velocity: velocity ?? 100 };
+      return { type: "note", pitch, velocity: velocity ?? 70, duration: duration ?? 1 };
     }
 
 // Chords
 chord
   = "[" _ notes:noteList _ "]" velocity:velocity? duration:duration? {
-      return { type: "chord", notes, velocity: velocity ?? 100, duration: duration ?? 1 };
+      return { type: "chord", notes, velocity: velocity ?? 70, duration: duration ?? 1 };
     }
 
 noteList

@@ -12,9 +12,9 @@ describe("parseToneLang", () => {
   it("parses a sequence of single notes", () => {
     const result = parseToneLang("C3 D3 E3");
     expect(result).toHaveLength(3);
-    expect(result[0]).toMatchObject({ pitch: 60, start_time: 0, duration: 1 });
-    expect(result[1]).toMatchObject({ pitch: 62, start_time: 1, duration: 1 });
-    expect(result[2]).toMatchObject({ pitch: 64, start_time: 2, duration: 1 });
+    expect(result[0]).toEqual({ pitch: 60, velocity: 70, start_time: 0, duration: 1 });
+    expect(result[1]).toEqual({ pitch: 62, velocity: 70, start_time: 1, duration: 1 });
+    expect(result[2]).toEqual({ pitch: 64, velocity: 70, start_time: 2, duration: 1 });
   });
 
   it("parses notes with durations", () => {
@@ -37,7 +37,7 @@ describe("parseToneLang", () => {
     result.forEach((note) => {
       expect(note.start_time).toBe(0);
       expect(note.duration).toBe(1);
-      expect(note.velocity).toBe(100);
+      expect(note.velocity).toBe(70);
     });
   });
 
