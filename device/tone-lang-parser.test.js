@@ -148,4 +148,33 @@ describe("ToneLang Parser", () => {
     expect(ast[0].length).toBe(2);
     expect(ast[1].length).toBe(2);
   });
+
+  it("parses notes with shorthand velocity", () => {
+    const ast = parser.parse("C3< D3> E3<<");
+    expect(ast).toEqual([
+      { type: "note", pitch: "C3", duration: 1, velocity: 90 },
+      { type: "note", pitch: "D3", duration: 1, velocity: 50 },
+      { type: "note", pitch: "E3", duration: 1, velocity: 110 },
+    ]);
+  });
+
+  it("parses chords with shorthand velocity", () => {
+    const ast = parser.parse("[C3 E3 G3]<");
+    expect(ast).toEqual([
+      {
+        type: "chord",
+        notes: [{ pitch: "C3" }, { pitch: "E3" }, { pitch: "G3" }],
+        duration: 1,
+        velocity: 90,
+      },
+    ]);
+  });
+
+  it("handles extreme shorthand velocity values", () => {
+    const ast = parser.parse("C3<<< D3>>>");
+    expect(ast).toEqual([
+      { type: "note", pitch: "C3", duration: 1, velocity: 127 },
+      { type: "note", pitch: "D3", duration: 1, velocity: 10 },
+    ]);
+  });
 });

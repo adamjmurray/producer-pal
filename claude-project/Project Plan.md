@@ -53,15 +53,19 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - read-track
   - delete-track
 - Implement TongLang
-  - ✅ support duration (assuming legato)
-  - ✅ support rests
-  - ✅ support velocity
-  - ✅ support floating point duration multipliers
-  - support articulations (suggestion: support the reverse of an accent, '<' to lower the velocity, and skip legato
-    support for now)
-  - ✅ support multiple voices (counterpoint that's not block chords)
-  - as support for more features in ToneLang is added, both `write-clip` and `read-clip` need to be updated as well the
-    the descriptions of the tools in the `mcp-server`
+  - ✅ notes
+  - ✅ sequences
+  - ✅ explicit velocity
+  - ✅ duration (assuming legato)
+    - ✅ floating point duration multipliers
+  - ✅ chords
+  - ✅ rests
+  - ✅ multiple voices
+  - ✅ shorthand velocity
+  - modifiers on individual notes on the chord, with overriding behavior
+  - support articulations (^ makes notes shorter, \_ longer)
+  - check over whitespace handling, I suspect there are issues
+  - address any discrepancies between the spec and grammar
 - ✅ Support reading the notes of a clip and outputting in ToneLang syntax
 - Fix bugs. Current known issues:
   - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot

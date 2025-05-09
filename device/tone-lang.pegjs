@@ -64,6 +64,28 @@ pitch
 accidental
   = "#" / "b"
 
+// Velocity: explicit or shorthand
+velocity
+  = explicit_velocity
+  / shorthand_velocity
+
+explicit_velocity 
+  = "v" num:[0-9]+ {
+      const val = parseInt(num.join(""), 10);
+      if (val < 0 || val > 127) {
+        throw new Error("Velocity out of range (0–127)");
+      }
+      return val;
+    }
+
+shorthand_velocity
+  = "<<<" { return 127; }
+  / "<<" { return 110; }
+  / "<" { return 90; }
+  / ">>>" { return 10; }
+  / ">>" { return 30; }
+  / ">" { return 50; }
+
 // Duration: *2 or *1.5 or /2 or /1.5 etc
 duration
   = mul:"*" num:[0-9]+ decimal:("." [0-9]+)? {
@@ -73,16 +95,6 @@ duration
   / div:"/" num:[0-9]+ decimal:("." [0-9]+)? {
       const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
       return 1 / parseFloat(numStr);
-    }
-
-// Velocity: vNN (changed from :vNN)
-velocity
-  = "v" num:[0-9]+ {
-      const val = parseInt(num.join(""), 10);
-      if (val < 0 || val > 127) {
-        throw new Error("Velocity out of range (0–127)");
-      }
-      return val;
     }
 
 // Whitespace

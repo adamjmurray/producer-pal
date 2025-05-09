@@ -10,49 +10,135 @@ and LLMs to understand and generate.
 
 ## Core Syntax
 
-### Note Format
+### Syntax Overview
 
 ```
-<NoteName><Accidental><Octave><Modifiers>
+ToneLangExpression ::= Sequence | MultiVoice
+
+MultiVoice ::= Sequence (";" Sequence)+
+Sequence   ::= Element? (WS Element)*
+Element    ::= Note | Chord | Rest
+
+Note       ::= Pitch Velocity? Duration?
+Pitch      ::= NoteName Accidental? Octave
+NoteName   ::= "A" | "B" | "C" | "D" | "E" | "F" | "G"
+Accidental ::= "#" | "b"
+Octave     ::= SignedInteger
+
+Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration?
+
+Rest       ::= "R" Duration?
+
+Velocity          ::= ExplicitVelocity | ShorthandVelocity
+ExplicitVelocity  ::= "v" Digit Digit? Digit?
+ShorthandVelocity ::= "<" | "<<" | "<<<" | ">" | ">>" | ">>>"
+
+Duration          ::= Multiplier | Divider
+Multiplier        ::= "*" UnsignedDecimal
+Divider           ::= "/" UnsignedDecimal
+
+SignedDecimal   ::= "-"? UnsignedDecimal
+UnsignedDecimal ::= UnsignedInteger ("." UnsignedInteger)?
+SignedInteger   ::= "-"? UnsignedInteger
+UnsignedInteger ::= Digit+
+Digit           ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 ```
 
-Base/default duration is 1 quarter note (which is typically 1 beat).
+- In between tokens, extra whitespace is allowed (e.g. around the ";" in MultiVoice)
+- Octave can range from -2 to 8
+- Velocity can range from 0 to 127
+- Default velocity is 70
+- Default duration is 1 quarter note (and usually this is 1 beat)
 
-Example: `C3` (Middle C), `F#4v100*2` (F-sharp in octave 4, velocity 100, half note duration)
+### Examples
 
-### Notes
+#### Basic Elements
 
-- **Basic format**: `<NoteName><Octave>` (e.g., `C3`, `D4`)
+- Note: `C3` (C in octave 3, quarter note)
+- Note with modifiers: `E4v80*2` (E in octave 4, velocity 80, half note)
+- Chord: `[C3 E3 G3]` (C major triad)
+- Chord with modifiers: `[D3 F#3 A3]v90/2` (D major triad, velocity 90, eighth note)
+- Rest: `R*2` (half note rest)
+
+#### Simple Sequence
+
+`C3 D3 E3 F3 G3 A3 B3 C4` (C major scale, quarter notes)
+
+#### Complex Sequence
+
+`C3v90*2 [E3 G3]<<< R/2 F3>/4 [C4 E4 G4]v100*4`
+
+#### Two-Voice Counterpoint
+
+`C3 D3 E3 F3; G2 A2 B2 C3`
+
+#### Three-Voice Pattern with Mixed Rhythms
+
+`C3*2 D3/2 E3/2; G2*3 A2; [C4 E4 G4]v90*4`
+
+### Pitches
+
+```
+Pitch ::= NoteName [Accidental] Octave
+```
+
 - **Note names**: `A` through `G` (case-insensitive)
-- **Octave**: Integer specifying the octave (e.g., `C3` where `3` is the octave)
+- **Octave**: Integer specifying the octave in the range -2 to 8 (e.g., `C3` where `3` is the octave. `C-2` is the
+  lowest pitch at MIDI pitch 0)
 - Middle C is defined as `C3`
-
-### Accidentals
-
-- **Sharp**: `#` (e.g., `C#3`)
-- **Flat**: `b` (e.g., `Eb3`)
-- Enharmonic equivalents are treated identically (e.g., `D#3` and `Eb3` produce the same MIDI note)
+- Accidentals
+  - **Sharp**: `#` (e.g., `C#3`)
+  - **Flat**: `b` (e.g., `Eb3`)
+  - Enharmonic equivalents are treated identically (e.g., `D#3` and `Eb3` produce the same MIDI note)
 
 ### Chords
 
 - Enclose multiple notes in square brackets `[]`
 - Example: `[C3 E3 G3]` (C major triad)
-- All notes in a chord share the same start time, duration, and velocity
+- All notes in a chord share the same start time, duration, and velocity unless individually modified
 
 ### Modifiers
 
-Modifiers must be applied in this specific order (velocity, then duration):
+Modifiers must be applied in this specific order:
 
-1. **Velocity** (optional): `vNN` where NN is 0-127
+1. **Velocity** (optional): Either shorthand `<` and `>` symbols or explicit `vNN` format
 2. **Duration** (optional): `*N` or `/N` where N is a positive integer or decimal
 
 ### Velocity
+
+#### Explicit Velocity
 
 - Format: `vNN` where NN is 0-127 (e.g., `v64`)
 - Placed immediately after the note or chord, before any duration modifier
 - Example: `C3v80` (C3 at velocity 80)
 - Example: `[C3 E3 G3]v100` (C major chord at velocity 100)
-- Default velocity: 100
+- Default velocity: 70
+
+#### Shorthand Velocity (New)
+
+- Format: Up to three `<` or `>` symbols
+- `<` increases velocity (louder), `>` decreases velocity (quieter)
+- Mapping:
+  - `C4>>>` = velocity 10 (very quiet)
+  - `C4>>` = velocity 30 (quieter)
+  - `C4>` = velocity 50 (quiet)
+  - `C4` = velocity 70 (default)
+  - `C4<` = velocity 90 (loud)
+  - `C4<<` = velocity 110 (louder)
+  - `C4<<<` = velocity 127 (very loud/maximum)
+- When applied to chords, affects all notes within
+- Example: `[C3 E3 G3]<<` (C major chord, louder)
+
+#### Velocity Stacking
+
+- Velocity modifiers stack when applied to both individual notes in a chord and the chord itself
+- Each note's final velocity is the base 70 plus the sum of all applicable modifiers
+- Each `<` adds 20 to velocity, each `>` subtracts 20 from velocity
+- Example: `[C4< G4<<]<` results in:
+  - C4: 70 (base) + 20 (`<`) + 20 (chord's `<`) = 110
+  - G4: 70 (base) + 40 (`<<`) + 20 (chord's `<`) = 130, capped at 127
+- Explicit velocity (`vNN`) always takes precedence over shorthand modifiers
 
 ### Duration
 
@@ -82,7 +168,7 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ```
 
 ```
-C3v80 D3v100/2 R/2 [E3 G3 B3]v90*2
+C3< D3>/2 R/2 [E3 G3 B3]<<*2
 ```
 
 ## Timing Behavior
@@ -103,22 +189,22 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ### With Rhythm and Velocity
 
 ```
-C3v80 D3v100/2 R/2 [E3 G3 B3]v90*2
+C3< D3>/2 R/2 [E3 G3 B3]<<*2
 ```
 
-### Complex Pattern
+### Complex Pattern with Shorthand Velocity
 
 ```
-C3*2 [E3 G3] R/2 F3v120/2 R/2 [D3 F3 A3]v90*4
+C3<<*2 [E3< G3>] R/2 F3<<<v120/2 R/2 [D3 F3 A3]<<*4
 ```
 
 ## Parsing & Validation Rules
 
 1. Note names must be valid (A-G with optional # or b)
 2. Octave must be an integer
-3. Velocity must be within 0-127 range
+3. Velocity must be within 0-127 range (automatically capped)
 4. Duration modifiers must use positive integers or decimal numbers
-5. Velocity must come before duration
+5. Velocity modifiers must come before duration modifiers
 
 # Multi-Voice Support
 
@@ -146,21 +232,21 @@ ToneLang supports polyphonic compositions with independent voices using semicolo
 Basic two-voice counterpoint:
 
 ```
-C3 D3 E3 F3; G2 A2 B2 C3
+C3< D3 E3 F3<; G2>> A2 B2> C3
 ```
 
 Complex rhythmic interaction:
 
 ```
-C3*2 D3 E3/2 F3/2;
-G2*4 A2*2
+C3<<*2 D3< E3>/2 F3>/2;
+G2>>*4 A2>*2
 ```
 
 Voice crossing with different rhythms:
 
 ```
-C3 D3 E3 F3 G3;
-G3 F3 E3 D3 C3
+C3< D3 E3< F3< G3<;
+G3> F3> E3> D3> C3>
 ```
 
 ## Future Extensions

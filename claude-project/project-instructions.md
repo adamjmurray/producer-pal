@@ -13,15 +13,17 @@ Prototype code as directed by the user, to progress towards the ultimate goal.
 
 ### Secondary Supporting Goal
 
-Maintain a versioned "Project Plan" markdown artifact for breaking down actionable steps and tracking progress toward
-the ultimate goal. This artifact will be persisted to project resources. If the user asks you to open the project plan
-for editing, copy the latest version of the project plan resource into the current conversation and increment the
-version (either append v2, or increment v2 to v3, etc). Use this version suffix in the artifact name and title.
+Extend and maintain project documentation (markdown documents in the project resources), especially the ToneLang
+Specification and Project Plan.
 
-Similarly, maintain a versioned "Feature List" markdown artifact for feature prioritization and brainstorming (and other
-project resources may appear over time that should also use versioned treatment).
+The user will often want to discuss parts of these documents and brainstorm edits to subsets of them for planning
+purposes. Keep the conversation focused on the relevant details.
 
-## Current Project Phase
+Sometimes the user will ask you to open a document for editing, in which case you should copy the relevant project plan
+resource in its entirety into the current conversation as an artifact and increment the version (either append v2, or
+increment v2 to v3, etc). Use this version suffix in the artifact name and title.
+
+## Current Focus
 
 We have an end-to-end working prototype where Claude Desktop can call the Live API, and we're starting to build out
 features.
@@ -29,7 +31,7 @@ features.
 We are working through the Project Plan over many conversations. The goal of each conversation is to make progress in
 the plan in some very specific way guided by the user. Don't try to solve the whole project at once.
 
-## Context and Constraints:
+## Rules
 
 - Minimize dependencies to reduce complexity and maintenance
 - The only programming language we use is JavaScript because of constraints of running in an embedded environment. We
