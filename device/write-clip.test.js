@@ -1,8 +1,7 @@
 // device/write-clip.test.js
 import { describe, it, expect, vi } from "vitest";
 import { liveApiCall, liveApiSet, mockLiveApiGet, MockSequence } from "./mock-live-api";
-
-const { writeClip } = require("./write-clip");
+import { writeClip } from "./write-clip";
 
 describe("writeClip", () => {
   it("creates a new clip with notes when no clip exists", () => {

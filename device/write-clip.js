@@ -31,14 +31,13 @@ function writeClip({
   deleteExistingNotes = false,
 }) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
-  const hasClip = clipSlot.get("has_clip")?.[0] > 0;
   const notes = parseToneLang(toneLangString);
 
   // Calculate clip length based on the end time of the last note or use a default
   const lastNoteEndTime = notes.length > 0 ? Math.max(...notes.map((note) => note.start_time + note.duration)) : 0;
   const clipLength = Math.max(4, Math.ceil(lastNoteEndTime));
 
-  if (!hasClip) {
+  if (!clipSlot.getProperty("has_clip")) {
     clipSlot.call("create_clip", clipLength);
   }
   const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);

@@ -1,29 +1,6 @@
 // device/utils.test.js
 import { describe, it, expect } from "vitest";
-const { parseIds, parseId, liveColorToCss, cssToLiveColor } = require("./utils");
-
-describe("parseIds", () => {
-  it("converts Live API id arrays to id strings", () => {
-    expect(parseIds(["id", "1"])).toEqual(["id 1"]);
-    expect(parseIds(["id", "1", "id", "2"])).toEqual(["id 1", "id 2"]);
-    expect(parseIds(["id", "1", "id", "2", "id", "3"])).toEqual(["id 1", "id 2", "id 3"]);
-  });
-
-  it("handles empty arrays", () => {
-    expect(parseIds([])).toEqual([]);
-  });
-
-  it("handles odd-length arrays by pairing the last item with undefined", () => {
-    expect(parseIds(["id", "1", "id"])).toEqual(["id 1", "id undefined"]);
-  });
-});
-
-describe("parseId", () => {
-  it("converts a single Live API id array to an id string", () => {
-    expect(parseId(["id", "1"])).toBe("id 1");
-    expect(parseId(["path", "live_set"])).toBe("path live_set");
-  });
-});
+import { liveColorToCss, cssToLiveColor } from "./utils";
 
 describe("liveColorToCss", () => {
   it("converts Live color format to hex color strings", () => {

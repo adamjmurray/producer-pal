@@ -46,11 +46,16 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     used to clear existing clips before setting the new notes.
   - ✅ set/update normal start/end points and loop start/end points
   - ✅ Allow for MIDI clips to be deleted
+  - write clip to nonexistent clip slot auto-creates scenes (up to some limit like 500 or something like that)
 - Track CRUD operations:
   - create new tracks (write-track?)
   - update tracks (also a write-track? for symmetry with write-clip?)
   - set/update track name and color (using "CSS syntax")
-  - read-track
+  - read-track, almost done, but still needs to:
+    - return clip info
+    - enhance the drum pad info to return ToneLang pitch name like C4. Also need to dis-ambiguity my terminology around
+      named pitches and numerical midi pitch values (I think I overloaded `pitch` and it's confusing Haiku 3.5). Perhaps
+      for now I can keep calling it drumPad.pitch and simply change from numerical value to named pitched like C4.
   - delete-track
 - Implement TongLang
   - ✅ notes

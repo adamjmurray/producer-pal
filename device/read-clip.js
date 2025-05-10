@@ -201,7 +201,7 @@ function formatVoice(notes) {
 function readClip({ trackIndex, clipSlotIndex }) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
 
-  if (clipSlot.get("has_clip") == 0) {
+  if (!clipSlot.getProperty("has_clip")) {
     return {
       id: null,
       type: null,
@@ -215,29 +215,20 @@ function readClip({ trackIndex, clipSlotIndex }) {
 
   const result = {
     id: clip.id,
-    type: clip.get("is_midi_clip") > 0 ? "midi" : "audio",
-    name: clip.get("name")?.[0],
-    location: clip.get("is_arrangement_clip") > 0 ? "arrangement" : "session",
+    type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
+    name: clip.getProperty("name"),
+    location: clip.getProperty("is_arrangement_clip") ? "arrangement" : "session",
     trackIndex,
     clipSlotIndex,
-    color: liveColorToCss(clip.get("color")),
-    loop: clip.get("looping") > 0,
-    length: clip.get("length")?.[0], // NOTE: this is loop length even if start marker is earlier
-    start_marker: clip.get("start_marker")?.[0],
-    end_marker: clip.get("end_marker")?.[0],
-    loop_start: clip.get("loop_start")?.[0],
-    loop_end: clip.get("loop_end")?.[0],
-    is_playing: clip.get("is_playing") > 0,
+    color: liveColorToCss(clip.getProperty("color")),
+    loop: clip.getProperty("looping") > 0,
+    length: clip.getProperty("length"),
+    start_marker: clip.getProperty("start_marker"),
+    end_marker: clip.getProperty("end_marker"),
+    loop_start: clip.getProperty("loop_start"),
+    loop_end: clip.getProperty("loop_end"),
+    is_playing: clip.getProperty("is_playing") > 0,
   };
-
-  // start_time apparently always starts from 0 in session view
-  // TODO: these will be more relevant in arrangement view! needs a revisit then
-  // result.start_time = clip.get("start_time")?.[0];
-  // result.end_time = clip.get("end_time")?.[0];
-
-  // probably don't need this info
-  // result.is_recording = clip.get("is_recording") > 0;
-  // result.is_overdubbing = clip.get("is_overdubbing") > 0;
 
   if (result.type === "midi") {
     // Get the clip notes for MIDI clips

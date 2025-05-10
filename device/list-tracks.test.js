@@ -1,8 +1,7 @@
 // device/list-tracks.test.js
 import { describe, it, expect, vi } from "vitest";
 import { children, mockLiveApiGet } from "./mock-live-api";
-
-const { listTracks } = require("./list-tracks");
+import { listTracks } from "./list-tracks";
 
 describe("listTracks", () => {
   it("returns an empty array when no tracks exist", () => {

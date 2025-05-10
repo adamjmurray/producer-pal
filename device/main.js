@@ -1,9 +1,10 @@
 // device/main.js
-// The tool implementations with direct Live API access
+// Entry point for the tool implementations with direct Live API access
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 post(`[${now()}] loading main.js...\n`);
 
+require("./live-api-extensions.js");
 const console = require("./console.js");
 const { listTracks } = require("./list-tracks.js");
 const { readClip } = require("./read-clip.js");

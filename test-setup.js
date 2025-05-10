@@ -1,6 +1,9 @@
 import { beforeEach, vi } from "vitest";
 import { LiveAPI, liveApiId, liveApiGet, liveApiSet, liveApiCall, mockLiveApiGet } from "./device/mock-live-api";
 
+globalThis.LiveAPI = LiveAPI;
+require("./device/live-api-extensions");
+
 beforeEach(() => {
   liveApiId.mockReset();
   liveApiGet.mockReset();
@@ -18,6 +21,4 @@ beforeEach(() => {
     }
     return null;
   });
-
-  vi.stubGlobal("LiveAPI", LiveAPI);
 });

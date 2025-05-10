@@ -7,11 +7,9 @@
  * @returns {Object} Result object with success or error information
  */
 function deleteClip({ trackIndex, clipSlotIndex }) {
-  // Get the clip slot
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
 
-  // Check if the clip slot has a clip
-  if (clipSlot.get("has_clip") == 0) {
+  if (!clipSlot.getProperty("has_clip")) {
     return {
       success: false,
       trackIndex,
@@ -20,7 +18,6 @@ function deleteClip({ trackIndex, clipSlotIndex }) {
     };
   }
 
-  // Delete the clip
   clipSlot.call("delete_clip");
 
   return {

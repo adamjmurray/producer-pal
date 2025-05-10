@@ -1,6 +1,6 @@
 // device/tone-lang.test.js
 import { describe, it, expect } from "vitest";
-const { parseToneLang } = require("./tone-lang");
+import { parseToneLang } from "./tone-lang";
 
 describe("parseToneLang", () => {
   it("returns empty array for empty input", () => {

@@ -1,8 +1,7 @@
 // device/read-track.test.js
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { liveApiId, mockLiveApiGet, children } from "./mock-live-api";
-
-const { readTrack, DEVICE_TYPE_INSTRUMENT } = require("./read-track");
+import { readTrack, DEVICE_TYPE_INSTRUMENT } from "./read-track";
 
 describe("readTrack", () => {
   it("returns error when track does not exist", () => {
@@ -144,12 +143,12 @@ describe("readTrack", () => {
       pad1: {
         note: 36,
         name: "Kick",
-        chains: ["chain1"],
+        chains: children("chain1"),
       },
       pad2: {
         note: 38,
         name: "Snare",
-        chains: ["chain2"],
+        chains: children("chain2"),
       },
     });
 
@@ -202,7 +201,7 @@ describe("readTrack", () => {
       pad1: {
         note: 36,
         name: "Kick",
-        chains: ["chain1"],
+        chains: children("chain1"),
       },
       pad2: {
         note: 38,
@@ -212,7 +211,7 @@ describe("readTrack", () => {
       pad3: {
         note: 42,
         name: "HiHat",
-        chains: ["chain3"],
+        chains: children("chain3"),
       },
     });
 

@@ -1,8 +1,7 @@
 // device/read-clip.test.js
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { liveApiCall, mockLiveApiGet } from "./mock-live-api";
-
-const { readClip, convertClipNotesToToneLang, midiPitchToNoteName } = require("./read-clip");
+import { readClip, convertClipNotesToToneLang, midiPitchToNoteName } from "./read-clip";
 
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists", () => {
