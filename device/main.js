@@ -7,11 +7,13 @@ post(`[${now()}] loading main.js...\n`);
 const console = require("./console.js");
 const { listTracks } = require("./list-tracks.js");
 const { readClip } = require("./read-clip.js");
+const { readTrack } = require("./read-track.js");
 const { writeClip } = require("./write-clip.js");
 const { deleteClip } = require("./delete-clip.js");
 
 const tools = {
   "list-tracks": () => listTracks(),
+  "read-track": (args) => readTrack(args),
   "read-clip": (args) => readClip(args),
   "write-clip": (args) => writeClip(args),
   "delete-clip": (args) => deleteClip(args),
