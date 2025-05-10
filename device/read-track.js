@@ -102,4 +102,4 @@ function readTrack({ trackIndex }) {
   return trackInfo;
 }
 
-module.exports = { readTrack };
+module.exports = { readTrack, DEVICE_TYPE_INSTRUMENT };
