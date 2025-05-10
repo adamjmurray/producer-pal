@@ -8,6 +8,24 @@ const { createMcpServer } = require("./create-mpc-server.js");
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();
 
+const methodNotAllowed = {
+  jsonrpc: "2.0",
+  error: {
+    code: ErrorCode.ConnectionClosed,
+    message: "Method not allowed.",
+  },
+  id: null,
+};
+
+const internalError = (message) => ({
+  jsonrpc: "2.0",
+  error: {
+    code: ErrorCode.InternalError,
+    message: `Internal server error: ${message}`,
+  },
+  id: null,
+});
+
 // Listen for responses from Max patch
 Max.addHandler("mcp_response", (responseJson) => {
   Max.post(`mcp_response(${responseJson})`);
@@ -48,39 +66,16 @@ function createExpressApp() {
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
       Max.post(`Error handling MCP request: ${error}`, Max.POST_LEVELS.ERROR);
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: "2.0",
-          error: {
-            code: ErrorCode.InternalError,
-            message: `Internal server error: ${error.message}`,
-          },
-          id: null,
-        });
-      }
+      res.status(500).json(internalError(error.message));
     }
   });
 
-  app.get("/mcp", async (req, res) => {
-    res.status(405).json({
-      jsonrpc: "2.0",
-      error: {
-        code: ErrorCode.InvalidRequest,
-        message: "Invalid request: unsupported endpoint GET /mcp",
-      },
-      id: null,
-    });
+  app.get("/mcp", async (_req, res) => {
+    res.status(405).json(methodNotAllowed);
   });
 
-  app.delete("/mcp", async (req, res) => {
-    res.status(405).json({
-      jsonrpc: "2.0",
-      error: {
-        code: ErrorCode.InvalidRequest,
-        message: "Invalid request: unsupported endpoint DELETE /mcp",
-      },
-      id: null,
-    });
+  app.delete("/mcp", async (_req, res) => {
+    res.status(405).json(methodNotAllowed);
   });
 
   return app;
