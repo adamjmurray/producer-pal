@@ -1,6 +1,7 @@
 // device/write-clip.js
 const { parseToneLang } = require("./tone-lang");
 const { cssToLiveColor } = require("./utils");
+const { readClip } = require("./read-clip");
 
 /**
  * Creates or updates a MIDI clip at the specified track and clip slot
@@ -37,86 +38,55 @@ function writeClip({
   const lastNoteEndTime = notes.length > 0 ? Math.max(...notes.map((note) => note.start_time + note.duration)) : 0;
   const clipLength = Math.max(4, Math.ceil(lastNoteEndTime));
 
-  let resultMessage;
-
-  // Handle creating a new clip or working with an existing one
   if (!hasClip) {
-    // No existing clip, create a new one
     clipSlot.call("create_clip", clipLength);
-    resultMessage = notes.length > 0 ? `Created clip with ${notes.length} notes` : "Created empty clip";
-  } else {
-    // Existing clip - either modify or replace based on deleteExistingNotes
-    if (deleteExistingNotes) {
-      // TODO: this could cause the name or color to be lost. We should remove the notes without deleting the clip
-      clipSlot.call("delete_clip");
-      clipSlot.call("create_clip", clipLength);
-      resultMessage =
-        notes.length > 0 ? `Replaced with new clip containing ${notes.length} notes` : "Replaced with empty clip";
-    } else {
-      resultMessage = notes.length > 0 ? `Updated clip with ${notes.length} new notes` : "Updated clip properties";
-    }
   }
-
-  // Get the clip object (whether it's a newly created clip or an existing one)
   const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
 
-  // Set clip properties
-  if (name !== null) {
+  if (deleteExistingNotes) {
+    clip.call("remove_notes_extended", 0, 127, 0, clip.get("length"));
+  }
+
+  if (name != null) {
     clip.set("name", name);
   }
 
-  if (color !== null) {
-    const liveColor = cssToLiveColor(color);
-    clip.set("color", liveColor);
+  if (color != null) {
+    clip.set("color", cssToLiveColor(color));
   }
 
-  if (start_marker !== null) {
+  // TODO: need to conditionally set start_marker or end_marker first because start must always be before end
+  if (start_marker != null) {
     clip.set("start_marker", start_marker);
   }
 
-  if (end_marker !== null) {
+  if (end_marker != null) {
     clip.set("end_marker", end_marker);
   }
 
-  if (loop_start !== null) {
+  // and similarly here
+  // also we should throw an error if start > end
+  if (loop_start != null) {
     clip.set("loop_start", loop_start);
   }
 
-  if (loop_end !== null) {
+  if (loop_end != null) {
     clip.set("loop_end", loop_end);
   }
 
-  if (loop !== null) {
+  if (loop != null) {
     clip.set("looping", loop);
   }
 
-  // Add notes if there are any
   if (notes.length > 0) {
     clip.call("add_new_notes", { notes });
   }
 
-  // Fire the clip if autoplay is enabled
   if (autoplay) {
     clipSlot.call("fire");
   }
 
-  // Return detailed result
-  return {
-    success: true,
-    message: resultMessage,
-    trackIndex,
-    clipSlotIndex,
-    type: "midi",
-    name: clip.get("name")?.[0],
-    length: clip.get("length")?.[0],
-    start_marker: clip.get("start_marker")?.[0],
-    end_marker: clip.get("end_marker")?.[0],
-    loop_start: clip.get("loop_start")?.[0],
-    loop_end: clip.get("loop_end")?.[0],
-    loop: clip.get("looping") > 0,
-    notes: toneLangString,
-    noteCount: notes.length,
-  };
+  return readClip({ trackIndex, clipSlotIndex });
 }
 
 module.exports = { writeClip };

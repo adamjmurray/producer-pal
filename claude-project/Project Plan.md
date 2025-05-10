@@ -81,8 +81,8 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     found.". Add tests for having good error message in the syntax.
   - After starting a new voice, rests are not added to offset the voice's start time correctly
 - Add tests, tentatively with vitest
-  - ✅ Test list-tracks
-  - ✅ Test create-clip
+  - Test list-tracks using new mock-live-api
+  - Test write-clip using new mock-live-api
   - ✅ Test ToneLang
   - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
     Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet

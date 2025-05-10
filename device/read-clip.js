@@ -141,16 +141,11 @@ function convertClipNotesToToneLang(clipNotes) {
     }
   }
 
-  // Format each voice
   const formattedVoices = voices.map((voiceNotes) => formatVoice(voiceNotes));
-
-  // Join voices with semicolons
-  return formattedVoices.join(";\n");
+  return formattedVoices.join(";");
 }
 
-// Helper to format a single voice
 function formatVoice(notes) {
-  // Group notes by start time to identify chords
   const noteGroups = [];
   let currentGroup = [notes[0]];
   let currentTime = notes[0].start_time;
@@ -166,7 +161,6 @@ function formatVoice(notes) {
         notes: currentGroup,
       });
 
-      // Check if we need to add a rest
       if (note.start_time - (currentTime + currentGroup[0].duration) > 0.001) {
         noteGroups.push({
           type: "rest",
@@ -180,14 +174,12 @@ function formatVoice(notes) {
     }
   }
 
-  // Add the last group
   noteGroups.push({
     type: "notes",
     time: currentTime,
     notes: currentGroup,
   });
 
-  // Format each group
   const formattedGroups = noteGroups.map((group) => {
     if (group.type === "rest") {
       return getRest(group.duration);
@@ -199,31 +191,6 @@ function formatVoice(notes) {
   return formattedGroups.join(" ");
 }
 
-// Base clip info structure with all null values
-const EMPTY_CLIP_INFO = {
-  success: true,
-  trackIndex: null,
-  clipSlotIndex: null,
-  type: null,
-  name: null,
-  length: null,
-  start_marker: null,
-  end_marker: null,
-  loop_start: null,
-  loop_end: null,
-  loop: null,
-  notes: null,
-  noteCount: null,
-  id: null,
-  color: null,
-  location: null,
-  start_time: null,
-  end_time: null,
-  is_playing: null,
-  is_recording: null,
-  is_overdubbing: null,
-};
-
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a ToneLang string
  * @param {Object} args - Arguments for the function
@@ -232,50 +199,50 @@ const EMPTY_CLIP_INFO = {
  * @returns {Object} Result object with clip information
  */
 function readClip({ trackIndex, clipSlotIndex }) {
-  // Create a copy of the empty clip info
-  const result = {
-    ...EMPTY_CLIP_INFO,
-    trackIndex,
-    clipSlotIndex,
-  };
-
-  // Get the clip slot
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
 
-  // Check if the clip slot has a clip
   if (clipSlot.get("has_clip") == 0) {
-    return result;
+    return {
+      id: null,
+      type: null,
+      name: null,
+      trackIndex,
+      clipSlotIndex,
+    };
   }
 
-  // Get the clip
   const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
 
-  // Populate common properties
-  result.id = clip.id;
-  result.name = clip.get("name")?.[0];
-  result.color = liveColorToCss(clip.get("color"));
-  result.location = clip.get("is_arrangement_clip") > 0 ? "arrangement" : "session";
-  result.length = clip.get("length")?.[0];
-  result.start_marker = clip.get("start_marker")?.[0];
-  result.end_marker = clip.get("end_marker")?.[0];
-  result.loop_start = clip.get("loop_start")?.[0];
-  result.loop_end = clip.get("loop_end")?.[0];
-  result.loop = clip.get("looping") > 0;
-  result.start_time = clip.get("start_time")?.[0];
-  result.end_time = clip.get("end_time")?.[0];
-  result.is_playing = clip.get("is_playing") > 0;
-  result.is_recording = clip.get("is_recording") > 0;
-  result.is_overdubbing = clip.get("is_overdubbing") > 0;
+  const result = {
+    id: clip.id,
+    type: clip.get("is_midi_clip") > 0 ? "midi" : "audio",
+    name: clip.get("name")?.[0],
+    location: clip.get("is_arrangement_clip") > 0 ? "arrangement" : "session",
+    trackIndex,
+    clipSlotIndex,
+    color: liveColorToCss(clip.get("color")),
+    loop: clip.get("looping") > 0,
+    length: clip.get("length")?.[0], // NOTE: this is loop length even if start marker is earlier
+    start_marker: clip.get("start_marker")?.[0],
+    end_marker: clip.get("end_marker")?.[0],
+    loop_start: clip.get("loop_start")?.[0],
+    loop_end: clip.get("loop_end")?.[0],
+    is_playing: clip.get("is_playing") > 0,
+  };
 
-  // Check if it's a MIDI clip
-  const isMidiClip = clip.get("is_midi_clip") > 0;
-  result.type = isMidiClip ? "midi" : "audio";
+  // start_time apparently always starts from 0 in session view
+  // TODO: these will be more relevant in arrangement view! needs a revisit then
+  // result.start_time = clip.get("start_time")?.[0];
+  // result.end_time = clip.get("end_time")?.[0];
 
-  if (isMidiClip) {
+  // probably don't need this info
+  // result.is_recording = clip.get("is_recording") > 0;
+  // result.is_overdubbing = clip.get("is_overdubbing") > 0;
+
+  if (result.type === "midi") {
     // Get the clip notes for MIDI clips
     const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, result.length);
     const clipNotes = JSON.parse(notesDictionary).notes;
-
     result.notes = convertClipNotesToToneLang(clipNotes);
     result.noteCount = clipNotes.length;
   }

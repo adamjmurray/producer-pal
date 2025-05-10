@@ -17,9 +17,15 @@ function addToolWriteClip(server, pendingRequests) {
       name: z.string().optional().describe("Name for the clip"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
       notes: z.string().optional().describe(`Musical notation in ToneLang format. ${TONE_LANG_DESCRIPTION}`),
-      start_marker: z.number().optional().describe("Start marker position in beats"),
-      end_marker: z.number().optional().describe("End marker position in beats"),
-      loop_start: z.number().optional().describe("Loop start position in beats"),
+      start_marker: z
+        .number()
+        .optional()
+        .describe("Start marker position in beats (the start of both looped and un-looped clips)"),
+      end_marker: z.number().optional().describe("End marker position in beats (only applicable to un-looped clips)"),
+      loop_start: z
+        .number()
+        .optional()
+        .describe("Loop start position in beats (not necessarily the same as start_marker)"),
       loop_end: z.number().optional().describe("Loop end position in beats"),
       loop: z.boolean().optional().describe("Enable or disable looping for the clip"),
       autoplay: z.boolean().default(false).describe("Automatically play the clip after creating it"),
