@@ -42,7 +42,7 @@ describe("readClip", () => {
 
   it("returns null values when no clip exists", () => {
     mockLiveApiGet({
-      ClipSlot: { has_clip: [0] },
+      ClipSlot: { has_clip: 0 },
     });
     const result = readClip({ trackIndex: 2, clipSlotIndex: 3 });
     expect(result).toEqual({
@@ -56,7 +56,7 @@ describe("readClip", () => {
 
   it("handles audio clips correctly", () => {
     mockLiveApiGet({
-      Clip: { is_midi_clip: [0], name: ["Audio Sample"], looping: [1] },
+      Clip: { is_midi_clip: 0, name: "Audio Sample", looping: 1 },
     });
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
     expect(result).toEqual({

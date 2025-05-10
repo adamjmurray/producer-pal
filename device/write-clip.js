@@ -31,7 +31,7 @@ function writeClip({
   deleteExistingNotes = false,
 }) {
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
-  const hasClip = clipSlot.get("has_clip") > 0;
+  const hasClip = clipSlot.get("has_clip")?.[0] > 0;
   const notes = parseToneLang(toneLangString);
 
   // Calculate clip length based on the end time of the last note or use a default
@@ -44,7 +44,7 @@ function writeClip({
   const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
 
   if (deleteExistingNotes) {
-    clip.call("remove_notes_extended", 0, 127, 0, clip.get("length"));
+    clip.call("remove_notes_extended", 0, 127, 0, clip.get("length")?.[0]);
   }
 
   if (name != null) {

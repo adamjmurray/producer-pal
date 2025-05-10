@@ -1,10 +1,11 @@
 import { beforeEach, vi } from "vitest";
-import { LiveAPI, liveApiId, liveApiCall, liveApiGet, mockLiveApiGet } from "./device/mock-live-api";
+import { LiveAPI, liveApiId, liveApiGet, liveApiSet, liveApiCall, mockLiveApiGet } from "./device/mock-live-api";
 
 beforeEach(() => {
   liveApiId.mockReset();
-  liveApiCall.mockReset();
   liveApiGet.mockReset();
+  liveApiSet.mockReset();
+  liveApiCall.mockReset();
 
   // default mocking behaviors:
   liveApiId.mockReturnValue("1");
