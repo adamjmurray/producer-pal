@@ -1,5 +1,4 @@
 // device/read-track.js
-const { liveColorToCss } = require("./utils");
 
 const DEVICE_TYPE_INSTRUMENT = 1;
 
@@ -58,7 +57,7 @@ function readTrack({ trackIndex }) {
     trackIndex,
     id: track.id,
     name: track.getProperty("name"),
-    color: liveColorToCss(track.getProperty("color")),
+    color: track.getColor(),
     type: track.getProperty("has_midi_input") ? "midi" : "audio",
 
     // Basic track states

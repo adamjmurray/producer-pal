@@ -1,6 +1,5 @@
 // device/list-tracks.js
 const { readClip } = require("./read-clip");
-const { liveColorToCss } = require("./utils");
 
 function listTracks() {
   const liveSet = new LiveAPI("live_set");
@@ -8,7 +7,7 @@ function listTracks() {
     id: track.id,
     index: trackIndex,
     name: track.getProperty("name"),
-    color: liveColorToCss(track.getProperty("color")),
+    color: track.getColor(),
     type: track.getProperty("has_midi_input") ? "midi" : "audio",
     isMuted: track.getProperty("mute") > 0,
     isSoloed: track.getProperty("solo") > 0,

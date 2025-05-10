@@ -1,6 +1,5 @@
 // device/write-clip.js
 const { parseToneLang } = require("./tone-lang");
-const { cssToLiveColor } = require("./utils");
 const { readClip } = require("./read-clip");
 
 /**
@@ -51,7 +50,7 @@ function writeClip({
   }
 
   if (color != null) {
-    clip.set("color", cssToLiveColor(color));
+    clip.setColor(color);
   }
 
   // TODO: need to conditionally set start_marker or end_marker first because start must always be before end

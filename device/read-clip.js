@@ -1,5 +1,5 @@
 // device/read-clip.js
-const { liveColorToCss } = require("./utils");
+
 /**
  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
  * @param {number} pitch - MIDI pitch number
@@ -220,7 +220,7 @@ function readClip({ trackIndex, clipSlotIndex }) {
     location: clip.getProperty("is_arrangement_clip") ? "arrangement" : "session",
     trackIndex,
     clipSlotIndex,
-    color: liveColorToCss(clip.getProperty("color")),
+    color: clip.getColor(),
     loop: clip.getProperty("looping") > 0,
     length: clip.getProperty("length"),
     start_marker: clip.getProperty("start_marker"),
