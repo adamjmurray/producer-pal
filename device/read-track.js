@@ -1,5 +1,38 @@
 // device/read-track.js
-const { liveColorToCss } = require("./utils");
+const { liveColorToCss, parseIds } = require("./utils");
+
+const DEVICE_TYPE_INSTRUMENT = 1;
+
+function getDrumPads(trackIndex) {
+  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const deviceIds = parseIds(track.get("devices"));
+
+  for (const deviceId of deviceIds) {
+    const device = new LiveAPI(deviceId);
+
+    if (device.get("type") == DEVICE_TYPE_INSTRUMENT) {
+      if (device.get("can_have_drum_pads") > 0) {
+        const pads = [];
+        const drumPadIds = parseIds(device.get("drum_pads"));
+        for (const padId of drumPadIds) {
+          const pad = new LiveAPI(padId);
+          // Only add pads that have chains
+          if (pad.get("chains")[0]) {
+            pads.push({
+              pitch: pad.get("note")?.[0],
+              name: pad.get("name")?.[0],
+            });
+          }
+        }
+        return pads;
+      }
+      // Found an instrument but it's not a drum rack
+      return null;
+    }
+  }
+  // No instrument found
+  return null;
+}
 
 /**
  * Read comprehensive information about a track
@@ -61,6 +94,9 @@ function readTrack({ trackIndex }) {
     firedSlotIndex: track.get("fired_slot_index")?.[0],
     isPlaying: track.get("playing_slot_index")?.[0] >= 0,
     isTriggered: track.get("fired_slot_index")?.[0] >= 0,
+
+    // Drum pads (if available)
+    drumPads: getDrumPads(trackIndex),
   };
 
   return trackInfo;
