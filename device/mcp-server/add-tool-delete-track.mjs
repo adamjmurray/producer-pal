@@ -1,8 +1,8 @@
-// device/mcp-server/add-tool-delete-track.js
-const { z } = require("zod");
-const { callLiveApi } = require("./call-live-api.js");
+// device/mcp-server/add-tool-delete-track.mjs
+import { z } from "zod";
+import { callLiveApi } from "./call-live-api.mjs";
 
-function addToolDeleteTrack(server, pendingRequests) {
+export function addToolDeleteTrack(server, pendingRequests) {
   server.tool(
     "delete-track",
     "Deletes a track at the specified index",
@@ -12,5 +12,3 @@ function addToolDeleteTrack(server, pendingRequests) {
     async (args) => callLiveApi("delete-track", args, pendingRequests)
   );
 }
-
-module.exports = { addToolDeleteTrack };

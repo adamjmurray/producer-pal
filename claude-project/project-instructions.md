@@ -17,16 +17,7 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 
 - Minimize dependencies to reduce complexity and maintenance
 - The only programming language we use is JavaScript because of constraints of running in an embedded environment. We
-  are using the MCP TypeScript but our code must be JavaScript.
-- The repository root is `/Users/adammurray/workspace/ableton-live-composition-assistant`
-- The path to the Max for Live device and source code is
-  `/Users/adammurray/workspace/ableton-live-composition-assistant/device`
-- All code uses CJS modules and must use the older approach of `require()`ing other files
-  - All code loaded by the v8 object must be in the same folder (`ableton-live-composition-assistant/device`) and it
-    must be required using "./filename.js" instead of "filename.js". This is because v8 uses it's own custom loader for
-    `require`, and it is very limited.
-  - Important note: all test code must use `import` instead of `require` to ensure vitest autowatch works correctly.
-    This works perfectly fine and doesn't interfere with the requirements above
+  are using the MCP TypeScript SDK, but our code must be JavaScript.
 - We are using the 2025-03-26 version of the model context protocol (MCP).
 - The UI for interacting with the AI will be the Claude Desktop app
 - All functionality within Live should be provided by a single Max for Live device
@@ -36,21 +27,29 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   for this.
 - We are using Live 12.2 and Max 9
 - We are using Node.js 20
-- Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to
-  resolve confusion or clarify answers to questions.
-- When calling the Live API to get properties of an object like a Track or Clip, it seems that single item responses are
-  usually (always?) arrays, so we need to do things like `track.get("name")?.[0]` to get the track name as a string. In
-  cases where we are trying to compute a boolean, we can rely on JavaScript's type coercion to do things like
-  `clip.get("looping") > 0`, but note that `clip.get("looping")` is actually either `[0]` or `[1]` and it's being
-  converted to a number.
+- The repository root is `/Users/adammurray/workspace/ableton-live-composition-assistant`
+- The path to the Max for Live device and source code is
+  `/Users/adammurray/workspace/ableton-live-composition-assistant/device`
+- The code is separated into the MCP server that runs on Node.js (via Node for Max) and the JavaScript code that runs in
+  the embedded V8 engine (via the Max v8 object).
+  - The entry point for the MCP server is `device/mcp-server.mjs`. This imports the code from `device/mcp-server/**`. As
+    indicated by the filenames, these are ESM files. They must be ESM so we can mock the `max-api` import in our tests
+    for this part of the code base (import mocking is not compatible with CJS).
+  - The entry point for the v8 code is `device/main.js`. The Max v8 object does not support ESM, so this code and all
+    the code it requires must be CJS. Additionally, it must use a flat folder structure, so all the code is in the
+    `device` folder next to `device/main.js`.
+  - All the test code for the CJS code must use imports for vitest file watching and auto-rerunning to work
 - source code files must always include the relative path to the file in a comment on the first line, so the context is
   clear when these files are added to project knowledge
+- Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to
+  resolve confusion or clarify answers to questions.
+- Calling the Live API has idiosyncracies, such as properties needing to be to be accessed via
+  `track.get("propertyName")?.[0]`. To make this less awkward, a cleaner interface is provided in
+  `device/live-api-extensions.js`. Use this interface whenever possible.
 - `package.json` must NOT set `"type"`. Setting this to `"module"` breaks the vitest test suite because it needs to
   require CJS code for the v8 object (which contains the tool implementations we are primarily interested in testing).
   Setting this to `"commonjs"` breaks the bootstrapping of the `mcp-server.mjs` module in the Node for Max object, which
   is needed to enable importing with modern style.
-- The `.mjs` and (non-test) `.ts` code (i.e. in `device/mcp-server`) is the Node for Max code
-- The `.js` and `.test.ts` code is the v8 code (maybe we'll add Node for Max tests at some point too)
 - In the Node for Max, log with `Max.post()` calls
 - In v8 code, we can use `const console = require("console");` to get a browser console-like logger (with `log()` and
   `error()` functions)

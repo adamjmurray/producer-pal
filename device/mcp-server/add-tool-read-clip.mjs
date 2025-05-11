@@ -1,9 +1,9 @@
-// device/mcp-server/add-tool-read-clip.js
-const { z } = require("zod");
-const { callLiveApi } = require("./call-live-api.js");
-const { TONE_LANG_DESCRIPTION } = require("./tone-lang-description.js");
+// device/mcp-server/add-tool-read-clip.mjs
+import { z } from "zod";
+import { callLiveApi } from "./call-live-api.mjs";
+import { TONE_LANG_DESCRIPTION } from "./tone-lang-description.mjs";
 
-function addToolReadClip(server, pendingRequests) {
+export function addToolReadClip(server, pendingRequests) {
   server.tool(
     "read-clip",
     "Retrieves clip information including notes. Returns type ('midi' or 'audio'), name, and length for all clips. " +
@@ -17,5 +17,3 @@ function addToolReadClip(server, pendingRequests) {
     async (args) => callLiveApi("read-clip", args, pendingRequests)
   );
 }
-
-module.exports = { addToolReadClip };

@@ -1,8 +1,8 @@
-// device/mcp-server/tone-lang-description.js
+// device/mcp-server/tone-lang-description.mjs
 /**
  * Exports a standardized description of ToneLang syntax for use in tool descriptions
  */
-const TONE_LANG_DESCRIPTION = `<tone-lang-specification>
+export const TONE_LANG_DESCRIPTION = `<tone-lang-specification>
 ToneLang is a compact music notation syntax.
 
 ## Formal Syntax
@@ -76,5 +76,3 @@ Examples:
 - [C3 E3 G3]< [F3 A3 C4]>*2 (chord progression with shorthand velocity)
 - C3 D3 E3 F3; G2 A2 B2 C3 (two-voice counterpoint)
 </tone-lang-specification>`;
-
-module.exports = { TONE_LANG_DESCRIPTION };

@@ -1,8 +1,8 @@
-// device/mcp-server/add-tool-read-track.js
-const { z } = require("zod");
-const { callLiveApi } = require("./call-live-api.js");
+// device/mcp-server/add-tool-read-track.mjs
+import { z } from "zod";
+import { callLiveApi } from "./call-live-api.mjs";
 
-function addToolReadTrack(server, pendingRequests) {
+export function addToolReadTrack(server, pendingRequests) {
   server.tool(
     "read-track",
     "Read comprehensive information about a track",
@@ -12,5 +12,3 @@ function addToolReadTrack(server, pendingRequests) {
     async (args) => callLiveApi("read-track", args, pendingRequests)
   );
 }
-
-module.exports = { addToolReadTrack };

@@ -1,8 +1,8 @@
-// device/mcp-server/add-tool-delete-clip.js
-const { z } = require("zod");
-const { callLiveApi } = require("./call-live-api.js");
+// device/mcp-server/add-tool-delete-clip.mjs
+import { z } from "zod";
+import { callLiveApi } from "./call-live-api.mjs";
 
-function addToolDeleteClip(server, pendingRequests) {
+export function addToolDeleteClip(server, pendingRequests) {
   server.tool(
     "delete-clip",
     "Deletes a clip at the specified track and clip slot",
@@ -13,5 +13,3 @@ function addToolDeleteClip(server, pendingRequests) {
     async (args) => callLiveApi("delete-clip", args, pendingRequests)
   );
 }
-
-module.exports = { addToolDeleteClip };

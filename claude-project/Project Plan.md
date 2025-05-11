@@ -77,24 +77,15 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - check over whitespace handling, I suspect there are issues
   - address any discrepancies between the spec and grammar
 - ✅ Support reading the notes of a clip and outputting in ToneLang syntax
-- Fix bugs. Current known issues:
-  - Improve ToneLang syntax error messages: Claude tried the syntax "D4\*1.5", which should be supported (it is now, but
-    wasn't at the time). The error reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9],
-    [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
+- Improve ToneLang syntax error messages: Claude tried the syntax "D4\*1.5", which should be supported (it is now, but
+  wasn't at the time). The error reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9],
+  [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
   - After starting a new voice, rests are not added to offset the voice's start time correctly
-- Add tests, tentatively with vitest
-  - ✅ Test list-tracks using new mock-live-api
-  - ✅ Test write-clip using new mock-live-api
+- ✅ Add tests, tentatively with vitest
+  - ✅ Test all tools
   - ✅ Test ToneLang
-  - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
-    Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet
-    supported (there does not appear to be any way to specify the transport and it is not correctly auto-detected):
-    ```
-    % npx @modelcontextprotocol/inspector --cli http://localhost:3000 --method tools/list
-    Failed to connect to MCP server: SSE error: Non-200 status code (404)
-    ```
-    We will revisit this soon.
-  - Since we can't script the MCP Inspector CLI we could write our own MCP client and test with that
+  - ✅ Test the MCP server with an MCP client
+  - Improve coverage
 - ✅ Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 
 ## Phase 4: Deeper Ableton Live Integration

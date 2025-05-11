@@ -1,9 +1,9 @@
-// device/mcp-server/create-express-app.js
-const { StreamableHTTPServerTransport } = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
-const express = require("express");
-const Max = require("max-api");
-const { ErrorCode } = require("@modelcontextprotocol/sdk/types.js");
-const { createMcpServer } = require("./create-mpc-server.js");
+// device/mcp-server/create-express-app.mjs
+import Max from "max-api";
+import express from "express";
+import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { createMcpServer } from "./create-mpc-server.mjs";
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();
@@ -26,26 +26,7 @@ const internalError = (message) => ({
   id: null,
 });
 
-// Listen for responses from Max patch
-Max.addHandler("mcp_response", (responseJson) => {
-  Max.post(`mcp_response(${responseJson})`);
-  try {
-    const response = JSON.parse(responseJson);
-    const { requestId, result } = response;
-
-    if (pendingRequests.has(requestId)) {
-      const resolve = pendingRequests.get(requestId);
-      pendingRequests.delete(requestId);
-      resolve(result);
-    } else {
-      Max.post(`Received response for unknown request ID: ${requestId}`);
-    }
-  } catch (error) {
-    Max.post(`Error handling response from Max: ${error}`);
-  }
-});
-
-function createExpressApp() {
+export function createExpressApp() {
   const app = express();
   app.use(express.json());
 
@@ -78,7 +59,24 @@ function createExpressApp() {
     res.status(405).json(methodNotAllowed);
   });
 
+  // Listen for responses from Max patch
+  Max.addHandler("mcp_response", (responseJson) => {
+    Max.post(`mcp_response(${responseJson})`);
+    try {
+      const response = JSON.parse(responseJson);
+      const { requestId, result } = response;
+
+      if (pendingRequests.has(requestId)) {
+        const resolve = pendingRequests.get(requestId);
+        pendingRequests.delete(requestId);
+        resolve(result);
+      } else {
+        Max.post(`Received response for unknown request ID: ${requestId}`);
+      }
+    } catch (error) {
+      Max.post(`Error handling response from Max: ${error}`);
+    }
+  });
+
   return app;
 }
-
-module.exports = { createExpressApp };

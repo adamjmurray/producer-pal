@@ -1,11 +1,11 @@
-// device/mcp-server/call-live-api.js
-const Max = require("max-api");
-const crypto = require("node:crypto");
+// device/mcp-server/call-live-api.mjs
+import Max from "max-api";
+import crypto from "node:crypto";
 
 /**
  * Sends a tool call to the Max v8 environment and returns a promise that resolves when Max responds
  */
-function callLiveApi(toolName, args, pendingRequests) {
+export function callLiveApi(toolName, args, pendingRequests) {
   Max.post(`Handling tool call: ${toolName}(${JSON.stringify(args)})`);
 
   // Create a request with a unique ID
@@ -24,5 +24,3 @@ function callLiveApi(toolName, args, pendingRequests) {
     pendingRequests.set(requestId, resolve);
   });
 }
-
-module.exports = { callLiveApi };
