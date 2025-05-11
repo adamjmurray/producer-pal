@@ -40,6 +40,7 @@ describe("readTrack", () => {
         playing_slot_index: -1,
         fired_slot_index: -1,
         devices: [],
+        clip_slots: [],
       },
     });
     liveApiId.mockReturnValue("track1");
@@ -76,6 +77,7 @@ describe("readTrack", () => {
       isPlaying: false,
       isTriggered: false,
       drumPads: null,
+      clips: [],
     });
   });
 
@@ -92,6 +94,7 @@ describe("readTrack", () => {
         playing_slot_index: 2,
         fired_slot_index: 3,
         devices: [],
+        clip_slots: [],
       },
     });
 
@@ -119,6 +122,7 @@ describe("readTrack", () => {
         fold_state: 1,
         is_visible: 1,
         devices: [],
+        clip_slots: [],
       },
     });
 
@@ -129,11 +133,112 @@ describe("readTrack", () => {
     expect(result.isGrouped).toBe(false);
   });
 
+  it("returns track with clips", () => {
+    mockLiveApiGet({
+      "live_set tracks 3": {
+        name: "Track with Clips",
+        has_midi_input: 1,
+        devices: [],
+        clip_slots: children("slot1", "slot2", "slot3"),
+      },
+      slot1: { has_clip: 1 },
+      slot2: { has_clip: 0 },
+      slot3: { has_clip: 1 },
+      "live_set tracks 3 clip_slots 0 clip": {
+        name: "Clip 1",
+        is_midi_clip: 1,
+        color: 16711680,
+        length: 4,
+        looping: 0,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+        is_playing: 0,
+      },
+      "live_set tracks 3 clip_slots 2 clip": {
+        name: "Clip 2",
+        is_midi_clip: 1,
+        color: 65280,
+        length: 8,
+        looping: 1,
+        start_marker: 0,
+        end_marker: 8,
+        loop_start: 0,
+        loop_end: 8,
+        is_playing: 1,
+      },
+    });
+
+    const result = readTrack({ trackIndex: 3 });
+
+    expect(result.clips).toHaveLength(2);
+    expect(result.clips[0]).toEqual(
+      expect.objectContaining({
+        name: "Clip 1",
+        type: "midi",
+        trackIndex: 3,
+        clipSlotIndex: 0,
+        length: 4,
+        loop: false,
+      })
+    );
+    expect(result.clips[1]).toEqual(
+      expect.objectContaining({
+        name: "Clip 2",
+        type: "midi",
+        trackIndex: 3,
+        clipSlotIndex: 2,
+        length: 8,
+        loop: true,
+      })
+    );
+    expect(result.clips).toEqual([
+      {
+        id: "1",
+        type: "midi",
+        name: "Clip 1",
+        location: "session",
+        clipSlotIndex: 0,
+        trackIndex: 3,
+        color: "#FF0000",
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+        loop: false,
+        is_playing: false,
+        notes: "",
+        noteCount: 0,
+      },
+      {
+        id: "1",
+        type: "midi",
+        name: "Clip 2",
+        location: "session",
+        trackIndex: 3,
+        clipSlotIndex: 2,
+        color: "#00FF00",
+        length: 8,
+        start_marker: 0,
+        end_marker: 8,
+        loop_start: 0,
+        loop_end: 8,
+        loop: true,
+        is_playing: true,
+        notes: "",
+        noteCount: 0,
+      },
+    ]);
+  });
+
   it("returns track with drum pads when drum rack is present", () => {
     mockLiveApiGet({
       "live_set tracks 3": {
         name: "Drum Track",
         devices: children("device1"),
+        clip_slots: [],
       },
       device1: {
         type: DEVICE_TYPE_INSTRUMENT,
@@ -155,8 +260,8 @@ describe("readTrack", () => {
     const result = readTrack({ trackIndex: 3 });
 
     expect(result.drumPads).toEqual([
-      { pitch: 36, name: "Kick" },
-      { pitch: 38, name: "Snare" },
+      { pitch: "C1", name: "Kick" },
+      { pitch: "D1", name: "Snare" },
     ]);
   });
 
@@ -164,6 +269,7 @@ describe("readTrack", () => {
     mockLiveApiGet({
       "live_set tracks 4": {
         devices: children("device1"),
+        clip_slots: [],
       },
       device1: {
         type: DEVICE_TYPE_INSTRUMENT,
@@ -180,6 +286,7 @@ describe("readTrack", () => {
     mockLiveApiGet({
       "live_set tracks 5": {
         devices: [],
+        clip_slots: [],
       },
     });
 
@@ -192,6 +299,7 @@ describe("readTrack", () => {
     mockLiveApiGet({
       "live_set tracks 6": {
         devices: children("device1"),
+        clip_slots: [],
       },
       device1: {
         type: DEVICE_TYPE_INSTRUMENT,
@@ -218,8 +326,8 @@ describe("readTrack", () => {
     const result = readTrack({ trackIndex: 6 });
 
     expect(result.drumPads).toEqual([
-      { pitch: 36, name: "Kick" },
-      { pitch: 42, name: "HiHat" },
+      { pitch: "C1", name: "Kick" },
+      { pitch: "Gb1", name: "HiHat" },
     ]);
   });
 });

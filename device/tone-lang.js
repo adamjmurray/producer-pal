@@ -4,6 +4,22 @@ const parser = require("./tone-lang-parser");
 const DEFAULT_DURATION = 1;
 const DEFAULT_VELOCITY = 70;
 
+const PITCH_CLASS_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+
+/**
+ * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
+ * @param {number} pitch - MIDI pitch number
+ * @returns {string} Pitch name in the ToneLang format like "C3", "F#4", etc, or empty string for invalid inputs.
+ */
+function midiPitchToName(midiPitch) {
+  if (midiPitch >= 0 && midiPitch <= 127) {
+    const pitchClass = midiPitch % 12;
+    const octave = Math.floor(midiPitch / 12) - 2;
+    return `${PITCH_CLASS_NAMES[pitchClass]}${octave}`;
+  }
+  return "";
+}
+
 /**
  * Convert parsed ToneLang AST into note events with timing
  * @param {Array} ast - Parsed AST from Peggy parser
@@ -72,4 +88,5 @@ function parseToneLang(toneLangExpression) {
 
 module.exports = {
   parseToneLang,
+  midiPitchToName,
 };

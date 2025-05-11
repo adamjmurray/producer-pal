@@ -1,4 +1,6 @@
 // device/read-track.js
+const { readClip } = require("./read-clip");
+const { midiPitchToName } = require("./tone-lang");
 
 const DEVICE_TYPE_INSTRUMENT = 1;
 
@@ -18,7 +20,7 @@ function getDrumPads(trackIndex) {
           // Only add pads that have chains
           if (pad.getChildIds("chains").length) {
             pads.push({
-              pitch: pad.getProperty("note"),
+              pitch: midiPitchToName(pad.getProperty("note")),
               name: pad.getProperty("name"),
             });
           }
@@ -96,6 +98,13 @@ function readTrack({ trackIndex }) {
 
     // Drum pads (if available)
     drumPads: getDrumPads(trackIndex),
+
+    clips: track
+      .getChildIds("clip_slots")
+      .map((clipSlotId, clipSlotIndex) =>
+        new LiveAPI(clipSlotId).getProperty("has_clip") ? readClip({ trackIndex, clipSlotIndex }) : null
+      )
+      .filter((clip) => clip != null),
   };
 
   return trackInfo;

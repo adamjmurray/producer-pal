@@ -51,11 +51,12 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - create new tracks (write-track?)
   - update tracks (also a write-track? for symmetry with write-clip?)
   - set/update track name and color (using "CSS syntax")
-  - read-track, almost done, but still needs to:
-    - return clip info
-    - enhance the drum pad info to return ToneLang pitch name like C4. Also need to dis-ambiguity my terminology around
-      named pitches and numerical midi pitch values (I think I overloaded `pitch` and it's confusing Haiku 3.5). Perhaps
-      for now I can keep calling it drumPad.pitch and simply change from numerical value to named pitched like C4.
+  - ✅ read-track, almost done, but still needs to:
+    - ✅ return clip info
+    - ✅ enhance the drum pad info to return ToneLang pitch name like C4. Also need to dis-ambiguity my terminology
+      around named pitches and numerical midi pitch values (I think I overloaded `pitch` and it's confusing Haiku 3.5).
+      Perhaps for now I can keep calling it drumPad.pitch and simply change from numerical value to named pitched like
+      C4.
   - delete-track
 - Implement TongLang
   - ✅ notes
@@ -77,13 +78,9 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - address any discrepancies between the spec and grammar
 - ✅ Support reading the notes of a clip and outputting in ToneLang syntax
 - Fix bugs. Current known issues:
-  - When there are no more scenes and every slot is full, attempting to create a new clip in a non-existent scene/slot
-    gives the misleading "Error in create-clip: Clip slot already has a clip at track 0, clip slot 8". But instead of an
-    error, maybe we should auto-add a new scene whenever slotIndex > scene count (but note this may result in the index
-    being different if it's much larger than the scene count, so the return value could confirm the index)
-  - Claude tried the syntax "D4\*1.5", which should be supported (it is now, but wasn't at the time). The error
-    reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9], [A-Ga-g], or end of input but "."
-    found.". Add tests for having good error message in the syntax.
+  - Improve ToneLang syntax error messages: Claude tried the syntax "D4\*1.5", which should be supported (it is now, but
+    wasn't at the time). The error reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9],
+    [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
   - After starting a new voice, rests are not added to offset the voice's start time correctly
 - Add tests, tentatively with vitest
   - Test list-tracks using new mock-live-api

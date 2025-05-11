@@ -12,10 +12,13 @@ function listTracks() {
     isMuted: track.getProperty("mute") > 0,
     isSoloed: track.getProperty("solo") > 0,
     isArmed: track.getProperty("arm") > 0,
+
     clips: track
       .getChildIds("clip_slots")
-      .filter((clipSlotId) => new LiveAPI(clipSlotId).getProperty("has_clip"))
-      .map((_clipSlotId, clipSlotIndex) => readClip({ trackIndex, clipSlotIndex })),
+      .map((clipSlotId, clipSlotIndex) =>
+        new LiveAPI(clipSlotId).getProperty("has_clip") ? readClip({ trackIndex, clipSlotIndex }) : null
+      )
+      .filter((clip) => clip != null),
   }));
 }
 module.exports = { listTracks };
