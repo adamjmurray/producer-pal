@@ -1,7 +1,13 @@
 // device/live-api-extensions.js
 if (typeof LiveAPI !== "undefined") {
-  LiveAPI.prototype.getProperty = function (prop) {
-    return this.get(prop)?.[0];
+  LiveAPI.prototype.getProperty = function (property) {
+    switch (property) {
+      case "scale_intervals":
+      case "available_warp_modes":
+        return this.get(property);
+      default:
+        return this.get(property)?.[0];
+    }
   };
 
   LiveAPI.prototype.getChildIds = function (name) {

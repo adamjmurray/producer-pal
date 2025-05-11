@@ -27,6 +27,20 @@ describe("LiveAPI extensions", () => {
       api.get = vi.fn().mockReturnValue([]);
       expect(api.getProperty("empty")).toBeUndefined();
     });
+
+    it("returns the full array for scale_intervals", () => {
+      const intervals = [0, 2, 4, 5, 7, 9, 11];
+      api.get = vi.fn().mockReturnValue(intervals);
+      expect(api.getProperty("scale_intervals")).toEqual(intervals);
+      expect(api.get).toHaveBeenCalledWith("scale_intervals");
+    });
+
+    it("returns the full array for available_warp_modes", () => {
+      const modes = [0, 1, 2, 3, 4];
+      api.get = vi.fn().mockReturnValue(modes);
+      expect(api.getProperty("available_warp_modes")).toEqual(modes);
+      expect(api.get).toHaveBeenCalledWith("available_warp_modes");
+    });
   });
 
   describe("getChildIds", () => {

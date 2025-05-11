@@ -6,8 +6,8 @@ post(`[${now()}] loading main.js...\n`);
 
 require("./live-api-extensions.js");
 const console = require("./console.js");
-const { listTracks } = require("./tool-list-tracks.js");
 const { readClip } = require("./tool-read-clip.js");
+const { readLiveSet } = require("./tool-read-live-set.js");
 const { readTrack } = require("./tool-read-track.js");
 const { writeClip } = require("./tool-write-clip.js");
 const { writeTrack } = require("./tool-write-track.js");
@@ -15,7 +15,7 @@ const { deleteClip } = require("./tool-delete-clip.js");
 const { deleteTrack } = require("./tool-delete-track.js");
 
 const tools = {
-  "list-tracks": () => listTracks(),
+  "read-live-set": () => readLiveSet(),
   "read-track": (args) => readTrack(args),
   "write-track": (args) => writeTrack(args),
   "delete-track": (args) => deleteTrack(args),

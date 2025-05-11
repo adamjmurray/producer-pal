@@ -59,12 +59,36 @@ export function mockLiveApiGet(overrides = {}) {
       }
     }
     switch (this.type) {
+      case "Track":
+        switch (prop) {
+          case "has_midi_input":
+            return [1];
+          case "clip_slots":
+          case "devices":
+            return [];
+          case "name":
+            return ["Test Track"];
+          case "color":
+            return [16711680];
+          case "mute":
+          case "solo":
+            return [0];
+          case "arm":
+            return [1];
+          case "playing_slot_index":
+            return [2];
+          case "fired_slot_index":
+            return [3];
+          default:
+            return [0];
+        }
       case "ClipSlot":
         switch (prop) {
           case "has_clip":
             return [1];
+          default:
+            return [0];
         }
-        return [0];
       case "Clip":
         switch (prop) {
           case "name":
@@ -100,13 +124,30 @@ export function mockLiveApiGet(overrides = {}) {
   });
 }
 
+export const expectedTrack = (overrides = {}) => ({
+  id: "1",
+  type: "midi",
+  name: "Test Track",
+  trackIndex: 0,
+  color: "#FF0000",
+  isMuted: false,
+  isSoloed: false,
+  isArmed: true,
+  playingSlotIndex: 2,
+  firedSlotIndex: 3,
+  drumPads: null,
+  clips: [],
+  ...overrides,
+});
+
 // For use with the default behavior in mockLiveApiGet() above
 export const expectedClip = (overrides = {}) => ({
-  clipSlotIndex: 0,
+  id: "clip1",
+  trackIndex: 2,
+  clipSlotIndex: 1,
+  is_playing: false,
   color: "#3DC300",
   end_marker: 5,
-  id: "track3",
-  is_playing: false,
   length: 4,
   location: "session",
   loop: false,
@@ -116,7 +157,7 @@ export const expectedClip = (overrides = {}) => ({
   noteCount: 0,
   notes: "",
   start_marker: 1,
-  trackIndex: 2,
+
   type: "midi",
   ...overrides,
 });

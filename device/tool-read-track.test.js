@@ -109,7 +109,12 @@ describe("readTrack", () => {
   });
 
   it("returns clip information when the track has clips", () => {
-    liveApiId.mockReturnValue("track3");
+    liveApiId.mockImplementation(function () {
+      if (this.path.endsWith("clip")) return "clip1";
+      if (this.path.includes("tracks")) return "track3";
+      return "1";
+    });
+
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,

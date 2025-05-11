@@ -32,6 +32,8 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 
 ## [Phase 3] Foundation: Comprehensive MCP capabilities
 
+- Add exists() function to live-api-extensions (the id 0 check)
+- Rework pendingRequests system to better encapsulate it. Pass in callLiveApi with the mechanism in a closure.
 - ✅ Ability to auto-play a clip when creating it
 - More clip CRUD operations:
   - ✅ set clip name when creating
@@ -52,11 +54,14 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     - ✅ update a track's name, color, mute, solo,and arm state
     - ✅ play a clip in session view
     - ✅ stop playing clips
-    - create a new track
+    - create a new track (MIDI only / by default), insert empty tracks up to some limit to handle higher non-existent
+      trackIndexes
   - ✅ read-track, including:
     - ✅ return list of clips (reuse read-clip)
     - ✅ list drum pads in drum racks with their associated ToneLang pitch name (e.g. "C4" instead of 60)
   - ✅ delete-track
+- ✅ read-live-set
+- write-live-set
 - Implement TongLang
   - ✅ notes
   - ✅ sequences

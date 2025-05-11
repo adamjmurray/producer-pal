@@ -1,7 +1,7 @@
 // device/mcp-server.test.js
-import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 class Max {
   static post = vi.fn();
@@ -97,7 +97,7 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
-        "list-tracks",
+        "read-live-set",
         "read-track",
         "write-track",
         "delete-track",
@@ -110,9 +110,11 @@ describe("MCP Express App", () => {
     it("should provide tool schemas with correct names and descriptions", async () => {
       const result = await client.listTools();
 
-      const listTracksTool = result.tools.find((tool) => tool.name === "list-tracks");
-      expect(listTracksTool).toBeDefined();
-      expect(listTracksTool.description).toContain("Lists all tracks");
+      const readLiveSetTool = result.tools.find((tool) => tool.name === "read-live-set");
+      expect(readLiveSetTool).toBeDefined();
+      expect(readLiveSetTool.description).toContain("the Live Set");
+      expect(readLiveSetTool.description).toContain("global settings");
+      expect(readLiveSetTool.description).toContain("all tracks");
 
       const writeClipTool = result.tools.find((tool) => tool.name === "write-clip");
       expect(writeClipTool).toBeDefined();
@@ -145,7 +147,7 @@ describe("MCP Express App", () => {
 
     it("should call list-tracks tool", async () => {
       const result = await client.callTool({
-        name: "list-tracks",
+        name: "read-live-set",
         arguments: {},
       });
 
