@@ -1,4 +1,4 @@
-// device/tone-lang.pegjs
+// device/tone-lang-grammar.pegjs
 // ToneLang v1.0 PEG Grammar
 
 // Entry point

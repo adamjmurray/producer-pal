@@ -33,7 +33,7 @@
     "test": "npm run build && vitest run",
     "test:watch": "npm run build && vitest",
     "test:coverage": "npm run build && vitest run --coverage",
-    "parser:build": "peggy --format commonjs --output device/tone-lang-parser.js device/tone-lang.pegjs",
+    "parser:build": "peggy --format commonjs --output device/tone-lang-parser.js device/tone-lang-grammar.pegjs",
     "parser:watch": "chokidar device/tone-lang.pegjs -c 'npm run parser:build'"
   }
 }
