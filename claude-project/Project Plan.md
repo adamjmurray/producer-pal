@@ -57,7 +57,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
       around named pitches and numerical midi pitch values (I think I overloaded `pitch` and it's confusing Haiku 3.5).
       Perhaps for now I can keep calling it drumPad.pitch and simply change from numerical value to named pitched like
       C4.
-  - delete-track
+  - ✅ delete-track
 - Implement TongLang
   - ✅ notes
   - ✅ sequences
@@ -83,8 +83,8 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
   - After starting a new voice, rests are not added to offset the voice's start time correctly
 - Add tests, tentatively with vitest
-  - Test list-tracks using new mock-live-api
-  - Test write-clip using new mock-live-api
+  - ✅ Test list-tracks using new mock-live-api
+  - ✅ Test write-clip using new mock-live-api
   - ✅ Test ToneLang
   - We should be able to script the MCP Inspector on the CLI for some end-to-end style testing (kind of like MCP
     Inspector is this project's version of Playwright). Currently it seems the streamable HTTP transport is not yet

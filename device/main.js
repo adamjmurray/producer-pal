@@ -11,13 +11,16 @@ const { readClip } = require("./tool-read-clip.js");
 const { readTrack } = require("./tool-read-track.js");
 const { writeClip } = require("./tool-write-clip.js");
 const { deleteClip } = require("./tool-delete-clip.js");
+const { deleteTrack } = require("./tool-delete-track.js");
 
 const tools = {
   "list-tracks": () => listTracks(),
   "read-track": (args) => readTrack(args),
+  "delete-track": (args) => deleteTrack(args),
   "read-clip": (args) => readClip(args),
   "write-clip": (args) => writeClip(args),
   "delete-clip": (args) => deleteClip(args),
+  "delete-track": (args) => deleteTrack(args),
 };
 
 // Route to appropriate function based on tool name

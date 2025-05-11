@@ -5,6 +5,7 @@ const { addToolListTracks } = require("./add-tool-list-tracks.js");
 const { addToolReadClip } = require("./add-tool-read-clip.js");
 const { addToolReadTrack } = require("./add-tool-read-track.js");
 const { addToolDeleteClip } = require("./add-tool-delete-clip.js");
+const { addToolDeleteTrack } = require("./add-tool-delete-track.js");
 
 function createMcpServer(pendingRequests) {
   const server = new McpServer({
@@ -12,10 +13,13 @@ function createMcpServer(pendingRequests) {
     version: "1.0.0",
   });
 
-  addToolWriteClip(server, pendingRequests);
   addToolListTracks(server, pendingRequests);
-  addToolReadClip(server, pendingRequests);
+
   addToolReadTrack(server, pendingRequests);
+  addToolDeleteTrack(server, pendingRequests);
+
+  addToolReadClip(server, pendingRequests);
+  addToolWriteClip(server, pendingRequests);
   addToolDeleteClip(server, pendingRequests);
 
   return server;
