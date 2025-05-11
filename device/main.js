@@ -6,11 +6,11 @@ post(`[${now()}] loading main.js...\n`);
 
 require("./live-api-extensions.js");
 const console = require("./console.js");
-const { listTracks } = require("./list-tracks.js");
-const { readClip } = require("./read-clip.js");
-const { readTrack } = require("./read-track.js");
-const { writeClip } = require("./write-clip.js");
-const { deleteClip } = require("./delete-clip.js");
+const { listTracks } = require("./tool-list-tracks.js");
+const { readClip } = require("./tool-read-clip.js");
+const { readTrack } = require("./tool-read-track.js");
+const { writeClip } = require("./tool-write-clip.js");
+const { deleteClip } = require("./tool-delete-clip.js");
 
 const tools = {
   "list-tracks": () => listTracks(),

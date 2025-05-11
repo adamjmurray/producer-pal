@@ -1,4 +1,4 @@
-// device/delete-clip.js
+// device/tool-delete-clip.js
 /**
  * Deletes a clip at the specified track and clip slot
  * @param {Object} args - The parameters

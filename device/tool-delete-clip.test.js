@@ -1,7 +1,7 @@
-// device/delete-clip.test.js
+// device/tool-delete-clip.test.js
 import { describe, it, expect } from "vitest";
 import { mockLiveApiGet, liveApiCall } from "./mock-live-api";
-import { deleteClip } from "./delete-clip";
+import { deleteClip } from "./tool-delete-clip";
 
 describe("deleteClip", () => {
   it("should delete a clip when it exists", () => {

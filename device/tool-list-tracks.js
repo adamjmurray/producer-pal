@@ -1,5 +1,5 @@
-// device/list-tracks.js
-const { readClip } = require("./read-clip");
+// device/tool-list-tracks.js
+const { readClip } = require("./tool-read-clip");
 
 function listTracks() {
   const liveSet = new LiveAPI("live_set");

@@ -1,5 +1,5 @@
-// device/read-track.js
-const { readClip } = require("./read-clip");
+// device/tool-read-track.js
+const { readClip } = require("./tool-read-clip");
 const { midiPitchToName } = require("./tone-lang");
 
 const DEVICE_TYPE_INSTRUMENT = 1;

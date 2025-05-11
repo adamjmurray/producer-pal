@@ -1,7 +1,7 @@
-// device/read-track.test.js
+// device/tool-read-track.test.js
 import { describe, it, expect } from "vitest";
 import { liveApiId, mockLiveApiGet, children } from "./mock-live-api";
-import { readTrack, DEVICE_TYPE_INSTRUMENT } from "./read-track";
+import { readTrack, DEVICE_TYPE_INSTRUMENT } from "./tool-read-track";
 
 describe("readTrack", () => {
   it("returns error when track does not exist", () => {

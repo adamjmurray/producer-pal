@@ -1,6 +1,6 @@
-// device/write-clip.js
+// device/tool-write-clip.js
 const { parseToneLang } = require("./tone-lang");
-const { readClip } = require("./read-clip");
+const { readClip } = require("./tool-read-clip");
 
 /**
  * Creates or updates a MIDI clip at the specified track and clip slot

@@ -1,7 +1,7 @@
-// device/list-tracks.test.js
+// device/tool-list-tracks.test.js
 import { describe, it, expect, vi } from "vitest";
 import { children, mockLiveApiGet } from "./mock-live-api";
-import { listTracks } from "./list-tracks";
+import { listTracks } from "./tool-list-tracks";
 
 describe("listTracks", () => {
   it("returns an empty array when no tracks exist", () => {

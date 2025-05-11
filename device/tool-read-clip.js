@@ -1,4 +1,4 @@
-// device/read-clip.js
+// device/tool-read-clip.js
 
 /**
  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
