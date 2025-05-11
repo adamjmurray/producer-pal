@@ -1,27 +1,9 @@
 # AI Music Composition Assistant Project
 
-## Ultimate Goal
+## Goal
 
 Build an AI music composition assistant for Ableton Live by implementing a custom MCP (model context protocol) server
 that integrates with the Live API using Max for Live and Node for Max.
-
-## Supporting Goals
-
-### Primary Supporting Goal
-
-Prototype code as directed by the user, to progress towards the ultimate goal.
-
-### Secondary Supporting Goal
-
-Extend and maintain project documentation (markdown documents in the project resources), especially the ToneLang
-Specification and Project Plan.
-
-The user will often want to discuss parts of these documents and brainstorm edits to subsets of them for planning
-purposes. Keep the conversation focused on the relevant details.
-
-Sometimes the user will ask you to open a document for editing, in which case you should copy the relevant project plan
-resource in its entirety into the current conversation as an artifact and increment the version (either append v2, or
-increment v2 to v3, etc). Use this version suffix in the artifact name and title.
 
 ## Current Focus
 
@@ -41,8 +23,10 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   `/Users/adammurray/workspace/ableton-live-composition-assistant/device`
 - All code uses CJS modules and must use the older approach of `require()`ing other files
   - All code loaded by the v8 object must be in the same folder (`ableton-live-composition-assistant/device`) and it
-    must be required using "./filename.js" isntead of "filename.js". This is because v8 uses it's own custom loader for
+    must be required using "./filename.js" instead of "filename.js". This is because v8 uses it's own custom loader for
     `require`, and it is very limited.
+  - Important note: all test code must use `import` instead of `require` to ensure vitest autowatch works correctly.
+    This works perfectly fine and doesn't interfere with the requirements above
 - We are using the 2025-03-26 version of the model context protocol (MCP).
 - The UI for interacting with the AI will be the Claude Desktop app
 - All functionality within Live should be provided by a single Max for Live device

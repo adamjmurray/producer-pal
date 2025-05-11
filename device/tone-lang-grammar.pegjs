@@ -97,12 +97,12 @@ explicit_velocity
     }
 
 shorthand_velocity
-  = "<<<" { return 127; }
-  / "<<" { return 110; }
-  / "<" { return 90; }
-  / ">>>" { return 10; }
-  / ">>" { return 30; }
-  / ">" { return 50; }
+  = ">>>" { return 127; }
+  / ">>" { return 110; }
+  / ">" { return 90; }
+  / "<<<" { return 10; }
+  / "<<" { return 30; }
+  / "<" { return 50; }
 
 // Duration: *2 or *1.5 or /2 or /1.5 etc
 duration

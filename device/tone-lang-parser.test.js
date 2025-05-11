@@ -165,7 +165,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses notes with shorthand velocity", () => {
-    const ast = parser.parse("C3< D3> E3<<");
+    const ast = parser.parse("C3> D3< E3>>");
     expect(ast).toEqual([
       { type: "note", name: "C3", pitch: 60, duration: null, velocity: 90 },
       { type: "note", name: "D3", pitch: 62, duration: null, velocity: 50 },
@@ -174,7 +174,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses chords with shorthand velocity", () => {
-    const ast = parser.parse("[C3 E3 G3]<");
+    const ast = parser.parse("[C3 E3 G3]>");
     expect(ast).toEqual([
       {
         type: "chord",
@@ -190,7 +190,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("handles extreme shorthand velocity values", () => {
-    const ast = parser.parse("C3<<< D3>>>");
+    const ast = parser.parse("C3>>> D3<<<");
     expect(ast).toEqual([
       { type: "note", name: "C3", pitch: 60, duration: null, velocity: 127 },
       { type: "note", name: "D3", pitch: 62, duration: null, velocity: 10 },

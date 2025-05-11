@@ -123,29 +123,29 @@ Modifiers must be applied in this specific order:
 - Example: `[C3 E3 G3]v100` (C major chord at velocity 100)
 - Default velocity: 70
 
-#### Shorthand Velocity (New)
+#### Shorthand Velocity
 
 - Format: Up to three `<` or `>` symbols
-- `<` increases velocity (louder), `>` decreases velocity (quieter)
+- `>` increases velocity (louder), `<` decreases velocity (quieter)
 - Mapping:
-  - `C4>>>` = velocity 10 (very quiet)
-  - `C4>>` = velocity 30 (quieter)
-  - `C4>` = velocity 50 (quiet)
+  - `C4>>>` = velocity 127 (very loud)
+  - `C4>>` = velocity 110 (louder)
+  - `C4>` = velocity 90 (loud)
   - `C4` = velocity 70 (default)
-  - `C4<` = velocity 90 (loud)
-  - `C4<<` = velocity 110 (louder)
-  - `C4<<<` = velocity 127 (very loud/maximum)
+  - `C4<` = velocity 50 (quiet)
+  - `C4<<` = velocity 30 (quieter)
+  - `C4<<<` = velocity 10 (very quiet/minimum)
 - When applied to chords, affects all notes within
-- Example: `[C3 E3 G3]<<` (C major chord, louder)
+- Example: `[C3 E3 G3]>>` (C major chord, louder)
 
 #### Velocity Stacking
 
 - Velocity modifiers stack when applied to both individual notes in a chord and the chord itself
 - Each note's final velocity is the base 70 plus the sum of all applicable modifiers
-- Each `<` adds 20 to velocity, each `>` subtracts 20 from velocity
-- Example: `[C4< G4<<]<` results in:
-  - C4: 70 (base) + 20 (`<`) + 20 (chord's `<`) = 110
-  - G4: 70 (base) + 40 (`<<`) + 20 (chord's `<`) = 130, capped at 127
+- Each `>` adds 20 to velocity, each `<` subtracts 20 from velocity
+- Example: `[C4> G4>>]>` results in:
+  - C4: 70 (base) + 20 (`>`) + 20 (chord's `>`) = 110
+  - G4: 70 (base) + 40 (`>>`) + 20 (chord's `>`) = 130, capped at 127
 - Explicit velocity (`vNN`) always takes precedence over shorthand modifiers
 
 ### Duration

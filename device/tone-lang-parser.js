@@ -182,12 +182,12 @@ function peg$parse(input, options) {
   const peg$c14 = "B#";
   const peg$c15 = "Cb";
   const peg$c16 = "v";
-  const peg$c17 = "<<<";
-  const peg$c18 = "<<";
-  const peg$c19 = "<";
-  const peg$c20 = ">>>";
-  const peg$c21 = ">>";
-  const peg$c22 = ">";
+  const peg$c17 = ">>>";
+  const peg$c18 = ">>";
+  const peg$c19 = ">";
+  const peg$c20 = "<<<";
+  const peg$c21 = "<<";
+  const peg$c22 = "<";
   const peg$c23 = "*";
   const peg$c24 = ".";
   const peg$c25 = "/";
@@ -216,12 +216,12 @@ function peg$parse(input, options) {
   const peg$e16 = peg$classExpectation([["A", "G"]], false, false, false);
   const peg$e17 = peg$literalExpectation("v", false);
   const peg$e18 = peg$classExpectation([["0", "9"]], false, false, false);
-  const peg$e19 = peg$literalExpectation("<<<", false);
-  const peg$e20 = peg$literalExpectation("<<", false);
-  const peg$e21 = peg$literalExpectation("<", false);
-  const peg$e22 = peg$literalExpectation(">>>", false);
-  const peg$e23 = peg$literalExpectation(">>", false);
-  const peg$e24 = peg$literalExpectation(">", false);
+  const peg$e19 = peg$literalExpectation(">>>", false);
+  const peg$e20 = peg$literalExpectation(">>", false);
+  const peg$e21 = peg$literalExpectation(">", false);
+  const peg$e22 = peg$literalExpectation("<<<", false);
+  const peg$e23 = peg$literalExpectation("<<", false);
+  const peg$e24 = peg$literalExpectation("<", false);
   const peg$e25 = peg$literalExpectation("*", false);
   const peg$e26 = peg$literalExpectation(".", false);
   const peg$e27 = peg$literalExpectation("/", false);
@@ -1007,7 +1007,7 @@ function peg$parse(input, options) {
       s0 = s1;
       if (s0 === peg$FAILED) {
         s0 = peg$currPos;
-        if (input.charCodeAt(peg$currPos) === 60) {
+        if (input.charCodeAt(peg$currPos) === 62) {
           s1 = peg$c19;
           peg$currPos++;
         } else {
@@ -1049,7 +1049,7 @@ function peg$parse(input, options) {
             s0 = s1;
             if (s0 === peg$FAILED) {
               s0 = peg$currPos;
-              if (input.charCodeAt(peg$currPos) === 62) {
+              if (input.charCodeAt(peg$currPos) === 60) {
                 s1 = peg$c22;
                 peg$currPos++;
               } else {

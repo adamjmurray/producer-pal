@@ -118,14 +118,14 @@ describe("parseToneLang", () => {
   });
 
   it("parses notes with shorthand velocity", () => {
-    const result = parseToneLang("C3< D3> E3<<");
+    const result = parseToneLang("C3> D3< E3>>");
     expect(result[0].velocity).toBe(90);
     expect(result[1].velocity).toBe(50);
     expect(result[2].velocity).toBe(110);
   });
 
   it("parses chords with shorthand velocity", () => {
-    const result = parseToneLang("[C3 E3 G3]<");
+    const result = parseToneLang("[C3 E3 G3]>");
     expect(result.length).toBe(3);
     result.forEach((note) => {
       expect(note.velocity).toBe(90);
@@ -133,7 +133,7 @@ describe("parseToneLang", () => {
   });
 
   it("handles extreme shorthand velocity values", () => {
-    const result = parseToneLang("C3<<< D3>>>");
+    const result = parseToneLang("C3>>> D3<<<");
     expect(result[0].velocity).toBe(127);
     expect(result[1].velocity).toBe(10);
   });

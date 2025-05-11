@@ -45,12 +45,13 @@ Pitch classes: C, Db/C#, D, Eb/D#, E, F, Gb/F#, G, Ab/G#, A, Bb/A#, B
 Velocity: 
 - Explicit: vNN (0-127; default = 70)
 - Shorthand: 
-  - "<<<" = very loud (127)
-  - "<<" = louder (110)
-  - "<" = loud (90)
-  - ">" = quiet (50)
-  - ">>" = quieter (30)
-  - ">>>" = very quiet (10)
+  - ">>>" = loudest, fff, fortississimo (127)
+  - "<<" = louder, ff, fortissimo (110)
+  - "<" = loud, f, forte (90)
+  - "" (default) = moderately loud, mf, mezzo-forte (70)
+  - ">" = quiet, mp, mezzo-piano (50)
+  - ">>" = quieter, p, piano (30)
+  - ">>>" = very quiet, ppp, pianississimo (10)
 
 Durations: 
 - Default = quarter note
