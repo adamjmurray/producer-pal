@@ -1,6 +1,7 @@
 // device/mcp-server/create-mpc-server.mjs
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { addToolWriteClip } from "./add-tool-write-clip.mjs";
+import { addToolWriteTrack } from "./add-tool-write-track.mjs";
 import { addToolListTracks } from "./add-tool-list-tracks.mjs";
 import { addToolReadClip } from "./add-tool-read-clip.mjs";
 import { addToolReadTrack } from "./add-tool-read-track.mjs";
@@ -16,6 +17,7 @@ export function createMcpServer(pendingRequests) {
   addToolListTracks(server, pendingRequests);
 
   addToolReadTrack(server, pendingRequests);
+  addToolWriteTrack(server, pendingRequests);
   addToolDeleteTrack(server, pendingRequests);
 
   addToolReadClip(server, pendingRequests);

@@ -94,18 +94,17 @@ describe("MCP Express App", () => {
 
     it("should list all available tools", async () => {
       const result = await client.listTools();
-
-      expect(result.tools).toBeDefined();
       expect(Array.isArray(result.tools)).toBe(true);
-
-      // Check for expected tools
       const toolNames = result.tools.map((tool) => tool.name);
-      expect(toolNames).toContain("list-tracks");
-      expect(toolNames).toContain("read-track");
-      expect(toolNames).toContain("read-clip");
-      expect(toolNames).toContain("write-clip");
-      expect(toolNames).toContain("delete-clip");
-      expect(toolNames).toContain("delete-track");
+      expect(toolNames).toEqual([
+        "list-tracks",
+        "read-track",
+        "write-track",
+        "delete-track",
+        "read-clip",
+        "write-clip",
+        "delete-clip",
+      ]);
     });
 
     it("should provide tool schemas with correct names and descriptions", async () => {

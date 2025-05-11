@@ -1,6 +1,6 @@
 # Project Plan
 
-## Phase 1: Basic MCP Server (outside Max/Live)
+## [Phase 1] Proof-of-concept: Basic MCP Server (outside Max/Live)
 
 Goal: Prove we can build tools in HTTP-based MCP servers and call those tools from Claude Desktop. Learn how to test MCP
 servers.
@@ -11,7 +11,7 @@ servers.
   `mcp-remote` adaptor.
 - ✅ Learn how to use the MCP Inspector.
 
-## Phase 2: Basic MCP capabilities inside Ableton Live
+## [Phase 2] Proof-of-concept: Basic MCP capabilities inside Ableton Live
 
 Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for Live device using Node for Max. Do
 preliminary, basic integration with the Live API and confirm we can read and write the state of the Ableton Live Set
@@ -30,7 +30,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 - ✅ Control the rhythm when creating clips. A simple place to start would be the pitch/chord sequence string (same
   syntax) and add another arg to control the baseDuration in quarter notes (1 = one quarter note).
 
-## Phase 3: Establish a strong foundation: Round-out feature set, cleanup/refactor, automated testing
+## [Phase 3] Foundation: Comprehensive MCP capabilities
 
 - ✅ Ability to auto-play a clip when creating it
 - More clip CRUD operations:
@@ -48,15 +48,14 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ Allow for MIDI clips to be deleted
   - write clip to nonexistent clip slot auto-creates scenes (up to some limit like 500 or something like that)
 - Track CRUD operations:
-  - create new tracks (write-track?)
-  - update tracks (also a write-track? for symmetry with write-clip?)
-  - set/update track name and color (using "CSS syntax")
-  - ✅ read-track, almost done, but still needs to:
-    - ✅ return clip info
-    - ✅ enhance the drum pad info to return ToneLang pitch name like C4. Also need to dis-ambiguity my terminology
-      around named pitches and numerical midi pitch values (I think I overloaded `pitch` and it's confusing Haiku 3.5).
-      Perhaps for now I can keep calling it drumPad.pitch and simply change from numerical value to named pitched like
-      C4.
+  - write-track tool
+    - ✅ update a track's name, color, mute, solo,and arm state
+    - ✅ play a clip in session view
+    - ✅ stop playing clips
+    - create a new track
+  - ✅ read-track, including:
+    - ✅ return list of clips (reuse read-clip)
+    - ✅ list drum pads in drum racks with their associated ToneLang pitch name (e.g. "C4" instead of 60)
   - ✅ delete-track
 - Implement TongLang
   - ✅ notes
@@ -80,7 +79,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 - Improve ToneLang syntax error messages: Claude tried the syntax "D4\*1.5", which should be supported (it is now, but
   wasn't at the time). The error reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9],
   [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
-  - After starting a new voice, rests are not added to offset the voice's start time correctly
+- BUG: After starting a new voice, rests are not added to offset the voice's start time correctly
 - ✅ Add tests, tentatively with vitest
   - ✅ Test all tools
   - ✅ Test ToneLang
@@ -88,7 +87,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - Improve coverage
 - ✅ Stop using TypeScript and get things running on Node.js 20 with the built-in version for Node for Max, if possible
 
-## Phase 4: Deeper Ableton Live Integration
+## [Phase 4] Deeper Uses Cases
 
 Goal: Build towards the desired music composition assistant feature set, working end-to-end in Ableton Live with control
 from Claude Desktop. We will shift focus to Live's Arrangement View in this phase.
@@ -102,6 +101,15 @@ Rough sketch (to be expanded as we make more progress on the previous phase):
 - When the Node for Max code creates Promises, it should also make them timeout after a little while
 - Expand on the clip generation capabilities (TBD)
 - Expand on the clip transformation capabilities (TBD)
-- Add another tool for transforming notes in existing MIDI clips
+- Add another tool for transforming notes in existing MIDI clips? Maybe don't ask the LLM to generate all the notes all
+  the time, even with ToneLong, but instead give it access to a features set like some of the MIDI tools. Like
+  randomization tools.
 
-## Phrase 5: TBD, pending more brainstorming after progress on the above. Possible focus: additional advanced features, and polish and "productization" of feature built in the previous phases.
+## [Phrase 5] Productization and Polish
+
+Goal: Make it easy for other people to use.
+
+- Make a better UI for the Max for Live device
+- Make it easy to change the MCP server port
+- Pubic documentation
+- Blog about it

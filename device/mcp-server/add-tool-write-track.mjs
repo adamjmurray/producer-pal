@@ -1,0 +1,27 @@
+// device/mcp-server/add-tool-write-track.mjs
+import { z } from "zod";
+import { callLiveApi } from "./call-live-api.mjs";
+
+export function addToolWriteTrack(server, pendingRequests) {
+  server.tool(
+    "write-track",
+    "Creates and updates a track at the specified index. By default, this function will only modify properties that are explicitly provided. All properties are optional except trackIndex.",
+    {
+      trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
+      name: z.string().optional().describe("Name for the track"),
+      color: z.string().optional().describe("Color in #RRGGBB hex format"),
+      mute: z.boolean().optional().describe("Set mute state for the track"),
+      solo: z.boolean().optional().describe("Set solo state for the track"),
+      arm: z.boolean().optional().describe("Set arm state for the track"),
+      firedSlotIndex: z
+        .number()
+        .int()
+        .min(-1)
+        .optional()
+        .describe(
+          "Clip slot index to fire (0-based), updates firedSlotIndex property. Use -1 to stop all clips on the track."
+        ),
+    },
+    async (args) => callLiveApi("write-track", args, pendingRequests)
+  );
+}

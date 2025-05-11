@@ -20,7 +20,7 @@ export class LiveAPI {
   }
 
   get id() {
-    return this.#id ?? liveApiId();
+    return this.#id ?? liveApiId.apply(this);
   }
 
   get type() {
