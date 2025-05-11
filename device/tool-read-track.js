@@ -3,6 +3,8 @@ const { readClip } = require("./tool-read-clip");
 const { midiPitchToName } = require("./tone-lang");
 
 const DEVICE_TYPE_INSTRUMENT = 1;
+const DEVICE_TYPE_AUDIO_EFFECT = 2;
+const DEVICE_TYPE_MIDI_EFFECT = 4;
 
 function getDrumPads(trackIndex) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
@@ -42,61 +44,30 @@ function getDrumPads(trackIndex) {
  * @returns {Object} Result object with track information
  */
 function readTrack({ trackIndex }) {
-  // Get the track
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-  // Check if the track exists
   if (track.id === "id 0") {
+    // track does not exist
     return {
-      success: false,
-      error: `Track at index ${trackIndex} does not exist`,
+      id: null,
+      type: null,
+      name: null,
+      trackIndex,
     };
   }
 
-  // Get track properties
-  const trackInfo = {
-    success: true,
-    trackIndex,
+  return {
     id: track.id,
-    name: track.getProperty("name"),
-    color: track.getColor(),
     type: track.getProperty("has_midi_input") ? "midi" : "audio",
-
-    // Basic track states
+    name: track.getProperty("name"),
+    trackIndex,
+    color: track.getColor(),
     isMuted: track.getProperty("mute") > 0,
     isSoloed: track.getProperty("solo") > 0,
     isArmed: track.getProperty("arm") > 0,
-
-    // Grouping and folding
-    isGroup: track.getProperty("is_foldable") > 0,
-    isGrouped: track.getProperty("is_grouped") > 0,
-    isFolded: track.getProperty("fold_state") > 0,
-    isVisible: track.getProperty("is_visible") > 0,
-
-    // Capabilities
-    canBeArmed: track.getProperty("can_be_armed") > 0,
-    canBeFrozen: track.getProperty("can_be_frozen") > 0,
-    canShowChains: track.getProperty("can_show_chains") > 0,
-    isShowingChains: track.getProperty("is_showing_chains") > 0,
-
-    // Additional states
-    isFrozen: track.getProperty("is_frozen") > 0,
-    mutedViaSolo: track.getProperty("muted_via_solo") > 0,
-    backToArranger: track.getProperty("back_to_arranger") > 0,
-
-    // I/O capabilities
-    hasAudioInput: track.getProperty("has_audio_input") > 0,
-    hasAudioOutput: track.getProperty("has_audio_output") > 0,
-    hasMidiInput: track.getProperty("has_midi_input") > 0,
-    hasMidiOutput: track.getProperty("has_midi_output") > 0,
-
-    // Playback states derived from slot indices
     playingSlotIndex: track.getProperty("playing_slot_index"),
     firedSlotIndex: track.getProperty("fired_slot_index"),
-    isPlaying: track.getProperty("playing_slot_index") >= 0,
-    isTriggered: track.getProperty("fired_slot_index") >= 0,
 
-    // Drum pads (if available)
     drumPads: getDrumPads(trackIndex),
 
     clips: track
@@ -106,8 +77,6 @@ function readTrack({ trackIndex }) {
       )
       .filter((clip) => clip != null),
   };
-
-  return trackInfo;
 }
 
 module.exports = { readTrack, DEVICE_TYPE_INSTRUMENT };

@@ -1,14 +1,11 @@
-import { beforeEach, vi } from "vitest";
+import { vi, beforeEach, afterEach } from "vitest";
 import { LiveAPI, liveApiId, liveApiGet, liveApiSet, liveApiCall, mockLiveApiGet } from "./device/mock-live-api";
 
 globalThis.LiveAPI = LiveAPI;
 require("./device/live-api-extensions");
 
 beforeEach(() => {
-  liveApiId.mockReset();
-  liveApiGet.mockReset();
-  liveApiSet.mockReset();
-  liveApiCall.mockReset();
+  vi.resetAllMocks();
 
   // default mocking behaviors:
   liveApiId.mockReturnValue("1");
@@ -21,4 +18,8 @@ beforeEach(() => {
     }
     return null;
   });
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });

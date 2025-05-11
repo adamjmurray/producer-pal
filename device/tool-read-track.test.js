@@ -1,333 +1,279 @@
 // device/tool-read-track.test.js
 import { describe, it, expect } from "vitest";
-import { liveApiId, mockLiveApiGet, children } from "./mock-live-api";
-import { readTrack, DEVICE_TYPE_INSTRUMENT } from "./tool-read-track";
+import { mockLiveApiGet, children, liveApiId, expectedClip } from "./mock-live-api";
+import {
+  readTrack,
+  DEVICE_TYPE_INSTRUMENT,
+  DEVICE_TYPE_AUDIO_EFFECT,
+  DEVICE_TYPE_MIDI_EFFECT,
+} from "./tool-read-track";
+
+const mockTrackProperties = (overrides = {}) => ({
+  name: "Test Track",
+  has_midi_input: 1,
+  color: 0,
+  mute: 0,
+  solo: 0,
+  arm: 0,
+  playing_slot_index: -1,
+  fired_slot_index: -1,
+  clip_slots: [],
+  devices: [],
+  ...overrides,
+});
 
 describe("readTrack", () => {
-  it("returns error when track does not exist", () => {
+  it("returns null values when the track does not exist", () => {
     liveApiId.mockReturnValue("id 0");
 
-    const result = readTrack({ trackIndex: 5 });
+    const result = readTrack({ trackIndex: 99 });
 
-    expect(result.success).toBe(false);
-    expect(result.error).toBe("Track at index 5 does not exist");
+    expect(result).toEqual({
+      id: null,
+      type: null,
+      name: null,
+      trackIndex: 99,
+    });
   });
 
-  it("returns basic MIDI track information", () => {
-    mockLiveApiGet({
-      "live_set tracks 0": {
-        id: "track1",
-        name: "MIDI Track",
-        color: 16711680, // Red
-        has_midi_input: 1,
-        has_audio_input: 0,
-        has_audio_output: 1,
-        has_midi_output: 1,
-        mute: 0,
-        solo: 0,
-        arm: 1,
-        is_foldable: 0,
-        is_grouped: 0,
-        fold_state: 0,
-        is_visible: 1,
-        can_be_armed: 1,
-        can_be_frozen: 1,
-        can_show_chains: 0,
-        is_showing_chains: 0,
-        is_frozen: 0,
-        muted_via_solo: 0,
-        back_to_arranger: 0,
-        playing_slot_index: -1,
-        fired_slot_index: -1,
-        devices: [],
-        clip_slots: [],
-      },
-    });
+  it("returns track information for MIDI tracks", () => {
     liveApiId.mockReturnValue("track1");
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Track 1",
+        color: 16711680, // Red
+        mute: 0,
+        solo: 1,
+        arm: 1,
+        playing_slot_index: 2,
+        fired_slot_index: 3,
+        clip_slots: children("slot1", "slot2"),
+        devices: [],
+      },
+      slot1: { has_clip: 0 },
+      slot2: { has_clip: 0 },
+    });
 
     const result = readTrack({ trackIndex: 0 });
 
     expect(result).toEqual({
-      success: true,
-      trackIndex: 0,
       id: "track1",
-      name: "MIDI Track",
-      color: "#FF0000",
       type: "midi",
+      name: "Track 1",
+      trackIndex: 0,
+      color: "#FF0000",
       isMuted: false,
-      isSoloed: false,
+      isSoloed: true,
       isArmed: true,
-      isGroup: false,
-      isGrouped: false,
-      isFolded: false,
-      isVisible: true,
-      canBeArmed: true,
-      canBeFrozen: true,
-      canShowChains: false,
-      isShowingChains: false,
-      isFrozen: false,
-      mutedViaSolo: false,
-      backToArranger: false,
-      hasAudioInput: false,
-      hasAudioOutput: true,
-      hasMidiInput: true,
-      hasMidiOutput: true,
-      playingSlotIndex: -1,
-      firedSlotIndex: -1,
-      isPlaying: false,
-      isTriggered: false,
+      playingSlotIndex: 2,
+      firedSlotIndex: 3,
       drumPads: null,
       clips: [],
     });
   });
 
-  it("returns audio track information", () => {
+  it("returns track information for audio tracks", () => {
+    liveApiId.mockReturnValue("track2");
     mockLiveApiGet({
-      "live_set tracks 1": {
+      Track: {
+        has_midi_input: 0,
         name: "Audio Track",
         color: 65280, // Green
-        has_midi_input: 0,
-        has_audio_input: 1,
         mute: 1,
-        solo: 1,
+        solo: 0,
         arm: 0,
-        playing_slot_index: 2,
-        fired_slot_index: 3,
-        devices: [],
+        playing_slot_index: -1,
+        fired_slot_index: -1,
         clip_slots: [],
+        devices: [],
       },
     });
 
     const result = readTrack({ trackIndex: 1 });
 
-    expect(result.type).toBe("audio");
-    expect(result.hasAudioInput).toBe(true);
-    expect(result.hasMidiInput).toBe(false);
-    expect(result.isMuted).toBe(true);
-    expect(result.isSoloed).toBe(true);
-    expect(result.playingSlotIndex).toBe(2);
-    expect(result.firedSlotIndex).toBe(3);
-    expect(result.isPlaying).toBe(true);
-    expect(result.isTriggered).toBe(true);
-  });
-
-  it("returns group track information", () => {
-    mockLiveApiGet({
-      "live_set tracks 2": {
-        name: "Group Track",
-        color: 255, // Blue
-        has_midi_input: 1,
-        is_foldable: 1,
-        is_grouped: 0,
-        fold_state: 1,
-        is_visible: 1,
-        devices: [],
-        clip_slots: [],
-      },
+    expect(result).toEqual({
+      id: "track2",
+      type: "audio",
+      name: "Audio Track",
+      trackIndex: 1,
+      color: "#00FF00",
+      isMuted: true,
+      isSoloed: false,
+      isArmed: false,
+      playingSlotIndex: -1,
+      firedSlotIndex: -1,
+      drumPads: null,
+      clips: [],
     });
-
-    const result = readTrack({ trackIndex: 2 });
-
-    expect(result.isGroup).toBe(true);
-    expect(result.isFolded).toBe(true);
-    expect(result.isGrouped).toBe(false);
   });
 
-  it("returns track with clips", () => {
+  it("returns clip information when the track has clips", () => {
+    liveApiId.mockReturnValue("track3");
     mockLiveApiGet({
-      "live_set tracks 3": {
-        name: "Track with Clips",
+      Track: {
         has_midi_input: 1,
-        devices: [],
+        name: "Track with Clips",
+        color: 255, // Blue
+        mute: 0,
+        solo: 0,
+        arm: 0,
+        playing_slot_index: 0,
+        fired_slot_index: -1,
         clip_slots: children("slot1", "slot2", "slot3"),
+        devices: [],
       },
       slot1: { has_clip: 1 },
       slot2: { has_clip: 0 },
       slot3: { has_clip: 1 },
-      "live_set tracks 3 clip_slots 0 clip": {
-        name: "Clip 1",
-        is_midi_clip: 1,
-        color: 16711680,
-        length: 4,
-        looping: 0,
-        start_marker: 0,
-        end_marker: 4,
-        loop_start: 0,
-        loop_end: 4,
-        is_playing: 0,
-      },
-      "live_set tracks 3 clip_slots 2 clip": {
-        name: "Clip 2",
-        is_midi_clip: 1,
-        color: 65280,
-        length: 8,
-        looping: 1,
-        start_marker: 0,
-        end_marker: 8,
-        loop_start: 0,
-        loop_end: 8,
-        is_playing: 1,
-      },
     });
 
-    const result = readTrack({ trackIndex: 3 });
+    const result = readTrack({ trackIndex: 2 });
 
-    expect(result.clips).toHaveLength(2);
-    expect(result.clips[0]).toEqual(
-      expect.objectContaining({
-        name: "Clip 1",
-        type: "midi",
-        trackIndex: 3,
-        clipSlotIndex: 0,
-        length: 4,
-        loop: false,
-      })
-    );
-    expect(result.clips[1]).toEqual(
-      expect.objectContaining({
-        name: "Clip 2",
-        type: "midi",
-        trackIndex: 3,
-        clipSlotIndex: 2,
-        length: 8,
-        loop: true,
-      })
-    );
-    expect(result.clips).toEqual([
-      {
-        id: "1",
-        type: "midi",
-        name: "Clip 1",
-        location: "session",
-        clipSlotIndex: 0,
-        trackIndex: 3,
-        color: "#FF0000",
-        length: 4,
-        start_marker: 0,
-        end_marker: 4,
-        loop_start: 0,
-        loop_end: 4,
-        loop: false,
-        is_playing: false,
-        notes: "",
-        noteCount: 0,
-      },
-      {
-        id: "1",
-        type: "midi",
-        name: "Clip 2",
-        location: "session",
-        trackIndex: 3,
-        clipSlotIndex: 2,
-        color: "#00FF00",
-        length: 8,
-        start_marker: 0,
-        end_marker: 8,
-        loop_start: 0,
-        loop_end: 8,
-        loop: true,
-        is_playing: true,
-        notes: "",
-        noteCount: 0,
-      },
-    ]);
+    expect(result).toEqual({
+      id: "track3",
+      type: "midi",
+      name: "Track with Clips",
+      trackIndex: 2,
+      color: "#0000FF",
+      isArmed: false,
+      isMuted: false,
+      isSoloed: false,
+      firedSlotIndex: -1,
+      playingSlotIndex: 0,
+      drumPads: null,
+      clips: [expectedClip({ clipSlotIndex: 0 }), expectedClip({ clipSlotIndex: 2 })],
+    });
   });
 
-  it("returns track with drum pads when drum rack is present", () => {
-    mockLiveApiGet({
-      "live_set tracks 3": {
-        name: "Drum Track",
-        devices: children("device1"),
-        clip_slots: [],
-      },
-      device1: {
-        type: DEVICE_TYPE_INSTRUMENT,
-        can_have_drum_pads: 1,
-        drum_pads: children("pad1", "pad2"),
-      },
-      pad1: {
-        note: 36,
-        name: "Kick",
-        chains: children("chain1"),
-      },
-      pad2: {
-        note: 38,
-        name: "Snare",
-        chains: children("chain2"),
-      },
+  describe("drumPads", () => {
+    it("returns null when the track has no devices", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track No Devices",
+          devices: [],
+        }),
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toBeNull();
     });
 
-    const result = readTrack({ trackIndex: 3 });
-
-    expect(result.drumPads).toEqual([
-      { pitch: "C1", name: "Kick" },
-      { pitch: "D1", name: "Snare" },
-    ]);
-  });
-
-  it("returns null drum pads when device is not a drum rack", () => {
-    mockLiveApiGet({
-      "live_set tracks 4": {
-        devices: children("device1"),
-        clip_slots: [],
-      },
-      device1: {
-        type: DEVICE_TYPE_INSTRUMENT,
-        can_have_drum_pads: 0,
-      },
+    it("returns null when the track has devices but no instruments", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track No Instruments",
+          devices: children("effect1", "effect2"),
+        }),
+        effect1: { type: DEVICE_TYPE_AUDIO_EFFECT },
+        effect2: { type: DEVICE_TYPE_AUDIO_EFFECT },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toBeNull();
     });
 
-    const result = readTrack({ trackIndex: 4 });
-
-    expect(result.drumPads).toBeNull();
-  });
-
-  it("returns null drum pads when track has no devices", () => {
-    mockLiveApiGet({
-      "live_set tracks 5": {
-        devices: [],
-        clip_slots: [],
-      },
+    it("returns null when the track has an instrument but it's not a drum rack", () => {
+      liveApiId.mockReturnValue("track6");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Non-Drum Instrument",
+          devices: children("wavetable1"),
+        }),
+        wavetable1: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toBeNull();
     });
 
-    const result = readTrack({ trackIndex: 5 });
-
-    expect(result.drumPads).toBeNull();
-  });
-
-  it("only includes drum pads with chains", () => {
-    mockLiveApiGet({
-      "live_set tracks 6": {
-        devices: children("device1"),
-        clip_slots: [],
-      },
-      device1: {
-        type: DEVICE_TYPE_INSTRUMENT,
-        can_have_drum_pads: 1,
-        drum_pads: children("pad1", "pad2", "pad3"),
-      },
-      pad1: {
-        note: 36,
-        name: "Kick",
-        chains: children("chain1"),
-      },
-      pad2: {
-        note: 38,
-        name: "Snare",
-        chains: [], // No chains
-      },
-      pad3: {
-        note: 42,
-        name: "HiHat",
-        chains: children("chain3"),
-      },
+    it("returns empty array when the drum rack has no pads", () => {
+      liveApiId.mockReturnValue("track7");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Empty Drum Rack",
+          devices: children("drumrack"),
+        }),
+        drumrack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 1,
+          drum_pads: [],
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toEqual([]);
     });
 
-    const result = readTrack({ trackIndex: 6 });
+    it("only includes drum pads that have chains to play a sound", () => {
+      liveApiId.mockReturnValue("track9");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Drum Rack With Pads",
+          devices: children("drumrack"),
+        }),
+        drumrack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad1", "pad2", "pad3"),
+        },
+        pad1: {
+          note: 60,
+          name: "Kick",
+          chains: children("chain1"),
+        },
+        pad2: {
+          note: 62,
+          name: "Snare",
+          chains: [],
+        },
+        pad3: {
+          note: 64,
+          name: "Hi-hat",
+          chains: children("chain2"),
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toEqual([
+        { pitch: "C3", name: "Kick" },
+        { pitch: "E3", name: "Hi-hat" },
+      ]);
+    });
 
-    expect(result.drumPads).toEqual([
-      { pitch: "C1", name: "Kick" },
-      { pitch: "Gb1", name: "HiHat" },
-    ]);
+    it("stops at first drum rack found", () => {
+      liveApiId.mockReturnValue("track10");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Multiple Instruments",
+          // In theory you could have multiple drum racks in an instrument rack.
+          // this is not supported as a feature, but let's make sure something reasonable happens:
+          devices: children("midiEffect", "drumrack1", "drumrack2"),
+        }),
+        midiEffect: { type: DEVICE_TYPE_MIDI_EFFECT },
+        drumrack1: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad1"),
+        },
+        pad1: {
+          note: 60,
+          name: "First Drum Rack Kick",
+          chains: children("chain1"),
+        },
+        drumrack2: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad2"),
+        },
+        pad2: {
+          note: 61,
+          name: "Second Drum Rack Snare",
+          chains: children("chain2"),
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toEqual([{ pitch: "C3", name: "First Drum Rack Kick" }]);
+    });
   });
 });

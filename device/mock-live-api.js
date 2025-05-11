@@ -27,6 +27,9 @@ export class LiveAPI {
     if (this.unquotedpath === "live_set") {
       return "LiveSet"; // AKA the Song
     }
+    if (/^live_set tracks \d+$/.test(this.unquotedpath)) {
+      return "Track";
+    }
     if (/^live_set tracks \d+ clip_slots \d+$/.test(this.unquotedpath)) {
       return "ClipSlot";
     }
@@ -96,6 +99,27 @@ export function mockLiveApiGet(overrides = {}) {
     }
   });
 }
+
+// For use with the default behavior in mockLiveApiGet() above
+export const expectedClip = (overrides = {}) => ({
+  clipSlotIndex: 0,
+  color: "#3DC300",
+  end_marker: 5,
+  id: "track3",
+  is_playing: false,
+  length: 4,
+  location: "session",
+  loop: false,
+  loop_end: 5,
+  loop_start: 1,
+  name: "Test Clip",
+  noteCount: 0,
+  notes: "",
+  start_marker: 1,
+  trackIndex: 2,
+  type: "midi",
+  ...overrides,
+});
 
 export function children(...childIds) {
   return childIds.flatMap((id) => ["id", id]);
