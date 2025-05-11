@@ -16,6 +16,9 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 ## Rules
 
 - Minimize dependencies to reduce complexity and maintenance
+- Ideally we always have comprehensive test coverage, so tests should always be written or adjusted for changes to the
+  code. Don't go overboard with every possible combination of edge cases because too many tests are a maintenance
+  burden. Strive for tight focused tests that exercise core logic at least once in an easy to understand way.
 - The only programming language we use is JavaScript because of constraints of running in an embedded environment. We
   are using the MCP TypeScript SDK, but our code must be JavaScript.
 - We are using the 2025-03-26 version of the model context protocol (MCP).
@@ -43,7 +46,7 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   clear when these files are added to project knowledge
 - Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to
   resolve confusion or clarify answers to questions.
-- Calling the Live API has idiosyncracies, such as properties needing to be to be accessed via
+- Calling the Live API has idiosyncrasies, such as properties needing to be to be accessed via
   `track.get("propertyName")?.[0]`. To make this less awkward, a cleaner interface is provided in
   `device/live-api-extensions.js`. Use this interface whenever possible.
 - `package.json` must NOT set `"type"`. Setting this to `"module"` breaks the vitest test suite because it needs to
@@ -63,7 +66,7 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   for Live device hosting the MCP server needs to be restarted. The easiest way to do this is delete the device and then
   undo to restore it.
 
-## Trusted online resources:
+## Trusted online resources (if web search is needed to unblock):
 
 - Node for Max API docs: https://docs.cycling74.com/apiref/nodeformax/
 - Max JS User Guide: https://docs.cycling74.com/userguide/javascript/
@@ -72,8 +75,8 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - Live Object Model: https://docs.cycling74.com/apiref/lom/
 - Live Clip API: https://docs.cycling74.com/apiref/lom/clip/
 - Live Track API: https://docs.cycling74.com/apiref/lom/track/
-- My tutorial on the Live API: https://adammurray.link/max-for-live/v8-in-live/live-api/
-- My tutorial on generating MIDI clips: https://adammurray.link/max-for-live/v8-in-live/generating-midi-clips/
+- Tutorial on the Live API: https://adammurray.link/max-for-live/v8-in-live/live-api/
+- Tutorial on generating MIDI clips: https://adammurray.link/max-for-live/v8-in-live/generating-midi-clips/
 - Ableton Live Manual: https://www.ableton.com/en/live-manual/12/
 - MCP Documentation: https://modelcontextprotocol.io/
 - Peggy Parser Generator Documentation: https://peggyjs.org/documentation.html

@@ -1,5 +1,9 @@
 // device/live-api-extensions.js
 if (typeof LiveAPI !== "undefined") {
+  LiveAPI.prototype.exists = function () {
+    return this.id !== "id 0" && this.id != "0";
+  };
+
   LiveAPI.prototype.getProperty = function (property) {
     switch (property) {
       case "scale_intervals":

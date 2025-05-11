@@ -46,8 +46,7 @@ function getDrumPads(trackIndex) {
 function readTrack({ trackIndex }) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-  if (track.id === "id 0") {
-    // track does not exist
+  if (!track.exists()) {
     return {
       id: null,
       type: null,

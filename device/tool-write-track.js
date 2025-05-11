@@ -24,7 +24,7 @@ function writeTrack({
 }) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-  if (track.id === "id 0") {
+  if (!track.exists()) {
     throw new Error(`Track index ${trackIndex} does not exist`);
   }
 
@@ -55,8 +55,7 @@ function writeTrack({
       track.call("stop_all_clips");
     } else {
       const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${firedSlotIndex}`);
-      // Only fire if the clip slot exists (id is not "id 0")
-      if (clipSlot.id !== "id 0") {
+      if (clipSlot.exists()) {
         clipSlot.call("fire");
       }
     }

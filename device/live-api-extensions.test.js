@@ -1,7 +1,7 @@
 // device/live-api-extensions.test.js
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { LiveAPI } from "./mock-live-api";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "./live-api-extensions";
+import { LiveAPI, liveApiId } from "./mock-live-api";
 
 describe("LiveAPI extensions", () => {
   let api;
@@ -9,6 +9,23 @@ describe("LiveAPI extensions", () => {
   beforeEach(() => {
     api = new LiveAPI("live_set");
     vi.resetAllMocks();
+  });
+
+  describe("exists", () => {
+    it("returns true when LiveAPI object exists", () => {
+      liveApiId.mockReturnValue("1");
+      expect(api.exists()).toBe(true);
+    });
+
+    it("returns false when LiveAPI object does not exist ('id 0' case)", () => {
+      liveApiId.mockReturnValue("id 0");
+      expect(api.exists()).toBe(false);
+    });
+
+    it("returns false when LiveAPI object does not exist  ('0' case)", () => {
+      liveApiId.mockReturnValue("0");
+      expect(api.exists()).toBe(false);
+    });
   });
 
   describe("getProperty", () => {
