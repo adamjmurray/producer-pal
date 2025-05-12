@@ -98,6 +98,7 @@ describe("MCP Express App", () => {
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
         "read-live-set",
+        "write-live-set",
         "read-track",
         "write-track",
         "delete-track",

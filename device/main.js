@@ -6,16 +6,18 @@ post(`[${now()}] loading main.js...\n`);
 
 require("./live-api-extensions.js");
 const console = require("./console.js");
+const { deleteClip } = require("./tool-delete-clip.js");
+const { deleteTrack } = require("./tool-delete-track.js");
 const { readClip } = require("./tool-read-clip.js");
 const { readLiveSet } = require("./tool-read-live-set.js");
 const { readTrack } = require("./tool-read-track.js");
 const { writeClip } = require("./tool-write-clip.js");
+const { writeLiveSet } = require("./tool-write-live-set.js");
 const { writeTrack } = require("./tool-write-track.js");
-const { deleteClip } = require("./tool-delete-clip.js");
-const { deleteTrack } = require("./tool-delete-track.js");
 
 const tools = {
   "read-live-set": () => readLiveSet(),
+  "write-live-set": (args) => writeLiveSet(args),
   "read-track": (args) => readTrack(args),
   "write-track": (args) => writeTrack(args),
   "delete-track": (args) => deleteTrack(args),
@@ -23,7 +25,6 @@ const tools = {
   "write-clip": (args) => writeClip(args),
   "delete-clip": (args) => deleteClip(args),
 };
-
 // Route to appropriate function based on tool name
 function callTool(toolName, args) {
   const tool = tools[toolName];

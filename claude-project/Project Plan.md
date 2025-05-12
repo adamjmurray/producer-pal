@@ -61,7 +61,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
     - ✅ list drum pads in drum racks with their associated ToneLang pitch name (e.g. "C4" instead of 60)
   - ✅ delete-track
 - ✅ read-live-set
-- write-live-set
+- ✅ write-live-set
 - Implement TongLang
   - ✅ notes
   - ✅ sequences
@@ -85,6 +85,8 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   wasn't at the time). The error reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9],
   [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
 - BUG: After starting a new voice, rests are not added to offset the voice's start time correctly
+- BUG: When using `write-live-set`, changes to playing state (for both the transport and stop all clips) is "stale" in
+  the response. It might have something to do with time/global launch quantization?
 - ✅ Add tests, tentatively with vitest
   - ✅ Test all tools
   - ✅ Test ToneLang
