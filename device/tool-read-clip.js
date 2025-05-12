@@ -81,82 +81,62 @@ function convertClipNotesToToneLang(clipNotes) {
   // Sort notes by start time
   clipNotes.sort((a, b) => a.start_time - b.start_time);
 
-  // Separate notes into voices
-  const voices = [];
-
+  // Group notes by start time to identify chords
+  const timeGroups = {};
   for (const note of clipNotes) {
-    // Try to find a voice where this note doesn't overlap
-    let foundVoice = false;
-
-    for (const voice of voices) {
-      const lastNote = voice[voice.length - 1];
-      const lastEndTime = lastNote.start_time + lastNote.duration;
-
-      // If note starts after or at the end of the last note in this voice
-      if (note.start_time >= lastEndTime - 0.001) {
-        // Small tolerance for floating point
-        voice.push(note);
-        foundVoice = true;
-        break;
-      }
+    const timeKey = note.start_time.toFixed(3);
+    if (!timeGroups[timeKey]) {
+      timeGroups[timeKey] = [];
     }
+    timeGroups[timeKey].push(note);
+  }
 
-    // If no existing voice works, create a new one
-    if (!foundVoice) {
-      voices.push([note]);
+  const sortedGroups = Object.entries(timeGroups)
+    .map(([time, notes]) => ({
+      time: parseFloat(time),
+      notes,
+    }))
+    .sort((a, b) => a.time - b.time);
+
+  const elements = [];
+  for (let i = 0; i < sortedGroups.length; i++) {
+    const group = sortedGroups[i];
+    const nextGroup = sortedGroups[i + 1];
+
+    if (group.notes.length === 1) {
+      const note = group.notes[0];
+      let element = formatNote(note);
+
+      if (nextGroup) {
+        const timeUntilNext = nextGroup.time - group.time;
+        const noteDuration = note.duration || 1; // Use default duration if not specified
+
+        // Only add t if it differs from note duration or it's not the default duration (1)
+        if (Math.abs(timeUntilNext - noteDuration) > 0.001) {
+          element += `t${timeUntilNext}`;
+        }
+      }
+
+      elements.push(element);
+    } else {
+      const chordDuration = group.notes[0].duration || 1;
+      let element = formatChord(group.notes);
+
+      if (nextGroup) {
+        const timeUntilNext = nextGroup.time - group.time;
+
+        // Only add t if it differs from chord duration or it's not the default duration (1)
+        if (Math.abs(timeUntilNext - chordDuration) > 0.001) {
+          element += `t${timeUntilNext}`;
+        }
+      }
+
+      elements.push(element);
     }
   }
 
-  const formattedVoices = voices.map((voiceNotes) => formatVoice(voiceNotes));
-  return formattedVoices.join(";");
+  return elements.join(" ");
 }
-
-function formatVoice(notes) {
-  const noteGroups = [];
-  let currentGroup = [notes[0]];
-  let currentTime = notes[0].start_time;
-
-  for (let i = 1; i < notes.length; i++) {
-    const note = notes[i];
-    if (Math.abs(note.start_time - currentTime) < 0.001) {
-      currentGroup.push(note);
-    } else {
-      noteGroups.push({
-        type: "notes",
-        time: currentTime,
-        notes: currentGroup,
-      });
-
-      if (note.start_time - (currentTime + currentGroup[0].duration) > 0.001) {
-        noteGroups.push({
-          type: "rest",
-          time: currentTime + currentGroup[0].duration,
-          duration: note.start_time - (currentTime + currentGroup[0].duration),
-        });
-      }
-
-      currentGroup = [note];
-      currentTime = note.start_time;
-    }
-  }
-
-  noteGroups.push({
-    type: "notes",
-    time: currentTime,
-    notes: currentGroup,
-  });
-
-  const formattedGroups = noteGroups.map((group) => {
-    if (group.type === "rest") {
-      return group.duration !== 1 && !Number.isNaN(group.duration) ? `R${group.duration}` : "R";
-    } else {
-      return group.notes.length > 1 ? formatChord(group.notes) : formatNote(group.notes[0]);
-    }
-  });
-
-  return formattedGroups.join(" ");
-}
-
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a ToneLang string
  * @param {Object} args - Arguments for the function

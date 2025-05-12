@@ -137,6 +137,9 @@ Modifiers must be applied in this specific order:
 - When `t = n`: Perfect connection between notes
 - When `t > n`: Creates space between notes (staccato effect)
 - Default: If omitted, time advances by the note/chord duration
+- The `t` modifier is only needed when the time until the next note differs from the note's duration
+  - When omitted, the next element will start exactly when the current note/chord ends (timing = duration)
+  - For default duration notes (quarter notes), omitting both `n` and `t` uses the most compact syntax
 
 ### Rests
 

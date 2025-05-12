@@ -85,12 +85,7 @@ describe("convertClipNotesToToneLang", () => {
 
     const result = convertClipNotesToToneLang(clipNotes);
 
-    expect(result).toContain(";");
-
-    const voices = result.split(";");
-    expect(voices[0].trim()).toContain("C3n2");
-    expect(voices[0].trim()).toContain("G3");
-    expect(voices[1].trim()).toBe("E3");
+    expect(result).toBe("C3n2t1 E3 G3");
   });
 
   it("prefers to keep notes in the same voice when possible", () => {
@@ -104,11 +99,43 @@ describe("convertClipNotesToToneLang", () => {
 
     const result = convertClipNotesToToneLang(clipNotes);
 
-    const voices = result.split(";");
-    expect(voices.length).toBe(2);
+    expect(result).toBe("[C3 E3] [D3 F3] G3");
+  });
 
-    expect(voices[0].trim()).toMatch(/C3.*D3.*G3/);
-    expect(voices[1].trim()).toMatch(/E3.*F3/);
+  describe("convertClipNotesToToneLang", () => {
+    it("formats overlapping notes using t syntax", () => {
+      const clipNotes = [
+        { pitch: 60, start_time: 0, duration: 2, velocity: 70 }, // C3 long note
+        { pitch: 64, start_time: 1, duration: 1, velocity: 70 }, // E3 overlaps with C3
+        { pitch: 67, start_time: 2, duration: 1, velocity: 70 }, // G3 after C3
+      ];
+
+      const result = convertClipNotesToToneLang(clipNotes);
+      expect(result).toBe("C3n2t1 E3 G3");
+    });
+
+    it("forms chords for notes with the same start time", () => {
+      const clipNotes = [
+        { pitch: 60, start_time: 0, duration: 1, velocity: 70 }, // C3
+        { pitch: 64, start_time: 0, duration: 1, velocity: 70 }, // E3
+        { pitch: 67, start_time: 1, duration: 1, velocity: 70 }, // G3
+      ];
+
+      const result = convertClipNotesToToneLang(clipNotes);
+      expect(result).toBe("[C3 E3] G3");
+    });
+
+    it("handles complex timing with multiple overlapping notes", () => {
+      const clipNotes = [
+        { pitch: 60, start_time: 0, duration: 4, velocity: 70 }, // C3 long note
+        { pitch: 64, start_time: 1, duration: 2, velocity: 70 }, // E3 starts during C3
+        { pitch: 67, start_time: 3, duration: 2, velocity: 70 }, // G3 starts during C3 and E3
+        { pitch: 71, start_time: 6, duration: 1, velocity: 70 }, // B3 after all previous notes
+      ];
+
+      const result = convertClipNotesToToneLang(clipNotes);
+      expect(result).toBe("C3n4t1 E3n2 G3n2t3 B3");
+    });
   });
 });
 

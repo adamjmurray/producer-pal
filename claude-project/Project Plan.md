@@ -78,7 +78,10 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 - Improve ToneLang syntax error messages: Claude tried the syntax "D4\*1.5", which should be supported (it is now, but
   wasn't at the time). The error reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9],
   [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
-- BUG: After starting a new voice, rests are not added to offset the voice's start time correctly
+- ✅ BUG: After starting a new voice, rests are not added to offset the voice's start time correctly (apparently fixed
+  by leveraging the `t` syntax in `read-clip`)
+- `read-clip` on drum tracks should return one voice per pad, and the LLM should be encouraged to write clips this way
+  via the MCP tool descriptions
 - BUG: When using `write-live-set`, changes to playing state (for both the transport and stop all clips) is "stale" in
   the response. It might have something to do with time/global launch quantization?
 - Improve test coverage
