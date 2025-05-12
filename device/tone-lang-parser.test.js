@@ -1,5 +1,5 @@
 // device/tone-lang-parser.test.js
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import parser from "./tone-lang-parser";
 
 /*
@@ -171,6 +171,37 @@ describe("ToneLang Parser", () => {
       { type: "note", name: "D3", pitch: 62, duration: null, velocity: 50 },
       { type: "note", name: "E3", pitch: 64, duration: null, velocity: 110 },
     ]);
+  });
+
+  it("requires whitespace between notes in chords", () => {
+    // This should parse successfully
+    expect(parser.parse("[C3 E3 G3]")).toBeDefined();
+
+    // This should throw an error - notes jammed together
+    expect(() => parser.parse("[C3E3G3]")).toThrow();
+
+    // Flexible whitespace is allowed (newlines, extra spaces)
+    expect(parser.parse("[ C3  E3\nG3 ]")).toBeDefined();
+  });
+
+  it("requires whitespace between elements in a sequence", () => {
+    // Standard whitespace works
+    expect(parser.parse("C3 D3 E3")).toBeDefined();
+
+    // No whitespace between elements should fail
+    expect(() => parser.parse("C3D3E3")).toThrow();
+
+    // Mixed elements with required whitespace
+    expect(parser.parse("C3 [E3 G3] R")).toBeDefined();
+
+    // Mixed elements without whitespace should fail
+    expect(() => parser.parse("C3[E3 G3]R")).toThrow();
+
+    // Different whitespace types are acceptable
+    expect(parser.parse("C3\tD3\nE3")).toBeDefined();
+
+    // Extra whitespace is fine
+    expect(parser.parse("C3  D3   E3")).toBeDefined();
   });
 
   it("parses chords with shorthand velocity", () => {

@@ -14,10 +14,10 @@ voiceList
     }
 
 voice
-  = elements:elementList { return elements; }
+  = elements:sequence { return elements; }
 
-elementList
-  = head:element tail:(_ element)* {
+sequence
+  = head:element tail:(WS element)* {
       return [head, ...tail.map(t => t[1])];
     }
 
@@ -38,7 +38,7 @@ note
     }
 
 chord
-  = "[" _ head:note tail:(_ note)* _ "]" velocity:velocity? duration:duration? {
+  = "[" _ head:note tail:(WS note)* _ "]" velocity:velocity? duration:duration? {
       return { 
         type: "chord", 
         notes: [head, ...tail.map(t => t[1])], 
@@ -119,4 +119,5 @@ integer
   = "-"? [0-9]+ { return parseInt(text(), 10); }
 
 // Whitespace
-_ = [ \t\r\n]*
+WS = [ \t\r\n]+ // required
+_ = [ \t\r\n]*  // optional
