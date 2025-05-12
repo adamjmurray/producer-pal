@@ -19,21 +19,20 @@ MultiVoice ::= Sequence (";" Sequence)+
 Sequence   ::= Element? (WS Element)*
 Element    ::= Note | Chord | Rest
 
-Note       ::= Pitch Velocity? Duration?
+Note       ::= Pitch Velocity? Duration? TimeUntilNext?
 Pitch      ::= PitchClass Octave
 PitchClass ::= "C" | "C#" | "Db" | "D" | "D#" | "Eb" | "E" | "F" | "F#" | "Gb" | "G" | "G#" | "Ab" | "A" | "A#" | "Bb" | "B"
 Octave     ::= SignedInteger  // -2 to 8 for valid MIDI range
 
-Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration?
+Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration? TimeUntilNext?
 
-Rest       ::= "R" Duration?
-
-Velocity   ::= "v" Digit Digit? Digit?
-
-Duration   ::= "n" UnsignedDecimal?
+Velocity        ::= "v" Digit Digit? Digit?
+Duration        ::= "n" UnsignedDecimal?
+TimeUntilNext   ::= "t" UnsignedDecimal?
+Rest            ::= "R" UnsignedDecimal?
 
 SignedDecimal   ::= "-"? UnsignedDecimal
-UnsignedDecimal ::= UnsignedInteger ("." UnsignedInteger)?
+UnsignedDecimal ::= UnsignedInteger ("." UnsignedInteger)? | "." UnsignedInteger
 SignedInteger   ::= "-"? UnsignedInteger
 UnsignedInteger ::= Digit+
 Digit           ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
@@ -45,6 +44,7 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 - Velocity can range from 0 to 127
 - Default velocity is 70
 - Default duration is 1 quarter note (and usually this is 1 beat)
+- Leading 0 for decimals is optional (e.g. 0.5 == .5)
 
 ### Examples
 
@@ -108,6 +108,7 @@ Modifiers must be applied in this specific order:
 
 1. **Velocity** (optional): `vNN` format
 2. **Duration** (optional): `nN` format
+3. **Time Until Next** (optional): `tN` format
 
 ### Velocity
 
@@ -127,6 +128,15 @@ Modifiers must be applied in this specific order:
   - `C3n0.5` = eighth note (0.5 beats)
   - `C3n0.25` = sixteenth note (0.25 beats)
   - `C3n0.667` = triplet eighth note (2/3 of a beat)
+
+### Time Until Next
+
+- Format: `tN` where N is the time until the next element starts
+- Controls spacing between consecutive notes without needing explicit rests
+- When `t < n`: Creates overlapping notes (legato effect)
+- When `t = n`: Perfect connection between notes
+- When `t > n`: Creates space between notes (staccato effect)
+- Default: If omitted, time advances by the note/chord duration
 
 ### Rests
 
@@ -179,6 +189,20 @@ C3v60n2 [E3v90 G3v70] R0.5 F3v120n0.5 R0.5 [D3 F3 A3]v80n4
 ```
 [C3v90n2 E3 G3v70n0.5]v80n4
 ```
+
+### Examples with TimeUntilNext
+
+```
+C4n4t2 D4n4t2 E4n4
+```
+
+Creates three 4-beat notes with 2-beat overlaps between consecutive notes.
+
+```
+C4n0.5t1 D4n0.5t1 E4n0.5t1
+```
+
+Creates staccato eighth notes on a quarter note grid.
 
 ## Parsing & Validation Rules
 

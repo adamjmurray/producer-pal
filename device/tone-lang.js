@@ -41,7 +41,8 @@ function convertToneLangAstToEvents(ast) {
         duration: note.duration ?? DEFAULT_DURATION,
         velocity: note.velocity ?? DEFAULT_VELOCITY,
       });
-      currentTime += item.duration ?? DEFAULT_DURATION;
+      // Advance time by timeUntilNext if specified, otherwise by duration
+      currentTime += note.timeUntilNext ?? note.duration ?? DEFAULT_DURATION;
     } else if (item.type === "chord") {
       const chord = item;
       const chordDuration = chord.duration ?? DEFAULT_DURATION;
@@ -54,7 +55,8 @@ function convertToneLangAstToEvents(ast) {
           velocity: note.velocity ?? chordVelocity,
         });
       }
-      currentTime += chordDuration;
+      // Advance time by timeUntilNext if specified, otherwise by duration
+      currentTime += chord.timeUntilNext ?? chordDuration;
     }
   }
 

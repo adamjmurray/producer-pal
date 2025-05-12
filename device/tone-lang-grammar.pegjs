@@ -27,46 +27,34 @@ element
   / rest
 
 note
-  = pitch:pitch velocity:velocity? duration:duration? {
+  = pitch:pitch velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? {
       return { 
         type: "note", 
         pitch: pitch.pitch,
         name: pitch.name,
         velocity, 
         duration,
+        timeUntilNext,
       };
     }
 
 chord
-  = "[" _ head:note tail:(WS note)* _ "]" velocity:velocity? duration:duration? {
+  = "[" _ head:note tail:(WS note)* _ "]" velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? {
       return { 
         type: "chord", 
         notes: [head, ...tail.map(t => t[1])], 
         velocity,
         duration,
+        timeUntilNext,
       };
     }
-    
+
 rest
   = "R" duration:absoluteDuration? {
       return { 
         type: "rest", 
-        duration: duration ?? 1, // Default to 1 (quarter note) if no duration specified
+        duration: duration,
       };
-    }
-
-absoluteDuration
-  = num:[0-9]+ decimal:("." [0-9]+)? {
-      const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
-      return parseFloat(numStr);
-    }
-  / "." decimal:[0-9]+ {
-      return parseFloat("0." + decimal.join(""));
-    }
-
-duration
-  = "n" duration:absoluteDuration? {
-      return duration ?? 1; // Default to 1 (quarter note) if no duration specified
     }
 
 pitch
@@ -104,6 +92,25 @@ velocity
         throw new Error("Velocity out of range (0–127)");
       }
       return val;
+    }
+
+absoluteDuration
+  = num:[0-9]+ decimal:("." [0-9]+)? {
+      const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
+      return parseFloat(numStr);
+    }
+  / "." decimal:[0-9]+ {
+      return parseFloat("0." + decimal.join(""));
+    }
+
+duration
+  = "n" duration:absoluteDuration? {
+      return duration;
+    }
+
+timeUntilNext
+  = "t" duration:absoluteDuration? {
+      return duration;
     }
 
 integer

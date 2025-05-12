@@ -163,4 +163,37 @@ describe("writeClip", () => {
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
   });
+
+  it.only("should handle TimeUntilNext in the toneLang string", () => {
+    const toneLangString = "C4n4t2 D4n4t2 E4n.5";
+
+    writeClip({
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: toneLangString,
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        {
+          pitch: 72,
+          velocity: 70,
+          start_time: 0,
+          duration: 4,
+        },
+        {
+          pitch: 74,
+          velocity: 70,
+          start_time: 2,
+          duration: 4,
+        },
+        {
+          pitch: 76,
+          velocity: 70,
+          start_time: 4,
+          duration: 0.5,
+        },
+      ],
+    });
+  });
 });

@@ -216,6 +216,40 @@ describe("Default and Override Behavior", () => {
     expect(result[2].velocity).toBe(80); // Chord velocity
     expect(result[2].duration).toBe(0.5); // Note duration override
   });
+
+  it("handles timeUntilNext modifier for overlapping notes", () => {
+    const result = parseToneLang("C4n4t2 D4n4t2 E4n4");
+    expect(result).toHaveLength(3);
+
+    expect(result[0].start_time).toBe(0);
+    expect(result[0].duration).toBe(4);
+
+    expect(result[1].start_time).toBe(2); // Starts 2 beats after C4
+    expect(result[1].duration).toBe(4);
+
+    expect(result[2].start_time).toBe(4); // Starts 2 beats after D4
+    expect(result[2].duration).toBe(4);
+  });
+
+  it("handles timeUntilNext for staccato articulation", () => {
+    const result = parseToneLang("C4n0.5t1 D4n0.5t1 E4n0.5t1");
+
+    expect(result[0].start_time).toBe(0);
+    expect(result[0].duration).toBe(0.5);
+
+    expect(result[1].start_time).toBe(1);
+    expect(result[1].duration).toBe(0.5);
+
+    expect(result[2].start_time).toBe(2);
+    expect(result[2].duration).toBe(0.5);
+  });
+
+  it("handles timeUntilNext with chords", () => {
+    const result = parseToneLang("[C4 E4 G4]n2t3 [D4 F4 A4]n2");
+
+    expect(result[0].start_time).toBe(0);
+    expect(result[3].start_time).toBe(3); // First note of second chord starts 3 beats after
+  });
 });
 
 describe("midiPitchToName", () => {

@@ -13,16 +13,17 @@ MultiVoice ::= Sequence (";" Sequence)+
 Sequence   ::= Element? (WS Element)*
 Element    ::= Note | Chord | Rest
 
-Note       ::= Pitch Velocity? Duration?
+Note       ::= Pitch Velocity? Duration? TimeUntilNext?
 Pitch      ::= PitchClass Octave
 PitchClass ::= "C" | "C#" | "Db" | "D" | "D#" | "Eb" | "E" | "F" | "F#" | "Gb" | "G" | "G#" | "Ab" | "A" | "A#" | "Bb" | "B"
 Octave     ::= SignedInteger  // -2 to 8 for valid MIDI range
 
-Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration?
+Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration? TimeUntilNext?
 
-Velocity   ::= "v" Digit Digit? Digit?
-Duration   ::= "n" UnsignedDecimal?
-Rest       ::= "R" UnsignedDecimal?
+Velocity      ::= "v" Digit Digit? Digit?
+Duration      ::= "n" UnsignedDecimal?
+TimeUntilNext ::= "t" UnsignedDecimal?
+Rest          ::= "R" UnsignedDecimal?
 
 ## Constraints 
 
@@ -44,6 +45,13 @@ Durations:
 - nN = N quarter notes (e.g., n2 = half note, n0.25 = sixteenth note)
 - Decimal values supported (e.g., n1.5 = dotted quarter note)
 
+TimeUntilNext:
+- format: tN (controlling when the next note starts)
+- Allows for articulation control without explicit rests
+- When t<n: notes overlap (legato connection)
+- When t=n: notes connect perfectly
+- When t>n: creates space between notes (staccato effect)
+
 Rests: R with optional duration in quarter notes (e.g., R, R1, R2, R0.25, R.5)
 
 Chords: 
@@ -59,4 +67,6 @@ Examples:
 - C3n0.5 D3n0.5 E3n0.5 F3n0.5 (sequence of eighth notes)
 - [C3 E3 G3]v90 [F3 A3 C4]v70n2 (chord progression with velocities)
 - C3 D3 E3 F3; G2 A2 B2 C3 (two-voice counterpoint)
+- C4n4t2 D4n4t2 E4n4 (overlapping whole notes, each starting 2 beats after previous)
+- C4n0.5t1 D4n0.5t1 E4n0.5t1 (staccato eighth notes on quarter note grid)
 </tone-lang-specification>`;

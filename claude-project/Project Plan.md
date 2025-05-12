@@ -72,9 +72,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ rests
   - ✅ multiple voices
   - ✅ modifiers on individual notes on the chord, with overriding behavior
-  - support articulations (^ makes notes shorter, \_ longer). Default duration could become 75% of the time until the
-    next note, then: ^=50%, ^^=25%, ^^^=min(5%, 32nd note), _=100%, _=125%, \_\_\_=200% (or end of next note might be
-    interesting)
+  - ✅ decouple time to next note
   - address any discrepancies between the spec and grammar
 - ✅ Support reading the notes of a clip and outputting in ToneLang syntax
 - Improve ToneLang syntax error messages: Claude tried the syntax "D4\*1.5", which should be supported (it is now, but
