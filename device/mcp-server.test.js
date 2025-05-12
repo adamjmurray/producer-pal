@@ -104,6 +104,7 @@ describe("MCP Express App", () => {
         "delete-track",
         "read-scene",
         "write-scene",
+        "delete-scene",
         "read-clip",
         "write-clip",
         "delete-clip",

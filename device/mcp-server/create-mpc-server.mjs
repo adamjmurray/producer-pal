@@ -1,6 +1,7 @@
 // device/mcp-server/create-mpc-server.mjs (updated)
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { addToolDeleteClip } from "./add-tool-delete-clip.mjs";
+import { addToolDeleteScene } from "./add-tool-delete-scene.mjs";
 import { addToolDeleteTrack } from "./add-tool-delete-track.mjs";
 import { addToolReadClip } from "./add-tool-read-clip.mjs";
 import { addToolReadLiveSet } from "./add-tool-read-live-set.mjs";
@@ -26,6 +27,7 @@ export function createMcpServer(callLiveApi) {
 
   addToolReadScene(server, callLiveApi);
   addToolWriteScene(server, callLiveApi);
+  addToolDeleteScene(server, callLiveApi);
 
   addToolReadClip(server, callLiveApi);
   addToolWriteClip(server, callLiveApi);
