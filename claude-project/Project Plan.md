@@ -1,119 +1,85 @@
-# Project Plan
+# Ableton Live Composition Assistant - Project Plan
 
-## [Phase 1] Proof-of-concept: Basic MCP Server (outside Max/Live)
+## ✅ Completed Work
 
-Goal: Prove we can build tools in HTTP-based MCP servers and call those tools from Claude Desktop. Learn how to test MCP
-servers.
+### ✅ Phase 1: MCP Server Proof-of-Concept
 
-- ✅ Build an "echo" tool in an MCP server using stdio transport (because it's the simplest). Call the tool directly
-  from Claude Desktop.
-- ✅ Build a "greet" tool in an MCP server using the Streamable HTTP transport. Call it with Claude Desktop via
-  `mcp-remote` adaptor.
-- ✅ Learn how to use the MCP Inspector.
+Successfully demonstrated MCP server functionality with Claude Desktop via:
 
-## [Phase 2] Proof-of-concept: Basic MCP capabilities inside Ableton Live
+- Basic tools using stdio transport
+- HTTP-based tools via Streamable HTTP transport
+- Integration with MCP Inspector
 
-Goal: Prove we can run HTTP-based MCP servers inside Ableton Live in a Max for Live device using Node for Max. Do
-preliminary, basic integration with the Live API and confirm we can read and write the state of the Ableton Live Set
-from Claude Desktop. We will focus on Live's Session View in this phase.
+### ✅Phase 2: Basic Ableton Live Integration
 
-- ✅ Create the Max for Live device shell, bootstrap Node for Max with an entry script that loads our simple MCP "greet"
-  tool from phase 1, and call the custom MCP tool running inside Ableton Live from Claude Desktop
-- ✅ Add a basic ability to call the Live API in the Max for Live shell from the previous step. Simply trigger creating
-  a new empty MIDI clip in track 0, clip slot 0 in Live's Session View
-- ✅ Allow for the MIDI clip to be created in any existing track or clip slot
-- ✅ Expand the ability to create a new empty MIDI clip with notes inside it using a simple syntax for pitches and
-  chords (no control over rhythm yet)
-- ✅ Expose the state of the Ableton Live set via additional MCP tools
-  - ✅ list all tracks and their clips in Session View (but probably not clip contents)
-  - ✅ read the state of a MIDI clip at a given track and clipSlot index
-- ✅ Control the rhythm when creating clips. A simple place to start would be the pitch/chord sequence string (same
-  syntax) and add another arg to control the baseDuration in quarter notes (1 = one quarter note).
+Established core integration between the MCP server and Ableton Live:
 
-## [Phase 3] Foundation: Comprehensive MCP capabilities
+- Created Max for Live device with Node for Max integration
+- Implemented basic Live API calls to manipulate Ableton objects
+- Built foundation for MIDI clip creation and manipulation
+- Added support for basic note/chord syntax
 
-- ✅ Add exists() function to live-api-extensions (the id 0 check)
-- ✅ Rework pendingRequests system to better encapsulate it. Pass in callLiveApi with the mechanism in a closure.
-- ✅ Ability to auto-play a clip when creating it
-- More clip CRUD operations:
-  - ✅ set clip name when creating
-  - ✅ set clip looping state when creating
-  - ✅ set clip color when creating. Use "CSS syntax" for the MCP interface
-  - ✅ update existing clips (tool was repurposed from `create-clip` to the more general `write-clip`)
-    - ✅ update name of existing clips
-    - ✅ update color of existing clips
-    - ✅ update clip mute state
-  - ✅ set/updated whether a clip is looping
-  - ✅ Allow for notes in existing MIDI clips to be updated. `deleteExistingNotes: true|false` (default false) can be
-    used to clear existing clips before setting the new notes.
-  - ✅ set/update normal start/end points and loop start/end points
-  - ✅ Allow for MIDI clips to be deleted
-  - write clip to nonexistent clip slot auto-creates scenes (up to some limit like 500 or something like that)
-- Track CRUD operations:
-  - write-track tool
-    - ✅ update a track's name, color, mute, solo,and arm state
-    - ✅ play a clip in session view
-    - ✅ stop playing clips
-    - create a new track (MIDI only / by default), insert empty tracks up to some limit to handle higher non-existent
-      trackIndexes
-  - ✅ read-track, including:
-    - ✅ return list of clips (reuse read-clip)
-    - ✅ list drum pads in drum racks with their associated ToneLang pitch name (e.g. "C4" instead of 60)
-  - ✅ delete-track
-- ✅ read-live-set
-- ✅ write-live-set
-- Implement TongLang
-  - ✅ notes
-  - ✅ sequences
-  - ✅ explicit velocity
-  - ✅ duration (assuming legato)
-    - ✅ floating point duration multipliers
-  - ✅ chords
-  - ✅ rests
-  - ✅ multiple voices
-  - ✅ modifiers on individual notes on the chord, with overriding behavior
-  - ✅ decouple time to next note
-  - address any discrepancies between the spec and grammar
-- ✅ Support reading the notes of a clip and outputting in ToneLang syntax
-- Improve ToneLang syntax error messages: Claude tried the syntax "D4\*1.5", which should be supported (it is now, but
-  wasn't at the time). The error reporting was bad: "Error in create-clip: Expected "R", "[", [ \t\r\n], [0-9],
-  [A-Ga-g], or end of input but "." found.". Add tests for having good error message in the syntax.
-- ✅ BUG: After starting a new voice, rests are not added to offset the voice's start time correctly (apparently fixed
-  by leveraging the `t` syntax in `read-clip`)
-- `read-clip` on drum tracks should return one voice per pad, and the LLM should be encouraged to write clips this way
-  via the MCP tool descriptions
-- BUG: When using `write-live-set`, changes to playing state (for both the transport and stop all clips) is "stale" in
-  the response. It might have something to do with time/global launch quantization?
-- Improve test coverage
+### ✅ Phase 3: Comprehensive MCP Capabilities
 
-## [Phase 4] Deeper Uses Cases
+Completed full feature set for core functionality:
 
-Goal: Build towards the desired music composition assistant feature set, working end-to-end in Ableton Live with control
-from Claude Desktop. We will shift focus to Live's Arrangement View in this phase.
+- **ToneLang implementation** - custom music notation with support for:
 
-Rough sketch (to be expanded as we make more progress on the previous phase):
+  - Notes, sequences, and chords
+  - Velocity and duration control
+  - Multiple voices and rests
+  - Modifier overrides
 
-- Revisit stateless server approach: Each request creates a new MCP Server instance - efficient for isolated requests
-  but potentially wasteful for frequent calls
-- Validation system: e.g. No validation that start_marker < end_marker in write-clip.js. Validations should occur and
-  throw errors before any changes to state. All error messages should be accurate and clear. This allows the LLM to
-  self-recover.
-- Expand the functionality to work in Arrangement View in Live
-- Improve read-clip ToneLang algorithm for multiple voices to be smarter about creating voices from notes close to each
-  other in pitch. Consider building support for extending the duration of a note (maybe with ~N syntax) to directly
-  support overlapping notes and better represent voices with respect to proper voice leading.
-- When the Node for Max code creates Promises, it should also make them timeout after a little while
-- Expand on the clip generation capabilities (TBD)
-- Expand on the clip transformation capabilities (TBD)
-- Add another tool for transforming notes in existing MIDI clips? Maybe don't ask the LLM to generate all the notes all
-  the time, even with ToneLong, but instead give it access to a features set like some of the MIDI tools. Like
-  randomization tools.
+- **Clip operations**:
 
-## [Phrase 5] Productization and Polish
+  - Create, read, update, delete clips
+  - Control of clip properties (name, color, looping)
+  - Note manipulation with ToneLang
+  - Clip playback control
 
-Goal: Make it easy for other people to use.
+- **Track operations**:
 
-- Make a better UI for the Max for Live device
-- Make it easy to change the MCP server port
-- Pubic documentation
-- Blog about it
+  - Read/write track properties
+  - Track creation and deletion
+  - Drum pad detection and mapping
+
+- **Live Set operations**:
+  - Global transport control
+  - Tempo and time signature control
+  - Session/arrangement view management
+
+## Upcoming Work
+
+### Phase 4: Deeper Use Cases
+
+- **Session and Arrangement integration**:
+
+  - Extend to Arrangement View
+  - Auto-create scenes and tracks when needed
+  - Launch scenes for synchronization between tracks
+  - More intelligent voice handling for drum tracks (read and write with multi-voice syntax)
+
+- **Robustness improvements**:
+
+  - Validation system for better error handling
+    - e.g. start and end time in write-clip
+  - Fix state synchronization issues
+    - playback state immediately after updating in `write-live-set` is not accurate
+  - Add timeouts to promises
+  - Revisit stateless server approach. Stateful may be more efficient
+
+- **Feature expansion**:
+  - Add note transformation capabilities
+    - Implement randomization tools
+
+### Phase 5: Productization and Polish
+
+- Create improved UI for the Max for Live device
+  - Add configuration options (port selection, etc.)
+- Create public documentation
+- Publish blog posts and examples
+
+## Current Focus
+
+We're in Phase 4, with a focus on deeper integration with Ableton Live's functionality and addressing edge cases in the
+current implementation.

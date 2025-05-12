@@ -196,4 +196,15 @@ describe("writeClip", () => {
       ],
     });
   });
+
+  it("returns clear error message for invalid ToneLang syntax", () => {
+    const invalidSyntax = "C3*1.5";
+    expect(() =>
+      writeClip({
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        notes: invalidSyntax,
+      })
+    ).toThrow(/ToneLang syntax error.*Unexpected '\*'.*Valid syntax includes/);
+  });
 });

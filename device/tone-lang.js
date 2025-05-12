@@ -71,21 +71,50 @@ function convertToneLangAstToEvents(ast) {
 function parseToneLang(toneLangExpression) {
   if (!toneLangExpression) return [];
 
-  const ast = parser.parse(toneLangExpression);
+  try {
+    const ast = parser.parse(toneLangExpression);
 
-  // Check if this is a multi-voice AST (array of arrays)
-  if (Array.isArray(ast) && ast.length > 0 && Array.isArray(ast[0]) && ast[0].type === undefined) {
-    // Process multiple voices
-    const allEvents = [];
-    for (const voice of ast) {
-      const voiceEvents = convertToneLangAstToEvents(voice);
-      allEvents.push(...voiceEvents);
+    if (Array.isArray(ast) && ast.length > 0 && Array.isArray(ast[0]) && ast[0].type === undefined) {
+      // Process multiple voices
+      const allEvents = [];
+      for (const voice of ast) {
+        const voiceEvents = convertToneLangAstToEvents(voice);
+        allEvents.push(...voiceEvents);
+      }
+      return allEvents;
     }
-    return allEvents;
-  }
 
-  // Single voice
-  return convertToneLangAstToEvents(ast);
+    // Single voice
+    return convertToneLangAstToEvents(ast);
+  } catch (error) {
+    if (error.name === "SyntaxError") {
+      // Extract useful information from the Peggy error
+      const location = error.location || {};
+      const position = location.start
+        ? `at position ${location.start.offset} (line ${location.start.line}, column ${location.start.column})`
+        : "at unknown position";
+
+      // Build a more helpful error message
+      let helpfulMessage = `ToneLang syntax error ${position}: `;
+
+      // Add a hint based on the character that caused the error
+      const invalidChar = error.found || "";
+
+      if (/^\d+$/.test(invalidChar)) {
+        helpfulMessage += `Unexpected number. Numbers must follow a modifier like 'n' for duration or 'v' for velocity.`;
+      } else if (invalidChar === ".") {
+        helpfulMessage += `Decimal points must be preceded by a number or a modifier (e.g., 'n0.5' or 'n.5').`;
+      } else {
+        // General case
+        helpfulMessage += `Unexpected '${invalidChar}'. Valid syntax includes note names (C-G with optional # or b), `;
+        helpfulMessage += `velocity (v), duration (n), time until next (t), rests (R), or chords using [].`;
+      }
+
+      throw new Error(helpfulMessage);
+    }
+    // Re-throw other errors
+    throw error;
+  }
 }
 
 module.exports = {
