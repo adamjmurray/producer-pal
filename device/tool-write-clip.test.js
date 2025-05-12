@@ -164,7 +164,7 @@ describe("writeClip", () => {
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
   });
 
-  it.only("should handle TimeUntilNext in the toneLang string", () => {
+  it("should handle TimeUntilNext in the toneLang string", () => {
     const toneLangString = "C4n4t2 D4n4t2 E4n.5";
 
     writeClip({
