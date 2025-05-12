@@ -1,10 +1,31 @@
 // device/tool-read-live-set.test.js
-import { describe, it, expect } from "vitest";
-import { mockLiveApiGet, children, expectedTrack, expectedClip } from "./mock-live-api";
+import { describe, expect, it } from "vitest";
+import { children, expectedClip, expectedTrack, liveApiId, mockLiveApiGet } from "./mock-live-api";
 import { readLiveSet } from "./tool-read-live-set";
 
 describe("readLiveSet", () => {
   it("returns live set information including tracks", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 1":
+          return "track2";
+        case "live_set tracks 2":
+          return "track3";
+        case "live_set tracks 0 clip_slots 0 clip":
+          return "clip1";
+        case "live_set tracks 0 clip_slots 2 clip":
+          return "clip2";
+        case "live_set tracks 1 clip_slots 0 clip":
+          return "clip3";
+        default:
+          return "id 0";
+      }
+    });
+
     mockLiveApiGet({
       LiveSet: {
         name: "Test Live Set",
@@ -36,9 +57,6 @@ describe("readLiveSet", () => {
         arm: 0,
         clip_slots: children("slot4"),
       },
-      slot1: { has_clip: 1 },
-      slot3: { has_clip: 1 },
-      slot4: { has_clip: 1 },
     });
 
     // TODO: sanity check drum pads too
@@ -46,7 +64,7 @@ describe("readLiveSet", () => {
     const result = readLiveSet();
 
     expect(result).toEqual({
-      id: "1",
+      id: "live_set_id",
       name: "Test Live Set",
       isPlaying: true,
       tempo: 120,
@@ -58,7 +76,7 @@ describe("readLiveSet", () => {
       trackCount: 3,
       tracks: [
         {
-          id: "1",
+          id: "track1",
           type: "midi",
           name: "MIDI Track 1",
           trackIndex: 0,
@@ -70,12 +88,12 @@ describe("readLiveSet", () => {
           firedSlotIndex: 3,
           drumPads: null,
           clips: [
-            expectedClip({ id: "1", trackIndex: 0, clipSlotIndex: 0 }),
-            expectedClip({ id: "1", trackIndex: 0, clipSlotIndex: 2 }),
+            expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
+            expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
         },
         {
-          id: "1",
+          id: "track2",
           type: "audio",
           name: "Audio Track 2",
           trackIndex: 1,
@@ -86,9 +104,9 @@ describe("readLiveSet", () => {
           playingSlotIndex: 2,
           firedSlotIndex: 3,
           drumPads: null,
-          clips: [expectedClip({ id: "1", trackIndex: 1, clipSlotIndex: 0 })],
+          clips: [expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 })],
         },
-        expectedTrack({ trackIndex: 2 }),
+        expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
     });
   });

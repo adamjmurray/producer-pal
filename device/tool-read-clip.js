@@ -199,9 +199,9 @@ function formatVoice(notes) {
  * @returns {Object} Result object with clip information
  */
 function readClip({ trackIndex, clipSlotIndex }) {
-  const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
+  const clip = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
 
-  if (!clipSlot.getProperty("has_clip")) {
+  if (!clip.exists()) {
     return {
       id: null,
       type: null,
@@ -210,8 +210,6 @@ function readClip({ trackIndex, clipSlotIndex }) {
       clipSlotIndex,
     };
   }
-
-  const clip = new LiveAPI(`${clipSlot.unquotedpath} clip`);
 
   const result = {
     id: clip.id,
@@ -233,9 +231,9 @@ function readClip({ trackIndex, clipSlotIndex }) {
   if (result.type === "midi") {
     // Get the clip notes for MIDI clips
     const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, result.length);
-    const clipNotes = JSON.parse(notesDictionary).notes;
-    result.notes = convertClipNotesToToneLang(clipNotes);
-    result.noteCount = clipNotes.length;
+    const notes = JSON.parse(notesDictionary).notes;
+    result.noteCount = notes.length;
+    result.notes = convertClipNotesToToneLang(notes);
   }
 
   return result;

@@ -1,7 +1,7 @@
 // device/tool-read-clip.test.js
-import { describe, it, expect } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "./mock-live-api";
-import { readClip, convertClipNotesToToneLang, midiPitchToNoteName } from "./tool-read-clip";
+import { describe, expect, it } from "vitest";
+import { liveApiCall, liveApiId, mockLiveApiGet } from "./mock-live-api";
+import { convertClipNotesToToneLang, midiPitchToNoteName, readClip } from "./tool-read-clip";
 
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists", () => {
@@ -40,9 +40,7 @@ describe("readClip", () => {
   });
 
   it("returns null values when no clip exists", () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-    });
+    liveApiId.mockReturnValue("id 0");
     const result = readClip({ trackIndex: 2, clipSlotIndex: 3 });
     expect(result).toEqual({
       id: null,

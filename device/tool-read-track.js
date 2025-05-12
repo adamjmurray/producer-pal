@@ -71,10 +71,8 @@ function readTrack({ trackIndex }) {
 
     clips: track
       .getChildIds("clip_slots")
-      .map((clipSlotId, clipSlotIndex) =>
-        new LiveAPI(clipSlotId).getProperty("has_clip") ? readClip({ trackIndex, clipSlotIndex }) : null
-      )
-      .filter((clip) => clip != null),
+      .map((_clipSlotId, clipSlotIndex) => readClip({ trackIndex, clipSlotIndex }))
+      .filter((clip) => clip.id != null),
   };
 }
 

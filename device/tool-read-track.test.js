@@ -1,11 +1,11 @@
 // device/tool-read-track.test.js
-import { describe, it, expect } from "vitest";
-import { mockLiveApiGet, children, liveApiId, expectedClip } from "./mock-live-api";
+import { describe, expect, it } from "vitest";
+import { children, expectedClip, liveApiId, mockLiveApiGet } from "./mock-live-api";
 import {
-  readTrack,
-  DEVICE_TYPE_INSTRUMENT,
   DEVICE_TYPE_AUDIO_EFFECT,
+  DEVICE_TYPE_INSTRUMENT,
   DEVICE_TYPE_MIDI_EFFECT,
+  readTrack,
 } from "./tool-read-track";
 
 const mockTrackProperties = (overrides = {}) => ({
@@ -37,7 +37,14 @@ describe("readTrack", () => {
   });
 
   it("returns track information for MIDI tracks", () => {
-    liveApiId.mockReturnValue("track1");
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set tracks 0":
+          return "track1";
+        default:
+          return "id 0";
+      }
+    });
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
@@ -51,8 +58,6 @@ describe("readTrack", () => {
         clip_slots: children("slot1", "slot2"),
         devices: [],
       },
-      slot1: { has_clip: 0 },
-      slot2: { has_clip: 0 },
     });
 
     const result = readTrack({ trackIndex: 0 });
@@ -110,9 +115,16 @@ describe("readTrack", () => {
 
   it("returns clip information when the track has clips", () => {
     liveApiId.mockImplementation(function () {
-      if (this.path.endsWith("clip")) return "clip1";
-      if (this.path.includes("tracks")) return "track3";
-      return "1";
+      switch (this.path) {
+        case "live_set tracks 2":
+          return "track3";
+        case "live_set tracks 2 clip_slots 0 clip":
+          return "clip1";
+        case "live_set tracks 2 clip_slots 2 clip":
+          return "clip2";
+        default:
+          return "id 0";
+      }
     });
 
     mockLiveApiGet({
@@ -128,9 +140,6 @@ describe("readTrack", () => {
         clip_slots: children("slot1", "slot2", "slot3"),
         devices: [],
       },
-      slot1: { has_clip: 1 },
-      slot2: { has_clip: 0 },
-      slot3: { has_clip: 1 },
     });
 
     const result = readTrack({ trackIndex: 2 });
@@ -147,7 +156,7 @@ describe("readTrack", () => {
       firedSlotIndex: -1,
       playingSlotIndex: 0,
       drumPads: null,
-      clips: [expectedClip({ clipSlotIndex: 0 }), expectedClip({ clipSlotIndex: 2 })],
+      clips: [expectedClip({ clipSlotIndex: 0 }), expectedClip({ id: "clip2", clipSlotIndex: 2 })],
     });
   });
 

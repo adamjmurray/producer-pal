@@ -1,6 +1,6 @@
 // device/tool-write-track.test.js
-import { describe, it, expect, vi } from "vitest";
-import { liveApiSet, liveApiCall, liveApiId } from "./mock-live-api";
+import { describe, expect, it, vi } from "vitest";
+import { liveApiCall, liveApiId, liveApiSet } from "./mock-live-api";
 import { writeTrack } from "./tool-write-track";
 
 // Mock readTrack since it's used in writeTrack

@@ -1,5 +1,5 @@
 // device/tool-write-clip.test.js
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { liveApiCall, liveApiSet, mockLiveApiGet, MockSequence } from "./mock-live-api";
 import { writeClip } from "./tool-write-clip";
 
