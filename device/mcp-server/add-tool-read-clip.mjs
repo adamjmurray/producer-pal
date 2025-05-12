@@ -1,9 +1,8 @@
 // device/mcp-server/add-tool-read-clip.mjs
 import { z } from "zod";
-import { callLiveApi } from "./call-live-api.mjs";
 import { TONE_LANG_DESCRIPTION } from "./tone-lang-description.mjs";
 
-export function addToolReadClip(server, pendingRequests) {
+export function addToolReadClip(server, callLiveApi) {
   server.tool(
     "read-clip",
     "Retrieves clip information including notes. Returns type ('midi' or 'audio'), name, and length for all clips. " +
@@ -14,6 +13,6 @@ export function addToolReadClip(server, pendingRequests) {
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
       clipSlotIndex: z.number().int().min(0).describe("Clip slot index (0-based)"),
     },
-    async (args) => callLiveApi("read-clip", args, pendingRequests)
+    async (args) => callLiveApi("read-clip", args)
   );
 }

@@ -33,7 +33,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
 ## [Phase 3] Foundation: Comprehensive MCP capabilities
 
 - ✅ Add exists() function to live-api-extensions (the id 0 check)
-- Rework pendingRequests system to better encapsulate it. Pass in callLiveApi with the mechanism in a closure.
+- ✅ Rework pendingRequests system to better encapsulate it. Pass in callLiveApi with the mechanism in a closure.
 - ✅ Ability to auto-play a clip when creating it
 - More clip CRUD operations:
   - ✅ set clip name when creating

@@ -1,9 +1,8 @@
 // device/mcp-server/add-tool-write-clip.mjs
 import { z } from "zod";
-import { callLiveApi } from "./call-live-api.mjs";
 import { TONE_LANG_DESCRIPTION } from "./tone-lang-description.mjs";
 
-export function addToolWriteClip(server, pendingRequests) {
+export function addToolWriteClip(server, callLiveApi) {
   server.tool(
     "write-clip",
     //"Creates or updates a MIDI clip at the specified track and clip slot",
@@ -34,6 +33,6 @@ export function addToolWriteClip(server, pendingRequests) {
         .default(false)
         .describe("Whether to delete existing notes before adding new ones"),
     },
-    async (args) => callLiveApi("write-clip", args, pendingRequests)
+    async (args) => callLiveApi("write-clip", args)
   );
 }

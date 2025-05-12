@@ -8,21 +8,21 @@ import { addToolReadTrack } from "./add-tool-read-track.mjs";
 import { addToolWriteClip } from "./add-tool-write-clip.mjs";
 import { addToolWriteTrack } from "./add-tool-write-track.mjs";
 
-export function createMcpServer(pendingRequests) {
+export function createMcpServer(callLiveApi) {
   const server = new McpServer({
     name: "Ableton Live Composition Assistant",
     version: "1.0.0",
   });
 
-  addToolReadLiveSet(server, pendingRequests);
+  addToolReadLiveSet(server, callLiveApi);
 
-  addToolReadTrack(server, pendingRequests);
-  addToolWriteTrack(server, pendingRequests);
-  addToolDeleteTrack(server, pendingRequests);
+  addToolReadTrack(server, callLiveApi);
+  addToolWriteTrack(server, callLiveApi);
+  addToolDeleteTrack(server, callLiveApi);
 
-  addToolReadClip(server, pendingRequests);
-  addToolWriteClip(server, pendingRequests);
-  addToolDeleteClip(server, pendingRequests);
+  addToolReadClip(server, callLiveApi);
+  addToolWriteClip(server, callLiveApi);
+  addToolDeleteClip(server, callLiveApi);
 
   return server;
 }
