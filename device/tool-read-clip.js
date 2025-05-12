@@ -85,19 +85,6 @@ function formatChord(notes) {
 }
 
 /**
- * Get a REST token with the specified duration
- * @param {number} duration - Duration of the rest
- * @returns {string} - ToneLang rest token
- */
-function getRest(duration) {
-  let rest = "R";
-  if (duration !== 1) {
-    rest += duration;
-  }
-  return rest;
-}
-
-/**
  * Convert Live clip notes to ToneLang string
  * @param {Array} clipNotes - Array of note objects from the Live API
  * @returns {string} ToneLang representation of the notes
@@ -175,7 +162,7 @@ function formatVoice(notes) {
 
   const formattedGroups = noteGroups.map((group) => {
     if (group.type === "rest") {
-      return getRest(group.duration);
+      return group.duration !== 1 && !Number.isNaN(group.duration) ? `R${group.duration}` : "R";
     } else {
       return group.notes.length > 1 ? formatChord(group.notes) : formatNote(group.notes[0]);
     }
