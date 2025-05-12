@@ -128,7 +128,7 @@ describe("writeClip", () => {
     const result = writeClip({
       trackIndex: 3,
       clipSlotIndex: 0,
-      notes: "C3*2 D3*3", // Notes extend to 5 beats
+      notes: "C3n2 D3n3", // Notes extend to 5 beats
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 5);

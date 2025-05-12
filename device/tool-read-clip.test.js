@@ -9,9 +9,9 @@ describe("readClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { note_id: 1, pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-            { note_id: 2, pitch: 62, start_time: 1, duration: 1, velocity: 100 },
-            { note_id: 3, pitch: 64, start_time: 2, duration: 1, velocity: 100 },
+            { note_id: 1, pitch: 60, start_time: 0, duration: 1, velocity: 70 },
+            { note_id: 2, pitch: 62, start_time: 1, duration: 1, velocity: 70 },
+            { note_id: 3, pitch: 64, start_time: 2, duration: 1, velocity: 70 },
           ],
         });
       }
@@ -78,9 +78,9 @@ describe("readClip", () => {
 describe("convertClipNotesToToneLang", () => {
   it("formats overlapping notes as multiple voices", () => {
     const clipNotes = [
-      { pitch: 60, start_time: 0, duration: 2, velocity: 100 }, // C3 long note
-      { pitch: 64, start_time: 1, duration: 1, velocity: 100 }, // E3 overlaps with C3
-      { pitch: 67, start_time: 2, duration: 1, velocity: 100 }, // G3 after C3
+      { pitch: 60, start_time: 0, duration: 2, velocity: 70 }, // C3 long note
+      { pitch: 64, start_time: 1, duration: 1, velocity: 70 }, // E3 overlaps with C3
+      { pitch: 67, start_time: 2, duration: 1, velocity: 70 }, // G3 after C3
     ];
 
     const result = convertClipNotesToToneLang(clipNotes);
@@ -88,18 +88,18 @@ describe("convertClipNotesToToneLang", () => {
     expect(result).toContain(";");
 
     const voices = result.split(";");
-    expect(voices[0].trim()).toContain("C3*2");
+    expect(voices[0].trim()).toContain("C3n2");
     expect(voices[0].trim()).toContain("G3");
     expect(voices[1].trim()).toBe("E3");
   });
 
   it("prefers to keep notes in the same voice when possible", () => {
     const clipNotes = [
-      { pitch: 60, start_time: 0, duration: 1, velocity: 100 }, // C3
-      { pitch: 62, start_time: 1, duration: 1, velocity: 100 }, // D3
-      { pitch: 64, start_time: 0, duration: 1, velocity: 100 }, // E3 (same time as C3)
-      { pitch: 65, start_time: 1, duration: 1, velocity: 100 }, // F3 (same time as D3)
-      { pitch: 67, start_time: 2, duration: 1, velocity: 100 }, // G3
+      { pitch: 60, start_time: 0, duration: 1, velocity: 70 }, // C3
+      { pitch: 62, start_time: 1, duration: 1, velocity: 70 }, // D3
+      { pitch: 64, start_time: 0, duration: 1, velocity: 70 }, // E3 (same time as C3)
+      { pitch: 65, start_time: 1, duration: 1, velocity: 70 }, // F3 (same time as D3)
+      { pitch: 67, start_time: 2, duration: 1, velocity: 70 }, // G3
     ];
 
     const result = convertClipNotesToToneLang(clipNotes);

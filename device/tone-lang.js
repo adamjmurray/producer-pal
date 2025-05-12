@@ -89,4 +89,6 @@ function parseToneLang(toneLangExpression) {
 module.exports = {
   parseToneLang,
   midiPitchToName,
+  DEFAULT_DURATION,
+  DEFAULT_VELOCITY,
 };

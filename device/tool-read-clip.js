@@ -1,4 +1,5 @@
 // device/tool-read-clip.js
+const { DEFAULT_DURATION, DEFAULT_VELOCITY } = require("./tone-lang.js");
 
 /**
  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
@@ -24,19 +25,12 @@ function formatNote(note) {
   const noteName = midiPitchToNoteName(note.pitch);
   let result = noteName;
 
-  // Add velocity if not default (100)
-  if (note.velocity !== 100) {
+  if (note.velocity !== DEFAULT_VELOCITY) {
     result += `v${Math.round(note.velocity)}`;
   }
 
-  // Add duration if not default (1.0)
-  if (note.duration !== 1) {
-    // Use multiplication for longer notes, division for shorter
-    if (note.duration > 1) {
-      result += `*${note.duration}`;
-    } else {
-      result += `/${1 / note.duration}`;
-    }
+  if (note.duration !== DEFAULT_DURATION) {
+    result += `n${note.duration}`;
   }
 
   return result;
@@ -51,7 +45,6 @@ function formatChord(notes) {
   // Sort notes by pitch for consistency
   notes.sort((a, b) => a.pitch - b.pitch);
 
-  // Extract common velocity and duration
   const velocity = notes[0].velocity;
   const duration = notes[0].duration;
 
@@ -63,22 +56,15 @@ function formatChord(notes) {
     return notes.map(formatNote).join(" ");
   }
 
-  // Format as chord
   const noteNames = notes.map((n) => midiPitchToNoteName(n.pitch)).join(" ");
   let result = `[${noteNames}]`;
 
-  // Add velocity if not default
-  if (velocity !== 100) {
+  if (velocity !== DEFAULT_VELOCITY) {
     result += `v${Math.round(velocity)}`;
   }
 
-  // Add duration if not default
-  if (duration !== 1) {
-    if (duration > 1) {
-      result += `*${duration}`;
-    } else {
-      result += `/${1 / duration}`;
-    }
+  if (duration !== DEFAULT_DURATION) {
+    result += `n${duration}`;
   }
 
   return result;

@@ -30,9 +30,7 @@ Rest       ::= "R" Duration?
 
 Velocity   ::= "v" Digit Digit? Digit?
 
-Duration   ::= Multiplier | Divider
-Multiplier ::= "*" UnsignedDecimal
-Divider    ::= "/" UnsignedDecimal
+Duration   ::= "n" UnsignedDecimal?
 
 SignedDecimal   ::= "-"? UnsignedDecimal
 UnsignedDecimal ::= UnsignedInteger ("." UnsignedInteger)?
@@ -53,10 +51,10 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 #### Basic Elements
 
 - Note: `C3` (C in octave 3, quarter note)
-- Note with modifiers: `E4v80*2` (E in octave 4, velocity 80, half note)
+- Note with modifiers: `E4v80n2` (E in octave 4, velocity 80, half note)
 - Chord: `[C3 E3 G3]` (C major triad)
-- Chord with modifiers: `[D3 F#3 A3]v90/2` (D major triad, velocity 90, eighth note)
-- Rest: `R*2` (half note rest)
+- Chord with modifiers: `[D3 F#3 A3]v90n0.5` (D major triad, velocity 90, eighth note)
+- Rest: `R2` (half note rest)
 
 #### Simple Sequence
 
@@ -64,7 +62,7 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 
 #### Complex Sequence
 
-`C3v90*2 [E3 G3]v70 R/2 F3v60/4 [C4 E4 G4]v100*4`
+`C3v90n2 [E3 G3]v70 R0.5 F3v60n0.25 [C4 E4 G4]v100n4`
 
 #### Two-Voice Counterpoint
 
@@ -72,7 +70,7 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 
 #### Three-Voice Pattern with Mixed Rhythms
 
-`C3*2 D3/2 E3/2; G2*3 A2; [C4 E4 G4]v90*4`
+`C3n2 D3n0.5 E3n0.5; G2n3 A2; [C4 E4 G4]v90n4`
 
 ### Pitches
 
@@ -99,7 +97,7 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
   1. Individual note modifiers (highest priority)
   2. Chord-level modifiers (middle priority)
   3. Default values (lowest priority)
-- Example: `[C3v100 E3 G3*2]v80*4`
+- Example: `[C3v100 E3 G3n2]v80n4`
   - C3: velocity=100 (note override), duration=4 (chord level)
   - E3: velocity=80 (chord level), duration=4 (chord level)
   - G3: velocity=80 (chord level), duration=2 (note override)
@@ -109,7 +107,7 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 Modifiers must be applied in this specific order:
 
 1. **Velocity** (optional): `vNN` format
-2. **Duration** (optional): `*N` or `/N` where N is a positive integer or decimal
+2. **Duration** (optional): `nN` format
 
 ### Velocity
 
@@ -122,21 +120,20 @@ Modifiers must be applied in this specific order:
 ### Duration
 
 - Default note duration is a quarter note (1 beat)
-- **Longer durations**: `*N` multiplies duration by N
-  - `C3*2` = half note (2 beats)
-  - `C3*1.5` = dotted quarter note (1.5 beats)
-  - `C3*4` = whole note (4 beats)
-- **Shorter durations**: `/N` divides duration by N
-  - `C3/2` = eighth note (1/2 beat)
-  - `C3/4` = sixteenth note (1/4 beat)
-  - `C3/1.5` = triplet eighth note (1/1.5 beats)
+- Format: `nN` where N is the duration in quarter notes
+  - `C3n2` = half note (2 beats)
+  - `C3n1.5` = dotted quarter note (1.5 beats)
+  - `C3n4` = whole note (4 beats)
+  - `C3n0.5` = eighth note (0.5 beats)
+  - `C3n0.25` = sixteenth note (0.25 beats)
+  - `C3n0.667` = triplet eighth note (2/3 of a beat)
 
 ### Rests
 
-- Format: `R` with optional duration modifier
+- Format: `R` with optional duration value
 - Example: `R` (quarter rest)
-- Example: `R*2` (half rest)
-- Example: `R/4` (sixteenth rest)
+- Example: `R2` (half rest)
+- Example: `R0.25` (sixteenth rest)
 
 ## Sequence Syntax
 
@@ -147,7 +144,7 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ```
 
 ```
-C3v80 D3v60/2 R/2 [E3 G3 B3]v60*2
+C3v80 D3v60n0.5 R0.5 [E3 G3 B3]v60n2
 ```
 
 ## Timing Behavior
@@ -168,19 +165,19 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ### With Rhythm and Velocity
 
 ```
-C3v80 D3v60/2 R/2 [E3 G3 B3]v50*2
+C3v80 D3v60n0.5 R0.5 [E3 G3 B3]v50n2
 ```
 
 ### Complex Pattern
 
 ```
-C3v60*2 [E3v90 G3v70] R/2 F3v120/2 R/2 [D3 F3 A3]v80*4
+C3v60n2 [E3v90 G3v70] R0.5 F3v120n0.5 R0.5 [D3 F3 A3]v80n4
 ```
 
 ### Chord with Note Overrides
 
 ```
-[C3v90*2 E3 G3v70/2]v80*4
+[C3v90n2 E3 G3v70n0.5]v80n4
 ```
 
 ## Parsing & Validation Rules
@@ -223,8 +220,8 @@ C3v80 D3 E3 F3v90; G2v100 A2 B2v90 C3
 Complex rhythmic interaction:
 
 ```
-C3v60*2 D3v80 E3v70/2 F3v80/2;
-G2v100*4 A2v90*2
+C3v60n2 D3v80 E3v70n0.5 F3v80n0.5;
+G2v100n4 A2v90n2
 ```
 
 Voice crossing with different rhythms:
@@ -233,9 +230,3 @@ Voice crossing with different rhythms:
 C3v80 D3 E3v80 F3v80 G3v80;
 G3v90 F3v90 E3v90 D3v90 C3v90
 ```
-
-## Future Extensions
-
-Planned for future versions:
-
-- Articulation symbols (staccato, legato)

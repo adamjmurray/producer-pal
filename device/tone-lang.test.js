@@ -17,11 +17,11 @@ describe("parseToneLang", () => {
     expect(result[2]).toEqual({ pitch: 64, velocity: 70, start_time: 2, duration: 1 });
   });
 
-  it("parses notes with durations", () => {
-    const result = parseToneLang("C3/2 D3*2");
-    expect(result[0].duration).toBe(0.5);
-    expect(result[1].duration).toBe(2);
-    expect(result[1].start_time).toBe(0.5);
+  it("parses notes with the new duration syntax", () => {
+    const result = parseToneLang("C3n2 D3n0.5");
+    expect(result[0].duration).toBe(2);
+    expect(result[1].duration).toBe(0.5);
+    expect(result[1].start_time).toBe(2); // C3n2 + start at 0
   });
 
   it("parses notes with velocity", () => {
@@ -38,15 +38,6 @@ describe("parseToneLang", () => {
       expect(note.start_time).toBe(0);
       expect(note.duration).toBe(1);
       expect(note.velocity).toBe(70);
-    });
-  });
-
-  it("parses chords with velocity and duration", () => {
-    const result = parseToneLang("[C3 E3 G3]v90*2");
-    expect(result).toHaveLength(3);
-    result.forEach((note) => {
-      expect(note.duration).toBe(2);
-      expect(note.velocity).toBe(90);
     });
   });
 
@@ -78,13 +69,6 @@ describe("parseToneLang", () => {
     expect(() => parseToneLang("C3 X9 E3")).toThrow();
   });
 
-  it("parses notes with floating point durations", () => {
-    const result = parseToneLang("C3*1.5 D3/1.5");
-    expect(result[0].duration).toBeCloseTo(1.5);
-    expect(result[1].duration).toBeCloseTo(1 / 1.5, 5);
-    expect(result[1].start_time).toBeCloseTo(1.5);
-  });
-
   it("parses multiple voices into a flattened note list", () => {
     const result = parseToneLang("C3 D3; G3 A3");
 
@@ -104,7 +88,7 @@ describe("parseToneLang", () => {
   });
 
   it("handles complex multi-voice patterns", () => {
-    const result = parseToneLang("C3*2 D3/2 E3/2; G3 A3*2 B3");
+    const result = parseToneLang("C3n2 D3n.5 E3n.5; G3 A3n2 B3");
 
     expect(result.length).toBe(6);
 
@@ -141,11 +125,11 @@ describe("parseToneLang", () => {
   });
 
   it("handles chords with individual note durations", () => {
-    const result = parseToneLang("[C3*2 E3 G3/2]");
+    const result = parseToneLang("[C3n2 E3 G3n0.5]");
 
-    expect(result[0].duration).toBe(2); // C3 has *2
+    expect(result[0].duration).toBe(2); // C3 has n2
     expect(result[1].duration).toBe(1); // E3 uses default
-    expect(result[2].duration).toBe(0.5); // G3 has /2
+    expect(result[2].duration).toBe(0.5); // G3 has n0.5
   });
 
   it("parses rests and adjusts time", () => {
@@ -180,7 +164,7 @@ describe("Default and Override Behavior", () => {
   });
 
   it("uses explicit velocity and duration for notes", () => {
-    const result = parseToneLang("C3v90*2");
+    const result = parseToneLang("C3v90n2");
     expect(result[0].velocity).toBe(90);
     expect(result[0].duration).toBe(2);
   });
@@ -196,7 +180,7 @@ describe("Default and Override Behavior", () => {
   });
 
   it("applies chord-level velocity and duration to all notes", () => {
-    const result = parseToneLang("[C3 E3 G3]v90*2");
+    const result = parseToneLang("[C3 E3 G3]v90n2");
 
     result.forEach((note) => {
       expect(note.velocity).toBe(90); // Chord velocity
@@ -213,7 +197,7 @@ describe("Default and Override Behavior", () => {
   });
 
   it("allows individual notes to override chord duration", () => {
-    const result = parseToneLang("[C3*3 E3 G3/2]*2");
+    const result = parseToneLang("[C3n3 E3 G3n0.5]n2");
 
     expect(result[0].duration).toBe(3); // Note override
     expect(result[1].duration).toBe(2); // Chord duration
@@ -221,7 +205,7 @@ describe("Default and Override Behavior", () => {
   });
 
   it("handles complex overrides with both velocity and duration", () => {
-    const result = parseToneLang("[C3v100*3 E3v90 G3*0.5]v80*2");
+    const result = parseToneLang("[C3v100n3 E3v90 G3n0.5]v80n2");
 
     expect(result[0].velocity).toBe(100); // Note velocity override
     expect(result[0].duration).toBe(3); // Note duration override

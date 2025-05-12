@@ -25,7 +25,7 @@ describe("ToneLang Parser", () => {
   });
 
   it("parses notes with velocities and durations", () => {
-    const ast = parser.parse("C3v90*2 D3v60/2 E3v100/4");
+    const ast = parser.parse("C3v90n2 D3v60n.5 E3v100n.25");
     expect(ast).toEqual([
       { type: "note", name: "C3", pitch: 60, duration: 2, velocity: 90 },
       { type: "note", name: "D3", pitch: 62, duration: 0.5, velocity: 60 },
@@ -41,11 +41,28 @@ describe("ToneLang Parser", () => {
     ]);
   });
 
-  it("parses notes with duration only", () => {
-    const ast = parser.parse("C3*2 D3/2");
+  it("parses notes with durations", () => {
+    const ast = parser.parse("C3n2 D3n0.5 E3n.25");
     expect(ast).toEqual([
       { type: "note", name: "C3", pitch: 60, duration: 2, velocity: null },
       { type: "note", name: "D3", pitch: 62, duration: 0.5, velocity: null },
+      { type: "note", name: "E3", pitch: 64, duration: 0.25, velocity: null },
+    ]);
+  });
+
+  it("parses chords with durations", () => {
+    const ast = parser.parse("[C3 E3 G3]n2");
+    expect(ast).toEqual([
+      {
+        type: "chord",
+        notes: [
+          { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
+          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
+          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
+        ],
+        duration: 2,
+        velocity: null,
+      },
     ]);
   });
 
@@ -65,23 +82,7 @@ describe("ToneLang Parser", () => {
     ]);
   });
 
-  it("parses chords with velocity and duration", () => {
-    const ast = parser.parse("[C3 E3 G3]v80*2");
-    expect(ast).toEqual([
-      {
-        type: "chord",
-        notes: [
-          { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
-          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
-          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
-        ],
-        duration: 2,
-        velocity: 80,
-      },
-    ]);
-  });
-
-  it("parses rests with absolute duration", () => {
+  it("parses rests with duration", () => {
     const ast = parser.parse("R R1 R2 R4 R0.25 R.5");
     expect(ast).toEqual([
       { type: "rest", duration: 1 },

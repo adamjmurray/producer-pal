@@ -64,6 +64,11 @@ absoluteDuration
       return parseFloat("0." + decimal.join(""));
     }
 
+duration
+  = "n" duration:absoluteDuration? {
+      return duration ?? 1; // Default to 1 (quarter note) if no duration specified
+    }
+
 pitch
   = pitchClass:pitchClass octave:integer {
       const name = `${pitchClass.name}${octave}`;
@@ -99,17 +104,6 @@ velocity
         throw new Error("Velocity out of range (0–127)");
       }
       return val;
-    }
-
-// Duration: *2 or *1.5 or /2 or /1.5 etc
-duration
-  = mul:"*" num:[0-9]+ decimal:("." [0-9]+)? {
-      const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
-      return parseFloat(numStr) * 1;
-    }
-  / div:"/" num:[0-9]+ decimal:("." [0-9]+)? {
-      const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
-      return 1 / parseFloat(numStr);
     }
 
 integer
