@@ -28,13 +28,11 @@ Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration?
 
 Rest       ::= "R" Duration?
 
-Velocity          ::= ExplicitVelocity | ShorthandVelocity
-ExplicitVelocity  ::= "v" Digit Digit? Digit?
-ShorthandVelocity ::= "<" | "<<" | "<<<" | ">" | ">>" | ">>>"
+Velocity   ::= "v" Digit Digit? Digit?
 
-Duration          ::= Multiplier | Divider
-Multiplier        ::= "*" UnsignedDecimal
-Divider           ::= "/" UnsignedDecimal
+Duration   ::= Multiplier | Divider
+Multiplier ::= "*" UnsignedDecimal
+Divider    ::= "/" UnsignedDecimal
 
 SignedDecimal   ::= "-"? UnsignedDecimal
 UnsignedDecimal ::= UnsignedInteger ("." UnsignedInteger)?
@@ -66,7 +64,7 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 
 #### Complex Sequence
 
-`C3v90*2 [E3 G3]<<< R/2 F3>/4 [C4 E4 G4]v100*4`
+`C3v90*2 [E3 G3]v70 R/2 F3v60/4 [C4 E4 G4]v100*4`
 
 #### Two-Voice Counterpoint
 
@@ -110,43 +108,16 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 
 Modifiers must be applied in this specific order:
 
-1. **Velocity** (optional): Either shorthand `<` and `>` symbols or explicit `vNN` format
+1. **Velocity** (optional): `vNN` format
 2. **Duration** (optional): `*N` or `/N` where N is a positive integer or decimal
 
 ### Velocity
-
-#### Explicit Velocity
 
 - Format: `vNN` where NN is 0-127 (e.g., `v64`)
 - Placed immediately after the note or chord, before any duration modifier
 - Example: `C3v80` (C3 at velocity 80)
 - Example: `[C3 E3 G3]v100` (C major chord at velocity 100)
 - Default velocity: 70
-
-#### Shorthand Velocity
-
-- Format: Up to three `<` or `>` symbols
-- `>` increases velocity (louder), `<` decreases velocity (quieter)
-- Mapping:
-  - `C4>>>` = velocity 127 (very loud)
-  - `C4>>` = velocity 110 (louder)
-  - `C4>` = velocity 90 (loud)
-  - `C4` = velocity 70 (default)
-  - `C4<` = velocity 50 (quiet)
-  - `C4<<` = velocity 30 (quieter)
-  - `C4<<<` = velocity 10 (very quiet/minimum)
-- When applied to chords, affects all notes within
-- Example: `[C3 E3 G3]>>` (C major chord, louder)
-
-#### Velocity Stacking
-
-- Velocity modifiers stack when applied to both individual notes in a chord and the chord itself
-- Each note's final velocity is the base 70 plus the sum of all applicable modifiers
-- Each `>` adds 20 to velocity, each `<` subtracts 20 from velocity
-- Example: `[C4> G4>>]>` results in:
-  - C4: 70 (base) + 20 (`>`) + 20 (chord's `>`) = 110
-  - G4: 70 (base) + 40 (`>>`) + 20 (chord's `>`) = 130, capped at 127
-- Explicit velocity (`vNN`) always takes precedence over shorthand modifiers
 
 ### Duration
 
@@ -176,7 +147,7 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ```
 
 ```
-C3< D3>/2 R/2 [E3 G3 B3]<<*2
+C3v80 D3v60/2 R/2 [E3 G3 B3]v60*2
 ```
 
 ## Timing Behavior
@@ -197,13 +168,13 @@ C3 D3 E3 F3 G3 A3 B3 C4
 ### With Rhythm and Velocity
 
 ```
-C3< D3>/2 R/2 [E3 G3 B3]<<*2
+C3v80 D3v60/2 R/2 [E3 G3 B3]v50*2
 ```
 
-### Complex Pattern with Shorthand Velocity
+### Complex Pattern
 
 ```
-C3<<*2 [E3< G3>] R/2 F3<<<v120/2 R/2 [D3 F3 A3]<<*4
+C3v60*2 [E3v90 G3v70] R/2 F3v120/2 R/2 [D3 F3 A3]v80*4
 ```
 
 ### Chord with Note Overrides
@@ -246,21 +217,21 @@ ToneLang supports polyphonic compositions with independent voices using semicolo
 Basic two-voice counterpoint:
 
 ```
-C3< D3 E3 F3<; G2>> A2 B2> C3
+C3v80 D3 E3 F3v90; G2v100 A2 B2v90 C3
 ```
 
 Complex rhythmic interaction:
 
 ```
-C3<<*2 D3< E3>/2 F3>/2;
-G2>>*4 A2>*2
+C3v60*2 D3v80 E3v70/2 F3v80/2;
+G2v100*4 A2v90*2
 ```
 
 Voice crossing with different rhythms:
 
 ```
-C3< D3 E3< F3< G3<;
-G3> F3> E3> D3> C3>
+C3v80 D3 E3v80 F3v80 G3v80;
+G3v90 F3v90 E3v90 D3v90 C3v90
 ```
 
 ## Future Extensions

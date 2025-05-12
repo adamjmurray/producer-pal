@@ -164,15 +164,6 @@ describe("ToneLang Parser", () => {
     expect(ast[1].length).toBe(2);
   });
 
-  it("parses notes with shorthand velocity", () => {
-    const ast = parser.parse("C3> D3< E3>>");
-    expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: null, velocity: 90 },
-      { type: "note", name: "D3", pitch: 62, duration: null, velocity: 50 },
-      { type: "note", name: "E3", pitch: 64, duration: null, velocity: 110 },
-    ]);
-  });
-
   it("requires whitespace between notes in chords", () => {
     // This should parse successfully
     expect(parser.parse("[C3 E3 G3]")).toBeDefined();
@@ -202,29 +193,5 @@ describe("ToneLang Parser", () => {
 
     // Extra whitespace is fine
     expect(parser.parse("C3  D3   E3")).toBeDefined();
-  });
-
-  it("parses chords with shorthand velocity", () => {
-    const ast = parser.parse("[C3 E3 G3]>");
-    expect(ast).toEqual([
-      {
-        type: "chord",
-        notes: [
-          { type: "note", name: "C3", pitch: 60, duration: null, velocity: null },
-          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
-          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
-        ],
-        duration: null,
-        velocity: 90,
-      },
-    ]);
-  });
-
-  it("handles extreme shorthand velocity values", () => {
-    const ast = parser.parse("C3>>> D3<<<");
-    expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: null, velocity: 127 },
-      { type: "note", name: "D3", pitch: 62, duration: null, velocity: 10 },
-    ]);
   });
 });

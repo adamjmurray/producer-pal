@@ -1,6 +1,6 @@
 // device/tone-lang.test.js
-import { describe, it, expect } from "vitest";
-import { parseToneLang, midiPitchToName } from "./tone-lang";
+import { describe, expect, it } from "vitest";
+import { midiPitchToName, parseToneLang } from "./tone-lang";
 
 describe("parseToneLang", () => {
   it("returns empty array for empty input", () => {
@@ -115,27 +115,6 @@ describe("parseToneLang", () => {
 
     expect(result[3].start_time).toBe(0); // G3 starts at beginning of second voice
     expect(result[4].duration).toBe(2); // A3*2
-  });
-
-  it("parses notes with shorthand velocity", () => {
-    const result = parseToneLang("C3> D3< E3>>");
-    expect(result[0].velocity).toBe(90);
-    expect(result[1].velocity).toBe(50);
-    expect(result[2].velocity).toBe(110);
-  });
-
-  it("parses chords with shorthand velocity", () => {
-    const result = parseToneLang("[C3 E3 G3]>");
-    expect(result.length).toBe(3);
-    result.forEach((note) => {
-      expect(note.velocity).toBe(90);
-    });
-  });
-
-  it("handles extreme shorthand velocity values", () => {
-    const result = parseToneLang("C3>>> D3<<<");
-    expect(result[0].velocity).toBe(127);
-    expect(result[1].velocity).toBe(10);
   });
 
   it("parses notes with negative octaves", () => {

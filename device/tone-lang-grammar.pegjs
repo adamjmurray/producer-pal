@@ -84,10 +84,6 @@ pitchClass
     }
 
 velocity
-  = explicit_velocity
-  / shorthand_velocity
-
-explicit_velocity 
   = "v" num:[0-9]+ {
       const val = parseInt(num.join(""), 10);
       if (val < 0 || val > 127) {
@@ -95,14 +91,6 @@ explicit_velocity
       }
       return val;
     }
-
-shorthand_velocity
-  = ">>>" { return 127; }
-  / ">>" { return 110; }
-  / ">" { return 90; }
-  / "<<<" { return 10; }
-  / "<<" { return 30; }
-  / "<" { return 50; }
 
 // Duration: *2 or *1.5 or /2 or /1.5 etc
 duration

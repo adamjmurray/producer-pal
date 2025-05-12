@@ -71,10 +71,7 @@ from Claude Desktop. We will focus on Live's Session View in this phase.
   - ✅ chords
   - ✅ rests
   - ✅ multiple voices
-  - ✅ shorthand velocity
   - ✅ modifiers on individual notes on the chord, with overriding behavior
-    - should we allow velocity shorthand to stack between note and chord (and let the explicit setting continue to
-      override)? Maybe if the code to do this is clean...
   - support articulations (^ makes notes shorter, \_ longer). Default duration could become 75% of the time until the
     next note, then: ^=50%, ^^=25%, ^^^=min(5%, 32nd note), _=100%, _=125%, \_\_\_=200% (or end of next note might be
     interesting)
