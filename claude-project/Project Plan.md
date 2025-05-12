@@ -101,6 +101,11 @@ from Claude Desktop. We will shift focus to Live's Arrangement View in this phas
 
 Rough sketch (to be expanded as we make more progress on the previous phase):
 
+- Revisit stateless server approach: Each request creates a new MCP Server instance - efficient for isolated requests
+  but potentially wasteful for frequent calls
+- Validation system: e.g. No validation that start_marker < end_marker in write-clip.js. Validations should occur and
+  throw errors before any changes to state. All error messages should be accurate and clear. This allows the LLM to
+  self-recover.
 - Expand the functionality to work in Arrangement View in Live
 - Improve read-clip ToneLang algorithm for multiple voices to be smarter about creating voices from notes close to each
   other in pitch. Consider building support for extending the duration of a note (maybe with ~N syntax) to directly
