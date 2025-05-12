@@ -6,37 +6,6 @@ const DEVICE_TYPE_INSTRUMENT = 1;
 const DEVICE_TYPE_AUDIO_EFFECT = 2;
 const DEVICE_TYPE_MIDI_EFFECT = 4;
 
-function getDrumPads(trackIndex) {
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  const deviceIds = track.getChildIds("devices");
-
-  for (const deviceId of deviceIds) {
-    const device = new LiveAPI(deviceId);
-
-    if (device.getProperty("type") === DEVICE_TYPE_INSTRUMENT) {
-      if (device.getProperty("can_have_drum_pads")) {
-        const pads = [];
-        const drumPadIds = device.getChildIds("drum_pads");
-        for (const padId of drumPadIds) {
-          const pad = new LiveAPI(padId);
-          // Only add pads that have chains
-          if (pad.getChildIds("chains").length) {
-            pads.push({
-              pitch: midiPitchToName(pad.getProperty("note")),
-              name: pad.getProperty("name"),
-            });
-          }
-        }
-        return pads;
-      }
-      // Found an instrument but it's not a drum rack
-      return null;
-    }
-  }
-  // No instrument found
-  return null;
-}
-
 /**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
@@ -67,12 +36,21 @@ function readTrack({ trackIndex }) {
     playingSlotIndex: track.getProperty("playing_slot_index"),
     firedSlotIndex: track.getProperty("fired_slot_index"),
 
-    drumPads: getDrumPads(trackIndex),
-
     clips: track
       .getChildIds("clip_slots")
       .map((_clipSlotId, clipSlotIndex) => readClip({ trackIndex, clipSlotIndex }))
       .filter((clip) => clip.id != null),
+
+    drumPads:
+      track
+        .getChildren("devices")
+        .find((device) => device.getProperty("can_have_drum_pads"))
+        ?.getChildren("drum_pads")
+        .filter((pad) => pad.getChildIds("chains").length) // ignore empty pads with no device chains that can't produce sound
+        .map((pad) => ({
+          pitch: midiPitchToName(pad.getProperty("note")),
+          name: pad.getProperty("name"),
+        })) ?? null,
   };
 }
 
