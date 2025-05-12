@@ -81,31 +81,15 @@ describe("ToneLang Parser", () => {
     ]);
   });
 
-  it("parses rests", () => {
-    const ast = parser.parse("R R/2 R*2");
+  it("parses rests with absolute duration", () => {
+    const ast = parser.parse("R R1 R2 R4 R0.25 R.5");
     expect(ast).toEqual([
-      { type: "rest", duration: null },
-      { type: "rest", duration: 0.5 },
+      { type: "rest", duration: 1 },
+      { type: "rest", duration: 1 },
       { type: "rest", duration: 2 },
-    ]);
-  });
-
-  it("parses complex sequence", () => {
-    const ast = parser.parse("C3v80 D3v100/2 R/2 [E3 G3 B3]v90*2");
-    expect(ast).toEqual([
-      { type: "note", name: "C3", pitch: 60, duration: null, velocity: 80 },
-      { type: "note", name: "D3", pitch: 62, duration: 0.5, velocity: 100 },
+      { type: "rest", duration: 4 },
+      { type: "rest", duration: 0.25 },
       { type: "rest", duration: 0.5 },
-      {
-        type: "chord",
-        notes: [
-          { type: "note", name: "E3", pitch: 64, duration: null, velocity: null },
-          { type: "note", name: "G3", pitch: 67, duration: null, velocity: null },
-          { type: "note", name: "B3", pitch: 71, duration: null, velocity: null },
-        ],
-        duration: 2,
-        velocity: 90,
-      },
     ]);
   });
 

@@ -91,16 +91,9 @@ function formatChord(notes) {
  */
 function getRest(duration) {
   let rest = "R";
-
-  // Add duration if not default
   if (duration !== 1) {
-    if (duration > 1) {
-      rest += `*${duration}`;
-    } else {
-      rest += `/${1 / duration}`;
-    }
+    rest += duration;
   }
-
   return rest;
 }
 

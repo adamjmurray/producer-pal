@@ -49,7 +49,7 @@ Durations:
 - *N = N times a quarter note (e.g., *2 = half note, *4 = whole note)
 - Decimal values supported (e.g., *1.5 = dotted quarter note)
 
-Rests: R with optional duration modifier (e.g., R, R*2, R/4)
+Rests: R with optional absolute duration (e.g., R, R1, R2, R0.25, R.5)
 
 Chords: 
 - Basic example: [C3 E3 G3] (notes played together)

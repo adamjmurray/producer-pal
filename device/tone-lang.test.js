@@ -147,6 +147,22 @@ describe("parseToneLang", () => {
     expect(result[1].duration).toBe(1); // E3 uses default
     expect(result[2].duration).toBe(0.5); // G3 has /2
   });
+
+  it("parses rests and adjusts time", () => {
+    const result = parseToneLang("C3 R1 D3");
+    expect(result).toHaveLength(2);
+    expect(result[1].start_time).toBe(2); // C3 (1) + R (1)
+  });
+
+  it("handles rests with various durations", () => {
+    const result = parseToneLang("C3 R2 D3");
+    expect(result).toHaveLength(2);
+    expect(result[1].start_time).toBe(3); // C3 (1) + R2 (2)
+
+    const result2 = parseToneLang("C3 R.25 D3");
+    expect(result2).toHaveLength(2);
+    expect(result2[1].start_time).toBe(1.25); // C3 (1) + R.25 (0.25)
+  });
 });
 
 describe("Default and Override Behavior", () => {
@@ -154,11 +170,6 @@ describe("Default and Override Behavior", () => {
   it("applies default duration to rests when not specified", () => {
     const result = parseToneLang("R");
     expect(result).toEqual([]); // No notes, just time advancement
-  });
-
-  it("uses explicit duration for rests when specified", () => {
-    const result = parseToneLang("C3 R*2 D3");
-    expect(result[1].start_time).toBe(3); // C3(1) + R*2(2) = 3
   });
 
   // Notes
