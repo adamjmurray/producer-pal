@@ -1,9 +1,11 @@
 // device/tool-read-live-set.js
 const { readTrack } = require("./tool-read-track");
+const { readScene } = require("./tool-read-scene");
 
 function readLiveSet() {
   const liveSet = new LiveAPI("live_set");
   const trackIds = liveSet.getChildIds("tracks");
+  const sceneIds = liveSet.getChildIds("scenes");
 
   return {
     id: liveSet.id,
@@ -17,6 +19,8 @@ function readLiveSet() {
     scaleIntervals: liveSet.getProperty("scale_intervals"),
     trackCount: trackIds.length,
     tracks: trackIds.map((_trackId, trackIndex) => readTrack({ trackIndex })),
+    sceneCount: sceneIds.length,
+    scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
   };
 }
 

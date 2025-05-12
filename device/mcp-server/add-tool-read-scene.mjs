@@ -1,0 +1,13 @@
+// device/mcp-server/add-tool-read-scene.mjs
+import { z } from "zod";
+
+export function addToolReadScene(server, callLiveApi) {
+  server.tool(
+    "read-scene",
+    "Read comprehensive information about a scene",
+    {
+      sceneIndex: z.number().int().min(0).describe("Scene index (0-based)"),
+    },
+    async (args) => callLiveApi("read-scene", args)
+  );
+}

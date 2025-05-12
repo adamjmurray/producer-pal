@@ -30,6 +30,9 @@ export class LiveAPI {
     if (/^live_set tracks \d+$/.test(this.unquotedpath)) {
       return "Track";
     }
+    if (/^live_set scenes \d+$/.test(this.unquotedpath)) {
+      return "Scene";
+    }
     if (/^live_set tracks \d+ clip_slots \d+$/.test(this.unquotedpath)) {
       return "ClipSlot";
     }

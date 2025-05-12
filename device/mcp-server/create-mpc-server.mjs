@@ -4,6 +4,7 @@ import { addToolDeleteClip } from "./add-tool-delete-clip.mjs";
 import { addToolDeleteTrack } from "./add-tool-delete-track.mjs";
 import { addToolReadClip } from "./add-tool-read-clip.mjs";
 import { addToolReadLiveSet } from "./add-tool-read-live-set.mjs";
+import { addToolReadScene } from "./add-tool-read-scene.mjs";
 import { addToolReadTrack } from "./add-tool-read-track.mjs";
 import { addToolWriteClip } from "./add-tool-write-clip.mjs";
 import { addToolWriteLiveSet } from "./add-tool-write-live-set.mjs";
@@ -21,6 +22,8 @@ export function createMcpServer(callLiveApi) {
   addToolReadTrack(server, callLiveApi);
   addToolWriteTrack(server, callLiveApi);
   addToolDeleteTrack(server, callLiveApi);
+
+  addToolReadScene(server, callLiveApi);
 
   addToolReadClip(server, callLiveApi);
   addToolWriteClip(server, callLiveApi);

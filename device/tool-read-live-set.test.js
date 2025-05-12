@@ -4,7 +4,7 @@ import { children, expectedClip, expectedTrack, liveApiId, mockLiveApiGet } from
 import { readLiveSet } from "./tool-read-live-set";
 
 describe("readLiveSet", () => {
-  it("returns live set information including tracks", () => {
+  it("returns live set information including tracks and scenes", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {
         case "live_set":
@@ -15,6 +15,10 @@ describe("readLiveSet", () => {
           return "track2";
         case "live_set tracks 2":
           return "track3";
+        case "live_set scenes 0":
+          return "scene1";
+        case "live_set scenes 1":
+          return "scene2";
         case "live_set tracks 0 clip_slots 0 clip":
           return "clip1";
         case "live_set tracks 0 clip_slots 2 clip":
@@ -38,6 +42,7 @@ describe("readLiveSet", () => {
         signature_denominator: 4,
         tempo: 120,
         tracks: children("track1", "track2", "track3"),
+        scenes: children("scene1", "scene2"),
       },
       "live_set tracks 0": {
         has_midi_input: 1,
@@ -57,9 +62,29 @@ describe("readLiveSet", () => {
         arm: 0,
         clip_slots: children("slot4"),
       },
+      "live_set scenes 0": {
+        name: "Scene 1",
+        color: 16711680, // Red
+        is_empty: 0,
+        is_triggered: 0,
+        tempo: 120,
+        tempo_enabled: 1,
+        time_signature_numerator: 4,
+        time_signature_denominator: 4,
+        time_signature_enabled: 1,
+      },
+      "live_set scenes 1": {
+        name: "Scene 2",
+        color: 65280, // Green
+        is_empty: 1,
+        is_triggered: 1,
+        tempo: -1,
+        tempo_enabled: 0,
+        time_signature_numerator: -1,
+        time_signature_denominator: -1,
+        time_signature_enabled: 0,
+      },
     });
-
-    // TODO: sanity check drum pads too
 
     const result = readLiveSet();
 
@@ -108,10 +133,37 @@ describe("readLiveSet", () => {
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
+      sceneCount: 2,
+      scenes: [
+        {
+          id: "scene1",
+          name: "Scene 1",
+          sceneIndex: 0,
+          color: "#FF0000",
+          isEmpty: false,
+          isTriggered: false,
+          tempo: 120,
+          isTempoEnabled: true,
+          timeSignature: "4/4",
+          isTimeSignatureEnabled: true,
+        },
+        {
+          id: "scene2",
+          name: "Scene 2",
+          sceneIndex: 1,
+          color: "#00FF00",
+          isEmpty: true,
+          isTriggered: true,
+          tempo: -1,
+          isTempoEnabled: false,
+          timeSignature: "-1/-1",
+          isTimeSignatureEnabled: false,
+        },
+      ],
     });
   });
 
-  it("handles when no tracks exist", () => {
+  it("handles when no tracks or scenes exist", () => {
     mockLiveApiGet({
       LiveSet: {
         name: "Empty Live Set",
@@ -124,6 +176,7 @@ describe("readLiveSet", () => {
         signature_denominator: 4,
         tempo: 100,
         tracks: [],
+        scenes: [],
       },
     });
 
@@ -141,6 +194,8 @@ describe("readLiveSet", () => {
       scaleRootNote: 2,
       trackCount: 0,
       tracks: [],
+      sceneCount: 0,
+      scenes: [],
     });
   });
 });
