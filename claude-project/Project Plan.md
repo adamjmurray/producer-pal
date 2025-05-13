@@ -58,13 +58,14 @@ Completed full feature set for core functionality:
   - ✅ Launch scenes for synchronization between tracks
   - ✅ Grouped track support
   - ✅ More intelligent voice handling for drum tracks (read and write with multi-voice syntax)
+  - Support Arrangement View
+    - ✅ Read arrangement view clips
+    - Upsert arrange view clips
   - Duplicate
     - Clips
     - Tracks
     - Scenes
   - Capture Scene
-  - Support Arrangement View
-  - Support Take Lanes?
 
 - **Robustness improvements**:
 
@@ -79,17 +80,20 @@ Completed full feature set for core functionality:
       `stopping: true` to reinforce things. Or just like and overwrite all clip data to say they are not triggered or
       playing.
   - Claude keeps thinking the transport needs to be started to play the clips when it's not necessary
-  - Add timeouts to promises
+  - Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
   - Revisit stateless server approach. Stateful may be more efficient
 
 - **Feature expansion**:
-  - Add note transformation capabilities
-    - Implement randomization tools
+  - Create improved UI for the Max for Live device
+    - Add configuration options (port selection, etc.)
+  - Maybe introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not
+    being able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature,
+    and it will need to be time-signature aware)
+  - Add note transformation capabilities?
+    - Implement randomization tools?
 
 ### Phase 5: Productization and Polish
 
-- Create improved UI for the Max for Live device
-  - Add configuration options (port selection, etc.)
 - Create public documentation
 - Publish blog posts and examples
 

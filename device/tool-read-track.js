@@ -41,9 +41,14 @@ function readTrack({ trackIndex }) {
     isGroupMember: track.getProperty("is_grouped") > 0,
     groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
 
-    clips: track
+    sessionClips: track
       .getChildIds("clip_slots")
       .map((_clipSlotId, clipSlotIndex) => readClip({ trackIndex, clipSlotIndex }))
+      .filter((clip) => clip.id != null),
+
+    arrangementClips: track
+      .getChildIds("arrangement_clips")
+      .map((clipId) => readClip({ clipId }))
       .filter((clip) => clip.id != null),
 
     drumPads:

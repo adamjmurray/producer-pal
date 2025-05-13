@@ -4,23 +4,30 @@ import { vi } from "vitest";
 export class MockSequence extends Array {}
 
 export const liveApiId = vi.fn();
+export const liveApiPath = vi.fn();
 export const liveApiGet = vi.fn();
 export const liveApiSet = vi.fn();
 export const liveApiCall = vi.fn();
 
 export class LiveAPI {
-  #id;
   constructor(path) {
-    this.path = path;
-    this.unquotedpath = path;
+    this._path = path;
     this.get = liveApiGet;
     this.set = liveApiSet;
     this.call = liveApiCall;
-    if (path.startsWith("id ")) this.#id = path.slice(3);
+    if (path.startsWith("id ")) this._id = path.slice(3);
   }
 
   get id() {
-    return this.#id ?? liveApiId.apply(this);
+    return this._id ?? liveApiId.apply(this);
+  }
+
+  get path() {
+    return liveApiPath.apply(this) ?? this._path;
+  }
+
+  get unquotedpath() {
+    return this.path;
   }
 
   get type() {
@@ -154,7 +161,8 @@ export const expectedTrack = (overrides = {}) => ({
   playingSlotIndex: 2,
   firedSlotIndex: 3,
   drumPads: null,
-  clips: [],
+  arrangementClips: [],
+  sessionClips: [],
   ...overrides,
 });
 

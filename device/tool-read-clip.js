@@ -197,14 +197,20 @@ function convertDrumClipNotesToToneLang(clipNotes) {
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a ToneLang string
  * @param {Object} args - Arguments for the function
- * @param {number} args.trackIndex - Track index (0-based)
- * @param {number} args.clipSlotIndex - Clip slot index (0-based)
+ * @param {number} [args.trackIndex] - Track index (0-based)
+ * @param {number} [args.clipSlotIndex] - Clip slot index (0-based)
+ * @param {string} [args.clipId] - Clip ID to directly access any clip
  * @returns {Object} Result object with clip information
  */
-function readClip({ trackIndex, clipSlotIndex }) {
-  const clip = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
+function readClip({ trackIndex = null, clipSlotIndex = null, clipId = null }) {
+  if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
+    throw new Error("Either clipId or both trackIndex and clipSlotIndex must be provided");
+  }
+
+  const clip = new LiveAPI(clipId ?? `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
 
   if (!clip.exists()) {
+    if (clipId != null) throw new Error(`No clip exists for clipId "${clipId}"`);
     return {
       id: null,
       type: null,
@@ -214,14 +220,13 @@ function readClip({ trackIndex, clipSlotIndex }) {
     };
   }
 
-  // TODO: convert all these and the corresponding args to write-clip to use camelCase (and check through all tools)
+  const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+
   const result = {
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     name: clip.getProperty("name"),
-    location: clip.getProperty("is_arrangement_clip") ? "arrangement" : "session",
-    trackIndex,
-    clipSlotIndex,
+    location: isArrangementClip ? "arrangement" : "session",
     color: clip.getColor(),
     loop: clip.getProperty("looping") > 0,
     length: clip.getProperty("length"),
@@ -233,13 +238,22 @@ function readClip({ trackIndex, clipSlotIndex }) {
     is_triggered: clip.getProperty("is_triggered") > 0,
   };
 
+  if (isArrangementClip) {
+    result.trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)[1]);
+    result.arrangementStartTime = clip.getProperty("start_time");
+  } else {
+    const pathMatch = clip.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
+    result.trackIndex = Number.parseInt(pathMatch?.[1]);
+    result.clipSlotIndex = Number.parseInt(pathMatch?.[2]);
+  }
+
   if (result.type === "midi") {
     // Get the clip notes for MIDI clips
     const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, result.length);
     const notes = JSON.parse(notesDictionary).notes;
 
-    // use a different ToneLang conversion algorithm for drum tracks and non-drums
-    const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+    // Use a different ToneLang conversion algorithm for drum tracks and non-drums
+    const track = new LiveAPI(`live_set tracks ${result.trackIndex}`);
     const isDrumTrack = !!track.getChildren("devices").find((device) => device.getProperty("can_have_drum_pads"));
 
     result.noteCount = notes.length;

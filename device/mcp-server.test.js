@@ -169,8 +169,8 @@ describe("MCP Express App", () => {
     it("should handle tool with missing required arguments", async () => {
       await expect(
         client.callTool({
-          name: "read-clip",
-          arguments: {}, // Missing trackIndex and clipSlotIndex
+          name: "delete-scene",
+          arguments: {}, // Missing sceneIndex
         })
       ).rejects.toThrow();
     });

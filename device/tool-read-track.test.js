@@ -1,6 +1,6 @@
 // device/tool-read-track.test.js
 import { describe, expect, it } from "vitest";
-import { children, expectedClip, liveApiId, mockLiveApiGet } from "./mock-live-api";
+import { children, expectedClip, liveApiId, liveApiPath, mockLiveApiGet } from "./mock-live-api";
 import {
   DEVICE_TYPE_AUDIO_EFFECT,
   DEVICE_TYPE_INSTRUMENT,
@@ -80,7 +80,8 @@ describe("readTrack", () => {
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       drumPads: null,
-      clips: [],
+      arrangementClips: [],
+      sessionClips: [],
     });
   });
 
@@ -118,7 +119,8 @@ describe("readTrack", () => {
       playingSlotIndex: -1,
       firedSlotIndex: -1,
       drumPads: null,
-      clips: [],
+      arrangementClips: [],
+      sessionClips: [],
     });
   });
 
@@ -166,11 +168,12 @@ describe("readTrack", () => {
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       drumPads: null,
-      clips: [],
+      arrangementClips: [],
+      sessionClips: [],
     });
   });
 
-  it("returns clip information when the track has clips", () => {
+  it("returns sessionClips information when the track has clips in Session view", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {
         case "live_set tracks 2":
@@ -216,8 +219,55 @@ describe("readTrack", () => {
       firedSlotIndex: -1,
       playingSlotIndex: 0,
       drumPads: null,
-      clips: [expectedClip({ clipSlotIndex: 0 }), expectedClip({ id: "clip2", clipSlotIndex: 2 })],
+      arrangementClips: [],
+      sessionClips: [expectedClip({ clipSlotIndex: 0 }), expectedClip({ id: "clip2", clipSlotIndex: 2 })],
     });
+  });
+
+  it("returns arrangementClips when the track has clips in Arrangement view", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set tracks 2":
+          return "track3";
+        case "id arr_clip1":
+        case "id arr_clip2":
+          return this.path.substring(3);
+        default:
+          return "id 0";
+      }
+    });
+
+    liveApiPath.mockImplementation(function () {
+      switch (this._id) {
+        case "arr_clip1":
+          return "live_set tracks 2 arrangement_clips 0";
+        case "arr_clip2":
+          return "live_set tracks 2 arrangement_clips 1";
+      }
+    });
+
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Track with Arrangement Clips",
+        color: 255,
+        clip_slots: children("slot1", "slot2", "slot3"),
+        arrangement_clips: children("arr_clip1", "arr_clip2"),
+        devices: [],
+      },
+      arr_clip1: {
+        is_arrangement_clip: 1,
+      },
+      arr_clip2: {
+        is_arrangement_clip: 1,
+      },
+    });
+
+    const result = readTrack({ trackIndex: 2 });
+
+    expect(result.arrangementClips.length).toBe(2);
+    expect(result.arrangementClips[0].id).toBe("arr_clip1");
+    expect(result.arrangementClips[1].id).toBe("arr_clip2");
   });
 
   describe("drumPads", () => {

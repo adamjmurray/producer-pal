@@ -1,6 +1,6 @@
 // device/tool-read-clip.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, mockLiveApiGet } from "./mock-live-api";
+import { children, liveApiCall, liveApiId, liveApiPath, mockLiveApiGet } from "./mock-live-api";
 import {
   convertClipNotesToToneLang,
   convertDrumClipNotesToToneLang,
@@ -79,6 +79,58 @@ describe("readClip", () => {
       is_playing: true,
       is_triggered: false,
     });
+  });
+
+  it("reads a session clip by ID", () => {
+    mockLiveApiGet({
+      session_clip_id: {
+        is_arrangement_clip: 0,
+      },
+    });
+
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "session_clip_id") {
+        return "live_set tracks 2 clip_slots 4 clip";
+      }
+    });
+
+    const result = readClip({ clipId: "id session_clip_id" });
+    expect(result.id).toBe("session_clip_id");
+    expect(result.trackIndex).toBe(2);
+    expect(result.clipSlotIndex).toBe(4);
+    expect(result.location).toBe("session");
+  });
+
+  it("reads an arrangement clip by ID", () => {
+    mockLiveApiGet({
+      arrangement_clip_id: {
+        is_arrangement_clip: 1,
+        start_time: 16.0,
+      },
+    });
+
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "arrangement_clip_id") {
+        return "live_set tracks 3 arrangement_clips 2";
+      }
+    });
+
+    const result = readClip({ clipId: "id arrangement_clip_id" });
+    expect(result.id).toBe("arrangement_clip_id");
+    expect(result.location).toBe("arrangement");
+    expect(result.trackIndex).toBe(3);
+    expect(result.clipSlotIndex).toBeUndefined();
+    expect(result.arrangementStartTime).toBe(16.0);
+  });
+
+  it("throws an error when neither clipId nor trackIndex+clipSlotIndex are provided", () => {
+    expect(() => readClip({})).toThrow("Either clipId or both trackIndex and clipSlotIndex must be provided");
+    expect(() => readClip({ trackIndex: 1 })).toThrow(
+      "Either clipId or both trackIndex and clipSlotIndex must be provided"
+    );
+    expect(() => readClip({ clipSlotIndex: 1 })).toThrow(
+      "Either clipId or both trackIndex and clipSlotIndex must be provided"
+    );
   });
 
   it("detects drum tracks and uses the drum-specific ToneLang conversion", () => {
