@@ -5,19 +5,32 @@ import { TONE_LANG_DESCRIPTION } from "./tone-lang-description.mjs";
 export function addToolWriteClip(server, callLiveApi) {
   server.tool(
     "write-clip",
-    //"Creates or updates a MIDI clip at the specified track and clip slot",
-    "Creates and updates a MIDI clip at the specified track and clip slot. " +
-      "By default, this function will merge new notes with existing clip content unless 'deleteExistingNotes' is set to true. " +
-      "This means that providing notes will add to or modify the existing clip without completely replacing it, " +
-      "and you can omit notes when updating other properties like name or color",
+    "Creates and updates a MIDI clip at the specified location. " +
+      "For session view, provide trackIndex and clipSlotIndex. " +
+      "For arrangement view, provide trackIndex and arrangementStartTime. " +
+      "Alternatively, provide a clipId to update an existing clip directly. " +
+      "When creating a new clip, existing notes will be replaced. " +
+      "When updating an existing clip by ID, new notes will be merged with existing notes.",
     {
-      trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
+      location: z.enum(["session", "arrangement"]).describe("Location of the clip - either 'session' or 'arrangement'"),
+      trackIndex: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe("Track index (0-based). Required when not providing clipId."),
       clipSlotIndex: z
         .number()
         .int()
         .min(0)
+        .optional()
+        .describe("Clip slot index (0-based). Required when location is 'session' and not providing clipId."),
+      clipId: z.string().optional().describe("Clip ID to directly update an existing clip."),
+      arrangementStartTime: z
+        .number()
+        .optional()
         .describe(
-          "Clip slot index (0-based). This is the same as the sceneIndex of the scene containing this clip. Scenes will be auto-created if needed to insert the clip at the given slot, up to a maximum of 100 scenes."
+          "Start time in beats for arrangement view clips. Required when location is 'arrangement' and not providing clipId."
         ),
       name: z.string().optional().describe("Name for the clip"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
@@ -33,17 +46,12 @@ export function addToolWriteClip(server, callLiveApi) {
         .describe("Loop start position in beats (not necessarily the same as start_marker)"),
       loop_end: z.number().optional().describe("Loop end position in beats"),
       loop: z.boolean().optional().describe("Enable or disable looping for the clip"),
-      // TODO: rename to `trigger` for consistency with scene
       trigger: z
         .boolean()
         .default(false)
         .describe(
-          "Automatically play the clip after creating it. Depending on Live's launch quantization settings, the clip may start playing immediately or only be triggered and not playing yet. It is fine if it's only triggered. There is no need to start the main transport."
+          "Play the clip (only applicable to session view clips). Can be used when creating new clips to automatically play them after creation."
         ),
-      deleteExistingNotes: z
-        .boolean()
-        .default(false)
-        .describe("Whether to delete existing notes before adding new ones"),
     },
     async (args) => callLiveApi("write-clip", args)
   );

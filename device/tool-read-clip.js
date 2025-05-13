@@ -207,7 +207,15 @@ function readClip({ trackIndex = null, clipSlotIndex = null, clipId = null }) {
     throw new Error("Either clipId or both trackIndex and clipSlotIndex must be provided");
   }
 
-  const clip = new LiveAPI(clipId ?? `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
+  // Support "id {id}" (such as returned by childIds()) and id values directly
+  // TODO: Need test coverage of this logic
+  const clip = new LiveAPI(
+    clipId != null
+      ? clipId.startsWith("id ")
+        ? clipId
+        : `id ${clipId}`
+      : `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`
+  );
 
   if (!clip.exists()) {
     if (clipId != null) throw new Error(`No clip exists for clipId "${clipId}"`);

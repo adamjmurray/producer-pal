@@ -1,23 +1,38 @@
 // device/tool-write-clip.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiSet, mockLiveApiGet, MockSequence } from "./mock-live-api";
+import {
+  children,
+  expectedClip,
+  liveApiCall,
+  liveApiId,
+  liveApiPath,
+  liveApiSet,
+  mockLiveApiGet,
+  MockSequence,
+} from "./mock-live-api";
 import { MAX_AUTO_CREATED_SCENES, writeClip } from "./tool-write-clip";
 
 describe("writeClip", () => {
   it("creates a new clip with notes when no clip exists", async () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set tracks 0 clip_slots 0 clip":
+          return "clip_0_0";
+      }
+    });
+    liveApiPath.mockImplementation(function () {
+      switch (this._id) {
+        case "clip_0_0":
+          return "live_set tracks 0 clip_slots 0 clip";
+      }
+    });
     mockLiveApiGet({
       ClipSlot: { has_clip: new MockSequence(0, 1) }, // starts non-existent and then we create one, which is read by readClip() for the result value
-      Clip: { length: 4 },
-    });
-
-    liveApiCall.mockImplementation((method) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] });
-      }
-      return null;
+      clip_0_0: { is_midi_clip: 1, length: 4 },
     });
 
     const result = await writeClip({
+      location: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "C3 D3 E3",
@@ -42,74 +57,150 @@ describe("writeClip", () => {
       })
     );
     expect(liveApiCall).toHaveBeenCalledWith("fire");
-    expect(result.type).toBe("midi");
-    expect(result.trackIndex).toBe(0);
-    expect(result.clipSlotIndex).toBe(0);
+    expect(result).toEqual(
+      expectedClip({
+        id: "clip_0_0",
+        type: "midi",
+        location: "session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+      })
+    );
   });
 
-  it("updates an existing clip when deleteExistingNotes is true", async () => {
+  it("creates a new arrangement clip", async () => {
     mockLiveApiGet({
-      ClipSlot: { has_clip: 1 },
-      Clip: { length: 4 },
+      Track: { exists: () => true },
     });
 
-    liveApiCall.mockImplementation((method) => {
+    liveApiCall.mockImplementation((method, ...args) => {
+      if (method === "create_midi_clip") {
+        return ["id", "clip_0"];
+      }
       if (method === "get_notes_extended") {
         return JSON.stringify({ notes: [] });
+      }
+      if (method === "getChildIds" && args[0] === "arrangement_clips") {
+        return ["id", "arrange_clip_1"];
       }
       return null;
     });
 
-    const result = await writeClip({
-      trackIndex: 1,
-      clipSlotIndex: 2,
-      notes: "F3 G3",
-      deleteExistingNotes: true,
+    liveApiId.mockImplementation(function () {
+      if (this.path === "arrange_clip_1") return "arrange_clip_1";
+      return "1";
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith("create_clip", expect.any(Number));
-    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 4);
+    const result = await writeClip({
+      location: "arrangement",
+      trackIndex: 0,
+      arrangementStartTime: 8,
+      notes: "C3 D3 E3",
+      name: "New Arrangement Clip",
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+    expect(liveApiSet).toHaveBeenCalledWith("name", "New Arrangement Clip");
     expect(liveApiCall).toHaveBeenCalledWith(
       "add_new_notes",
       expect.objectContaining({
         notes: expect.arrayContaining([
-          expect.objectContaining({ pitch: 65, start_time: 0, duration: 1, velocity: 70 }),
-          expect.objectContaining({ pitch: 67, start_time: 1, duration: 1, velocity: 70 }),
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 1, velocity: 70 }),
+          expect.objectContaining({ pitch: 62, start_time: 1, duration: 1, velocity: 70 }),
+          expect.objectContaining({ pitch: 64, start_time: 2, duration: 1, velocity: 70 }),
         ]),
       })
     );
-    expect(result.trackIndex).toBe(1);
-    expect(result.clipSlotIndex).toBe(2);
   });
 
-  it("only updates properties when notes are not provided", async () => {
+  it("updates an existing clip by ID", async () => {
     mockLiveApiGet({
-      ClipSlot: { has_clip: 1 },
-      Clip: { length: 4 },
+      existing_clip: { exists: () => true },
     });
 
-    liveApiCall.mockImplementation((method) => {
-      if (method === "get_notes_extended") {
-        return JSON.stringify({ notes: [] });
-      }
-      return null;
+    liveApiId.mockImplementation(function () {
+      if (this.path === "id existing_clip") return "existing_clip";
+      return "1";
     });
 
-    const result = await writeClip({
-      trackIndex: 2,
-      clipSlotIndex: 1,
+    await writeClip({
+      location: "session", // Should work for either session or arrangement
+      clipId: "id existing_clip",
       name: "Updated Clip",
       color: "#00FF00",
-      loop_start: 1,
-      loop_end: 3,
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Updated Clip");
     expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 1);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_end", 3);
-    expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.any(Object));
-    expect(result.type).toBe("midi");
+    expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
+  });
+
+  it("throws error when required parameters are missing", async () => {
+    await expect(() =>
+      writeClip({
+        // Missing location
+        trackIndex: 0,
+        clipSlotIndex: 0,
+      })
+    ).rejects.toThrow(/location parameter is required/);
+
+    await expect(() =>
+      writeClip({
+        location: "session",
+        // Missing trackIndex and clipId
+        clipSlotIndex: 0,
+      })
+    ).rejects.toThrow(/trackIndex is required/);
+
+    await expect(() =>
+      writeClip({
+        location: "session",
+        trackIndex: 0,
+        // Missing clipSlotIndex and clipId
+      })
+    ).rejects.toThrow(/clipSlotIndex is required/);
+
+    await expect(() =>
+      writeClip({
+        location: "arrangement",
+        trackIndex: 0,
+        // Missing arrangementStartTime and clipId
+      })
+    ).rejects.toThrow(/arrangementStartTime is required/);
+  });
+
+  it("ignores trigger parameter for arrangement clips", async () => {
+    mockLiveApiGet({
+      Track: { exists: () => true },
+    });
+
+    liveApiCall.mockImplementation((method, ...args) => {
+      if (method === "create_midi_clip") {
+        return ["id", "clip_0"];
+      }
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: [] });
+      }
+      if (method === "getChildIds" && args[0] === "arrangement_clips") {
+        return ["id", "arrange_clip_1"];
+      }
+      return null;
+    });
+
+    liveApiId.mockImplementation(function () {
+      if (this.path === "arrange_clip_1") return "arrange_clip_1";
+      return "1";
+    });
+
+    await writeClip({
+      location: "arrangement",
+      trackIndex: 0,
+      arrangementStartTime: 8,
+      trigger: true, // Should be ignored for arrangement clips
+    });
+
+    // Fire should not be called for arrangement clips
+    expect(liveApiCall).not.toHaveBeenCalledWith("fire");
   });
 
   it("calculates correct clip length based on note duration", async () => {
@@ -126,6 +217,7 @@ describe("writeClip", () => {
     });
 
     const result = await writeClip({
+      location: "session",
       trackIndex: 3,
       clipSlotIndex: 0,
       notes: "C3n2 D3n3", // Notes extend to 5 beats
@@ -156,6 +248,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
+      location: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "C3", // Only 1 beat
@@ -168,6 +261,7 @@ describe("writeClip", () => {
     const toneLangString = "C4n4t2 D4n4t2 E4n.5";
 
     await writeClip({
+      location: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: toneLangString,
@@ -201,6 +295,7 @@ describe("writeClip", () => {
     const invalidSyntax = "C3*1.5";
     await expect(() =>
       writeClip({
+        location: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         notes: invalidSyntax,
@@ -214,6 +309,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
+      location: "session",
       trackIndex: 0,
       clipSlotIndex: 5,
       name: "Auto-created scene clip",
@@ -236,6 +332,7 @@ describe("writeClip", () => {
 
     await expect(() =>
       writeClip({
+        location: "session",
         trackIndex: 0,
         clipSlotIndex: MAX_AUTO_CREATED_SCENES,
         name: "This Should Fail",
