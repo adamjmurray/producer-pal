@@ -1,6 +1,9 @@
 // device/tool-write-track.js
 const { readTrack } = require("./tool-read-track");
 
+// Maximum number of tracks we'll auto-create
+const MAX_AUTO_CREATED_TRACKS = 30;
+
 /**
  * Updates a track at the specified index
  * @param {Object} args - The track parameters
@@ -22,13 +25,22 @@ function writeTrack({
   arm = null,
   firedSlotIndex = null,
 }) {
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const liveSet = new LiveAPI("live_set");
+  const currentTrackCount = liveSet.getChildIds("tracks").length;
 
-  if (!track.exists()) {
-    throw new Error(`Track index ${trackIndex} does not exist`);
+  if (trackIndex >= MAX_AUTO_CREATED_TRACKS) {
+    throw new Error(`Track index ${trackIndex} exceeds the maximum allowed value of ${MAX_AUTO_CREATED_TRACKS - 1}`);
   }
 
-  // Update properties if provided
+  if (trackIndex >= currentTrackCount) {
+    const tracksToCreate = trackIndex - currentTrackCount + 1;
+    for (let i = 0; i < tracksToCreate; i++) {
+      liveSet.call("create_midi_track", -1); // -1 means append at the end
+    }
+  }
+
+  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
   if (name !== null) {
     track.set("name", name);
   }
@@ -49,7 +61,6 @@ function writeTrack({
     track.set("arm", arm);
   }
 
-  // Handle firing a clip slot if requested
   if (firedSlotIndex !== null) {
     if (firedSlotIndex === -1) {
       track.call("stop_all_clips");
@@ -64,4 +75,4 @@ function writeTrack({
   return readTrack({ trackIndex });
 }
 
-module.exports = { writeTrack };
+module.exports = { writeTrack, MAX_AUTO_CREATED_TRACKS };

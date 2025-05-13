@@ -4,7 +4,7 @@ import { z } from "zod";
 export function addToolWriteTrack(server, callLiveApi) {
   server.tool(
     "write-track",
-    "Creates and updates a track at the specified index. By default, this function will only modify properties that are explicitly provided. All properties are optional except trackIndex.",
+    "Creates and updates a track at the specified index. By default, this function will only modify properties that are explicitly provided. All properties are optional except trackIndex. Tracks will be auto-created if needed to insert the track at the given index, up to a maximum of 30 tracks.",
     {
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
       name: z.string().optional().describe("Name for the track"),

@@ -1,7 +1,7 @@
 // device/tool-write-track.test.js
 import { describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiId, liveApiSet } from "./mock-live-api";
-import { writeTrack } from "./tool-write-track";
+import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
+import { MAX_AUTO_CREATED_TRACKS, writeTrack } from "./tool-write-track";
 
 // Mock readTrack since it's used in writeTrack
 vi.mock("./tool-read-track", () => ({
@@ -16,12 +16,6 @@ vi.mock("./tool-read-track", () => ({
 describe("writeTrack", () => {
   beforeEach(() => {
     liveApiId.mockReturnValue("track1");
-  });
-
-  it("should throw an error when track does not exist", () => {
-    liveApiId.mockReturnValue("id 0");
-
-    expect(() => writeTrack({ trackIndex: 99 })).toThrow("Track index 99 does not exist");
   });
 
   it("should update all properties when provided", () => {
@@ -128,5 +122,38 @@ describe("writeTrack", () => {
     expect(liveApiSet).not.toHaveBeenCalled();
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result.id).toBe("track1");
+  });
+
+  it("auto-creates tracks when trackIndex exceeds existing tracks", () => {
+    // Start with 3 tracks, with indices 0, 1, and 2
+    mockLiveApiGet({
+      LiveSet: { tracks: children("track_0", "track_1", "track_2") },
+    });
+
+    // Try to write to track 6 (index 5), which doesn't exist yet
+    const result = writeTrack({
+      trackIndex: 5,
+      name: "Auto-created track",
+    });
+
+    // Should create 3 new tracks to make indices 3, 4, and 5
+    const createTrackCalls = liveApiCall.mock.calls.filter(
+      ([liveApiFunction, ..._args]) => liveApiFunction === "create_midi_track"
+    );
+    expect(createTrackCalls.length).toBe(3);
+    createTrackCalls.forEach((createTrackCall) => {
+      expect(createTrackCall).toEqual(["create_midi_track", -1]);
+    });
+  });
+
+  it("throws an error if trackIndex exceeds maximum allowed tracks", () => {
+    expect(() =>
+      writeTrack({
+        trackIndex: MAX_AUTO_CREATED_TRACKS,
+        name: "This Should Fail",
+      })
+    ).toThrow(/exceeds the maximum allowed value/);
+
+    expect(liveApiCall).not.toHaveBeenCalledWith("create_midi_track", expect.any(Number));
   });
 });

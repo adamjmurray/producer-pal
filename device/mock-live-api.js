@@ -62,6 +62,13 @@ export function mockLiveApiGet(overrides = {}) {
       }
     }
     switch (this.type) {
+      case "LiveSet":
+        switch (prop) {
+          case "tracks":
+            return children("track1", "track2");
+          default:
+            return [0];
+        }
       case "Track":
         switch (prop) {
           case "has_midi_input":
