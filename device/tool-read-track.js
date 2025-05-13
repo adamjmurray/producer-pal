@@ -24,6 +24,8 @@ function readTrack({ trackIndex }) {
     };
   }
 
+  const groupId = track.get("group_track")[1];
+
   return {
     id: track.id,
     type: track.getProperty("has_midi_input") ? "midi" : "audio",
@@ -35,6 +37,9 @@ function readTrack({ trackIndex }) {
     isArmed: track.getProperty("arm") > 0,
     playingSlotIndex: track.getProperty("playing_slot_index"),
     firedSlotIndex: track.getProperty("fired_slot_index"),
+    isGroup: track.getProperty("is_foldable") > 0,
+    isGroupMember: track.getProperty("is_grouped") > 0,
+    groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
 
     clips: track
       .getChildIds("clip_slots")

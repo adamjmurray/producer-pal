@@ -10,7 +10,7 @@ Successfully demonstrated MCP server functionality with Claude Desktop via:
 - HTTP-based tools via Streamable HTTP transport
 - Integration with MCP Inspector
 
-### ✅Phase 2: Basic Ableton Live Integration
+### ✅ Phase 2: Basic Ableton Live Integration
 
 Established core integration between the MCP server and Ableton Live:
 
@@ -54,12 +54,17 @@ Completed full feature set for core functionality:
 
 - **Session and Arrangement integration**:
 
-  - Extend to Arrangement View
-  - Auto-create scenes and tracks when needed
-    - ✅ auto-create scenes when creating clips
-    - auto-create tracks when creating tracks
+  - ✅ Auto-create scenes and tracks when needed
   - ✅ Launch scenes for synchronization between tracks
+  - ✅ Grouped track support
   - More intelligent voice handling for drum tracks (read and write with multi-voice syntax)
+  - Duplicate
+    - Clips
+    - Tracks
+    - Scenes
+  - Capture Scene
+  - Support Arrangement View
+  - Support Take Lanes?
 
 - **Robustness improvements**:
 

@@ -85,6 +85,11 @@ export function mockLiveApiGet(overrides = {}) {
             return [0];
           case "arm":
             return [1];
+          case "is_foldable":
+          case "is_grouped":
+            return [0];
+          case "group_track":
+            return ["id", 0];
           case "playing_slot_index":
             return [2];
           case "fired_slot_index":
@@ -143,6 +148,9 @@ export const expectedTrack = (overrides = {}) => ({
   isMuted: false,
   isSoloed: false,
   isArmed: true,
+  isGroup: false,
+  isGroupMember: false,
+  groupId: null,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
   drumPads: null,

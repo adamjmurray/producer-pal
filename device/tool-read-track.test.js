@@ -15,6 +15,9 @@ const mockTrackProperties = (overrides = {}) => ({
   mute: 0,
   solo: 0,
   arm: 0,
+  is_foldable: 0,
+  is_grouped: 0,
+  group_track: ["id", 0],
   playing_slot_index: -1,
   fired_slot_index: -1,
   clip_slots: [],
@@ -71,6 +74,9 @@ describe("readTrack", () => {
       isMuted: false,
       isSoloed: true,
       isArmed: true,
+      isGroup: false,
+      isGroupMember: false,
+      groupId: null,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       drumPads: null,
@@ -106,8 +112,59 @@ describe("readTrack", () => {
       isMuted: true,
       isSoloed: false,
       isArmed: false,
+      isGroup: false,
+      isGroupMember: false,
+      groupId: null,
       playingSlotIndex: -1,
       firedSlotIndex: -1,
+      drumPads: null,
+      clips: [],
+    });
+  });
+
+  it("returns track group information", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set tracks 0":
+          return "track1";
+        default:
+          return "id 0";
+      }
+    });
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Track 1",
+        color: 16711680, // Red
+        mute: 0,
+        solo: 1,
+        arm: 1,
+        is_foldable: 1,
+        is_grouped: 1,
+        group_track: ["id", 456],
+        playing_slot_index: 2,
+        fired_slot_index: 3,
+        clip_slots: children("slot1", "slot2"),
+        devices: [],
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0 });
+
+    expect(result).toEqual({
+      id: "track1",
+      type: "midi",
+      name: "Track 1",
+      trackIndex: 0,
+      color: "#FF0000",
+      isMuted: false,
+      isSoloed: true,
+      isArmed: true,
+      isGroup: true,
+      isGroupMember: true,
+      groupId: "456",
+      playingSlotIndex: 2,
+      firedSlotIndex: 3,
       drumPads: null,
       clips: [],
     });
@@ -153,6 +210,9 @@ describe("readTrack", () => {
       isArmed: false,
       isMuted: false,
       isSoloed: false,
+      isGroup: false,
+      isGroupMember: false,
+      groupId: null,
       firedSlotIndex: -1,
       playingSlotIndex: 0,
       drumPads: null,
