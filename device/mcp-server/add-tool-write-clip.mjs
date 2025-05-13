@@ -12,7 +12,11 @@ export function addToolWriteClip(server, callLiveApi) {
       "and you can omit notes when updating other properties like name or color",
     {
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
-      clipSlotIndex: z.number().int().min(0).describe("Clip slot index (0-based)"),
+      clipSlotIndex: z
+        .number()
+        .int()
+        .min(0)
+        .describe("Clip slot index (0-based). This is the same as the sceneIndex of the scene containing this clip."),
       name: z.string().optional().describe("Name for the clip"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
       notes: z.string().optional().describe(`Musical notation in ToneLang format. ${TONE_LANG_DESCRIPTION}`),

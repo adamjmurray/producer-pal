@@ -1,11 +1,15 @@
 // device/tool-read-scene.js
+const { readClip } = require("./tool-read-clip");
+
 /**
  * Read comprehensive information about a scene
  * @param {Object} args - The parameters
  * @param {number} args.sceneIndex - Scene index (0-based)
+ * @param {boolean} [args.includeClips=false] - Whether to include clip information
  * @returns {Object} Result object with scene information
  */
-function readScene({ sceneIndex }) {
+function readScene({ sceneIndex, includeClips = false }) {
+  const liveSet = new LiveAPI(`live_set`);
   const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
   if (!scene.exists()) {
@@ -29,6 +33,12 @@ function readScene({ sceneIndex }) {
       "time_signature_denominator"
     )}`,
     isTimeSignatureEnabled: scene.getProperty("time_signature_enabled") > 0,
+    clips: includeClips
+      ? liveSet
+          .getChildIds("tracks")
+          .map((_trackId, trackIndex) => readClip({ trackIndex, clipSlotIndex: sceneIndex }))
+          .filter((clip) => clip.id != null)
+      : undefined,
   };
 }
 

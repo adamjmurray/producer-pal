@@ -6,7 +6,12 @@ export function addToolReadScene(server, callLiveApi) {
     "read-scene",
     "Read comprehensive information about a scene",
     {
-      sceneIndex: z.number().int().min(0).describe("Scene index (0-based)"),
+      sceneIndex: z
+        .number()
+        .int()
+        .min(0)
+        .describe("Scene index (0-based). This is also the clipSlotIndex of every clip in this scene."),
+      includeClips: z.boolean().optional().default(false).describe("Whether to include clip information"),
     },
     async (args) => callLiveApi("read-scene", args)
   );

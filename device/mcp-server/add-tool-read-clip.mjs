@@ -11,7 +11,11 @@ export function addToolReadClip(server, callLiveApi) {
       TONE_LANG_DESCRIPTION,
     {
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
-      clipSlotIndex: z.number().int().min(0).describe("Clip slot index (0-based)"),
+      clipSlotIndex: z
+        .number()
+        .int()
+        .min(0)
+        .describe("Clip slot index (0-based). This is the same as the sceneIndex of the scene containing this clip."),
     },
     async (args) => callLiveApi("read-clip", args)
   );
