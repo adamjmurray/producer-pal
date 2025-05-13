@@ -1,6 +1,7 @@
 // device/tool-write-clip.js
 const { parseToneLang } = require("./tone-lang");
 const { readClip } = require("./tool-read-clip");
+const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 
 // Maximum number of scenes we'll auto-create
 const MAX_AUTO_CREATED_SCENES = 100;
@@ -14,11 +15,11 @@ const MAX_AUTO_CREATED_SCENES = 100;
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex, rgb(), or named color)
  * @param {boolean} [args.loop=false] - Enable looping for the clip
- * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating it
+ * @param {boolean} [args.trigger=false] - Automatically play the clip after creating it
  * @param {boolean} [args.deleteExistingNotes=false] - Whether to delete existing notes before adding new ones
  * @returns {Object} Result object with clip information
  */
-function writeClip({
+async function writeClip({
   trackIndex,
   clipSlotIndex,
   notes: toneLangString = null,
@@ -29,7 +30,7 @@ function writeClip({
   loop_start = null,
   loop_end = null,
   loop = null,
-  autoplay = false,
+  trigger = false,
   deleteExistingNotes = false,
 }) {
   const liveSet = new LiveAPI("live_set");
@@ -99,8 +100,10 @@ function writeClip({
     clip.call("add_new_notes", { notes });
   }
 
-  if (autoplay) {
+  if (trigger) {
     clipSlot.call("fire");
+    // triggered state isn't updated until we wait a moment
+    await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 
   return readClip({ trackIndex, clipSlotIndex });

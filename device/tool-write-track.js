@@ -1,5 +1,6 @@
 // device/tool-write-track.js
 const { readTrack } = require("./tool-read-track");
+const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 
 // Maximum number of tracks we'll auto-create
 const MAX_AUTO_CREATED_TRACKS = 30;
@@ -16,7 +17,7 @@ const MAX_AUTO_CREATED_TRACKS = 30;
  * @param {number} [args.firedSlotIndex] - Optional clip slot index to fire (0-based)
  * @returns {Object} Result object with track information
  */
-function writeTrack({
+async function writeTrack({
   trackIndex,
   name = null,
   color = null,
@@ -70,6 +71,8 @@ function writeTrack({
         clipSlot.call("fire");
       }
     }
+    // clip triggered/playing state won't be updated until we wait a moment
+    await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 
   return readTrack({ trackIndex });

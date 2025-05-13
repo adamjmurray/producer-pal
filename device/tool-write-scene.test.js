@@ -17,14 +17,14 @@ describe("writeScene", () => {
     liveApiId.mockReturnValue("scene1");
   });
 
-  it("should throw an error when scene does not exist", () => {
+  it("should throw an error when scene does not exist", async () => {
     liveApiId.mockReturnValue("id 0");
 
-    expect(() => writeScene({ sceneIndex: 99 })).toThrow("Scene index 99 does not exist");
+    await expect(() => writeScene({ sceneIndex: 99 })).rejects.toThrow("Scene index 99 does not exist");
   });
 
-  it("should update all properties when provided", () => {
-    const result = writeScene({
+  it("should update all properties when provided", async () => {
+    const result = await writeScene({
       sceneIndex: 0,
       name: "New Scene Name",
       color: "#FF0000",
@@ -44,8 +44,8 @@ describe("writeScene", () => {
     expect(result.id).toBe("scene1");
   });
 
-  it("should not update properties when not provided", () => {
-    const result = writeScene({
+  it("should not update properties when not provided", async () => {
+    const result = await writeScene({
       sceneIndex: 1,
       name: "Only Name Update",
     });
@@ -59,8 +59,8 @@ describe("writeScene", () => {
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_enabled", expect.any(Boolean));
   });
 
-  it("should fire scene when isTriggered is true", () => {
-    const result = writeScene({
+  it("should fire scene when isTriggered is true", async () => {
+    const result = await writeScene({
       sceneIndex: 0,
       trigger: true,
     });
@@ -69,13 +69,17 @@ describe("writeScene", () => {
     expect(result.id).toBe("scene1");
   });
 
-  it("should throw error for invalid time signature format", () => {
-    expect(() => writeScene({ sceneIndex: 0, timeSignature: "invalid" })).toThrow("Time signature must be in format");
-    expect(() => writeScene({ sceneIndex: 0, timeSignature: "3-4" })).toThrow("Time signature must be in format");
+  it("should throw error for invalid time signature format", async () => {
+    await expect(() => writeScene({ sceneIndex: 0, timeSignature: "invalid" })).rejects.toThrow(
+      "Time signature must be in format"
+    );
+    await expect(() => writeScene({ sceneIndex: 0, timeSignature: "3-4" })).rejects.toThrow(
+      "Time signature must be in format"
+    );
   });
 
-  it("should handle multiple property updates", () => {
-    const result = writeScene({
+  it("should handle multiple property updates", async () => {
+    const result = await writeScene({
       sceneIndex: 1,
       name: "Multi Update",
       color: "#00FF00",
@@ -89,8 +93,8 @@ describe("writeScene", () => {
     expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", false);
   });
 
-  it("should handle boolean false values correctly", () => {
-    const result = writeScene({
+  it("should handle boolean false values correctly", async () => {
+    const result = await writeScene({
       sceneIndex: 0,
       isTempoEnabled: false,
       isTimeSignatureEnabled: false,
@@ -100,8 +104,8 @@ describe("writeScene", () => {
     expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", false);
   });
 
-  it("should work with no arguments except sceneIndex", () => {
-    const result = writeScene({
+  it("should work with no arguments except sceneIndex", async () => {
+    const result = await writeScene({
       sceneIndex: 0,
     });
 

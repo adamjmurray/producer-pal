@@ -161,22 +161,22 @@ export const expectedTrack = (overrides = {}) => ({
 // For use with the default behavior in mockLiveApiGet() above
 export const expectedClip = (overrides = {}) => ({
   id: "clip1",
+  type: "midi",
+  location: "session",
   trackIndex: 2,
   clipSlotIndex: 1,
-  is_playing: false,
+  name: "Test Clip",
   color: "#3DC300",
-  end_marker: 5,
   length: 4,
-  location: "session",
+  start_marker: 1,
+  end_marker: 5,
   loop: false,
   loop_end: 5,
   loop_start: 1,
-  name: "Test Clip",
+  is_playing: false,
+  is_triggered: false,
   noteCount: 0,
   notes: "",
-  start_marker: 1,
-
-  type: "midi",
   ...overrides,
 });
 

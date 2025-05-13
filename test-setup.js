@@ -1,8 +1,11 @@
-import { vi, beforeEach, afterEach } from "vitest";
-import { LiveAPI, liveApiId, liveApiGet, liveApiSet, liveApiCall, mockLiveApiGet } from "./device/mock-live-api";
+import { afterEach, beforeEach, vi } from "vitest";
+import { LiveAPI, liveApiCall, liveApiId, mockLiveApiGet } from "./device/mock-live-api";
+import { Task } from "./device/mock-task";
 
 globalThis.LiveAPI = LiveAPI;
 require("./device/live-api-extensions");
+
+globalThis.Task = Task;
 
 beforeEach(() => {
   vi.resetAllMocks();

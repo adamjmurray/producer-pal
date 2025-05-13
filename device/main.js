@@ -60,7 +60,7 @@ function formatErrorResponse(errorMessage) {
 }
 
 // Handle messages from Node for Max
-function mcp_request(serializedJSON) {
+async function mcp_request(serializedJSON) {
   try {
     // Parse incoming request
     const request = JSON.parse(serializedJSON);
@@ -69,7 +69,7 @@ function mcp_request(serializedJSON) {
     let result;
 
     try {
-      result = formatSuccessResponse(callTool(tool, args));
+      result = formatSuccessResponse(await callTool(tool, args));
     } catch (toolError) {
       result = formatErrorResponse(`Error in ${tool}: ${toolError.message}`);
     }

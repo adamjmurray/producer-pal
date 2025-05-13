@@ -71,7 +71,14 @@ Completed full feature set for core functionality:
   - Validation system for better error handling
     - e.g. start and end time in write-clip
   - Fix state synchronization issues
-    - playback state immediately after updating in `write-live-set` is not accurate
+    - ✅ playback state immediately after updating in `write-live-set` is not accurate
+    - This should be better now, but I notice calling stopAllClips on a track doesn't update triggered or playing state
+      in a reasonable amount of time. Here's a thought: maybe firedSlotIndex works ok when firing a new slot? Check on
+      that and maybe split off a stopAllClips arg, but call that one stopAllClipsAsync and make it clear the return
+      value will not yet reflect the updated state. Maybe we can return a special property in the response like
+      `stopping: true` to reinforce things. Or just like and overwrite all clip data to say they are not triggered or
+      playing.
+  - Claude keeps thinking the transport needs to be started to play the clips when it's not necessary
   - Add timeouts to promises
   - Revisit stateless server approach. Stateful may be more efficient
 

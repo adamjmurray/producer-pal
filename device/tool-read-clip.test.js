@@ -39,6 +39,7 @@ describe("readClip", () => {
       loop_start: 1,
       loop_end: 5,
       is_playing: false,
+      is_triggered: false,
       notes: "C3 D3 E3",
       noteCount: 3,
     });
@@ -58,7 +59,7 @@ describe("readClip", () => {
 
   it("handles audio clips correctly", () => {
     mockLiveApiGet({
-      Clip: { is_midi_clip: 0, name: "Audio Sample", looping: 1 },
+      Clip: { is_midi_clip: 0, name: "Audio Sample", looping: 1, is_playing: 1 },
     });
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
     expect(result).toEqual({
@@ -75,7 +76,8 @@ describe("readClip", () => {
       end_marker: 5,
       loop_start: 1,
       loop_end: 5,
-      is_playing: false,
+      is_playing: true,
+      is_triggered: false,
     });
   });
 
@@ -83,7 +85,7 @@ describe("readClip", () => {
     mockLiveApiGet({
       Track: { devices: children("drumRack") },
       drumRack: { can_have_drum_pads: 1 },
-      Clip: { is_midi_clip: 1 },
+      Clip: { is_midi_clip: 1, is_triggered: 1 },
     });
 
     liveApiCall.mockImplementation((method) => {
@@ -117,6 +119,7 @@ describe("readClip", () => {
       loop_end: 5,
       loop_start: 1,
       is_playing: false,
+      is_triggered: true,
       noteCount: 4,
       notes: "C1v100n0.25t2 C1v100n0.25; D1v90n0.25t2 D1v90n0.25",
     });

@@ -1,5 +1,6 @@
 // device/tool-write-scene.js
 const { readScene } = require("./tool-read-scene");
+const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 
 /**
  * Updates a scene at the specified index
@@ -14,7 +15,7 @@ const { readScene } = require("./tool-read-scene");
  * @param {boolean} [args.trigger] - Optional flag to trigger the scene
  * @returns {Object} Result object with scene information
  */
-function writeScene({
+async function writeScene({
   sceneIndex,
   name = null,
   color = null,
@@ -63,6 +64,8 @@ function writeScene({
 
   if (trigger === true) {
     scene.call("fire");
+    // clip triggered/playing state won't be updated until we wait a moment
+    await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 
   return readScene({ sceneIndex });

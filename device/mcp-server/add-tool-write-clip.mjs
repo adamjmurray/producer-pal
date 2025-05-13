@@ -33,7 +33,13 @@ export function addToolWriteClip(server, callLiveApi) {
         .describe("Loop start position in beats (not necessarily the same as start_marker)"),
       loop_end: z.number().optional().describe("Loop end position in beats"),
       loop: z.boolean().optional().describe("Enable or disable looping for the clip"),
-      autoplay: z.boolean().default(false).describe("Automatically play the clip after creating it"),
+      // TODO: rename to `trigger` for consistency with scene
+      trigger: z
+        .boolean()
+        .default(false)
+        .describe(
+          "Automatically play the clip after creating it. Depending on Live's launch quantization settings, the clip may start playing immediately or only be triggered and not playing yet. It is fine if it's only triggered. There is no need to start the main transport."
+        ),
       deleteExistingNotes: z
         .boolean()
         .default(false)

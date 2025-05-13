@@ -214,6 +214,7 @@ function readClip({ trackIndex, clipSlotIndex }) {
     };
   }
 
+  // TODO: convert all these and the corresponding args to write-clip to use camelCase (and check through all tools)
   const result = {
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
@@ -229,6 +230,7 @@ function readClip({ trackIndex, clipSlotIndex }) {
     loop_start: clip.getProperty("loop_start"),
     loop_end: clip.getProperty("loop_end"),
     is_playing: clip.getProperty("is_playing") > 0,
+    is_triggered: clip.getProperty("is_triggered") > 0,
   };
 
   if (result.type === "midi") {

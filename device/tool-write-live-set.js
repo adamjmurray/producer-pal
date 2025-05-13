@@ -1,5 +1,6 @@
 // device/tool-write-live-set.js
 const { readLiveSet } = require("./tool-read-live-set");
+const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 
 /**
  * Updates Live Set parameters like tempo, time signature, and playback state
@@ -10,7 +11,7 @@ const { readLiveSet } = require("./tool-read-live-set");
  * @param {boolean} [args.stopAllClips=false] - Stop all clips in the Live Set
  * @returns {Object} Updated Live Set information
  */
-function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = false }) {
+async function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = false }) {
   const liveSet = new LiveAPI("live_set");
 
   if (isPlaying != null) {
@@ -36,7 +37,12 @@ function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = false })
   }
 
   if (stopAllClips) {
-    liveSet.call("stop_all_clips");
+    liveSet.call("stop_all_clips", 0);
+  }
+
+  if (stopAllClips || isPlaying != null) {
+    // clip triggered/playing state won't be updated until we wait a moment
+    await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 
   return readLiveSet();
