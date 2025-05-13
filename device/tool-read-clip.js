@@ -137,6 +137,63 @@ function convertClipNotesToToneLang(clipNotes) {
 
   return elements.join(" ");
 }
+
+/**
+ * Convert Live clip notes in drum tracks to ToneLang string
+ * @param {Array} clipNotes - Array of note objects from the Live API
+ * @returns {string} ToneLang representation of the notes
+ */
+function convertDrumClipNotesToToneLang(clipNotes) {
+  if (!clipNotes || clipNotes.length === 0) return "";
+
+  // Group notes by pitch
+  const pitchGroups = {};
+  for (const note of clipNotes) {
+    const pitch = note.pitch;
+    if (!pitchGroups[pitch]) {
+      pitchGroups[pitch] = [];
+    }
+    pitchGroups[pitch].push(note);
+  }
+
+  // Sort pitch groups by pitch (low to high)
+  const sortedPitches = Object.keys(pitchGroups).sort((a, b) => parseInt(a) - parseInt(b));
+
+  // Convert each pitch group to a voice
+  const voices = [];
+  for (const pitch of sortedPitches) {
+    const notes = pitchGroups[pitch];
+    if (notes.length === 0) continue;
+
+    // Sort notes by start time
+    notes.sort((a, b) => a.start_time - b.start_time);
+
+    const elements = [];
+
+    for (let i = 0; i < notes.length; i++) {
+      const note = notes[i];
+      const nextNote = notes[i + 1];
+
+      let element = formatNote(note);
+
+      if (nextNote) {
+        const timeUntilNext = nextNote.start_time - note.start_time;
+        const noteDuration = note.duration || DEFAULT_DURATION;
+
+        if (Math.abs(timeUntilNext - noteDuration) > 0.001) {
+          element += `t${timeUntilNext}`;
+        }
+      }
+
+      elements.push(element);
+    }
+
+    voices.push(elements.join(" "));
+  }
+
+  return voices.join("; ");
+}
+
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a ToneLang string
  * @param {Object} args - Arguments for the function
@@ -178,12 +235,17 @@ function readClip({ trackIndex, clipSlotIndex }) {
     // Get the clip notes for MIDI clips
     const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, result.length);
     const notes = JSON.parse(notesDictionary).notes;
+
+    // use a different ToneLang conversion algorithm for drum tracks and non-drums
+    const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+    const isDrumTrack = !!track.getChildren("devices").find((device) => device.getProperty("can_have_drum_pads"));
+
     result.noteCount = notes.length;
-    result.notes = convertClipNotesToToneLang(notes);
+    result.notes = isDrumTrack ? convertDrumClipNotesToToneLang(notes) : convertClipNotesToToneLang(notes);
   }
 
   return result;
 }
 
 // Keep the helper functions from get-clip.js and export
-module.exports = { readClip, convertClipNotesToToneLang, midiPitchToNoteName };
+module.exports = { readClip, convertClipNotesToToneLang, convertDrumClipNotesToToneLang, midiPitchToNoteName };

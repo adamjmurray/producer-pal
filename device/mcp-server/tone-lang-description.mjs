@@ -1,7 +1,4 @@
 // device/mcp-server/tone-lang-description.mjs
-/**
- * Exports a standardized description of ToneLang syntax for use in tool descriptions
- */
 export const TONE_LANG_DESCRIPTION = `<tone-lang-specification>
 ToneLang is a compact music notation syntax.
 
@@ -63,6 +60,36 @@ Chords:
   - Example: [C3v90 E3 G3n2]v80n4 (C3 uses v90 but n4, E3 uses v80 and n4, G3 uses v80 but n2)
 
 Multiple voices: Use semicolons to separate independent voices (e.g., C3 D3 E3; G2 A2 B2)
+
+## Syntax Equivalence
+
+Note that ToneLang strings returned by the API may use normalized, equivalent notation that looks different from what was provided:
+
+1. Enharmonic equivalents are normalized (e.g., Gb1 might be returned as F#1)
+2. Timing can be expressed in multiple equivalent ways:
+   - Using rests: \`R0.5 F#1n0.5\`
+   - Using TimeUntilNext: \`F#1n0.5t1\`
+3. The system optimizes for the most compact representation while preserving the musical result
+
+These different representations produce identical playback results:
+- \`C3 R D3\` = \`C3t2 D3\` (both play C3, wait a beat, then play D3)
+- \`C3n0.5 R0.5 D3\` = \`C3n0.5t1 D3\` (both play C3 as eighth note, wait an eighth, then play D3)
+
+## Drum Patterns
+
+For tracks with drum pads, the recommended approach is to use multiple voices (separated by semicolons), with each voice representing a different drum sound.
+
+This makes drum patterns much easier to read and edit:
+- Each drum sound (pitch) gets its own voice
+- Hits on the same drum are sequenced within that voice
+- The TimeUntilNext modifier (t) controls timing between consecutive hits
+
+Example of a basic drum pattern with kick (C1) on every beat, snare (D1) on beats 2 and 4, and hi-hat (F#1) on eighth note upbeats:
+\`\`\`
+C1 C1 C1 C1;
+R D1 R D1;
+R.5 F#1n.5 R.5 F#1n.5 R.5 F#1n.5 R.5 F#1n.5
+\`\`\`
 
 Examples:
 - C3 D3 E3 F3 G3 A3 B3 C4 (C major scale)

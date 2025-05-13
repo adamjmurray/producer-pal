@@ -1,7 +1,12 @@
 // device/tool-read-clip.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, mockLiveApiGet } from "./mock-live-api";
-import { convertClipNotesToToneLang, midiPitchToNoteName, readClip } from "./tool-read-clip";
+import { children, liveApiCall, liveApiId, mockLiveApiGet } from "./mock-live-api";
+import {
+  convertClipNotesToToneLang,
+  convertDrumClipNotesToToneLang,
+  midiPitchToNoteName,
+  readClip,
+} from "./tool-read-clip";
 
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists", () => {
@@ -73,6 +78,49 @@ describe("readClip", () => {
       is_playing: false,
     });
   });
+
+  it("detects drum tracks and uses the drum-specific ToneLang conversion", () => {
+    mockLiveApiGet({
+      Track: { devices: children("drumRack") },
+      drumRack: { can_have_drum_pads: 1 },
+      Clip: { is_midi_clip: 1 },
+    });
+
+    liveApiCall.mockImplementation((method) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            { note_id: 1, pitch: 36, start_time: 0, duration: 0.25, velocity: 100 },
+            { note_id: 2, pitch: 38, start_time: 1, duration: 0.25, velocity: 90 },
+            { note_id: 3, pitch: 36, start_time: 2, duration: 0.25, velocity: 100 },
+            { note_id: 4, pitch: 38, start_time: 3, duration: 0.25, velocity: 90 },
+          ],
+        });
+      }
+      return null;
+    });
+
+    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+
+    expect(result).toEqual({
+      id: "1",
+      type: "midi",
+      location: "session",
+      name: "Test Clip",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      color: "#3DC300",
+      length: 4,
+      start_marker: 1,
+      end_marker: 5,
+      loop: false,
+      loop_end: 5,
+      loop_start: 1,
+      is_playing: false,
+      noteCount: 4,
+      notes: "C1v100n0.25t2 C1v100n0.25; D1v90n0.25t2 D1v90n0.25",
+    });
+  });
 });
 
 describe("convertClipNotesToToneLang", () => {
@@ -102,40 +150,113 @@ describe("convertClipNotesToToneLang", () => {
     expect(result).toBe("[C3 E3] [D3 F3] G3");
   });
 
-  describe("convertClipNotesToToneLang", () => {
-    it("formats overlapping notes using t syntax", () => {
-      const clipNotes = [
-        { pitch: 60, start_time: 0, duration: 2, velocity: 70 }, // C3 long note
-        { pitch: 64, start_time: 1, duration: 1, velocity: 70 }, // E3 overlaps with C3
-        { pitch: 67, start_time: 2, duration: 1, velocity: 70 }, // G3 after C3
-      ];
+  it("formats overlapping notes using t syntax", () => {
+    const clipNotes = [
+      { pitch: 60, start_time: 0, duration: 2, velocity: 70 }, // C3 long note
+      { pitch: 64, start_time: 1, duration: 1, velocity: 70 }, // E3 overlaps with C3
+      { pitch: 67, start_time: 2, duration: 1, velocity: 70 }, // G3 after C3
+    ];
 
-      const result = convertClipNotesToToneLang(clipNotes);
-      expect(result).toBe("C3n2t1 E3 G3");
-    });
+    const result = convertClipNotesToToneLang(clipNotes);
+    expect(result).toBe("C3n2t1 E3 G3");
+  });
 
-    it("forms chords for notes with the same start time", () => {
-      const clipNotes = [
-        { pitch: 60, start_time: 0, duration: 1, velocity: 70 }, // C3
-        { pitch: 64, start_time: 0, duration: 1, velocity: 70 }, // E3
-        { pitch: 67, start_time: 1, duration: 1, velocity: 70 }, // G3
-      ];
+  it("forms chords for notes with the same start time", () => {
+    const clipNotes = [
+      { pitch: 60, start_time: 0, duration: 1, velocity: 70 }, // C3
+      { pitch: 64, start_time: 0, duration: 1, velocity: 70 }, // E3
+      { pitch: 67, start_time: 1, duration: 1, velocity: 70 }, // G3
+    ];
 
-      const result = convertClipNotesToToneLang(clipNotes);
-      expect(result).toBe("[C3 E3] G3");
-    });
+    const result = convertClipNotesToToneLang(clipNotes);
+    expect(result).toBe("[C3 E3] G3");
+  });
 
-    it("handles complex timing with multiple overlapping notes", () => {
-      const clipNotes = [
-        { pitch: 60, start_time: 0, duration: 4, velocity: 70 }, // C3 long note
-        { pitch: 64, start_time: 1, duration: 2, velocity: 70 }, // E3 starts during C3
-        { pitch: 67, start_time: 3, duration: 2, velocity: 70 }, // G3 starts during C3 and E3
-        { pitch: 71, start_time: 6, duration: 1, velocity: 70 }, // B3 after all previous notes
-      ];
+  it("handles complex timing with multiple overlapping notes", () => {
+    const clipNotes = [
+      { pitch: 60, start_time: 0, duration: 4, velocity: 70 }, // C3 long note
+      { pitch: 64, start_time: 1, duration: 2, velocity: 70 }, // E3 starts during C3
+      { pitch: 67, start_time: 3, duration: 2, velocity: 70 }, // G3 starts during C3 and E3
+      { pitch: 71, start_time: 6, duration: 1, velocity: 70 }, // B3 after all previous notes
+    ];
 
-      const result = convertClipNotesToToneLang(clipNotes);
-      expect(result).toBe("C3n4t1 E3n2 G3n2t3 B3");
-    });
+    const result = convertClipNotesToToneLang(clipNotes);
+    expect(result).toBe("C3n4t1 E3n2 G3n2t3 B3");
+  });
+});
+
+describe("convertDrumClipNotesToToneLang", () => {
+  it("returns empty string for empty or null input", () => {
+    expect(convertDrumClipNotesToToneLang([])).toBe("");
+    expect(convertDrumClipNotesToToneLang(null)).toBe("");
+    expect(convertDrumClipNotesToToneLang(undefined)).toBe("");
+  });
+
+  it("formats a single drum pad with single hit", () => {
+    const clipNotes = [{ pitch: 36, start_time: 0, duration: 0.25, velocity: 100 }];
+
+    const result = convertDrumClipNotesToToneLang(clipNotes);
+    expect(result).toBe("C1v100n0.25");
+  });
+
+  it("formats a single drum pad with multiple hits", () => {
+    const clipNotes = [
+      { pitch: 36, start_time: 0, duration: 0.25, velocity: 100 },
+      { pitch: 36, start_time: 1, duration: 0.25, velocity: 80 },
+      { pitch: 36, start_time: 2, duration: 0.25, velocity: 120 },
+    ];
+
+    const result = convertDrumClipNotesToToneLang(clipNotes);
+    expect(result).toBe("C1v100n0.25t1 C1v80n0.25t1 C1v120n0.25");
+  });
+
+  it("formats multiple drum pads as separate voices", () => {
+    const clipNotes = [
+      // Kick (36)
+      { pitch: 36, start_time: 0, duration: 0.25, velocity: 100 },
+      { pitch: 36, start_time: 2, duration: 0.25, velocity: 100 },
+      // Snare (38)
+      { pitch: 38, start_time: 1, duration: 0.25, velocity: 90 },
+      { pitch: 38, start_time: 3, duration: 0.25, velocity: 90 },
+      // Hi-hat (42)
+      { pitch: 42, start_time: 0.5, duration: 0.25, velocity: 70 },
+      { pitch: 42, start_time: 1.5, duration: 0.25, velocity: 70 },
+      { pitch: 42, start_time: 2.5, duration: 0.25, velocity: 70 },
+      { pitch: 42, start_time: 3.5, duration: 0.25, velocity: 70 },
+    ];
+
+    const result = convertDrumClipNotesToToneLang(clipNotes);
+    // Expect three voices separated by semicolons (kick, snare, hi-hat) in pitch order
+    expect(result).toBe(
+      "C1v100n0.25t2 C1v100n0.25; D1v90n0.25t2 D1v90n0.25; F#1n0.25t1 F#1n0.25t1 F#1n0.25t1 F#1n0.25"
+    );
+  });
+
+  it("handles varying durations and timings correctly", () => {
+    const clipNotes = [
+      // Kick with varying durations
+      { pitch: 36, start_time: 0, duration: 0.5, velocity: 100 },
+      { pitch: 36, start_time: 2, duration: 0.25, velocity: 100 },
+      // Snare with varying timings (not on standard beats)
+      { pitch: 38, start_time: 1.25, duration: 0.25, velocity: 90 },
+      { pitch: 38, start_time: 3.75, duration: 0.25, velocity: 90 },
+    ];
+
+    const result = convertDrumClipNotesToToneLang(clipNotes);
+    expect(result).toBe("C1v100n0.5t2 C1v100n0.25; D1v90n0.25t2.5 D1v90n0.25");
+  });
+
+  it("groups notes by pitch even when interleaved in time", () => {
+    const clipNotes = [
+      // Totally mixed up order
+      { pitch: 36, start_time: 0, duration: 0.25, velocity: 100 },
+      { pitch: 38, start_time: 1, duration: 0.25, velocity: 90 },
+      { pitch: 36, start_time: 2, duration: 0.25, velocity: 100 },
+      { pitch: 38, start_time: 3, duration: 0.25, velocity: 90 },
+    ];
+
+    const result = convertDrumClipNotesToToneLang(clipNotes);
+    expect(result).toBe("C1v100n0.25t2 C1v100n0.25; D1v90n0.25t2 D1v90n0.25");
   });
 });
 

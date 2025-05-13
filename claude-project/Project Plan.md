@@ -57,7 +57,7 @@ Completed full feature set for core functionality:
   - ✅ Auto-create scenes and tracks when needed
   - ✅ Launch scenes for synchronization between tracks
   - ✅ Grouped track support
-  - More intelligent voice handling for drum tracks (read and write with multi-voice syntax)
+  - ✅ More intelligent voice handling for drum tracks (read and write with multi-voice syntax)
   - Duplicate
     - Clips
     - Tracks
