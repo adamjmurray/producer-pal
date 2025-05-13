@@ -1,7 +1,7 @@
 // device/tool-write-clip.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiSet, mockLiveApiGet, MockSequence } from "./mock-live-api";
-import { writeClip } from "./tool-write-clip";
+import { children, liveApiCall, liveApiSet, mockLiveApiGet, MockSequence } from "./mock-live-api";
+import { MAX_AUTO_CREATED_SCENES, writeClip } from "./tool-write-clip";
 
 describe("writeClip", () => {
   it("creates a new clip with notes when no clip exists", () => {
@@ -206,5 +206,42 @@ describe("writeClip", () => {
         notes: invalidSyntax,
       })
     ).toThrow(/ToneLang syntax error.*Unexpected '\*'.*Valid syntax includes/);
+  });
+
+  it("auto-creates scenes when clipSlotIndex exceeds existing scenes", () => {
+    mockLiveApiGet({
+      LiveSet: { scenes: children("scene1", "scene2", "scene3") },
+    });
+
+    writeClip({
+      trackIndex: 0,
+      clipSlotIndex: 5,
+      name: "Auto-created scene clip",
+    });
+
+    const createSceneCalls = liveApiCall.mock.calls.filter(
+      ([liveApiFunction, ..._args]) => liveApiFunction === "create_scene"
+    );
+    expect(createSceneCalls.length).toBe(3);
+    createSceneCalls.forEach((createSceneCall, callIndex) => {
+      expect(liveApiCall.mock.instances[callIndex].path).toBe("live_set");
+      expect(createSceneCall).toEqual(["create_scene", -1]);
+    });
+  });
+
+  it("throws an error if clipSlotIndex exceeds maximum allowed scenes", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: new MockSequence(0, 1) },
+    });
+
+    expect(() =>
+      writeClip({
+        trackIndex: 0,
+        clipSlotIndex: MAX_AUTO_CREATED_SCENES,
+        name: "This Should Fail",
+      })
+    ).toThrow(/exceeds the maximum allowed value/);
+
+    expect(liveApiCall).not.toHaveBeenCalledWith("create_scene", expect.any(Number));
   });
 });

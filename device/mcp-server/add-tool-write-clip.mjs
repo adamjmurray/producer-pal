@@ -16,7 +16,9 @@ export function addToolWriteClip(server, callLiveApi) {
         .number()
         .int()
         .min(0)
-        .describe("Clip slot index (0-based). This is the same as the sceneIndex of the scene containing this clip."),
+        .describe(
+          "Clip slot index (0-based). This is the same as the sceneIndex of the scene containing this clip. Scenes will be auto-created if needed to insert the clip at the given slot, up to a maximum of 100 scenes."
+        ),
       name: z.string().optional().describe("Name for the clip"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
       notes: z.string().optional().describe(`Musical notation in ToneLang format. ${TONE_LANG_DESCRIPTION}`),

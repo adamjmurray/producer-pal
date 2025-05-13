@@ -2,6 +2,9 @@
 const { parseToneLang } = require("./tone-lang");
 const { readClip } = require("./tool-read-clip");
 
+// Maximum number of scenes we'll auto-create
+const MAX_AUTO_CREATED_SCENES = 100;
+
 /**
  * Creates or updates a MIDI clip at the specified track and clip slot
  * @param {Object} args - The clip parameters
@@ -29,6 +32,22 @@ function writeClip({
   autoplay = false,
   deleteExistingNotes = false,
 }) {
+  const liveSet = new LiveAPI("live_set");
+  const currentSceneCount = liveSet.getChildIds("scenes").length;
+
+  if (clipSlotIndex >= MAX_AUTO_CREATED_SCENES) {
+    throw new Error(
+      `Clip slot index ${clipSlotIndex} exceeds the maximum allowed value of ${MAX_AUTO_CREATED_SCENES - 1}`
+    );
+  }
+
+  if (clipSlotIndex >= currentSceneCount) {
+    const scenesToCreate = clipSlotIndex - currentSceneCount + 1;
+    for (let i = 0; i < scenesToCreate; i++) {
+      liveSet.call("create_scene", -1); // -1 means append at the end
+    }
+  }
+
   const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
   const notes = parseToneLang(toneLangString);
 
@@ -87,4 +106,4 @@ function writeClip({
   return readClip({ trackIndex, clipSlotIndex });
 }
 
-module.exports = { writeClip };
+module.exports = { writeClip, MAX_AUTO_CREATED_SCENES };

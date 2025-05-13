@@ -56,7 +56,9 @@ Completed full feature set for core functionality:
 
   - Extend to Arrangement View
   - Auto-create scenes and tracks when needed
-  - Launch scenes for synchronization between tracks
+    - ✅ auto-create scenes when creating clips
+    - auto-create tracks when creating tracks
+  - ✅ Launch scenes for synchronization between tracks
   - More intelligent voice handling for drum tracks (read and write with multi-voice syntax)
 
 - **Robustness improvements**:
