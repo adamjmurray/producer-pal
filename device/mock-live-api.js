@@ -168,7 +168,7 @@ export const expectedTrack = (overrides = {}) => ({
   playingSlotIndex: 2,
   firedSlotIndex: 3,
   drumPads: null,
-  arrangementClips: [],
+  arrangerClips: [],
   sessionClips: [],
   ...overrides,
 });

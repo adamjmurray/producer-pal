@@ -46,7 +46,7 @@ function readTrack({ trackIndex }) {
       .map((_clipSlotId, clipSlotIndex) => readClip({ trackIndex, clipSlotIndex }))
       .filter((clip) => clip.id != null),
 
-    arrangementClips: track
+    arrangerClips: track
       .getChildIds("arrangement_clips")
       .map((clipId) => readClip({ clipId }))
       .filter((clip) => clip.id != null),

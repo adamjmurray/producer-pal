@@ -80,7 +80,7 @@ describe("readTrack", () => {
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       drumPads: null,
-      arrangementClips: [],
+      arrangerClips: [],
       sessionClips: [],
     });
   });
@@ -119,7 +119,7 @@ describe("readTrack", () => {
       playingSlotIndex: -1,
       firedSlotIndex: -1,
       drumPads: null,
-      arrangementClips: [],
+      arrangerClips: [],
       sessionClips: [],
     });
   });
@@ -168,7 +168,7 @@ describe("readTrack", () => {
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       drumPads: null,
-      arrangementClips: [],
+      arrangerClips: [],
       sessionClips: [],
     });
   });
@@ -219,12 +219,12 @@ describe("readTrack", () => {
       firedSlotIndex: -1,
       playingSlotIndex: 0,
       drumPads: null,
-      arrangementClips: [],
+      arrangerClips: [],
       sessionClips: [expectedClip({ clipSlotIndex: 0 }), expectedClip({ id: "clip2", clipSlotIndex: 2 })],
     });
   });
 
-  it("returns arrangementClips when the track has clips in Arrangement view", () => {
+  it("returns arrangerClips when the track has clips in Arranger view", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 2":
@@ -249,7 +249,7 @@ describe("readTrack", () => {
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
-        name: "Track with Arrangement Clips",
+        name: "Track with Arranger Clips",
         color: 255,
         clip_slots: children("slot1", "slot2", "slot3"),
         arrangement_clips: children("arr_clip1", "arr_clip2"),
@@ -265,9 +265,9 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 2 });
 
-    expect(result.arrangementClips.length).toBe(2);
-    expect(result.arrangementClips[0].id).toBe("arr_clip1");
-    expect(result.arrangementClips[1].id).toBe("arr_clip2");
+    expect(result.arrangerClips.length).toBe(2);
+    expect(result.arrangerClips[0].id).toBe("arr_clip1");
+    expect(result.arrangerClips[1].id).toBe("arr_clip2");
   });
 
   describe("drumPads", () => {

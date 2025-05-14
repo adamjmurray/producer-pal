@@ -122,7 +122,7 @@ describe("readLiveSet", () => {
           playingSlotIndex: 2,
           firedSlotIndex: 3,
           drumPads: null,
-          arrangementClips: [],
+          arrangerClips: [],
           sessionClips: [
             expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
@@ -143,7 +143,7 @@ describe("readLiveSet", () => {
           playingSlotIndex: 2,
           firedSlotIndex: 3,
           drumPads: null,
-          arrangementClips: [],
+          arrangerClips: [],
           sessionClips: [expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 })],
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),

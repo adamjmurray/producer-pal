@@ -14,7 +14,7 @@ const MAX_CLIP_BEATS = 1_000_000;
  * @param {number} [args.trackIndex] - Track index (0-based), required when not providing clipId
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for Session view when not providing clipId
  * @param {string} [args.clipId] - Clip ID to directly update an existing clip
- * @param {number} [args.arrangementStartTime] - Start time in beats for Arranger view clips
+ * @param {number} [args.arrangerStartTime] - Start time in beats for Arranger view clips
  * @param {string} [args.notes] - ToneLang musical notation string
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex, rgb(), or named color)
@@ -31,7 +31,7 @@ async function writeClip({
   trackIndex = null,
   clipSlotIndex = null,
   clipId = null,
-  arrangementStartTime = null,
+  arrangerStartTime = null,
   notes: toneLangString = null,
   name = null,
   color = null,
@@ -56,8 +56,8 @@ async function writeClip({
       throw new Error("clipSlotIndex is required when view is 'Session' and clipId is not provided");
     }
 
-    if (view === "Arranger" && arrangementStartTime === null) {
-      throw new Error("arrangementStartTime is required when view is 'Arranger' and clipId is not provided");
+    if (view === "Arranger" && arrangerStartTime === null) {
+      throw new Error("arrangerStartTime is required when view is 'Arranger' and clipId is not provided");
     }
   }
 
@@ -113,7 +113,7 @@ async function writeClip({
     const clipLength = Math.max(4, Math.ceil(lastNoteEndTime));
 
     // Create the Arranger clip
-    const newClipId = track.call("create_midi_clip", arrangementStartTime, clipLength)[1];
+    const newClipId = track.call("create_midi_clip", arrangerStartTime, clipLength)[1];
     clip = new LiveAPI(`id ${newClipId}`);
     if (!clip.exists()) {
       throw new Error("Failed to create Arranger clip");

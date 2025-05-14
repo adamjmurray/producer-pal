@@ -7,7 +7,7 @@ export function addToolWriteClip(server, callLiveApi) {
     "write-clip",
     "Creates and updates a MIDI clip at the specified location. " +
       "For Session view, provide trackIndex and clipSlotIndex. " +
-      "For Arranger view, provide trackIndex and arrangementStartTime. " +
+      "For Arranger view, provide trackIndex and arrangerStartTime. " +
       "Alternatively, provide a clipId to update an existing clip directly. " +
       "When creating a new clip, existing notes will be replaced. " +
       "When updating an existing clip by ID, new notes will be merged with existing notes.",
@@ -29,7 +29,7 @@ export function addToolWriteClip(server, callLiveApi) {
         .optional()
         .describe("Clip slot index (0-based). Required when view is 'Session' and not providing clipId."),
       clipId: z.string().optional().describe("Clip ID to directly update an existing clip."),
-      arrangementStartTime: z
+      arrangerStartTime: z
         .number()
         .optional()
         .describe(

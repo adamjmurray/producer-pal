@@ -248,7 +248,7 @@ function readClip({ trackIndex = null, clipSlotIndex = null, clipId = null }) {
 
   if (isArrangerClip) {
     result.trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)[1]);
-    result.arrangementStartTime = clip.getProperty("start_time");
+    result.arrangerStartTime = clip.getProperty("start_time");
   } else {
     const pathMatch = clip.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
     result.trackIndex = Number.parseInt(pathMatch?.[1]);

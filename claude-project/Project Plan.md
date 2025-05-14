@@ -58,11 +58,11 @@ Completed full feature set for core functionality:
   - ✅ Launch scenes for synchronization between tracks
   - ✅ Grouped track support
   - ✅ More intelligent voice handling for drum tracks (read and write with multi-voice syntax)
-  - ✅ Support Arrangement View
-    - ✅ Read arrangement view clips
-    - ✅ Upsert arrange view clips
-  - Delete clip by ID so we can delete from arrangement view
-  - ✅ Switch between Session and Arrangement view viw write-live-set
+  - ✅ Support Arranger View
+    - ✅ Read Arranger view clips
+    - ✅ Upsert Arranger view clips
+  - Delete clip by ID so we can delete from Arranger view
+  - ✅ Switch between Session and Arranger view via write-live-set
     - ✅ Automatically switch views when upserting clips
       - Try to ensure the clip is in view (zoom and/or scroll as needed)
   - Control of Song.back_to_arranger and Track.back_to_arranger

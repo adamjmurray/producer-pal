@@ -68,7 +68,7 @@ describe("writeClip", () => {
     );
   });
 
-  it("creates a new arrangement clip", async () => {
+  it("creates a new arranger clip", async () => {
     mockLiveApiGet({
       Track: { exists: () => true },
     });
@@ -94,13 +94,13 @@ describe("writeClip", () => {
     const result = await writeClip({
       view: "Arranger",
       trackIndex: 0,
-      arrangementStartTime: 8,
+      arrangerStartTime: 8,
       notes: "C3 D3 E3",
-      name: "New Arrangement Clip",
+      name: "New Arranger Clip",
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 4);
-    expect(liveApiSet).toHaveBeenCalledWith("name", "New Arrangement Clip");
+    expect(liveApiSet).toHaveBeenCalledWith("name", "New Arranger Clip");
     expect(liveApiCall).toHaveBeenCalledWith(
       "add_new_notes",
       expect.objectContaining({
@@ -124,7 +124,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
-      view: "Session", // Should work for either session or arrangement
+      view: "Session", // Should work for either Session or Arranger
       clipId: "id existing_clip",
       name: "Updated Clip",
       color: "#00FF00",
@@ -164,12 +164,12 @@ describe("writeClip", () => {
       writeClip({
         view: "Arranger",
         trackIndex: 0,
-        // Missing arrangementStartTime and clipId
+        // Missing arrangerStartTime and clipId
       })
-    ).rejects.toThrow(/arrangementStartTime is required/);
+    ).rejects.toThrow(/arrangerStartTime is required/);
   });
 
-  it("ignores trigger parameter for arrangement clips", async () => {
+  it("ignores trigger parameter for arranger clips", async () => {
     mockLiveApiGet({
       Track: { exists: () => true },
     });
@@ -195,11 +195,11 @@ describe("writeClip", () => {
     await writeClip({
       view: "Arranger",
       trackIndex: 0,
-      arrangementStartTime: 8,
-      trigger: true, // Should be ignored for arrangement clips
+      arrangerStartTime: 8,
+      trigger: true, // Should be ignored for arranger clips
     });
 
-    // Fire should not be called for arrangement clips
+    // Fire should not be called for arranger clips
     expect(liveApiCall).not.toHaveBeenCalledWith("fire");
   });
 
@@ -422,7 +422,7 @@ describe("writeClip", () => {
     await writeClip({
       view: "Arranger",
       trackIndex: 0,
-      arrangementStartTime: 8,
+      arrangerStartTime: 8,
       name: "Arranger View Clip",
     });
 

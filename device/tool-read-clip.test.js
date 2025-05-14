@@ -101,26 +101,26 @@ describe("readClip", () => {
     expect(result.view).toBe("Session");
   });
 
-  it("reads an arrangement clip by ID", () => {
+  it("reads an Arranger clip by ID", () => {
     mockLiveApiGet({
-      arrangement_clip_id: {
+      arranger_clip_id: {
         is_arrangement_clip: 1,
         start_time: 16.0,
       },
     });
 
     liveApiPath.mockImplementation(function () {
-      if (this._id === "arrangement_clip_id") {
+      if (this._id === "arranger_clip_id") {
         return "live_set tracks 3 arrangement_clips 2";
       }
     });
 
-    const result = readClip({ clipId: "id arrangement_clip_id" });
-    expect(result.id).toBe("arrangement_clip_id");
+    const result = readClip({ clipId: "id arranger_clip_id" });
+    expect(result.id).toBe("arranger_clip_id");
     expect(result.view).toBe("Arranger");
     expect(result.trackIndex).toBe(3);
     expect(result.clipSlotIndex).toBeUndefined();
-    expect(result.arrangementStartTime).toBe(16.0);
+    expect(result.arrangerStartTime).toBe(16.0);
   });
 
   it("throws an error when neither clipId nor trackIndex+clipSlotIndex are provided", () => {
