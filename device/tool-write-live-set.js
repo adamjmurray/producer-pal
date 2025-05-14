@@ -9,9 +9,11 @@ const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {boolean} [args.stopAllClips=false] - Stop all clips in the Live Set
+ * @param {string} [args.view] - Switch between Session and Arranger views
+ * @param {boolean} [args.followsArranger] - Go back to arranger mode
  * @returns {Object} Updated Live Set information
  */
-async function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = false, view }) {
+async function writeLiveSet({ view, isPlaying, tempo, timeSignature, stopAllClips, followsArranger } = {}) {
   const liveSet = new LiveAPI("live_set");
 
   if (isPlaying != null) {
@@ -41,12 +43,16 @@ async function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = fa
     appView.call("show_view", view);
   }
 
+  if (followsArranger) {
+    liveSet.set("back_to_arranger", 0);
+  }
+
   if (stopAllClips) {
     liveSet.call("stop_all_clips", 0);
   }
 
-  if (stopAllClips || isPlaying != null || view != null) {
-    // clip triggered/playing/view state won't be updated until we wait a moment
+  if (view != null || isPlaying != null || stopAllClips || followsArranger) {
+    // state won't be updated until we wait a moment
     await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 

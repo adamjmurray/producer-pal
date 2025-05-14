@@ -99,4 +99,10 @@ describe("writeLiveSet", () => {
     expect(liveApiCall).not.toHaveBeenCalledWith("stop_all_clips", 0);
     expect(result).toBeDefined();
   });
+
+  it("should set back to arranger when requested", async () => {
+    const result = await writeLiveSet({ followsArranger: true });
+    expect(liveApiSet).toHaveBeenCalledWith("back_to_arranger", 0);
+    expect(result).toBeDefined();
+  });
 });

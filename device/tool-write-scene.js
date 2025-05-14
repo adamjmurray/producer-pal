@@ -17,14 +17,14 @@ const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
  */
 async function writeScene({
   sceneIndex,
-  name = null,
-  color = null,
-  tempo = null,
-  isTempoEnabled = null,
-  timeSignature = null,
-  isTimeSignatureEnabled = null,
-  trigger = null,
-}) {
+  name,
+  color,
+  tempo,
+  isTempoEnabled,
+  timeSignature,
+  isTimeSignatureEnabled,
+  trigger,
+} = {}) {
   const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
   if (!scene.exists()) {

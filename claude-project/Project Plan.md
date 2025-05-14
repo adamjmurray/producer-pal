@@ -65,7 +65,7 @@ Completed full feature set for core functionality:
   - ✅ Switch between Session and Arranger view via write-live-set
     - ✅ Automatically switch views when upserting clips
       - Try to ensure the clip is in view (zoom and/or scroll as needed)
-  - Control of Song.back_to_arranger and Track.back_to_arranger
+  - ✅ Control of Song.back_to_arranger and Track.back_to_arranger
   - Duplicate
     - Clips
     - Tracks

@@ -20,6 +20,12 @@ export function addToolWriteTrack(server, callLiveApi) {
         .describe(
           "Clip slot index to fire (0-based), updates firedSlotIndex property. Use -1 to stop all clips on the track."
         ),
+      followsArranger: z
+        .boolean()
+        .default(false)
+        .describe(
+          "When true, stops any playing clip slot in this track and follow clips in the Arranger (unless firedSlotIndex triggers another Session clip)"
+        ),
     },
     async (args) => callLiveApi("write-track", args)
   );

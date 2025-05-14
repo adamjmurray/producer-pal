@@ -11,6 +11,10 @@ export function addToolWriteLiveSet(server, callLiveApi) {
       timeSignature: z.string().optional().describe('Time signature in format "n/m" (e.g. "4/4")'),
       stopAllClips: z.boolean().default(false).describe("Stop all clips in the Live Set"),
       view: z.enum(["Session", "Arranger"]).optional().describe("Switch between Session and Arranger views"),
+      followsArranger: z
+        .boolean()
+        .default(false)
+        .describe("When true, stops all Session clips and follow clips in the Arranger"),
     },
     async (args) => callLiveApi("write-live-set", args)
   );

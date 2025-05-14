@@ -12,7 +12,7 @@ const DEVICE_TYPE_MIDI_EFFECT = 4;
  * @param {number} args.trackIndex - Track index (0-based)
  * @returns {Object} Result object with track information
  */
-function readTrack({ trackIndex }) {
+function readTrack({ trackIndex } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
@@ -37,6 +37,7 @@ function readTrack({ trackIndex }) {
     isArmed: track.getProperty("arm") > 0,
     playingSlotIndex: track.getProperty("playing_slot_index"),
     firedSlotIndex: track.getProperty("fired_slot_index"),
+    followsArranger: track.getProperty("back_to_arranger") === 0,
     isGroup: track.getProperty("is_foldable") > 0,
     isGroupMember: track.getProperty("is_grouped") > 0,
     groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null

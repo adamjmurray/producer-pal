@@ -146,6 +146,15 @@ describe("writeTrack", () => {
     });
   });
 
+  it("should set back to arranger when requested", async () => {
+    const result = await writeTrack({
+      trackIndex: 0,
+      followsArranger: true,
+    });
+    expect(liveApiSet).toHaveBeenCalledWith("back_to_arranger", 0);
+    expect(result.id).toBe("track1");
+  });
+
   it("throws an error if trackIndex exceeds maximum allowed tracks", async () => {
     await expect(() =>
       writeTrack({

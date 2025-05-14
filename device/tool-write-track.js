@@ -15,17 +15,10 @@ const MAX_AUTO_CREATED_TRACKS = 30;
  * @param {boolean} [args.solo] - Optional solo state
  * @param {boolean} [args.arm] - Optional arm state
  * @param {number} [args.firedSlotIndex] - Optional clip slot index to fire (0-based)
+ * @param {boolean} [args.followsArranger] - Go back to arranger mode for this track
  * @returns {Object} Result object with track information
  */
-async function writeTrack({
-  trackIndex,
-  name = null,
-  color = null,
-  mute = null,
-  solo = null,
-  arm = null,
-  firedSlotIndex = null,
-}) {
+async function writeTrack({ trackIndex, name, color, mute, solo, arm, firedSlotIndex, followsArranger } = {}) {
   const liveSet = new LiveAPI("live_set");
   const currentTrackCount = liveSet.getChildIds("tracks").length;
 
@@ -42,27 +35,31 @@ async function writeTrack({
 
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-  if (name !== null) {
+  if (name != null) {
     track.set("name", name);
   }
 
-  if (color !== null) {
+  if (color != null) {
     track.setColor(color);
   }
 
-  if (mute !== null) {
+  if (mute != null) {
     track.set("mute", mute);
   }
 
-  if (solo !== null) {
+  if (solo != null) {
     track.set("solo", solo);
   }
 
-  if (arm !== null) {
+  if (arm != null) {
     track.set("arm", arm);
   }
 
-  if (firedSlotIndex !== null) {
+  if (followsArranger) {
+    track.set("back_to_arranger", 0);
+  }
+
+  if (firedSlotIndex != null) {
     if (firedSlotIndex === -1) {
       track.call("stop_all_clips");
     } else {
@@ -71,7 +68,10 @@ async function writeTrack({
         clipSlot.call("fire");
       }
     }
-    // clip triggered/playing state won't be updated until we wait a moment
+  }
+
+  if (firedSlotIndex != null || followsArranger) {
+    // Need to wait for state to update
     await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 

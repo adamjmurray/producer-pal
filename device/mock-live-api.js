@@ -177,6 +177,7 @@ export const expectedTrack = (overrides = {}) => ({
   isMuted: false,
   isSoloed: false,
   isArmed: true,
+  followsArranger: true,
   isGroup: false,
   isGroupMember: false,
   groupId: null,
