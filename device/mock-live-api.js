@@ -31,28 +31,34 @@ export class LiveAPI {
   }
 
   get type() {
-    if (this.unquotedpath === "live_set") {
+    if (this.path === "live_set") {
       return "LiveSet"; // AKA the Song
     }
-    if (/^live_set tracks \d+$/.test(this.unquotedpath)) {
+    if (this.path === "live_app") {
+      return "App";
+    }
+    if (this.path === "live_app view") {
+      return "AppView";
+    }
+    if (/^live_set tracks \d+$/.test(this.path)) {
       return "Track";
     }
-    if (/^live_set scenes \d+$/.test(this.unquotedpath)) {
+    if (/^live_set scenes \d+$/.test(this.path)) {
       return "Scene";
     }
-    if (/^live_set tracks \d+ clip_slots \d+$/.test(this.unquotedpath)) {
+    if (/^live_set tracks \d+ clip_slots \d+$/.test(this.path)) {
       return "ClipSlot";
     }
-    if (/^live_set tracks \d+ clip_slots \d+ clip$/.test(this.unquotedpath)) {
+    if (/^live_set tracks \d+ clip_slots \d+ clip$/.test(this.path)) {
       return "Clip";
     }
-    return `TODO: Unknown type for path: "${this.unquotedpath}"`;
+    return `TODO: Unknown type for path: "${this.path}"`;
   }
 }
 
 export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
-    const overridesByProp = overrides[this.type] ?? overrides[this.id] ?? overrides[this.unquotedpath];
+    const overridesByProp = overrides[this.type] ?? overrides[this.id] ?? overrides[this.path];
     if (overridesByProp != null) {
       const override = overridesByProp[prop];
       if (override != null) {
@@ -73,9 +79,14 @@ export function mockLiveApiGet(overrides = {}) {
         switch (prop) {
           case "tracks":
             return children("track1", "track2");
-          default:
-            return [0];
         }
+        break;
+      case "AppView":
+        switch (prop) {
+          case "focused_document_view":
+            return ["Session"];
+        }
+        break;
       case "Track":
         switch (prop) {
           case "has_midi_input":
@@ -101,16 +112,14 @@ export function mockLiveApiGet(overrides = {}) {
             return [2];
           case "fired_slot_index":
             return [3];
-          default:
-            return [0];
         }
+        break;
       case "ClipSlot":
         switch (prop) {
           case "has_clip":
             return [1];
-          default:
-            return [0];
         }
+        break;
       case "Clip":
         switch (prop) {
           case "name":
@@ -137,12 +146,10 @@ export function mockLiveApiGet(overrides = {}) {
             return [4];
           case "signature_denominator":
             return [4];
-          default:
-            return [0];
         }
-      default:
-        return undefined;
+        break;
     }
+    return [0];
   });
 }
 

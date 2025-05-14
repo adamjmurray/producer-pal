@@ -97,6 +97,7 @@ describe("readLiveSet", () => {
     expect(result).toEqual({
       id: "live_set_id",
       abletonLiveVersion: "12.2",
+      view: "Session",
       name: "Test Live Set",
       isPlaying: true,
       tempo: 120,
@@ -178,6 +179,9 @@ describe("readLiveSet", () => {
 
   it("handles when no tracks or scenes exist", () => {
     mockLiveApiGet({
+      AppView: {
+        focused_document_view: "Arranger",
+      },
       LiveSet: {
         name: "Empty Live Set",
         is_playing: 0,
@@ -198,6 +202,7 @@ describe("readLiveSet", () => {
     expect(result).toEqual({
       id: "1",
       abletonLiveVersion: "12.2",
+      view: "Arranger",
       name: "Empty Live Set",
       tempo: 100,
       timeSignature: "3/4",

@@ -5,6 +5,7 @@ const { readScene } = require("./tool-read-scene");
 function readLiveSet() {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
+  const appView = new LiveAPI("live_app view");
   const trackIds = liveSet.getChildIds("tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
@@ -19,6 +20,7 @@ function readLiveSet() {
     scaleName: liveSet.getProperty("scale_name"),
     scaleRootNote: liveSet.getProperty("root_note"),
     scaleIntervals: liveSet.getProperty("scale_intervals"),
+    view: appView.getProperty("focused_document_view"),
     tracks: trackIds.map((_trackId, trackIndex) => readTrack({ trackIndex })),
     scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
   };

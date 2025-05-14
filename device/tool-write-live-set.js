@@ -11,7 +11,7 @@ const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
  * @param {boolean} [args.stopAllClips=false] - Stop all clips in the Live Set
  * @returns {Object} Updated Live Set information
  */
-async function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = false }) {
+async function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = false, view }) {
   const liveSet = new LiveAPI("live_set");
 
   if (isPlaying != null) {
@@ -36,12 +36,17 @@ async function writeLiveSet({ isPlaying, tempo, timeSignature, stopAllClips = fa
     liveSet.set("signature_denominator", denominator);
   }
 
+  if (view != null) {
+    const appView = new LiveAPI("live_app view");
+    appView.call("show_view", view);
+  }
+
   if (stopAllClips) {
     liveSet.call("stop_all_clips", 0);
   }
 
-  if (stopAllClips || isPlaying != null) {
-    // clip triggered/playing state won't be updated until we wait a moment
+  if (stopAllClips || isPlaying != null || view != null) {
+    // clip triggered/playing/view state won't be updated until we wait a moment
     await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 

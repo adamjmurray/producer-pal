@@ -70,4 +70,33 @@ describe("writeLiveSet", () => {
     expect(liveApiCall).not.toHaveBeenCalledWith("stop_all_clips", 0);
     expect(result).toBeDefined();
   });
+
+  it("should switch to Arranger view when requested", async () => {
+    const result = await writeLiveSet({ view: "Arranger" });
+    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(result).toBeDefined();
+  });
+
+  it("should switch to Session view when requested", async () => {
+    const result = await writeLiveSet({ view: "Session" });
+    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+    expect(result).toBeDefined();
+  });
+
+  it("should update multiple properties including view simultaneously", async () => {
+    const result = await writeLiveSet({
+      isPlaying: true,
+      tempo: 125,
+      timeSignature: "6/8",
+      view: "Arranger",
+      stopAllClips: false,
+    });
+    expect(liveApiSet).toHaveBeenCalledWith("is_playing", true);
+    expect(liveApiSet).toHaveBeenCalledWith("tempo", 125);
+    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(liveApiCall).not.toHaveBeenCalledWith("stop_all_clips", 0);
+    expect(result).toBeDefined();
+  });
 });

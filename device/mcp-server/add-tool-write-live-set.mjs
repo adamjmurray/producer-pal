@@ -10,6 +10,7 @@ export function addToolWriteLiveSet(server, callLiveApi) {
       tempo: z.number().min(20).max(999).optional().describe("Set tempo in BPM (20.0-999.0)"),
       timeSignature: z.string().optional().describe('Time signature in format "n/m" (e.g. "4/4")'),
       stopAllClips: z.boolean().default(false).describe("Stop all clips in the Live Set"),
+      view: z.enum(["Session", "Arranger"]).optional().describe("Switch between Session and Arranger views"),
     },
     async (args) => callLiveApi("write-live-set", args)
   );
