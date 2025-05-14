@@ -1,6 +1,6 @@
 // device/tool-duplicate-clip-slot.test.js
 import { describe, expect, it } from "vitest";
-import { expectedClip, liveApiCall, liveApiId, mockLiveApiGet } from "./mock-live-api";
+import { expectedClip, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
 import { duplicateClipSlot } from "./tool-duplicate-clip-slot";
 
 describe("duplicateClipSlot", () => {
@@ -24,6 +24,13 @@ describe("duplicateClipSlot", () => {
         clipSlotIndex: 3,
       })
     );
+  });
+
+  it("should set the clip name when provided", () => {
+    duplicateClipSlot({ trackIndex: 1, clipSlotIndex: 2, name: "Renamed Duplicate" });
+
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Renamed Duplicate");
+    expect(liveApiSet.mock.instances[0].path).toBe("live_set tracks 1 clip_slots 3 clip");
   });
 
   it("should throw an error when trackIndex is not provided", () => {

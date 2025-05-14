@@ -55,10 +55,22 @@ describe("captureScene", () => {
     );
   });
 
+  it("should set the scene name when provided", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "live_set view selected_scene") return "live_set scenes 1";
+      return this._path;
+    });
+
+    captureScene({ name: "Captured Custom Name" });
+
+    expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
+
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Captured Custom Name");
+    expect(liveApiSet.mock.instances[0].path).toBe("live_set scenes 2");
+  });
+
   it("should throw an error when selected scene index can't be determined", () => {
     liveApiPath.mockReturnValue("");
     expect(() => captureScene()).toThrow("capture-scene failed: couldn't determine selected scene index");
   });
 });
-
-// TODO: fix this file, test end to end with Claude, and we should be done with all these duplicate tools!

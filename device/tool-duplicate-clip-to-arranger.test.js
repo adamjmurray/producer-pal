@@ -1,6 +1,14 @@
 // device/tool-duplicate-clip-to-arranger.test.js
 import { describe, expect, it } from "vitest";
-import { expectedClip, liveApiCall, liveApiId, liveApiPath, liveApiType, mockLiveApiGet } from "./mock-live-api";
+import {
+  expectedClip,
+  liveApiCall,
+  liveApiId,
+  liveApiPath,
+  liveApiSet,
+  liveApiType,
+  mockLiveApiGet,
+} from "./mock-live-api";
 import { duplicateClipToArranger } from "./tool-duplicate-clip-to-arranger";
 
 describe("duplicateClipToArranger", () => {
@@ -41,6 +49,8 @@ describe("duplicateClipToArranger", () => {
     const result = duplicateClipToArranger({ clipId: "session_clip", arrangerStartTime: 8 });
 
     expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id session_clip", 8);
+    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+
     expect(result).toEqual(
       expectedClip({
         id: "arranger_clip",
@@ -51,6 +61,24 @@ describe("duplicateClipToArranger", () => {
         arrangerStartTime: 8,
       })
     );
+  });
+
+  it("should set the clip name when provided", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "session_clip") return "live_set tracks 1 clip_slots 0 clip";
+      if (this._id === "arranger_clip") return "live_set tracks 1 arrangement_clip 0";
+      return this.__path;
+    });
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "duplicate_clip_to_arrangement") return ["id", "arranger_clip"];
+    });
+
+    mockLiveApiGet({ arranger_clip: { name: "Custom Name", is_arrangement_clip: 1 } });
+
+    duplicateClipToArranger({ clipId: "session_clip", arrangerStartTime: 8, name: "Custom Name" });
+
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Name");
+    expect(liveApiSet.mock.instances[0].path).toBe("live_set tracks 1 arrangement_clip 0");
   });
 
   it("should throw an error when clipId is not provided", () => {

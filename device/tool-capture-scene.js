@@ -5,9 +5,10 @@ const { readScene } = require("./tool-read-scene");
  * Captures the currently playing clips into a new scene
  * @param {Object} args - The parameters
  * @param {number} [args.sceneIndex] - Optional scene index to select before capturing
+ * @param {string} [args.name] - Optional name for the captured scene
  * @returns {Object} Result object with information about the captured scene
  */
-function captureScene({ sceneIndex } = {}) {
+function captureScene({ sceneIndex, name } = {}) {
   const liveSet = new LiveAPI("live_set");
   const appView = new LiveAPI("live_set view");
 
@@ -23,6 +24,11 @@ function captureScene({ sceneIndex } = {}) {
   }
 
   liveSet.call("capture_and_insert_scene");
+
+  if (name != null) {
+    const newScene = new LiveAPI(`live_set scenes ${selectedSceneIndex + 1}`);
+    newScene.set("name", name);
+  }
 
   return readScene({ sceneIndex: selectedSceneIndex + 1 });
 }

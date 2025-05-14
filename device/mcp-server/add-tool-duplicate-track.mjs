@@ -7,6 +7,7 @@ export function addToolDuplicateTrack(server, callLiveApi) {
     "Duplicates a track at the specified index",
     {
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
+      name: z.string().optional().describe("Optional name for the duplicated track"),
     },
     async (args) => callLiveApi("duplicate-track", args)
   );

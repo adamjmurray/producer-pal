@@ -1,6 +1,6 @@
 // device/tool-duplicate-scene.test.js
 import { describe, expect, it } from "vitest";
-import { expectedScene, liveApiCall, liveApiId, mockLiveApiGet } from "./mock-live-api";
+import { expectedScene, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
 import { duplicateScene } from "./tool-duplicate-scene";
 
 describe("duplicateScene", () => {
@@ -24,6 +24,15 @@ describe("duplicateScene", () => {
         sceneIndex: 1,
       })
     );
+  });
+
+  it("should set the scene name when provided", () => {
+    duplicateScene({ sceneIndex: 0, name: "Custom Scene Name" });
+
+    expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
+
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene Name");
+    expect(liveApiSet.mock.instances[0].path).toBe("live_set scenes 1");
   });
 
   it("should throw an error when sceneIndex is not provided", () => {

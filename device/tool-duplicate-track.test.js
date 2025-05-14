@@ -1,6 +1,6 @@
 // device/tool-duplicate-track.test.js
 import { describe, expect, it } from "vitest";
-import { expectedTrack, liveApiCall, liveApiId, mockLiveApiGet } from "./mock-live-api";
+import { expectedTrack, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
 import { duplicateTrack } from "./tool-duplicate-track";
 
 describe("duplicateTrack", () => {
@@ -24,6 +24,15 @@ describe("duplicateTrack", () => {
         name: "Duplicated Track",
       })
     );
+  });
+
+  it("should set the track name when provided", () => {
+    duplicateTrack({ trackIndex: 0, name: "Custom Track Name" });
+
+    expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
+
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track Name");
+    expect(liveApiSet.mock.instances[0].path).toBe("live_set tracks 1");
   });
 
   it("should throw an error when trackIndex is not provided", () => {

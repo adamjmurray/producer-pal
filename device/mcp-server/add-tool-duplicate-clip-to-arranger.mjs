@@ -8,6 +8,7 @@ export function addToolDuplicateClipToArranger(server, callLiveApi) {
     {
       clipId: z.string().describe("id of the clip to duplicate"),
       arrangerStartTime: z.number().describe("Start time in beats for the duplicated clip in Arranger view"),
+      name: z.string().optional().describe("Optional name for the duplicated clip"),
     },
     async (args) => callLiveApi("duplicate-clip-to-arranger", args)
   );

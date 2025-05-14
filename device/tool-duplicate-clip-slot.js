@@ -6,9 +6,10 @@ const { readClip } = require("./tool-read-clip");
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {number} args.clipSlotIndex - Clip slot index (0-based) to duplicate
+ * @param {string} [args.name] - Optional name for the duplicated clip
  * @returns {Object} Result object with information about the duplicated clip
  */
-function duplicateClipSlot({ trackIndex, clipSlotIndex } = {}) {
+function duplicateClipSlot({ trackIndex, clipSlotIndex, name } = {}) {
   if (trackIndex == null) {
     throw new Error("duplicate-clip-slot failed: trackIndex is required");
   }
@@ -23,7 +24,11 @@ function duplicateClipSlot({ trackIndex, clipSlotIndex } = {}) {
   }
 
   track.call("duplicate_clip_slot", clipSlotIndex);
-  // TODO: check the results (handle invalid clipSlotIndex)
+
+  if (name != null) {
+    const newClip = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex + 1} clip`);
+    newClip.set("name", name);
+  }
 
   return readClip({ trackIndex, clipSlotIndex: clipSlotIndex + 1 });
 }
