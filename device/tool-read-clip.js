@@ -211,7 +211,7 @@ function readClip({ trackIndex = null, clipSlotIndex = null, clipId = null }) {
   // TODO: Need test coverage of this logic
   const clip = new LiveAPI(
     clipId != null
-      ? clipId.startsWith("id ")
+      ? typeof clipId === "string" && clipId.startsWith("id ")
         ? clipId
         : `id ${clipId}`
       : `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`

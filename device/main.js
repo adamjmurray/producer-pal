@@ -17,6 +17,11 @@ const { readTrack } = require("./tool-read-track.js");
 const { writeClip } = require("./tool-write-clip.js");
 const { writeLiveSet } = require("./tool-write-live-set.js");
 const { writeTrack } = require("./tool-write-track.js");
+const { duplicateClipSlot } = require("./tool-duplicate-clip-slot.js");
+const { duplicateClipToArranger } = require("./tool-duplicate-clip-to-arranger.js");
+const { duplicateScene } = require("./tool-duplicate-scene.js");
+const { duplicateTrack } = require("./tool-duplicate-track.js");
+const { captureScene } = require("./tool-capture-scene.js");
 
 const tools = {
   "read-live-set": () => readLiveSet(),
@@ -30,6 +35,11 @@ const tools = {
   "read-clip": (args) => readClip(args),
   "write-clip": (args) => writeClip(args),
   "delete-clip": (args) => deleteClip(args),
+  "capture-scene": (args) => captureScene(args),
+  "duplicate-clip-slot": (args) => duplicateClipSlot(args),
+  "duplicate-clip-to-arranger": (args) => duplicateClipToArranger(args),
+  "duplicate-scene": (args) => duplicateScene(args),
+  "duplicate-track": (args) => duplicateTrack(args),
 };
 
 function callTool(toolName, args) {

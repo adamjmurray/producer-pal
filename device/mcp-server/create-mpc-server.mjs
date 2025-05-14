@@ -1,8 +1,13 @@
-// device/mcp-server/create-mpc-server.mjs (updated)
+// device/mcp-server/create-mpc-server.mjs
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { addToolCaptureScene } from "./add-tool-capture-scene.mjs";
 import { addToolDeleteClip } from "./add-tool-delete-clip.mjs";
 import { addToolDeleteScene } from "./add-tool-delete-scene.mjs";
 import { addToolDeleteTrack } from "./add-tool-delete-track.mjs";
+import { addToolDuplicateClipSlot } from "./add-tool-duplicate-clip-slot.mjs";
+import { addToolDuplicateClipToArranger } from "./add-tool-duplicate-clip-to-arranger.mjs";
+import { addToolDuplicateScene } from "./add-tool-duplicate-scene.mjs";
+import { addToolDuplicateTrack } from "./add-tool-duplicate-track.mjs";
 import { addToolReadClip } from "./add-tool-read-clip.mjs";
 import { addToolReadLiveSet } from "./add-tool-read-live-set.mjs";
 import { addToolReadScene } from "./add-tool-read-scene.mjs";
@@ -32,6 +37,12 @@ export function createMcpServer(callLiveApi) {
   addToolReadClip(server, callLiveApi);
   addToolWriteClip(server, callLiveApi);
   addToolDeleteClip(server, callLiveApi);
+
+  addToolCaptureScene(server, callLiveApi);
+  addToolDuplicateClipSlot(server, callLiveApi);
+  addToolDuplicateClipToArranger(server, callLiveApi);
+  addToolDuplicateScene(server, callLiveApi);
+  addToolDuplicateTrack(server, callLiveApi);
 
   return server;
 }

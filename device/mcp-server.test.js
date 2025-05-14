@@ -108,6 +108,11 @@ describe("MCP Express App", () => {
         "read-clip",
         "write-clip",
         "delete-clip",
+        "capture-scene",
+        "duplicate-clip-slot",
+        "duplicate-clip-to-arranger",
+        "duplicate-scene",
+        "duplicate-track",
       ]);
     });
 

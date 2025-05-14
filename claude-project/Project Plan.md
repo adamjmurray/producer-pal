@@ -66,11 +66,11 @@ Completed full feature set for core functionality:
     - ✅ Automatically switch views when upserting clips
       - Try to ensure the clip is in view (zoom and/or scroll as needed)
   - ✅ Control of Song.back_to_arranger and Track.back_to_arranger
-  - Duplicate
-    - Clips
-    - Tracks
-    - Scenes
-  - Capture Scene
+  - ✅ Duplicate
+    - ✅ Clips
+    - ✅ Tracks
+    - ✅ Scenes
+  - ✅ Capture Scene
 
 - **Robustness improvements**:
 

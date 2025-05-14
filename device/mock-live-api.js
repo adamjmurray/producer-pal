@@ -39,11 +39,14 @@ export class LiveAPI {
     if (this.path === "live_set") {
       return "LiveSet"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
     }
+    if (this.path === "live_set view") {
+      return "SongView"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
+    }
     if (this.path === "live_app") {
       return "Application";
     }
     if (this.path === "live_app view") {
-      return "View";
+      return "AppView";
     }
     if (/^live_set tracks \d+$/.test(this.path)) {
       return "Track";
@@ -98,7 +101,7 @@ export function mockLiveApiGet(overrides = {}) {
             return children("scene1", "scene2");
         }
         break;
-      case "View":
+      case "AppView":
         switch (prop) {
           case "focused_document_view":
             return ["Session"];
@@ -129,6 +132,14 @@ export function mockLiveApiGet(overrides = {}) {
             return [2];
           case "fired_slot_index":
             return [3];
+        }
+        break;
+      case "Scene":
+        switch (prop) {
+          case "name":
+            return ["Test Scene"];
+          case "clips":
+            return [];
         }
         break;
       case "ClipSlot":
@@ -188,6 +199,20 @@ export const expectedTrack = (overrides = {}) => ({
   drumPads: null,
   arrangerClips: [],
   sessionClips: [],
+  ...overrides,
+});
+
+export const expectedScene = (overrides = {}) => ({
+  id: "1",
+  name: "Test Scene",
+  sceneIndex: 0,
+  color: "#000000",
+  isEmpty: false,
+  isTriggered: false,
+  isTempoEnabled: false,
+  tempo: 0,
+  isTimeSignatureEnabled: false,
+  timeSignature: "0/0",
   ...overrides,
 });
 
