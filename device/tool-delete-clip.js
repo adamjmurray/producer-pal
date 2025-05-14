@@ -1,31 +1,36 @@
 // device/tool-delete-clip.js
 /**
- * Deletes a clip at the specified track and clip slot
+ * Delete a clip
  * @param {Object} args - The parameters
- * @param {number} args.trackIndex - Track index (0-based)
- * @param {number} args.clipSlotIndex - Clip slot index (0-based)
- * @returns {Object} Result object with success or error information
+ * @param {number} args.id - the id of the clip to delete
+ * @returns {Object} Result object with success information
  */
-function deleteClip({ trackIndex, clipSlotIndex }) {
-  const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
-
-  if (!clipSlot.getProperty("has_clip")) {
-    return {
-      success: false,
-      trackIndex,
-      clipSlotIndex,
-      error: `No clip exists at track ${trackIndex}, clip slot ${clipSlotIndex}`,
-    };
+function deleteClip({ id } = {}) {
+  if (!id) {
+    throw new Error("delete-clip failed: id is required");
   }
 
-  clipSlot.call("delete_clip");
+  // Convert string ID to LiveAPI path if needed
+  const clipPath = id.startsWith("id ") ? id : `id ${id}`;
+  const clip = new LiveAPI(clipPath);
 
-  return {
-    success: true,
-    trackIndex,
-    clipSlotIndex,
-    message: `Deleted clip at track ${trackIndex}, clip slot ${clipSlotIndex}`,
-  };
+  if (!clip.exists()) {
+    throw new Error(`delete-clip failed: id "${id}" does not exist`);
+  }
+  if (clip.type !== "Clip") {
+    throw new Error(`delete-clip failed: id "${id}" was not a clip (type=${clip.type})`);
+  }
+
+  const trackIndex = clip.path.match(/live_set tracks (\d+)/)?.[1];
+  if (!trackIndex) {
+    throw new Error(`delete-clip failed: no track index for id "${id}" (path="${clip.path}")`);
+  }
+
+  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
+  track.call("delete_clip", `id ${clip.id}`);
+
+  return { id, deleted: true };
 }
 
 module.exports = { deleteClip };

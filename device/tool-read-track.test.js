@@ -231,7 +231,7 @@ describe("readTrack", () => {
           return "track3";
         case "id arr_clip1":
         case "id arr_clip2":
-          return this.path.substring(3);
+          return this._path.substring(3);
         default:
           return "id 0";
       }
@@ -298,7 +298,6 @@ describe("readTrack", () => {
     });
 
     it("returns null when the track has an instrument but it's not a drum rack", () => {
-      liveApiId.mockReturnValue("track6");
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Non-Drum Instrument",
@@ -314,7 +313,6 @@ describe("readTrack", () => {
     });
 
     it("returns empty array when the drum rack has no pads", () => {
-      liveApiId.mockReturnValue("track7");
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Empty Drum Rack",
@@ -331,7 +329,6 @@ describe("readTrack", () => {
     });
 
     it("only includes drum pads that have chains to play a sound", () => {
-      liveApiId.mockReturnValue("track9");
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Drum Rack With Pads",
@@ -366,7 +363,6 @@ describe("readTrack", () => {
     });
 
     it("stops at first drum rack found", () => {
-      liveApiId.mockReturnValue("track10");
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Multiple Instruments",

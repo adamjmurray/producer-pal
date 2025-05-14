@@ -4,10 +4,9 @@ import { z } from "zod";
 export function addToolDeleteClip(server, callLiveApi) {
   server.tool(
     "delete-clip",
-    "Deletes a clip at the specified track and clip slot",
+    "Deletes a clip by id. The clip can be in Session view or Arranger view.",
     {
-      trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
-      clipSlotIndex: z.number().int().min(0).describe("Clip slot index (0-based)"),
+      id: z.string().describe("The id of the clip to delete"),
     },
     async (args) => callLiveApi("delete-clip", args)
   );

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, vi } from "vitest";
-import { LiveAPI, liveApiCall, liveApiId, mockLiveApiGet } from "./device/mock-live-api";
+import { LiveAPI, liveApiCall, mockLiveApiGet } from "./device/mock-live-api";
 import { Task } from "./device/mock-task";
 
 globalThis.LiveAPI = LiveAPI;
@@ -11,7 +11,6 @@ beforeEach(() => {
   vi.resetAllMocks();
 
   // default mocking behaviors:
-  liveApiId.mockReturnValue("1");
   mockLiveApiGet();
   // TODO: this should move into mockLiveApiCall (and maybe introduce mockLiveApiId and mockLiveApiPath and eventually wrap the whole thing in mockLiveApi)
   liveApiCall.mockImplementation(function (method) {

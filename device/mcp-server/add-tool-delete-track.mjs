@@ -4,9 +4,9 @@ import { z } from "zod";
 export function addToolDeleteTrack(server, callLiveApi) {
   server.tool(
     "delete-track",
-    "Deletes a track at the specified index",
+    "Deletes a track by id",
     {
-      trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
+      id: z.string().describe("Track id to delete"),
     },
     async (args) => callLiveApi("delete-track", args)
   );

@@ -200,7 +200,7 @@ describe("readLiveSet", () => {
     const result = readLiveSet();
 
     expect(result).toEqual({
-      id: "1",
+      id: "live_set",
       abletonLiveVersion: "12.2",
       view: "Arranger",
       name: "Empty Live Set",

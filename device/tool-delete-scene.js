@@ -1,35 +1,34 @@
 // device/tool-delete-scene.js
 /**
- * Deletes a scene at the specified index
+ * Deletes a scene with the specified id
  * @param {Object} args - The parameters
- * @param {number} args.sceneIndex - Scene index (0-based)
- * @returns {Object} Result object with success or error information
+ * @param {number} args.id - Scene id
+ * @returns {Object} Result object with success information
  */
-function deleteScene({ sceneIndex }) {
-  const liveSet = new LiveAPI("live_set");
-  const sceneIds = liveSet.getChildIds("scenes");
-
-  if (sceneIndex < 0 || sceneIndex >= sceneIds.length) {
-    return {
-      success: false,
-      sceneIndex,
-      error: `Scene index ${sceneIndex} is out of range. Valid range: 0-${sceneIds.length - 1}`,
-    };
+function deleteScene({ id } = {}) {
+  if (!id) {
+    throw new Error("delete-scene failed: id is required");
   }
 
-  // Get the scene ID before deletion
-  const sceneId = sceneIds[sceneIndex];
-  const scene = new LiveAPI(sceneId);
-  const sceneName = scene.getProperty("name");
+  const scenePath = id.startsWith("id ") ? id : `id ${id}`;
+  const scene = new LiveAPI(scenePath);
 
-  // Delete the scene
+  if (!scene.exists()) {
+    throw new Error(`delete-scene failed: id "${id}" does not exist`);
+  }
+  if (scene.type !== "Scene") {
+    throw new Error(`delete-scene failed: id "${id}" was not a scene (type=${scene.type})`);
+  }
+
+  const sceneIndex = Number(scene.path.match(/live_set scenes (\d+)/)?.[1]);
+  if (Number.isNaN(sceneIndex)) {
+    throw new Error(`delete-scene failed: no scene index for id "${id}" (path="${scene.path}")`);
+  }
+
+  const liveSet = new LiveAPI("live_set");
   liveSet.call("delete_scene", sceneIndex);
 
-  return {
-    success: true,
-    sceneIndex,
-    message: `Deleted scene "${sceneName}" at index ${sceneIndex}`,
-  };
+  return { id, deleted: true };
 }
 
 module.exports = { deleteScene };

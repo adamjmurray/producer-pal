@@ -25,7 +25,7 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 1, clipSlotIndex: 1 });
     expect(result).toEqual({
-      id: "1",
+      id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
       clipSlotIndex: 1,
@@ -63,7 +63,7 @@ describe("readClip", () => {
     });
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
     expect(result).toEqual({
-      id: "1",
+      id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Audio Sample",
       type: "audio",
       clipSlotIndex: 0,
@@ -157,7 +157,7 @@ describe("readClip", () => {
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
 
     expect(result).toEqual({
-      id: "1",
+      id: "live_set/tracks/0/clip_slots/0/clip",
       type: "midi",
       view: "Session",
       name: "Test Clip",

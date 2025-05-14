@@ -61,7 +61,7 @@ Completed full feature set for core functionality:
   - ✅ Support Arranger View
     - ✅ Read Arranger view clips
     - ✅ Upsert Arranger view clips
-  - Delete clip by ID so we can delete from Arranger view
+  - ✅ Delete clip by ID so we can delete from Arranger view
   - ✅ Switch between Session and Arranger view via write-live-set
     - ✅ Automatically switch views when upserting clips
       - Try to ensure the clip is in view (zoom and/or scroll as needed)

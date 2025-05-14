@@ -1,35 +1,34 @@
 // device/tool-delete-track.js
 /**
- * Deletes a track at the specified index
+ * Deletes a track at the specified id
  * @param {Object} args - The parameters
- * @param {number} args.trackIndex - Track index (0-based)
+ * @param {number} args.id - Track id
  * @returns {Object} Result object with success or error information
  */
-function deleteTrack({ trackIndex }) {
-  const liveSet = new LiveAPI("live_set");
-  const trackIds = liveSet.getChildIds("tracks");
-
-  if (trackIndex < 0 || trackIndex >= trackIds.length) {
-    return {
-      success: false,
-      trackIndex,
-      error: `Track index ${trackIndex} is out of range. Valid range: 0-${trackIds.length - 1}`,
-    };
+function deleteTrack({ id } = {}) {
+  if (!id) {
+    throw new Error("delete-track failed: id is required");
   }
 
-  // Get the track ID before deletion
-  const trackId = trackIds[trackIndex];
-  const track = new LiveAPI(trackId);
-  const trackName = track.getProperty("name");
+  const trackPath = id.startsWith("id ") ? id : `id ${id}`;
+  const track = new LiveAPI(trackPath);
 
-  // Delete the track
+  if (!track.exists()) {
+    throw new Error(`delete-track failed: id "${id}" does not exist`);
+  }
+  if (track.type !== "Track") {
+    throw new Error(`delete-track failed: id "${id}" was not a track (type=${track.type})`);
+  }
+
+  const trackIndex = Number(track.path.match(/live_set tracks (\d+)/)?.[1]);
+  if (Number.isNaN(trackIndex)) {
+    throw new Error(`delete-track failed: no track index for id "${id}" (path="${track.path}")`);
+  }
+
+  const liveSet = new LiveAPI("live_set");
   liveSet.call("delete_track", trackIndex);
 
-  return {
-    success: true,
-    trackIndex,
-    message: `Deleted track "${trackName}" at index ${trackIndex}`,
-  };
+  return { id, deleted: true };
 }
 
 module.exports = { deleteTrack };

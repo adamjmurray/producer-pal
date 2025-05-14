@@ -5,6 +5,7 @@ export class MockSequence extends Array {}
 
 export const liveApiId = vi.fn();
 export const liveApiPath = vi.fn();
+export const liveApiType = vi.fn();
 export const liveApiGet = vi.fn();
 export const liveApiSet = vi.fn();
 export const liveApiCall = vi.fn();
@@ -15,11 +16,11 @@ export class LiveAPI {
     this.get = liveApiGet;
     this.set = liveApiSet;
     this.call = liveApiCall;
-    if (path.startsWith("id ")) this._id = path.slice(3);
+    this._id = path.startsWith("id ") ? path.slice(3) : path.replaceAll(/\s+/g, "/");
   }
 
   get id() {
-    return this._id ?? liveApiId.apply(this);
+    return liveApiId.apply(this) ?? this._id;
   }
 
   get path() {
@@ -31,6 +32,10 @@ export class LiveAPI {
   }
 
   get type() {
+    const mockedType = liveApiType.apply(this);
+    if (mockedType !== undefined) {
+      return mockedType;
+    }
     if (this.path === "live_set") {
       return "LiveSet"; // AKA the Song
     }
@@ -58,7 +63,17 @@ export class LiveAPI {
 
 export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
-    const overridesByProp = overrides[this.type] ?? overrides[this.id] ?? overrides[this.path];
+    const overridesByProp = overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
+    // console.log("[DEBUG] mockLiveApiGet", {
+    //   prop,
+    //   id: this.id,
+    //   _id: this._id,
+    //   path: this.path,
+    //   _path: this._path,
+    //   type: this.type,
+    //   overrides,
+    //   overridesByProp,
+    // });
     if (overridesByProp != null) {
       const override = overridesByProp[prop];
       if (override != null) {
