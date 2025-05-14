@@ -13,13 +13,16 @@ beforeEach(() => {
   // default mocking behaviors:
   liveApiId.mockReturnValue("1");
   mockLiveApiGet();
-  liveApiCall.mockImplementation((method) => {
-    if (method === "get_notes_extended") {
-      return JSON.stringify({
-        notes: [],
-      });
+  // TODO: this should move into mockLiveApiCall (and maybe introduce mockLiveApiId and mockLiveApiPath and eventually wrap the whole thing in mockLiveApi)
+  liveApiCall.mockImplementation(function (method) {
+    switch (method) {
+      case "get_version_string":
+        return "12.2";
+      case "get_notes_extended":
+        return JSON.stringify({ notes: [] });
+      default:
+        return null;
     }
-    return null;
   });
 });
 

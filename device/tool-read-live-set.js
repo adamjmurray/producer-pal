@@ -4,11 +4,13 @@ const { readScene } = require("./tool-read-scene");
 
 function readLiveSet() {
   const liveSet = new LiveAPI("live_set");
+  const liveApp = new LiveAPI("live_app");
   const trackIds = liveSet.getChildIds("tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
   return {
     id: liveSet.id,
+    abletonLiveVersion: liveApp.call("get_version_string"),
     name: liveSet.getProperty("name"),
     isPlaying: liveSet.getProperty("is_playing") > 0,
     tempo: liveSet.getProperty("tempo"),
@@ -17,9 +19,7 @@ function readLiveSet() {
     scaleName: liveSet.getProperty("scale_name"),
     scaleRootNote: liveSet.getProperty("root_note"),
     scaleIntervals: liveSet.getProperty("scale_intervals"),
-    trackCount: trackIds.length,
     tracks: trackIds.map((_trackId, trackIndex) => readTrack({ trackIndex })),
-    sceneCount: sceneIds.length,
     scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
   };
 }

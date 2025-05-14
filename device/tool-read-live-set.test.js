@@ -96,6 +96,7 @@ describe("readLiveSet", () => {
 
     expect(result).toEqual({
       id: "live_set_id",
+      abletonLiveVersion: "12.2",
       name: "Test Live Set",
       isPlaying: true,
       tempo: 120,
@@ -104,7 +105,6 @@ describe("readLiveSet", () => {
       scaleName: "Major",
       scaleRootNote: 0,
       scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
-      trackCount: 3,
       tracks: [
         {
           id: "track1",
@@ -147,7 +147,6 @@ describe("readLiveSet", () => {
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
-      sceneCount: 2,
       scenes: [
         {
           id: "scene1",
@@ -198,6 +197,7 @@ describe("readLiveSet", () => {
 
     expect(result).toEqual({
       id: "1",
+      abletonLiveVersion: "12.2",
       name: "Empty Live Set",
       tempo: 100,
       timeSignature: "3/4",
@@ -206,9 +206,7 @@ describe("readLiveSet", () => {
       scaleIntervals: [0, 2, 3, 5, 7, 8, 10],
       scaleName: "Minor",
       scaleRootNote: 2,
-      trackCount: 0,
       tracks: [],
-      sceneCount: 0,
       scenes: [],
     });
   });
