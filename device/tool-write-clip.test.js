@@ -341,4 +341,47 @@ describe("writeClip", () => {
 
     expect(liveApiCall).not.toHaveBeenCalledWith("create_scene", expect.any(Number));
   });
+
+  it("removes all existing notes when updating a clip with new notes", async () => {
+    // Mock an existing clip
+    liveApiId.mockImplementation(function () {
+      if (this.path === "id existing_clip") return "existing_clip";
+      return "1";
+    });
+    mockLiveApiGet({
+      existing_clip: { exists: () => true },
+    });
+
+    await writeClip({
+      location: "session",
+      clipId: "existing_clip",
+      notes: "C3 D3 E3",
+    });
+
+    expect(liveApiCall).toHaveBeenNthCalledWith(1, "remove_notes_extended", 0, 127, 0, 1000000);
+    expect(liveApiCall.mock.instances[0].id).toBe("existing_clip");
+
+    expect(liveApiCall).toHaveBeenNthCalledWith(2, "add_new_notes", {
+      notes: [
+        {
+          duration: 1,
+          pitch: 60,
+          start_time: 0,
+          velocity: 70,
+        },
+        {
+          duration: 1,
+          pitch: 62,
+          start_time: 1,
+          velocity: 70,
+        },
+        {
+          duration: 1,
+          pitch: 64,
+          start_time: 2,
+          velocity: 70,
+        },
+      ],
+    });
+  });
 });

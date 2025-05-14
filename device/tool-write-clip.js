@@ -5,6 +5,7 @@ const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 
 // Maximum number of scenes we'll auto-create
 const MAX_AUTO_CREATED_SCENES = 100;
+const MAX_CLIP_BEATS = 1_000_000;
 
 /**
  * Creates or updates a MIDI clip in Session or Arrangement view
@@ -100,11 +101,6 @@ async function writeClip({
     }
 
     clip = new LiveAPI(`${clipSlot.path} clip`);
-
-    // For session view new clips, always remove existing notes
-    if (toneLangString != null) {
-      clip.call("remove_notes_extended", 0, 127, 0, clip.get("length")?.[0]);
-    }
   }
   // Handle creating arrangement view clip
   else if (location === "arrangement") {
@@ -121,7 +117,7 @@ async function writeClip({
     const newClipId = track.call("create_midi_clip", arrangementStartTime, clipLength)[1];
     clip = new LiveAPI(`id ${newClipId}`);
     if (!clip.exists()) {
-      throw new Error(`Failed to find created arrangement clip`);
+      throw new Error("Failed to create arrangement clip");
     }
   } else {
     throw new Error(`Invalid location: ${location}`);
@@ -155,11 +151,11 @@ async function writeClip({
     clip.set("looping", loop);
   }
 
-  if (notes.length > 0) {
+  if (toneLangString != null) {
+    clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
     clip.call("add_new_notes", { notes });
   }
 
-  // Handle trigger for session clips
   if (trigger && location === "session") {
     const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
     clipSlot.call("fire");

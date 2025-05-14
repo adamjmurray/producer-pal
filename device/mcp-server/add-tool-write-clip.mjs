@@ -34,7 +34,10 @@ export function addToolWriteClip(server, callLiveApi) {
         ),
       name: z.string().optional().describe("Name for the clip"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
-      notes: z.string().optional().describe(`Musical notation in ToneLang format. ${TONE_LANG_DESCRIPTION}`),
+      notes: z
+        .string()
+        .optional()
+        .describe(`Musical notation in ToneLang format. Replaces existing notes. ${TONE_LANG_DESCRIPTION}`),
       start_marker: z
         .number()
         .optional()

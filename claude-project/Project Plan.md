@@ -62,8 +62,6 @@ Completed full feature set for core functionality:
     - ✅ Read arrangement view clips
     - ✅ Upsert arrange view clips
   - Delete clip by ID so we can delete from arrangement view
-  - Consider always overwriting a clip's notes in write-clip (the merge behavior is too confusing). Ensure we delete all
-    notes including beyond the end of the loop marker
   - Switch between Session and Arrangement view (via write-live-set and also automatically when upserting clips)
   - Control of Song.back_to_arranger and Track.back_to_arranger
   - Duplicate
@@ -91,11 +89,14 @@ Completed full feature set for core functionality:
 - **Feature expansion**:
   - Create improved UI for the Max for Live device
     - Add configuration options (port selection, etc.)
-  - Maybe introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not
-    being able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature,
-    and it will need to be time-signature aware)
-  - Add note transformation capabilities?
-    - Implement randomization tools?
+  - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
+    able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and it
+    will need to be time-signature aware)
+  - Randomization features:
+    - set note probability
+    - set note velocity_deviation
+    - features to randomize velocities, durations, or start times by some min/max amount when evaluating ToneLang
+    - slice & shuffle (rearrange every measure / N beats randomly)
 
 ### Phase 5: Productization and Polish
 
