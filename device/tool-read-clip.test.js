@@ -30,16 +30,16 @@ describe("readClip", () => {
       type: "midi",
       clipSlotIndex: 1,
       trackIndex: 1,
-      location: "session",
+      view: "Session",
       color: "#3DC300",
       length: 4,
       loop: false,
-      start_marker: 1,
-      end_marker: 5,
-      loop_start: 1,
-      loop_end: 5,
-      is_playing: false,
-      is_triggered: false,
+      startMarker: 1,
+      endMarker: 5,
+      loopStart: 1,
+      loopEnd: 5,
+      isPlaying: false,
+      isTriggered: false,
       notes: "C3 D3 E3",
       noteCount: 3,
     });
@@ -68,16 +68,16 @@ describe("readClip", () => {
       type: "audio",
       clipSlotIndex: 0,
       trackIndex: 0,
-      location: "session",
+      view: "Session",
       color: "#3DC300",
       length: 4,
       loop: true,
-      start_marker: 1,
-      end_marker: 5,
-      loop_start: 1,
-      loop_end: 5,
-      is_playing: true,
-      is_triggered: false,
+      startMarker: 1,
+      endMarker: 5,
+      loopStart: 1,
+      loopEnd: 5,
+      isPlaying: true,
+      isTriggered: false,
     });
   });
 
@@ -98,7 +98,7 @@ describe("readClip", () => {
     expect(result.id).toBe("session_clip_id");
     expect(result.trackIndex).toBe(2);
     expect(result.clipSlotIndex).toBe(4);
-    expect(result.location).toBe("session");
+    expect(result.view).toBe("Session");
   });
 
   it("reads an arrangement clip by ID", () => {
@@ -117,7 +117,7 @@ describe("readClip", () => {
 
     const result = readClip({ clipId: "id arrangement_clip_id" });
     expect(result.id).toBe("arrangement_clip_id");
-    expect(result.location).toBe("arrangement");
+    expect(result.view).toBe("Arranger");
     expect(result.trackIndex).toBe(3);
     expect(result.clipSlotIndex).toBeUndefined();
     expect(result.arrangementStartTime).toBe(16.0);
@@ -159,19 +159,19 @@ describe("readClip", () => {
     expect(result).toEqual({
       id: "1",
       type: "midi",
-      location: "session",
+      view: "Session",
       name: "Test Clip",
       trackIndex: 0,
       clipSlotIndex: 0,
       color: "#3DC300",
       length: 4,
-      start_marker: 1,
-      end_marker: 5,
+      startMarker: 1,
+      endMarker: 5,
       loop: false,
-      loop_end: 5,
-      loop_start: 1,
-      is_playing: false,
-      is_triggered: true,
+      loopEnd: 5,
+      loopStart: 1,
+      isPlaying: false,
+      isTriggered: true,
       noteCount: 4,
       notes: "C1v100n0.25t2 C1v100n0.25; D1v90n0.25t2 D1v90n0.25",
     });

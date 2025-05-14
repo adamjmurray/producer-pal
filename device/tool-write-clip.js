@@ -8,26 +8,26 @@ const MAX_AUTO_CREATED_SCENES = 100;
 const MAX_CLIP_BEATS = 1_000_000;
 
 /**
- * Creates or updates a MIDI clip in Session or Arrangement view
+ * Creates or updates a MIDI clip in Session or Arranger view
  * @param {Object} args - The clip parameters
- * @param {string} args.location - Location of the clip ('session' or 'arrangement')
+ * @param {string} args.view - View for the clip ('Session' or 'Arranger')
  * @param {number} [args.trackIndex] - Track index (0-based), required when not providing clipId
- * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for session view when not providing clipId
+ * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for Session view when not providing clipId
  * @param {string} [args.clipId] - Clip ID to directly update an existing clip
- * @param {number} [args.arrangementStartTime] - Start time in beats for arrangement view clips
+ * @param {number} [args.arrangementStartTime] - Start time in beats for Arranger view clips
  * @param {string} [args.notes] - ToneLang musical notation string
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex, rgb(), or named color)
- * @param {number} [args.start_marker] - Start marker position in beats
- * @param {number} [args.end_marker] - End marker position in beats
- * @param {number} [args.loop_start] - Loop start position in beats
- * @param {number} [args.loop_end] - Loop end position in beats
+ * @param {number} [args.startMarker] - Start marker position in beats
+ * @param {number} [args.endMarker] - End marker position in beats
+ * @param {number} [args.loopStart] - Loop start position in beats
+ * @param {number} [args.loopEnd] - Loop end position in beats
  * @param {boolean} [args.loop] - Enable looping for the clip
- * @param {boolean} [args.trigger=false] - Automatically play the clip after creating it (session only)
+ * @param {boolean} [args.trigger=false] - Automatically play the clip after creating it (Session only)
  * @returns {Object} Result object with clip information
  */
 async function writeClip({
-  location,
+  view,
   trackIndex = null,
   clipSlotIndex = null,
   clipId = null,
@@ -35,16 +35,16 @@ async function writeClip({
   notes: toneLangString = null,
   name = null,
   color = null,
-  start_marker = null,
-  end_marker = null,
-  loop_start = null,
-  loop_end = null,
+  startMarker = null,
+  endMarker = null,
   loop = null,
+  loopStart = null,
+  loopEnd = null,
   trigger = false,
 }) {
-  // Validate parameters based on location
-  if (!location) {
-    throw new Error("location parameter is required");
+  // Validate parameters based on view
+  if (!view) {
+    throw new Error("view parameter is required");
   }
 
   if (clipId === null) {
@@ -52,12 +52,12 @@ async function writeClip({
       throw new Error("trackIndex is required when clipId is not provided");
     }
 
-    if (location === "session" && clipSlotIndex === null) {
-      throw new Error("clipSlotIndex is required when location is 'session' and clipId is not provided");
+    if (view === "Session" && clipSlotIndex === null) {
+      throw new Error("clipSlotIndex is required when view is 'Session' and clipId is not provided");
     }
 
-    if (location === "arrangement" && arrangementStartTime === null) {
-      throw new Error("arrangementStartTime is required when location is 'arrangement' and clipId is not provided");
+    if (view === "Arranger" && arrangementStartTime === null) {
+      throw new Error("arrangementStartTime is required when view is 'Arranger' and clipId is not provided");
     }
   }
 
@@ -73,8 +73,8 @@ async function writeClip({
       throw new Error(`No clip exists for clipId "${clipId}"`);
     }
   }
-  // Handle creating/updating session view clip
-  else if (location === "session") {
+  // Handle creating/updating Session view clip
+  else if (view === "Session") {
     const liveSet = new LiveAPI("live_set");
     const currentSceneCount = liveSet.getChildIds("scenes").length;
 
@@ -102,25 +102,24 @@ async function writeClip({
 
     clip = new LiveAPI(`${clipSlot.path} clip`);
   }
-  // Handle creating arrangement view clip
-  else if (location === "arrangement") {
+  // Handle creating Arranger view clip
+  else if (view === "Arranger") {
     const track = new LiveAPI(`live_set tracks ${trackIndex}`);
     if (!track.exists()) {
       throw new Error(`Track with index ${trackIndex} does not exist`);
     }
 
     const lastNoteEndTime = notes.length > 0 ? Math.max(...notes.map((note) => note.start_time + note.duration)) : 0;
-    // TODO: this should respect `end_marker - (start_marker ?? 0)` if provided to avoid unwanted overwrites in the arrangement timeline
     const clipLength = Math.max(4, Math.ceil(lastNoteEndTime));
 
-    // Create the arrangement clip
+    // Create the Arranger clip
     const newClipId = track.call("create_midi_clip", arrangementStartTime, clipLength)[1];
     clip = new LiveAPI(`id ${newClipId}`);
     if (!clip.exists()) {
-      throw new Error("Failed to create arrangement clip");
+      throw new Error("Failed to create Arranger clip");
     }
   } else {
-    throw new Error(`Invalid location: ${location}`);
+    throw new Error(`Invalid view: ${view}`);
   }
 
   if (name != null) {
@@ -131,20 +130,20 @@ async function writeClip({
     clip.setColor(color);
   }
 
-  if (start_marker != null) {
-    clip.set("start_marker", start_marker);
+  if (startMarker != null) {
+    clip.set("start_marker", startMarker);
   }
 
-  if (end_marker != null) {
-    clip.set("end_marker", end_marker);
+  if (endMarker != null) {
+    clip.set("end_marker", endMarker);
   }
 
-  if (loop_start != null) {
-    clip.set("loop_start", loop_start);
+  if (loopStart != null) {
+    clip.set("loop_start", loopStart);
   }
 
-  if (loop_end != null) {
-    clip.set("loop_end", loop_end);
+  if (loopEnd != null) {
+    clip.set("loop_end", loopEnd);
   }
 
   if (loop != null) {
@@ -156,7 +155,11 @@ async function writeClip({
     clip.call("add_new_notes", { notes });
   }
 
-  if (trigger && location === "session") {
+  // Switch app view to match the clip view
+  const appView = new LiveAPI("live_app view");
+  appView.call("show_view", view);
+
+  if (trigger && view === "Session") {
     const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
     clipSlot.call("fire");
     // triggered state isn't updated until we wait a moment

@@ -32,7 +32,7 @@ describe("writeClip", () => {
     });
 
     const result = await writeClip({
-      location: "session",
+      view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "C3 D3 E3",
@@ -61,7 +61,7 @@ describe("writeClip", () => {
       expectedClip({
         id: "clip_0_0",
         type: "midi",
-        location: "session",
+        view: "Session",
         trackIndex: 0,
         clipSlotIndex: 0,
       })
@@ -92,7 +92,7 @@ describe("writeClip", () => {
     });
 
     const result = await writeClip({
-      location: "arrangement",
+      view: "Arranger",
       trackIndex: 0,
       arrangementStartTime: 8,
       notes: "C3 D3 E3",
@@ -124,7 +124,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
-      location: "session", // Should work for either session or arrangement
+      view: "Session", // Should work for either session or arrangement
       clipId: "id existing_clip",
       name: "Updated Clip",
       color: "#00FF00",
@@ -138,15 +138,15 @@ describe("writeClip", () => {
   it("throws error when required parameters are missing", async () => {
     await expect(() =>
       writeClip({
-        // Missing location
+        // Missing view
         trackIndex: 0,
         clipSlotIndex: 0,
       })
-    ).rejects.toThrow(/location parameter is required/);
+    ).rejects.toThrow(/view parameter is required/);
 
     await expect(() =>
       writeClip({
-        location: "session",
+        view: "Session",
         // Missing trackIndex and clipId
         clipSlotIndex: 0,
       })
@@ -154,7 +154,7 @@ describe("writeClip", () => {
 
     await expect(() =>
       writeClip({
-        location: "session",
+        view: "Session",
         trackIndex: 0,
         // Missing clipSlotIndex and clipId
       })
@@ -162,7 +162,7 @@ describe("writeClip", () => {
 
     await expect(() =>
       writeClip({
-        location: "arrangement",
+        view: "Arranger",
         trackIndex: 0,
         // Missing arrangementStartTime and clipId
       })
@@ -193,7 +193,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
-      location: "arrangement",
+      view: "Arranger",
       trackIndex: 0,
       arrangementStartTime: 8,
       trigger: true, // Should be ignored for arrangement clips
@@ -217,7 +217,7 @@ describe("writeClip", () => {
     });
 
     const result = await writeClip({
-      location: "session",
+      view: "Session",
       trackIndex: 3,
       clipSlotIndex: 0,
       notes: "C3n2 D3n3", // Notes extend to 5 beats
@@ -248,7 +248,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
-      location: "session",
+      view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "C3", // Only 1 beat
@@ -261,7 +261,7 @@ describe("writeClip", () => {
     const toneLangString = "C4n4t2 D4n4t2 E4n.5";
 
     await writeClip({
-      location: "session",
+      view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: toneLangString,
@@ -295,7 +295,7 @@ describe("writeClip", () => {
     const invalidSyntax = "C3*1.5";
     await expect(() =>
       writeClip({
-        location: "session",
+        view: "Session",
         trackIndex: 0,
         clipSlotIndex: 0,
         notes: invalidSyntax,
@@ -309,7 +309,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
-      location: "session",
+      view: "Session",
       trackIndex: 0,
       clipSlotIndex: 5,
       name: "Auto-created scene clip",
@@ -332,7 +332,7 @@ describe("writeClip", () => {
 
     await expect(() =>
       writeClip({
-        location: "session",
+        view: "Session",
         trackIndex: 0,
         clipSlotIndex: MAX_AUTO_CREATED_SCENES,
         name: "This Should Fail",
@@ -353,7 +353,7 @@ describe("writeClip", () => {
     });
 
     await writeClip({
-      location: "session",
+      view: "Session",
       clipId: "existing_clip",
       notes: "C3 D3 E3",
     });
@@ -383,5 +383,52 @@ describe("writeClip", () => {
         },
       ],
     });
+  });
+
+  it("switches to the correct view when creating or updating clips", async () => {
+    // Mock LiveAPI behavior
+    mockLiveApiGet({
+      ClipSlot: { has_clip: new MockSequence(0, 1) },
+      Track: { exists: () => true },
+    });
+
+    liveApiCall.mockImplementation((method, ...args) => {
+      if (method === "create_midi_clip") {
+        return ["id", "clip_0"];
+      }
+      if (method === "get_notes_extended") {
+        return JSON.stringify({ notes: [] });
+      }
+      return null;
+    });
+
+    // Test Session view
+    await writeClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      name: "Session View Clip",
+    });
+
+    // Find the show_view call for Session
+    const sessionViewCall = liveApiCall.mock.calls.find((call) => call[0] === "show_view" && call[1] === "Session");
+    expect(sessionViewCall).toBeDefined();
+    expect(sessionViewCall[1]).toBe("Session");
+
+    // Reset mock to check Arranger view call separately
+    liveApiCall.mockClear();
+
+    // Test Arranger view
+    await writeClip({
+      view: "Arranger",
+      trackIndex: 0,
+      arrangementStartTime: 8,
+      name: "Arranger View Clip",
+    });
+
+    // Find the show_view call for Arranger
+    const arrangerViewCall = liveApiCall.mock.calls.find((call) => call[0] === "show_view" && call[1] === "Arranger");
+    expect(arrangerViewCall).toBeDefined();
+    expect(arrangerViewCall[1]).toBe("Arranger");
   });
 });

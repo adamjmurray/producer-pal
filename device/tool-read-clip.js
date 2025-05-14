@@ -228,25 +228,25 @@ function readClip({ trackIndex = null, clipSlotIndex = null, clipId = null }) {
     };
   }
 
-  const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+  const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
 
   const result = {
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     name: clip.getProperty("name"),
-    location: isArrangementClip ? "arrangement" : "session",
+    view: isArrangerClip ? "Arranger" : "Session",
     color: clip.getColor(),
     loop: clip.getProperty("looping") > 0,
     length: clip.getProperty("length"),
-    start_marker: clip.getProperty("start_marker"),
-    end_marker: clip.getProperty("end_marker"),
-    loop_start: clip.getProperty("loop_start"),
-    loop_end: clip.getProperty("loop_end"),
-    is_playing: clip.getProperty("is_playing") > 0,
-    is_triggered: clip.getProperty("is_triggered") > 0,
+    startMarker: clip.getProperty("start_marker"),
+    endMarker: clip.getProperty("end_marker"),
+    loopStart: clip.getProperty("loop_start"),
+    loopEnd: clip.getProperty("loop_end"),
+    isPlaying: clip.getProperty("is_playing") > 0,
+    isTriggered: clip.getProperty("is_triggered") > 0,
   };
 
-  if (isArrangementClip) {
+  if (isArrangerClip) {
     result.trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)[1]);
     result.arrangementStartTime = clip.getProperty("start_time");
   } else {

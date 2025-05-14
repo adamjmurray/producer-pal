@@ -63,7 +63,8 @@ Completed full feature set for core functionality:
     - ✅ Upsert arrange view clips
   - Delete clip by ID so we can delete from arrangement view
   - ✅ Switch between Session and Arrangement view viw write-live-set
-    - Automatically switch views when upserting clips. Consider renaming location to view and using same enum
+    - ✅ Automatically switch views when upserting clips
+      - Try to ensure the clip is in view (zoom and/or scroll as needed)
   - Control of Song.back_to_arranger and Track.back_to_arranger
   - Duplicate
     - Clips
