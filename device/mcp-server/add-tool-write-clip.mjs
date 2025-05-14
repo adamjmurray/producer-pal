@@ -8,9 +8,8 @@ export function addToolWriteClip(server, callLiveApi) {
     "Creates and updates a MIDI clip at the specified location. " +
       "For Session view, provide trackIndex and clipSlotIndex. " +
       "For Arranger view, provide trackIndex and arrangerStartTime. " +
-      "Alternatively, provide a clipId to update an existing clip directly. " +
-      "When creating a new clip, existing notes will be replaced. " +
-      "When updating an existing clip by ID, new notes will be merged with existing notes.",
+      "Alternatively, provide a clipId to update an existing clip directly. When the notes arg is provided, existing notes will be overwritten. " +
+      "Scenes will be auto-created if needed to insert the clip at the given index, up to a maximum of 100 scenes (sceneIndex == clipSlotIndex).",
     {
       view: z
         .enum(["Session", "Arranger"])

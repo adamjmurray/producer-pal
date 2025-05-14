@@ -1,6 +1,7 @@
 // device/tool-write-scene.js
 const { readScene } = require("./tool-read-scene");
 const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
+const { MAX_AUTO_CREATED_SCENES } = require("./tool-write-clip");
 
 /**
  * Updates a scene at the specified index
@@ -25,11 +26,21 @@ async function writeScene({
   isTimeSignatureEnabled,
   trigger,
 } = {}) {
-  const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+  const liveSet = new LiveAPI("live_set");
+  const currentSceneCount = liveSet.getChildIds("scenes").length;
 
-  if (!scene.exists()) {
-    throw new Error(`Scene index ${sceneIndex} does not exist`);
+  if (sceneIndex >= MAX_AUTO_CREATED_SCENES) {
+    throw new Error(`Scene index ${sceneIndex} exceeds the maximum allowed value of ${MAX_AUTO_CREATED_SCENES - 1}`);
   }
+
+  if (sceneIndex >= currentSceneCount) {
+    const scenesToCreate = sceneIndex - currentSceneCount + 1;
+    for (let i = 0; i < scenesToCreate; i++) {
+      liveSet.call("create_scene", -1); // -1 means append at the end
+    }
+  }
+
+  const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
   if (name != null) {
     scene.set("name", name);

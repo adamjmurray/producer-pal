@@ -4,7 +4,7 @@ import { z } from "zod";
 export function addToolWriteScene(server, callLiveApi) {
   server.tool(
     "write-scene",
-    "Creates and updates a scene at the specified index. All properties are optional except sceneIndex.",
+    "Creates and updates a scene at the specified index. All properties are optional except sceneIndex. Scenes will be auto-created if needed to insert the scene at the given index, up to a maximum of 100 scenes.",
     {
       sceneIndex: z
         .number()

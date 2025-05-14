@@ -183,7 +183,7 @@ describe("readLiveSet", () => {
 
   it("handles when no tracks or scenes exist", () => {
     mockLiveApiGet({
-      AppView: {
+      View: {
         focused_document_view: "Arranger",
       },
       LiveSet: {

@@ -37,13 +37,13 @@ export class LiveAPI {
       return mockedType;
     }
     if (this.path === "live_set") {
-      return "LiveSet"; // AKA the Song
+      return "LiveSet"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
     }
     if (this.path === "live_app") {
-      return "App";
+      return "Application";
     }
     if (this.path === "live_app view") {
-      return "AppView";
+      return "View";
     }
     if (/^live_set tracks \d+$/.test(this.path)) {
       return "Track";
@@ -94,9 +94,11 @@ export function mockLiveApiGet(overrides = {}) {
         switch (prop) {
           case "tracks":
             return children("track1", "track2");
+          case "scenes":
+            return children("scene1", "scene2");
         }
         break;
-      case "AppView":
+      case "View":
         switch (prop) {
           case "focused_document_view":
             return ["Session"];

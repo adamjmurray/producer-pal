@@ -1,6 +1,7 @@
 // device/tool-write-scene.test.js
 import { describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiId, liveApiSet } from "./mock-live-api";
+import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
+import { MAX_AUTO_CREATED_SCENES } from "./tool-write-clip";
 import { writeScene } from "./tool-write-scene";
 
 // Mock readScene since it's used in writeScene
@@ -15,12 +16,6 @@ vi.mock("./tool-read-scene", () => ({
 describe("writeScene", () => {
   beforeEach(() => {
     liveApiId.mockReturnValue("scene1");
-  });
-
-  it("should throw an error when scene does not exist", async () => {
-    liveApiId.mockReturnValue("id 0");
-
-    await expect(() => writeScene({ sceneIndex: 99 })).rejects.toThrow("Scene index 99 does not exist");
   });
 
   it("should update all properties when provided", async () => {
@@ -112,5 +107,36 @@ describe("writeScene", () => {
     expect(liveApiSet).not.toHaveBeenCalled();
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result.id).toBe("scene1");
+  });
+
+  it("auto-creates scenes when sceneIndex exceeds existing scenes", async () => {
+    mockLiveApiGet({
+      LiveSet: { scenes: children("scene1", "scene2", "scene3") },
+    });
+
+    await writeScene({
+      sceneIndex: 5,
+      name: "Auto-created scene",
+    });
+
+    const createSceneCalls = liveApiCall.mock.calls.filter(
+      ([liveApiFunction, ..._args]) => liveApiFunction === "create_scene"
+    );
+    expect(createSceneCalls.length).toBe(3);
+    createSceneCalls.forEach((createSceneCall, callIndex) => {
+      expect(liveApiCall.mock.instances[callIndex].path).toBe("live_set");
+      expect(createSceneCall).toEqual(["create_scene", -1]);
+    });
+  });
+
+  it("throws an error if sceneIndex exceeds maximum allowed scenes", async () => {
+    await expect(() =>
+      writeScene({
+        sceneIndex: MAX_AUTO_CREATED_SCENES,
+        name: "This Should Fail",
+      })
+    ).rejects.toThrow(/exceeds the maximum allowed value/);
+
+    expect(liveApiCall).not.toHaveBeenCalledWith("create_scene", expect.any(Number));
   });
 });
