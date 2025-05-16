@@ -54,7 +54,7 @@ The main parts of the system are:
 ## Implementation Details
 
 - the Node for Max MCP server is bootstrapped by `device/mcp-server.mjs`, which `import`s files in
-  `device/mcp-server/**.ts`
+  `device/mcp-server/**.mjs`
 - the v8 Max object bootstraps with `main.js`, which `require()`s other JavaScript files in the same folder
 
 ## Message Format Specification
