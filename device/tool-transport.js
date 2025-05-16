@@ -2,7 +2,7 @@
 /**
  * Controls the Arrangement transport
  * @param {Object} args - The parameters
- * @param {string} args.action - Transport action to perform ('play', 'stop', or 'update-loop')
+ * @param {string} args.action - Transport action to perform ('play', 'stop', or 'update')
  * @param {number} [args.startTime=0] - Position in beats to start playback from (only used with 'play')
  * @param {boolean} [args.loop] - Enable/disable Arrangement loop
  * @param {number} [args.loopStart] - Loop start position in beats
@@ -55,7 +55,7 @@ function transport({ action, startTime = 0, loop, loopStart, loopLength, followi
     liveSet.call("stop_playing");
     liveSet.set("start_time", 0);
   }
-  // For "update-loop", we don't change playback state - just the loop settings above
+  // For "update", we don't change playback state - just the loop settings above
 
   return {
     isPlaying: (() => {

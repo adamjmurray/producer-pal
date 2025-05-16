@@ -1,6 +1,5 @@
 // device/tool-write-scene.js
 const { readScene } = require("./tool-read-scene");
-const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 const { MAX_AUTO_CREATED_SCENES } = require("./tool-write-clip");
 
 /**
@@ -13,19 +12,9 @@ const { MAX_AUTO_CREATED_SCENES } = require("./tool-write-clip");
  * @param {boolean} [args.isTempoEnabled] - Optional flag to enable/disable scene tempo
  * @param {string} [args.timeSignature] - Optional time signature in format "4/4"
  * @param {boolean} [args.isTimeSignatureEnabled] - Optional flag to enable/disable scene time signature
- * @param {boolean} [args.trigger] - Optional flag to trigger the scene
  * @returns {Object} Result object with scene information
  */
-async function writeScene({
-  sceneIndex,
-  name,
-  color,
-  tempo,
-  isTempoEnabled,
-  timeSignature,
-  isTimeSignatureEnabled,
-  trigger,
-} = {}) {
+function writeScene({ sceneIndex, name, color, tempo, isTempoEnabled, timeSignature, isTimeSignatureEnabled } = {}) {
   const liveSet = new LiveAPI("live_set");
   const currentSceneCount = liveSet.getChildIds("scenes").length;
 
@@ -71,12 +60,6 @@ async function writeScene({
 
   if (isTimeSignatureEnabled != null) {
     scene.set("time_signature_enabled", isTimeSignatureEnabled);
-  }
-
-  if (trigger === true) {
-    scene.call("fire");
-    // clip triggered/playing state won't be updated until we wait a moment
-    await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 
   return readScene({ sceneIndex });

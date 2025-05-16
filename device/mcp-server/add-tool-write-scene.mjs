@@ -17,7 +17,6 @@ export function addToolWriteScene(server, callLiveApi) {
       isTempoEnabled: z.boolean().optional().describe("Enable/disable scene tempo"),
       timeSignature: z.string().optional().describe('Time signature in format "n/m" (e.g. "4/4")'),
       isTimeSignatureEnabled: z.boolean().optional().describe("Enable/disable scene time signature"),
-      trigger: z.boolean().optional().default(false).describe("Trigger (fire) the scene"),
     },
     async (args) => callLiveApi("write-scene", args)
   );

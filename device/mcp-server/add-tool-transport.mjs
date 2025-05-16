@@ -7,9 +7,9 @@ export function addToolTransport(server, callLiveApi) {
     "Controls the Arrangement transport, including playback, position, and loop settings",
     {
       action: z
-        .enum(["play", "stop", "update-loop"])
+        .enum(["play", "stop", "update"])
         .describe(
-          "Transport action to perform - 'play', 'stop', or 'update-loop' (to change loop settings without affecting playback)"
+          "Transport action to perform - 'play', 'stop', or 'update' (to change loop or track follow settings without affecting playback)"
         ),
       startTime: z
         .number()

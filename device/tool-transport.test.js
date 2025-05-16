@@ -119,7 +119,7 @@ describe("transport", () => {
     });
 
     const result = await transport({
-      action: "update-loop",
+      action: "update",
       loop: true,
       loopStart: 8,
       loopLength: 16,

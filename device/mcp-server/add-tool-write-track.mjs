@@ -12,20 +12,6 @@ export function addToolWriteTrack(server, callLiveApi) {
       mute: z.boolean().optional().describe("Set mute state for the track"),
       solo: z.boolean().optional().describe("Set solo state for the track"),
       arm: z.boolean().optional().describe("Set arm state for the track"),
-      firedSlotIndex: z
-        .number()
-        .int()
-        .min(-1)
-        .optional()
-        .describe(
-          "Clip slot index to fire (0-based), updates firedSlotIndex property. Use -1 to stop all clips on the track."
-        ),
-      followsArranger: z
-        .boolean()
-        .default(false)
-        .describe(
-          "When true, stops any playing clip slot in this track and follow clips in the Arranger (unless firedSlotIndex triggers another Session clip)"
-        ),
     },
     async (args) => callLiveApi("write-track", args)
   );

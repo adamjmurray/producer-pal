@@ -1,24 +1,15 @@
 // device/tool-write-live-set.js
 const { readLiveSet } = require("./tool-read-live-set");
-const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
-
 /**
  * Updates Live Set parameters like tempo, time signature, and playback state
  * @param {Object} args - The parameters
- * @param {boolean} [args.isPlaying] - Start/stop transport
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {boolean} [args.stopAllClips=false] - Stop all clips in the Live Set
  * @param {string} [args.view] - Switch between Session and Arranger views
- * @param {boolean} [args.followsArranger] - Go back to arranger mode
  * @returns {Object} Updated Live Set information
  */
-async function writeLiveSet({ view, isPlaying, tempo, timeSignature, stopAllClips, followsArranger } = {}) {
+function writeLiveSet({ view, tempo, timeSignature } = {}) {
   const liveSet = new LiveAPI("live_set");
-
-  if (isPlaying != null) {
-    liveSet.set("is_playing", isPlaying);
-  }
 
   if (tempo != null) {
     if (tempo < 20 || tempo > 999) {
@@ -43,20 +34,10 @@ async function writeLiveSet({ view, isPlaying, tempo, timeSignature, stopAllClip
     appView.call("show_view", view);
   }
 
-  if (followsArranger) {
-    liveSet.set("back_to_arranger", 0);
-  }
-
-  if (stopAllClips) {
-    liveSet.call("stop_all_clips", 0);
-  }
-
-  if (view != null || isPlaying != null || stopAllClips || followsArranger) {
-    // state won't be updated until we wait a moment
-    await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
-  }
-
-  return readLiveSet();
+  return {
+    ...readLiveSet(),
+    ...(view != null ? { view } : {}),
+  };
 }
 
 module.exports = { writeLiveSet };

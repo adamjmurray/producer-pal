@@ -1,25 +1,15 @@
 // device/tool-write-track.test.js
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
 import { MAX_AUTO_CREATED_TRACKS, writeTrack } from "./tool-write-track";
-
-// Mock readTrack since it's used in writeTrack
-vi.mock("./tool-read-track", () => ({
-  readTrack: vi.fn().mockReturnValue({
-    id: "track1",
-    type: "midi",
-    name: "Test Track",
-    trackIndex: 0,
-  }),
-}));
 
 describe("writeTrack", () => {
   beforeEach(() => {
     liveApiId.mockReturnValue("track1");
   });
 
-  it("should update all properties when provided", async () => {
-    const result = await writeTrack({
+  it("should update all properties when provided", () => {
+    const result = writeTrack({
       trackIndex: 0,
       name: "New Track Name",
       color: "#FF0000",
@@ -36,8 +26,8 @@ describe("writeTrack", () => {
     expect(result.id).toBe("track1");
   });
 
-  it("should not update properties when not provided", async () => {
-    const result = await writeTrack({
+  it("should not update properties when not provided", () => {
+    const result = writeTrack({
       trackIndex: 1,
       name: "Only Name Update",
     });
@@ -49,45 +39,8 @@ describe("writeTrack", () => {
     expect(liveApiSet).not.toHaveBeenCalledWith("arm", expect.any(Boolean));
   });
 
-  it("should fire clip slot when firedSlotIndex is provided and slot exists", async () => {
-    liveApiId.mockImplementation(function () {
-      if (this.path.includes("clip_slots")) return "clipslot1";
-      return "track1";
-    });
-
-    const result = await writeTrack({
-      trackIndex: 0,
-      firedSlotIndex: 2,
-    });
-
-    expect(liveApiCall).toHaveBeenCalledWith("fire");
-  });
-
-  it("should not fire clip slot when it does not exist", async () => {
-    liveApiId.mockImplementation(function () {
-      if (this.path.includes("clip_slots")) return "id 0";
-      return "track1";
-    });
-
-    const result = await writeTrack({
-      trackIndex: 0,
-      firedSlotIndex: 99,
-    });
-
-    expect(liveApiCall).not.toHaveBeenCalledWith("fire");
-  });
-
-  it("should stop all clips when firedSlotIndex is -1", async () => {
-    const result = await writeTrack({
-      trackIndex: 0,
-      firedSlotIndex: -1,
-    });
-    expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
-    expect(liveApiCall).not.toHaveBeenCalledWith("fire");
-  });
-
-  it("should handle multiple property updates including firing a clip", async () => {
-    const result = await writeTrack({
+  it("should handle multiple property updates", () => {
+    const result = writeTrack({
       trackIndex: 1,
       name: "Multi Update",
       color: "#00FF00",
@@ -98,11 +51,10 @@ describe("writeTrack", () => {
     expect(liveApiSet).toHaveBeenCalledWith("name", "Multi Update");
     expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
     expect(liveApiSet).toHaveBeenCalledWith("mute", false);
-    expect(liveApiCall).toHaveBeenCalledWith("fire");
   });
 
-  it("should handle boolean false values correctly", async () => {
-    const result = await writeTrack({
+  it("should handle boolean false values correctly", () => {
+    const result = writeTrack({
       trackIndex: 0,
       mute: false,
       solo: false,
@@ -114,8 +66,8 @@ describe("writeTrack", () => {
     expect(liveApiSet).toHaveBeenCalledWith("arm", false);
   });
 
-  it("should work with no arguments except trackIndex", async () => {
-    const result = await writeTrack({
+  it("should work with no arguments except trackIndex", () => {
+    const result = writeTrack({
       trackIndex: 0,
     });
 
@@ -124,14 +76,14 @@ describe("writeTrack", () => {
     expect(result.id).toBe("track1");
   });
 
-  it("auto-creates tracks when trackIndex exceeds existing tracks", async () => {
+  it("auto-creates tracks when trackIndex exceeds existing tracks", () => {
     // Start with 3 tracks, with indices 0, 1, and 2
     mockLiveApiGet({
       LiveSet: { tracks: children("track_0", "track_1", "track_2") },
     });
 
     // Try to write to track 6 (index 5), which doesn't exist yet
-    const result = await writeTrack({
+    const result = writeTrack({
       trackIndex: 5,
       name: "Auto-created track",
     });
@@ -146,22 +98,13 @@ describe("writeTrack", () => {
     });
   });
 
-  it("should set back to arranger when requested", async () => {
-    const result = await writeTrack({
-      trackIndex: 0,
-      followsArranger: true,
-    });
-    expect(liveApiSet).toHaveBeenCalledWith("back_to_arranger", 0);
-    expect(result.id).toBe("track1");
-  });
-
-  it("throws an error if trackIndex exceeds maximum allowed tracks", async () => {
-    await expect(() =>
+  it("throws an error if trackIndex exceeds maximum allowed tracks", () => {
+    expect(() =>
       writeTrack({
         trackIndex: MAX_AUTO_CREATED_TRACKS,
         name: "This Should Fail",
       })
-    ).rejects.toThrow(/exceeds the maximum allowed value/);
+    ).toThrow(/exceeds the maximum allowed value/);
 
     expect(liveApiCall).not.toHaveBeenCalledWith("create_midi_track", expect.any(Number));
   });
