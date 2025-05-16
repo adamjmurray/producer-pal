@@ -6,8 +6,16 @@ export function addToolTransport(server, callLiveApi) {
     "transport",
     "Controls the Arrangement transport, including playback, position, and loop settings",
     {
-      action: z.enum(["play", "stop"]).describe("Transport action to perform"),
-      startTime: z.number().default(0).describe("Position in beats to start playback from"),
+      action: z
+        .enum(["play", "stop", "update-loop"])
+        .describe(
+          "Transport action to perform - 'play', 'stop', or 'update-loop' (to change loop settings without affecting playback)"
+        ),
+      startTime: z
+        .number()
+        .default(0)
+        .optional()
+        .describe("Position in beats to start playback from (only used when action is 'play')"),
       loop: z.boolean().optional().describe("Enable/disable Arrangement loop"),
       loopStart: z.number().optional().describe("Loop start position in beats"),
       loopLength: z.number().optional().describe("Loop length in beats"),

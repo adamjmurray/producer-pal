@@ -106,6 +106,44 @@ describe("transport", () => {
     expect(liveApiSet.mock.instances[1].path).toBe("live_set tracks 2");
   });
 
+  it("should update loop settings without changing playback state", async () => {
+    // Mock initial state (playing)
+    mockLiveApiGet({
+      LiveSet: {
+        is_playing: 1,
+        current_song_time: 10,
+        loop: 0,
+        loop_start: 0,
+        loop_length: 4,
+      },
+    });
+
+    const result = await transport({
+      action: "update-loop",
+      loop: true,
+      loopStart: 8,
+      loopLength: 16,
+    });
+
+    // Verify loop settings were changed
+    expect(liveApiSet).toHaveBeenCalledWith("loop", true);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 8);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 16);
+
+    // Verify is_playing was NOT changed
+    expect(liveApiSet).not.toHaveBeenCalledWith("is_playing", expect.anything());
+    expect(liveApiSet).not.toHaveBeenCalledWith("current_song_time", expect.anything());
+
+    // Result should reflect the updated values
+    expect(result).toEqual({
+      isPlaying: true, // Unchanged from initial state
+      currentTime: 10, // Unchanged from initial state
+      loop: true, // Updated
+      loopStart: 8, // Updated
+      loopLength: 16, // Updated
+    });
+  });
+
   it("should throw an error when action is missing", () => {
     expect(() => transport({})).toThrow("transport failed: action is required");
   });

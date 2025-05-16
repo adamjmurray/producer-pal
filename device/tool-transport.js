@@ -1,15 +1,13 @@
 // device/tool-transport.js
-const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
-
 /**
  * Controls the Arrangement transport
  * @param {Object} args - The parameters
- * @param {string} args.action - Transport action to perform ('play' or 'stop')
- * @param {number} [args.startTime=0] - Position in beats to start playback from
+ * @param {string} args.action - Transport action to perform ('play', 'stop', or 'update-loop')
+ * @param {number} [args.startTime=0] - Position in beats to start playback from (only used with 'play')
  * @param {boolean} [args.loop] - Enable/disable Arrangement loop
  * @param {number} [args.loopStart] - Loop start position in beats
  * @param {number} [args.loopLength] - Loop length in beats
- * @param {Array<number|string>} [args.followingTracks] - Tracks that should follow the Arranger
+ * @param {Array<number>} [args.followingTracks] - Tracks that should follow the Arranger
  * @returns {Object} Result with transport state
  */
 function transport({ action, startTime = 0, loop, loopStart, loopLength, followingTracks } = {}) {
@@ -57,10 +55,29 @@ function transport({ action, startTime = 0, loop, loopStart, loopLength, followi
     liveSet.call("stop_playing");
     liveSet.set("start_time", 0);
   }
+  // For "update-loop", we don't change playback state - just the loop settings above
 
   return {
-    isPlaying: action === "play",
-    currentTime: startTime,
+    isPlaying: (() => {
+      switch (action) {
+        case "play":
+          return true;
+        case "stop":
+          return false;
+        default:
+          return liveSet.getProperty("is_playing") > 0;
+      }
+    })(),
+    currentTime: (() => {
+      switch (action) {
+        case "play":
+          return startTime;
+        case "stop":
+          return 0;
+        default:
+          return liveSet.getProperty("current_song_time");
+      }
+    })(),
     loop: loop ?? liveSet.getProperty("loop") > 0,
     loopStart: loopStart ?? liveSet.getProperty("loop_start"),
     loopLength: loopLength ?? liveSet.getProperty("loop_length"),
