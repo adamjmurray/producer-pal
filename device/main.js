@@ -6,9 +6,6 @@ post(`[${now()}] loading main.js...\n`);
 
 require("./live-api-extensions.js");
 const console = require("./console.js");
-const { deleteClip } = require("./tool-delete-clip.js");
-const { deleteScene } = require("./tool-delete-scene.js");
-const { deleteTrack } = require("./tool-delete-track.js");
 const { readClip } = require("./tool-read-clip.js");
 const { readLiveSet } = require("./tool-read-live-set.js");
 const { readScene } = require("./tool-read-scene.js");
@@ -26,19 +23,18 @@ const { playSessionClip } = require("./tool-play-session-clip.js");
 const { playSessionScene } = require("./tool-play-session-scene.js");
 const { stopSessionClip } = require("./tool-stop-session-clip.js");
 const { transport } = require("./tool-transport.js");
+const { deleteObject } = require("./tool-delete.js");
 
 const tools = {
   "read-live-set": () => readLiveSet(),
   "write-live-set": (args) => writeLiveSet(args),
   "read-track": (args) => readTrack(args),
   "write-track": (args) => writeTrack(args),
-  "delete-track": (args) => deleteTrack(args),
   "read-scene": (args) => readScene(args),
   "write-scene": (args) => writeScene(args),
-  "delete-scene": (args) => deleteScene(args),
   "read-clip": (args) => readClip(args),
   "write-clip": (args) => writeClip(args),
-  "delete-clip": (args) => deleteClip(args),
+  delete: (args) => deleteObject(args),
   "capture-scene": (args) => captureScene(args),
   "duplicate-clip-slot": (args) => duplicateClipSlot(args),
   "duplicate-clip-to-arranger": (args) => duplicateClipToArranger(args),
