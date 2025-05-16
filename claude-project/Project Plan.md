@@ -70,8 +70,13 @@ Completed full feature set for core functionality:
     - ✅ Clips
     - ✅ Tracks
     - ✅ Scenes
+    - Consolidate all duplicate tools into a single tool
   - ✅ Capture Scene
   - ✅ Add dedicated tools for playback and transport control
+    - Consolidate all playback and transport tools into a single tool
+  - Rework all write-\* tools to only update existing objects when given an id arg, and fail to create via index args if
+    something already exists at that location (except in the case of arrangement clips - we can keep blindly overwriting
+    those)
 
 - **Robustness improvements**:
 
