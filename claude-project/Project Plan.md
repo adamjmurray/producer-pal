@@ -70,7 +70,10 @@ Completed full feature set for core functionality:
     - ✅ Clips
     - ✅ Tracks
     - ✅ Scenes
-    - Consolidate all duplicate tools into a single tool
+    - ✅ Consolidate all duplicate tools into a single tool
+      - Consider reworking the interface to only take type and id (and arrangerStartTime). I am debating making type
+        "track", "scene", or "clip" and then introducing a new arg like destination: "session" | "arranger" (which only
+        has an impact on clip duplication)
   - ✅ Capture Scene
   - ✅ Add dedicated tools for playback and transport control
     - Consolidate all playback and transport tools into a single tool
