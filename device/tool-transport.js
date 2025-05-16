@@ -1,0 +1,70 @@
+// device/tool-transport.js
+const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
+
+/**
+ * Controls the Arrangement transport
+ * @param {Object} args - The parameters
+ * @param {string} args.action - Transport action to perform ('play' or 'stop')
+ * @param {number} [args.startTime=0] - Position in beats to start playback from
+ * @param {boolean} [args.loop] - Enable/disable Arrangement loop
+ * @param {number} [args.loopStart] - Loop start position in beats
+ * @param {number} [args.loopLength] - Loop length in beats
+ * @param {Array<number|string>} [args.followingTracks] - Tracks that should follow the Arranger
+ * @returns {Object} Result with transport state
+ */
+function transport({ action, startTime = 0, loop, loopStart, loopLength, followingTracks } = {}) {
+  if (!action) {
+    throw new Error("transport failed: action is required");
+  }
+
+  const liveSet = new LiveAPI("live_set");
+
+  // Switch to Arranger view
+  new LiveAPI("live_app view").call("show_view", "Arranger");
+
+  // Set loop parameters if provided
+  if (loop != null) {
+    liveSet.set("loop", loop);
+  }
+
+  if (loopStart != null) {
+    liveSet.set("loop_start", loopStart);
+  }
+
+  if (loopLength != null) {
+    liveSet.set("loop_length", loopLength);
+  }
+
+  if (followingTracks && followingTracks.length > 0) {
+    if (followingTracks.includes(-1)) {
+      // Make all tracks follow the arrangement
+      liveSet.set("back_to_arranger", 0);
+    } else {
+      // Make specific tracks follow the arrangement
+      for (const trackIndex of followingTracks) {
+        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+        if (track.exists()) {
+          track.set("back_to_arranger", 0);
+        }
+      }
+    }
+  }
+
+  if (action === "play") {
+    liveSet.set("start_time", startTime);
+    liveSet.call("start_playing");
+  } else if (action === "stop") {
+    liveSet.call("stop_playing");
+    liveSet.set("start_time", 0);
+  }
+
+  return {
+    isPlaying: action === "play",
+    currentTime: startTime,
+    loop: loop ?? liveSet.getProperty("loop") > 0,
+    loopStart: loopStart ?? liveSet.getProperty("loop_start"),
+    loopLength: loopLength ?? liveSet.getProperty("loop_length"),
+  };
+}
+
+module.exports = { transport };

@@ -22,6 +22,10 @@ const { duplicateClipToArranger } = require("./tool-duplicate-clip-to-arranger.j
 const { duplicateScene } = require("./tool-duplicate-scene.js");
 const { duplicateTrack } = require("./tool-duplicate-track.js");
 const { captureScene } = require("./tool-capture-scene.js");
+const { playSessionClip } = require("./tool-play-session-clip.js");
+const { playSessionScene } = require("./tool-play-session-scene.js");
+const { stopSessionClip } = require("./tool-stop-session-clip.js");
+const { transport } = require("./tool-transport.js");
 
 const tools = {
   "read-live-set": () => readLiveSet(),
@@ -40,6 +44,10 @@ const tools = {
   "duplicate-clip-to-arranger": (args) => duplicateClipToArranger(args),
   "duplicate-scene": (args) => duplicateScene(args),
   "duplicate-track": (args) => duplicateTrack(args),
+  "play-session-clip": (args) => playSessionClip(args),
+  "play-session-scene": (args) => playSessionScene(args),
+  "stop-session-clip": (args) => stopSessionClip(args),
+  transport: (args) => transport(args),
 };
 
 function callTool(toolName, args) {

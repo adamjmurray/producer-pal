@@ -113,6 +113,10 @@ describe("MCP Express App", () => {
         "duplicate-clip-to-arranger",
         "duplicate-scene",
         "duplicate-track",
+        "play-session-clip",
+        "play-session-scene",
+        "stop-session-clip",
+        "transport",
       ]);
     });
 

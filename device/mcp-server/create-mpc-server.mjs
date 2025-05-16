@@ -8,10 +8,14 @@ import { addToolDuplicateClipSlot } from "./add-tool-duplicate-clip-slot.mjs";
 import { addToolDuplicateClipToArranger } from "./add-tool-duplicate-clip-to-arranger.mjs";
 import { addToolDuplicateScene } from "./add-tool-duplicate-scene.mjs";
 import { addToolDuplicateTrack } from "./add-tool-duplicate-track.mjs";
+import { addToolPlaySessionClip } from "./add-tool-play-session-clip.mjs";
+import { addToolPlaySessionScene } from "./add-tool-play-session-scene.mjs";
 import { addToolReadClip } from "./add-tool-read-clip.mjs";
 import { addToolReadLiveSet } from "./add-tool-read-live-set.mjs";
 import { addToolReadScene } from "./add-tool-read-scene.mjs";
 import { addToolReadTrack } from "./add-tool-read-track.mjs";
+import { addToolStopSessionClip } from "./add-tool-stop-session-clip.mjs";
+import { addToolTransport } from "./add-tool-transport.mjs";
 import { addToolWriteClip } from "./add-tool-write-clip.mjs";
 import { addToolWriteLiveSet } from "./add-tool-write-live-set.mjs";
 import { addToolWriteScene } from "./add-tool-write-scene.mjs";
@@ -43,6 +47,11 @@ export function createMcpServer(callLiveApi) {
   addToolDuplicateClipToArranger(server, callLiveApi);
   addToolDuplicateScene(server, callLiveApi);
   addToolDuplicateTrack(server, callLiveApi);
+
+  addToolPlaySessionClip(server, callLiveApi);
+  addToolPlaySessionScene(server, callLiveApi);
+  addToolStopSessionClip(server, callLiveApi);
+  addToolTransport(server, callLiveApi);
 
   return server;
 }
