@@ -71,7 +71,7 @@ Completed full feature set for core functionality:
     - ✅ Tracks
     - ✅ Scenes
   - ✅ Capture Scene
-  - Add dedicated tools for playback and transport control
+  - ✅ Add dedicated tools for playback and transport control
 
 - **Robustness improvements**:
 
