@@ -6,53 +6,90 @@ const { readTrack } = require("./tool-read-track");
 /**
  * Duplicates an object based on its type
  * @param {Object} args - The parameters
- * @param {string} args.type - Type of object to duplicate ("track", "scene", "clip-slot", or "clip-to-arranger")
- * @param {number} [args.trackIndex] - Track index (0-based), required for track and clip-slot
- * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for clip-slot
- * @param {number} [args.sceneIndex] - Scene index (0-based), required for scene
- * @param {string} [args.clipId] - Clip ID, required for clip-to-arranger
- * @param {number} [args.arrangerStartTime] - Start time in beats for Arranger view, required for clip-to-arranger
+ * @param {string} args.type - Type of object to duplicate ("track", "scene", or "clip")
+ * @param {string} args.id - ID of the object to duplicate
+ * @param {string} [args.destination] - Destination for clip duplication ("session" or "arranger"), required when type is "clip"
+ * @param {number} [args.arrangerStartTime] - Start time in beats for Arranger view, required when destination is "arranger"
  * @param {string} [args.name] - Optional name for the duplicated object
  * @returns {Object} Result object with information about the duplicated object
  */
-function duplicate({ type, trackIndex, clipSlotIndex, sceneIndex, clipId, arrangerStartTime, name } = {}) {
+function duplicate({ type, id, destination, arrangerStartTime, name } = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
   }
 
-  const validTypes = ["track", "scene", "clip-slot", "clip-to-arranger"];
+  const validTypes = ["track", "scene", "clip"];
   if (!validTypes.includes(type)) {
     throw new Error(`duplicate failed: type must be one of ${validTypes.join(", ")}`);
   }
 
-  // Validate required parameters based on type
-  if (type === "track") {
-    if (trackIndex == null) {
-      throw new Error("duplicate failed: trackIndex is required for type 'track'");
-    }
-    return duplicateTrack(trackIndex, name);
-  } else if (type === "scene") {
-    if (sceneIndex == null) {
-      throw new Error("duplicate failed: sceneIndex is required for type 'scene'");
-    }
-    return duplicateScene(sceneIndex, name);
-  } else if (type === "clip-slot") {
-    if (trackIndex == null) {
-      throw new Error("duplicate failed: trackIndex is required for type 'clip-slot'");
-    }
-    if (clipSlotIndex == null) {
-      throw new Error("duplicate failed: clipSlotIndex is required for type 'clip-slot'");
-    }
-    return duplicateClipSlot(trackIndex, clipSlotIndex, name);
-  } else if (type === "clip-to-arranger") {
-    if (!clipId) {
-      throw new Error("duplicate failed: clipId is required for type 'clip-to-arranger'");
-    }
-    if (arrangerStartTime == null) {
-      throw new Error("duplicate failed: arrangerStartTime is required for type 'clip-to-arranger'");
-    }
-    return duplicateClipToArranger(clipId, arrangerStartTime, name);
+  if (!id) {
+    throw new Error("duplicate failed: id is required");
   }
+
+  // Convert string ID to LiveAPI path if needed
+  const objectPath = id.startsWith("id ") ? id : `id ${id}`;
+  const object = new LiveAPI(objectPath);
+
+  if (!object.exists()) {
+    throw new Error(`duplicate failed: id "${id}" does not exist`);
+  }
+
+  // Track duplication
+  if (type === "track") {
+    const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
+    if (Number.isNaN(trackIndex)) {
+      throw new Error(`duplicate failed: no track index for id "${id}" (path="${object.path}")`);
+    }
+    duplicateTrack(trackIndex, name);
+  }
+
+  // Scene duplication
+  else if (type === "scene") {
+    const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
+    if (Number.isNaN(sceneIndex)) {
+      throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
+    }
+    duplicateScene(sceneIndex, name);
+  }
+
+  // Clip duplication
+  else if (type === "clip") {
+    if (!destination) {
+      throw new Error("duplicate failed: destination is required for type 'clip'");
+    }
+
+    if (!["session", "arranger"].includes(destination)) {
+      throw new Error("duplicate failed: destination must be 'session' or 'arranger'");
+    }
+
+    if (destination === "arranger") {
+      if (arrangerStartTime == null) {
+        throw new Error("duplicate failed: arrangerStartTime is required when destination is 'arranger'");
+      }
+      duplicateClipToArranger(id, arrangerStartTime, name);
+    } else {
+      // destination === "session"
+      // Extract the track and clip slot indices
+      const match = object.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
+      if (!match) {
+        throw new Error(`duplicate failed: no track or clip slot index for clip id "${id}" (path="${object.path}")`);
+      }
+      const trackIndex = Number(match[1]);
+      const clipSlotIndex = Number(match[2]);
+
+      duplicateClipSlot(trackIndex, clipSlotIndex, name);
+    }
+  }
+
+  return {
+    type,
+    id,
+    ...(arrangerStartTime != null ? { arrangerStartTime } : {}),
+    ...(destination != null ? { destination } : {}),
+    ...(name != null ? { name } : {}),
+    duplicated: true,
+  };
 }
 
 function duplicateTrack(trackIndex, name) {
