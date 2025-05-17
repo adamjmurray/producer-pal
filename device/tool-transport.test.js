@@ -1,6 +1,6 @@
 // device/tool-transport.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiSet, mockLiveApiGet } from "./mock-live-api";
+import { liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
 import { transport } from "./tool-transport";
 
 describe("transport", () => {
@@ -185,5 +185,33 @@ describe("transport", () => {
       expect(result.isPlaying).toBe(false);
       expect(result.actionPerformed).toBe("stop-all-session-clips");
     });
+  });
+
+  it("should throw an error when clip slot doesn't exist", () => {
+    liveApiId.mockReturnValue("id 0");
+    expect(() => transport({ action: "play-session-clip", trackIndex: 99, clipSlotIndex: 0 })).toThrow(
+      "transport play-session-clip action failed: clip slot at trackIndex=99, clipSlotIndex=0 does not exist"
+    );
+  });
+
+  it("should throw an error when clip slot is empty", () => {
+    mockLiveApiGet({ ClipSlot: { has_clip: 0 } });
+    expect(() => transport({ action: "play-session-clip", trackIndex: 0, clipSlotIndex: 0 })).toThrow(
+      "transport play-session-clip action failed: no clip at trackIndex=0, clipSlotIndex=0"
+    );
+  });
+
+  it("should throw an error when scene doesn't exist", () => {
+    liveApiId.mockReturnValue("id 0");
+    expect(() => transport({ action: "play-scene", sceneIndex: 99 })).toThrow(
+      "transport play-session-scene action failed: scene at sceneIndex=99 does not exist"
+    );
+  });
+
+  it("should throw an error when track doesn't exist for stop-track-session-clip", () => {
+    liveApiId.mockReturnValue("id 0");
+    expect(() => transport({ action: "stop-track-session-clip", trackIndex: 99 })).toThrow(
+      "transport stop-track-session-clip action failed: track at trackIndex=99 does not exist"
+    );
   });
 });

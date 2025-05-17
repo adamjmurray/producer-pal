@@ -74,9 +74,6 @@ Completed full feature set for core functionality:
   - ✅ Capture Scene
   - ✅ Add dedicated tools for playback and transport control
     - ✅ Consolidate all playback and transport tools into a single tool
-      - Need to clean this up a lot though. Try to remove the old tool files and merge everything into one file (maybe
-        multiple functions, like tool-duplicate) and make sure the test coverage is comprehensive. A lot of refactoring
-        can be done to e.g. only construct the live set and app view once.
       - Maybe add the ability to simply start or stop the transport without it being associated with arrangement or
         session view (i.e. no automatic view switching)
   - Rework all write-\* tools to only update existing objects when given an id arg, and fail to create via index args if
@@ -109,6 +106,10 @@ Completed full feature set for core functionality:
   - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
     able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and it
     will need to be time-signature aware)
+  - Introduce a repetition mechanism: (C4 D4 E4)\*2 => C4 D4 E4 C4 D4 E4. It repeats whatever is inside it, including
+    bar lines.
+    - Maybe this can also be used to set a velocity or duration/time modifier for the group (also also override by
+      anything inside, just like with chords)
   - Randomization features:
     - set note probability
     - set note velocity_deviation

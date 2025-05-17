@@ -1,7 +1,4 @@
 // device/tool-transport.js
-const { playSessionClip } = require("./tool-play-session-clip");
-const { playSessionScene } = require("./tool-play-session-scene");
-const { stopSessionClip } = require("./tool-stop-session-clip");
 const { readClip } = require("./tool-read-clip");
 const { readScene } = require("./tool-read-scene");
 const console = require("./console");
@@ -34,116 +31,126 @@ function transport({
   if (!action) {
     throw new Error("transport failed: action is required");
   }
+  const liveSet = new LiveAPI("live_set");
+  const appView = new LiveAPI("live_app view");
 
-  if (action === "play-arrangement" || action === "stop-arrangement" || action === "update-arrangement") {
-    return arrangementTransport({
-      action,
-      startTime,
-      loop,
-      loopStart,
-      loopLength,
-      followingTracks,
-    });
-  } else if (action === "play-scene") {
-    if (sceneIndex == null) {
-      throw new Error(`transport failed: sceneIndex is required for action "play-scene"`);
-    }
+  switch (action) {
+    case "play-arrangement":
+    case "stop-arrangement":
+    case "update-arrangement":
+      return performArrangementAction({
+        action,
+        startTime,
+        loop,
+        loopStart,
+        loopLength,
+        followingTracks,
+      });
 
-    new LiveAPI("live_app view").call("show_view", "Session");
+    case "play-scene":
+      // TODO: We can rely entirely on the scene.exists() check
+      if (sceneIndex == null) {
+        throw new Error(`transport failed: sceneIndex is required for action "play-scene"`);
+      }
+      const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+      if (!scene.exists()) {
+        throw new Error(`transport play-session-scene action failed: scene at sceneIndex=${sceneIndex} does not exist`);
+      }
 
-    playSessionScene({ sceneIndex });
+      appView.call("show_view", "Session");
+      scene.call("fire");
 
-    // Try to get the scene that was triggered
-    let targetScene;
-    try {
-      targetScene = readScene({ sceneIndex });
-    } catch (e) {
-      // Ignore errors reading the scene
-    }
+      const targetScene = readScene({ sceneIndex });
+      return {
+        isPlaying: true,
+        currentTime: liveSet.getProperty("current_song_time"),
+        loop: liveSet.getProperty("loop") > 0,
+        loopStart: liveSet.getProperty("loop_start"),
+        loopLength: liveSet.getProperty("loop_length"),
+        targetScene, // TODO: don't return this
+        actionPerformed: action,
+      };
 
-    const liveSet = new LiveAPI("live_set");
+    case "play-session-clip":
+      // TODO: We can rely entirely on the clipSlot.exists() check
+      if (trackIndex == null) {
+        throw new Error(`transport failed: trackIndex is required for action "play-session-clip"`);
+      }
+      if (clipSlotIndex == null) {
+        throw new Error(`transport failed: clipSlotIndex is required for action "play-session-clip"`);
+      }
 
-    return {
-      isPlaying: true,
-      currentTime: liveSet.getProperty("current_song_time"),
-      loop: liveSet.getProperty("loop") > 0,
-      loopStart: liveSet.getProperty("loop_start"),
-      loopLength: liveSet.getProperty("loop_length"),
-      targetScene, // TODO: don't return this
-      actionPerformed: action,
-    };
-  } else if (action === "play-session-clip") {
-    if (trackIndex == null) {
-      throw new Error(`transport failed: trackIndex is required for action "play-session-clip"`);
-    }
-    if (clipSlotIndex == null) {
-      throw new Error(`transport failed: clipSlotIndex is required for action "play-session-clip"`);
-    }
+      const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
+      if (!clipSlot.exists()) {
+        throw new Error(
+          `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`
+        );
+      }
+      if (!clipSlot.getProperty("has_clip")) {
+        throw new Error(
+          `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`
+        );
+      }
 
-    new LiveAPI("live_app view").call("show_view", "Session");
+      appView.call("show_view", "Session");
+      clipSlot.call("fire");
 
-    const result = playSessionClip({ trackIndex, clipSlotIndex });
+      const targetClip = readClip({ trackIndex, clipSlotIndex });
+      return {
+        isPlaying: true,
+        currentTime: liveSet.getProperty("current_song_time"),
+        loop: liveSet.getProperty("loop") > 0,
+        loopStart: liveSet.getProperty("loop_start"),
+        loopLength: liveSet.getProperty("loop_length"),
+        targetClip, // TODO: don't return this
+        actionPerformed: action,
+      };
 
-    // Try to get the clip that was triggered
-    let targetClip;
-    try {
-      targetClip = readClip({ trackIndex, clipSlotIndex });
-    } catch (e) {
-      // Ignore errors reading the clip
-    }
+    case "stop-track-session-clip":
+      // TODO: We can rely entirely on the track.exists() check
+      if (trackIndex == null) {
+        throw new Error(`transport failed: trackIndex is required for action "stop-track-session-clip"`);
+      }
 
-    const liveSet = new LiveAPI("live_set");
+      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-    return {
-      isPlaying: true,
-      currentTime: liveSet.getProperty("current_song_time"),
-      loop: liveSet.getProperty("loop") > 0,
-      loopStart: liveSet.getProperty("loop_start"),
-      loopLength: liveSet.getProperty("loop_length"),
-      targetClip, // TODO: don't return this
-      actionPerformed: action,
-    };
-  } else if (action === "stop-track-session-clip") {
-    if (trackIndex == null) {
-      throw new Error(`transport failed: trackIndex is required for action "stop-track-session-clip"`);
-    }
+      if (!track.exists()) {
+        throw new Error(
+          `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`
+        );
+      }
 
-    new LiveAPI("live_app view").call("show_view", "Session");
+      appView.call("show_view", "Session");
+      track.call("stop_all_clips");
 
-    stopSessionClip({ trackIndex });
+      return {
+        isPlaying: false, // This might not be accurate if other tracks are still playing. TODO: It's not! Fix it
+        currentTime: liveSet.getProperty("current_song_time"),
+        loop: liveSet.getProperty("loop") > 0,
+        loopStart: liveSet.getProperty("loop_start"),
+        loopLength: liveSet.getProperty("loop_length"),
+        actionPerformed: action,
+      };
 
-    const liveSet = new LiveAPI("live_set");
+    case "stop-all-session-clips":
+      appView.call("show_view", "Session");
+      liveSet.call("stop_all_clips");
 
-    return {
-      isPlaying: false, // This might not be accurate if other tracks are still playing
-      currentTime: liveSet.getProperty("current_song_time"),
-      loop: liveSet.getProperty("loop") > 0,
-      loopStart: liveSet.getProperty("loop_start"),
-      loopLength: liveSet.getProperty("loop_length"),
-      actionPerformed: action,
-    };
-  } else if (action === "stop-all-session-clips") {
-    new LiveAPI("live_app view").call("show_view", "Session");
+      return {
+        isPlaying: false,
+        currentTime: liveSet.getProperty("current_song_time"),
+        loop: liveSet.getProperty("loop") > 0,
+        loopStart: liveSet.getProperty("loop_start"),
+        loopLength: liveSet.getProperty("loop_length"),
+        actionPerformed: action,
+      };
 
-    // -1 means stop all clips in all tracks
-    const result = stopSessionClip({ trackIndex: -1 });
-
-    const liveSet = new LiveAPI("live_set");
-
-    return {
-      isPlaying: false,
-      currentTime: liveSet.getProperty("current_song_time"),
-      loop: liveSet.getProperty("loop") > 0,
-      loopStart: liveSet.getProperty("loop_start"),
-      loopLength: liveSet.getProperty("loop_length"),
-      actionPerformed: action,
-    };
-  } else {
-    throw new Error(`transport failed: unknown action "${action}"`);
+    default:
+      throw new Error(`transport failed: unknown action "${action}"`);
   }
 }
 
-function arrangementTransport({ action, startTime = 0, loop, loopStart, loopLength, followingTracks }) {
+function performArrangementAction({ action, startTime = 0, loop, loopStart, loopLength, followingTracks }) {
   const liveSet = new LiveAPI("live_set");
 
   // Switch to Arranger view
