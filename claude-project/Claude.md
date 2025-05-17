@@ -65,6 +65,11 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - Never default to values inside the ToneLang grammar. The parser should return null or undefined to accurately reflect
   the syntax, and let the parser-calling code interpret the parsed results to set appropriate defaults (because the
   parser-calling code has the needed context and the grammar does not).
+- When update the playback state of live, like launching clips in Session view, updating the state of Live and then
+  immediately reading the state may not reflect the state accurately. Previously we introduced sleep() delays to deal
+  with this, but that is not ideal and may not work robustly across computers with different CPU characteristics.
+  Therefore, for playback-related state, we return optimistic results assuming the operation succeeded (e.g. assume a
+  clip isTriggered:true when autoplaying it)
 - If you ever notice missing files in the project resources, do not try to infer their contents. Stop and ask if the
   file is missing and should be added to project resources before continuing.
 - If all the code is updated, tests pass, but things don't work correctly in an end-to-end test, remember that the Max

@@ -50,7 +50,7 @@ Completed full feature set for core functionality:
 
 ## Upcoming Work
 
-### Phase 4: Deeper Use Cases
+### Phase 4: Deeper Use Cases (in progress)
 
 - **Session and Arrangement integration**:
 
@@ -79,37 +79,29 @@ Completed full feature set for core functionality:
   - Rework all write-\* tools to only update existing objects when given an id arg, and fail to create via index args if
     something already exists at that location (except in the case of arrangement clips - we can keep blindly overwriting
     those)
-  - Maybe rename trigger in write-clip back to autoplay. It's not a big deal, but I asked for a clip to be played and it
-    used write-clip with trigger: true when I would have wanted it to use the transport tool
 
 - **Robustness improvements**:
 
   - Validation system for better error handling
     - e.g. start and end time in write-clip
-  - Fix state synchronization issues
-    - ✅ playback state immediately after updating in `write-song` is not accurate
-    - This should be better now, but I notice calling stopAllClips on a track doesn't update triggered or playing state
-      in a reasonable amount of time. Here's a thought: maybe firedSlotIndex works ok when firing a new slot? Check on
-      that and maybe split off a stopAllClips arg, but call that one stopAllClipsAsync and make it clear the return
-      value will not yet reflect the updated state. Maybe we can return a special property in the response like
-      `stopping: true` to reinforce things. Or just like and overwrite all clip data to say they are not triggered or
-      playing.
-    - I now want to fix this by simplifying the tools using optimistic responses. Ideally we never have to sleep() and
-      we should try to delete that function.
-  - Claude keeps thinking the transport needs to be started to play the clips when it's not necessary
+  - ✅ Fix state synchronization issues because playback state immediately after e.g. autoplay in `write-clip` is not
+    accurate. This has been addressed by returning optimistic results (originally a sleep() was introduced but
+    optimistic results should be a lot more robust)
+  - Claude keeps thinking the transport needs to be started to autoplay clips when it's not necessary
   - Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
   - Revisit stateless server approach. Stateful may be more efficient
 
 - **Feature expansion**:
   - Create improved UI for the Max for Live device
     - Add configuration options (port selection, etc.)
-  - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
-    able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and it
-    will need to be time-signature aware)
-  - Introduce a repetition mechanism: (C4 D4 E4)\*2 => C4 D4 E4 C4 D4 E4. It repeats whatever is inside it, including
-    bar lines.
-    - Maybe this can also be used to set a velocity or duration/time modifier for the group (also also override by
-      anything inside, just like with chords)
+  - ToneLang enhancements
+    - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
+      able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and
+      it will need to be time-signature aware)
+    - Introduce a repetition mechanism: (C4 D4 E4)\*2 => C4 D4 E4 C4 D4 E4. It repeats whatever is inside it, including
+      bar lines.
+      - Maybe this can also be used to set a velocity or duration/time modifier for the group (also also override by
+        anything inside, just like with chords)
   - Randomization features:
     - set note probability
     - set note velocity_deviation

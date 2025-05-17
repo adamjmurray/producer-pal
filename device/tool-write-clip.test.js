@@ -39,7 +39,7 @@ describe("writeClip", () => {
       name: "New Clip",
       color: "#FF0000",
       loop: true,
-      trigger: true,
+      autoplay: true,
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
@@ -64,6 +64,7 @@ describe("writeClip", () => {
         view: "Session",
         trackIndex: 0,
         clipSlotIndex: 0,
+        isTriggered: true,
       })
     );
   });
@@ -169,7 +170,7 @@ describe("writeClip", () => {
     ).rejects.toThrow(/arrangerStartTime is required/);
   });
 
-  it("ignores trigger parameter for arranger clips", async () => {
+  it("ignores autoplay parameter for arranger clips", async () => {
     mockLiveApiGet({
       Track: { exists: () => true },
     });
@@ -196,7 +197,7 @@ describe("writeClip", () => {
       view: "Arranger",
       trackIndex: 0,
       arrangerStartTime: 8,
-      trigger: true, // Should be ignored for arranger clips
+      autoplay: true, // Should be ignored for arranger clips
     });
 
     // Fire should not be called for arranger clips

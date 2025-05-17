@@ -56,7 +56,7 @@ export function addToolWriteClip(server, callLiveApi) {
         .optional()
         .describe(`Musical notation in ToneLang format. Replaces existing notes. ${TONE_LANG_DESCRIPTION}`),
 
-      trigger: z
+      autoplay: z
         .boolean()
         .default(false)
         .describe(

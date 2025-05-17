@@ -23,7 +23,7 @@ const MAX_CLIP_BEATS = 1_000_000;
  * @param {number} [args.loopStart] - Loop start position in beats
  * @param {number} [args.loopEnd] - Loop end position in beats
  * @param {boolean} [args.loop] - Enable looping for the clip
- * @param {boolean} [args.trigger=false] - Automatically play the clip after creating it (Session only)
+ * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating it (Session only)
  * @returns {Object} Result object with clip information
  */
 async function writeClip({
@@ -40,7 +40,7 @@ async function writeClip({
   loop = null,
   loopStart = null,
   loopEnd = null,
-  trigger = false,
+  autoplay = false,
 }) {
   // Validate parameters based on view
   if (!view) {
@@ -159,14 +159,15 @@ async function writeClip({
   const appView = new LiveAPI("live_app view");
   appView.call("show_view", view);
 
-  if (trigger && view === "Session") {
+  if (autoplay && view === "Session") {
     const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
     clipSlot.call("fire");
-    // triggered state isn't updated until we wait a moment
-    await sleep(DEFAULT_SLEEP_TIME_AFTER_WRITE);
   }
 
-  return readClip({ clipId: clip.id });
+  return {
+    ...readClip({ clipId: clip.id }),
+    ...(autoplay ? { isTriggered: true } : {}), // state won't be updated yet unless we sleep(), so use optimistic results
+  };
 }
 
 module.exports = { writeClip, MAX_AUTO_CREATED_SCENES };
