@@ -4,14 +4,14 @@ const { readScene } = require("./tool-read-scene");
 const console = require("./console");
 
 /**
- * Unified control for all playback functionality in both Arrangement and Session views
+ * Unified control for all playback functionality in both Arranger and Session views
  * @param {Object} args - The parameters
- * @param {string} args.action - Transport action to perform
- * @param {number} [args.startTime] - Position in beats to start playback from
- * @param {boolean} [args.loop] - Enable/disable Arrangement loop
+ * @param {string} args.action - Action to perform
+ * @param {number} [args.startTime] - Position in beats to start playback from in the arrangement
+ * @param {boolean} [args.loop] - Enable/disable arrangement loop
  * @param {number} [args.loopStart] - Loop start position in beats
  * @param {number} [args.loopLength] - Loop length in beats
- * @param {Array<number>} [args.followingTracks] - Tracks that should follow the Arranger
+ * @param {Array<number>} [args.followingTracks] - Tracks that should follow the arrangement
  * @param {number} [args.trackIndex] - Track index for Session view operations
  * @param {number} [args.clipSlotIndex] - Clip slot index for Session view operations
  * @param {number} [args.sceneIndex] - Scene index for Session view operations
@@ -34,18 +34,48 @@ function transport({
   const liveSet = new LiveAPI("live_set");
   const appView = new LiveAPI("live_app view");
 
+  if (startTime != null) {
+    liveSet.set("start_time", startTime);
+  }
+  if (loop != null) {
+    liveSet.set("loop", loop);
+  }
+  if (loopStart != null) {
+    liveSet.set("loop_start", loopStart);
+  }
+  if (loopLength != null) {
+    liveSet.set("loop_length", loopLength);
+  }
+
+  if (followingTracks && followingTracks.length > 0) {
+    if (followingTracks.includes(-1)) {
+      // Make all tracks follow the arrangement
+      liveSet.set("back_to_arranger", 0);
+    } else {
+      // Make specific tracks follow the arrangement
+      for (const trackIndex of followingTracks) {
+        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+        if (track.exists()) {
+          track.set("back_to_arranger", 0);
+        }
+        // else throw error?
+      }
+    }
+  }
+
   switch (action) {
     case "play-arrangement":
     case "stop-arrangement":
     case "update-arrangement":
-      return performArrangementAction({
-        action,
-        startTime,
-        loop,
-        loopStart,
-        loopLength,
-        followingTracks,
-      });
+      appView.call("show_view", "Arranger");
+
+      if (action === "play-arrangement") {
+        liveSet.call("start_playing");
+      } else if (action === "stop-arrangement") {
+        liveSet.call("stop_playing");
+      }
+      // For "update", we don't change playback state - just the loop and follow settings above
+      break;
 
     case "play-scene":
       // TODO: We can rely entirely on the scene.exists() check
@@ -148,50 +178,6 @@ function transport({
     default:
       throw new Error(`transport failed: unknown action "${action}"`);
   }
-}
-
-function performArrangementAction({ action, startTime = 0, loop, loopStart, loopLength, followingTracks }) {
-  const liveSet = new LiveAPI("live_set");
-
-  // Switch to Arranger view
-  new LiveAPI("live_app view").call("show_view", "Arranger");
-
-  // Set loop parameters if provided
-  if (loop != null) {
-    liveSet.set("loop", loop);
-  }
-
-  if (loopStart != null) {
-    liveSet.set("loop_start", loopStart);
-  }
-
-  if (loopLength != null) {
-    liveSet.set("loop_length", loopLength);
-  }
-
-  if (followingTracks && followingTracks.length > 0) {
-    if (followingTracks.includes(-1)) {
-      // Make all tracks follow the arrangement
-      liveSet.set("back_to_arranger", 0);
-    } else {
-      // Make specific tracks follow the arrangement
-      for (const trackIndex of followingTracks) {
-        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-        if (track.exists()) {
-          track.set("back_to_arranger", 0);
-        }
-      }
-    }
-  }
-
-  if (action === "play-arrangement") {
-    liveSet.set("start_time", startTime);
-    liveSet.call("start_playing");
-  } else if (action === "stop-arrangement") {
-    liveSet.call("stop_playing");
-    liveSet.set("start_time", 0);
-  }
-  // For "update", we don't change playback state - just the loop settings above
 
   return {
     isPlaying: (() => {

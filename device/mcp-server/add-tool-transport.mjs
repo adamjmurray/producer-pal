@@ -4,7 +4,7 @@ import { z } from "zod";
 export function addToolTransport(server, callLiveApi) {
   server.tool(
     "transport",
-    "Controls the Arrangement and Session view transport, including playback, position, and loop settings",
+    "Controls the Arranger and Session view transport, including playback, position, and loop settings",
     {
       action: z
         .enum([
@@ -18,9 +18,9 @@ export function addToolTransport(server, callLiveApi) {
         ])
         .describe(
           `Transport action to perform:
-- "play-arrangement": Start Arrangement playback from specified position (also starts playback in Session view for non-following tracks)
-- "stop-arrangement": Stop Arrangement playback
-- "update-arrangement": Modify Arrangement loop and follow settings without affecting playback state
+- "play-arrangement": Start arrangement playback from specified position (also starts playback in Session view for non-following tracks)
+- "stop-arrangement": Stop arrangement playback
+- "update-arrangement": Modify arrangement loop and follow settings without affecting playback state
 - "play-scene": Launch all clips in a Session view scene (requires sceneIndex)
 - "play-session-clip": Trigger a clip in Session view (requires trackIndex and clipSlotIndex)
 - "stop-track-session-clip": Stop the Session view clip playing in a specific track (requires trackIndex)
@@ -31,14 +31,14 @@ export function addToolTransport(server, callLiveApi) {
         .default(0)
         .optional()
         .describe(
-          "Arrangement position in beats to start playback from (only used when action is 'play'). Note that this position starts from 0, but bar numbers start from 1, so bar 1 is beat 0 and (in a 4/4 time signature) bar 5 = beat 16."
+          "Arrangement position in beats to start playback from (only used when action is 'play'). Note that this position starts from 0, but bar numbers start from 1, so bar 1 is beat 0 and (in a 4/4 time signature) bar 5 = beat 16. To calculate this correctly, the song's time signature numerator should be used to multiply (bar - 1)."
         ),
       loop: z.boolean().optional().describe("Enable/disable Arrangement loop"),
       loopStart: z
         .number()
         .optional()
         .describe(
-          "Loop start position in beats. Note that this position starts from 0, but bar numbers start from 1, so bar 1 is beat 0 and (in a 4/4 time signature) bar 5 = beat 16."
+          "Loop start position in beats. Note that this position starts from 0, but bar numbers start from 1, so bar 1 is beat 0 and (in a 4/4 time signature) bar 5 = beat 16. To calculate this correctly, the song's time signature numerator should be used to multiply (bar - 1)."
         ),
       loopLength: z.number().optional().describe("Loop length in beats."),
       followingTracks: z
