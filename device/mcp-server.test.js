@@ -108,9 +108,6 @@ describe("MCP Express App", () => {
         "delete",
         "duplicate",
         "capture-scene",
-        "play-session-clip",
-        "play-session-scene",
-        "stop-session-clip",
         "transport",
       ]);
     });

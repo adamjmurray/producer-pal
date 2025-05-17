@@ -17,9 +17,6 @@ const { writeTrack } = require("./tool-write-track.js");
 const { deleteObject } = require("./tool-delete.js");
 const { duplicate } = require("./tool-duplicate.js");
 const { captureScene } = require("./tool-capture-scene.js");
-const { playSessionClip } = require("./tool-play-session-clip.js");
-const { playSessionScene } = require("./tool-play-session-scene.js");
-const { stopSessionClip } = require("./tool-stop-session-clip.js");
 const { transport } = require("./tool-transport.js");
 
 const tools = {
@@ -34,9 +31,6 @@ const tools = {
   delete: (args) => deleteObject(args),
   duplicate: (args) => duplicate(args),
   "capture-scene": (args) => captureScene(args),
-  "play-session-clip": (args) => playSessionClip(args),
-  "play-session-scene": (args) => playSessionScene(args),
-  "stop-session-clip": (args) => stopSessionClip(args),
   transport: (args) => transport(args),
 };
 

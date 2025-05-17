@@ -73,10 +73,17 @@ Completed full feature set for core functionality:
     - ✅ Consolidate all duplicate tools into a single tool
   - ✅ Capture Scene
   - ✅ Add dedicated tools for playback and transport control
-    - Consolidate all playback and transport tools into a single tool
+    - ✅ Consolidate all playback and transport tools into a single tool
+      - Need to clean this up a lot though. Try to remove the old tool files and merge everything into one file (maybe
+        multiple functions, like tool-duplicate) and make sure the test coverage is comprehensive. A lot of refactoring
+        can be done to e.g. only construct the live set and app view once.
+      - Maybe add the ability to simply start or stop the transport without it being associated with arrangement or
+        session view (i.e. no automatic view switching)
   - Rework all write-\* tools to only update existing objects when given an id arg, and fail to create via index args if
     something already exists at that location (except in the case of arrangement clips - we can keep blindly overwriting
     those)
+  - Maybe rename trigger in write-clip back to autoplay. It's not a big deal, but I asked for a clip to be played and it
+    used write-clip with trigger: true when I would have wanted it to use the transport tool
 
 - **Robustness improvements**:
 
@@ -90,6 +97,8 @@ Completed full feature set for core functionality:
       value will not yet reflect the updated state. Maybe we can return a special property in the response like
       `stopping: true` to reinforce things. Or just like and overwrite all clip data to say they are not triggered or
       playing.
+    - I now want to fix this by simplifying the tools using optimistic responses. Ideally we never have to sleep() and
+      we should try to delete that function.
   - Claude keeps thinking the transport needs to be started to play the clips when it's not necessary
   - Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
   - Revisit stateless server approach. Stateful may be more efficient
