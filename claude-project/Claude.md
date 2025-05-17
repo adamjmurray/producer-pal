@@ -60,6 +60,11 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   correctly in the vitest test suite.
 - If you ever notice duplicate files in the project resources, let the user know! This is a mistake and will confuse
   you. We need to fix it proactively when it's detected.
+- Always `== null` checks instead of `=== null` or `=== undefined` (and similarly for `!= null`). Always use `x ?? y`
+  instead of `x === undefined ? y : x` and similar expressions.
+- Never default to values inside the ToneLang grammar. The parser should return null or undefined to accurately reflect
+  the syntax, and let the parser-calling code interpret the parsed results to set appropriate defaults (because the
+  parser-calling code has the needed context and the grammar does not).
 - If you ever notice missing files in the project resources, do not try to infer their contents. Stop and ask if the
   file is missing and should be added to project resources before continuing.
 - If all the code is updated, tests pass, but things don't work correctly in an end-to-end test, remember that the Max

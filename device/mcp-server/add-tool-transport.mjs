@@ -19,7 +19,7 @@ export function addToolTransport(server, callLiveApi) {
         .describe(
           `Transport action to perform:
 - "play-arrangement": Start arrangement playback from specified position (also starts playback in Session view for non-following tracks)
-- "stop-arrangement": Stop arrangement playback
+- "stop-arrangement": Stop arrangement playback (which stops the transport and stops all playback including Session view)
 - "update-arrangement": Modify arrangement loop and follow settings without affecting playback state
 - "play-scene": Launch all clips in a Session view scene (requires sceneIndex)
 - "play-session-clip": Trigger a clip in Session view (requires trackIndex and clipSlotIndex)

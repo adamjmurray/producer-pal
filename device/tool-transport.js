@@ -1,6 +1,4 @@
 // device/tool-transport.js
-const { readClip } = require("./tool-read-clip");
-const { readScene } = require("./tool-read-scene");
 const console = require("./console");
 
 /**
@@ -58,27 +56,41 @@ function transport({
         if (track.exists()) {
           track.set("back_to_arranger", 0);
         }
-        // else throw error?
       }
     }
   }
 
+  // Default values that will be overridden by specific actions
+  let isPlaying = liveSet.getProperty("is_playing") > 0;
+  let currentTime = liveSet.getProperty("current_song_time");
+
   switch (action) {
     case "play-arrangement":
+      appView.call("show_view", "Arranger");
+      if (startTime == null) {
+        liveSet.set("start_time", 0);
+      }
+      liveSet.call("start_playing");
+
+      isPlaying = true;
+      currentTime = startTime ?? 0;
+      break;
+
     case "stop-arrangement":
+      appView.call("show_view", "Arranger");
+      liveSet.call("stop_playing");
+      liveSet.set("start_time", 0);
+
+      isPlaying = false;
+      currentTime = 0;
+      break;
+
     case "update-arrangement":
       appView.call("show_view", "Arranger");
-
-      if (action === "play-arrangement") {
-        liveSet.call("start_playing");
-      } else if (action === "stop-arrangement") {
-        liveSet.call("stop_playing");
-      }
-      // For "update", we don't change playback state - just the loop and follow settings above
+      // No playback state change, just the loop and follow settings above
       break;
 
     case "play-scene":
-      // TODO: We can rely entirely on the scene.exists() check
       if (sceneIndex == null) {
         throw new Error(`transport failed: sceneIndex is required for action "play-scene"`);
       }
@@ -90,26 +102,16 @@ function transport({
       appView.call("show_view", "Session");
       scene.call("fire");
 
-      const targetScene = readScene({ sceneIndex });
-      return {
-        isPlaying: true,
-        currentTime: liveSet.getProperty("current_song_time"),
-        loop: liveSet.getProperty("loop") > 0,
-        loopStart: liveSet.getProperty("loop_start"),
-        loopLength: liveSet.getProperty("loop_length"),
-        targetScene, // TODO: don't return this
-        actionPerformed: action,
-      };
+      isPlaying = true;
+      break;
 
     case "play-session-clip":
-      // TODO: We can rely entirely on the clipSlot.exists() check
       if (trackIndex == null) {
         throw new Error(`transport failed: trackIndex is required for action "play-session-clip"`);
       }
       if (clipSlotIndex == null) {
         throw new Error(`transport failed: clipSlotIndex is required for action "play-session-clip"`);
       }
-
       const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
       if (!clipSlot.exists()) {
         throw new Error(
@@ -121,89 +123,54 @@ function transport({
           `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`
         );
       }
-
       appView.call("show_view", "Session");
       clipSlot.call("fire");
 
-      const targetClip = readClip({ trackIndex, clipSlotIndex });
-      return {
-        isPlaying: true,
-        currentTime: liveSet.getProperty("current_song_time"),
-        loop: liveSet.getProperty("loop") > 0,
-        loopStart: liveSet.getProperty("loop_start"),
-        loopLength: liveSet.getProperty("loop_length"),
-        targetClip, // TODO: don't return this
-        actionPerformed: action,
-      };
+      isPlaying = true;
+      break;
 
     case "stop-track-session-clip":
-      // TODO: We can rely entirely on the track.exists() check
       if (trackIndex == null) {
         throw new Error(`transport failed: trackIndex is required for action "stop-track-session-clip"`);
       }
-
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-
       if (!track.exists()) {
         throw new Error(
           `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`
         );
       }
-
       appView.call("show_view", "Session");
       track.call("stop_all_clips");
-
-      return {
-        isPlaying: false, // This might not be accurate if other tracks are still playing. TODO: It's not! Fix it
-        currentTime: liveSet.getProperty("current_song_time"),
-        loop: liveSet.getProperty("loop") > 0,
-        loopStart: liveSet.getProperty("loop_start"),
-        loopLength: liveSet.getProperty("loop_length"),
-        actionPerformed: action,
-      };
+      // this doesn't affect the isPlaying state
+      break;
 
     case "stop-all-session-clips":
       appView.call("show_view", "Session");
       liveSet.call("stop_all_clips");
-
-      return {
-        isPlaying: false,
-        currentTime: liveSet.getProperty("current_song_time"),
-        loop: liveSet.getProperty("loop") > 0,
-        loopStart: liveSet.getProperty("loop_start"),
-        loopLength: liveSet.getProperty("loop_length"),
-        actionPerformed: action,
-      };
+      // the transport/arrangement might still be playing so don't update isPlaying
+      break;
 
     default:
       throw new Error(`transport failed: unknown action "${action}"`);
   }
 
-  return {
-    isPlaying: (() => {
-      switch (action) {
-        case "play-arrangement":
-          return true;
-        case "stop-arrangement":
-          return false;
-        default:
-          return liveSet.getProperty("is_playing") > 0;
-      }
-    })(),
-    currentTime: (() => {
-      switch (action) {
-        case "play-arrangement":
-          return startTime;
-        case "stop-arrangement":
-          return 0;
-        default:
-          return liveSet.getProperty("current_song_time");
-      }
-    })(),
-    loop: loop ?? liveSet.getProperty("loop") > 0,
-    loopStart: loopStart ?? liveSet.getProperty("loop_start"),
-    loopLength: loopLength ?? liveSet.getProperty("loop_length"),
-  };
+  return Object.fromEntries(
+    Object.entries({
+      // reflect the args back:
+      action,
+      startTime,
+      loop: loop ?? liveSet.getProperty("loop") > 0,
+      loopStart: loopStart ?? liveSet.getProperty("loop_start"),
+      loopLength: loopLength ?? liveSet.getProperty("loop_length"),
+      followingTracks,
+      sceneIndex,
+      trackIndex,
+      clipSlotIndex,
+      // and include some additional relevant state:
+      isPlaying,
+      currentTime,
+    }).filter(([_, v]) => v !== undefined) // remove any undefined args
+  );
 }
 
 module.exports = { transport };
