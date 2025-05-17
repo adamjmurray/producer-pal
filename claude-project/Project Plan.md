@@ -85,9 +85,17 @@ Completed full feature set for core functionality:
   - ✅ Fix state synchronization issues because playback state immediately after e.g. autoplay in `write-clip` is not
     accurate. This has been addressed by returning optimistic results (originally a sleep() was introduced but
     optimistic results should be a lot more robust)
-  - Claude keeps thinking the transport needs to be started to autoplay clips when it's not necessary
+  - Claude keeps thinking the transport needs to be started to autoplay clips when it's not necessary - is it still an
+    issue?
   - Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
   - Revisit stateless server approach. Stateful may be more efficient
+  - Flesh out the mocking system. The way we mock liveAPI.get() calls is pretty good and we need similar treatment for
+    ids and paths, ideally through some unified interface (i.e. you shouldn't have to mock get, id, and path separately,
+    just call a single mock function, which should maybe handle mock calls as well).
+    - Also improve how we do expectations on mocks. Specifically, the way we check the Nth call so we can than compare
+      the Nth liveApi.path, etc to check the call occurred on the right object.
+  - Formalize some evaluation plans so we can thoroughly manually QA this moving forward. This probably takes the form
+    of some example conversations with Claude?
 
 - **Feature expansion**:
   - Create improved UI for the Max for Live device
