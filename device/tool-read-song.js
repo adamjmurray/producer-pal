@@ -1,8 +1,8 @@
-// device/tool-read-live-set.js
+// device/tool-read-song.js
 const { readTrack } = require("./tool-read-track");
 const { readScene } = require("./tool-read-scene");
 
-function readLiveSet() {
+function readSong() {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const appView = new LiveAPI("live_app view");
@@ -27,4 +27,4 @@ function readLiveSet() {
   };
 }
 
-module.exports = { readLiveSet };
+module.exports = { readSong };

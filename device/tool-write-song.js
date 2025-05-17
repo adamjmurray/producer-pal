@@ -1,5 +1,5 @@
-// device/tool-write-live-set.js
-const { readLiveSet } = require("./tool-read-live-set");
+// device/tool-write-song.js
+const { readSong } = require("./tool-read-song");
 /**
  * Updates Live Set parameters like tempo, time signature, and playback state
  * @param {Object} args - The parameters
@@ -8,7 +8,7 @@ const { readLiveSet } = require("./tool-read-live-set");
  * @param {string} [args.view] - Switch between Session and Arranger views
  * @returns {Object} Updated Live Set information
  */
-function writeLiveSet({ view, tempo, timeSignature } = {}) {
+function writeSong({ view, tempo, timeSignature } = {}) {
   const liveSet = new LiveAPI("live_set");
 
   if (tempo != null) {
@@ -35,9 +35,9 @@ function writeLiveSet({ view, tempo, timeSignature } = {}) {
   }
 
   return {
-    ...readLiveSet(),
+    ...readSong(), // TODO: maybe don't output all of this, just the things that updated?
     ...(view != null ? { view } : {}),
   };
 }
 
-module.exports = { writeLiveSet };
+module.exports = { writeSong };

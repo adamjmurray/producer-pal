@@ -1,9 +1,9 @@
-// device/tool-read-live-set.test.js
+// device/tool-read-song.test.js
 import { describe, expect, it } from "vitest";
 import { children, expectedClip, expectedTrack, liveApiId, mockLiveApiGet } from "./mock-live-api";
-import { readLiveSet } from "./tool-read-live-set";
+import { readSong } from "./tool-read-song";
 
-describe("readLiveSet", () => {
+describe("readSong", () => {
   it("returns live set information including tracks and scenes", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {
@@ -93,7 +93,7 @@ describe("readLiveSet", () => {
       },
     });
 
-    const result = readLiveSet();
+    const result = readSong();
 
     expect(result).toEqual({
       id: "live_set_id",
@@ -202,7 +202,7 @@ describe("readLiveSet", () => {
       },
     });
 
-    const result = readLiveSet();
+    const result = readSong();
 
     expect(result).toEqual({
       id: "live_set",

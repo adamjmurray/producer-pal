@@ -7,12 +7,12 @@ post(`[${now()}] loading main.js...\n`);
 require("./live-api-extensions.js");
 const console = require("./console.js");
 const { readClip } = require("./tool-read-clip.js");
-const { readLiveSet } = require("./tool-read-live-set.js");
+const { readSong } = require("./tool-read-song.js");
 const { readScene } = require("./tool-read-scene.js");
 const { writeScene } = require("./tool-write-scene.js");
 const { readTrack } = require("./tool-read-track.js");
 const { writeClip } = require("./tool-write-clip.js");
-const { writeLiveSet } = require("./tool-write-live-set.js");
+const { writeSong } = require("./tool-write-song.js");
 const { writeTrack } = require("./tool-write-track.js");
 const { deleteObject } = require("./tool-delete.js");
 const { duplicate } = require("./tool-duplicate.js");
@@ -20,12 +20,12 @@ const { captureScene } = require("./tool-capture-scene.js");
 const { transport } = require("./tool-transport.js");
 
 const tools = {
-  "read-live-set": () => readLiveSet(),
-  "write-live-set": (args) => writeLiveSet(args),
-  "read-track": (args) => readTrack(args),
-  "write-track": (args) => writeTrack(args),
+  "read-song": () => readSong(),
+  "write-song": (args) => writeSong(args),
   "read-scene": (args) => readScene(args),
   "write-scene": (args) => writeScene(args),
+  "read-track": (args) => readTrack(args),
+  "write-track": (args) => writeTrack(args),
   "read-clip": (args) => readClip(args),
   "write-clip": (args) => writeClip(args),
   delete: (args) => deleteObject(args),

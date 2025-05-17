@@ -97,12 +97,12 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
-        "read-live-set",
-        "write-live-set",
-        "read-track",
-        "write-track",
+        "read-song",
+        "write-song",
         "read-scene",
         "write-scene",
+        "read-track",
+        "write-track",
         "read-clip",
         "write-clip",
         "delete",
@@ -115,11 +115,11 @@ describe("MCP Express App", () => {
     it("should provide tool schemas with correct names and descriptions", async () => {
       const result = await client.listTools();
 
-      const readLiveSetTool = result.tools.find((tool) => tool.name === "read-live-set");
-      expect(readLiveSetTool).toBeDefined();
-      expect(readLiveSetTool.description).toContain("the Live Set");
-      expect(readLiveSetTool.description).toContain("global settings");
-      expect(readLiveSetTool.description).toContain("all tracks");
+      const readSongTool = result.tools.find((tool) => tool.name === "read-song");
+      expect(readSongTool).toBeDefined();
+      expect(readSongTool.description).toContain("the Live Set");
+      expect(readSongTool.description).toContain("global settings");
+      expect(readSongTool.description).toContain("all tracks");
 
       const writeClipTool = result.tools.find((tool) => tool.name === "write-clip");
       expect(writeClipTool).toBeDefined();
@@ -152,7 +152,7 @@ describe("MCP Express App", () => {
 
     it("should call list-tracks tool", async () => {
       const result = await client.callTool({
-        name: "read-live-set",
+        name: "read-song",
         arguments: {},
       });
 

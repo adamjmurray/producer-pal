@@ -62,7 +62,7 @@ Completed full feature set for core functionality:
     - ✅ Read Arranger view clips
     - ✅ Upsert Arranger view clips
   - ✅ Delete clip by ID so we can delete from Arranger view
-  - ✅ Switch between Session and Arranger view via write-live-set
+  - ✅ Switch between Session and Arranger view via write-song
     - ✅ Automatically switch views when upserting clips
       - Try to ensure the clip is in view (zoom and/or scroll as needed)
   - ✅ Control of Song.back_to_arranger and Track.back_to_arranger
@@ -90,7 +90,7 @@ Completed full feature set for core functionality:
   - Validation system for better error handling
     - e.g. start and end time in write-clip
   - Fix state synchronization issues
-    - ✅ playback state immediately after updating in `write-live-set` is not accurate
+    - ✅ playback state immediately after updating in `write-song` is not accurate
     - This should be better now, but I notice calling stopAllClips on a track doesn't update triggered or playing state
       in a reasonable amount of time. Here's a thought: maybe firedSlotIndex works ok when firing a new slot? Check on
       that and maybe split off a stopAllClips arg, but call that one stopAllClipsAsync and make it clear the return
