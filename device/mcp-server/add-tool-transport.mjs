@@ -9,22 +9,22 @@ export function addToolTransport(server, callLiveApi) {
       action: z
         .enum([
           "play-arrangement",
-          "stop-arrangement",
           "update-arrangement",
           "play-scene",
           "play-session-clip",
           "stop-track-session-clip",
           "stop-all-session-clips",
+          "stop",
         ])
         .describe(
           `Transport action to perform:
 - "play-arrangement": Start arrangement playback from specified position (also starts playback in Session view for non-following tracks)
-- "stop-arrangement": Stop arrangement playback (which stops the transport and stops all playback including Session view)
 - "update-arrangement": Modify arrangement loop and follow settings without affecting playback state
 - "play-scene": Launch all clips in a Session view scene (requires sceneIndex)
 - "play-session-clip": Trigger a clip in Session view (requires trackIndex and clipSlotIndex)
 - "stop-track-session-clip": Stop the Session view clip playing in a specific track (requires trackIndex)
-- "stop-all-session-clips": Stop all Session view clips in all tracks`
+- "stop-all-session-clips": Stop all Session view clips in all tracks
+- "stop": Stop all playback: stop the transport, stop arrangement playback, stop session playback (but curretnly playing clips is Session view will retain their playing state and start playing again when the transport is started)`
         ),
       startTime: z
         .number()

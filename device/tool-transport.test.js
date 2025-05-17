@@ -40,29 +40,6 @@ describe("transport", () => {
     });
   });
 
-  it("should handle stop-arrangement action", () => {
-    mockLiveApiGet({
-      LiveSet: {
-        loop: 0,
-        loop_start: 0,
-        loop_length: 4,
-      },
-    });
-
-    const result = transport({ action: "stop-arrangement" });
-
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "show_view", "Arranger");
-    expect(liveApiCall).toHaveBeenNthCalledWith(2, "stop_playing");
-    expect(result).toStrictEqual({
-      action: "stop-arrangement",
-      currentTime: 0,
-      isPlaying: false,
-      loop: false,
-      loopLength: 4,
-      loopStart: 0,
-    });
-  });
-
   it("should handle update-arrangement action", () => {
     mockLiveApiGet({
       LiveSet: {
@@ -254,6 +231,29 @@ describe("transport", () => {
       loop: false,
       loopStart: 0,
       loopLength: 4,
+    });
+  });
+
+  it("should handle stop action", () => {
+    mockLiveApiGet({
+      LiveSet: {
+        loop: 0,
+        loop_start: 0,
+        loop_length: 4,
+      },
+    });
+
+    const result = transport({ action: "stop" });
+
+    expect(liveApiCall).toHaveBeenCalledWith("stop_playing");
+    expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
+    expect(result).toStrictEqual({
+      action: "stop",
+      currentTime: 0,
+      isPlaying: false,
+      loop: false,
+      loopLength: 4,
+      loopStart: 0,
     });
   });
 });

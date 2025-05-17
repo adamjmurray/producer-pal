@@ -60,7 +60,8 @@ function transport({
     }
   }
 
-  // Default values that will be overridden by specific actions
+  // Default result values that will be overridden by specific actions
+  // (for optimistic results to avoid a sleep() for playback state updates)
   let isPlaying = liveSet.getProperty("is_playing") > 0;
   let currentTime = liveSet.getProperty("current_song_time");
 
@@ -74,15 +75,6 @@ function transport({
 
       isPlaying = true;
       currentTime = startTime ?? 0;
-      break;
-
-    case "stop-arrangement":
-      appView.call("show_view", "Arranger");
-      liveSet.call("stop_playing");
-      liveSet.set("start_time", 0);
-
-      isPlaying = false;
-      currentTime = 0;
       break;
 
     case "update-arrangement":
@@ -148,6 +140,14 @@ function transport({
       appView.call("show_view", "Session");
       liveSet.call("stop_all_clips");
       // the transport/arrangement might still be playing so don't update isPlaying
+      break;
+
+    case "stop":
+      liveSet.call("stop_playing");
+      liveSet.set("start_time", 0);
+
+      isPlaying = false;
+      currentTime = 0;
       break;
 
     default:

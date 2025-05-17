@@ -74,8 +74,6 @@ Completed full feature set for core functionality:
   - ✅ Capture Scene
   - ✅ Add dedicated tools for playback and transport control
     - ✅ Consolidate all playback and transport tools into a single tool
-      - Maybe add the ability to simply start or stop the transport without it being associated with arrangement or
-        session view (i.e. no automatic view switching)
   - Rework all write-\* tools to only update existing objects when given an id arg, and fail to create via index args if
     something already exists at that location (except in the case of arrangement clips - we can keep blindly overwriting
     those)
