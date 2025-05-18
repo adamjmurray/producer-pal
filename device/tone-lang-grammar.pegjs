@@ -22,9 +22,24 @@ sequence
     }
 
 element
-  = chord
+  = repetition
+  / chord
   / note
   / rest
+
+repetition
+  = "(" _ elements:sequence _ ")" multiplier:repetitionMultiplier? {
+      return { 
+        type: "repetition", 
+        content: elements,
+        repeat: multiplier ?? 1
+      };
+    }
+
+repetitionMultiplier
+  = "*" count:integer {
+      return count;
+    }
 
 note
   = pitch:pitch velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? {

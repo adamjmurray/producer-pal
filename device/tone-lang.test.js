@@ -296,3 +296,57 @@ describe("midiPitchToName", () => {
     expect(midiPitchToName("foo")).toBe("");
   });
 });
+
+describe("Repetition", () => {
+  it("handles basic repetition", () => {
+    const result = parseToneLang("(C3 D3)*2");
+    expect(result).toHaveLength(4);
+
+    expect(result[0].pitch).toBe(60); // C3
+    expect(result[1].pitch).toBe(62); // D3
+    expect(result[2].pitch).toBe(60); // C3
+    expect(result[3].pitch).toBe(62); // D3
+
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(1);
+    expect(result[2].start_time).toBe(2);
+    expect(result[3].start_time).toBe(3);
+  });
+
+  it("handles nested repetition", () => {
+    const result = parseToneLang("((C3 D3)*2 E3)*3");
+    expect(result).toHaveLength(15);
+
+    // First group: C3 D3 C3 D3 E3
+    expect(result[0].pitch).toBe(60);
+    expect(result[4].pitch).toBe(64); // E3
+
+    // Second group starts at index 5
+    expect(result[5].pitch).toBe(60);
+
+    // Third group starts at index 10
+    expect(result[10].pitch).toBe(60);
+
+    // Check timing
+    expect(result[0].start_time).toBe(0); // First C3
+    expect(result[4].start_time).toBe(4); // First E3
+    expect(result[5].start_time).toBe(5); // Second group C3
+  });
+
+  it("handles repetition with mixed element types", () => {
+    const result = parseToneLang("(C3 [E3 G3] R)*2");
+    expect(result).toHaveLength(6);
+
+    // Check timing with rest
+    expect(result[0].start_time).toBe(0); // C3
+    expect(result[1].start_time).toBe(1); // E3 (chord)
+    expect(result[3].start_time).toBe(3); // C3 (after rest)
+  });
+
+  it("handles parentheses without repetition", () => {
+    const result = parseToneLang("(C3 D3)");
+    expect(result).toHaveLength(2);
+    expect(result[0].pitch).toBe(60); // C3
+    expect(result[1].pitch).toBe(62); // D3
+  });
+});

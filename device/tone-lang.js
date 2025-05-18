@@ -26,41 +26,68 @@ function midiPitchToName(midiPitch) {
  * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>}
  */
 function convertToneLangAstToEvents(ast) {
-  const events = [];
-  let currentTime = 0;
+  // Helper function to process a sequence of elements
+  function processSequence(elements, startTime) {
+    const events = [];
+    let currentTime = startTime;
 
-  for (const item of ast) {
-    if (item.type === "rest") {
-      const rest = item;
-      currentTime += rest.duration ?? DEFAULT_DURATION;
-    } else if (item.type === "note") {
-      const note = item;
-      events.push({
-        pitch: note.pitch,
-        start_time: currentTime,
-        duration: note.duration ?? DEFAULT_DURATION,
-        velocity: note.velocity ?? DEFAULT_VELOCITY,
-      });
-      // Advance time by timeUntilNext if specified, otherwise by duration
-      currentTime += note.timeUntilNext ?? note.duration ?? DEFAULT_DURATION;
-    } else if (item.type === "chord") {
-      const chord = item;
-      const chordDuration = chord.duration ?? DEFAULT_DURATION;
-      const chordVelocity = chord.velocity ?? DEFAULT_VELOCITY;
-      for (const note of item.notes) {
+    for (const element of elements) {
+      if (element.type === "rest") {
+        currentTime += element.duration ?? DEFAULT_DURATION;
+      } else if (element.type === "note") {
         events.push({
-          pitch: note.pitch,
+          pitch: element.pitch,
           start_time: currentTime,
-          duration: note.duration ?? chordDuration,
-          velocity: note.velocity ?? chordVelocity,
+          duration: element.duration ?? DEFAULT_DURATION,
+          velocity: element.velocity ?? DEFAULT_VELOCITY,
         });
+        currentTime += element.timeUntilNext ?? element.duration ?? DEFAULT_DURATION;
+      } else if (element.type === "chord") {
+        const chordDuration = element.duration ?? DEFAULT_DURATION;
+        const chordVelocity = element.velocity ?? DEFAULT_VELOCITY;
+        for (const note of element.notes) {
+          events.push({
+            pitch: note.pitch,
+            start_time: currentTime,
+            duration: note.duration ?? chordDuration,
+            velocity: note.velocity ?? chordVelocity,
+          });
+        }
+        currentTime += element.timeUntilNext ?? chordDuration;
+      } else if (element.type === "repetition") {
+        // Process the content of the repetition once to get the events and duration
+        const [contentEvents, contentDuration] = processSequence(element.content, 0);
+
+        // Repeat the content the specified number of times
+        for (let i = 0; i < element.repeat; i++) {
+          for (const event of contentEvents) {
+            events.push({
+              ...event,
+              start_time: currentTime + event.start_time,
+            });
+          }
+          currentTime += contentDuration;
+        }
       }
-      // Advance time by timeUntilNext if specified, otherwise by duration
-      currentTime += chord.timeUntilNext ?? chordDuration;
     }
+
+    return [events, currentTime - startTime];
   }
 
-  return events;
+  // Process the AST based on whether it's single or multiple voices
+  if (Array.isArray(ast) && ast.length > 0 && Array.isArray(ast[0])) {
+    // Multiple voices
+    const allEvents = [];
+    for (const voice of ast) {
+      const [voiceEvents] = processSequence(voice, 0);
+      allEvents.push(...voiceEvents);
+    }
+    return allEvents;
+  } else {
+    // Single voice
+    const [events] = processSequence(ast, 0);
+    return events;
+  }
 }
 
 /**

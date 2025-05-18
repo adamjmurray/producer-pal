@@ -8,7 +8,10 @@ ToneLangExpression ::= Sequence | MultiVoice
 
 MultiVoice ::= Sequence (";" Sequence)+
 Sequence   ::= Element? (WS Element)*
-Element    ::= Note | Chord | Rest
+Element    ::= Repetition | Note | Chord | Rest
+
+Repetition ::= "(" Sequence ")" RepetitionMultiplier?
+RepetitionMultiplier ::= "*" Integer
 
 Note       ::= Pitch Velocity? Duration? TimeUntilNext?
 Pitch      ::= PitchClass Octave
@@ -59,6 +62,13 @@ Chords:
 - Individual notes in chords can have their own velocity and duration modifiers that override chord-level settings
   - Example: [C3v90 E3 G3n2]v80n4 (C3 uses v90 but n4, E3 uses v80 and n4, G3 uses v80 but n2)
 
+Repetition:
+- Format: (content)*N where N is the number of times to repeat
+- Example: (C3 D3)*2 produces C3 D3 C3 D3
+- Nesting is supported: ((C3 D3)*2 E3)*3 produces C3 D3 C3 D3 E3 C3 D3 C3 D3 E3 C3 D3 C3 D3 E3
+- Parentheses without a multiplier (C3 D3) are allowed and simply group the content
+- Multiple voices (with semicolons) cannot be used within a repetition
+
 Multiple voices: Use semicolons to separate independent voices (e.g., C3 D3 E3; G2 A2 B2)
 
 ## Syntax Equivalence
@@ -96,6 +106,7 @@ Examples:
 - C3v80 D3v70 E3v60 (decreasing velocity)
 - C3n0.5 D3n0.5 E3n0.5 F3n0.5 (sequence of eighth notes)
 - [C3 E3 G3]v90 [F3 A3 C4]v70n2 (chord progression with velocities)
+- (C3 D3)*2 G3 (C4 E4 G4 C5)*3 (repeated patterns)
 - C3 D3 E3 F3; G2 A2 B2 C3 (two-voice counterpoint)
 - C4n4t2 D4n4t2 E4n4 (overlapping whole notes, each starting 2 beats after previous)
 - C4n0.5t1 D4n0.5t1 E4n0.5t1 (staccato eighth notes on quarter note grid)

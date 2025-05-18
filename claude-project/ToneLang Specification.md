@@ -17,7 +17,10 @@ ToneLangExpression ::= Sequence | MultiVoice
 
 MultiVoice ::= Sequence (";" Sequence)+
 Sequence   ::= Element? (WS Element)*
-Element    ::= Note | Chord | Rest
+Element    ::= Repetition | Note | Chord | Rest
+
+Repetition ::= "(" Sequence ")" RepetitionMultiplier?
+RepetitionMultiplier ::= "*" Integer
 
 Note       ::= Pitch Velocity? Duration? TimeUntilNext?
 Pitch      ::= PitchClass Octave
@@ -55,6 +58,8 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 - Chord: `[C3 E3 G3]` (C major triad)
 - Chord with modifiers: `[D3 F#3 A3]v90n0.5` (D major triad, velocity 90, eighth note)
 - Rest: `R2` (half note rest)
+- Repetition: `(C3 D3)*2` (repeat C3 D3 twice)
+- Nested repetition: `((C3 D3)*2 E3)*3` (repeat the phrase "C3 D3 C3 D3 E3" three times)
 
 #### Simple Sequence
 
@@ -63,6 +68,14 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 #### Complex Sequence
 
 `C3v90n2 [E3 G3]v70 R0.5 F3v60n0.25 [C4 E4 G4]v100n4`
+
+#### Repetition Examples
+
+`(C3 D3)*4` (repeat C3 D3 four times)
+
+`(C3 [E3 G3])*2 R0.5 (D3 [F3 A3])*2` (repeat C major chord, then D minor chord)
+
+`((C3 D3)*2 E3)*3 F3` (nested repetition followed by F3)
 
 #### Two-Voice Counterpoint
 
@@ -101,6 +114,15 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
   - C3: velocity=100 (note override), duration=4 (chord level)
   - E3: velocity=80 (chord level), duration=4 (chord level)
   - G3: velocity=80 (chord level), duration=2 (note override)
+
+### Repetition
+
+- Enclose a sequence in parentheses followed by a multiplier
+- Format: `(sequence)*N` where N is the number of times to repeat
+- Example: `(C3 D3)*2` produces `C3 D3 C3 D3`
+- Nesting is supported: `((C3 D3)*2 E3)*3` produces `C3 D3 C3 D3 E3 C3 D3 C3 D3 E3 C3 D3 C3 D3 E3`
+- Repetition without a multiplier is valid: `(C3 D3)` is equivalent to just `C3 D3`
+- Multiple voices (with semicolons) cannot be used within a repetition
 
 ### Modifiers
 
@@ -150,7 +172,7 @@ Modifiers must be applied in this specific order:
 
 ## Sequence Syntax
 
-Notes, chords, and rests are separated by whitespace to form sequences:
+Notes, chords, rests, and repetitions are separated by whitespace to form sequences:
 
 ```
 C3 D3 E3 F3 G3 A3 B3 C4
@@ -158,6 +180,10 @@ C3 D3 E3 F3 G3 A3 B3 C4
 
 ```
 C3v80 D3v60n0.5 R0.5 [E3 G3 B3]v60n2
+```
+
+```
+(C3 D3)*2 (E3 [G3 B3])*3
 ```
 
 ## Timing Behavior
@@ -192,6 +218,26 @@ C3v60n2 [E3v90 G3v70] R0.5 F3v120n0.5 R0.5 [D3 F3 A3]v80n4
 ```
 [C3v90n2 E3 G3v70n0.5]v80n4
 ```
+
+### Repetition Examples
+
+```
+(C3 D3)*4
+```
+
+Creates a sequence of C3 D3 repeated four times.
+
+```
+(C3v80 D3)*2 (E3v90 F3)*3
+```
+
+Repeats C3v80 D3 twice, then repeats E3v90 F3 three times.
+
+```
+((C3 D3)*2 E3)*3 F3
+```
+
+Creates a complex nested pattern with C3 D3 C3 D3 E3 repeated three times, followed by F3.
 
 ### Examples with TimeUntilNext
 
