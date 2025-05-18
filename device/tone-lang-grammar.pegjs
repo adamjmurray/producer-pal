@@ -37,7 +37,7 @@ repetition
     }
 
 repetitionMultiplier
-  = "*" count:integer {
+  = "*" count:unsignedInteger {
       return count;
     }
 
@@ -102,7 +102,7 @@ rest
     }
 
 pitch
-  = pitchClass:pitchClass octave:integer {
+  = pitchClass:pitchClass octave:signedInteger {
       const name = `${pitchClass.name}${octave}`;
       const pitch = (octave + 2) * 12 + pitchClass.value;
       if (pitch < 0 || pitch > 127) throw new Error(`MIDI pitch ${pitch} (${name}) outside valid range 0-127`);
@@ -141,10 +141,10 @@ velocity
 absoluteDuration
   = num:[0-9]+ decimal:("." [0-9]+)? {
       const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
-      return parseFloat(numStr);
+      return Number.parseFloat(numStr);
     }
   / "." decimal:[0-9]+ {
-      return parseFloat("0." + decimal.join(""));
+      return Number.parseFloat("0." + decimal.join(""));
     }
 
 duration
@@ -157,8 +157,11 @@ timeUntilNext
       return duration;
     }
 
-integer
-  = "-"? [0-9]+ { return parseInt(text(), 10); }
+unsignedInteger
+ = [0-9]+ { return Number.parseInt(text()); }
+
+signedInteger
+  = "-"? [0-9]+ { return Number.parseInt(text()); }
 
 // Whitespace
 WS = [ \t\r\n]+ // required

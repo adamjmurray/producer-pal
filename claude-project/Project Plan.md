@@ -106,7 +106,6 @@ Completed full feature set for core functionality:
       it will need to be time-signature aware)
     - ✅ Introduce a repetition mechanism: (C4 D4 E4)\*2 => C4 D4 E4 C4 D4 E4. It repeats whatever is inside it,
       including bar lines.
-      - Follow up and make the modifier by an unsigned int in the grammar
       - Maybe this can also be used to set a velocity or duration/time modifier for the group (also also override by
         anything inside, just like with chords) e.g. (C4 D4)v50.
       - Reading clips should attempt to reduce the syntax by using repetition when appropriate (might be easy for

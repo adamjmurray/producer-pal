@@ -461,4 +461,8 @@ describe("Repetition", () => {
     expect(result[3].start_time).toBe(3); // Start of second group
     expect(result[6].start_time).toBe(6); // Start of third group
   });
+
+  it("doesn't allow negative repetitions", () => {
+    expect(() => parseToneLang("C4*-2")).toThrow(/syntax error.*Unexpected '-'/);
+  });
 });

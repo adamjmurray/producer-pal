@@ -325,10 +325,10 @@ function peg$parse(input, options) {
   }
   function peg$f13(num, decimal) {
     const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
-    return parseFloat(numStr);
+    return Number.parseFloat(numStr);
   }
   function peg$f14(decimal) {
-    return parseFloat("0." + decimal.join(""));
+    return Number.parseFloat("0." + decimal.join(""));
   }
   function peg$f15(duration) {
     return duration;
@@ -336,7 +336,8 @@ function peg$parse(input, options) {
   function peg$f16(duration) {
     return duration;
   }
-  function peg$f17() {    return parseInt(text(), 10);  }
+  function peg$f17() {    return Number.parseInt(text());  }
+  function peg$f18() {    return Number.parseInt(text());  }
   let peg$currPos = options.peg$currPos | 0;
   let peg$savedPos = peg$currPos;
   const peg$posDetailsCache = [{ line: 1, column: 1 }];
@@ -744,7 +745,7 @@ function peg$parse(input, options) {
       if (peg$silentFails === 0) { peg$fail(peg$e3); }
     }
     if (s1 !== peg$FAILED) {
-      s2 = peg$parseinteger();
+      s2 = peg$parseunsignedInteger();
       if (s2 !== peg$FAILED) {
         peg$savedPos = s0;
         s0 = peg$f6(s2);
@@ -920,7 +921,7 @@ function peg$parse(input, options) {
     s0 = peg$currPos;
     s1 = peg$parsepitchClass();
     if (s1 !== peg$FAILED) {
-      s2 = peg$parseinteger();
+      s2 = peg$parsesignedInteger();
       if (s2 !== peg$FAILED) {
         peg$savedPos = s0;
         s0 = peg$f10(s1, s2);
@@ -1291,7 +1292,42 @@ function peg$parse(input, options) {
     return s0;
   }
 
-  function peg$parseinteger() {
+  function peg$parseunsignedInteger() {
+    let s0, s1, s2;
+
+    s0 = peg$currPos;
+    s1 = [];
+    s2 = input.charAt(peg$currPos);
+    if (peg$r1.test(s2)) {
+      peg$currPos++;
+    } else {
+      s2 = peg$FAILED;
+      if (peg$silentFails === 0) { peg$fail(peg$e21); }
+    }
+    if (s2 !== peg$FAILED) {
+      while (s2 !== peg$FAILED) {
+        s1.push(s2);
+        s2 = input.charAt(peg$currPos);
+        if (peg$r1.test(s2)) {
+          peg$currPos++;
+        } else {
+          s2 = peg$FAILED;
+          if (peg$silentFails === 0) { peg$fail(peg$e21); }
+        }
+      }
+    } else {
+      s1 = peg$FAILED;
+    }
+    if (s1 !== peg$FAILED) {
+      peg$savedPos = s0;
+      s1 = peg$f17();
+    }
+    s0 = s1;
+
+    return s0;
+  }
+
+  function peg$parsesignedInteger() {
     let s0, s1, s2, s3;
 
     s0 = peg$currPos;
@@ -1329,7 +1365,7 @@ function peg$parse(input, options) {
     }
     if (s2 !== peg$FAILED) {
       peg$savedPos = s0;
-      s0 = peg$f17();
+      s0 = peg$f18();
     } else {
       peg$currPos = s0;
       s0 = peg$FAILED;
