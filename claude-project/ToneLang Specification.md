@@ -19,20 +19,18 @@ MultiVoice ::= Sequence (";" Sequence)+
 Sequence   ::= Element? (WS Element)*
 Element    ::= Repetition | Note | Chord | Rest
 
-Repetition ::= "(" Sequence ")" RepetitionMultiplier?
-RepetitionMultiplier ::= "*" Integer
-
-Note       ::= Pitch Velocity? Duration? TimeUntilNext?
+Note       ::= Pitch Velocity? Duration? TimeUntilNext? RepetitionMultiplier?
 Pitch      ::= PitchClass Octave
 PitchClass ::= "C" | "C#" | "Db" | "D" | "D#" | "Eb" | "E" | "F" | "F#" | "Gb" | "G" | "G#" | "Ab" | "A" | "A#" | "Bb" | "B"
 Octave     ::= SignedInteger  // -2 to 8 for valid MIDI range
-
-Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration? TimeUntilNext?
+Rest       ::= "R" UnsignedDecimal? RepetitionMultiplier?
+Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration? TimeUntilNext? RepetitionMultiplier?
 
 Velocity        ::= "v" Digit Digit? Digit?
 Duration        ::= "n" UnsignedDecimal?
 TimeUntilNext   ::= "t" UnsignedDecimal?
-Rest            ::= "R" UnsignedDecimal?
+Repetition      ::= "(" Sequence ")" RepetitionMultiplier?
+RepetitionMultiplier ::= "*" UnsignedInteger
 
 SignedDecimal   ::= "-"? UnsignedDecimal
 UnsignedDecimal ::= UnsignedInteger ("." UnsignedInteger)? | "." UnsignedInteger
@@ -123,6 +121,23 @@ WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 - Nesting is supported: `((C3 D3)*2 E3)*3` produces `C3 D3 C3 D3 E3 C3 D3 C3 D3 E3 C3 D3 C3 D3 E3`
 - Repetition without a multiplier is valid: `(C3 D3)` is equivalent to just `C3 D3`
 - Multiple voices (with semicolons) cannot be used within a repetition
+- There are two forms of repetition:
+  1. Enclosed sequence repetition: `(sequence)*N` - repeats all elements in parentheses
+  2. Single element repetition: `element*N` - repeats a note, chord, or rest
+- All types of repetition can be nested:
+  - `((C3 D3)*2 E3)*3` - nesting sequence repetitions
+  - `(C3*2 D3)*3` - element repetition inside sequence repetition
+- Notes and chords can include modifiers before the repetition modifier:
+  - `C3v80n2*3` - play C3 with velocity 80 and duration 2 beats, three times
+- Examples:
+  - `(C3 D3)*2` produces `C3 D3 C3 D3`
+  - `C3*2` produces `C3 C3`
+  - `[C3 E3 G3]*2` produces two identical C major triads
+  - `R1*3` produces three quarter rests
+- Notes and chords can include modifiers before the repetition modifier:
+  - `C3v80n2*3` - play C3 with velocity 80 and duration 2 beats, three times
+  - `[C3 E3 G3]v90*2` - play C major chord with velocity 90, twice
+- Nesting is supported for sequence repetition: `((C3 D3)*2 E3)*3`
 
 ### Modifiers
 
@@ -238,6 +253,14 @@ Repeats C3v80 D3 twice, then repeats E3v90 F3 three times.
 ```
 
 Creates a complex nested pattern with C3 D3 C3 D3 E3 repeated three times, followed by F3.
+
+### More Repetition Examples
+
+`C4*3 D4` (C4 repeated three times followed by D4)
+
+`[C3 E3 G3]v80n2*2 D3` (C major chord with velocity 80 and duration 2, repeated twice, followed by D3)
+
+`C4 R0.5*4 D4` (C4, then four sixteenth rests, then D4)
 
 ### Examples with TimeUntilNext
 

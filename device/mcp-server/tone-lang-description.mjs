@@ -10,20 +10,24 @@ MultiVoice ::= Sequence (";" Sequence)+
 Sequence   ::= Element? (WS Element)*
 Element    ::= Repetition | Note | Chord | Rest
 
-Repetition ::= "(" Sequence ")" RepetitionMultiplier?
-RepetitionMultiplier ::= "*" Integer
-
-Note       ::= Pitch Velocity? Duration? TimeUntilNext?
+Note       ::= Pitch Velocity? Duration? TimeUntilNext? RepetitionMultiplier?
 Pitch      ::= PitchClass Octave
 PitchClass ::= "C" | "C#" | "Db" | "D" | "D#" | "Eb" | "E" | "F" | "F#" | "Gb" | "G" | "G#" | "Ab" | "A" | "A#" | "Bb" | "B"
 Octave     ::= SignedInteger  // -2 to 8 for valid MIDI range
+Rest       ::= "R" UnsignedDecimal? RepetitionMultiplier?
+Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration? TimeUntilNext? RepetitionMultiplier?
 
-Chord      ::= "[" Note (WS Note)* "]" Velocity? Duration? TimeUntilNext?
+Velocity        ::= "v" Digit Digit? Digit?
+Duration        ::= "n" UnsignedDecimal?
+TimeUntilNext   ::= "t" UnsignedDecimal?
+Repetition      ::= "(" Sequence ")" RepetitionMultiplier?
+RepetitionMultiplier ::= "*" UnsignedInteger
 
-Velocity      ::= "v" Digit Digit? Digit?
-Duration      ::= "n" UnsignedDecimal?
-TimeUntilNext ::= "t" UnsignedDecimal?
-Rest          ::= "R" UnsignedDecimal?
+UnsignedDecimal ::= UnsignedInteger ("." UnsignedInteger)? | "." UnsignedInteger
+SignedInteger   ::= "-"? UnsignedInteger
+UnsignedInteger ::= Digit+
+Digit           ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+WS (whitespace) ::= (" " | "\t" | "\n" | "\r")+
 
 ## Constraints 
 
@@ -68,10 +72,11 @@ Repetition:
 - Nesting is supported: ((C3 D3)*2 E3)*3 produces C3 D3 C3 D3 E3 C3 D3 C3 D3 E3 C3 D3 C3 D3 E3
 - Parentheses without a multiplier (C3 D3) are allowed and simply group the content
 - Multiple voices (with semicolons) cannot be used within a repetition
+- Notes, chords, and rests can also use repetition: C3*2 = C3 C3, [C3 E3 G3]*2 = [C3 E3 G3] [C3 E3 G3], R1*3 = R1 R1 R1
 
 Multiple voices: Use semicolons to separate independent voices (e.g., C3 D3 E3; G2 A2 B2)
 
-## Syntax Equivalence
+## Normalized Output / Syntax Equivalence
 
 Note that ToneLang strings returned by the API may use normalized, equivalent notation that looks different from what was provided:
 
@@ -79,7 +84,7 @@ Note that ToneLang strings returned by the API may use normalized, equivalent no
 2. Timing can be expressed in multiple equivalent ways:
    - Using rests: \`R0.5 F#1n0.5\`
    - Using TimeUntilNext: \`F#1n0.5t1\`
-3. The system optimizes for the most compact representation while preserving the musical result
+3. Repetitions are normalized to their expanded form. For example, while you can write 'C3*4' when creating a clip, reading that same clip will return 'C3 C3 C3 C3'.
 
 These different representations produce identical playback results:
 - \`C3 R D3\` = \`C3t2 D3\` (both play C3, wait a beat, then play D3)
@@ -107,6 +112,9 @@ Examples:
 - C3n0.5 D3n0.5 E3n0.5 F3n0.5 (sequence of eighth notes)
 - [C3 E3 G3]v90 [F3 A3 C4]v70n2 (chord progression with velocities)
 - (C3 D3)*2 G3 (C4 E4 G4 C5)*3 (repeated patterns)
+- C3*3 D3 (repeat C3 three times, then play D3)
+- [C3 E3 G3]v90*2 (repeat C major chord with velocity 90 twice)
+- C3 R.5*4 D3 (C3, four sixteenth rests, then D3)
 - C3 D3 E3 F3; G2 A2 B2 C3 (two-voice counterpoint)
 - C4n4t2 D4n4t2 E4n4 (overlapping whole notes, each starting 2 beats after previous)
 - C4n0.5t1 D4n0.5t1 E4n0.5t1 (staccato eighth notes on quarter note grid)

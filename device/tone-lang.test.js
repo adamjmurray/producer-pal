@@ -349,4 +349,116 @@ describe("Repetition", () => {
     expect(result[0].pitch).toBe(60); // C3
     expect(result[1].pitch).toBe(62); // D3
   });
+
+  it("handles repetition on a single note", () => {
+    const result = parseToneLang("C4*2 D4");
+    expect(result).toHaveLength(3);
+
+    expect(result[0].pitch).toBe(72); // C4
+    expect(result[1].pitch).toBe(72); // C4 repeated
+    expect(result[2].pitch).toBe(74); // D4
+
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(1);
+    expect(result[2].start_time).toBe(2);
+  });
+
+  it("handles repetition on a note with modifiers", () => {
+    const result = parseToneLang("C4v80n2*3 D4");
+    expect(result).toHaveLength(4);
+
+    // Check all three C4 instances
+    for (let i = 0; i < 3; i++) {
+      expect(result[i].pitch).toBe(72); // C4
+      expect(result[i].velocity).toBe(80);
+      expect(result[i].duration).toBe(2);
+      expect(result[i].start_time).toBe(i * 2); // 0, 2, 4
+    }
+
+    expect(result[3].pitch).toBe(74); // D4
+    expect(result[3].start_time).toBe(6); // After 3 * C4n2
+  });
+
+  it("handles repetition on a chord", () => {
+    const result = parseToneLang("[C4 E4 G4]*2 D4");
+    expect(result).toHaveLength(7); // 3 notes * 2 + 1 note
+
+    // First chord
+    expect(result[0].pitch).toBe(72); // C4
+    expect(result[1].pitch).toBe(76); // E4
+    expect(result[2].pitch).toBe(79); // G4
+
+    // Second chord (repeated)
+    expect(result[3].pitch).toBe(72); // C4
+    expect(result[4].pitch).toBe(76); // E4
+    expect(result[5].pitch).toBe(79); // G4
+
+    // Final note
+    expect(result[6].pitch).toBe(74); // D4
+  });
+
+  it("handles repetition on a chord with modifiers", () => {
+    const result = parseToneLang("[C4 E4 G4]v80n2*3 D4");
+    expect(result).toHaveLength(10); // 3 notes * 3 repetitions + 1 final note
+
+    // Check all three chord instances
+    for (let i = 0; i < 3; i++) {
+      const offset = i * 3; // Each chord has 3 notes
+
+      // Check each note in the chord
+      expect(result[offset].pitch).toBe(72); // C4
+      expect(result[offset + 1].pitch).toBe(76); // E4
+      expect(result[offset + 2].pitch).toBe(79); // G4
+
+      // Check modifiers apply to all notes
+      for (let j = 0; j < 3; j++) {
+        expect(result[offset + j].velocity).toBe(80);
+        expect(result[offset + j].duration).toBe(2);
+        expect(result[offset + j].start_time).toBe(i * 2); // 0, 2, 4
+      }
+    }
+
+    // Check final note
+    expect(result[9].pitch).toBe(74); // D4
+    expect(result[9].start_time).toBe(6); // After 3 chords with duration 2
+  });
+
+  it("handles repetition on rests", () => {
+    const result = parseToneLang("C4 R*3 R2*2 D4");
+    expect(result).toHaveLength(2);
+
+    expect(result[0].pitch).toBe(72); // C4
+    expect(result[0].start_time).toBe(0);
+
+    expect(result[1].pitch).toBe(74); // D4
+    expect(result[1].start_time).toBe(8); // After C4 (1) + R1*3 (3) + R2*2 (4)
+  });
+
+  it("handles repetition on rests with duration", () => {
+    const result = parseToneLang("C4 R0.5*4 D4");
+    expect(result).toHaveLength(2);
+
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(3); // After C4 (1) + R0.5*4 (2)
+  });
+
+  it("handles repetition of elements within a sequence repetition", () => {
+    const result = parseToneLang("(C4*2 D4)*3");
+    expect(result).toHaveLength(9);
+
+    // Check the pattern repeats properly
+    for (let i = 0; i < 3; i++) {
+      const offset = i * 3;
+      expect(result[offset].pitch).toBe(72); // C4
+      expect(result[offset + 1].pitch).toBe(72); // C4 repeated
+      expect(result[offset + 2].pitch).toBe(74); // D4
+    }
+
+    // Check start times
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(1);
+    expect(result[2].start_time).toBe(2);
+    expect(result[3].start_time).toBe(3); // Start of second group
+    expect(result[6].start_time).toBe(6); // Start of third group
+  });
 });

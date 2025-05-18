@@ -41,35 +41,64 @@ repetitionMultiplier
       return count;
     }
 
+// For the note rule
 note
-  = pitch:pitch velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? {
-      return { 
-        type: "note", 
-        pitch: pitch.pitch,
-        name: pitch.name,
-        velocity, 
-        duration,
-        timeUntilNext,
-      };
+  = pitch:pitch velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? multiplier:repetitionMultiplier? {
+      return multiplier 
+        ? { 
+            type: "repetition", 
+            content: [{ 
+              type: "note", 
+              pitch: pitch.pitch,
+              name: pitch.name,
+              velocity, 
+              duration,
+              timeUntilNext,
+            }],
+            repeat: multiplier
+          }
+        : { 
+            type: "note", 
+            pitch: pitch.pitch,
+            name: pitch.name,
+            velocity, 
+            duration,
+            timeUntilNext,
+          };
     }
 
+// For the chord rule
 chord
-  = "[" _ head:note tail:(WS note)* _ "]" velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? {
-      return { 
+  = "[" _ head:note tail:(WS note)* _ "]" velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? multiplier:repetitionMultiplier? {
+      const chord = { 
         type: "chord", 
         notes: [head, ...tail.map(t => t[1])], 
         velocity,
         duration,
         timeUntilNext,
       };
+      return multiplier 
+        ? { 
+            type: "repetition", 
+            content: [chord],
+            repeat: multiplier
+          }
+        : chord;
     }
 
 rest
-  = "R" duration:absoluteDuration? {
-      return { 
+  = "R" duration:absoluteDuration? multiplier:repetitionMultiplier? {
+      const rest = { 
         type: "rest", 
         duration: duration,
       };
+      return multiplier 
+        ? { 
+            type: "repetition", 
+            content: [rest],
+            repeat: multiplier
+          }
+        : rest;
     }
 
 pitch

@@ -293,7 +293,7 @@ describe("writeClip", () => {
   });
 
   it("returns clear error message for invalid ToneLang syntax", async () => {
-    const invalidSyntax = "C3*1.5";
+    const invalidSyntax = "C3z1.5";
     await expect(() =>
       writeClip({
         view: "Session",
@@ -301,7 +301,7 @@ describe("writeClip", () => {
         clipSlotIndex: 0,
         notes: invalidSyntax,
       })
-    ).rejects.toThrow(/ToneLang syntax error.*Unexpected '\*'.*Valid syntax includes/);
+    ).rejects.toThrow(/ToneLang syntax error.*Unexpected 'z'.*Valid syntax includes/);
   });
 
   it("auto-creates scenes when clipSlotIndex exceeds existing scenes", async () => {

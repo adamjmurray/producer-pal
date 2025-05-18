@@ -241,30 +241,57 @@ function peg$parse(input, options) {
   function peg$f6(count) {
     return count;
   }
-  function peg$f7(pitch, velocity, duration, timeUntilNext) {
-    return { 
-      type: "note", 
-      pitch: pitch.pitch,
-      name: pitch.name,
-      velocity, 
-      duration,
-      timeUntilNext,
-    };
+  function peg$f7(pitch, velocity, duration, timeUntilNext, multiplier) {
+    return multiplier 
+      ? { 
+          type: "repetition", 
+          content: [{ 
+            type: "note", 
+            pitch: pitch.pitch,
+            name: pitch.name,
+            velocity, 
+            duration,
+            timeUntilNext,
+          }],
+          repeat: multiplier
+        }
+      : { 
+          type: "note", 
+          pitch: pitch.pitch,
+          name: pitch.name,
+          velocity, 
+          duration,
+          timeUntilNext,
+        };
   }
-  function peg$f8(head, tail, velocity, duration, timeUntilNext) {
-    return { 
+  function peg$f8(head, tail, velocity, duration, timeUntilNext, multiplier) {
+    const chord = { 
       type: "chord", 
       notes: [head, ...tail.map(t => t[1])], 
       velocity,
       duration,
       timeUntilNext,
     };
+    return multiplier 
+      ? { 
+          type: "repetition", 
+          content: [chord],
+          repeat: multiplier
+        }
+      : chord;
   }
-  function peg$f9(duration) {
-    return { 
+  function peg$f9(duration, multiplier) {
+    const rest = { 
       type: "rest", 
       duration: duration,
     };
+    return multiplier 
+      ? { 
+          type: "repetition", 
+          content: [rest],
+          repeat: multiplier
+        }
+      : rest;
   }
   function peg$f10(pitchClass, octave) {
     const name = `${pitchClass.name}${octave}`;
@@ -734,7 +761,7 @@ function peg$parse(input, options) {
   }
 
   function peg$parsenote() {
-    let s0, s1, s2, s3, s4;
+    let s0, s1, s2, s3, s4, s5;
 
     s0 = peg$currPos;
     s1 = peg$parsepitch();
@@ -751,8 +778,12 @@ function peg$parse(input, options) {
       if (s4 === peg$FAILED) {
         s4 = null;
       }
+      s5 = peg$parserepetitionMultiplier();
+      if (s5 === peg$FAILED) {
+        s5 = null;
+      }
       peg$savedPos = s0;
-      s0 = peg$f7(s1, s2, s3, s4);
+      s0 = peg$f7(s1, s2, s3, s4, s5);
     } else {
       peg$currPos = s0;
       s0 = peg$FAILED;
@@ -762,7 +793,7 @@ function peg$parse(input, options) {
   }
 
   function peg$parsechord() {
-    let s0, s1, s2, s3, s4, s5, s6, s7, s8, s9;
+    let s0, s1, s2, s3, s4, s5, s6, s7, s8, s9, s10;
 
     s0 = peg$currPos;
     if (input.charCodeAt(peg$currPos) === 91) {
@@ -831,8 +862,12 @@ function peg$parse(input, options) {
           if (s9 === peg$FAILED) {
             s9 = null;
           }
+          s10 = peg$parserepetitionMultiplier();
+          if (s10 === peg$FAILED) {
+            s10 = null;
+          }
           peg$savedPos = s0;
-          s0 = peg$f8(s3, s4, s7, s8, s9);
+          s0 = peg$f8(s3, s4, s7, s8, s9, s10);
         } else {
           peg$currPos = s0;
           s0 = peg$FAILED;
@@ -850,7 +885,7 @@ function peg$parse(input, options) {
   }
 
   function peg$parserest() {
-    let s0, s1, s2;
+    let s0, s1, s2, s3;
 
     s0 = peg$currPos;
     if (input.charCodeAt(peg$currPos) === 82) {
@@ -865,8 +900,12 @@ function peg$parse(input, options) {
       if (s2 === peg$FAILED) {
         s2 = null;
       }
+      s3 = peg$parserepetitionMultiplier();
+      if (s3 === peg$FAILED) {
+        s3 = null;
+      }
       peg$savedPos = s0;
-      s0 = peg$f9(s2);
+      s0 = peg$f9(s2, s3);
     } else {
       peg$currPos = s0;
       s0 = peg$FAILED;
