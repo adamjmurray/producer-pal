@@ -1,6 +1,5 @@
 // device/tool-write-track.js
 const { readTrack } = require("./tool-read-track");
-const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 
 // Maximum number of tracks we'll auto-create
 const MAX_AUTO_CREATED_TRACKS = 30;

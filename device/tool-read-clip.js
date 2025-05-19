@@ -271,5 +271,11 @@ function readClip({ trackIndex = null, clipSlotIndex = null, clipId = null }) {
   return result;
 }
 
-// Keep the helper functions from get-clip.js and export
-module.exports = { readClip, convertClipNotesToToneLang, convertDrumClipNotesToToneLang, midiPitchToNoteName };
+module.exports = {
+  readClip,
+  formatNote,
+  formatChord,
+  convertClipNotesToToneLang,
+  convertDrumClipNotesToToneLang,
+  midiPitchToNoteName,
+};

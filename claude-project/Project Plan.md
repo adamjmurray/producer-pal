@@ -80,6 +80,13 @@ Completed full feature set for core functionality:
 
 - **Robustness improvements**:
 
+  - Switch over to a rollup based build
+    - Then, change all code to ESM with import/export
+      - This will allow for mocking imports in tools' tests, which is currently not possible
+      - This should improve the accuracy of buggy coverage reporting
+    - When rollup is watching for changes and auto-building, it should cause the Max for Live device to reload
+      automatically
+    - We can ship much fewer files in the built device
   - Validation system for better error handling
     - e.g. start and end time in write-clip
   - ✅ Fix state synchronization issues because playback state immediately after e.g. autoplay in `write-clip` is not

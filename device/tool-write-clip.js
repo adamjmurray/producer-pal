@@ -1,7 +1,6 @@
 // device/tool-write-clip.js
 const { parseToneLang } = require("./tone-lang");
 const { readClip } = require("./tool-read-clip");
-const { sleep, DEFAULT_SLEEP_TIME_AFTER_WRITE } = require("./sleep");
 
 // Maximum number of scenes we'll auto-create
 const MAX_AUTO_CREATED_SCENES = 100;
