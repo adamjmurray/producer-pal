@@ -209,10 +209,8 @@ export const expectedScene = (overrides = {}) => ({
   color: "#000000",
   isEmpty: false,
   isTriggered: false,
-  isTempoEnabled: false,
-  tempo: 0,
-  isTimeSignatureEnabled: false,
-  timeSignature: "0/0",
+  tempo: "disabled",
+  timeSignature: "disabled",
   ...overrides,
 });
 

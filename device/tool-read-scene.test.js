@@ -30,9 +30,7 @@ describe("readScene", () => {
       isEmpty: false,
       isTriggered: false,
       tempo: 120,
-      isTempoEnabled: true,
       timeSignature: "4/4",
-      isTimeSignatureEnabled: true,
     });
   });
 
@@ -73,10 +71,8 @@ describe("readScene", () => {
       color: "#00FF00",
       isEmpty: true,
       isTriggered: true,
-      tempo: -1,
-      isTempoEnabled: false,
-      timeSignature: "-1/-1",
-      isTimeSignatureEnabled: false,
+      tempo: "disabled",
+      timeSignature: "disabled",
     });
   });
 
@@ -123,9 +119,7 @@ describe("readScene", () => {
       isEmpty: false,
       isTriggered: false,
       tempo: 120,
-      isTempoEnabled: true,
       timeSignature: "4/4",
-      isTimeSignatureEnabled: true,
       clips: [
         expectedClip({ id: "clip_0_0", clipSlotIndex: 0, trackIndex: 0 }),
         expectedClip({ id: "clip_1_0", clipSlotIndex: 0, trackIndex: 1 }),

@@ -161,9 +161,7 @@ describe("readSong", () => {
           isEmpty: false,
           isTriggered: false,
           tempo: 120,
-          isTempoEnabled: true,
           timeSignature: "4/4",
-          isTimeSignatureEnabled: true,
         },
         {
           id: "scene2",
@@ -172,10 +170,8 @@ describe("readSong", () => {
           color: "#00FF00",
           isEmpty: true,
           isTriggered: true,
-          tempo: -1,
-          isTempoEnabled: false,
-          timeSignature: "-1/-1",
-          isTimeSignatureEnabled: false,
+          tempo: "disabled",
+          timeSignature: "disabled",
         },
       ],
     });

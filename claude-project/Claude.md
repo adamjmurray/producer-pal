@@ -60,8 +60,10 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   correctly in the vitest test suite.
 - If you ever notice duplicate files in the project resources, let the user know! This is a mistake and will confuse
   you. We need to fix it proactively when it's detected.
-- Always `== null` checks instead of `=== null` or `=== undefined` (and similarly for `!= null`). Always use `x ?? y`
-  instead of `x === undefined ? y : x` and similar expressions.
+- Prefer `== null` checks instead of `=== null` or `=== undefined` (and similarly for `!= null`). Prefer `x ?? y`
+  instead of `x === undefined ? y : x` and similar expressions. Occasionally, we really do need to distinguish between
+  null and undefined to support optional explicit nulls, and those are the only situations we should do things like
+  `=== null` or `=== undefined`.
 - Never default to values inside the ToneLang grammar. The parser should return null or undefined to accurately reflect
   the syntax, and let the parser-calling code interpret the parsed results to set appropriate defaults (because the
   parser-calling code has the needed context and the grammar does not).

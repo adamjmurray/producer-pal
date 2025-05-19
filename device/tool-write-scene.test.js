@@ -24,9 +24,7 @@ describe("writeScene", () => {
       name: "New Scene Name",
       color: "#FF0000",
       tempo: 120,
-      isTempoEnabled: true,
       timeSignature: "3/4",
-      isTimeSignatureEnabled: true,
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "New Scene Name");
@@ -65,24 +63,12 @@ describe("writeScene", () => {
       name: "Multi Update",
       color: "#00FF00",
       tempo: 140,
-      isTempoEnabled: false,
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Multi Update");
     expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
     expect(liveApiSet).toHaveBeenCalledWith("tempo", 140);
-    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", false);
-  });
-
-  it("should handle boolean false values correctly", () => {
-    const result = writeScene({
-      sceneIndex: 0,
-      isTempoEnabled: false,
-      isTimeSignatureEnabled: false,
-    });
-
-    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", false);
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", false);
+    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", true);
   });
 
   it("should work with no arguments except sceneIndex", () => {
@@ -113,6 +99,27 @@ describe("writeScene", () => {
       expect(liveApiCall.mock.instances[callIndex].path).toBe("live_set");
       expect(createSceneCall).toEqual(["create_scene", -1]);
     });
+  });
+
+  it("should disable tempo when -1 is passed", () => {
+    const result = writeScene({
+      sceneIndex: 0,
+      tempo: -1,
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", false);
+    expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
+  });
+
+  it("should disable time signature when the string 'disabled' is passed", () => {
+    const result = writeScene({
+      sceneIndex: 0,
+      timeSignature: "disabled",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", false);
+    expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
+    expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
   });
 
   it("throws an error if sceneIndex exceeds maximum allowed scenes", () => {

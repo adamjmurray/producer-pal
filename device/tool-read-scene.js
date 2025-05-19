@@ -20,6 +20,9 @@ function readScene({ sceneIndex, includeClips = false }) {
     };
   }
 
+  const isTempoEnabled = scene.getProperty("tempo_enabled") > 0;
+  const isTimeSignatureEnabled = scene.getProperty("time_signature_enabled") > 0;
+
   return {
     id: scene.id,
     name: scene.getProperty("name"),
@@ -27,12 +30,10 @@ function readScene({ sceneIndex, includeClips = false }) {
     color: scene.getColor(),
     isEmpty: scene.getProperty("is_empty") > 0,
     isTriggered: scene.getProperty("is_triggered") > 0,
-    tempo: scene.getProperty("tempo"),
-    isTempoEnabled: scene.getProperty("tempo_enabled") > 0,
-    timeSignature: `${scene.getProperty("time_signature_numerator")}/${scene.getProperty(
-      "time_signature_denominator"
-    )}`,
-    isTimeSignatureEnabled: scene.getProperty("time_signature_enabled") > 0,
+    tempo: isTempoEnabled ? scene.getProperty("tempo") : "disabled",
+    timeSignature: isTimeSignatureEnabled
+      ? `${scene.getProperty("time_signature_numerator")}/${scene.getProperty("time_signature_denominator")}`
+      : "disabled",
     clips: includeClips
       ? liveSet
           .getChildIds("tracks")

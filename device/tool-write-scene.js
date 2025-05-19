@@ -8,13 +8,11 @@ const { MAX_AUTO_CREATED_SCENES } = require("./tool-write-clip");
  * @param {number} args.sceneIndex - Scene index (0-based)
  * @param {string} [args.name] - Optional scene name
  * @param {string} [args.color] - Optional scene color (CSS format: hex, rgb(), or named color)
- * @param {number} [args.tempo] - Optional scene tempo BPM
- * @param {boolean} [args.isTempoEnabled] - Optional flag to enable/disable scene tempo
- * @param {string} [args.timeSignature] - Optional time signature in format "4/4"
- * @param {boolean} [args.isTimeSignatureEnabled] - Optional flag to enable/disable scene time signature
+ * @param {number|null} [args.tempo] - Optional scene tempo BPM. Pass -1 to disable.
+ * @param {string|null} [args.timeSignature] - Optional time signature in format "4/4". Pass "disabled" to disable.
  * @returns {Object} Result object with scene information
  */
-function writeScene({ sceneIndex, name, color, tempo, isTempoEnabled, timeSignature, isTimeSignatureEnabled } = {}) {
+function writeScene({ sceneIndex, name, color, tempo, timeSignature } = {}) {
   const liveSet = new LiveAPI("live_set");
   const currentSceneCount = liveSet.getChildIds("scenes").length;
 
@@ -39,15 +37,18 @@ function writeScene({ sceneIndex, name, color, tempo, isTempoEnabled, timeSignat
     scene.setColor(color);
   }
 
-  if (tempo != null) {
+  // Handle tempo - explicit null disables, non-null enables (it can also be undefined, which will do nothing)
+  if (tempo === -1) {
+    scene.set("tempo_enabled", false);
+  } else if (tempo != null) {
     scene.set("tempo", tempo);
+    scene.set("tempo_enabled", true);
   }
 
-  if (isTempoEnabled != null) {
-    scene.set("tempo_enabled", isTempoEnabled);
-  }
-
-  if (timeSignature != null) {
+  // Handle time signature - explicit null disables, non-null enables (it can also be undefined, which will do nothing)
+  if (timeSignature === "disabled") {
+    scene.set("time_signature_enabled", false);
+  } else if (timeSignature != null) {
     const match = timeSignature.match(/^(\d+)\/(\d+)$/);
     if (!match) {
       throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
@@ -56,10 +57,7 @@ function writeScene({ sceneIndex, name, color, tempo, isTempoEnabled, timeSignat
     const denominator = parseInt(match[2], 10);
     scene.set("time_signature_numerator", numerator);
     scene.set("time_signature_denominator", denominator);
-  }
-
-  if (isTimeSignatureEnabled != null) {
-    scene.set("time_signature_enabled", isTimeSignatureEnabled);
+    scene.set("time_signature_enabled", true);
   }
 
   return readScene({ sceneIndex });

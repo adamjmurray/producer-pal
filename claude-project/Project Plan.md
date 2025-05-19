@@ -99,7 +99,11 @@ Completed full feature set for core functionality:
 
 - **Feature expansion**:
   - Create improved UI for the Max for Live device
-    - Add configuration options (port selection, etc.)
+    - Add configuration option for port selection
+    - Make the layout more compact.
+      - Clear indicator "server is running". Show the port / URL.
+      - Don't necessarily need to display errors in the device UI, but it needs to be clear the server failed to start,
+        and check the Max window for details.
   - ToneLang enhancements
     - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
       able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and
