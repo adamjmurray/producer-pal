@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, vi } from "vitest";
-import { LiveAPI, liveApiCall, mockLiveApiGet } from "./device/mock-live-api";
-import { Task } from "./device/mock-task";
+import { LiveAPI, liveApiCall, mockLiveApiGet } from "./src/mock-live-api";
+import { Task } from "./src/mock-task";
 
 globalThis.LiveAPI = LiveAPI;
-require("./device/live-api-extensions");
+require("./src/live-api-extensions");
 
 globalThis.Task = Task;
 

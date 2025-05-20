@@ -22,6 +22,7 @@
     "@vitest/coverage-v8": "^3.1.3",
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.2",
+    "rollup": "^4.41.0",
     "vitest": "^3.1.3"
   },
   "prettier": {
@@ -29,11 +30,12 @@
     "proseWrap": "always"
   },
   "scripts": {
-    "build": "npm run parser:build",
+    "build": "npm run parser:build && rollup -c",
+    "dev": "rollup -c -w",
     "test": "npm run build && vitest run",
     "test:watch": "npm run build && vitest",
     "test:coverage": "npm run build && vitest run --coverage",
-    "parser:build": "peggy --format commonjs --output device/tone-lang-parser.js device/tone-lang-grammar.pegjs",
-    "parser:watch": "chokidar device/tone-lang-grammar.pegjs -c 'npm run parser:build'"
+    "parser:build": "peggy --format es --output src/tone-lang-parser.js src/tone-lang-grammar.pegjs",
+    "parser:watch": "chokidar src/tone-lang-grammar.pegjs -c 'npm run parser:build'"
   }
 }

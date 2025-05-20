@@ -5,20 +5,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["device/**/*.test.js"],
+    include: ["src/**/*.test.js"],
     setupFiles: ["./test-setup.js"],
 
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary", "json", "html"],
-      include: ["device/**"],
-      exclude: [
-        "device/main.js",
-        "device/console.js",
-        "device/mcp-server.mjs",
-        "device/mock-*",
-        "device/mcp-server/**",
-      ],
+      include: ["src/**"],
+      exclude: ["src/main.js", "src/console.js", "src/mcp-server.mjs", "src/mock-*", "src/mcp-server/**"],
       reportOnFailure: true,
     },
   },
