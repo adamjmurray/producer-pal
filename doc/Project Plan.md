@@ -99,6 +99,7 @@ Completed full feature set for core functionality:
     of some example conversations with Claude?
 
 - **Feature expansion**:
+
   - Create improved UI for the Max for Live device
     - Add configuration option for port selection
     - Make the layout more compact.
@@ -106,18 +107,22 @@ Completed full feature set for core functionality:
       - Don't necessarily need to display errors in the device UI, but it needs to be clear the server failed to start,
         and check the Max window for details.
   - ToneLang enhancements
-    - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
-      able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and
-      it will need to be time-signature aware)
+    - ✅ Allow modifiers to be specified in any order
     - ✅ Introduce a repetition mechanism: (C4 D4 E4)\*2 => C4 D4 E4 C4 D4 E4. It repeats whatever is inside it,
       including bar lines.
-      - Maybe this can also be used to set a velocity or duration/time modifier for the group (also also override by
+      - ✅ This can also be used to set a velocity or duration/time modifier for the group (also also override by
         anything inside, just like with chords) e.g. (C4 D4)v50.
       - Reading clips should attempt to reduce the syntax by using repetition when appropriate (might be easy for
         individual notes/chords/rests, but might be too difficult for subsequences)
-  - Randomization features:
-    - set note probability
-    - set note velocity_deviation
+    - Support note probability
+    - Support note velocity_deviation
+    - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
+      able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and
+      it will need to be time-signature aware)
+    - Support note delay for strum effects on chords. Maybe `[C4 E4y.1 G4y.2]` could play the E4 a tenth of a beat later
+      than C4 and G4 two tenths of a beat later than the start of the chord. Need to think through the implications for
+      rhythm. timeUntilNext calculations should probably ignore this delay?
+  - Randomization features (Maybe? Or maybe save "higher level tools" for 2.0):
     - features to randomize velocities, durations, or start times by some min/max amount when evaluating ToneLang
     - slice & shuffle (rearrange every measure / N beats randomly)
 

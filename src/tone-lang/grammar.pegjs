@@ -1,20 +1,10 @@
 // src/tone-lang/grammar.pegjs
-// ToneLang v1.0 PEG Grammar
+// ToneLang PEG Grammar
 
-// Entry point
 start
-  = _ content:multiVoiceOrSingleVoice _ { return content; }
-
-multiVoiceOrSingleVoice
-  = voices:voiceList { return voices.length === 1 ? voices[0] : voices; }
-
-voiceList
-  = head:voice tail:(_ ";" _ voice)* {
+  = _ head:sequence tail:(_ ";" _ sequence)* _ {
       return [head, ...tail.map(t => t[3])];
     }
-
-voice
-  = elements:sequence { return elements; }
 
 sequence
   = head:element tail:(WS element)* {
@@ -22,81 +12,114 @@ sequence
     }
 
 element
-  = repetition
+  = grouping
   / chord
   / note
   / rest
 
-repetition
-  = "(" _ elements:sequence _ ")" multiplier:repetitionMultiplier? {
-      return { 
-        type: "repetition", 
+grouping
+  = "(" _ elements:sequence _ ")" modifiers:modifiers? repeater:repeater? {
+      const grouping = { 
+        type: "grouping", 
         content: elements,
-        repeat: multiplier ?? 1
-      };
+        ...modifiers
+      };      
+      return repeater 
+        ? { 
+            type: "repetition", 
+            content: [grouping],
+            repeat: repeater
+          }
+        : grouping;
     }
 
-repetitionMultiplier
+modifiers
+  = mods:modifier+ {
+      // disallow duplicates
+      const modTypes = new Set();
+      for(const mod of mods) {
+        const type = Object.keys(mod)[0];
+        if(modTypes.has(type)) {
+          throw new Error(`Duplicate modifier: ${type}`);
+        }
+        modTypes.add(type);
+      }
+      return Object.assign({}, ...mods);
+    }
+
+modifier
+  = velocityMod
+  / durationMod
+  / timeUntilNextMod
+
+velocityMod
+  = "v" num:[0-9]+ {
+      const val = parseInt(num.join(""), 10);
+      if (val < 0 || val > 127) {
+        throw new Error("Velocity out of range (0–127)");
+      }
+      return { velocity: val };
+    }
+
+durationMod
+  = "n" value:unsignedDecimal? {
+      return { duration: value };
+    }
+
+timeUntilNextMod
+  = "t" value:unsignedDecimal? {
+      return { timeUntilNext: value };
+    }
+
+repeater
   = "*" count:unsignedInteger {
       return count;
     }
 
-// For the note rule
 note
-  = pitch:pitch velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? multiplier:repetitionMultiplier? {
-      return multiplier 
+  = pitch:pitch modifiers:modifiers? repeater:repeater? {
+      const noteObj = { 
+        type: "note", 
+        pitch: pitch.pitch,
+        name: pitch.name,
+        ...modifiers
+      };      
+      return repeater 
         ? { 
             type: "repetition", 
-            content: [{ 
-              type: "note", 
-              pitch: pitch.pitch,
-              name: pitch.name,
-              velocity, 
-              duration,
-              timeUntilNext,
-            }],
-            repeat: multiplier
+            content: [noteObj],
+            repeat: repeater
           }
-        : { 
-            type: "note", 
-            pitch: pitch.pitch,
-            name: pitch.name,
-            velocity, 
-            duration,
-            timeUntilNext,
-          };
+        : noteObj;
     }
 
-// For the chord rule
 chord
-  = "[" _ head:note tail:(WS note)* _ "]" velocity:velocity? duration:duration? timeUntilNext:timeUntilNext? multiplier:repetitionMultiplier? {
+  = "[" _ head:note tail:(WS note)* _ "]" modifiers:modifiers? repeater:repeater? {
       const chord = { 
         type: "chord", 
         notes: [head, ...tail.map(t => t[1])], 
-        velocity,
-        duration,
-        timeUntilNext,
-      };
-      return multiplier 
+        ...modifiers
+      };      
+      return repeater 
         ? { 
             type: "repetition", 
             content: [chord],
-            repeat: multiplier
+            repeat: repeater
           }
         : chord;
     }
 
 rest
-  = "R" duration:absoluteDuration? multiplier:repetitionMultiplier? {
+  = "R" value:unsignedDecimal? repeater:repeater? {
       const rest = { 
         type: "rest", 
-        duration: duration,
-      };
-      return multiplier 
+        duration: value
+      };    
+      return repeater 
         ? { 
             type: "repetition", 
             content: [rest],
-            repeat: multiplier
+            repeat: repeater
           }
         : rest;
     }
@@ -129,32 +152,13 @@ pitchClass
       return { name: pc, value: values[pc] };
     }
 
-velocity
-  = "v" num:[0-9]+ {
-      const val = parseInt(num.join(""), 10);
-      if (val < 0 || val > 127) {
-        throw new Error("Velocity out of range (0–127)");
-      }
-      return val;
-    }
-
-absoluteDuration
+unsignedDecimal
   = num:[0-9]+ decimal:("." [0-9]+)? {
       const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
       return Number.parseFloat(numStr);
     }
   / "." decimal:[0-9]+ {
       return Number.parseFloat("0." + decimal.join(""));
-    }
-
-duration
-  = "n" duration:absoluteDuration? {
-      return duration;
-    }
-
-timeUntilNext
-  = "t" duration:absoluteDuration? {
-      return duration;
     }
 
 unsignedInteger

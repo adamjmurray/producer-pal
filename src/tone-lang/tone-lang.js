@@ -26,68 +26,169 @@ export function midiPitchToName(midiPitch) {
  * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>}
  */
 function convertToneLangAstToEvents(ast) {
-  // Helper function to process a sequence of elements
-  function processSequence(elements, startTime) {
-    const events = [];
-    let currentTime = startTime;
+  const allEvents = [];
 
-    for (const element of elements) {
-      if (element.type === "rest") {
-        currentTime += element.duration ?? DEFAULT_DURATION;
-      } else if (element.type === "note") {
+  // Process each sequence (AKA voice)
+  for (const sequence of ast) {
+    let events = [];
+    let currentTime = 0;
+
+    // Process each element in sequence
+    for (let i = 0; i < sequence.length; i++) {
+      const element = sequence[i];
+      const elementEvents = processElement(element, currentTime);
+
+      // Add events and update current time
+      events.push(...elementEvents.events);
+      currentTime += elementEvents.duration;
+    }
+
+    allEvents.push(...events);
+  }
+
+  return allEvents;
+}
+
+// Update processElement function in src/tone-lang/tone-lang.js
+function processElement(element, startTime) {
+  let events = [];
+  let duration = 0;
+
+  switch (element.type) {
+    case "note": {
+      // Note implementation unchanged
+      const noteDuration = element.duration ?? DEFAULT_DURATION;
+      const velocity = element.velocity ?? DEFAULT_VELOCITY;
+
+      events.push({
+        pitch: element.pitch,
+        start_time: startTime,
+        duration: noteDuration,
+        velocity: velocity,
+      });
+
+      duration = element.timeUntilNext ?? noteDuration;
+      break;
+    }
+
+    case "chord": {
+      const chordDuration = element.duration ?? DEFAULT_DURATION;
+
+      // Add notes to events list (unchanged)
+      element.notes.forEach((note) => {
+        const noteDuration = note.duration ?? chordDuration;
+        const velocity = note.velocity ?? element.velocity ?? DEFAULT_VELOCITY;
+
         events.push({
-          pitch: element.pitch,
-          start_time: currentTime,
-          duration: element.duration ?? DEFAULT_DURATION,
-          velocity: element.velocity ?? DEFAULT_VELOCITY,
+          pitch: note.pitch,
+          start_time: startTime,
+          duration: noteDuration,
+          velocity: velocity,
         });
-        currentTime += element.timeUntilNext ?? element.duration ?? DEFAULT_DURATION;
-      } else if (element.type === "chord") {
-        const chordDuration = element.duration ?? DEFAULT_DURATION;
-        const chordVelocity = element.velocity ?? DEFAULT_VELOCITY;
-        for (const note of element.notes) {
-          events.push({
-            pitch: note.pitch,
-            start_time: currentTime,
-            duration: note.duration ?? chordDuration,
-            velocity: note.velocity ?? chordVelocity,
-          });
-        }
-        currentTime += element.timeUntilNext ?? chordDuration;
-      } else if (element.type === "repetition") {
-        // Process the content of the repetition once to get the events and duration
-        const [contentEvents, contentDuration] = processSequence(element.content, 0);
+      });
 
-        // Repeat the content the specified number of times
-        for (let i = 0; i < element.repeat; i++) {
-          for (const event of contentEvents) {
-            events.push({
-              ...event,
-              start_time: currentTime + event.start_time,
-            });
-          }
-          currentTime += contentDuration;
+      // NEW: Calculate maximum note duration for timing
+      const maxNoteDuration = Math.max(...element.notes.map((note) => note.duration ?? chordDuration));
+
+      // Use timeUntilNext if specified, otherwise use maximum note duration
+      duration = element.timeUntilNext ?? maxNoteDuration;
+      break;
+    }
+
+    case "rest": {
+      // Rest implementation unchanged
+      duration = element.duration ?? DEFAULT_DURATION;
+      break;
+    }
+
+    case "grouping": {
+      let groupTime = startTime;
+
+      // Process group contents (unchanged)
+      for (const groupElement of element.content) {
+        const result = processElement(groupElement, groupTime);
+        events.push(...result.events);
+        groupTime += result.duration;
+      }
+
+      // CHANGED: Ignore timeUntilNext on groupings
+      const naturalDuration = groupTime - startTime;
+      duration = naturalDuration;
+      break;
+    }
+
+    case "repetition": {
+      // Repetition implementation unchanged
+      let repeatTime = startTime;
+
+      for (let i = 0; i < element.repeat; i++) {
+        for (const subElement of element.content) {
+          const result = processElement(subElement, repeatTime);
+          events.push(...result.events);
+          repeatTime += result.duration;
         }
       }
-    }
 
-    return [events, currentTime - startTime];
+      duration = repeatTime - startTime;
+      break;
+    }
   }
 
-  // Process the AST based on whether it's single or multiple voices
-  if (Array.isArray(ast) && ast.length > 0 && Array.isArray(ast[0])) {
-    // Multiple voices
-    const allEvents = [];
-    for (const voice of ast) {
-      const [voiceEvents] = processSequence(voice, 0);
-      allEvents.push(...voiceEvents);
+  return { events, duration };
+}
+
+// In tone-lang.js after calling parser.parse()
+function applyContainerModifiers(ast) {
+  // Process each sequence (AKA voice)
+  return ast.map((sequence) => {
+    return applyModifiersToSequence(sequence);
+  });
+}
+
+function applyModifiersToSequence(sequence, parentModifiers = {}) {
+  return sequence.map((element) => {
+    // Create a copy and apply parent modifiers to all element types
+    let result = { ...element };
+
+    // Apply parent modifiers to all element types
+    result.velocity = result.velocity ?? parentModifiers.velocity;
+    result.duration = result.duration ?? parentModifiers.duration;
+    result.timeUntilNext = result.timeUntilNext ?? parentModifiers.timeUntilNext;
+
+    switch (result.type) {
+      case "chord":
+        // Apply chord modifiers to notes that don't have their own
+        result.notes = result.notes.map((note) => {
+          return {
+            ...note,
+            velocity: note.velocity ?? result.velocity,
+            duration: note.duration ?? result.duration,
+          };
+        });
+        break;
+
+      case "grouping":
+        // Apply group modifiers to contained elements
+        result.content = applyModifiersToSequence(result.content, {
+          velocity: result.velocity,
+          duration: result.duration,
+          timeUntilNext: result.timeUntilNext,
+        });
+        break;
+
+      case "repetition":
+        // Process repetition content with parent modifiers
+        result.content = result.content.map((item) => {
+          if (item.type === "grouping" || item.type === "chord") {
+            return applyModifiersToSequence([item], parentModifiers)[0];
+          }
+          return item;
+        });
+        break;
     }
-    return allEvents;
-  } else {
-    // Single voice
-    const [events] = processSequence(ast, 0);
-    return events;
-  }
+
+    return result;
+  });
 }
 
 /**
@@ -100,31 +201,16 @@ export function parseToneLang(toneLangExpression) {
 
   try {
     const ast = parser.parse(toneLangExpression);
-
-    if (Array.isArray(ast) && ast.length > 0 && Array.isArray(ast[0]) && ast[0].type === undefined) {
-      // Process multiple voices
-      const allEvents = [];
-      for (const voice of ast) {
-        const voiceEvents = convertToneLangAstToEvents(voice);
-        allEvents.push(...voiceEvents);
-      }
-      return allEvents;
-    }
-
-    // Single voice
-    return convertToneLangAstToEvents(ast);
+    const modifiedAst = applyContainerModifiers(ast);
+    return convertToneLangAstToEvents(modifiedAst);
   } catch (error) {
     if (error.name === "SyntaxError") {
-      // Extract useful information from the Peggy error
       const location = error.location || {};
       const position = location.start
         ? `at position ${location.start.offset} (line ${location.start.line}, column ${location.start.column})`
         : "at unknown position";
 
-      // Build a more helpful error message
       let helpfulMessage = `ToneLang syntax error ${position}: `;
-
-      // Add a hint based on the character that caused the error
       const invalidChar = error.found || "";
 
       if (/^\d+$/.test(invalidChar)) {
@@ -132,14 +218,12 @@ export function parseToneLang(toneLangExpression) {
       } else if (invalidChar === ".") {
         helpfulMessage += `Decimal points must be preceded by a number or a modifier (e.g., 'n0.5' or 'n.5').`;
       } else {
-        // General case
         helpfulMessage += `Unexpected '${invalidChar}'. Valid syntax includes note names (C-G with optional # or b), `;
         helpfulMessage += `velocity (v), duration (n), time until next (t), rests (R), or chords using [].`;
       }
 
       throw new Error(helpfulMessage);
     }
-    // Re-throw other errors
     throw error;
   }
 }

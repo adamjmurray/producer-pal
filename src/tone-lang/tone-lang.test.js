@@ -466,3 +466,139 @@ describe("Repetition", () => {
     expect(() => parseToneLang("C4*-2")).toThrow(/syntax error.*Unexpected '-'/);
   });
 });
+
+describe("Grammar Updates", () => {
+  it("handles groupings with modifiers", () => {
+    const result = parseToneLang("(C3 D3)v90");
+
+    expect(result).toHaveLength(2);
+    expect(result[0].velocity).toBe(90);
+    expect(result[1].velocity).toBe(90);
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(1);
+  });
+
+  it("handles modifiers in different orders", () => {
+    const resultVNT = parseToneLang("C3v80n2t3");
+    const resultNVT = parseToneLang("C3n2v80t3");
+    const resultTNV = parseToneLang("C3t3n2v80");
+
+    [resultVNT, resultNVT, resultTNV].forEach((result) => {
+      expect(result).toHaveLength(1);
+      expect(result[0].velocity).toBe(80);
+      expect(result[0].duration).toBe(2);
+    });
+  });
+
+  it("throws on duplicate modifiers", () => {
+    expect(() => parseToneLang("C3v80v90")).toThrow(/Duplicate modifier/);
+    expect(() => parseToneLang("C3n2n3")).toThrow(/Duplicate modifier/);
+    expect(() => parseToneLang("C3t1t2")).toThrow(/Duplicate modifier/);
+  });
+
+  it("handles complex combinations of groupings, modifiers, and repetition", () => {
+    const result = parseToneLang("(C3 [D3 F3]v90)*2");
+
+    expect(result).toHaveLength(6);
+
+    // Check start times
+    expect(result[0].start_time).toBe(0); // First C3
+    expect(result[1].start_time).toBe(1); // First D3
+    expect(result[2].start_time).toBe(1); // First F3
+    expect(result[3].start_time).toBe(2); // Second C3
+    expect(result[4].start_time).toBe(3); // Second D3
+    expect(result[5].start_time).toBe(3); // Second F3
+
+    // Check velocities
+    expect(result[0].velocity).toBe(70); // Default
+    expect(result[1].velocity).toBe(90); // From chord modifier
+    expect(result[2].velocity).toBe(90); // From chord modifier
+  });
+
+  it("applies velocity modifiers from groupings to contained notes", () => {
+    const result = parseToneLang("([C3 E3] D3v50)v90");
+
+    expect(result).toHaveLength(3);
+    expect(result[0].velocity).toBe(90); // C3 from grouping
+    expect(result[1].velocity).toBe(90); // E3 from grouping
+    expect(result[2].velocity).toBe(50); // D3 keeps its own velocity
+  });
+
+  it("advances time cursor by maximum note duration in a chord when t is not specified", () => {
+    const result = parseToneLang("[C3n1 D3n2 E3n3]");
+
+    // All notes start at the same time
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(0);
+    expect(result[2].start_time).toBe(0);
+
+    // Notes have their respective durations
+    expect(result[0].duration).toBe(1);
+    expect(result[1].duration).toBe(2);
+    expect(result[2].duration).toBe(3);
+
+    // Check that the next element starts after the longest note
+    const result2 = parseToneLang("[C3n1 D3n2 E3n3] G3");
+    expect(result2[3].start_time).toBe(3); // After the longest note (E3n3)
+  });
+
+  it("uses chord t value to override child note durations for timing", () => {
+    const result = parseToneLang("[C3n1 D3n2 E3n3]t4 G3");
+
+    // All notes start at the same time
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(0);
+    expect(result[2].start_time).toBe(0);
+
+    // Notes have their respective durations
+    expect(result[0].duration).toBe(1);
+    expect(result[1].duration).toBe(2);
+    expect(result[2].duration).toBe(3);
+
+    // G3 starts after t4, not after the longest note
+    expect(result[3].start_time).toBe(4);
+  });
+
+  it("ignores t on a grouping for timing purposes", () => {
+    const result = parseToneLang("(C3 D3)t5 G3");
+
+    // C3 and D3 are processed normally
+    expect(result[0].start_time).toBe(0);
+    expect(result[1].start_time).toBe(5);
+
+    // G3 starts after the natural duration of the grouping, ignoring t5
+    expect(result[2].start_time).toBe(10);
+  });
+
+  it("handles complex combinations of chords, groupings, and modifiers", () => {
+    const result = parseToneLang("(C3 [D3n1 E3n2 F3n3]) G3");
+
+    // C3 starts at the beginning of the grouping
+    expect(result[0].start_time).toBe(0);
+
+    // D3, E3, F3 form a chord that starts after C3
+    expect(result[1].start_time).toBe(1);
+    expect(result[2].start_time).toBe(1);
+    expect(result[3].start_time).toBe(1);
+
+    // The chord advances by the maximum note duration (F3n3)
+    // Total grouping duration: 1 (for C3) + 3 (for the chord) = 4
+    expect(result[4].start_time).toBe(4);
+  });
+
+  it("handles grouping modifiers with repetition", () => {
+    const result = parseToneLang("(C3 D3)v90*2 G3");
+
+    // All notes in the grouping inherit velocity 90
+    expect(result[0].velocity).toBe(90);
+    expect(result[1].velocity).toBe(90);
+    expect(result[2].velocity).toBe(90);
+    expect(result[3].velocity).toBe(90);
+
+    // G3 has default velocity
+    expect(result[4].velocity).toBe(70);
+
+    // Timing: 2 beats for first group + 2 beats for second group
+    expect(result[4].start_time).toBe(4);
+  });
+});
