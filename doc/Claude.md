@@ -63,6 +63,8 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   you. We need to fix it proactively when it's detected.
 - If you ever notice missing files in the project resources, do not try to infer their contents. Stop and ask if the
   file is missing and should be added to project resources before continuing.
+  - Note that the generated ToneLang parser code (from the peggy.js grammar) is not included in project resources to
+    save space. The grammar is the source of truth.
 
 ## Trusted online resources (if web search is needed to unblock):
 
