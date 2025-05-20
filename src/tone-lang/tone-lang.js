@@ -1,5 +1,5 @@
-// src/tone-lang.js
-import * as parser from "./tone-lang-parser";
+// src/tone-lang/tone-lang.js
+import * as parser from "./parser";
 
 export const DEFAULT_DURATION = 1;
 export const DEFAULT_VELOCITY = 70;

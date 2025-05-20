@@ -1,7 +1,7 @@
-// src/tool-read-scene.test.js
+// src/tools/read-scene.test.js
 import { describe, expect, it } from "vitest";
-import { children, expectedClip, liveApiId, mockLiveApiGet } from "./mock-live-api";
-import { readScene } from "./tool-read-scene";
+import { children, expectedClip, liveApiId, mockLiveApiGet } from "../mock-live-api";
+import { readScene } from "./read-scene";
 
 describe("readScene", () => {
   it("returns scene information when a valid scene exists", () => {

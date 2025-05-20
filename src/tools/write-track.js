@@ -1,5 +1,5 @@
-// src/tool-write-track.js
-import { readTrack } from "./tool-read-track";
+// src/tools/write-track.js
+import { readTrack } from "./read-track";
 
 // Maximum number of tracks we'll auto-create
 export const MAX_AUTO_CREATED_TRACKS = 30;

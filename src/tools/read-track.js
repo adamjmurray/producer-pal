@@ -1,6 +1,6 @@
-// src/tool-read-track.js
-import { midiPitchToName } from "./tone-lang";
-import { readClip } from "./tool-read-clip";
+// src/tools/read-track.js
+import { midiPitchToName } from "../tone-lang/tone-lang";
+import { readClip } from "./read-clip";
 
 export const DEVICE_TYPE_INSTRUMENT = 1;
 export const DEVICE_TYPE_AUDIO_EFFECT = 2;

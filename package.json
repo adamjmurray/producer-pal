@@ -36,7 +36,7 @@
     "test": "npm run parser:build && vitest run",
     "test:watch": "npm run parser:build && vitest",
     "test:coverage": "npm run build && vitest run --coverage",
-    "parser:build": "peggy --format es --output src/tone-lang-parser.js src/tone-lang-grammar.pegjs",
-    "parser:watch": "chokidar src/tone-lang-grammar.pegjs -c 'npm run parser:build'"
+    "parser:build": "peggy --format es --output src/tone-lang/parser.js src/tone-lang/grammar.pegjs",
+    "parser:watch": "chokidar src/tone-lang/grammar.pegjs -c 'npm run parser:build'"
   }
 }

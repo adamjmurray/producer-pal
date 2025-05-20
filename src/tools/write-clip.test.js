@@ -1,4 +1,4 @@
-// src/tool-write-clip.test.js
+// src/tools/write-clip.test.js
 import { describe, expect, it } from "vitest";
 import {
   children,
@@ -9,8 +9,8 @@ import {
   liveApiSet,
   mockLiveApiGet,
   MockSequence,
-} from "./mock-live-api";
-import { MAX_AUTO_CREATED_SCENES, writeClip } from "./tool-write-clip";
+} from "../mock-live-api";
+import { MAX_AUTO_CREATED_SCENES, writeClip } from "./write-clip";
 
 describe("writeClip", () => {
   it("creates a new clip with notes when no clip exists", () => {

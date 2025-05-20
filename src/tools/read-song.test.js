@@ -1,7 +1,7 @@
-// src/tool-read-song.test.js
+// src/tools/read-song.test.js
 import { describe, expect, it } from "vitest";
-import { children, expectedClip, expectedTrack, liveApiId, mockLiveApiGet } from "./mock-live-api";
-import { readSong } from "./tool-read-song";
+import { children, expectedClip, expectedTrack, liveApiId, mockLiveApiGet } from "../mock-live-api";
+import { readSong } from "./read-song";
 
 describe("readSong", () => {
   it("returns live set information including tracks and scenes", () => {

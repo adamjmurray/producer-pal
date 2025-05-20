@@ -29,13 +29,13 @@ jobs:
       - name: Check parser is up-to-date
         run: |
           # Create a backup of the current parser
-          cp src/tone-lang-parser.js parser-backup.js
+          cp src/tone-lang/parser.js parser-backup.js
 
           # Regenerate the parser
           npm run parser:build
 
           # Compare the newly generated parser with the checked-in version
-          if ! diff -q src/tone-lang-parser.js parser-backup.js > /dev/null; then
+          if ! diff -q src/tone-lang/parser.js parser-backup.js > /dev/null; then
             echo "Error: The checked-in parser does not match the generated parser."
             echo "Please run 'npm run parser:build' and commit the changes."
             exit 1

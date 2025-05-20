@@ -1,4 +1,4 @@
-// src/tone-lang.test.js
+// src/tone-lang/tone-lang.test.js
 import { describe, expect, it } from "vitest";
 import { midiPitchToName, parseToneLang } from "./tone-lang";
 

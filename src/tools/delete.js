@@ -1,4 +1,4 @@
-// src/tool-delete.js
+// src/tools/delete.js
 /**
  * Deletes an object by id
  * @param {Object} args - The parameters

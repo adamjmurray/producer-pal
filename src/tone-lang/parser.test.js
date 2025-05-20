@@ -1,6 +1,6 @@
-// src/tone-lang-parser.test.js
+// src/tone-lang/parser.test.js
 import { describe, expect, it } from "vitest";
-import * as parser from "./tone-lang-parser";
+import * as parser from "./parser";
 
 describe("ToneLang Parser", () => {
   it("parses simple notes", () => {

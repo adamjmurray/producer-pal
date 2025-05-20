@@ -1,7 +1,7 @@
-// src/tool-duplicate.js
-import { readClip } from "./tool-read-clip";
-import { readScene } from "./tool-read-scene";
-import { readTrack } from "./tool-read-track";
+// src/tools/duplicate.js
+import { readClip } from "./read-clip";
+import { readScene } from "./read-scene";
+import { readTrack } from "./read-track";
 
 /**
  * Duplicates an object based on its type

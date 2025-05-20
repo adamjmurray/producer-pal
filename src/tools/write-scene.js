@@ -1,6 +1,6 @@
-// src/tool-write-scene.js
-import { readScene } from "./tool-read-scene";
-import { MAX_AUTO_CREATED_SCENES } from "./tool-write-clip";
+// src/tools/write-scene.js
+import { readScene } from "./read-scene";
+import { MAX_AUTO_CREATED_SCENES } from "./write-clip";
 
 /**
  * Updates a scene at the specified index

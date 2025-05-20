@@ -1,12 +1,7 @@
-// src/tool-read-track.test.js
+// src/tools/read-track.test.js
 import { describe, expect, it } from "vitest";
-import { children, expectedClip, liveApiId, liveApiPath, mockLiveApiGet } from "./mock-live-api";
-import {
-  DEVICE_TYPE_AUDIO_EFFECT,
-  DEVICE_TYPE_INSTRUMENT,
-  DEVICE_TYPE_MIDI_EFFECT,
-  readTrack,
-} from "./tool-read-track";
+import { children, expectedClip, liveApiId, liveApiPath, mockLiveApiGet } from "../mock-live-api";
+import { DEVICE_TYPE_AUDIO_EFFECT, DEVICE_TYPE_INSTRUMENT, DEVICE_TYPE_MIDI_EFFECT, readTrack } from "./read-track";
 
 const mockTrackProperties = (overrides = {}) => ({
   name: "Test Track",

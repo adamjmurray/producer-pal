@@ -1,5 +1,5 @@
-// src/tool-read-clip.js
-import { DEFAULT_DURATION, DEFAULT_VELOCITY } from "./tone-lang.js";
+// src/tools/read-clip.js
+import { DEFAULT_DURATION, DEFAULT_VELOCITY } from "../tone-lang/tone-lang.js";
 
 /**
  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")

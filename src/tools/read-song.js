@@ -1,6 +1,6 @@
-// src/tool-read-song.js
-import { readScene } from "./tool-read-scene";
-import { readTrack } from "./tool-read-track";
+// src/tools/read-song.js
+import { readScene } from "./read-scene";
+import { readTrack } from "./read-track";
 
 export function readSong() {
   const liveSet = new LiveAPI("live_set");

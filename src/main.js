@@ -3,18 +3,18 @@
 
 import * as console from "./console";
 import "./live-api-extensions";
-import { captureScene } from "./tool-capture-scene";
-import { deleteObject } from "./tool-delete";
-import { duplicate } from "./tool-duplicate";
-import { readClip } from "./tool-read-clip";
-import { readScene } from "./tool-read-scene";
-import { readSong } from "./tool-read-song";
-import { readTrack } from "./tool-read-track";
-import { transport } from "./tool-transport";
-import { writeClip } from "./tool-write-clip";
-import { writeScene } from "./tool-write-scene";
-import { writeSong } from "./tool-write-song";
-import { writeTrack } from "./tool-write-track";
+import { captureScene } from "./tools/capture-scene";
+import { deleteObject } from "./tools/delete";
+import { duplicate } from "./tools/duplicate";
+import { readClip } from "./tools/read-clip";
+import { readScene } from "./tools/read-scene";
+import { readSong } from "./tools/read-song";
+import { readTrack } from "./tools/read-track";
+import { transport } from "./tools/transport";
+import { writeClip } from "./tools/write-clip";
+import { writeScene } from "./tools/write-scene";
+import { writeSong } from "./tools/write-song";
+import { writeTrack } from "./tools/write-track";
 
 const tools = {
   "read-song": () => readSong(),

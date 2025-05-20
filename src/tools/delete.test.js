@@ -1,7 +1,7 @@
-// src/tool-delete.test.js
+// src/tools/delete.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiPath, liveApiType } from "./mock-live-api";
-import { deleteObject } from "./tool-delete";
+import { liveApiCall, liveApiId, liveApiPath, liveApiType } from "../mock-live-api";
+import { deleteObject } from "./delete";
 
 describe("deleteObject", () => {
   it("should delete a track when type is 'track'", () => {

@@ -1,7 +1,7 @@
-// src/tool-write-song.test.js
+// src/tools/write-song.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiSet } from "./mock-live-api";
-import { writeSong } from "./tool-write-song";
+import { liveApiCall, liveApiSet } from "../mock-live-api";
+import { writeSong } from "./write-song";
 
 describe("writeSong", () => {
   it("should update tempo", () => {

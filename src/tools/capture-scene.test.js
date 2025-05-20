@@ -1,7 +1,7 @@
-// src/tool-capture-scene.test.js
+// src/tools/capture-scene.test.js
 import { describe, expect, it } from "vitest";
-import { expectedScene, liveApiCall, liveApiPath, liveApiSet, mockLiveApiGet } from "./mock-live-api";
-import { captureScene } from "./tool-capture-scene";
+import { expectedScene, liveApiCall, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import { captureScene } from "./capture-scene";
 
 describe("captureScene", () => {
   it("should capture the currently playing clips", () => {

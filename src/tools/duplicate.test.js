@@ -1,7 +1,7 @@
-// src/tool-duplicate.test.js
+// src/tools/duplicate.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiPath, liveApiSet, mockLiveApiGet } from "./mock-live-api";
-import { duplicate } from "./tool-duplicate";
+import { liveApiCall, liveApiId, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import { duplicate } from "./duplicate";
 
 describe("duplicate", () => {
   it("should throw an error when type is missing", () => {

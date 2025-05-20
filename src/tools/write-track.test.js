@@ -1,7 +1,7 @@
-// src/tool-write-track.test.js
+// src/tools/write-track.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
-import { MAX_AUTO_CREATED_TRACKS, writeTrack } from "./tool-write-track";
+import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import { MAX_AUTO_CREATED_TRACKS, writeTrack } from "./write-track";
 
 describe("writeTrack", () => {
   beforeEach(() => {

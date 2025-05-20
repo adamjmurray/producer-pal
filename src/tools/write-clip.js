@@ -1,6 +1,6 @@
-// src/tool-write-clip.js
-import { parseToneLang } from "./tone-lang";
-import { readClip } from "./tool-read-clip";
+// src/tools/write-clip.js
+import { parseToneLang } from "../tone-lang/tone-lang";
+import { readClip } from "./read-clip";
 
 // Maximum number of scenes we'll auto-create
 export const MAX_AUTO_CREATED_SCENES = 100;

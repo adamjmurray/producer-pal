@@ -1,7 +1,7 @@
-// src/tool-transport.test.js
+// src/tools/transport.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
-import { transport } from "./tool-transport";
+import { liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import { transport } from "./transport";
 
 describe("transport", () => {
   it("should throw an error when action is missing", () => {

@@ -1,5 +1,5 @@
-// src/tool-read-scene.js
-import { readClip } from "./tool-read-clip";
+// src/tools/read-scene.js
+import { readClip } from "./read-clip";
 
 /**
  * Read comprehensive information about a scene

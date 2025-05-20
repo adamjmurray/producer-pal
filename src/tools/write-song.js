@@ -1,5 +1,5 @@
-// src/tool-write-song.js
-import { readSong } from "./tool-read-song";
+// src/tools/write-song.js
+import { readSong } from "./read-song";
 /**
  * Updates Live Set parameters like tempo, time signature, and playback state
  * @param {Object} args - The parameters

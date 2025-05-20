@@ -1,4 +1,4 @@
-// src/tool-transport.js
+// src/tools/transport.js
 /**
  * Unified control for all playback functionality in both Arranger and Session views
  * @param {Object} args - The parameters

@@ -1,12 +1,7 @@
-// src/tool-read-clip.test.js
+// src/tools/read-clip.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, liveApiPath, mockLiveApiGet } from "./mock-live-api";
-import {
-  convertClipNotesToToneLang,
-  convertDrumClipNotesToToneLang,
-  midiPitchToNoteName,
-  readClip,
-} from "./tool-read-clip";
+import { children, liveApiCall, liveApiId, liveApiPath, mockLiveApiGet } from "../mock-live-api";
+import { convertClipNotesToToneLang, convertDrumClipNotesToToneLang, midiPitchToNoteName, readClip } from "./read-clip";
 
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists", () => {

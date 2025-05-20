@@ -1,5 +1,5 @@
-// src/tool-capture-scene.js
-import { readScene } from "./tool-read-scene";
+// src/tools/capture-scene.js
+import { readScene } from "./read-scene";
 
 /**
  * Captures the currently playing clips into a new scene

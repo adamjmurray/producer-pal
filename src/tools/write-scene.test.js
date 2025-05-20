@@ -1,8 +1,8 @@
-// src/tool-write-scene.test.js
+// src/tools/write-scene.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "./mock-live-api";
-import { MAX_AUTO_CREATED_SCENES } from "./tool-write-clip";
-import { writeScene } from "./tool-write-scene";
+import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import { MAX_AUTO_CREATED_SCENES } from "./write-clip";
+import { writeScene } from "./write-scene";
 
 describe("writeScene", () => {
   beforeEach(() => {
