@@ -23,7 +23,7 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   are using the MCP TypeScript SDK, but our code must be JavaScript.
 - We are using the 2025-03-26 version of the model context protocol (MCP).
 - The UI for interacting with the AI will be the Claude Desktop app
-- All functionality within Live should be provided by a single Max for Live device
+- All functionality within Live is provided by a single Max for Live device
 - We use the new StreamableHttp transport for MCP because the
   [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
 - Claude Desktop requires an adapter between its stdio transport and an HTTP MCP server. We use the library `mcp-proxy`
@@ -31,35 +31,23 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - We are using Live 12.2 and Max 9
 - We are using Node.js 20
 - The repository root is `/Users/adammurray/workspace/ableton-live-composition-assistant`
-- The path to the Max for Live device and source code is
-  `/Users/adammurray/workspace/ableton-live-composition-assistant/device`
-- The code is separated into the MCP server that runs on Node.js (via Node for Max) and the JavaScript code that runs in
-  the embedded V8 engine (via the Max v8 object).
-  - The entry point for the MCP server is `device/mcp-server.mjs`. This imports the code from `device/mcp-server/**`. As
-    indicated by the filenames, these are ESM files. They must be ESM so we can mock the `max-api` import in our tests
-    for this part of the code base (import mocking is not compatible with CJS).
-  - The entry point for the v8 code is `device/main.js`. The Max v8 object does not support ESM, so this code and all
-    the code it requires must be CJS. Additionally, it must use a flat folder structure, so all the code is in the
-    `device` folder next to `device/main.js`.
-  - All the test code for the CJS code must use imports for vitest file watching and auto-rerunning to work
+- The path to the source code is `/Users/adammurray/workspace/ableton-live-composition-assistant/src`
+- We build two JavaScript bundles with rollup.js. One bundle is for the MCP server that runs on Node.js (via Node for
+  Max). The other bundle is the JavaScript code that runs in the embedded V8 engine (via the Max v8 object).
+  - The entry point for the MCP server is `src/mcp-server.mjs`. This imports the code from `src/mcp-server/**`. As
+    indicated by the filenames, these are ESM files.
+  - The entry point for the v8 code is `src/main.js`
 - source code files must always include the relative path to the file in a comment on the first line, so the context is
   clear when these files are added to project knowledge
-- Keep code commenting to a minimum by default unless something unusual requires explanation. Add more comments to
-  resolve confusion or clarify answers to questions.
+- Keep code commenting to a minimum
+- The Max for Live device is in `/Users/adammurray/workspace/ableton-live-composition-assistant/device`. The two
+  JavaScript bundles build to this folder.
 - Calling the Live API has idiosyncrasies, such as properties needing to be to be accessed via
   `track.get("propertyName")?.[0]`. To make this less awkward, a cleaner interface is provided in
-  `device/live-api-extensions.js`. Use this interface whenever possible.
-- `package.json` must NOT set `"type"`. Setting this to `"module"` breaks the vitest test suite because it needs to
-  require CJS code for the v8 object (which contains the tool implementations we are primarily interested in testing).
-  Setting this to `"commonjs"` breaks the bootstrapping of the `mcp-server.mjs` module in the Node for Max object, which
-  is needed to enable importing with modern style.
+  `src/live-api-extensions.js`. Use this interface whenever possible.
 - In the Node for Max, log with `Max.post()` calls
-- In v8 code, we can use `const console = require("console");` to get a browser console-like logger (with `log()` and
+- In v8 code, we can use `import * as console from "./console";` to get a browser console-like logger (with `log()` and
   `error()` functions)
-- When requiring other files in the v8 code, we must use `./file.js` instead of `file.js`, otherwise it will not resolve
-  correctly in the vitest test suite.
-- If you ever notice duplicate files in the project resources, let the user know! This is a mistake and will confuse
-  you. We need to fix it proactively when it's detected.
 - Prefer `== null` checks instead of `=== null` or `=== undefined` (and similarly for `!= null`). Prefer `x ?? y`
   instead of `x === undefined ? y : x` and similar expressions. Occasionally, we really do need to distinguish between
   null and undefined to support optional explicit nulls, and those are the only situations we should do things like
@@ -72,11 +60,10 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
   with this, but that is not ideal and may not work robustly across computers with different CPU characteristics.
   Therefore, for playback-related state, we return optimistic results assuming the operation succeeded (e.g. assume a
   clip isTriggered:true when autoplaying it)
+- If you ever notice duplicate files in the project resources, let the user know! This is a mistake and will confuse
+  you. We need to fix it proactively when it's detected.
 - If you ever notice missing files in the project resources, do not try to infer their contents. Stop and ask if the
   file is missing and should be added to project resources before continuing.
-- If all the code is updated, tests pass, but things don't work correctly in an end-to-end test, remember that the Max
-  for Live device hosting the MCP server needs to be restarted. The easiest way to do this is delete the device and then
-  undo to restore it.
 
 ## Trusted online resources (if web search is needed to unblock):
 
