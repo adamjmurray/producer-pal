@@ -3,7 +3,7 @@ export default [
   {
     input: "src/main.js",
     output: {
-      file: "build/main.js",
+      file: "device/main.js",
       format: "es",
     },
     plugins: [
@@ -13,7 +13,7 @@ export default [
   {
     input: "src/mcp-server.mjs",
     output: {
-      file: "build/mcp-server.mjs",
+      file: "device/mcp-server.mjs",
       format: "es",
     },
     external: [

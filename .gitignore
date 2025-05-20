@@ -1,5 +1,5 @@
 .DS_Store
 node_modules
 coverage
-build/main.js
-build/mcp-server.mjs
+device/*.js
+device/*.mjs
