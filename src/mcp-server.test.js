@@ -37,7 +37,7 @@ describe("MCP Express App", () => {
 
   beforeAll(async () => {
     // Import and start the server
-    const { createExpressApp } = await import("./mcp-server/create-express-app.mjs");
+    const { createExpressApp } = await import("./mcp-server/create-express-app");
 
     const app = createExpressApp();
     const port = await new Promise((resolve) => {

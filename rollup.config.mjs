@@ -11,9 +11,9 @@ export default [
     ],
   },
   {
-    input: "src/mcp-server.mjs",
+    input: "src/mcp-server.js",
     output: {
-      file: "device/mcp-server.mjs",
+      file: "device/mcp-server.js",
       format: "es",
     },
     external: [

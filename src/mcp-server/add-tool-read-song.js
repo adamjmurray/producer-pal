@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-read-song.mjs
+// src/mcp-server/add-tool-read-song.js
 
 export function addToolReadSong(server, callLiveApi) {
   server.tool(

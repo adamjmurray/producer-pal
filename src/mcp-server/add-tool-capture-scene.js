@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-capture-scene.mjs
+// src/mcp-server/add-tool-capture-scene.js
 import { z } from "zod";
 
 export function addToolCaptureScene(server, callLiveApi) {

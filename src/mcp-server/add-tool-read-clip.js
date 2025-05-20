@@ -1,6 +1,6 @@
-// src/mcp-server/add-tool-read-clip.mjs
+// src/mcp-server/add-tool-read-clip.js
 import { z } from "zod";
-import { TONE_LANG_DESCRIPTION } from "./tone-lang-description.mjs";
+import { TONE_LANG_DESCRIPTION } from "./tone-lang-description";
 
 export function addToolReadClip(server, callLiveApi) {
   server.tool(

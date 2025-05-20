@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-write-song.mjs
+// src/mcp-server/add-tool-write-song.js
 import { z } from "zod";
 
 export function addToolWriteSong(server, callLiveApi) {

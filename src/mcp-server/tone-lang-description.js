@@ -1,4 +1,4 @@
-// src/mcp-server/tone-lang-description.mjs
+// src/mcp-server/tone-lang-description.js
 export const TONE_LANG_DESCRIPTION = `<tone-lang-specification>
 ToneLang is a compact music notation syntax.
 

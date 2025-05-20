@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-transport.mjs
+// src/mcp-server/add-tool-transport.js
 import { z } from "zod";
 
 export function addToolTransport(server, callLiveApi) {

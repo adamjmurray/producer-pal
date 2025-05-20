@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-read-track.mjs
+// src/mcp-server/add-tool-read-track.js
 import { z } from "zod";
 
 export function addToolReadTrack(server, callLiveApi) {

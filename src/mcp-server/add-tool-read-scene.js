@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-read-scene.mjs
+// src/mcp-server/add-tool-read-scene.js
 import { z } from "zod";
 
 export function addToolReadScene(server, callLiveApi) {

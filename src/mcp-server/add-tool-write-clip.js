@@ -1,6 +1,6 @@
-// src/mcp-server/add-tool-write-clip.mjs
+// src/mcp-server/add-tool-write-clip.js
 import { z } from "zod";
-import { TONE_LANG_DESCRIPTION } from "./tone-lang-description.mjs";
+import { TONE_LANG_DESCRIPTION } from "./tone-lang-description";
 
 export function addToolWriteClip(server, callLiveApi) {
   server.tool(

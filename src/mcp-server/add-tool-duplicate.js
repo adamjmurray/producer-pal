@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-duplicate.mjs
+// src/mcp-server/add-tool-duplicate.js
 import { z } from "zod";
 
 export function addToolDuplicate(server, callLiveApi) {

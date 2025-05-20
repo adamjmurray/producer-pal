@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-write-scene.mjs
+// src/mcp-server/add-tool-write-scene.js
 import { z } from "zod";
 
 export function addToolWriteScene(server, callLiveApi) {

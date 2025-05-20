@@ -1,10 +1,10 @@
-// src/mcp-server/create-express-app.mjs
+// src/mcp-server/create-express-app.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import Max from "max-api";
 import crypto from "node:crypto";
-import { createMcpServer } from "./create-mpc-server.mjs";
+import { createMcpServer } from "./create-mpc-server";
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();

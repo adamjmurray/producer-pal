@@ -1,4 +1,4 @@
-// src/mcp-server/add-tool-delete.mjs
+// src/mcp-server/add-tool-delete.js
 import { z } from "zod";
 
 export function addToolDelete(server, callLiveApi) {
