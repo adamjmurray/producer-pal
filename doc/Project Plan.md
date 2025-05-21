@@ -76,7 +76,7 @@ Completed full feature set for core functionality:
     - ✅ Consolidate all playback and transport tools into a single tool
   - Rework all write-\* tools to only update existing objects when given an id arg, and fail to create via index args if
     something already exists at that location (except in the case of arrangement clips - we can keep blindly overwriting
-    those)
+    those). I am debating whether to do this or not.
 
 - **Robustness improvements**:
 
