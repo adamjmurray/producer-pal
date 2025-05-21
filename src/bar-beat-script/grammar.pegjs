@@ -2,28 +2,36 @@
 // BarBeatScript - Bar.Beat.Unit absolute position notation
 
 start
-  = head:element tail:(WS element)* {
+  = _ head:event tail:(_ "," _ event)* _ ","? _ {
+      // flatten list of events into list of notes
+      return [head, ...tail.map(t => t[3])].flat();
+    }
+
+event
+  = startTime:startTime _ ":" _ notes:noteList {
+      return notes.map(note => ({ ...note, start: startTime }));
+    }
+
+noteList
+  = head:note tail:(WS note)* {
       return [head, ...tail.map(t => t[1])];
-    }
-
-element
-  = position:position ":" note:note {
-      return { ...note, position };
-    }
-
-position
-  = bar:integer "." beat:integer "." unit:integer {
-      return { bar, beat, unit };
     }
 
 note
   = pitch:pitch modifiers:modifiers? {
       return { 
-        type: "note", 
         pitch: pitch.pitch,
         name: pitch.name,
         ...modifiers
       };
+    }
+
+startTime
+  = bar:integer "." beat:integer "." unit:integer {
+      return { bar, beat, unit };
+    }
+  / bar:integer "." beat:integer {
+      return { bar, beat, unit: 0 };
     }
 
 modifiers
@@ -54,7 +62,7 @@ velocityMod
     }
 
 durationMod
-  = "t" value:decimal? {
+  = "t" value:unsignedDecimal? {
       return { duration: value };
     }
 
@@ -86,9 +94,9 @@ pitchClass
       return { name: pc, value: values[pc] };
     }
 
-decimal
-  = num:[0-9]+ decimal:("." [0-9]+)? {
-      const numStr = num.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
+unsignedDecimal
+  = int:[0-9]+ decimal:("." [0-9]+)? {
+      const numStr = int.join("") + (decimal ? decimal[0] + decimal[1].join("") : "");
       return Number.parseFloat(numStr);
     }
   / "." decimal:[0-9]+ {

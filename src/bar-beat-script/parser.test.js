@@ -3,53 +3,170 @@ import { describe, expect, it } from "vitest";
 import * as parser from "./parser";
 
 describe("BarBeatScript Parser", () => {
-  it("parses notes with bar.beat.unit notation", () => {
-    const ast = parser.parse("1.1.0:C3 1.2.0:D3 1.3.0:E3");
+  it("parses notes with bar.beat.unit start time notation", () => {
+    expect(parser.parse("1.1.0:C3, 3.2.0:D3, 5.3.240:E3")).toStrictEqual([
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 1, beat: 1, unit: 0 },
+      },
+      {
+        name: "D3",
+        pitch: 62,
+        start: { bar: 3, beat: 2, unit: 0 },
+      },
+      {
+        name: "E3",
+        pitch: 64,
+        start: { bar: 5, beat: 3, unit: 240 },
+      },
+    ]);
+  });
 
-    const [note1, note2, note3] = ast;
+  it("parses notes with bar.beat start time notation", () => {
+    expect(parser.parse("1.1:C3, 3.2:D3, 5.3:E3")).toStrictEqual([
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 1, beat: 1, unit: 0 },
+      },
+      {
+        name: "D3",
+        pitch: 62,
+        start: { bar: 3, beat: 2, unit: 0 },
+      },
+      {
+        name: "E3",
+        pitch: 64,
+        start: { bar: 5, beat: 3, unit: 0 },
+      },
+    ]);
+  });
 
-    expect(note1.position).toEqual({ bar: 1, beat: 1, unit: 0 });
-    expect(note2.position).toEqual({ bar: 1, beat: 2, unit: 0 });
-    expect(note3.position).toEqual({ bar: 1, beat: 3, unit: 0 });
+  it("allows trailing commas", () => {
+    expect(parser.parse("1.1:C3, 3.2:D3  , ")).toStrictEqual([
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 1, beat: 1, unit: 0 },
+      },
+      {
+        name: "D3",
+        pitch: 62,
+        start: { bar: 3, beat: 2, unit: 0 },
+      },
+    ]);
+  });
 
-    expect(note1.pitch).toBe(60); // C3
-    expect(note2.pitch).toBe(62); // D3
-    expect(note3.pitch).toBe(64); // E3
+  it("parses notes with bar.beat.unit start time notation with out of order start times and extra whitespace", () => {
+    expect(
+      parser.parse(`     5.3.240   :   E3,
+1.1.0:C3  ,   3.2 :D3`)
+    ).toStrictEqual([
+      {
+        name: "E3",
+        pitch: 64,
+        start: { bar: 5, beat: 3, unit: 240 },
+      },
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 1, beat: 1, unit: 0 },
+      },
+      {
+        name: "D3",
+        pitch: 62,
+        start: { bar: 3, beat: 2, unit: 0 },
+      },
+    ]);
   });
 
   it("parses notes with modifiers", () => {
     const ast = parser.parse("1.1.0:C3v80t2");
-    const note = ast[0];
-
-    expect(note.velocity).toBe(80);
-    expect(note.duration).toBe(2);
+    expect(ast).toStrictEqual([
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 1, beat: 1, unit: 0 },
+        velocity: 80,
+        duration: 2,
+      },
+    ]);
   });
 
-  it("implicitly forms chords with same position", () => {
-    const ast = parser.parse("1.1.0:C3 1.1.0:E3 1.1.0:G3");
-
-    const [note1, note2, note3] = ast;
-    expect(note1.position).toEqual({ bar: 1, beat: 1, unit: 0 });
-    expect(note2.position).toEqual({ bar: 1, beat: 1, unit: 0 });
-    expect(note3.position).toEqual({ bar: 1, beat: 1, unit: 0 });
-
-    expect(note1.pitch).toBe(60); // C3
-    expect(note2.pitch).toBe(64); // E3
-    expect(note3.pitch).toBe(67); // G3
+  it("supports note modifiers in any order", () => {
+    const ast = parser.parse("1.1.0:C3t2v80");
+    expect(ast).toStrictEqual([
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 1, beat: 1, unit: 0 },
+        velocity: 80,
+        duration: 2,
+      },
+    ]);
   });
 
-  it("handles different unit values", () => {
-    const ast = parser.parse("1.1.120:C3 1.2.240:D3");
+  it("supports multiple notes with for a single start time", () => {
+    const ast = parser.parse("4.3.360:C3 E3 G3");
+    expect(ast).toStrictEqual([
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 4, beat: 3, unit: 360 },
+      },
+      {
+        name: "E3",
+        pitch: 64,
+        start: { bar: 4, beat: 3, unit: 360 },
+      },
+      {
+        name: "G3",
+        pitch: 67,
+        start: { bar: 4, beat: 3, unit: 360 },
+      },
+    ]);
+  });
 
-    const [note1, note2] = ast;
-    expect(note1.position).toEqual({ bar: 1, beat: 1, unit: 120 });
-    expect(note2.position).toEqual({ bar: 1, beat: 2, unit: 240 });
+  it("supports multiple notes with for a single start time, multiple times", () => {
+    const ast = parser.parse("1.1.0:C3 E3 G3, 2.3.120: D3 F3 A3");
+    expect(ast).toStrictEqual([
+      {
+        name: "C3",
+        pitch: 60,
+        start: { bar: 1, beat: 1, unit: 0 },
+      },
+      {
+        name: "E3",
+        pitch: 64,
+        start: { bar: 1, beat: 1, unit: 0 },
+      },
+      {
+        name: "G3",
+        pitch: 67,
+        start: { bar: 1, beat: 1, unit: 0 },
+      },
+      {
+        name: "D3",
+        pitch: 62,
+        start: { bar: 2, beat: 3, unit: 120 },
+      },
+      {
+        name: "F3",
+        pitch: 65,
+        start: { bar: 2, beat: 3, unit: 120 },
+      },
+      {
+        name: "A3",
+        pitch: 69,
+        start: { bar: 2, beat: 3, unit: 120 },
+      },
+    ]);
   });
 
   it("throws error for invalid syntax", () => {
-    expect(() => parser.parse("C3")).toThrow(); // Missing position
+    expect(() => parser.parse("C3")).toThrow(); // Missing start time
     expect(() => parser.parse("1.1.0 C3")).toThrow(); // Missing colon
-    expect(() => parser.parse("1.1:C3")).toThrow(); // Missing unit
     expect(() => parser.parse("0:C3")).toThrow(); // Missing bar.beat.unit format
   });
 
