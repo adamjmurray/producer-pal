@@ -122,6 +122,8 @@ Completed full feature set for core functionality:
     - Support note delay for strum effects on chords. Maybe `[C4 E4y.1 G4y.2]` could play the E4 a tenth of a beat later
       than C4 and G4 two tenths of a beat later than the start of the chord. Need to think through the implications for
       rhythm. timeUntilNext calculations should probably ignore this delay?
+  - Create an alternate syntax to ToneLang called BarBeatScript that uses absolute bar.beat.units positioning, to see if
+    timing works better
   - Randomization features (Maybe? Or maybe save "higher level tools" for 2.0):
     - features to randomize velocities, durations, or start times by some min/max amount when evaluating ToneLang
     - slice & shuffle (rearrange every measure / N beats randomly)
