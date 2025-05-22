@@ -1,5 +1,5 @@
 // src/tools/write-clip.js
-import { parseToneLang } from "../tone-lang/tone-lang";
+import { parseNotation } from "../notation";
 import { readClip } from "./read-clip";
 
 // Maximum number of scenes we'll auto-create
@@ -60,7 +60,7 @@ export function writeClip({
     }
   }
 
-  const notes = parseToneLang(toneLangString);
+  const notes = parseNotation(toneLangString);
   let clip;
 
   // Handle existing clip via clipId

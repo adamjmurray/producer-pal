@@ -1,4 +1,4 @@
-// src/tone-lang/grammar.pegjs
+// src/tonelang/grammar.pegjs
 // ToneLang PEG Grammar
 
 start

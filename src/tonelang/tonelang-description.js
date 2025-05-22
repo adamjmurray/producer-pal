@@ -1,5 +1,5 @@
-// src/mcp-server/tone-lang-description.js
-export const TONE_LANG_DESCRIPTION = `<tone-lang-specification>
+// src/tonelang/tonelang-description.js
+export const TONELANG_DESCRIPTION = `<tonelang-specification>
 ToneLang is a compact music notation syntax for MIDI sequences.
 
 ## Core Elements
@@ -44,4 +44,4 @@ Particularly useful for drums:
 - Counterpoint: \`C3 D3 E3; G2 A2 B2\`
 - Articulation: \`C4n0.5t1 D4n0.5t1\` (staccato notes)
 - Drum beat: \`C1 C1 C1 C1; R D1 R D1; F#1n0.5 F#1n0.5 F#1n0.5 F#1n0.5\`
-</tone-lang-specification>`;
+</tonelang-specification>`;

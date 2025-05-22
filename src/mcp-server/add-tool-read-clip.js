@@ -1,6 +1,6 @@
 // src/mcp-server/add-tool-read-clip.js
 import { z } from "zod";
-import { TONE_LANG_DESCRIPTION } from "./tone-lang-description";
+import { TONELANG_DESCRIPTION } from "../tonelang/tonelang-description";
 
 export function addToolReadClip(server, callLiveApi) {
   server.tool(
@@ -9,7 +9,7 @@ export function addToolReadClip(server, callLiveApi) {
       "For MIDI clips, also returns noteCount and notes as a string in ToneLang format. " +
       "For audio clips, notes and noteCount are null. Returns null values for all fields when the clip slot is empty.\n" +
       "Can be used to read clips by trackIndex and clipSlotIndex (for Session view) or directly by clipId.\n" +
-      TONE_LANG_DESCRIPTION,
+      TONELANG_DESCRIPTION,
     {
       trackIndex: z
         .number()

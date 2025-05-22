@@ -1,24 +1,8 @@
-// src/tone-lang/tone-lang.js
-import * as parser from "./parser";
+// src/tonelang/tonelang.js
+import { DEFAULT_DURATION, DEFAULT_VELOCITY } from "./tonelang-converter";
+import * as parser from "./tonelang-parser";
 
-export const DEFAULT_DURATION = 1;
-export const DEFAULT_VELOCITY = 70;
-
-export const PITCH_CLASS_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-
-/**
- * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
- * @param {number} pitch - MIDI pitch number
- * @returns {string} Pitch name in the ToneLang format like "C3", "F#4", etc, or empty string for invalid inputs.
- */
-export function midiPitchToName(midiPitch) {
-  if (midiPitch >= 0 && midiPitch <= 127) {
-    const pitchClass = midiPitch % 12;
-    const octave = Math.floor(midiPitch / 12) - 2;
-    return `${PITCH_CLASS_NAMES[pitchClass]}${octave}`;
-  }
-  return "";
-}
+export { formatNotation, midiPitchToName } from "./tonelang-converter";
 
 /**
  * Convert parsed ToneLang AST into note events with timing
@@ -49,7 +33,7 @@ function convertToneLangAstToEvents(ast) {
   return allEvents;
 }
 
-// Update processElement function in src/tone-lang/tone-lang.js
+// Update processElement function in src/tonelang/tonelang.js
 function processElement(element, startTime) {
   let events = [];
   let duration = 0;
@@ -137,7 +121,7 @@ function processElement(element, startTime) {
   return { events, duration };
 }
 
-// In tone-lang.js after calling parser.parse()
+// In tonelang.js after calling parser.parse()
 function applyContainerModifiers(ast) {
   // Process each sequence (AKA voice)
   return ast.map((sequence) => {
@@ -196,7 +180,7 @@ function applyModifiersToSequence(sequence, parentModifiers = {}) {
  * @param {string} toneLangExpression - ToneLang string
  * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>}
  */
-export function parseToneLang(toneLangExpression) {
+export function parseNotation(toneLangExpression) {
   if (!toneLangExpression) return [];
 
   try {

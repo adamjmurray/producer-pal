@@ -80,6 +80,7 @@ Completed full feature set for core functionality:
 
 - **Robustness improvements**:
 
+  - Need to distinguish duplicate grammar/parser filenames across the two syntaxes for the Claude project!
   - ✅ Switch over to a rollup based build
   - Validation system for better error handling
     - e.g. start and end time in write-clip
