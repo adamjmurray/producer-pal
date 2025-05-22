@@ -23,7 +23,7 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 - **Velocity (`v<0–127>`)**
 
   - Sets velocity for following notes until changed
-  - Default: 70
+  - Default: 100
   - Requires whitespace separation from following elements
 
 - **Duration (`t<float>`)**
@@ -32,11 +32,15 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Default: 1.0
   - Requires whitespace separation from following elements
 
-- **Note (`C4`, `F#3`, etc.)**
+- **Note (`C4`, `Eb2`, `F#3`, etc.)**
 
-  - Standard pitch notation with octave
+  - Note names follow standard pitch notation using:
+    - A–G (with optional sharp `#` or flat `b`)
+    - Valid pitch classes: C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#, Bb, B
+    - Invalid: `Cb`, `B#`, `Fb`, `E#` (not supported)
+  - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
-  - Valid MIDI pitch range: 0–127
+  - Result must be in valid MIDI range: 0–127
 
 - **Events**
 
