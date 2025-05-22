@@ -30,7 +30,7 @@ jobs:
         run: |
           # Create a backup of the current parsers
           cp src/notation/tonelang/tonelang-parser.js tonelang-parser-backup.js
-          cp src/notation/bar-beat-script/bbs-parser.js bbs-parser-backup.js
+          cp src/notation/barbeat/barbeat-parser.js barbeat-parser-backup.js
 
           # Regenerate the parser
           npm run parser:build
@@ -41,7 +41,7 @@ jobs:
             echo "Please run 'npm run parser:build' and commit the changes."
             exit 1
           fi
-          if ! diff -q src/notation/bar-beat-script/bbs-parser.js bbs-parser-backup.js > /dev/null; then
+          if ! diff -q src/notation/barbeat/barbeat-parser.js barbeat-parser-backup.js > /dev/null; then
             echo "Error: The checked-in bbs parser does not match the generated parser."
             echo "Please run 'npm run parser:build' and commit the changes."
             exit 1
