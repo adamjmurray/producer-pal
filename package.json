@@ -38,8 +38,8 @@
     "test:coverage": "npm run test:setup && vitest run --coverage",
     "test:setup": "npm run parser:build",
     "parser:build": "npm run parser:build:tonelang && npm run parser:build:bbs",
-    "parser:build:tonelang": "peggy --format es --output src/tonelang/tonelang-parser.js src/tonelang/tonelang-grammar.pegjs",
-    "parser:build:bbs": "peggy --format es --output src/bar-beat-script/bbs-parser.js src/bar-beat-script/bbs-grammar.pegjs",
+    "parser:build:tonelang": "peggy --format es --output src/notation/tonelang/tonelang-parser.js src/notation/tonelang/tonelang-grammar.pegjs",
+    "parser:build:bbs": "peggy --format es --output src/notation/bar-beat-script/bbs-parser.js src/notation/bar-beat-script/bbs-grammar.pegjs",
     "parser:watch": "chokidar 'src/**/*.pegjs' -c 'npm run parser:build'"
   }
 }

@@ -1,6 +1,6 @@
 // src/mcp-server/add-tool-write-clip.js
 import { z } from "zod";
-import { TONELANG_DESCRIPTION } from "../tonelang/tonelang-description";
+import { notationDescription } from "../notation/notation";
 
 export function addToolWriteClip(server, callLiveApi) {
   server.tool(
@@ -54,7 +54,7 @@ export function addToolWriteClip(server, callLiveApi) {
       notes: z
         .string()
         .optional()
-        .describe(`Musical notation in ToneLang format. Replaces existing notes. ${TONELANG_DESCRIPTION}`),
+        .describe(`Musical notation in the following notation format. Replaces existing notes. ${notationDescription}`),
 
       autoplay: z
         .boolean()

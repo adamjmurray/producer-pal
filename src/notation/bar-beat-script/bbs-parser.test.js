@@ -1,4 +1,4 @@
-// src/bar-beat-script/parser.test.js
+// src/notation/bar-beat-script/bbs-parser.test.js
 import { describe, expect, it } from "vitest";
 import * as parser from "./bbs-parser";
 

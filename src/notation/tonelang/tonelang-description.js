@@ -1,4 +1,4 @@
-// src/tonelang/tonelang-description.js
+// src/notation/tonelang/tonelang-description.js
 export const TONELANG_DESCRIPTION = `<tonelang-specification>
 ToneLang is a compact music notation syntax for MIDI sequences.
 

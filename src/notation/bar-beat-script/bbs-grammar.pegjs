@@ -1,4 +1,4 @@
-// src/bar-beat-script/grammar.pegjs
+// src/notation/bar-beat-script/bbs-grammar.pegjs
 // BarBeatScript - Bar.Beat.Unit absolute position notation
 
 start

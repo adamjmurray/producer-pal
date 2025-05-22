@@ -1,5 +1,5 @@
 // src/tools/write-clip.js
-import { parseNotation } from "../notation";
+import { parseNotation } from "../notation/notation";
 import { readClip } from "./read-clip";
 
 // Maximum number of scenes we'll auto-create

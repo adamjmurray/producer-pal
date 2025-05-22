@@ -1,4 +1,4 @@
-// src/tonelang/parser.test.js
+// src/notation/tonelang/tonelang-parser.test.js
 import { describe, expect, it } from "vitest";
 import * as parser from "./tonelang-parser";
 

@@ -1,8 +1,9 @@
-// src/tonelang/tonelang.js
+// src/notation/tonelang/tonelang.js
 import { DEFAULT_DURATION, DEFAULT_VELOCITY } from "./tonelang-converter";
 import * as parser from "./tonelang-parser";
 
-export { formatNotation, midiPitchToName } from "./tonelang-converter";
+export { formatNotation } from "./tonelang-converter";
+export { TONELANG_DESCRIPTION as notationDescription } from "./tonelang-description";
 
 /**
  * Convert parsed ToneLang AST into note events with timing

@@ -1,5 +1,5 @@
 // src/tools/read-clip.js
-import { formatNotation } from "../notation";
+import { formatNotation } from "../notation/notation";
 
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a ToneLang string

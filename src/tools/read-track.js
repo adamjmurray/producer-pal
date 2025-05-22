@@ -1,5 +1,5 @@
 // src/tools/read-track.js
-import { midiPitchToName } from "../notation";
+import { midiPitchToName } from "../notation/midi-pitch-to-name";
 import { readClip } from "./read-clip";
 
 export const DEVICE_TYPE_INSTRUMENT = 1;

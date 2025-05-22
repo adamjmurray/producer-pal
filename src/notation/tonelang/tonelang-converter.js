@@ -1,35 +1,8 @@
-// src/tonelang/tonelang-converter.js
+// src/notation/tonelang/tonelang-converter.js
+import { midiPitchToName } from "../midi-pitch-to-name";
 
 export const DEFAULT_DURATION = 1;
 export const DEFAULT_VELOCITY = 70;
-
-export const PITCH_CLASS_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
-
-/**
- * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
- * @param {number} pitch - MIDI pitch number
- * @returns {string} Pitch name in the ToneLang format like "C3", "F#4", etc, or empty string for invalid inputs.
- */
-export function midiPitchToName(midiPitch) {
-  const pitchClass = midiPitch % 12;
-  const octave = Math.floor(midiPitch / 12) - 2;
-  return `${PITCH_CLASS_NAMES[pitchClass]}${octave}`;
-}
-
-// /**
-//  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
-//  * @param {number} pitch - MIDI pitch number
-//  * @returns {string} Note name in the format like "C3", "F#4", etc.
-//  */
-// export function midiPitchToNoteName(pitch) {
-//   const octave = Math.floor(pitch / 12) - 2;
-//   const pitchClass = pitch % 12;
-
-//   // Using sharps by default for simplicity
-//   const pitchClassNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-
-//   return pitchClassNames[pitchClass] + octave;
-// }
 
 /**
  * Format a single note to ToneLang syntax
