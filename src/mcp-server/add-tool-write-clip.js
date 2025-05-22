@@ -54,7 +54,9 @@ export function addToolWriteClip(server, callLiveApi) {
       notes: z
         .string()
         .optional()
-        .describe(`Musical notation in the following notation format. Replaces existing notes. ${notationDescription}`),
+        .describe(
+          `Musical notation in the following BarBeat notation format. Replaces existing notes. ${notationDescription}`
+        ),
 
       autoplay: z
         .boolean()

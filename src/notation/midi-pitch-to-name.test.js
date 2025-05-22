@@ -2,7 +2,7 @@
 import { midiPitchToName } from "./midi-pitch-to-name";
 
 describe("midiPitchToName", () => {
-  it("converts valid midi pitch numbers to ToneLang-compatible strings", () => {
+  it("converts valid midi pitch numbers to notation-syntax-compatible strings", () => {
     expect(midiPitchToName(0)).toBe("C-2"); // Lowest valid MIDI pitch
     expect(midiPitchToName(60)).toBe("C3"); // Middle C
     expect(midiPitchToName(127)).toBe("G8"); // Highest valid MIDI pitch

@@ -2,7 +2,7 @@
 import { formatNotation } from "../notation/notation";
 
 /**
- * Read a MIDI clip from Ableton Live and return its notes as a ToneLang string
+ * Read a MIDI clip from Ableton Live and return its notes as a notation string
  * @param {Object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based)
@@ -67,12 +67,8 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, result.length);
     const notes = JSON.parse(notesDictionary).notes;
 
-    // Use a different ToneLang conversion algorithm for drum tracks and non-drums
-    const track = new LiveAPI(`live_set tracks ${result.trackIndex}`);
-    const isDrumTrack = !!track.getChildren("devices").find((device) => device.getProperty("can_have_drum_pads"));
-
     result.noteCount = notes.length;
-    result.notes = formatNotation(notes, { isDrumTrack });
+    result.notes = formatNotation(notes);
   }
 
   return result;

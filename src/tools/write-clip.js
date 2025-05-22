@@ -14,7 +14,7 @@ export const MAX_CLIP_BEATS = 1_000_000;
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for Session view when not providing clipId
  * @param {string} [args.clipId] - Clip ID to directly update an existing clip
  * @param {number} [args.arrangerStartTime] - Start time in beats for Arranger view clips
- * @param {string} [args.notes] - ToneLang musical notation string
+ * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex, rgb(), or named color)
  * @param {number} [args.startMarker] - Start marker position in beats
@@ -31,7 +31,7 @@ export function writeClip({
   clipSlotIndex = null,
   clipId = null,
   arrangerStartTime = null,
-  notes: toneLangString = null,
+  notes: notationString = null,
   name = null,
   color = null,
   startMarker = null,
@@ -60,7 +60,7 @@ export function writeClip({
     }
   }
 
-  const notes = parseNotation(toneLangString);
+  const notes = parseNotation(notationString);
   let clip;
 
   // Handle existing clip via clipId
@@ -149,7 +149,7 @@ export function writeClip({
     clip.set("looping", loop);
   }
 
-  if (toneLangString != null) {
+  if (notationString != null) {
     clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
     clip.call("add_new_notes", { notes });
   }

@@ -1,9 +1,21 @@
 // src/tools/read-clip.test.js
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { children, liveApiCall, liveApiId, liveApiPath, mockLiveApiGet } from "../mock-live-api";
+import * as notation from "../notation/notation";
 import { readClip } from "./read-clip";
 
+// Spy on notation functions
+const formatNotationSpy = vi.spyOn(notation, "formatNotation");
+
 describe("readClip", () => {
+  beforeEach(() => {
+    formatNotationSpy.mockReturnValue("mocked notation");
+  });
+
+  afterEach(() => {
+    formatNotationSpy.mockClear();
+  });
+
   it("returns clip information when a valid MIDI clip exists", () => {
     liveApiCall.mockImplementation((method) => {
       if (method === "get_notes_extended") {
@@ -35,7 +47,7 @@ describe("readClip", () => {
       loopEnd: 5,
       isPlaying: false,
       isTriggered: false,
-      notes: "C3 D3 E3",
+      notes: "mocked notation",
       noteCount: 3,
     });
   });
@@ -128,7 +140,11 @@ describe("readClip", () => {
     );
   });
 
-  it("detects drum tracks and uses the drum-specific ToneLang conversion", () => {
+  // E2E test with real BarBeat notation
+  it("detects drum tracks and uses the drum-specific notation conversion (e2e)", () => {
+    // Restore real formatNotation for this test
+    formatNotationSpy.mockRestore();
+
     mockLiveApiGet({
       Track: { devices: children("drumRack") },
       drumRack: { can_have_drum_pads: 1 },
@@ -168,7 +184,7 @@ describe("readClip", () => {
       isPlaying: false,
       isTriggered: true,
       noteCount: 4,
-      notes: "C1v100n0.25t2 C1v100n0.25; D1v90n0.25t2 D1v90n0.25",
+      notes: "1:1 t0.25 C1 1:2 v90 D1 1:3 v100 C1 1:4 v90 D1",
     });
   });
 });

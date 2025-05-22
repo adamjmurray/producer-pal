@@ -1,5 +1,5 @@
 // src/tools/write-clip.test.js
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   children,
   expectedClip,
@@ -10,9 +10,26 @@ import {
   mockLiveApiGet,
   MockSequence,
 } from "../mock-live-api";
+import * as notation from "../notation/notation";
 import { MAX_AUTO_CREATED_SCENES, writeClip } from "./write-clip";
 
+// Spy on notation functions
+const parseNotationSpy = vi.spyOn(notation, "parseNotation");
+
 describe("writeClip", () => {
+  beforeEach(() => {
+    // Default mock implementation
+    parseNotationSpy.mockReturnValue([
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
+      { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
+      { pitch: 64, start_time: 0, duration: 1, velocity: 100 },
+    ]);
+  });
+
+  afterEach(() => {
+    parseNotationSpy.mockClear();
+  });
+
   it("creates a new clip with notes when no clip exists", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
@@ -27,7 +44,7 @@ describe("writeClip", () => {
       }
     });
     mockLiveApiGet({
-      ClipSlot: { has_clip: new MockSequence(0, 1) }, // starts non-existent and then we create one, which is read by readClip() for the result value
+      ClipSlot: { has_clip: new MockSequence(0, 1) },
       clip_0_0: { is_midi_clip: 1, length: 4 },
     });
 
@@ -35,7 +52,7 @@ describe("writeClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "C3 D3 E3",
+      notes: "1:1 C3 D3 E3",
       name: "New Clip",
       color: "#FF0000",
       loop: true,
@@ -50,9 +67,9 @@ describe("writeClip", () => {
       "add_new_notes",
       expect.objectContaining({
         notes: expect.arrayContaining([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 1, velocity: 70 }),
-          expect.objectContaining({ pitch: 62, start_time: 1, duration: 1, velocity: 70 }),
-          expect.objectContaining({ pitch: 64, start_time: 2, duration: 1, velocity: 70 }),
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 1, velocity: 100 }),
+          expect.objectContaining({ pitch: 62, start_time: 0, duration: 1, velocity: 100 }),
+          expect.objectContaining({ pitch: 64, start_time: 0, duration: 1, velocity: 100 }),
         ]),
       })
     );
@@ -96,7 +113,7 @@ describe("writeClip", () => {
       view: "Arranger",
       trackIndex: 0,
       arrangerStartTime: 8,
-      notes: "C3 D3 E3",
+      notes: "1:1 C3 D3 E3",
       name: "New Arranger Clip",
     });
 
@@ -106,9 +123,9 @@ describe("writeClip", () => {
       "add_new_notes",
       expect.objectContaining({
         notes: expect.arrayContaining([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 1, velocity: 70 }),
-          expect.objectContaining({ pitch: 62, start_time: 1, duration: 1, velocity: 70 }),
-          expect.objectContaining({ pitch: 64, start_time: 2, duration: 1, velocity: 70 }),
+          expect.objectContaining({ pitch: 60, start_time: 0, duration: 1, velocity: 100 }),
+          expect.objectContaining({ pitch: 62, start_time: 0, duration: 1, velocity: 100 }),
+          expect.objectContaining({ pitch: 64, start_time: 0, duration: 1, velocity: 100 }),
         ]),
       })
     );
@@ -125,7 +142,7 @@ describe("writeClip", () => {
     });
 
     writeClip({
-      view: "Session", // Should work for either Session or Arranger
+      view: "Session",
       clipId: "id existing_clip",
       name: "Updated Clip",
       color: "#00FF00",
@@ -139,7 +156,6 @@ describe("writeClip", () => {
   it("throws error when required parameters are missing", () => {
     expect(() =>
       writeClip({
-        // Missing view
         trackIndex: 0,
         clipSlotIndex: 0,
       })
@@ -148,7 +164,6 @@ describe("writeClip", () => {
     expect(() =>
       writeClip({
         view: "Session",
-        // Missing trackIndex and clipId
         clipSlotIndex: 0,
       })
     ).toThrow(/trackIndex is required/);
@@ -157,7 +172,6 @@ describe("writeClip", () => {
       writeClip({
         view: "Session",
         trackIndex: 0,
-        // Missing clipSlotIndex and clipId
       })
     ).toThrow(/clipSlotIndex is required/);
 
@@ -165,7 +179,6 @@ describe("writeClip", () => {
       writeClip({
         view: "Arranger",
         trackIndex: 0,
-        // Missing arrangerStartTime and clipId
       })
     ).toThrow(/arrangerStartTime is required/);
   });
@@ -197,16 +210,19 @@ describe("writeClip", () => {
       view: "Arranger",
       trackIndex: 0,
       arrangerStartTime: 8,
-      autoplay: true, // Should be ignored for arranger clips
+      autoplay: true,
     });
 
-    // Fire should not be called for arranger clips
     expect(liveApiCall).not.toHaveBeenCalledWith("fire");
   });
 
-  it("calculates correct clip length based on note duration", () => {
+  // E2E test with real BarBeat notation
+  it("calculates correct clip length based on note duration (e2e)", () => {
+    // Restore real parseNotation for this test
+    parseNotationSpy.mockRestore();
+
     mockLiveApiGet({
-      ClipSlot: { has_clip: new MockSequence(0, 1) }, // starts non-existent and then we create one, which is read by readClip() for the result value
+      ClipSlot: { has_clip: new MockSequence(0, 1) },
       Clip: { length: 8 },
     });
 
@@ -221,7 +237,7 @@ describe("writeClip", () => {
       view: "Session",
       trackIndex: 3,
       clipSlotIndex: 0,
-      notes: "C3n2 D3n3", // Notes extend to 5 beats
+      notes: "1:1 t2 C3 1:3 t3 D3", // Notes at beats 0 and 2, with durations 2 and 3, so end at beat 5
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 5);
@@ -238,7 +254,7 @@ describe("writeClip", () => {
 
   it("uses minimum clip length of 4 when notes are short", () => {
     mockLiveApiGet({
-      ClipSlot: { has_clip: new MockSequence(0, 1) }, // starts non-existent and then we create one, which is read by readClip() for the result value
+      ClipSlot: { has_clip: new MockSequence(0, 1) },
     });
 
     liveApiCall.mockImplementation((method) => {
@@ -248,51 +264,58 @@ describe("writeClip", () => {
       return null;
     });
 
+    parseNotationSpy.mockReturnValue([{ pitch: 60, start_time: 0, duration: 1, velocity: 100 }]);
+
     writeClip({
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "C3", // Only 1 beat
+      notes: "1:1 C3",
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
   });
 
-  it("should handle TimeUntilNext in the toneLang string", () => {
-    const toneLangString = "C4n4t2 D4n4t2 E4n.5";
+  // E2E test with real BarBeat notation
+  it("should handle complex BarBeat timing (e2e)", () => {
+    // Restore real parseNotation for this test
+    parseNotationSpy.mockRestore();
 
     writeClip({
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: toneLangString,
+      notes: "1:1 v80 t2 C4 1:3 v120 t1 D4 1:4 E4",
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         {
           pitch: 72,
-          velocity: 70,
+          velocity: 80,
           start_time: 0,
-          duration: 4,
+          duration: 2,
         },
         {
           pitch: 74,
-          velocity: 70,
+          velocity: 120,
           start_time: 2,
-          duration: 4,
+          duration: 1,
         },
         {
           pitch: 76,
-          velocity: 70,
-          start_time: 4,
-          duration: 0.5,
+          velocity: 120,
+          start_time: 3,
+          duration: 1,
         },
       ],
     });
   });
 
-  it("returns clear error message for invalid ToneLang syntax", () => {
+  it("returns clear error message for invalid BarBeat syntax", () => {
+    // Restore real parseNotation for this test
+    parseNotationSpy.mockRestore();
+
     const invalidSyntax = "C3z1.5";
     expect(() =>
       writeClip({
@@ -301,7 +324,7 @@ describe("writeClip", () => {
         clipSlotIndex: 0,
         notes: invalidSyntax,
       })
-    ).toThrow(/ToneLang syntax error.*Unexpected 'z'.*Valid syntax includes/);
+    ).toThrow(/BarBeat syntax error.*Expected.*but.*found/);
   });
 
   it("auto-creates scenes when clipSlotIndex exceeds existing scenes", () => {
@@ -344,7 +367,6 @@ describe("writeClip", () => {
   });
 
   it("removes all existing notes when updating a clip with new notes", () => {
-    // Mock an existing clip
     liveApiId.mockImplementation(function () {
       if (this.path === "id existing_clip") return "existing_clip";
       return "1";
@@ -356,7 +378,7 @@ describe("writeClip", () => {
     writeClip({
       view: "Session",
       clipId: "existing_clip",
-      notes: "C3 D3 E3",
+      notes: "1:1 C3 D3 E3",
     });
 
     expect(liveApiCall).toHaveBeenNthCalledWith(1, "remove_notes_extended", 0, 127, 0, 1000000);
@@ -368,26 +390,25 @@ describe("writeClip", () => {
           duration: 1,
           pitch: 60,
           start_time: 0,
-          velocity: 70,
+          velocity: 100,
         },
         {
           duration: 1,
           pitch: 62,
-          start_time: 1,
-          velocity: 70,
+          start_time: 0,
+          velocity: 100,
         },
         {
           duration: 1,
           pitch: 64,
-          start_time: 2,
-          velocity: 70,
+          start_time: 0,
+          velocity: 100,
         },
       ],
     });
   });
 
   it("switches to the correct view when creating or updating clips", () => {
-    // Mock LiveAPI behavior
     mockLiveApiGet({
       ClipSlot: { has_clip: new MockSequence(0, 1) },
       Track: { exists: () => true },
@@ -411,12 +432,10 @@ describe("writeClip", () => {
       name: "Session View Clip",
     });
 
-    // Find the show_view call for Session
     const sessionViewCall = liveApiCall.mock.calls.find((call) => call[0] === "show_view" && call[1] === "Session");
     expect(sessionViewCall).toBeDefined();
     expect(sessionViewCall[1]).toBe("Session");
 
-    // Reset mock to check Arranger view call separately
     liveApiCall.mockClear();
 
     // Test Arranger view
@@ -427,7 +446,6 @@ describe("writeClip", () => {
       name: "Arranger View Clip",
     });
 
-    // Find the show_view call for Arranger
     const arrangerViewCall = liveApiCall.mock.calls.find((call) => call[0] === "show_view" && call[1] === "Arranger");
     expect(arrangerViewCall).toBeDefined();
     expect(arrangerViewCall[1]).toBe("Arranger");

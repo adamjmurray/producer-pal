@@ -23,18 +23,16 @@ Established core integration between the MCP server and Ableton Live:
 
 Completed full feature set for core functionality:
 
-- **ToneLang implementation** - custom music notation with support for:
+- **Notation implementation (BarBeat) ** - custom music notation with support for:
 
   - Notes, sequences, and chords
   - Velocity and duration control
-  - Multiple voices and rests
-  - Modifier overrides
 
 - **Clip operations**:
 
   - Create, read, update, delete clips
   - Control of clip properties (name, color, looping)
-  - Note manipulation with ToneLang
+  - Note manipulation with notation syntax
   - Clip playback control
 
 - **Track operations**:
@@ -107,26 +105,11 @@ Completed full feature set for core functionality:
       - Clear indicator "server is running". Show the port / URL.
       - Don't necessarily need to display errors in the device UI, but it needs to be clear the server failed to start,
         and check the Max window for details.
-  - ToneLang enhancements
-    - ✅ Allow modifiers to be specified in any order
-    - ✅ Introduce a repetition mechanism: (C4 D4 E4)\*2 => C4 D4 E4 C4 D4 E4. It repeats whatever is inside it,
-      including bar lines.
-      - ✅ This can also be used to set a velocity or duration/time modifier for the group (also also override by
-        anything inside, just like with chords) e.g. (C4 D4)v50.
-      - Reading clips should attempt to reduce the syntax by using repetition when appropriate (might be easy for
-        individual notes/chords/rests, but might be too difficult for subsequences)
+  - Notation (BarBeat) enhancements
     - Support note probability
     - Support note velocity_deviation
-    - Introduce optional bar line markers in ToneLang to ensure notes hit downbeats and semi-recover from LLMs not being
-      able to count well e.g. "C3 D3 E3n1t2 F3" would be the same as "C3 D3 E3 | F3" (assuming 4/4 time signature, and
-      it will need to be time-signature aware)
-    - Support note delay for strum effects on chords. Maybe `[C4 E4y.1 G4y.2]` could play the E4 a tenth of a beat later
-      than C4 and G4 two tenths of a beat later than the start of the chord. Need to think through the implications for
-      rhythm. timeUntilNext calculations should probably ignore this delay?
-  - Create an alternate syntax to ToneLang called BarBeat that uses absolute bar.beat positioning, to see if timing
-    works better
   - Randomization features (Maybe? Or maybe save "higher level tools" for 2.0):
-    - features to randomize velocities, durations, or start times by some min/max amount when evaluating ToneLang
+    - features to randomize velocities, durations, or start times by some min/max amount
     - slice & shuffle (rearrange every measure / N beats randomly)
 
 ### Phase 5: Productization and Polish

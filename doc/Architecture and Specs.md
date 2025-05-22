@@ -132,9 +132,9 @@ Messages sent from v8 back to Node for Max:
 })]
 ```
 
-## ToneLang: custom Music Notation Syntax
+## BarBeat: custom Music Notation Syntax
 
-See the dedicated ToneLang Specification. Implemented with a parser generator library `peggy`.
+See the dedicated BarBeat Specification. Implemented with a parser generator library `peggy`.
 
 ## MCP tool interfaces
 
