@@ -1,4 +1,4 @@
-// src/mcp-server/create-mpc-server.js
+// src/mcp-server/create-mcp-server.js
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { addToolCaptureScene } from "./add-tool-capture-scene";
 import { addToolDelete } from "./add-tool-delete";

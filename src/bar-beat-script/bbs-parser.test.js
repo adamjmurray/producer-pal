@@ -1,6 +1,6 @@
 // src/bar-beat-script/parser.test.js
 import { describe, expect, it } from "vitest";
-import * as parser from "./parser";
+import * as parser from "./bbs-parser";
 
 describe("BarBeatScript Parser", () => {
   it("parses notes with bar.beat.unit start time notation", () => {

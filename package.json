@@ -33,10 +33,13 @@
   "scripts": {
     "build": "npm run parser:build && rollup -c",
     "dev": "rollup -c -w",
-    "test": "npm run parser:build && vitest run",
-    "test:watch": "npm run parser:build && vitest",
-    "test:coverage": "npm run build && vitest run --coverage",
-    "parser:build": "peggy --format es --output src/tonelang/tonelang-parser.js src/tonelang/tonelang-grammar.pegjs && peggy --format es --output src/bar-beat-script/parser.js src/bar-beat-script/grammar.pegjs",
-    "parser:watch": "chokidar 'src/**/grammar.pegjs' -c 'npm run parser:build'"
+    "test": "npm run test:setup && vitest run",
+    "test:watch": "npm run test:setup && vitest",
+    "test:coverage": "npm run test:setup && vitest run --coverage",
+    "test:setup": "npm run parser:build",
+    "parser:build": "npm run parser:build:tonelang && npm run parser:build:bbs",
+    "parser:build:tonelang": "peggy --format es --output src/tonelang/tonelang-parser.js src/tonelang/tonelang-grammar.pegjs",
+    "parser:build:bbs": "peggy --format es --output src/bar-beat-script/bbs-parser.js src/bar-beat-script/bbs-grammar.pegjs",
+    "parser:watch": "chokidar 'src/**/*.pegjs' -c 'npm run parser:build'"
   }
 }

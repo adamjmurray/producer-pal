@@ -4,7 +4,7 @@ import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import Max from "max-api";
 import crypto from "node:crypto";
-import { createMcpServer } from "./create-mpc-server";
+import { createMcpServer } from "./create-mcp-server";
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();
