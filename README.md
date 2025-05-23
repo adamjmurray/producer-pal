@@ -22,8 +22,8 @@ Compose music in Ableton Live with an AI assistant such as [Anthropic Claude](ht
   (e.g. Ableton Live Suite edition)
 - [Claude Desktop](https://claude.ai/download) (or potentially any [MCP-compatible](https://modelcontextprotocol.io/) AI
   chat client, but only Claude Desktop has been tested so far)
-  - In theory this should work with free Anthropic accounts (tested with the basic Pro subscription plan)
-- [Node.js](https://nodejs.org/) (the default download / the LTS version is good)
+- [Node.js](https://nodejs.org/). Install the default version (LTS version, or newer works too). You should add Node.js
+  to your PATH if given the option.
 
 ## Setup
 
