@@ -78,7 +78,6 @@ Completed full feature set for core functionality:
 
 - **Robustness improvements**:
 
-  - Need to distinguish duplicate grammar/parser filenames across the two syntaxes for the Claude project!
   - ✅ Switch over to a rollup based build
   - Validation system for better error handling
     - e.g. start and end time in write-clip
@@ -87,7 +86,7 @@ Completed full feature set for core functionality:
     optimistic results should be a lot more robust)
   - Claude keeps thinking the transport needs to be started to autoplay clips when it's not necessary - is it still an
     issue?
-  - Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
+  - ✅ Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
   - Revisit stateless server approach. Stateful may be more efficient
   - Flesh out the mocking system. The way we mock liveAPI.get() calls is pretty good and we need similar treatment for
     ids and paths, ideally through some unified interface (i.e. you shouldn't have to mock get, id, and path separately,
@@ -99,12 +98,14 @@ Completed full feature set for core functionality:
 
 - **Feature expansion**:
 
-  - Create improved UI for the Max for Live device
-    - Add configuration option for port selection
-    - Make the layout more compact.
-      - Clear indicator "server is running". Show the port / URL.
-      - Don't necessarily need to display errors in the device UI, but it needs to be clear the server failed to start,
-        and check the Max window for details.
+  - ✅ Create improved UI for the Max for Live device
+    - ✅ Add configuration option for port selection
+    - ✅ Make the layout more compact.
+      - ✅ Clear indicator "server is running".
+      - ✅ Show the port / URL.
+      - ✅ Show the claude config
+      - ✅ Don't necessarily need to display errors in the device UI, but it needs to be clear the server failed to
+        start, and check the Max window for details.
   - Notation (BarBeat) enhancements
     - Support note probability
     - Support note velocity_deviation

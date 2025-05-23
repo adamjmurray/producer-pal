@@ -6,11 +6,13 @@ import Max from "max-api";
 import crypto from "node:crypto";
 import { createMcpServer } from "./create-mcp-server";
 
+export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 15_000;
+
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();
 
 // Function to send a tool call to the Max v8 environment
-function callLiveApi(toolName, args) {
+function callLiveApi(toolName, args, timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS) {
   Max.post(`Handling tool call: ${toolName}(${JSON.stringify(args)})`);
 
   // Create a request with a unique ID
@@ -24,9 +26,18 @@ function callLiveApi(toolName, args) {
   // Send the request to Max as JSON
   Max.outlet("mcp_request", JSON.stringify(request));
 
-  // Return a promise that will be resolved when Max responds
-  return new Promise((resolve) => {
-    pendingRequests.set(requestId, resolve);
+  // Return a promise that will be resolved when Max responds or timeout
+  return new Promise((resolve, reject) => {
+    pendingRequests.set(requestId, {
+      resolve,
+      reject,
+      timeout: setTimeout(() => {
+        if (pendingRequests.has(requestId)) {
+          pendingRequests.delete(requestId);
+          reject(new Error(`Tool call '${toolName}' timed out after ${timeoutMs}ms`));
+        }
+      }, timeoutMs),
+    });
   });
 }
 
@@ -37,8 +48,11 @@ function handleLiveApiResult(responseJson) {
     const { requestId, result } = response;
 
     if (pendingRequests.has(requestId)) {
-      const resolve = pendingRequests.get(requestId);
+      const { resolve, timeout } = pendingRequests.get(requestId);
       pendingRequests.delete(requestId);
+      if (timeout) {
+        clearTimeout(timeout);
+      }
       resolve(result);
     } else {
       Max.post(`Received response for unknown request ID: ${requestId}`);
@@ -66,14 +80,18 @@ const internalError = (message) => ({
   id: null,
 });
 
-export function createExpressApp() {
+export function createExpressApp(options = {}) {
+  const { timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS } = options;
+
   const app = express();
   app.use(express.json());
 
   app.post("/mcp", async (req, res) => {
     try {
       Max.post("New MCP connection: " + JSON.stringify(req.body));
-      const server = createMcpServer(callLiveApi);
+
+      const callLiveApiWithTimeout = (toolName, args) => callLiveApi(toolName, args, timeoutMs);
+      const server = createMcpServer(callLiveApiWithTimeout);
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
       });
