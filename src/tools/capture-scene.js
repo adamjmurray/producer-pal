@@ -1,5 +1,4 @@
 // src/tools/capture-scene.js
-import { readScene } from "./read-scene";
 
 /**
  * Captures the currently playing clips into a new scene
@@ -25,10 +24,21 @@ export function captureScene({ sceneIndex, name } = {}) {
 
   liveSet.call("capture_and_insert_scene");
 
+  const newSceneIndex = selectedSceneIndex + 1;
+  const newScene = new LiveAPI(`live_set scenes ${newSceneIndex}`);
+
   if (name != null) {
-    const newScene = new LiveAPI(`live_set scenes ${selectedSceneIndex + 1}`);
     newScene.set("name", name);
   }
 
-  return readScene({ sceneIndex: selectedSceneIndex + 1 });
+  // Build optimistic result object
+  const result = {
+    id: newScene.id,
+    sceneIndex: newSceneIndex,
+  };
+
+  // Only include properties that were actually set
+  if (name != null) result.name = name;
+
+  return result;
 }

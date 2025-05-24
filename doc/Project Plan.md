@@ -66,12 +66,6 @@
 - [ ] when changing the Arrangement, the view should scroll and zoom automatically to show the changes (e.g. where a
       clip was inserted)
 
-**Optimistic Results:**
-
-- [x] Apply optimistic return strategy to clip note writing (return input notation string instead of normalized form
-      from readClip)
-- [ ] Audit all tools for consistent optimistic result patterns
-
 **Robustness:**
 
 - [ ] Detect and protect the track hosting the MCP server device

@@ -1,6 +1,6 @@
 // src/tools/capture-scene.test.js
 import { describe, expect, it } from "vitest";
-import { expectedScene, liveApiCall, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import { liveApiCall, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
 import { captureScene } from "./capture-scene";
 
 describe("captureScene", () => {
@@ -19,13 +19,10 @@ describe("captureScene", () => {
 
     expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
 
-    expect(result).toEqual(
-      expectedScene({
-        id: "live_set/scenes/2",
-        name: "Captured Scene",
-        sceneIndex: 2,
-      })
-    );
+    expect(result).toEqual({
+      id: "live_set/scenes/2",
+      sceneIndex: 2,
+    });
   });
 
   it("should select a scene before capturing if sceneIndex is provided", () => {
@@ -46,13 +43,10 @@ describe("captureScene", () => {
 
     expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
 
-    expect(result).toEqual(
-      expectedScene({
-        id: "live_set/scenes/3",
-        name: "Captured Scene after select",
-        sceneIndex: 3,
-      })
-    );
+    expect(result).toEqual({
+      id: "live_set/scenes/3",
+      sceneIndex: 3,
+    });
   });
 
   it("should set the scene name when provided", () => {
@@ -61,12 +55,18 @@ describe("captureScene", () => {
       return this._path;
     });
 
-    captureScene({ name: "Captured Custom Name" });
+    const result = captureScene({ name: "Captured Custom Name" });
 
     expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Captured Custom Name");
     expect(liveApiSet.mock.instances[0].path).toBe("live_set scenes 2");
+
+    expect(result).toEqual({
+      id: "live_set/scenes/2",
+      sceneIndex: 2,
+      name: "Captured Custom Name",
+    });
   });
 
   it("should throw an error when selected scene index can't be determined", () => {
