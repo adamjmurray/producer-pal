@@ -45,8 +45,8 @@
 
 **Bulk Operations Completion:**
 
-- [ ] `create-clip` - insert multiple clips at specified locations
-- [ ] `update-clip` - update multiple clips by ID list
+- [x] `create-clip` - insert multiple clips at specified locations
+- [x] `update-clip` - update multiple clips by ID list
 - [ ] Transport bulk operations - play/stop multiple tracks simultaneously
 
 **Additional Duplicate Features:**
@@ -68,7 +68,7 @@
 
 **Optimistic Results:**
 
-- [ ] Apply optimistic return strategy to clip note writing (return input notation string instead of normalized form
+- [x] Apply optimistic return strategy to clip note writing (return input notation string instead of normalized form
       from readClip)
 - [ ] Audit all tools for consistent optimistic result patterns
 
@@ -78,6 +78,8 @@
 - [ ] When duplicating clips to the session (especially with count > 1) consider warning about clips that would get
       overwritten and consider requiring an `overwrite: true` argument
 - [ ] Review and refine all tool descriptions for clarity, including BarBeat specification
+  - [ ] Tools that refer to maximum number of tracks and scenes should use the exported constant value to ensure
+        accuracy if these are changed later
 
 ## 🌟 Nice-to-Have (Stretch Goals)
 
