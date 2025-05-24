@@ -4,10 +4,11 @@ import { z } from "zod";
 export function addToolDuplicate(server, callLiveApi) {
   server.tool(
     "duplicate",
-    "Duplicates an object by id and type. Supports tracks, scenes, and clips.",
+    "Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter.",
     {
       type: z.enum(["track", "scene", "clip"]).describe("Type of object to duplicate"),
       id: z.string().describe("Object id to duplicate"),
+      count: z.number().int().min(1).default(1).describe("Number of duplicates to create (default: 1)"),
       destination: z
         .enum(["session", "arranger"])
         .optional()
@@ -16,7 +17,10 @@ export function addToolDuplicate(server, callLiveApi) {
         .number()
         .optional()
         .describe("Start time in beats for Arranger view. Required when destination is 'arranger'."),
-      name: z.string().optional().describe("Optional name for the duplicated object"),
+      name: z
+        .string()
+        .optional()
+        .describe("Optional name for the duplicated object(s) (auto-increments for count > 1)"),
     },
     async (args) => callLiveApi("duplicate", args)
   );

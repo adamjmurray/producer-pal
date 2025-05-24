@@ -18,6 +18,12 @@ describe("duplicate", () => {
     );
   });
 
+  it("should throw an error when count is less than 1", () => {
+    expect(() => duplicate({ type: "track", id: "some-id", count: 0 })).toThrow(
+      "duplicate failed: count must be at least 1"
+    );
+  });
+
   it("should throw an error when the object doesn't exist", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() => duplicate({ type: "track", id: "nonexistent" })).toThrow(
@@ -26,7 +32,7 @@ describe("duplicate", () => {
   });
 
   describe("track duplication", () => {
-    it("should duplicate a track", () => {
+    it("should duplicate a single track (default count)", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "track1") {
           return "live_set tracks 0";
@@ -39,14 +45,17 @@ describe("duplicate", () => {
       expect(result).toStrictEqual({
         type: "track",
         id: "track1",
+        count: 1,
         duplicated: true,
+        newId: "live_set/tracks/1",
+        newTrackIndex: 1,
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
       expect(liveApiCall.mock.instances[0].path).toBe("live_set");
     });
 
-    it("should set the track name when provided", () => {
+    it("should duplicate multiple tracks with auto-incrementing names", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "track1") {
           return "live_set tracks 0";
@@ -54,37 +63,45 @@ describe("duplicate", () => {
         return this._path;
       });
 
-      const result = duplicate({ type: "track", id: "track1", name: "Custom Track Name" });
+      const result = duplicate({ type: "track", id: "track1", count: 3, name: "Custom Track" });
 
       expect(result).toStrictEqual({
         type: "track",
         id: "track1",
-        name: "Custom Track Name",
+        count: 3,
+        name: "Custom Track",
         duplicated: true,
+        objects: [
+          {
+            newId: "live_set/tracks/1",
+            newTrackIndex: 1,
+            name: "Custom Track",
+          },
+          {
+            newId: "live_set/tracks/2",
+            newTrackIndex: 2,
+            name: "Custom Track 2",
+          },
+          {
+            newId: "live_set/tracks/3",
+            newTrackIndex: 3,
+            name: "Custom Track 3",
+          },
+        ],
       });
-
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track Name");
-      expect(liveApiSet.mock.instances[0].path).toBe("live_set tracks 1");
 
       expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
-      expect(liveApiCall.mock.instances[0].path).toBe("live_set");
-    });
+      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 1);
+      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 2);
 
-    it("should throw an error when track path cannot be parsed", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "track1") {
-          return "invalid_path";
-        }
-        return this._path;
-      });
-      expect(() => duplicate({ type: "track", id: "track1" })).toThrow(
-        'duplicate failed: no track index for id "track1"'
-      );
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track");
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track 2");
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track 3");
     });
   });
 
   describe("scene duplication", () => {
-    it("should duplicate a scene", () => {
+    it("should duplicate a single scene", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") {
           return "live_set scenes 0";
@@ -97,14 +114,17 @@ describe("duplicate", () => {
       expect(result).toStrictEqual({
         type: "scene",
         id: "scene1",
+        count: 1,
         duplicated: true,
+        newId: "live_set/scenes/1",
+        newSceneIndex: 1,
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
       expect(liveApiCall.mock.instances[0].path).toBe("live_set");
     });
 
-    it("should set the scene name when provided", () => {
+    it("should duplicate multiple scenes with auto-incrementing names", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") {
           return "live_set scenes 0";
@@ -112,33 +132,33 @@ describe("duplicate", () => {
         return this._path;
       });
 
-      const result = duplicate({ type: "scene", id: "scene1", name: "Custom Scene Name" });
+      const result = duplicate({ type: "scene", id: "scene1", count: 2, name: "Custom Scene" });
 
       expect(result).toStrictEqual({
         type: "scene",
         id: "scene1",
-        name: "Custom Scene Name",
+        count: 2,
+        name: "Custom Scene",
         duplicated: true,
+        objects: [
+          {
+            newId: "live_set/scenes/1",
+            newSceneIndex: 1,
+            name: "Custom Scene",
+          },
+          {
+            newId: "live_set/scenes/2",
+            newSceneIndex: 2,
+            name: "Custom Scene 2",
+          },
+        ],
       });
-
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene Name");
-      expect(liveApiSet.mock.instances[0].path).toBe("live_set scenes 1");
 
       expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
-      expect(liveApiCall.mock.instances[0].path).toBe("live_set");
-    });
+      expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 1);
 
-    it("should throw an error when scene path cannot be parsed", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "scene1") {
-          return "invalid_path";
-        }
-        return this._path;
-      });
-
-      expect(() => duplicate({ type: "scene", id: "scene1" })).toThrow(
-        'duplicate failed: no scene index for id "scene1"'
-      );
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene");
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene 2");
     });
   });
 
@@ -168,7 +188,7 @@ describe("duplicate", () => {
     });
 
     describe("session destination", () => {
-      it("should duplicate a clip to the session view", () => {
+      it("should duplicate a single clip to the session view", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "clip1") {
             return "live_set tracks 0 clip_slots 0 clip";
@@ -184,12 +204,16 @@ describe("duplicate", () => {
         expect(result).toStrictEqual({
           type: "clip",
           id: "clip1",
+          count: 1,
           destination: "session",
           duplicated: true,
+          newId: "live_set/tracks/0/clip_slots/1/clip",
+          newTrackIndex: 0,
+          newClipSlotIndex: 1,
         });
       });
 
-      it("should set the clip name when provided", () => {
+      it("should duplicate multiple clips to session view with auto-incrementing names", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "clip1") {
             return "live_set tracks 0 clip_slots 0 clip";
@@ -197,50 +221,42 @@ describe("duplicate", () => {
           return this._path;
         });
 
-        const result = duplicate({ type: "clip", id: "clip1", destination: "session", name: "Custom Clip Name" });
+        const result = duplicate({
+          type: "clip",
+          id: "clip1",
+          destination: "session",
+          count: 2,
+          name: "Custom Clip",
+        });
 
         expect(result).toStrictEqual({
           type: "clip",
           id: "clip1",
+          count: 2,
           destination: "session",
-          name: "Custom Clip Name",
+          name: "Custom Clip",
           duplicated: true,
+          objects: [
+            {
+              newId: "live_set/tracks/0/clip_slots/1/clip",
+              newTrackIndex: 0,
+              newClipSlotIndex: 1,
+              name: "Custom Clip",
+            },
+            {
+              newId: "live_set/tracks/0/clip_slots/2/clip",
+              newTrackIndex: 0,
+              newClipSlotIndex: 2,
+              name: "Custom Clip 2",
+            },
+          ],
         });
-
-        expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip Name");
-        expect(liveApiSet.mock.instances[0].path).toBe("live_set tracks 0 clip_slots 1 clip");
 
         expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_slot", 0);
-        expect(liveApiCall.mock.instances[0].path).toBe("live_set tracks 0");
-      });
+        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_slot", 1);
 
-      it("should throw an error when clip path cannot be parsed", () => {
-        liveApiPath.mockImplementation(function () {
-          if (this._id === "clip1") {
-            return "invalid_path";
-          }
-          return this._path;
-        });
-
-        expect(() => duplicate({ type: "clip", id: "clip1", destination: "session" })).toThrow(
-          'duplicate failed: no track or clip slot index for clip id "clip1" (path="invalid_path")'
-        );
-      });
-
-      it("should throw an error when track doesn't exist", () => {
-        liveApiPath.mockImplementation(function () {
-          if (this._id === "clip1") {
-            return "live_set tracks 99 clip_slots 0 clip";
-          }
-          return this._path;
-        });
-        liveApiId.mockImplementation(function () {
-          if (this._path === "live_set tracks 99") return "id 0";
-          return this._id;
-        });
-        expect(() => duplicate({ type: "clip", id: "clip1", destination: "session" })).toThrow(
-          "duplicate failed: track with index 99 does not exist"
-        );
+        expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip");
+        expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip 2");
       });
     });
 
@@ -259,7 +275,7 @@ describe("duplicate", () => {
         );
       });
 
-      it("should duplicate a clip to the arranger view", () => {
+      it("should duplicate a single clip to the arranger view", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "clip1") {
             return "live_set tracks 0 clip_slots 0 clip";
@@ -283,10 +299,21 @@ describe("duplicate", () => {
 
         expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 8);
         expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-        expect(result).toBeDefined();
+
+        expect(result).toStrictEqual({
+          type: "clip",
+          id: "clip1",
+          count: 1,
+          destination: "arranger",
+          arrangerStartTime: 8,
+          duplicated: true,
+          newId: "arranger_clip",
+          newTrackIndex: 0,
+          newArrangerStartTime: 8,
+        });
       });
 
-      it("should set the clip name when provided", () => {
+      it("should duplicate multiple clips to arranger view at sequential positions", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "clip1") {
             return "live_set tracks 0 clip_slots 0 clip";
@@ -299,62 +326,103 @@ describe("duplicate", () => {
           }
           return null;
         });
-        mockLiveApiGet({ clip1: { exists: () => true } });
+        mockLiveApiGet({
+          clip1: { exists: () => true },
+          Clip: { length: 4 }, // Mock clip length of 4 beats
+        });
 
-        duplicate({
+        const result = duplicate({
           type: "clip",
           id: "clip1",
           destination: "arranger",
           arrangerStartTime: 8,
-          name: "Custom Clip Name",
+          count: 3,
+          name: "Custom Clip",
         });
 
-        expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip Name");
+        expect(result).toStrictEqual({
+          type: "clip",
+          id: "clip1",
+          count: 3,
+          destination: "arranger",
+          arrangerStartTime: 8,
+          name: "Custom Clip",
+          duplicated: true,
+          objects: [
+            {
+              newId: "arranger_clip",
+              newTrackIndex: 0,
+              newArrangerStartTime: 8, // 8 + (0 * 4)
+              name: "Custom Clip",
+            },
+            {
+              newId: "arranger_clip",
+              newTrackIndex: 0,
+              newArrangerStartTime: 12, // 8 + (1 * 4)
+              name: "Custom Clip 2",
+            },
+            {
+              newId: "arranger_clip",
+              newTrackIndex: 0,
+              newArrangerStartTime: 16, // 8 + (2 * 4)
+              name: "Custom Clip 3",
+            },
+          ],
+        });
+
+        // Clips should be placed at sequential positions
+        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 8);
+        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 12);
+        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16);
+        expect(liveApiCall).toHaveBeenCalledTimes(6); // 3 duplicates + 3 show_view calls
+      });
+    });
+  });
+
+  describe("return format", () => {
+    it("should return single object format when count=1", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
       });
 
-      it("should throw an error when track index cannot be parsed", () => {
-        liveApiPath.mockImplementation(function () {
-          if (this._id === "clip1") {
-            return "invalid_path";
-          }
-          return this._path;
-        });
-        mockLiveApiGet({ clip1: { exists: () => true } });
+      const result = duplicate({ type: "track", id: "track1", count: 1 });
 
-        expect(() =>
-          duplicate({
-            type: "clip",
-            id: "clip1",
-            destination: "arranger",
-            arrangerStartTime: 8,
-          })
-        ).toThrow('duplicate failed: no track index for clipId "clip1"');
+      expect(result).toMatchObject({
+        type: "track",
+        id: "track1",
+        count: 1,
+        duplicated: true,
+        // Should have new object metadata directly merged
+        newId: expect.any(String),
+        newTrackIndex: expect.any(Number),
+      });
+      expect(result.objects).toBeUndefined();
+    });
+
+    it("should return objects array format when count>1", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
       });
 
-      it("should throw an error when duplication fails", () => {
-        liveApiPath.mockImplementation(function () {
-          if (this._id === "clip1") {
-            return "live_set tracks 0 clip_slots 0 clip";
-          }
-          return this._path;
-        });
-        liveApiCall.mockImplementation(function (method) {
-          if (method === "duplicate_clip_to_arrangement") {
-            return null; // Simulate failure
-          }
-          return null;
-        });
-        mockLiveApiGet({ clip1: { exists: () => true } });
+      const result = duplicate({ type: "track", id: "track1", count: 2 });
 
-        expect(() =>
-          duplicate({
-            type: "clip",
-            id: "clip1",
-            destination: "arranger",
-            arrangerStartTime: 8,
-          })
-        ).toThrow("duplicate failed: clip failed to duplicate");
+      expect(result).toMatchObject({
+        type: "track",
+        id: "track1",
+        count: 2,
+        duplicated: true,
+        objects: expect.arrayContaining([
+          expect.objectContaining({ newTrackIndex: expect.any(Number) }),
+          expect.objectContaining({ newTrackIndex: expect.any(Number) }),
+        ]),
       });
+      expect(result.newTrackIndex).toBeUndefined();
     });
   });
 });

@@ -4,10 +4,10 @@ import { z } from "zod";
 export function addToolDelete(server, callLiveApi) {
   server.tool(
     "delete",
-    "Deletes an object by id and type. Supports tracks, scenes, and clips.",
+    "Deletes objects by ids and type. Supports bulk operations with comma-separated IDs of the same type.",
     {
-      id: z.string().describe("Object id to delete"),
-      type: z.enum(["track", "scene", "clip"]).describe("Type of object to delete"),
+      ids: z.string().describe("Object ID or comma-separated list of object IDs to delete (all must be same type)"),
+      type: z.enum(["track", "scene", "clip"]).describe("Type of objects to delete"),
     },
     async (args) => callLiveApi("delete", args)
   );

@@ -84,8 +84,13 @@ Completed full feature set for core functionality:
       - lots of open questions: does it fail on slots with clips in them? Should is support an overwrite option? It
         probably shouldn't/can't insert scenes
     - update-clip can update multiple clips (with the same property values across each) for a given list of ids
-    - bulk duplicate operations
-    - bulk delete options
+    - ✅ bulk duplicate operations
+      - add a duplicate scene to arranger feature that duplicates each clip in that scene to the arranger
+      - support ClipSlot.duplicate_clip_to. For bulk support, it could take a comma-separated list of clip slot
+        destination IDs. I guess for the count parameter, it should
+      - when duplicating clips to the session (especially with count > 1) should we warn about clips that would get
+        overwritten? Should an `overwrite: true` argument be required?
+    - ✅ bulk delete options
     - bulk operations in transport:
       - "play-session-clip" action should support a list of comma-separated trackIndex
       - "stop-track-session-clip" action should support a list of comma-separated trackIndex
