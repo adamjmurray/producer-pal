@@ -31,7 +31,7 @@ appServer
       "claude_config",
       `{
   "mcpServers": {
-    "ableton-live": {
+    "Ableton Producer Pal": {
       "command": "npx",
       "args": [
         "-y",

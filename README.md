@@ -1,6 +1,6 @@
-# Ableton Live Composer Assistant
+# Ableton Producer Pal
 
-Compose music in Ableton Live with an AI assistant such as [Anthropic Claude](https://www.anthropic.com/claude).
+Make music in Ableton Live with an AI assistant such as [Anthropic Claude](https://www.anthropic.com/claude).
 
 ## Goals and Use Cases
 
@@ -31,18 +31,17 @@ Compose music in Ableton Live with an AI assistant such as [Anthropic Claude](ht
    - clone this repository
    - `npm install`
    - `npm run build`
-   - Add the `device/Composer Assistant.amxd` Max for Live device to your Ableton Live Set (drag the file to a MIDI
-     track)
-2. Configure Claude Desktop to connect to the Composer Assistant
+   - Add the `device/Producer Pal.amxd` Max for Live device to your Ableton Live Set (drag the file to a MIDI track)
+2. Configure Claude Desktop to connect to the Producer Pal
 
-   - Go to Claude Desktop Settings → Developer → Edit Config → Open `claude_desktop_config.json` in a text editor
-   - Copy the settings from the Composer Assistant Max for Live device into `claude_desktop_config.json`. It should look
+   - Go to Claude Desktop → Settings → Developer → Edit Config → Open `claude_desktop_config.json` in a text editor
+   - Copy the settings from the Producer Pal Max for Live device into `claude_desktop_config.json`. It should look
      something like this:
 
    ```
    {
     "mcpServers": {
-      "ableton-live": {
+      "Ableton Producer Pal": {
         "command": "npx",
         "args": [
           "-y",
@@ -56,9 +55,9 @@ Compose music in Ableton Live with an AI assistant such as [Anthropic Claude](ht
 
 3. Restart Claude Desktop
 
-   - In the "Search and Tools" button below the chat input, you should see `ableton-live` and if you click into it,
-     there should be 12 tools such as `read-song` and `write-song`. Make sure `ableton-live` and all these tools are
-     enabled (they should be enabled by default, unless you disable them).
+   - In the "Search and Tools" button below the chat input, you should see `Ableton Producer Pal` and if you click into
+     it, there should be 12 tools such as `read-song` and `write-song`. Make sure `Ableton Producer Pal` and its tools
+     are enabled (they should be enabled by default, unless you disable them).
 
 ## Usage Examples
 
