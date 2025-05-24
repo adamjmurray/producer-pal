@@ -76,15 +76,15 @@ Completed full feature set for core functionality:
 - **Bulk Operations**:
 
   - split write-\* tools into create and update because it will make bulk operations a lot cleaner
-    - create-track can insert one (or maybe more?) MIDI tracks at the given index
-    - update-track can update multiple tracks (with the same property values across each) for a given list of ids
-    - create-scene can insert one (or maybe more?) scenes at the given index
+    - ✅ create-track can insert one or more tracks at the given index
+    - ✅ update-track can update multiple tracks (with the same property values across each) for a given list of ids
+    - create-scene can insert one or more scenes at the given index
     - update-scene can update multiple scenes (with the same property values across each) for a given list of ids
-    - create-clip can insert one (or maybe more?) clips at the given trackIndex and (starting from?) the given
-      clipSlotIndex
+    - create-clip can insert one or more clips at the given trackIndex and (starting from?) the given clipSlotIndex
       - lots of open questions: does it fail on slots with clips in them? Should is support an overwrite option? It
         probably shouldn't/can't insert scenes
-    - TODO... flesh out these plans...
+    - update-clip can update multiple clips (with the same property values across each) for a given list of ids
+    - rename write-song to update-song
 
 - **Robustness improvements**:
 

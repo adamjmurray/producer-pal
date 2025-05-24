@@ -43,6 +43,10 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - Keep code commenting to a minimum
 - The Max for Live device is in `/Users/adammurray/workspace/ableton-live-composition-assistant/device`. The two
   JavaScript bundles build to this folder.
+- When defining MCP tool interfaces with zod, avoid using features like `z.union()` and `z.array()`. Many features do
+  not currently work correctly with the MCP SDK. Stick to primitive types like strings, numbers, and booleans, as well
+  as enums of primitive types. For bulk operations, accept a string of e.g. comma-separated IDs and parse them in the
+  tool implementation.
 - Calling the Live API has idiosyncrasies, such as properties needing to be to be accessed via
   `track.get("propertyName")?.[0]`. To make this less awkward, a cleaner interface is provided in
   `src/live-api-extensions.js`. Use this interface whenever possible.

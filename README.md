@@ -64,7 +64,7 @@ Compose music in Ableton Live with an AI assistant such as [Anthropic Claude](ht
 
 - Start a chat like:
 
-  > What is the state of Ableton Live?
+  > Let's play with Ableton Live
 
 - Setup a drum rack in a track called "Drums" and ask:
 
@@ -81,3 +81,21 @@ Compose music in Ableton Live with an AI assistant such as [Anthropic Claude](ht
 - Let the AI tell you what else it can do:
 
   > What are all the things you can do with your Ableton Live tools?
+
+## Development
+
+Use
+
+```sh
+npm run dev
+```
+
+to watch and auto-build the code.
+
+To test/debug, you can use:
+
+```sh
+npx @modelcontextprotocol/inspector
+```
+
+and then open http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350/mcp

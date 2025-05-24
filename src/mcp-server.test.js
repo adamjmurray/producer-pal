@@ -101,8 +101,9 @@ describe("MCP Express App", () => {
         "write-song",
         "read-scene",
         "write-scene",
+        "create-track",
         "read-track",
-        "write-track",
+        "update-track",
         "read-clip",
         "write-clip",
         "delete",
@@ -127,6 +128,17 @@ describe("MCP Express App", () => {
       expect(writeClipTool.inputSchema.properties).toBeDefined();
       expect(writeClipTool.inputSchema.properties.trackIndex).toBeDefined();
       expect(writeClipTool.inputSchema.properties.clipSlotIndex).toBeDefined();
+
+      const createTrackTool = result.tools.find((tool) => tool.name === "create-track");
+      expect(createTrackTool).toBeDefined();
+      expect(createTrackTool.description).toContain("Creates new tracks");
+      expect(createTrackTool.inputSchema.properties.trackIndex).toBeDefined();
+      expect(createTrackTool.inputSchema.properties.count).toBeDefined();
+
+      const updateTrackTool = result.tools.find((tool) => tool.name === "update-track");
+      expect(updateTrackTool).toBeDefined();
+      expect(updateTrackTool.description).toContain("Updates properties");
+      expect(updateTrackTool.inputSchema.properties.ids).toBeDefined();
     });
   });
 
