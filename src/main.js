@@ -4,6 +4,7 @@
 import * as console from "./console";
 import "./live-api-extensions";
 import { captureScene } from "./tools/capture-scene";
+import { createScene } from "./tools/create-scene";
 import { createTrack } from "./tools/create-track";
 import { deleteObject } from "./tools/delete";
 import { duplicate } from "./tools/duplicate";
@@ -12,16 +13,17 @@ import { readScene } from "./tools/read-scene";
 import { readSong } from "./tools/read-song";
 import { readTrack } from "./tools/read-track";
 import { transport } from "./tools/transport";
+import { updateScene } from "./tools/update-scene";
 import { updateTrack } from "./tools/update-track";
 import { writeClip } from "./tools/write-clip";
-import { writeScene } from "./tools/write-scene";
 import { writeSong } from "./tools/write-song";
 
 const tools = {
   "read-song": () => readSong(),
   "write-song": (args) => writeSong(args),
+  "create-scene": (args) => createScene(args),
   "read-scene": (args) => readScene(args),
-  "write-scene": (args) => writeScene(args),
+  "update-scene": (args) => updateScene(args),
   "create-track": (args) => createTrack(args),
   "read-track": (args) => readTrack(args),
   "update-track": (args) => updateTrack(args),

@@ -97,10 +97,13 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
+        "transport",
         "read-song",
         "write-song",
+        "capture-scene",
+        "create-scene",
         "read-scene",
-        "write-scene",
+        "update-scene",
         "create-track",
         "read-track",
         "update-track",
@@ -108,8 +111,6 @@ describe("MCP Express App", () => {
         "write-clip",
         "delete",
         "duplicate",
-        "capture-scene",
-        "transport",
       ]);
     });
 

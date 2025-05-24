@@ -1,0 +1,22 @@
+// src/mcp-server/add-tool-update-scene.js
+import { z } from "zod";
+
+export function addToolUpdateScene(server, callLiveApi) {
+  server.tool(
+    "update-scene",
+    "Updates properties of existing scenes by ID. Supports bulk operations when provided with comma-separated scene IDs. All properties except ids are optional.",
+    {
+      ids: z.string().describe("Scene ID or comma-separated list of scene IDs to update"),
+      name: z.string().optional().describe("Name for the scene"),
+      color: z.string().optional().describe("Color in #RRGGBB hex format"),
+      tempo: z.number().optional().describe("Tempo in BPM for the scene. Pass -1 to disable the scene's tempo."),
+      timeSignature: z
+        .string()
+        .optional()
+        .describe(
+          'Time signature in format "n/m" (e.g. "4/4"). Pass "disabled" to disable the scene\'s time signature.'
+        ),
+    },
+    async (args) => callLiveApi("update-scene", args)
+  );
+}
