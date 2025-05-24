@@ -1,5 +1,4 @@
 // src/tools/update-song.js
-import { readSong } from "./read-song";
 /**
  * Updates Live Set parameters like tempo, time signature, and playback state
  * @param {Object} args - The parameters
@@ -34,8 +33,15 @@ export function updateSong({ view, tempo, timeSignature } = {}) {
     appView.call("show_view", view);
   }
 
-  return {
-    ...readSong(), // TODO: maybe don't output all of this, just the things that updated?
-    ...(view != null ? { view } : {}),
+  // Build optimistic result object
+  const songResult = {
+    id: liveSet.id,
   };
+
+  // Only include properties that were actually set
+  if (tempo != null) songResult.tempo = tempo;
+  if (timeSignature != null) songResult.timeSignature = timeSignature;
+  if (view != null) songResult.view = view;
+
+  return songResult;
 }

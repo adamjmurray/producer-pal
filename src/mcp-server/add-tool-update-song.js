@@ -1,7 +1,7 @@
 // src/mcp-server/add-tool-update-song.js
 import { z } from "zod";
 
-export function addToolupdateSong(server, callLiveApi) {
+export function addToolUpdateSong(server, callLiveApi) {
   server.tool(
     "update-song",
     "Updates global song properties in the Live Set including view state, tempo, and time signature",
