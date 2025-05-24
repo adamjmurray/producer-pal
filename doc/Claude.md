@@ -34,7 +34,9 @@ the plan in some very specific way guided by the user. Don't try to solve the wh
 - The path to the source code is `/Users/adammurray/workspace/ableton-live-composition-assistant/src`
 - We build two JavaScript bundles with rollup.js. One bundle is for the MCP server that runs on Node.js (via Node for
   Max). The other bundle is the JavaScript code that runs in the embedded V8 engine (via the Max v8 object).
-  - The entry point for the MCP server is `src/mcp-server.js`. This imports the code from `src/mcp-server/**`
+  - The entry point for the MCP server is `src/mcp-server.mjs`. This imports the code from `src/mcp-server/**`
+    - The runtime dependencies (@modelcontextprotocol/sdk, express, and zod) are bundled along with the source code for
+      easy distribution (so end users don't have to install any npm modules)
   - The entry point for the v8 code is `src/main.js`
 - source code files must always include the relative path to the file in a comment on the first line, so the context is
   clear when these files are added to project knowledge

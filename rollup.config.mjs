@@ -1,4 +1,7 @@
 // rollup.config.mjs
+import commonjs from "@rollup/plugin-commonjs";
+import json from "@rollup/plugin-json";
+import resolve from "@rollup/plugin-node-resolve";
 export default [
   {
     input: "src/main.js",
@@ -13,18 +16,22 @@ export default [
   {
     input: "src/mcp-server.js",
     output: {
-      file: "device/mcp-server.js",
+      file: "device/mcp-server.mjs",
       format: "es",
     },
-    external: [
-      "@modelcontextprotocol/sdk",
-      "@modelcontextprotocol/sdk/server/mcp.js",
-      "@modelcontextprotocol/sdk/server/streamableHttp.js",
-      "@modelcontextprotocol/sdk/types.js",
-      "express",
-      "max-api",
-      "node:crypto",
-      "zod",
+    external: ["max-api"],
+    plugins: [
+      // These plugins bundle up the runtime dependencies (@modelcontextprotocol/sdk, express, and zod) for distribution.
+      // Note: these build warnings are expected and harmless:
+      // (!) Circular dependencies in node_modules/zod-to-json-schema
+      // and
+      // (!) "this" has been rewritten to "undefined" in node_modules/zod
+      resolve({
+        preferBuiltins: true,
+        browser: false,
+      }),
+      commonjs(),
+      json(),
     ],
   },
 ];

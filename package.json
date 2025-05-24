@@ -2,7 +2,6 @@
   "name": "ableton-live-composition-assistant",
   "version": "1.0.0",
   "description": "AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
-  "type": "module",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/adamjmurray/ableton-live-composition-assistant.git"
@@ -10,13 +9,16 @@
   "homepage": "https://github.com/adamjmurray/ableton-live-composition-assistant#readme",
   "keywords": [],
   "author": "Adam Murray",
-  "license": "MIT",
+  "license": "Personal Use License",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
     "express": "^5.1.0",
     "zod": "^3.25.23"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.3",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
     "@types/express": "^5.0.2",
     "@types/max-api": "^2.0.3",
     "@types/node": "^22.15.21",

@@ -88,6 +88,7 @@ Completed full feature set for core functionality:
 
 - **Robustness improvements**:
 
+  - BarBeat needs to work with time signatures other than 4/4!
   - ✅ Switch over to a rollup based build
   - ✅ Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
   - ✅ Fix state synchronization issues because playback state immediately after e.g. autoplay in `write-clip` is not
@@ -119,6 +120,7 @@ Completed full feature set for core functionality:
       - ✅ Show the claude config
       - ✅ Don't necessarily need to display errors in the device UI, but it needs to be clear the server failed to
         start, and check the Max window for details.
+  - Self-awareness of the track the MCP server is hosted in
   - Add ability to route MIDI input from one track into another. Not entirely sure if it's possible, but imagine
     creating a MIDI track and routing it into the main track that e.g. plays drum sounds, and layering loops with
     different lengths. All automatically
