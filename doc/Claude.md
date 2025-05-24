@@ -1,19 +1,9 @@
-# AI Music Composition Assistant Project
+# Ableton Producer Pal: an AI music production assistant
 
-## Goal
+An AI music production assistant for Ableton Live implemented as a custom MCP (model context protocol) server that
+integrates with the Live API using Max for Live.
 
-Build an AI music composition assistant for Ableton Live by implementing a custom MCP (model context protocol) server
-that integrates with the Live API using Max for Live and Node for Max.
-
-## Current Focus
-
-We have an end-to-end working prototype where Claude Desktop can call the Live API, and we're starting to build out
-features.
-
-We are working through the Project Plan over many conversations. The goal of each conversation is to make progress in
-the plan in some very specific way guided by the user. Don't try to solve the whole project at once.
-
-## Rules
+## Project Rules
 
 - Minimize dependencies to reduce complexity and maintenance
 - Ideally we always have comprehensive test coverage, so tests should always be written or adjusted for changes to the
