@@ -1,4 +1,4 @@
-// src/tools/write-song.js
+// src/tools/update-song.js
 import { readSong } from "./read-song";
 /**
  * Updates Live Set parameters like tempo, time signature, and playback state
@@ -8,7 +8,7 @@ import { readSong } from "./read-song";
  * @param {string} [args.view] - Switch between Session and Arranger views
  * @returns {Object} Updated Live Set information
  */
-export function writeSong({ view, tempo, timeSignature } = {}) {
+export function updateSong({ view, tempo, timeSignature } = {}) {
   const liveSet = new LiveAPI("live_set");
 
   if (tempo != null) {

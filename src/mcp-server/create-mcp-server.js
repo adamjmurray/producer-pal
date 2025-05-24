@@ -11,9 +11,9 @@ import { addToolReadSong } from "./add-tool-read-song";
 import { addToolReadTrack } from "./add-tool-read-track";
 import { addToolTransport } from "./add-tool-transport";
 import { addToolUpdateScene } from "./add-tool-update-scene";
+import { addToolupdateSong } from "./add-tool-update-song";
 import { addToolUpdateTrack } from "./add-tool-update-track";
 import { addToolWriteClip } from "./add-tool-write-clip";
-import { addToolWriteSong } from "./add-tool-write-song";
 
 export function createMcpServer(callLiveApi) {
   const server = new McpServer({
@@ -24,7 +24,7 @@ export function createMcpServer(callLiveApi) {
   addToolTransport(server, callLiveApi);
 
   addToolReadSong(server, callLiveApi);
-  addToolWriteSong(server, callLiveApi);
+  addToolupdateSong(server, callLiveApi);
 
   addToolCaptureScene(server, callLiveApi);
   addToolCreateScene(server, callLiveApi);

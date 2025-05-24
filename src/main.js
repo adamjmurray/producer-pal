@@ -14,13 +14,13 @@ import { readSong } from "./tools/read-song";
 import { readTrack } from "./tools/read-track";
 import { transport } from "./tools/transport";
 import { updateScene } from "./tools/update-scene";
+import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
 import { writeClip } from "./tools/write-clip";
-import { writeSong } from "./tools/write-song";
 
 const tools = {
   "read-song": () => readSong(),
-  "write-song": (args) => writeSong(args),
+  "update-song": (args) => updateSong(args),
   "create-scene": (args) => createScene(args),
   "read-scene": (args) => readScene(args),
   "update-scene": (args) => updateScene(args),

@@ -99,7 +99,7 @@ describe("MCP Express App", () => {
       expect(toolNames).toEqual([
         "transport",
         "read-song",
-        "write-song",
+        "update-song",
         "capture-scene",
         "create-scene",
         "read-scene",

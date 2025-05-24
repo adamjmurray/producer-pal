@@ -84,7 +84,12 @@ Completed full feature set for core functionality:
       - lots of open questions: does it fail on slots with clips in them? Should is support an overwrite option? It
         probably shouldn't/can't insert scenes
     - update-clip can update multiple clips (with the same property values across each) for a given list of ids
-    - rename write-song to update-song
+    - bulk duplicate operations
+    - bulk delete options
+    - bulk operations in transport:
+      - "play-session-clip" action should support a list of comma-separated trackIndex
+      - "stop-track-session-clip" action should support a list of comma-separated trackIndex
+    - ✅ rename write-song to update-song
 
 - **Robustness improvements**:
 
