@@ -50,7 +50,7 @@ Completed full feature set for core functionality:
 
 ### Phase 4: Deeper Use Cases (in progress)
 
-- **Session and Arrangement integration**:
+- ✅ **Session and Arrangement integration**:
 
   - ✅ Auto-create scenes and tracks when needed
   - ✅ Launch scenes for synchronization between tracks
@@ -72,22 +72,35 @@ Completed full feature set for core functionality:
   - ✅ Capture Scene
   - ✅ Add dedicated tools for playback and transport control
     - ✅ Consolidate all playback and transport tools into a single tool
-  - Rework all write-\* tools to only update existing objects when given an id arg, and fail to create via index args if
-    something already exists at that location (except in the case of arrangement clips - we can keep blindly overwriting
-    those). I am debating whether to do this or not.
+
+- **Bulk Operations**:
+
+  - split write-\* tools into create and update because it will make bulk operations a lot cleaner
+    - create-track can insert one (or maybe more?) MIDI tracks at the given index
+    - update-track can update multiple tracks (with the same property values across each) for a given list of ids
+    - create-scene can insert one (or maybe more?) scenes at the given index
+    - update-scene can update multiple scenes (with the same property values across each) for a given list of ids
+    - create-clip can insert one (or maybe more?) clips at the given trackIndex and (starting from?) the given
+      clipSlotIndex
+      - lots of open questions: does it fail on slots with clips in them? Should is support an overwrite option? It
+        probably shouldn't/can't insert scenes
+    - TODO... flesh out these plans...
 
 - **Robustness improvements**:
 
   - ✅ Switch over to a rollup based build
-  - Validation system for better error handling
-    - e.g. start and end time in write-clip
+  - ✅ Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
   - ✅ Fix state synchronization issues because playback state immediately after e.g. autoplay in `write-clip` is not
     accurate. This has been addressed by returning optimistic results (originally a sleep() was introduced but
     optimistic results should be a lot more robust)
+  - Use bar.beat format for arrangement times, clip lengths, anything that makes sense
+  - Consider using optimistic results when writing notes to avoid any confusion about the write not being performed as
+    intended and triggering retries (i.e. return the same BarBeat syntax as given, assuming it was valid)
+  - Revisit stateless server approach. Stateful may be more efficient
+  - Validation system for better error handling
+    - e.g. start and end time in write-clip
   - Claude keeps thinking the transport needs to be started to autoplay clips when it's not necessary - is it still an
     issue?
-  - ✅ Add timeouts to promises when calling out to v8 (since if v8 never responds, we will return an error)
-  - Revisit stateless server approach. Stateful may be more efficient
   - Flesh out the mocking system. The way we mock liveAPI.get() calls is pretty good and we need similar treatment for
     ids and paths, ideally through some unified interface (i.e. you shouldn't have to mock get, id, and path separately,
     just call a single mock function, which should maybe handle mock calls as well).
@@ -106,6 +119,12 @@ Completed full feature set for core functionality:
       - ✅ Show the claude config
       - ✅ Don't necessarily need to display errors in the device UI, but it needs to be clear the server failed to
         start, and check the Max window for details.
+  - Add ability to route MIDI input from one track into another. Not entirely sure if it's possible, but imagine
+    creating a MIDI track and routing it into the main track that e.g. plays drum sounds, and layering loops with
+    different lengths. All automatically
+    - We should be able to use track routings features to do this. If we want to send multiple MIDI tracks to a single
+      track without using a "proxy" track, we probably need to automatically delete all devices in a track in order to
+      route MIDI.
   - Notation (BarBeat) enhancements
     - Support note probability
     - Support note velocity_deviation
