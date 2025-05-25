@@ -7,7 +7,7 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 ## Core Syntax
 
 ```
-[bar:beat] [v<velocity>] [t<duration>] note [note ...]
+[bar:beat]  [v<velocity>] [t<duration>] [p<probability>] note [note ...]
 ```
 
 ### Components:
@@ -20,9 +20,18 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Persists until explicitly changed
   - Requires whitespace separation from following elements
 
-- **Velocity (`v<0–127>`)**
+- **Probability (`p<0.0–1.0>`)**
+
+  - Sets note probability for following notes until changed
+  - 1.0 = note always plays, 0.0 = note never plays
+  - Default: 1.0
+  - Requires whitespace separation from following elements
+
+- **Velocity (`v<0–127>` or `v<min>-<max>`)**
 
   - Sets velocity for following notes until changed
+  - Single value: `v100` (fixed velocity)
+  - Range: `v80-120` or `v120-80` (random velocity between min and max, auto-ordered)
   - Default: 100
   - Requires whitespace separation from following elements
 
@@ -46,7 +55,7 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
   - Multiple notes at same time separated by whitespace
   - No commas between elements
-  - All state (time, velocity, duration) persists across events
+  - All state (time, probability, velocity, duration) persists across events
 
 ---
 
@@ -55,7 +64,8 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 All components are stateful:
 
 - **Time**: Set with `bar:beat`, applies to following notes until changed
-- **Velocity**: Set with `v<value>`, applies to following notes until changed
+- **Probability**: Set with `p<value>`, applies to following notes until changed
+- **Velocity**: Set with `v<value>` or `v<min>-<max>`, applies to following notes until changed
 - **Duration**: Set with `t<value>`, applies to following notes until changed
 
 ---
@@ -79,29 +89,30 @@ All components are stateful:
 1:2.25 E3
 1:3.75 F3
 
-// Drum pattern with velocity changes
-1:1 v100 t0.25 C1 Gb1
-1:1.5 v60 Gb1
-1:2 v90 D1
-v100 Gb1
+// Drum pattern with probability and velocity variation
+1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
+1:1.5 p0.6 Gb1
+1:2 v90 p1.0 D1
+v100 p0.9 Gb1
 
-// Complex rhythm
-1:1 v100 t0.5 C3
-v80 D3 E3
-t1.0 F3
-2:1.25 v120 G3 A3
+// Complex rhythm with probability
+1:1 v100 t0.5 p0.9 C3
+v80 p0.7 D3 E3
+t1.0 p1.0 F3
+2:1.25 v120 p0.8 G3 A3
 ```
 
 ---
 
 ## Parsing Rules
 
-1. State is maintained throughout parsing - time, velocity, and duration settings persist
+1. State is maintained throughout parsing - time, probability, velocity, and duration settings persist
 2. `bar:beat` can appear standalone to set time context
-3. Velocity (`v`) and duration (`t`) can appear standalone to set defaults
+3. Probability (`p`), velocity (`v`), and duration (`t`) can appear standalone to set defaults
 4. Multiple notes at same time are whitespace-separated
 5. No commas required between events
-6. Whitespace required between start times, velocity, duration, and notes
+6. Whitespace required between start times, probability, velocity, duration, and notes
+7. Velocity ranges are auto-ordered: `v120-80` becomes `v80-120`
 
 ---
 
@@ -119,10 +130,12 @@ type BarBeat = {
 };
 
 type Note = {
-  pitch: number;      // MIDI pitch (0–127)
-  name: string;       // Original pitch name (e.g. "C3", "F#4")
-  velocity: number;   // 0–127 (inherited from state)
-  duration: number;   // float, in beats (inherited from state)
+  pitch: number;              // MIDI pitch (0–127)
+  name: string;               // Original pitch name (e.g. "C3", "F#4")
+  velocity: number;           // 0–127 (inherited from state)
+  velocity_deviation: number; // 0–127 (for velocity ranges)
+  probability: number;        // 0.0–1.0 (inherited from state)
+  duration: number;           // float, in beats (inherited from state)
 };
 
 type NoteEvent = Note & {

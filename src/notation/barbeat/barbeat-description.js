@@ -4,7 +4,7 @@ BarBeat is a precise, stateful music notation format for MIDI sequencing.
 
 ## Core Syntax
 
-\`[bar:beat] [v<velocity>] [t<duration>] note [note ...]\`
+\`[bar:beat] [v<velocity>] [t<duration>] [p<probability>] note [note ...]\`
 
 ### Components:
 
@@ -14,8 +14,15 @@ BarBeat is a precise, stateful music notation format for MIDI sequencing.
   - Can be standalone to set default time for following notes
   - Persists until explicitly changed
 
-- **Velocity (\`v<0-127>\`)**
+- **Probability (\`p<0.0-1.0>\`)**
+  - Sets note probability for following notes until changed
+  - 1.0 = note always plays, 0.0 = note never plays
+  - Default: 1.0
+
+- **Velocity (\`v<0-127>\` or \`v<min>-<max>\`)**
   - Sets velocity for following notes until changed
+  - Single value: \`v100\` (fixed velocity)
+  - Range: \`v80-120\` or \`v120-80\` (random velocity between min and max, auto-ordered)
   - Default: 100
 
 - **Duration (\`t<float>\`)**
@@ -31,7 +38,8 @@ BarBeat is a precise, stateful music notation format for MIDI sequencing.
 
 All components are stateful:
 - **Time**: Set with \`bar:beat\`, applies to following notes until changed
-- **Velocity**: Set with \`v<value>\`, applies to following notes until changed  
+- **Probability**: Set with \`p<value>\`, applies to following notes until changed  
+- **Velocity**: Set with \`v<value>\` or \`v<min>-<max>\`, applies to following notes until changed
 - **Duration**: Set with \`t<value>\`, applies to following notes until changed
 
 ## Examples
@@ -51,9 +59,10 @@ All components are stateful:
 1:1.5 D3
 1:2.25 E3
 
-// Drum pattern
-1:1 v100 t0.25 C1 Gb1
-1:1.5 v60 Gb1
-1:2 v90 D1
+// Drum pattern with probability and velocity variation
+1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
+1:1.5 p0.6 Gb1
+1:2 v90 p1.0 D1
+v100 p0.9 Gb1
 \`\`\`
 </barbeat-specification>`;

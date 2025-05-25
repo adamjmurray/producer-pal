@@ -439,12 +439,16 @@ describe("updateClip", () => {
           velocity: 80,
           start_time: 0,
           duration: 2,
+          probability: 1,
+          velocity_deviation: 0,
         },
         {
           pitch: 74,
           velocity: 120,
           start_time: 2,
           duration: 1,
+          probability: 1,
+          velocity_deviation: 0,
         },
       ],
     });

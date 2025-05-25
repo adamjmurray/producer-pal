@@ -1,5 +1,12 @@
 // src/notation/barbeat/barbeat-parse-notation.js
-import { DEFAULT_BEATS_PER_BAR, DEFAULT_DURATION, DEFAULT_TIME, DEFAULT_VELOCITY } from "./barbeat-config";
+import {
+  DEFAULT_BEATS_PER_BAR,
+  DEFAULT_DURATION,
+  DEFAULT_PROBABILITY,
+  DEFAULT_TIME,
+  DEFAULT_VELOCITY,
+  DEFAULT_VELOCITY_DEVIATION,
+} from "./barbeat-config";
 import * as parser from "./barbeat-parser";
 /**
  * Convert BarBeat notation to note events
@@ -20,6 +27,9 @@ export function parseNotation(barBeatExpression, options = {}) {
     let currentTime = DEFAULT_TIME;
     let currentVelocity = DEFAULT_VELOCITY;
     let currentDuration = DEFAULT_DURATION;
+    let currentProbability = DEFAULT_PROBABILITY;
+    let currentVelocityMin = null;
+    let currentVelocityMax = null;
 
     const events = [];
 
@@ -28,17 +38,40 @@ export function parseNotation(barBeatExpression, options = {}) {
         currentTime = { bar: element.bar, beat: element.beat };
       } else if (element.velocity !== undefined) {
         currentVelocity = element.velocity;
+        // Clear velocity range when single velocity is set
+        currentVelocityMin = null;
+        currentVelocityMax = null;
+      } else if (element.velocityMin !== undefined && element.velocityMax !== undefined) {
+        currentVelocityMin = element.velocityMin;
+        currentVelocityMax = element.velocityMax;
+        // Clear single velocity when range is set
+        currentVelocity = null;
       } else if (element.duration !== undefined) {
         currentDuration = element.duration;
+      } else if (element.probability !== undefined) {
+        currentProbability = element.probability;
       } else if (element.pitch !== undefined) {
         // Convert bar:beat to absolute beats
         const absoluteBeats = (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
+
+        // Determine velocity and velocity_deviation
+        let velocity, velocity_deviation;
+        if (currentVelocityMin !== null && currentVelocityMax !== null) {
+          // Convert range to Live API format
+          velocity = currentVelocityMin;
+          velocity_deviation = currentVelocityMax - currentVelocityMin;
+        } else {
+          velocity = currentVelocity || DEFAULT_VELOCITY;
+          velocity_deviation = DEFAULT_VELOCITY_DEVIATION;
+        }
 
         events.push({
           pitch: element.pitch,
           start_time: absoluteBeats,
           duration: currentDuration,
-          velocity: currentVelocity,
+          velocity: velocity,
+          probability: currentProbability,
+          velocity_deviation: velocity_deviation,
         });
       }
     }

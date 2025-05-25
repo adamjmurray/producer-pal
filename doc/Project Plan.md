@@ -49,6 +49,11 @@
 - [x] `update-clip` - update multiple clips by ID list
 - [ ] Transport bulk operations - play/stop multiple tracks simultaneously
 
+**BarBeat Enhancements:**
+
+- [x] Note probability support
+- [x] Velocity deviation/range support
+
 **Additional Duplicate Features:**
 
 - [x] Duplicate scene to arranger (all clips in scene → arranger)
@@ -65,9 +70,8 @@
 **UX:**
 
 - [ ] `create-clip` and `update-clip` should show the clip in Clip Detail view
-- [ ] when changing clip length, Clip Detail view should zoom automatically to show the whole clip
-- [ ] when changing the Arrangement, the view should scroll and zoom automatically to show the changes (e.g. where a
-      clip was inserted)
+- [ ] when changing clip length, Clip Detail view should zoom automatically to show the whole clip (or apparently the
+      best we can do is show the current loop, if looped)
 
 **Robustness:**
 
@@ -91,11 +95,6 @@
 - [ ] Support automatic routing setup for layered loops/patterns (e.g. multiple drum patterns with different loop
       lengths)
 
-**BarBeat Enhancements:**
-
-- [ ] Note probability support
-- [ ] Velocity deviation/range support
-
 **Robustness:**
 
 - [ ] Validation system for better error handling (start/end times, clip bounds, etc.)
@@ -113,7 +112,7 @@
 
 **BarBeat Enhancements:**
 
-- [ ] Percussion notation features (`X...x...` for 16th notes with accents)
+- Percussion notation features (`X...x...` for 16th notes with accents)
 
 ### Advanced Composition Features
 
@@ -128,9 +127,3 @@
 ### Beyond Composition Features
 
 - Device and device/plugin parameter control
-
-## Current Status
-
-**Phase:** MVP Beta Preparation  
-**Target:** Complete critical pre-launch features for stable beta release  
-**Focus:** Bulk operations, system robustness, and core workflow optimization

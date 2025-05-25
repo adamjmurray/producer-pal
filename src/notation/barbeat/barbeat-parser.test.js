@@ -14,17 +14,23 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("parses mixed elements (state + notes)", () => {
-      expect(parser.parse("1:1 v100 t0.5 C3 D3")).toStrictEqual([
+      expect(parser.parse("1:1 v100 t0.5 p0.8 C3 D3")).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
         { duration: 0.5 },
+        { probability: 0.8 },
         { pitch: 60 },
         { pitch: 62 },
       ]);
     });
 
     it("parses state-only input", () => {
-      expect(parser.parse("2:3 v80 t0.25")).toStrictEqual([{ bar: 2, beat: 3 }, { velocity: 80 }, { duration: 0.25 }]);
+      expect(parser.parse("2:3 v80 t0.25 p0.9")).toStrictEqual([
+        { bar: 2, beat: 3 },
+        { velocity: 80 },
+        { duration: 0.25 },
+        { probability: 0.9 },
+      ]);
     });
   });
 
@@ -41,6 +47,23 @@ describe("BarBeatScript Parser", () => {
     });
   });
 
+  describe("probability", () => {
+    it("accepts valid probability values", () => {
+      expect(parser.parse("p0.0 C3 p0.5 D3 p1.0 E3")).toStrictEqual([
+        { probability: 0.0 },
+        { pitch: 60 },
+        { probability: 0.5 },
+        { pitch: 62 },
+        { probability: 1.0 },
+        { pitch: 64 },
+      ]);
+    });
+
+    it("rejects out-of-range probability", () => {
+      expect(() => parser.parse("p1.5 C3")).toThrow("Note probability 1.5 outside valid range 0.0-1.0");
+    });
+  });
+
   describe("velocity", () => {
     it("accepts valid MIDI velocity", () => {
       expect(parser.parse("v0 C3 v127 D3")).toStrictEqual([
@@ -51,8 +74,22 @@ describe("BarBeatScript Parser", () => {
       ]);
     });
 
+    it("accepts valid velocity ranges", () => {
+      expect(parser.parse("v80-120 C3 v0-127 D3")).toStrictEqual([
+        { velocityMin: 80, velocityMax: 120 },
+        { pitch: 60 },
+        { velocityMin: 0, velocityMax: 127 },
+        { pitch: 62 },
+      ]);
+    });
+
     it("rejects out-of-range velocity", () => {
       expect(() => parser.parse("v128 C3")).toThrow("MIDI velocity 128 outside valid range 0-127");
+    });
+
+    it("rejects invalid velocity ranges", () => {
+      expect(() => parser.parse("v128-130 C3")).toThrow("Invalid velocity range 128-130");
+      expect(() => parser.parse("v0-128 C3")).toThrow("Invalid velocity range 0-128");
     });
 
     it("rejects negative velocity", () => {
@@ -96,26 +133,31 @@ describe("BarBeatScript Parser", () => {
   });
 
   describe("integration", () => {
-    it("handles real-world drum pattern example", () => {
+    it("handles real-world drum pattern example with probability and velocity range", () => {
       const input = `
-        1:1 v100 t0.25 C1 Gb1
-        1:1.5 v60 Gb1
-        2:2 v90 D1
-        v100 Gb1
+        1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
+        1:1.5 p0.6 Gb1
+        2:2 v90 p1.0 D1
+        v100 p0.9 Gb1
       `;
       expect(parser.parse(input)).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
         { duration: 0.25 },
+        { probability: 1.0 },
         { pitch: 36 },
+        { velocityMin: 80, velocityMax: 100 },
+        { probability: 0.8 },
         { pitch: 42 },
         { bar: 1, beat: 1.5 },
-        { velocity: 60 },
+        { probability: 0.6 },
         { pitch: 42 },
         { bar: 2, beat: 2 },
         { velocity: 90 },
+        { probability: 1.0 },
         { pitch: 38 },
         { velocity: 100 },
+        { probability: 0.9 },
         { pitch: 42 },
       ]);
     });
