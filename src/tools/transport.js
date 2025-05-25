@@ -7,10 +7,10 @@
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
  * @param {number} [args.loopStart] - Loop start position in beats
  * @param {number} [args.loopLength] - Loop length in beats
- * @param {Array<number>} [args.followingTracks] - Tracks that should follow the arrangement
- * @param {number} [args.trackIndex] - Track index for Session view operations
- * @param {number} [args.clipSlotIndex] - Clip slot index for Session view operations
+ * @param {string} [args.followingTrackIndexes] - Comma-separated track indexes that should follow the arrangement
  * @param {number} [args.sceneIndex] - Scene index for Session view operations
+ * @param {string} [args.trackIndexes] - Comma-separated track indexes for Session view operations
+ * @param {string} [args.clipSlotIndexes] - Comma-separated clip slot indexes for Session view operations
  * @returns {Object} Result with transport state
  */
 export function transport({
@@ -19,10 +19,10 @@ export function transport({
   loop,
   loopStart,
   loopLength,
-  followingTracks,
+  followingTrackIndexes,
   sceneIndex,
-  trackIndex,
-  clipSlotIndex,
+  trackIndexes,
+  clipSlotIndexes,
 } = {}) {
   if (!action) {
     throw new Error("transport failed: action is required");
@@ -43,17 +43,20 @@ export function transport({
     liveSet.set("loop_length", loopLength);
   }
 
-  if (followingTracks && followingTracks.length > 0) {
-    if (followingTracks.includes(-1)) {
-      // Make all tracks follow the arrangement
-      liveSet.set("back_to_arranger", 0);
-    } else {
-      // Make specific tracks follow the arrangement
-      for (const trackIndex of followingTracks) {
-        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-        if (track.exists()) {
-          track.set("back_to_arranger", 0);
-        }
+  if (followingTrackIndexes) {
+    const trackIndexList = followingTrackIndexes
+      .split(",")
+      .map((index) => index.trim())
+      .filter((index) => index.length > 0)
+      .map((index) => parseInt(index, 10));
+
+    for (const trackIndex of trackIndexList) {
+      if (isNaN(trackIndex)) {
+        throw new Error(`transport failed: invalid track index "${followingTrackIndexes}" in followingTrackIndexes`);
+      }
+      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+      if (track.exists()) {
+        track.set("back_to_arranger", 0);
       }
     }
   }
@@ -96,41 +99,82 @@ export function transport({
       break;
 
     case "play-session-clip":
-      if (trackIndex == null) {
-        throw new Error(`transport failed: trackIndex is required for action "play-session-clip"`);
+      if (!trackIndexes) {
+        throw new Error(`transport failed: trackIndexes is required for action "play-session-clip"`);
       }
-      if (clipSlotIndex == null) {
-        throw new Error(`transport failed: clipSlotIndex is required for action "play-session-clip"`);
+      if (!clipSlotIndexes) {
+        throw new Error(`transport failed: clipSlotIndexes is required for action "play-session-clip"`);
       }
-      const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
-      if (!clipSlot.exists()) {
-        throw new Error(
-          `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`
-        );
+
+      const trackIndexList = trackIndexes
+        .split(",")
+        .map((index) => index.trim())
+        .filter((index) => index.length > 0)
+        .map((index) => parseInt(index, 10));
+
+      const clipSlotIndexList = clipSlotIndexes
+        .split(",")
+        .map((index) => index.trim())
+        .filter((index) => index.length > 0)
+        .map((index) => parseInt(index, 10));
+
+      if (trackIndexList.some(isNaN)) {
+        throw new Error(`transport failed: invalid track index in trackIndexes "${trackIndexes}"`);
       }
-      if (!clipSlot.getProperty("has_clip")) {
-        throw new Error(
-          `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`
-        );
+      if (clipSlotIndexList.some(isNaN)) {
+        throw new Error(`transport failed: invalid clip slot index in clipSlotIndexes "${clipSlotIndexes}"`);
       }
+
       appView.call("show_view", "Session");
-      clipSlot.call("fire");
+
+      for (let i = 0; i < trackIndexList.length; i++) {
+        const trackIndex = trackIndexList[i];
+        const clipSlotIndex =
+          i < clipSlotIndexList.length ? clipSlotIndexList[i] : clipSlotIndexList[clipSlotIndexList.length - 1];
+
+        const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
+        if (!clipSlot.exists()) {
+          throw new Error(
+            `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`
+          );
+        }
+        if (!clipSlot.getProperty("has_clip")) {
+          throw new Error(
+            `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`
+          );
+        }
+        clipSlot.call("fire");
+      }
 
       isPlaying = true;
       break;
 
     case "stop-track-session-clip":
-      if (trackIndex == null) {
-        throw new Error(`transport failed: trackIndex is required for action "stop-track-session-clip"`);
+      if (!trackIndexes) {
+        throw new Error(`transport failed: trackIndexes is required for action "stop-track-session-clip"`);
       }
-      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-      if (!track.exists()) {
-        throw new Error(
-          `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`
-        );
+
+      const stopTrackIndexList = trackIndexes
+        .split(",")
+        .map((index) => index.trim())
+        .filter((index) => index.length > 0)
+        .map((index) => parseInt(index, 10));
+
+      if (stopTrackIndexList.some(isNaN)) {
+        throw new Error(`transport failed: invalid track index in trackIndexes "${trackIndexes}"`);
       }
+
       appView.call("show_view", "Session");
-      track.call("stop_all_clips");
+
+      for (const trackIndex of stopTrackIndexList) {
+        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+        if (!track.exists()) {
+          throw new Error(
+            `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`
+          );
+        }
+        track.call("stop_all_clips");
+      }
       // this doesn't affect the isPlaying state
       break;
 
@@ -160,10 +204,10 @@ export function transport({
       loop: loop ?? liveSet.getProperty("loop") > 0,
       loopStart: loopStart ?? liveSet.getProperty("loop_start"),
       loopLength: loopLength ?? liveSet.getProperty("loop_length"),
-      followingTracks,
+      followingTrackIndexes,
       sceneIndex,
-      trackIndex,
-      clipSlotIndex,
+      trackIndexes,
+      clipSlotIndexes,
       // and include some additional relevant state:
       isPlaying,
       currentTime,

@@ -47,7 +47,7 @@
 
 - [x] `create-clip` - insert multiple clips at specified locations
 - [x] `update-clip` - update multiple clips by ID list
-- [ ] Transport bulk operations - play/stop multiple tracks simultaneously
+- [x] Transport bulk operations - play/stop multiple tracks simultaneously
 
 **BarBeat Enhancements:**
 
