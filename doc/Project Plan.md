@@ -51,7 +51,10 @@
 
 **Additional Duplicate Features:**
 
-- [ ] Duplicate scene to arranger (all clips in scene → arranger)
+- [x] Duplicate scene to arranger (all clips in scene → arranger)
+  - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
+        scene)
+  - [ ] Add an optional arg to set the length of the clips in the arrangement when copying a scene
 - [ ] ClipSlot.duplicate_clip_to with bulk destination support
 
 **BarBeat Improvements:**

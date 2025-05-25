@@ -12,7 +12,9 @@ export function addToolDuplicate(server, callLiveApi) {
       destination: z
         .enum(["session", "arranger"])
         .optional()
-        .describe("Destination for clip duplication. Required when type is 'clip'."),
+        .describe(
+          "Destination for clip or scene duplication. Required when type is 'clip'. For scenes, defaults to 'session'."
+        ),
       arrangerStartTime: z
         .number()
         .optional()

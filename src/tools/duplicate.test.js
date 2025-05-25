@@ -1,6 +1,6 @@
 // src/tools/duplicate.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import { children, liveApiCall, liveApiId, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
 import { duplicate } from "./duplicate";
 
 describe("duplicate", () => {
@@ -101,7 +101,7 @@ describe("duplicate", () => {
   });
 
   describe("scene duplication", () => {
-    it("should duplicate a single scene", () => {
+    it("should duplicate a single scene to session view (default behavior)", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") {
           return "live_set scenes 0";
@@ -159,6 +159,219 @@ describe("duplicate", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene 2");
+    });
+
+    describe("arranger destination", () => {
+      it("should throw error when arrangerStartTime is missing for scene to arranger", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "scene1") {
+            return "live_set scenes 0";
+          }
+          return this._path;
+        });
+
+        expect(() => duplicate({ type: "scene", id: "scene1", destination: "arranger" })).toThrow(
+          "duplicate failed: arrangerStartTime is required when destination is 'arranger'"
+        );
+      });
+
+      it("should duplicate a scene to arranger view", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "scene1") {
+            return "live_set scenes 0";
+          }
+          return this._path;
+        });
+
+        // Mock scene with clips in tracks 0 and 2
+        mockLiveApiGet({
+          LiveSet: {
+            tracks: children("track0", "track1", "track2"),
+          },
+          "live_set tracks 0 clip_slots 0": { has_clip: 1 },
+          "live_set tracks 1 clip_slots 0": { has_clip: 0 },
+          "live_set tracks 2 clip_slots 0": { has_clip: 1 },
+          "live_set tracks 0 clip_slots 0 clip": { length: 4 },
+          "live_set tracks 2 clip_slots 0 clip": { length: 8 },
+        });
+
+        liveApiCall.mockImplementation(function (method) {
+          if (method === "duplicate_clip_to_arrangement") {
+            return ["id", "new_clip"];
+          }
+          return null;
+        });
+
+        const result = duplicate({
+          type: "scene",
+          id: "scene1",
+          destination: "arranger",
+          arrangerStartTime: 16,
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWith(
+          "duplicate_clip_to_arrangement",
+          "id live_set/tracks/0/clip_slots/0/clip",
+          16
+        );
+        expect(liveApiCall).toHaveBeenCalledWith(
+          "duplicate_clip_to_arrangement",
+          "id live_set/tracks/2/clip_slots/0/clip",
+          16
+        );
+        expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+
+        expect(result).toStrictEqual({
+          type: "scene",
+          id: "scene1",
+          count: 1,
+          destination: "arranger",
+          arrangerStartTime: 16,
+          duplicated: true,
+          newArrangerStartTime: 16,
+          duplicatedClips: [
+            {
+              newId: "new_clip",
+              newTrackIndex: 0,
+            },
+            {
+              newId: "new_clip",
+              newTrackIndex: 2,
+            },
+          ],
+        });
+      });
+
+      it("should duplicate multiple scenes to arranger view at sequential positions", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "scene1") {
+            return "live_set scenes 0";
+          }
+          return this._path;
+        });
+
+        // Mock scene with one clip of length 8 beats
+        mockLiveApiGet({
+          LiveSet: {
+            tracks: children("track0"),
+          },
+          "live_set tracks 0 clip_slots 0": { has_clip: 1 },
+          "live_set tracks 0 clip_slots 0 clip": { length: 8 },
+        });
+
+        liveApiCall.mockImplementation(function (method) {
+          if (method === "duplicate_clip_to_arrangement") {
+            return ["id", "new_clip"];
+          }
+          return null;
+        });
+
+        const result = duplicate({
+          type: "scene",
+          id: "scene1",
+          destination: "arranger",
+          arrangerStartTime: 16,
+          count: 3,
+          name: "Scene Copy",
+        });
+
+        // Scenes should be placed at sequential positions based on scene length (8 beats)
+        expect(liveApiCall).toHaveBeenCalledWith(
+          "duplicate_clip_to_arrangement",
+          "id live_set/tracks/0/clip_slots/0/clip",
+          16
+        );
+        expect(liveApiCall).toHaveBeenCalledWith(
+          "duplicate_clip_to_arrangement",
+          "id live_set/tracks/0/clip_slots/0/clip",
+          24
+        );
+        expect(liveApiCall).toHaveBeenCalledWith(
+          "duplicate_clip_to_arrangement",
+          "id live_set/tracks/0/clip_slots/0/clip",
+          32
+        );
+
+        expect(result).toStrictEqual({
+          type: "scene",
+          id: "scene1",
+          count: 3,
+          destination: "arranger",
+          arrangerStartTime: 16,
+          name: "Scene Copy",
+          duplicated: true,
+          objects: [
+            {
+              newArrangerStartTime: 16,
+              name: "Scene Copy",
+              duplicatedClips: [
+                {
+                  newId: "new_clip",
+                  newTrackIndex: 0,
+                },
+              ],
+            },
+            {
+              newArrangerStartTime: 24,
+              name: "Scene Copy 2",
+              duplicatedClips: [
+                {
+                  newId: "new_clip",
+                  newTrackIndex: 0,
+                },
+              ],
+            },
+            {
+              newArrangerStartTime: 32,
+              name: "Scene Copy 3",
+              duplicatedClips: [
+                {
+                  newId: "new_clip",
+                  newTrackIndex: 0,
+                },
+              ],
+            },
+          ],
+        });
+      });
+
+      it("should handle empty scenes gracefully", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "scene1") {
+            return "live_set scenes 0";
+          }
+          return this._path;
+        });
+
+        // Mock empty scene
+        mockLiveApiGet({
+          LiveSet: {
+            tracks: children("track0", "track1"),
+          },
+          "live_set tracks 0 clip_slots 0": { has_clip: 0 },
+          "live_set tracks 1 clip_slots 0": { has_clip: 0 },
+        });
+
+        const result = duplicate({
+          type: "scene",
+          id: "scene1",
+          destination: "arranger",
+          arrangerStartTime: 16,
+        });
+
+        expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+
+        expect(result).toStrictEqual({
+          type: "scene",
+          id: "scene1",
+          count: 1,
+          destination: "arranger",
+          arrangerStartTime: 16,
+          duplicated: true,
+          newArrangerStartTime: 16,
+          duplicatedClips: [],
+        });
+      });
     });
   });
 

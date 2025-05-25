@@ -37,19 +37,20 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
     throw new Error(`duplicate failed: id "${id}" does not exist`);
   }
 
-  // Validate clip-specific parameters once
+  // Validate clip-specific and scene+arranger parameters once
   if (type === "clip") {
     if (!destination) {
       throw new Error("duplicate failed: destination is required for type 'clip'");
     }
 
+    // TODO? Default to session like scene duplication?
     if (!["session", "arranger"].includes(destination)) {
       throw new Error("duplicate failed: destination must be 'session' or 'arranger'");
     }
+  }
 
-    if (destination === "arranger" && arrangerStartTime == null) {
-      throw new Error("duplicate failed: arrangerStartTime is required when destination is 'arranger'");
-    }
+  if (destination === "arranger" && arrangerStartTime == null) {
+    throw new Error("duplicate failed: arrangerStartTime is required when destination is 'arranger'");
   }
 
   const createdObjects = [];
@@ -77,9 +78,17 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
       if (Number.isNaN(sceneIndex)) {
         throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
       }
-      // For multiple scenes, we need to account for previously created scenes
-      const actualSceneIndex = sceneIndex + i;
-      newObjectMetadata = duplicateScene(actualSceneIndex, objectName);
+
+      if (destination === "arranger") {
+        // For arranger scenes, place them sequentially to avoid overlap
+        const sceneLength = calculateSceneLength(sceneIndex);
+        const actualArrangerStartTime = arrangerStartTime + i * sceneLength;
+        newObjectMetadata = duplicateSceneToArranger(id, actualArrangerStartTime, objectName);
+      } else {
+        // Default to session (existing behavior)
+        const actualSceneIndex = sceneIndex + i;
+        newObjectMetadata = duplicateScene(actualSceneIndex, objectName);
+      }
     }
 
     // Clip duplication
@@ -167,6 +176,79 @@ function duplicateScene(sceneIndex, name) {
   const result = {
     newId: newScene.id,
     newSceneIndex,
+  };
+
+  if (name != null) result.name = name;
+  return result;
+}
+
+function calculateSceneLength(sceneIndex) {
+  const liveSet = new LiveAPI("live_set");
+  const trackIds = liveSet.getChildIds("tracks");
+
+  let maxLength = 4; // Default minimum scene length
+
+  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+    const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${sceneIndex}`);
+
+    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
+      const clip = new LiveAPI(`${clipSlot.path} clip`);
+      const clipLength = clip.getProperty("length");
+      maxLength = Math.max(maxLength, clipLength);
+    }
+  }
+
+  return maxLength;
+}
+
+function duplicateSceneToArranger(sceneId, arrangerStartTime, name) {
+  const scene = new LiveAPI(sceneId.startsWith("id ") ? sceneId : `id ${sceneId}`);
+
+  if (!scene.exists()) {
+    throw new Error(`duplicate failed: scene with id "${sceneId}" does not exist`);
+  }
+
+  const sceneIndex = Number(scene.path.match(/live_set scenes (\d+)/)?.[1]);
+  if (Number.isNaN(sceneIndex)) {
+    throw new Error(`duplicate failed: no scene index for id "${sceneId}" (path="${scene.path}")`);
+  }
+
+  const liveSet = new LiveAPI("live_set");
+  const trackIds = liveSet.getChildIds("tracks");
+
+  const duplicatedClips = [];
+
+  // Find all clips in this scene and duplicate them to arranger
+  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+    const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${sceneIndex}`);
+
+    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
+      const clip = new LiveAPI(`${clipSlot.path} clip`);
+      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
+      const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTime)?.[1];
+
+      if (newClipId != null) {
+        if (name != null) {
+          const newClip = new LiveAPI(`id ${newClipId}`);
+          newClip.set("name", name);
+        }
+
+        duplicatedClips.push({
+          newId: newClipId,
+          newTrackIndex: trackIndex,
+        });
+      }
+    }
+  }
+
+  const appView = new LiveAPI("live_app view");
+  appView.call("show_view", "Arranger");
+
+  // Return optimistic metadata
+  const result = {
+    newArrangerStartTime: arrangerStartTime,
+    duplicatedClips,
   };
 
   if (name != null) result.name = name;
