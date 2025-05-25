@@ -18,7 +18,7 @@ import { addToolUpdateTrack } from "./add-tool-update-track";
 
 export function createMcpServer(callLiveApi) {
   const server = new McpServer({
-    name: "Ableton Live Composition Assistant",
+    name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
     version: "1.0.0",
   });
 

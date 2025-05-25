@@ -1,4 +1,5 @@
 // src/tools/read-track.js
+import { getHostTrackIndex } from "../get-host-track-index";
 import { midiPitchToName } from "../notation/midi-pitch-to-name";
 import { readClip } from "./read-clip";
 
@@ -26,7 +27,7 @@ export function readTrack({ trackIndex } = {}) {
 
   const groupId = track.get("group_track")[1];
 
-  return {
+  const result = {
     id: track.id,
     type: track.getProperty("has_midi_input") ? "midi" : "audio",
     name: track.getProperty("name"),
@@ -63,4 +64,10 @@ export function readTrack({ trackIndex } = {}) {
           name: pad.getProperty("name"),
         })) ?? null,
   };
+
+  if (trackIndex === getHostTrackIndex()) {
+    result.isProducerPalHostTrack = true;
+  }
+
+  return result;
 }

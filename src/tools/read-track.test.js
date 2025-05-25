@@ -171,6 +171,26 @@ describe("readTrack", () => {
     });
   });
 
+  it("should detect Producer Pal host track", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "this_device") {
+        return "live_set tracks 1 devices 0";
+      }
+      return this._path;
+    });
+
+    liveApiId.mockReturnValue("track1");
+    mockLiveApiGet({
+      Track: mockTrackProperties(),
+    });
+
+    const result = readTrack({ trackIndex: 1 });
+    expect(result.isProducerPalHostTrack).toBe(true);
+
+    const result2 = readTrack({ trackIndex: 0 });
+    expect(result2.isProducerPalHostTrack).toBeUndefined();
+  });
+
   it("returns sessionClips information when the track has clips in Session view", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {

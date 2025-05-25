@@ -221,6 +221,21 @@ describe("deleteObject", () => {
     );
   });
 
+  it("should throw error when trying to delete Producer Pal host track", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "this_device") {
+        return "live_set tracks 1 devices 0";
+      }
+      if (this._id === "track_1") {
+        return "live_set tracks 1";
+      }
+      return this._path;
+    });
+    expect(() => deleteObject({ ids: "track_1", type: "track" })).toThrow(
+      "cannot delete track hosting the Producer Pal device"
+    );
+  });
+
   it("should handle whitespace in comma-separated IDs", () => {
     const ids = " track_0 , track_1 ";
     liveApiId.mockImplementation(function () {

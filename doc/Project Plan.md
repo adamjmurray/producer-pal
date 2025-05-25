@@ -60,7 +60,6 @@
   - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
         scene)
   - [ ] Add an optional arg to set the length of the clips in the arrangement when copying a scene
-- [ ] ClipSlot.duplicate_clip_to with bulk destination support
 
 **BarBeat Improvements:**
 
@@ -69,7 +68,7 @@
 
 **Robustness:**
 
-- [ ] Detect and protect the track hosting the MCP server device
+- [x] Detect and protect the track hosting the MCP server device
 - [ ] When duplicating clips to the session (especially with count > 1) consider warning about clips that would get
       overwritten and consider requiring an `overwrite: true` argument (consider supporting `overwrite: true` in
       create-clip too)
@@ -81,6 +80,10 @@
 
 - [ ] Implement `Live.from(pathOrId)` that handles prepending "id " when needed (this pattern occurs all over the
       codebase)
+
+**Additional Duplicate Features:**
+
+- [ ] ClipSlot.duplicate_clip_to with bulk destination support
 
 **MIDI Routing:**
 

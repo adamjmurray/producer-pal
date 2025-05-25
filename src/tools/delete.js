@@ -1,4 +1,5 @@
 // src/tools/delete.js
+import { getHostTrackIndex } from "../get-host-track-index";
 /**
  * Deletes objects by ids
  * @param {Object} args - The parameters
@@ -59,6 +60,12 @@ export function deleteObject({ ids, type } = {}) {
       if (Number.isNaN(trackIndex)) {
         throw new Error(`delete failed: no track index for id "${id}" (path="${object.path}")`);
       }
+
+      const hostTrackIndex = getHostTrackIndex();
+      if (trackIndex === hostTrackIndex) {
+        throw new Error("delete failed: cannot delete track hosting the Producer Pal device");
+      }
+
       const liveSet = new LiveAPI("live_set");
       liveSet.call("delete_track", trackIndex);
     } else if (type === "scene") {
