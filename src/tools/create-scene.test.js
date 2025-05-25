@@ -1,7 +1,8 @@
 // src/tools/create-scene.test.js
 import { describe, expect, it } from "vitest";
 import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live-api";
-import { MAX_AUTO_CREATED_SCENES, createScene } from "./create-scene";
+import { MAX_AUTO_CREATED_SCENES } from "./constants";
+import { createScene } from "./create-scene";
 
 describe("createScene", () => {
   beforeEach(() => {

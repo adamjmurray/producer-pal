@@ -1,6 +1,7 @@
 // src/mcp-server/add-tool-create-clip.js
 import { z } from "zod";
 import { notationDescription } from "../notation/notation";
+import { MAX_AUTO_CREATED_SCENES } from "../tools/constants";
 
 export function addToolCreateClip(server, callLiveApi) {
   server.tool(
@@ -9,7 +10,7 @@ export function addToolCreateClip(server, callLiveApi) {
       "For Session view, provide trackIndex and clipSlotIndex. " +
       "For Arranger view, provide trackIndex and arrangerStartTime. " +
       "When count > 1, Session clips are created in successive clip slots, and Arranger clips are placed back-to-back. " +
-      "Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of 100 scenes (sceneIndex == clipSlotIndex).",
+      `Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of ${MAX_AUTO_CREATED_SCENES} scenes (sceneIndex == clipSlotIndex).`,
     {
       view: z
         .enum(["Session", "Arranger"])

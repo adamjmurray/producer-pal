@@ -1,10 +1,11 @@
 // src/mcp-server/add-tool-duplicate.js
 import { z } from "zod";
+import { MAX_AUTO_CREATED_SCENES, MAX_AUTO_CREATED_TRACKS } from "../tools/constants";
 
 export function addToolDuplicate(server, callLiveApi) {
   server.tool(
     "duplicate",
-    "Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter.",
+    `Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes.`,
     {
       type: z.enum(["track", "scene", "clip"]).describe("Type of object to duplicate"),
       id: z.string().describe("Object id to duplicate"),

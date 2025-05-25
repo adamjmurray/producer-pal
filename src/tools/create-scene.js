@@ -1,7 +1,5 @@
 // src/tools/create-scene.js
-
-// Maximum number of scenes we'll allow to be created
-export const MAX_AUTO_CREATED_SCENES = 100;
+import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
 /**
  * Creates new scenes at the specified index

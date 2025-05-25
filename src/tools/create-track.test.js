@@ -1,8 +1,8 @@
 // src/tools/create-track.test.js
 import { describe, expect, it } from "vitest";
 import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live-api";
-import { MAX_AUTO_CREATED_TRACKS, createTrack } from "./create-track";
-
+import { MAX_AUTO_CREATED_TRACKS } from "./constants";
+import { createTrack } from "./create-track";
 describe("createTrack", () => {
   beforeEach(() => {
     liveApiId.mockReturnValue("track1");

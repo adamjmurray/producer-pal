@@ -1,6 +1,6 @@
 // src/tools/update-clip.js
 import { parseNotation } from "../notation/notation";
-import { MAX_CLIP_BEATS } from "./create-clip";
+import { MAX_CLIP_BEATS } from "./constants.js";
 
 /**
  * Updates properties of existing clips

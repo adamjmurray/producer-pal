@@ -1,10 +1,11 @@
 // src/mcp-server/add-tool-create-track.js
 import { z } from "zod";
+import { MAX_AUTO_CREATED_TRACKS } from "../tools/constants";
 
 export function addToolCreateTrack(server, callLiveApi) {
   server.tool(
     "create-track",
-    "Creates new tracks at the specified index. Tracks will be inserted at the given index and existing tracks will shift right. All properties are optional except trackIndex.",
+    `Creates new tracks at the specified index. Tracks will be inserted at the given index and existing tracks will shift right. All properties are optional except trackIndex. Maximum ${MAX_AUTO_CREATED_TRACKS} tracks can be created.`,
     {
       trackIndex: z.number().int().min(0).describe("Track index (0-based) where to insert new tracks"),
       count: z.number().int().min(1).default(1).describe("Number of tracks to create (default: 1)"),

@@ -1,7 +1,5 @@
 // src/tools/create-track.js
-
-// Maximum number of tracks we'll allow to be created
-export const MAX_AUTO_CREATED_TRACKS = 30;
+import { MAX_AUTO_CREATED_TRACKS } from "./constants.js";
 
 /**
  * Creates new tracks at the specified index

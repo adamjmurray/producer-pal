@@ -2,7 +2,8 @@
 import { describe, expect, it, vi } from "vitest";
 import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet, MockSequence } from "../mock-live-api";
 import * as notation from "../notation/notation";
-import { createClip, MAX_AUTO_CREATED_SCENES } from "./create-clip";
+import { MAX_AUTO_CREATED_SCENES } from "./constants";
+import { createClip } from "./create-clip";
 
 // Spy on notation functions
 const parseNotationSpy = vi.spyOn(notation, "parseNotation");

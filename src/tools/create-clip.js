@@ -1,9 +1,6 @@
 // src/tools/create-clip.js
 import { parseNotation } from "../notation/notation";
-
-// Maximum number of scenes we'll auto-create
-export const MAX_AUTO_CREATED_SCENES = 100;
-export const MAX_CLIP_BEATS = 1_000_000;
+import { MAX_AUTO_CREATED_SCENES, MAX_CLIP_BEATS } from "./constants.js";
 
 /**
  * Creates MIDI clips in Session or Arranger view
