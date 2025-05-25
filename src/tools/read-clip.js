@@ -51,6 +51,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     loopEnd: clip.getProperty("loop_end"),
     isPlaying: clip.getProperty("is_playing") > 0,
     isTriggered: clip.getProperty("is_triggered") > 0,
+    timeSignature: `${clip.getProperty("signature_numerator")}/${clip.getProperty("signature_denominator")}`,
   };
 
   if (isArrangerClip) {

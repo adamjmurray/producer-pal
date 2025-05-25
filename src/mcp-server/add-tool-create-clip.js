@@ -31,6 +31,11 @@ export function addToolCreateClip(server, callLiveApi) {
       name: z.string().optional().describe("Base name for the clips (auto-increments for count > 1)"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
 
+      timeSignature: z
+        .string()
+        .optional()
+        .describe('Time signature in format "n/m" (e.g. "4/4"). Defaults to the song\'s time signature for new clips.'),
+
       startMarker: z
         .number()
         .optional()

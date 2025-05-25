@@ -331,9 +331,41 @@ describe("createClip", () => {
     });
   });
 
+  it("should set time signature when provided", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+    });
+
+    const result = createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      timeSignature: "6/8",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(result.timeSignature).toBe("6/8");
+  });
+
+  it("should throw error for invalid time signature format", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+    });
+
+    expect(() =>
+      createClip({
+        view: "Session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        timeSignature: "invalid",
+      })
+    ).toThrow("Time signature must be in format");
+  });
+
   it("should use minimum clip length of 4 when notes are short", () => {
     mockLiveApiGet({
-      ClipSlot: { has_clip: new MockSequence(0, 1) },
+      ClipSlot: { has_clip: 0 },
     });
 
     parseNotationSpy.mockReturnValue([{ pitch: 60, start_time: 0, duration: 1, velocity: 100 }]);

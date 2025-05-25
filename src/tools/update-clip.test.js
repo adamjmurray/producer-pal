@@ -180,6 +180,40 @@ describe("updateClip", () => {
     ]);
   });
 
+  it("should update time signature when provided", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      timeSignature: "6/8",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(result.timeSignature).toBe("6/8");
+  });
+
+  it("should throw error for invalid time signature format", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+      },
+    });
+
+    expect(() =>
+      updateClip({
+        ids: "clip1",
+        timeSignature: "invalid",
+      })
+    ).toThrow("Time signature must be in format");
+  });
+
   it("should handle 'id ' prefixed clip IDs", () => {
     mockLiveApiGet({
       clip1: {

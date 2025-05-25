@@ -12,6 +12,8 @@ export function addToolUpdateClip(server, callLiveApi) {
       name: z.string().optional().describe("Name for the clips"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
 
+      timeSignature: z.string().optional().describe('Time signature in format "n/m" (e.g. "4/4").'),
+
       startMarker: z
         .number()
         .optional()

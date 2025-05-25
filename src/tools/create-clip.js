@@ -13,6 +13,7 @@ import { MAX_AUTO_CREATED_SCENES, MAX_CLIP_BEATS } from "./constants.js";
  * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
+ * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {number} [args.startMarker] - Start marker position in beats
  * @param {number} [args.endMarker] - End marker position in beats
  * @param {number} [args.loopStart] - Loop start position in beats
@@ -30,6 +31,7 @@ export function createClip({
   notes: notationString = null,
   name = null,
   color = null,
+  timeSignature = null,
   startMarker = null,
   endMarker = null,
   loop = null,
@@ -126,6 +128,17 @@ export function createClip({
       clip.setColor(color);
     }
 
+    if (timeSignature != null) {
+      const match = timeSignature.match(/^(\d+)\/(\d+)$/);
+      if (!match) {
+        throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
+      }
+      const numerator = parseInt(match[1], 10);
+      const denominator = parseInt(match[2], 10);
+      clip.set("signature_numerator", numerator);
+      clip.set("signature_denominator", denominator);
+    }
+
     if (startMarker != null) {
       clip.set("start_marker", startMarker);
     }
@@ -169,6 +182,7 @@ export function createClip({
     // Only include properties that were actually set
     if (clipName != null) clipResult.name = clipName;
     if (color != null) clipResult.color = color;
+    if (timeSignature != null) clipResult.timeSignature = timeSignature;
     if (startMarker != null) clipResult.startMarker = startMarker;
     if (endMarker != null) clipResult.endMarker = endMarker;
     if (loopStart != null) clipResult.loopStart = loopStart;

@@ -17,7 +17,7 @@ describe("readClip", () => {
   });
 
   it("returns clip information when a valid MIDI clip exists", () => {
-    liveApiCall.mockImplementation((method) => {
+    liveApiCall.mockImplementation(function (method) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -28,6 +28,12 @@ describe("readClip", () => {
         });
       }
       return null;
+    });
+    mockLiveApiGet({
+      "live_set/tracks/1/clip_slots/1/clip": {
+        signature_numerator: 6,
+        signature_denominator: 8,
+      },
     });
 
     const result = readClip({ trackIndex: 1, clipSlotIndex: 1 });
@@ -47,6 +53,7 @@ describe("readClip", () => {
       loopEnd: 5,
       isPlaying: false,
       isTriggered: false,
+      timeSignature: "6/8",
       notes: "mocked notation",
       noteCount: 3,
     });
@@ -85,6 +92,7 @@ describe("readClip", () => {
       loopEnd: 5,
       isPlaying: true,
       isTriggered: false,
+      timeSignature: "4/4",
     });
   });
 
@@ -183,6 +191,7 @@ describe("readClip", () => {
       loopStart: 1,
       isPlaying: false,
       isTriggered: true,
+      timeSignature: "4/4",
       noteCount: 4,
       notes: "1:1 t0.25 C1 1:2 v90 D1 1:3 v100 C1 1:4 v90 D1",
     });

@@ -9,6 +9,7 @@ import { MAX_CLIP_BEATS } from "./constants.js";
  * @param {string} [args.notes] - Musical notation string (replaces existing notes)
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
+ * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {number} [args.startMarker] - Start marker position in beats
  * @param {number} [args.endMarker] - End marker position in beats
  * @param {number} [args.loopStart] - Loop start position in beats
@@ -21,6 +22,7 @@ export function updateClip({
   notes: notationString,
   name,
   color,
+  timeSignature,
   startMarker,
   endMarker,
   loop,
@@ -57,6 +59,17 @@ export function updateClip({
 
     if (color != null) {
       clip.setColor(color);
+    }
+
+    if (timeSignature != null) {
+      const match = timeSignature.match(/^(\d+)\/(\d+)$/);
+      if (!match) {
+        throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
+      }
+      const numerator = parseInt(match[1], 10);
+      const denominator = parseInt(match[2], 10);
+      clip.set("signature_numerator", numerator);
+      clip.set("signature_denominator", denominator);
     }
 
     if (startMarker != null) {
@@ -119,6 +132,7 @@ export function updateClip({
     // Only include properties that were actually set
     if (name != null) clipResult.name = name;
     if (color != null) clipResult.color = color;
+    if (timeSignature != null) clipResult.timeSignature = timeSignature;
     if (startMarker != null) clipResult.startMarker = startMarker;
     if (endMarker != null) clipResult.endMarker = endMarker;
     if (loopStart != null) clipResult.loopStart = loopStart;

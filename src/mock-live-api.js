@@ -231,6 +231,7 @@ export const expectedClip = (overrides = {}) => ({
   loopStart: 1,
   isPlaying: false,
   isTriggered: false,
+  timeSignature: "4/4",
   noteCount: 0,
   notes: "",
   ...overrides,
