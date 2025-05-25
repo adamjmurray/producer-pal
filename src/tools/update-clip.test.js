@@ -151,7 +151,12 @@ describe("updateClip", () => {
 
     expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
     expect(liveApiSet).toHaveBeenCalledWith("looping", false);
-    expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per clip
+    expect(liveApiSet).toHaveBeenCalledTimes(5); // 2 calls per clip, plus view change
+    expect(liveApiSet).toHaveBeenNthCalledWith(1, "color", 65280);
+    expect(liveApiSet).toHaveBeenNthCalledWith(2, "looping", false);
+    expect(liveApiSet).toHaveBeenNthCalledWith(3, "detail_clip", "id clip1");
+    expect(liveApiSet).toHaveBeenNthCalledWith(4, "color", 65280);
+    expect(liveApiSet).toHaveBeenNthCalledWith(5, "looping", false);
 
     expect(result).toEqual([
       {
@@ -212,8 +217,10 @@ describe("updateClip", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Only Name Update");
-    expect(liveApiSet).toHaveBeenCalledTimes(1);
+    expect(liveApiSet).toHaveBeenCalledTimes(2);
+    expect(liveApiSet).toHaveBeenNthCalledWith(1, "name", "Only Name Update");
+    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id clip1");
+
     expect(parseNotationSpy).not.toHaveBeenCalled();
     expect(result).toEqual({
       id: "clip1",
@@ -394,7 +401,12 @@ describe("updateClip", () => {
       name: "Filtered",
     });
 
-    expect(liveApiSet).toHaveBeenCalledTimes(2); // Only 2 valid IDs
+    // set the names of the two clips, and display the clip detail view:
+    expect(liveApiSet).toHaveBeenCalledTimes(3);
+    expect(liveApiSet).toHaveBeenNthCalledWith(1, "name", "Filtered");
+    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id clip1");
+    expect(liveApiSet).toHaveBeenNthCalledWith(3, "name", "Filtered");
+
     expect(result).toEqual([
       {
         id: "clip1",

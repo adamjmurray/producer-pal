@@ -65,22 +65,15 @@
 **BarBeat Improvements:**
 
 - [ ] Support time signatures other than 4/4 in BarBeat notation
-- [ ] Use bar.beat format for arrangement times, clip lengths, positions
-
-**UX:**
-
-- [ ] `create-clip` and `update-clip` should show the clip in Clip Detail view
-- [ ] when changing clip length, Clip Detail view should zoom automatically to show the whole clip (or apparently the
-      best we can do is show the current loop, if looped)
+- [ ] Use bar.beat format for arrangement times, clip lengths (e.g. loopEnd), positions
 
 **Robustness:**
 
 - [ ] Detect and protect the track hosting the MCP server device
 - [ ] When duplicating clips to the session (especially with count > 1) consider warning about clips that would get
-      overwritten and consider requiring an `overwrite: true` argument
+      overwritten and consider requiring an `overwrite: true` argument (consider supporting `overwrite: true` in
+      create-clip too)
 - [ ] Review and refine all tool descriptions for clarity, including BarBeat specification
-  - [ ] Tools that refer to maximum number of tracks and scenes should use the exported constant value to ensure
-        accuracy if these are changed later
 
 ## 🌟 Nice-to-Have (Stretch Goals)
 

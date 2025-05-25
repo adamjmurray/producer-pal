@@ -50,7 +50,7 @@ describe("createClip", () => {
         }
       });
       mockLiveApiGet({
-        ClipSlot: { has_clip: new MockSequence(0, 1) },
+        ClipSlot: { has_clip: 0 },
       });
 
       const result = createClip({
@@ -77,6 +77,7 @@ describe("createClip", () => {
       });
       expect(liveApiCall).toHaveBeenCalledWith("fire");
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_0_0");
 
       expect(result).toEqual({
         id: "clip_0_0",
@@ -107,7 +108,7 @@ describe("createClip", () => {
       });
       mockLiveApiGet({
         LiveSet: { scenes: children("scene0") }, // Only 1 existing scene, so we need to create scenes 1, 2, 3
-        ClipSlot: { has_clip: new MockSequence(0, 1) },
+        ClipSlot: { has_clip: 0 },
       });
 
       const result = createClip({
@@ -130,6 +131,8 @@ describe("createClip", () => {
       expect(liveApiSet).toHaveBeenCalledWith("name", "Loop");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Loop 2");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Loop 3");
+
+      expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_0_1");
 
       expect(result).toEqual([
         {
@@ -183,6 +186,20 @@ describe("createClip", () => {
       expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
     });
 
+    it("should throw error if clip already exists in session view clip slot", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 1 },
+      });
+      expect(() =>
+        createClip({
+          view: "Session",
+          trackIndex: 0,
+          clipSlotIndex: 0,
+          name: "This Should Fail",
+        })
+      ).toThrow("createClip failed: a clip already exists at track 0, clip slot 0");
+    });
+
     it("should throw error if clipSlotIndex exceeds maximum allowed scenes", () => {
       expect(() =>
         createClip({
@@ -224,6 +241,7 @@ describe("createClip", () => {
       expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 4);
       expect(liveApiSet).toHaveBeenCalledWith("name", "Arranger Clip");
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id arranger_clip");
 
       expect(result).toEqual({
         id: "arranger_clip",
@@ -335,7 +353,7 @@ describe("createClip", () => {
     parseNotationSpy.mockRestore();
 
     mockLiveApiGet({
-      ClipSlot: { has_clip: new MockSequence(0, 1) },
+      ClipSlot: { has_clip: 0 },
     });
 
     createClip({
@@ -350,7 +368,7 @@ describe("createClip", () => {
 
   it("should return single object for count=1 and array for count>1", () => {
     mockLiveApiGet({
-      ClipSlot: { has_clip: new MockSequence(0, 1) },
+      ClipSlot: { has_clip: 0 },
     });
 
     const singleResult = createClip({

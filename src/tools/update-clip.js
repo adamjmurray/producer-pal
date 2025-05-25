@@ -39,6 +39,7 @@ export function updateClip({
 
   const notes = notationString != null ? parseNotation(notationString) : null;
   const updatedClips = [];
+  let isFirstClip = true;
 
   for (const id of clipIds) {
     // Convert string ID to LiveAPI path if needed
@@ -126,6 +127,20 @@ export function updateClip({
     if (notationString != null) clipResult.notes = notationString;
 
     updatedClips.push(clipResult);
+
+    if (isFirstClip) {
+      const appView = new LiveAPI("live_app view");
+      const songView = new LiveAPI("live_set view");
+      const clipView = isArrangerClip ? "Arranger" : "Session";
+      appView.call("show_view", clipView);
+      songView.set("detail_clip", `id ${clip.id}`);
+      appView.call("focus_view", "Detail/Clip");
+      if (loop || clip.getProperty("looping")) {
+        const clipViewAPI = new LiveAPI(`${clip.path} view`);
+        clipViewAPI.call("show_loop");
+      }
+      isFirstClip = false;
+    }
   }
 
   // Return single object if single ID was provided, array if comma-separated IDs were provided

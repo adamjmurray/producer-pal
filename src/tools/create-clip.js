@@ -94,6 +94,11 @@ export function createClip({
       }
 
       const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`);
+      if (clipSlot.getProperty("has_clip")) {
+        throw new Error(
+          `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentClipSlotIndex}`
+        );
+      }
       clipSlot.call("create_clip", clipLength);
       clip = new LiveAPI(`${clipSlot.path} clip`);
     } else {
@@ -172,11 +177,19 @@ export function createClip({
     if (notationString != null) clipResult.notes = notationString;
 
     createdClips.push(clipResult);
-  }
 
-  // Switch app view to match the clip view
-  const appView = new LiveAPI("live_app view");
-  appView.call("show_view", view);
+    if (i === 0) {
+      const appView = new LiveAPI("live_app view");
+      const songView = new LiveAPI("live_set view");
+      appView.call("show_view", view);
+      songView.set("detail_clip", `id ${clip.id}`);
+      appView.call("focus_view", "Detail/Clip");
+      if (loop) {
+        const clipView = new LiveAPI(`${clip.path} view`);
+        clipView.call("show_loop");
+      }
+    }
+  }
 
   // Handle autoplay for Session clips
   if (autoplay && view === "Session") {
