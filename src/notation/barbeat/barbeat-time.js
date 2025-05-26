@@ -37,6 +37,16 @@ export function barBeatToBeats(barBeat, beatsPerBar) {
 }
 
 /**
+ * Convert time signature to Ableton beats (quarter notes) per bar
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} Ableton beats (quarter notes) per bar
+ */
+export function timeSigToAbletonBeatsPerBar(timeSigNumerator, timeSigDenominator) {
+  return (timeSigNumerator * 4) / timeSigDenominator;
+}
+
+/**
  * Convert Ableton beats (quarter notes) to bar:beat format using musical beats
  * @param {number} abletonBeats - Quarter note beats (0-based)
  * @param {number} timeSigNumerator - Time signature numerator

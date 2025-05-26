@@ -106,12 +106,62 @@ describe("BarBeat parseNotation()", () => {
     ]);
   });
 
-  it("supports different time signatures via the beatsPerBar option", () => {
+  it("supports different time signatures via the beatsPerBar option (legacy)", () => {
     const result = parseNotation("1:1 C3 2:1 D3", { beatsPerBar: 3 });
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 1, beat 1
       { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 1 (3 beats per bar)
     ]);
+  });
+
+  it("supports different time signatures via timeSigNumerator/timeSigDenominator", () => {
+    const result = parseNotation("1:1 C3 2:1 D3", { timeSigNumerator: 3, timeSigDenominator: 4 });
+    expect(result).toEqual([
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 1, beat 1
+      { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 1 (3 beats per bar)
+    ]);
+  });
+
+  it("converts time signatures with half-note denominators correctly", () => {
+    // 2/2 time: 1 musical beat (half note) = 2 Ableton beats (quarter notes)
+    const result = parseNotation("1:1 C3 1:2 D3", { timeSigNumerator: 2, timeSigDenominator: 2 });
+    expect(result).toEqual([
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 2, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 2 in 2/2 = 2 Ableton beats
+    ]);
+  });
+
+  it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
+    const result = parseNotation("1:1 C3 2:1 D3", {
+      beatsPerBar: 4,
+      timeSigNumerator: 3,
+      timeSigDenominator: 4,
+    });
+    expect(result).toEqual([
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // Uses 3 beats per bar, not 4
+    ]);
+  });
+
+  it("converts time signatures with different denominators correctly", () => {
+    // 6/8 time: 1 Ableton beat = 2 musical beats
+    const result = parseNotation("1:1 C3 1:3 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
+    expect(result).toEqual([
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 1, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 3 in 6/8 = 1 Ableton beat
+    ]);
+  });
+
+  it("throws error when only timeSigNumerator is provided", () => {
+    expect(() => parseNotation("C3", { timeSigNumerator: 4 })).toThrow(
+      "Time signature must be specified with both numerator and denominator"
+    );
+  });
+
+  it("throws error when only timeSigDenominator is provided", () => {
+    expect(() => parseNotation("C3", { timeSigDenominator: 4 })).toThrow(
+      "Time signature must be specified with both numerator and denominator"
+    );
   });
 
   it("maintains state across multiple bar boundaries", () => {

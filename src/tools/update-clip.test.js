@@ -213,7 +213,7 @@ describe("updateClip", () => {
     });
 
     // Should parse with 3 beats per bar (6 * 4 / 8 = 3)
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
     expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
     expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result.timeSignature).toBe("6/8");

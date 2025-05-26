@@ -73,7 +73,7 @@ describe("createClip", () => {
       view: "Session",
     });
 
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 3, timeSigDenominator: 4 });
   });
 
   it("should parse notes using provided time signature", () => {
@@ -89,7 +89,7 @@ describe("createClip", () => {
       notes: "1:1 C3 2:1 D3", // Should parse with 6 beats per bar
     });
 
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 3, timeSigDenominator: 4 });
   });
 
   it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", () => {
@@ -106,7 +106,7 @@ describe("createClip", () => {
     });
 
     // Should parse with 3 beats per bar (6 * 4 / 8 = 3)
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
   });
 
   it("should create clip with length based on endMarker for non-looping clips", () => {

@@ -88,13 +88,49 @@ describe("BarBeat formatNotation()", () => {
     expect(result).toBe("1:1.5 C3 1:2.25 D3");
   });
 
-  it("handles different time signatures", () => {
+  it("handles different time signatures with beatsPerBar option (legacy)", () => {
     const notes = [
       { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
       { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes, { beatsPerBar: 3 });
     expect(result).toBe("1:1 C3 2:1 D3");
+  });
+
+  it("handles different time signatures with timeSigNumerator/timeSigDenominator", () => {
+    const notes = [
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+    ];
+    const result = formatNotation(notes, { timeSigNumerator: 3, timeSigDenominator: 4 });
+    expect(result).toBe("1:1 C3 2:1 D3");
+  });
+
+  it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
+    const notes = [
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+    ];
+    const result = formatNotation(notes, {
+      beatsPerBar: 4,
+      timeSigNumerator: 3,
+      timeSigDenominator: 4,
+    });
+    expect(result).toBe("1:1 C3 2:1 D3"); // Uses 3 beats per bar, not 4
+  });
+
+  it("throws error when only timeSigNumerator is provided", () => {
+    const notes = [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }];
+    expect(() => formatNotation(notes, { timeSigNumerator: 4 })).toThrow(
+      "Time signature must be specified with both numerator and denominator"
+    );
+  });
+
+  it("throws error when only timeSigDenominator is provided", () => {
+    const notes = [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }];
+    expect(() => formatNotation(notes, { timeSigDenominator: 4 })).toThrow(
+      "Time signature must be specified with both numerator and denominator"
+    );
   });
 
   it("omits redundant state changes", () => {
@@ -122,6 +158,15 @@ describe("BarBeat formatNotation()", () => {
     const parsed = parseNotation(original);
     const formatted = formatNotation(parsed);
     const reparsed = parseNotation(formatted);
+
+    expect(parsed).toEqual(reparsed);
+  });
+
+  it("creates roundtrip compatibility with parseNotation using time signatures", () => {
+    const original = "1:1 p0.8 v80-120 t0.5 C3 D3 1:2.25 v120 p1.0 t2 E3 F3";
+    const parsed = parseNotation(original, { timeSigNumerator: 3, timeSigDenominator: 4 });
+    const formatted = formatNotation(parsed, { timeSigNumerator: 3, timeSigDenominator: 4 });
+    const reparsed = parseNotation(formatted, { timeSigNumerator: 3, timeSigDenominator: 4 });
 
     expect(parsed).toEqual(reparsed);
   });

@@ -173,7 +173,7 @@ describe("readClip", () => {
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("1:1 C3 2:1 D3 2:1.5 E3");
+    expect(result.notes).toBe("1:1 C3 2:1 D3 2:2 E3");
     expect(result.timeSignature).toBe("6/8");
     expect(result.length).toBe(6); // 3 Ableton beats * 8 / 4 = 6 musical beats
   });

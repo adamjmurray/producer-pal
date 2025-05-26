@@ -60,19 +60,19 @@ export function updateClip({
       clip.setColor(color);
     }
 
-    let timeSignatureNumerator, timeSignatureDenominator;
+    let timeSigNumerator, timeSigDenominator;
     if (timeSignature != null) {
       const match = timeSignature.match(/^(\d+)\/(\d+)$/);
       if (!match) {
         throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
       }
-      timeSignatureNumerator = Number.parseInt(match[1]);
-      timeSignatureDenominator = Number.parseInt(match[2]);
-      clip.set("signature_numerator", timeSignatureNumerator);
-      clip.set("signature_denominator", timeSignatureDenominator);
+      timeSigNumerator = Number.parseInt(match[1]);
+      timeSigDenominator = Number.parseInt(match[2]);
+      clip.set("signature_numerator", timeSigNumerator);
+      clip.set("signature_denominator", timeSigDenominator);
     } else {
-      timeSignatureNumerator = clip.getProperty("signature_numerator");
-      timeSignatureDenominator = clip.getProperty("signature_denominator");
+      timeSigNumerator = clip.getProperty("signature_numerator");
+      timeSigDenominator = clip.getProperty("signature_denominator");
     }
 
     if (startMarker != null) {
@@ -95,14 +95,11 @@ export function updateClip({
       clip.set("looping", loop);
     }
 
-    // Parse notes using appropriate time signature
     if (notationString != null) {
-      // Convert musical beats to Ableton's quarter-note-based beats
-      const beatsPerBar = timeSignatureNumerator;
-      const abletonBeatsPerBar = (beatsPerBar * 4) / timeSignatureDenominator;
-
-      const notes = parseNotation(notationString, { beatsPerBar: abletonBeatsPerBar });
-
+      const notes = parseNotation(notationString, {
+        timeSigNumerator,
+        timeSigDenominator,
+      });
       clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
       clip.call("add_new_notes", { notes });
     }

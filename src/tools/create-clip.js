@@ -60,32 +60,29 @@ export function createClip({
     throw new Error("createClip failed: count must be at least 1");
   }
 
-  let beatsPerBar;
-  let timeSignatureToSet = null;
+  let timeSigNumerator, timeSigDenominator;
 
   if (timeSignature != null) {
     const match = timeSignature.match(/^(\d+)\/(\d+)$/);
     if (!match) {
       throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
     }
-    beatsPerBar = parseInt(match[1], 10);
-    timeSignatureToSet = {
-      numerator: beatsPerBar,
-      denominator: parseInt(match[2], 10),
-    };
+    timeSigNumerator = parseInt(match[1], 10);
+    timeSigDenominator = parseInt(match[2], 10);
   } else {
     // Read time signature from song
     const liveSet = new LiveAPI("live_set");
-    beatsPerBar = liveSet.getProperty("signature_numerator");
-    timeSignatureToSet = {
-      numerator: beatsPerBar,
-      denominator: liveSet.getProperty("signature_denominator"),
-    };
+    timeSigNumerator = liveSet.getProperty("signature_numerator");
+    timeSigDenominator = liveSet.getProperty("signature_denominator");
   }
 
-  // Convert musical beats to Ableton's quarter-note-based beats
-  const abletonBeatsPerBar = (beatsPerBar * 4) / timeSignatureToSet.denominator;
-  const notes = notationString != null ? parseNotation(notationString, { beatsPerBar: abletonBeatsPerBar }) : [];
+  const notes =
+    notationString != null
+      ? parseNotation(notationString, {
+          timeSigNumerator,
+          timeSigDenominator,
+        })
+      : [];
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   let clipLength;
@@ -168,9 +165,11 @@ export function createClip({
       clip.setColor(color);
     }
 
-    if (timeSignatureToSet != null) {
-      clip.set("signature_numerator", timeSignatureToSet.numerator);
-      clip.set("signature_denominator", timeSignatureToSet.denominator);
+    if (timeSigNumerator != null) {
+      clip.set("signature_numerator", timeSigNumerator);
+    }
+    if (timeSigDenominator != null) {
+      clip.set("signature_denominator", timeSigDenominator);
     }
 
     if (startMarker != null) {
@@ -215,10 +214,9 @@ export function createClip({
     // Only include properties that were actually set
     if (clipName != null) clipResult.name = clipName;
     if (color != null) clipResult.color = color;
-
-    // Include the time signature (use what we set or read from song)
-    clipResult.timeSignature = `${timeSignatureToSet.numerator}/${timeSignatureToSet.denominator}`;
-
+    if (timeSigNumerator != null && timeSigDenominator != null) {
+      clipResult.timeSignature = `${timeSigNumerator}/${timeSigDenominator}`;
+    }
     if (startMarker != null) clipResult.startMarker = startMarker;
     if (endMarker != null) clipResult.endMarker = endMarker;
     if (loopStart != null) clipResult.loopStart = loopStart;

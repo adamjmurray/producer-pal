@@ -7,17 +7,27 @@ import {
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
 } from "./barbeat-config";
+
 /**
  * Convert Live clip notes to BarBeat string
  * @param {Array} clipNotes - Array of note objects from the Live API
  * @param {Object} options - Formatting options
- * @param {number} options.beatsPerBar - Beats per bar (default: 4)
+ * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
+ * @param {number} [options.timeSigNumerator] - Time signature numerator
+ * @param {number} [options.timeSigDenominator] - Time signature denominator
  * @returns {string} BarBeat representation
  */
 export function formatNotation(clipNotes, options = {}) {
   if (!clipNotes || clipNotes.length === 0) return "";
 
-  const beatsPerBar = options.beatsPerBar || DEFAULT_BEATS_PER_BAR;
+  const { beatsPerBar: beatsPerBarOption, timeSigNumerator, timeSigDenominator } = options;
+  if (
+    (timeSigNumerator != null && timeSigDenominator == null) ||
+    (timeSigDenominator != null && timeSigNumerator == null)
+  ) {
+    throw new Error("Time signature must be specified with both numerator and denominator");
+  }
+  const beatsPerBar = timeSigNumerator != null ? timeSigNumerator : beatsPerBarOption || DEFAULT_BEATS_PER_BAR;
 
   // Sort notes by start time, then by pitch for consistent output
   const sortedNotes = [...clipNotes].sort((a, b) => {
@@ -37,7 +47,11 @@ export function formatNotation(clipNotes, options = {}) {
 
   for (const note of sortedNotes) {
     // Convert absolute beats to bar:beat
-    const startTime = Math.round(note.start_time * 1000) / 1000;
+    let startTime = Math.round(note.start_time * 1000) / 1000;
+    // Convert from Ableton beats to musical beats if we have time signature
+    if (timeSigNumerator != null) {
+      startTime = startTime * (timeSigDenominator / 4);
+    }
     const bar = Math.floor(startTime / beatsPerBar) + 1;
     const beat = (startTime % beatsPerBar) + 1;
 

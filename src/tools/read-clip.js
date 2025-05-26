@@ -74,14 +74,10 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
   }
 
   if (result.type === "midi") {
-    // Get the clip notes for MIDI clips
     const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, result.length);
     const notes = JSON.parse(notesDictionary).notes;
-
     result.noteCount = notes.length;
-    // TODO: pass time signature numerator and denominator into formatNotation (and parseNotation) to streamline this
-    const abletonBeatsPerBar = (timeSigNumerator * 4) / timeSigDenominator; // 0-indexed quarter note offset
-    result.notes = formatNotation(notes, { beatsPerBar: abletonBeatsPerBar });
+    result.notes = formatNotation(notes, { timeSigNumerator, timeSigDenominator });
   }
 
   return result;

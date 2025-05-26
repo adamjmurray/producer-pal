@@ -1,6 +1,12 @@
 // src/notation/barbeat/barbeat-time.test.js
 import { describe, expect, it } from "vitest";
-import { abletonBeatsToBarBeat, barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat } from "./barbeat-time";
+import {
+  abletonBeatsToBarBeat,
+  barBeatToAbletonBeats,
+  barBeatToBeats,
+  beatsToBarBeat,
+  timeSigToAbletonBeatsPerBar,
+} from "./barbeat-time";
 
 describe("barbeat-time utilities", () => {
   describe("beatsToBarBeat", () => {
@@ -298,5 +304,16 @@ describe("barbeat-time utilities", () => {
       expect(abletonBeatsToBarBeat(7.5, 15, 8)).toBe("2:1");
       expect(barBeatToAbletonBeats("2:1", 15, 8)).toBe(7.5);
     });
+  });
+});
+
+describe("timeSigToAbletonBeatsPerBar", () => {
+  it("converts time signatures to Ableton beats per bar", () => {
+    expect(timeSigToAbletonBeatsPerBar(4, 4)).toBe(4); // 4/4 = 4 quarter notes per bar
+    expect(timeSigToAbletonBeatsPerBar(3, 4)).toBe(3); // 3/4 = 3 quarter notes per bar
+    expect(timeSigToAbletonBeatsPerBar(6, 8)).toBe(3); // 6/8 = 3 quarter notes per bar
+    expect(timeSigToAbletonBeatsPerBar(2, 2)).toBe(4); // 2/2 = 4 quarter notes per bar
+    expect(timeSigToAbletonBeatsPerBar(9, 8)).toBe(4.5); // 9/8 = 4.5 quarter notes per bar
+    expect(timeSigToAbletonBeatsPerBar(12, 16)).toBe(3); // 12/16 = 3 quarter notes per bar
   });
 });
