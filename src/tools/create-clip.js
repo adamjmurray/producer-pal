@@ -83,9 +83,9 @@ export function createClip({
     };
   }
 
-  console.log(`parseNotation(${notationString}, { beatsPerBar: ${beatsPerBar} }) }`);
-
-  const notes = notationString != null ? parseNotation(notationString, { beatsPerBar }) : [];
+  // Convert musical beats to Ableton's quarter-note-based beats
+  const abletonBeatsPerBar = (beatsPerBar * 4) / timeSignatureToSet.denominator;
+  const notes = notationString != null ? parseNotation(notationString, { beatsPerBar: abletonBeatsPerBar }) : [];
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   let clipLength;

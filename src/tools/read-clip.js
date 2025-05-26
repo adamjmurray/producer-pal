@@ -37,6 +37,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
 
   const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
   const signatureNumerator = clip.getProperty("signature_numerator");
+  const signatureDenominator = clip.getProperty("signature_denominator");
 
   const result = {
     id: clip.id,
@@ -52,7 +53,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     loopEnd: clip.getProperty("loop_end"),
     isPlaying: clip.getProperty("is_playing") > 0,
     isTriggered: clip.getProperty("is_triggered") > 0,
-    timeSignature: `${signatureNumerator}/${clip.getProperty("signature_denominator")}`,
+    timeSignature: `${signatureNumerator}/${signatureDenominator}`,
   };
 
   if (isArrangerClip) {
@@ -72,6 +73,9 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     result.noteCount = notes.length;
     // Use the clip's time signature for notation formatting
     result.notes = formatNotation(notes, { beatsPerBar: signatureNumerator });
+
+    const abletonBeatsPerBar = (signatureNumerator * 4) / signatureDenominator;
+    result.notes = formatNotation(notes, { beatsPerBar: abletonBeatsPerBar });
   }
 
   return result;

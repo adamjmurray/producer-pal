@@ -198,6 +198,27 @@ describe("updateClip", () => {
     expect(result.timeSignature).toBe("6/8");
   });
 
+  it("should parse notes using provided time signature with Ableton quarter-note conversion", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      timeSignature: "6/8",
+      notes: "1:1 C3 2:1 D3",
+    });
+
+    // Should parse with 3 beats per bar (6 * 4 / 8 = 3)
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
+    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
+    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(result.timeSignature).toBe("6/8");
+  });
+
   it("should throw error for invalid time signature format", () => {
     mockLiveApiGet({
       clip1: {

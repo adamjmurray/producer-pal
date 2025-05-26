@@ -65,8 +65,8 @@ describe("readClip", () => {
     mockLiveApiGet({
       Clip: {
         is_midi_clip: 1,
-        signature_numerator: 6,
-        signature_denominator: 8,
+        signature_numerator: 3,
+        signature_denominator: 4,
       },
     });
 
@@ -75,8 +75,8 @@ describe("readClip", () => {
         return JSON.stringify({
           notes: [
             { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-            { pitch: 62, start_time: 6, duration: 1, velocity: 100 }, // Start of bar 2 in 6/8
-            { pitch: 64, start_time: 7, duration: 1, velocity: 100 }, // bar 2, beat 2
+            { pitch: 62, start_time: 3, duration: 1, velocity: 100 }, // Start of bar 2 in 3/4
+            { pitch: 64, start_time: 4, duration: 1, velocity: 100 }, // bar 2, beat 2
           ],
         });
       }
@@ -87,6 +87,37 @@ describe("readClip", () => {
 
     // In 6/8 time, beat 6 should be bar 2 beat 1
     expect(result.notes).toBe("1:1 C3 2:1 D3 2:2 E3");
+    expect(result.timeSignature).toBe("3/4");
+  });
+
+  it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
+    formatNotationSpy.mockRestore(); // Use real function
+
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        signature_numerator: 6,
+        signature_denominator: 8,
+      },
+    });
+
+    liveApiCall.mockImplementation((method) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
+            { pitch: 62, start_time: 3, duration: 1, velocity: 100 }, // Start of bar 2 in 6/8 (3 quarter notes)
+            { pitch: 64, start_time: 3.5, duration: 1, velocity: 100 }, // bar 2, beat 2
+          ],
+        });
+      }
+      return null;
+    });
+
+    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+
+    // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
+    expect(result.notes).toBe("1:1 C3 2:1 D3 2:1.5 E3");
     expect(result.timeSignature).toBe("6/8");
   });
 

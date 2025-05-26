@@ -53,7 +53,7 @@ describe("createClip", () => {
   it("should read time signature from song when not provided", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 6, signature_denominator: 8 },
+      LiveSet: { signature_numerator: 3, signature_denominator: 4 },
     });
 
     const result = createClip({
@@ -67,13 +67,13 @@ describe("createClip", () => {
       clipSlotIndex: 0,
       id: "live_set/tracks/0/clip_slots/0/clip",
       notes: "1:1 C3 2:1 D3",
-      timeSignature: "6/8",
+      timeSignature: "3/4",
       trackIndex: 0,
       type: "midi",
       view: "Session",
     });
 
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 6 });
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
   });
 
   it("should parse notes using provided time signature", () => {
@@ -85,11 +85,28 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      timeSignature: "6/8",
+      timeSignature: "3/4",
       notes: "1:1 C3 2:1 D3", // Should parse with 6 beats per bar
     });
 
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 6 });
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
+  });
+
+  it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      timeSignature: "6/8",
+      notes: "1:1 C3 2:1 D3",
+    });
+
+    // Should parse with 3 beats per bar (6 * 4 / 8 = 3)
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 3 });
   });
 
   it("should create clip with length based on endMarker for non-looping clips", () => {
