@@ -3,6 +3,15 @@
 An AI music production assistant for Ableton Live implemented as a custom MCP (model context protocol) server that
 integrates with the Live API using Max for Live.
 
+## Goal
+
+We are developing the code for this project in a Claude Project. The code is in project resources. Most conversations
+will revolve around discussing how to improve the current code (adding features, fixing bugs, or improving the general
+code quality or test coverage), and generating those improvements. Because we are in a Claude Project (not Claude code),
+any generated code needs to be shown inline in the conversation, or in an artifact per the user's request. Other
+conversations will revolve around higher level project activities such as planning and prioritization, or brainstorming
+new features.
+
 ## Project Rules
 
 - Minimize dependencies to reduce complexity and maintenance
