@@ -10,7 +10,10 @@ export function addToolCreateClip(server, callLiveApi) {
       "For Session view, provide trackIndex and clipSlotIndex. " +
       "For Arranger view, provide trackIndex and arrangerStartTime. " +
       "When count > 1, Session clips are created in successive clip slots, and Arranger clips are placed back-to-back. " +
-      `Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of ${MAX_AUTO_CREATED_SCENES} scenes (sceneIndex == clipSlotIndex).`,
+      `Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of ${MAX_AUTO_CREATED_SCENES} scenes (sceneIndex == clipSlotIndex). ` +
+      "Time Signature Behavior: arrangerStartTime uses the song's time signature for conversion from bar:beat format. " +
+      "All other timing parameters (startMarker, endMarker, loopStart, loopEnd) use the clip's time signature (either provided or defaulting to song's time signature). " +
+      "bar:beat format: Uses 1-based numbering where '1:1' is the first beat of the first bar, '1:2' is the second beat of the first bar, '2:1' is the first beat of the second bar, etc. Fractional beats like 1:1.5 (the first \"upbeat\") are supported.",
     {
       view: z
         .enum(["Session", "Arranger"])
@@ -23,9 +26,11 @@ export function addToolCreateClip(server, callLiveApi) {
         .optional()
         .describe("Clip slot index (0-based). Required when view is 'Session'."),
       arrangerStartTime: z
-        .number()
+        .string()
         .optional()
-        .describe("Start time in beats for Arranger view clips. Required when view is 'Arranger'."),
+        .describe(
+          "Start time in bar:beat format for Arranger view clips. Format is 'bar:beat' where bar and beat are 1-based (e.g. '1:1' = first beat of first bar, '2:3.5' = halfway through third beat of second bar). Uses song's time signature for conversion. Required when view is 'Arranger'."
+        ),
       count: z.number().int().min(1).default(1).describe("Number of clips to create (default: 1)"),
 
       name: z.string().optional().describe("Base name for the clips (auto-increments for count > 1)"),
@@ -37,17 +42,31 @@ export function addToolCreateClip(server, callLiveApi) {
         .describe('Time signature in format "n/m" (e.g. "4/4"). Defaults to the song\'s time signature for new clips.'),
 
       startMarker: z
-        .number()
+        .string()
         .optional()
-        .describe("Start marker position in beats (the start of both looped and un-looped clips)"),
-      endMarker: z.number().optional().describe("End marker position in beats (only applicable to un-looped clips)"),
+        .describe(
+          "Start marker position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+        ),
+      endMarker: z
+        .string()
+        .optional()
+        .describe(
+          "End marker position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+        ),
 
       loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
       loopStart: z
-        .number()
+        .string()
         .optional()
-        .describe("Loop start position in beats (not necessarily the same as startMarker)"),
-      loopEnd: z.number().optional().describe("Loop end position in beats"),
+        .describe(
+          "Loop start position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+        ),
+      loopEnd: z
+        .string()
+        .optional()
+        .describe(
+          "Loop end position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+        ),
 
       notes: z
         .string()

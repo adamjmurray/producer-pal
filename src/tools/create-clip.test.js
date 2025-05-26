@@ -118,7 +118,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      endMarker: 6,
+      endMarker: "2:3",
       loop: false,
     });
 
@@ -135,7 +135,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      loopEnd: 8,
+      loopEnd: "3:1",
       loop: true,
     });
 
@@ -404,7 +404,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "Arranger",
         trackIndex: 0,
-        arrangerStartTime: 8,
+        arrangerStartTime: "3:1",
         notes: "1:1 C3 D3 E3",
         name: "Arranger Clip",
       });
@@ -419,7 +419,7 @@ describe("createClip", () => {
         type: "midi",
         view: "Arranger",
         trackIndex: 0,
-        arrangerStartTime: 8,
+        arrangerStartTime: "3:1",
         name: "Arranger Clip",
         notes: "1:1 C3 D3 E3",
         timeSignature: "4/4",
@@ -446,7 +446,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "Arranger",
         trackIndex: 0,
-        arrangerStartTime: 8,
+        arrangerStartTime: "3:1",
         count: 3,
         name: "Sequence",
         notes: "C3 1:2 D3",
@@ -463,7 +463,7 @@ describe("createClip", () => {
           type: "midi",
           view: "Arranger",
           trackIndex: 0,
-          arrangerStartTime: 8,
+          arrangerStartTime: "3:1",
           name: "Sequence",
           timeSignature: "4/4",
           notes: "C3 1:2 D3",
@@ -473,7 +473,7 @@ describe("createClip", () => {
           type: "midi",
           view: "Arranger",
           trackIndex: 0,
-          arrangerStartTime: 10,
+          arrangerStartTime: "3:3",
           name: "Sequence 2",
           timeSignature: "4/4",
           notes: "C3 1:2 D3",
@@ -483,7 +483,7 @@ describe("createClip", () => {
           type: "midi",
           view: "Arranger",
           trackIndex: 0,
-          arrangerStartTime: 12,
+          arrangerStartTime: "4:1",
           name: "Sequence 3",
           timeSignature: "4/4",
           notes: "C3 1:2 D3",
@@ -498,7 +498,7 @@ describe("createClip", () => {
         createClip({
           view: "Arranger",
           trackIndex: 99,
-          arrangerStartTime: 8,
+          arrangerStartTime: "3:1",
         })
       ).toThrow("createClip failed: track with index 99 does not exist");
     });

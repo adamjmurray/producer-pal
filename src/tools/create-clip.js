@@ -1,4 +1,5 @@
 // src/tools/create-clip.js
+import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
@@ -8,16 +9,16 @@ import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
  * @param {string} args.view - View for the clip ('Session' or 'Arranger')
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for Session view
- * @param {number} [args.arrangerStartTime] - Start time in beats for Arranger view clips
+ * @param {string} [args.arrangerStartTime] - Start time in bar:beat format for Arranger view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {number} [args.startMarker] - Start marker position in beats
- * @param {number} [args.endMarker] - End marker position in beats
- * @param {number} [args.loopStart] - Loop start position in beats
- * @param {number} [args.loopEnd] - Loop end position in beats
+ * @param {string} [args.startMarker] - Start marker position in bar:beat format (uses clip time signature)
+ * @param {string} [args.endMarker] - End marker position in bar:beat format (uses clip time signature)
+ * @param {string} [args.loopStart] - Loop start position in bar:beat format (uses clip time signature)
+ * @param {string} [args.loopEnd] - Loop end position in bar:beat format (uses clip time signature)
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating it (Session only)
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
@@ -60,7 +61,13 @@ export function createClip({
     throw new Error("createClip failed: count must be at least 1");
   }
 
+  const liveSet = new LiveAPI("live_set");
   let timeSigNumerator, timeSigDenominator;
+  let songTimeSigNumerator, songTimeSigDenominator;
+
+  // Get song time signature for arrangerStartTime conversion
+  songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+  songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   if (timeSignature != null) {
     const match = timeSignature.match(/^(\d+)\/(\d+)$/);
@@ -70,10 +77,36 @@ export function createClip({
     timeSigNumerator = parseInt(match[1], 10);
     timeSigDenominator = parseInt(match[2], 10);
   } else {
-    // Read time signature from song
-    const liveSet = new LiveAPI("live_set");
-    timeSigNumerator = liveSet.getProperty("signature_numerator");
-    timeSigDenominator = liveSet.getProperty("signature_denominator");
+    // Use song time signature as default for clips
+    timeSigNumerator = songTimeSigNumerator;
+    timeSigDenominator = songTimeSigDenominator;
+  }
+
+  // Convert bar:beat timing parameters to Ableton beats
+  let arrangerStartTimeBeats = null;
+  let startMarkerBeats = null;
+  let endMarkerBeats = null;
+  let loopStartBeats = null;
+  let loopEndBeats = null;
+
+  if (arrangerStartTime != null) {
+    arrangerStartTimeBeats = barBeatToAbletonBeats(arrangerStartTime, songTimeSigNumerator, songTimeSigDenominator);
+  }
+
+  if (startMarker != null) {
+    startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
+  }
+
+  if (endMarker != null) {
+    endMarkerBeats = barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator);
+  }
+
+  if (loopStart != null) {
+    loopStartBeats = barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator);
+  }
+
+  if (loopEnd != null) {
+    loopEndBeats = barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator);
   }
 
   const notes =
@@ -86,12 +119,12 @@ export function createClip({
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   let clipLength;
-  if (loop && loopEnd != null) {
+  if (loop && loopEndBeats != null) {
     // For looping clips, use loopEnd
-    clipLength = loopEnd;
-  } else if (endMarker != null) {
+    clipLength = loopEndBeats;
+  } else if (endMarkerBeats != null) {
     // For non-looping clips, use endMarker
-    clipLength = endMarker;
+    clipLength = endMarkerBeats;
   } else if (notes.length > 0) {
     // Calculate from notes, round up to nearest whole beat
     const lastNoteEndTime = Math.max(...notes.map((note) => note.start_time + note.duration));
@@ -108,7 +141,7 @@ export function createClip({
     const clipName = name != null ? (count === 1 ? name : i === 0 ? name : `${name} ${i + 1}`) : undefined;
 
     let clip;
-    let currentClipSlotIndex, currentArrangerStartTime;
+    let currentClipSlotIndex, currentArrangerStartTimeBeats;
 
     if (view === "Session") {
       currentClipSlotIndex = clipSlotIndex + i;
@@ -122,7 +155,6 @@ export function createClip({
         );
       }
 
-      const liveSet = new LiveAPI("live_set");
       const currentSceneCount = liveSet.getChildIds("scenes").length;
 
       if (currentClipSlotIndex >= currentSceneCount) {
@@ -142,14 +174,14 @@ export function createClip({
       clip = new LiveAPI(`${clipSlot.path} clip`);
     } else {
       // Arranger view
-      currentArrangerStartTime = arrangerStartTime + i * clipLength;
+      currentArrangerStartTimeBeats = arrangerStartTimeBeats + i * clipLength;
 
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
       if (!track.exists()) {
         throw new Error(`createClip failed: track with index ${trackIndex} does not exist`);
       }
 
-      const newClipId = track.call("create_midi_clip", currentArrangerStartTime, clipLength)[1];
+      const newClipId = track.call("create_midi_clip", currentArrangerStartTimeBeats, clipLength)[1];
       clip = new LiveAPI(`id ${newClipId}`);
       if (!clip.exists()) {
         throw new Error("createClip failed: failed to create Arranger clip");
@@ -172,20 +204,20 @@ export function createClip({
       clip.set("signature_denominator", timeSigDenominator);
     }
 
-    if (startMarker != null) {
-      clip.set("start_marker", startMarker);
+    if (startMarkerBeats != null) {
+      clip.set("start_marker", startMarkerBeats);
     }
 
-    if (endMarker != null) {
-      clip.set("end_marker", endMarker);
+    if (endMarkerBeats != null) {
+      clip.set("end_marker", endMarkerBeats);
     }
 
-    if (loopStart != null) {
-      clip.set("loop_start", loopStart);
+    if (loopStartBeats != null) {
+      clip.set("loop_start", loopStartBeats);
     }
 
-    if (loopEnd != null) {
-      clip.set("loop_end", loopEnd);
+    if (loopEndBeats != null) {
+      clip.set("loop_end", loopEndBeats);
     }
 
     if (loop != null) {
@@ -208,7 +240,17 @@ export function createClip({
     if (view === "Session") {
       clipResult.clipSlotIndex = currentClipSlotIndex;
     } else {
-      clipResult.arrangerStartTime = currentArrangerStartTime;
+      // Calculate bar:beat position for this clip
+      if (i === 0) {
+        clipResult.arrangerStartTime = arrangerStartTime;
+      } else {
+        // Convert clipLength back to bar:beat format and add to original position
+        const clipLengthInMusicalBeats = clipLength * (songTimeSigDenominator / 4);
+        const totalOffsetBeats = i * clipLengthInMusicalBeats;
+        const originalBeats = barBeatToBeats(arrangerStartTime, songTimeSigNumerator);
+        const newPositionBeats = originalBeats + totalOffsetBeats;
+        clipResult.arrangerStartTime = beatsToBarBeat(newPositionBeats, songTimeSigNumerator);
+      }
     }
 
     // Only include properties that were actually set
