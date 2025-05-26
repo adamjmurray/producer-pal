@@ -39,7 +39,6 @@ export function updateClip({
     .map((id) => id.trim())
     .filter((id) => id.length > 0);
 
-  const notes = notationString != null ? parseNotation(notationString) : null;
   const updatedClips = [];
   let isFirstClip = true;
 
@@ -92,7 +91,18 @@ export function updateClip({
       clip.set("looping", loop);
     }
 
+    // Parse notes using appropriate time signature
     if (notationString != null) {
+      let beatsPerBar;
+      if (timeSignature != null) {
+        // Use the provided time signature for parsing
+        beatsPerBar = parseInt(timeSignature.match(/^(\d+)\/(\d+)$/)[1], 10);
+      } else {
+        // Use the clip's current time signature
+        beatsPerBar = clip.getProperty("signature_numerator");
+      }
+      const notes = parseNotation(notationString, { beatsPerBar });
+
       clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
       clip.call("add_new_notes", { notes });
     }

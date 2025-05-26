@@ -1,6 +1,6 @@
 // src/tools/create-clip.js
 import { parseNotation } from "../notation/notation";
-import { MAX_AUTO_CREATED_SCENES, MAX_CLIP_BEATS } from "./constants.js";
+import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
 /**
  * Creates MIDI clips in Session or Arranger view
@@ -60,9 +60,49 @@ export function createClip({
     throw new Error("createClip failed: count must be at least 1");
   }
 
-  const notes = parseNotation(notationString);
-  const lastNoteEndTime = notes.length > 0 ? Math.max(...notes.map((note) => note.start_time + note.duration)) : 0;
-  const clipLength = Math.max(4, Math.ceil(lastNoteEndTime));
+  let beatsPerBar;
+  let timeSignatureToSet = null;
+
+  if (timeSignature != null) {
+    const match = timeSignature.match(/^(\d+)\/(\d+)$/);
+    if (!match) {
+      throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
+    }
+    beatsPerBar = parseInt(match[1], 10);
+    timeSignatureToSet = {
+      numerator: beatsPerBar,
+      denominator: parseInt(match[2], 10),
+    };
+  } else {
+    // Read time signature from song
+    const liveSet = new LiveAPI("live_set");
+    beatsPerBar = liveSet.getProperty("signature_numerator");
+    timeSignatureToSet = {
+      numerator: beatsPerBar,
+      denominator: liveSet.getProperty("signature_denominator"),
+    };
+  }
+
+  console.log(`parseNotation(${notationString}, { beatsPerBar: ${beatsPerBar} }) }`);
+
+  const notes = notationString != null ? parseNotation(notationString, { beatsPerBar }) : [];
+
+  // Determine clip length - assume clips start at 1.1 (beat 0)
+  let clipLength;
+  if (loop && loopEnd != null) {
+    // For looping clips, use loopEnd
+    clipLength = loopEnd;
+  } else if (endMarker != null) {
+    // For non-looping clips, use endMarker
+    clipLength = endMarker;
+  } else if (notes.length > 0) {
+    // Calculate from notes, round up to nearest whole beat
+    const lastNoteEndTime = Math.max(...notes.map((note) => note.start_time + note.duration));
+    clipLength = Math.ceil(lastNoteEndTime);
+  } else {
+    // Empty clip, use 1 beat minimum
+    clipLength = 1;
+  }
 
   const createdClips = [];
 
@@ -128,15 +168,9 @@ export function createClip({
       clip.setColor(color);
     }
 
-    if (timeSignature != null) {
-      const match = timeSignature.match(/^(\d+)\/(\d+)$/);
-      if (!match) {
-        throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
-      }
-      const numerator = parseInt(match[1], 10);
-      const denominator = parseInt(match[2], 10);
-      clip.set("signature_numerator", numerator);
-      clip.set("signature_denominator", denominator);
+    if (timeSignatureToSet != null) {
+      clip.set("signature_numerator", timeSignatureToSet.numerator);
+      clip.set("signature_denominator", timeSignatureToSet.denominator);
     }
 
     if (startMarker != null) {
@@ -159,8 +193,7 @@ export function createClip({
       clip.set("looping", loop);
     }
 
-    if (notationString != null) {
-      clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
+    if (notes.length > 0) {
       clip.call("add_new_notes", { notes });
     }
 
@@ -182,7 +215,10 @@ export function createClip({
     // Only include properties that were actually set
     if (clipName != null) clipResult.name = clipName;
     if (color != null) clipResult.color = color;
-    if (timeSignature != null) clipResult.timeSignature = timeSignature;
+
+    // Include the time signature (use what we set or read from song)
+    clipResult.timeSignature = `${timeSignatureToSet.numerator}/${timeSignatureToSet.denominator}`;
+
     if (startMarker != null) clipResult.startMarker = startMarker;
     if (endMarker != null) clipResult.endMarker = endMarker;
     if (loopStart != null) clipResult.loopStart = loopStart;

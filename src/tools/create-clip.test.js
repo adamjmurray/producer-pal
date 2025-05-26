@@ -5,11 +5,11 @@ import * as notation from "../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "./constants";
 import { createClip } from "./create-clip";
 
-// Spy on notation functions
-const parseNotationSpy = vi.spyOn(notation, "parseNotation");
+let parseNotationSpy;
 
 describe("createClip", () => {
   beforeEach(() => {
+    parseNotationSpy = vi.spyOn(notation, "parseNotation");
     // Default mock implementation
     parseNotationSpy.mockReturnValue([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
@@ -39,6 +39,145 @@ describe("createClip", () => {
     );
   });
 
+  it("should validate time signature early when provided", () => {
+    expect(() =>
+      createClip({
+        view: "Session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        timeSignature: "invalid",
+      })
+    ).toThrow("Time signature must be in format");
+  });
+
+  it("should read time signature from song when not provided", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 6, signature_denominator: 8 },
+    });
+
+    const result = createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar from song
+    });
+
+    expect(result).toEqual({
+      clipSlotIndex: 0,
+      id: "live_set/tracks/0/clip_slots/0/clip",
+      notes: "1:1 C3 2:1 D3",
+      timeSignature: "6/8",
+      trackIndex: 0,
+      type: "midi",
+      view: "Session",
+    });
+
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 6 });
+  });
+
+  it("should parse notes using provided time signature", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      timeSignature: "6/8",
+      notes: "1:1 C3 2:1 D3", // Should parse with 6 beats per bar
+    });
+
+    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { beatsPerBar: 6 });
+  });
+
+  it("should create clip with length based on endMarker for non-looping clips", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      endMarker: 6,
+      loop: false,
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 6);
+  });
+
+  it("should create clip with length based on loopEnd for looping clips", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      loopEnd: 8,
+      loop: true,
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 8);
+  });
+
+  it("should calculate clip length from notes when markers not provided", () => {
+    // Restore real parseNotation for this test
+    parseNotationSpy.mockRestore();
+
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: "1:1 t2 C3 1:4 t1.5 D3", // Notes ends at bar.beat 5.5, which is beat 0-indexed position 4.5,which should round up to 5
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 5);
+  });
+
+  it("should create minimum 1-beat clip when empty", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1);
+  });
+
+  it("should use minimum clip length of 1 when notes are empty", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4 },
+    });
+
+    parseNotationSpy.mockReturnValue([]);
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: "",
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1);
+  });
+
   describe("Session view", () => {
     it("should create a single clip with notes", () => {
       liveApiId.mockImplementation(function () {
@@ -51,6 +190,11 @@ describe("createClip", () => {
       });
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
+        LiveSet: { signature_numerator: 4 },
+        Clip: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
       });
 
       const result = createClip({
@@ -64,7 +208,7 @@ describe("createClip", () => {
         autoplay: true,
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
+      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1); // Length based on notes
       expect(liveApiSet).toHaveBeenCalledWith("name", "New Clip");
       expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
       expect(liveApiSet).toHaveBeenCalledWith("looping", true);
@@ -89,6 +233,7 @@ describe("createClip", () => {
         color: "#FF0000",
         loop: true,
         notes: "1:1 C3 D3 E3",
+        timeSignature: "4/4",
         isTriggered: true,
       });
     });
@@ -107,7 +252,10 @@ describe("createClip", () => {
         }
       });
       mockLiveApiGet({
-        LiveSet: { scenes: children("scene0") }, // Only 1 existing scene, so we need to create scenes 1, 2, 3
+        LiveSet: {
+          scenes: children("scene0"), // Only 1 existing scene, so we need to create scenes 1, 2, 3
+          signature_numerator: 4,
+        },
         ClipSlot: { has_clip: 0 },
       });
 
@@ -124,9 +272,9 @@ describe("createClip", () => {
       expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // scene for slot 1
       expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // scene for slot 2
       expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // scene for slot 3
-      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4); // clip in slot 1
-      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4); // clip in slot 2
-      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4); // clip in slot 3
+      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1); // clip in slot 1
+      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1); // clip in slot 2
+      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1); // clip in slot 3
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "Loop");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Loop 2");
@@ -143,6 +291,7 @@ describe("createClip", () => {
           clipSlotIndex: 1,
           name: "Loop",
           color: "#00FF00",
+          timeSignature: "4/4",
         },
         {
           id: "clip_0_2",
@@ -152,6 +301,7 @@ describe("createClip", () => {
           clipSlotIndex: 2,
           name: "Loop 2",
           color: "#00FF00",
+          timeSignature: "4/4",
         },
         {
           id: "clip_0_3",
@@ -161,13 +311,17 @@ describe("createClip", () => {
           clipSlotIndex: 3,
           name: "Loop 3",
           color: "#00FF00",
+          timeSignature: "4/4",
         },
       ]);
     });
 
     it("should auto-create scenes when clipSlotIndex exceeds existing scenes", () => {
       mockLiveApiGet({
-        LiveSet: { scenes: children("scene1", "scene2") }, // 2 existing scenes
+        LiveSet: {
+          scenes: children("scene1", "scene2"), // 2 existing scenes
+          signature_numerator: 4,
+        },
         ClipSlot: { has_clip: new MockSequence(0, 1) },
       });
 
@@ -183,12 +337,13 @@ describe("createClip", () => {
       expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // padding scene 2
       expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // padding scene 3
 
-      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
+      expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1);
     });
 
     it("should throw error if clip already exists in session view clip slot", () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 1 },
+        LiveSet: { signature_numerator: 4 },
       });
       expect(() =>
         createClip({
@@ -216,6 +371,11 @@ describe("createClip", () => {
     it("should create a single clip in arranger", () => {
       mockLiveApiGet({
         Track: { exists: () => true },
+        LiveSet: { signature_numerator: 4 },
+        Clip: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
       });
 
       liveApiCall.mockImplementation((method, ...args) => {
@@ -238,7 +398,7 @@ describe("createClip", () => {
         name: "Arranger Clip",
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 4);
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 1); // Length based on notes
       expect(liveApiSet).toHaveBeenCalledWith("name", "Arranger Clip");
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id arranger_clip");
@@ -251,10 +411,13 @@ describe("createClip", () => {
         arrangerStartTime: 8,
         name: "Arranger Clip",
         notes: "1:1 C3 D3 E3",
+        timeSignature: "4/4",
       });
     });
 
-    it("should create multiple clips back-to-back in arranger", () => {
+    it("should create arranger clips with exact lengths and positions", () => {
+      parseNotationSpy.mockRestore();
+
       mockLiveApiGet({
         Track: { exists: () => true },
       });
@@ -271,24 +434,19 @@ describe("createClip", () => {
         return "1";
       });
 
-      // Mock clip length of 4 beats
-      parseNotationSpy.mockReturnValue([
-        { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-        { pitch: 62, start_time: 2, duration: 1, velocity: 100 }, // ends at beat 3
-      ]);
-
       const result = createClip({
         view: "Arranger",
         trackIndex: 0,
         arrangerStartTime: 8,
         count: 3,
         name: "Sequence",
+        notes: "C3 1:2 D3",
       });
 
-      // Clips should be placed at sequential positions (length = 4)
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 4); // 8 + (0 * 4)
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 12, 4); // 8 + (1 * 4)
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 4); // 8 + (2 * 4)
+      // Clips should be created with exact length (2 beats) at correct positions
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 2); // 8 + (0 * 2)
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 10, 2); // 8 + (1 * 2)
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 12, 2); // 8 + (2 * 2)
 
       expect(result).toEqual([
         {
@@ -298,6 +456,18 @@ describe("createClip", () => {
           trackIndex: 0,
           arrangerStartTime: 8,
           name: "Sequence",
+          timeSignature: "4/4",
+          notes: "C3 1:2 D3",
+        },
+        {
+          id: "arranger_clip",
+          type: "midi",
+          view: "Arranger",
+          trackIndex: 0,
+          arrangerStartTime: 10,
+          name: "Sequence 2",
+          timeSignature: "4/4",
+          notes: "C3 1:2 D3",
         },
         {
           id: "arranger_clip",
@@ -305,15 +475,9 @@ describe("createClip", () => {
           view: "Arranger",
           trackIndex: 0,
           arrangerStartTime: 12,
-          name: "Sequence 2",
-        },
-        {
-          id: "arranger_clip",
-          type: "midi",
-          view: "Arranger",
-          trackIndex: 0,
-          arrangerStartTime: 16,
           name: "Sequence 3",
+          timeSignature: "4/4",
+          notes: "C3 1:2 D3",
         },
       ]);
     });
@@ -334,6 +498,10 @@ describe("createClip", () => {
   it("should set time signature when provided", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
+      LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
     });
 
     const result = createClip({
@@ -348,44 +516,13 @@ describe("createClip", () => {
     expect(result.timeSignature).toBe("6/8");
   });
 
-  it("should throw error for invalid time signature format", () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-    });
-
-    expect(() =>
-      createClip({
-        view: "Session",
-        trackIndex: 0,
-        clipSlotIndex: 0,
-        timeSignature: "invalid",
-      })
-    ).toThrow("Time signature must be in format");
-  });
-
-  it("should use minimum clip length of 4 when notes are short", () => {
-    mockLiveApiGet({
-      ClipSlot: { has_clip: 0 },
-    });
-
-    parseNotationSpy.mockReturnValue([{ pitch: 60, start_time: 0, duration: 1, velocity: 100 }]);
-
-    createClip({
-      view: "Session",
-      trackIndex: 0,
-      clipSlotIndex: 0,
-      notes: "1:1 C3",
-    });
-
-    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 4);
-  });
-
   it("should calculate correct clip length based on note duration", () => {
     // Restore real parseNotation for this test
     parseNotationSpy.mockRestore();
 
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4 },
     });
 
     createClip({
@@ -401,6 +538,7 @@ describe("createClip", () => {
   it("should return single object for count=1 and array for count>1", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4 },
     });
 
     const singleResult = createClip({
@@ -426,6 +564,7 @@ describe("createClip", () => {
       trackIndex: 0,
       clipSlotIndex: 0,
       name: "Single",
+      timeSignature: "4/4",
     });
     expect(singleResult.length).toBeUndefined();
 

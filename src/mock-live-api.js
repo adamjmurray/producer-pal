@@ -99,6 +99,10 @@ export function mockLiveApiGet(overrides = {}) {
             return children("track1", "track2");
           case "scenes":
             return children("scene1", "scene2");
+          case "signature_numerator":
+            return [4];
+          case "signature_denominator":
+            return [4];
         }
         break;
       case "AppView":

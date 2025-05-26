@@ -63,7 +63,7 @@
 
 **BarBeat Improvements:**
 
-- [ ] Support time signatures other than 4/4 in BarBeat notation
+- [x] Support time signatures other than 4/4 in BarBeat notation
 - [ ] Use bar.beat format for arrangement times, clip lengths (e.g. loopEnd), positions
 
 **Robustness:**

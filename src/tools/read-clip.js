@@ -36,6 +36,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
   }
 
   const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
+  const signatureNumerator = clip.getProperty("signature_numerator");
 
   const result = {
     id: clip.id,
@@ -51,7 +52,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     loopEnd: clip.getProperty("loop_end"),
     isPlaying: clip.getProperty("is_playing") > 0,
     isTriggered: clip.getProperty("is_triggered") > 0,
-    timeSignature: `${clip.getProperty("signature_numerator")}/${clip.getProperty("signature_denominator")}`,
+    timeSignature: `${signatureNumerator}/${clip.getProperty("signature_denominator")}`,
   };
 
   if (isArrangerClip) {
@@ -69,7 +70,8 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     const notes = JSON.parse(notesDictionary).notes;
 
     result.noteCount = notes.length;
-    result.notes = formatNotation(notes);
+    // Use the clip's time signature for notation formatting
+    result.notes = formatNotation(notes, { beatsPerBar: signatureNumerator });
   }
 
   return result;

@@ -4,11 +4,11 @@ import { liveApiCall, liveApiId, liveApiPath, liveApiSet, mockLiveApiGet } from 
 import * as notation from "../notation/notation";
 import { updateClip } from "./update-clip";
 
-// Spy on notation functions
-const parseNotationSpy = vi.spyOn(notation, "parseNotation");
+let parseNotationSpy;
 
 describe("updateClip", () => {
   beforeEach(() => {
+    parseNotationSpy = vi.spyOn(notation, "parseNotation");
     parseNotationSpy.mockReturnValue([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
@@ -516,5 +516,29 @@ describe("updateClip", () => {
     expect(parseNotationSpy).not.toHaveBeenCalled();
     expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
+  });
+
+  it("should parse notes using clip's current time signature", () => {
+    parseNotationSpy.mockRestore(); // Use real function
+
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 3, // 3/4 time
+      },
+    });
+
+    updateClip({
+      ids: "clip1",
+      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        expect.objectContaining({ pitch: 60, start_time: 0 }),
+        expect.objectContaining({ pitch: 62, start_time: 3 }), // Beat 3 in 3/4 time
+      ],
+    });
   });
 });

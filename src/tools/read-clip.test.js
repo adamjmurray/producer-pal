@@ -4,11 +4,11 @@ import { children, liveApiCall, liveApiId, liveApiPath, mockLiveApiGet } from ".
 import * as notation from "../notation/notation";
 import { readClip } from "./read-clip";
 
-// Spy on notation functions
-const formatNotationSpy = vi.spyOn(notation, "formatNotation");
+let formatNotationSpy;
 
 describe("readClip", () => {
   beforeEach(() => {
+    formatNotationSpy = vi.spyOn(notation, "formatNotation");
     formatNotationSpy.mockReturnValue("mocked notation");
   });
 
@@ -57,6 +57,37 @@ describe("readClip", () => {
       notes: "mocked notation",
       noteCount: 3,
     });
+  });
+
+  it("should format notes using clip's time signature", () => {
+    formatNotationSpy.mockRestore(); // Use real function
+
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        signature_numerator: 6,
+        signature_denominator: 8,
+      },
+    });
+
+    liveApiCall.mockImplementation((method) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
+            { pitch: 62, start_time: 6, duration: 1, velocity: 100 }, // Start of bar 2 in 6/8
+            { pitch: 64, start_time: 7, duration: 1, velocity: 100 }, // bar 2, beat 2
+          ],
+        });
+      }
+      return null;
+    });
+
+    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+
+    // In 6/8 time, beat 6 should be bar 2 beat 1
+    expect(result.notes).toBe("1:1 C3 2:1 D3 2:2 E3");
+    expect(result.timeSignature).toBe("6/8");
   });
 
   it("returns null values when no clip exists", () => {
