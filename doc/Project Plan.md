@@ -76,8 +76,10 @@
 **Robustness:**
 
 - [x] Detect and protect the track hosting the MCP server device
-- [ ] Cleanup: Delete all traces of ToneLang and simplify the build script and GitHub action
-- [ ] Review and refine all tool descriptions for clarity, including BarBeat specification
+- [ ] Review and refine all tool descriptions for clarity, including BarBeat specification (and maybe rename to
+      `bar:beat` and distinguish the time syntax from the wider notation system that uses bar:beat, perhaps `bar:beat`
+      implies the time syntax and `bar:beat notation` refers to the MIDI clip representation with the grammar, parser,
+      formatter, etc)
 
 ## 🌟 Nice-to-Have (Stretch Goals)
 

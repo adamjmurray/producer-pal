@@ -39,9 +39,7 @@
     "test:watch": "npm run test:setup && vitest",
     "test:coverage": "npm run test:setup && vitest run --coverage",
     "test:setup": "npm run parser:build",
-    "parser:build": "npm run parser:build:tonelang && npm run parser:build:barbeat",
-    "parser:build:tonelang": "peggy --format es --output src/notation/tonelang/tonelang-parser.js src/notation/tonelang/tonelang-grammar.peggy",
-    "parser:build:barbeat": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
+    "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'"
   }
 }

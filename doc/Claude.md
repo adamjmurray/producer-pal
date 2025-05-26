@@ -68,9 +68,6 @@ new features.
   file is missing and should be added to project resources before continuing.
   - Note that the generated parser code (from .peggy grammar files) are not included in project resources to save space.
     The source of truth is the grammar(s).
-- `package.json` and/or rollup configs may refer to ToneLang, which is a legacy notation system. It will probably be
-  deleting soon, and has mostly been deleted from project resources. For now, a few references remain to allow for using
-  it for comparison purposes.
 
 ## Trusted online resources (if web search is needed to unblock):
 
