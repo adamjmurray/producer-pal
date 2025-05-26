@@ -4,7 +4,7 @@ import { z } from "zod";
 export function addToolReadScene(server, callLiveApi) {
   server.tool(
     "read-scene",
-    "Read comprehensive information about a scene",
+    "Read comprehensive information about a scene. When includeClips is true, returns clip objects with time-based properties in bar:beat format.",
     {
       sceneIndex: z
         .number()

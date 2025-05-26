@@ -17,6 +17,8 @@
 - Velocity and duration control
 - Parser/formatter with PEG grammar
 - Integration with all clip operations
+- Note probability support
+- Velocity deviation support
 
 **Complete CRUD Operations:**
 
@@ -29,7 +31,7 @@
 
 - Session and Arrangement view support
 - Track and scene creation (up to a max limit)
-- Bulk operations foundation (create/update/delete multiple objects)
+- Bulk operations foundation (create/update/delete/play/stop multiple objects)
 - Duplicate operations for tracks, scenes, and clips
 - Timeout handling and optimistic result strategies
 - Comprehensive error handling and validation
@@ -43,35 +45,38 @@
 
 ### Critical Pre-Launch Features
 
-**Bulk Operations Completion:**
+**BarBeat Improvements:**
 
-- [x] `create-clip` - insert multiple clips at specified locations
-- [x] `update-clip` - update multiple clips by ID list
-- [x] Transport bulk operations - play/stop multiple tracks simultaneously
+- [x] Support time signatures other than 4/4 in BarBeat notation
+- [ ] Use bar.beat format for all applicable time-related inputs and outputs (arrangement times, clip lengths e.g.
+      loopEnd, etc)
+  - [x] all timing data returned by read-clip
+  - [ ] all args for create-clip and update-clip
+  - [ ] all timing data returned by transport
+  - [ ] all args for transport
+  - [ ] the arrangerStartTime arg in duplicate
 
-**BarBeat Enhancements:**
-
-- [x] Note probability support
-- [x] Velocity deviation/range support
-
-**Additional Duplicate Features:**
+**Duplicate Tool Improvements:**
 
 - [x] Duplicate scene to arranger (all clips in scene → arranger)
   - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
         scene)
   - [ ] Add an optional arg to set the length of the clips in the arrangement when copying a scene
-
-**BarBeat Improvements:**
-
-- [x] Support time signatures other than 4/4 in BarBeat notation
-- [ ] Use bar.beat format for arrangement times, clip lengths (e.g. loopEnd), positions
+- [ ] Enhance clip duplication safety in duplicate tool:
+  - [ ] Add validation to detect when session clip duplication would overwrite existing clips (including with count > 1)
+  - [ ] Add onConflict parameter with options: "error" (default), "overwrite", "next-empty", "new-scene"
+  - [ ] Implement per-clip conflict resolution for multiple duplicates
+  - [ ] For "next-empty" strategy: scan downward to find first empty clip slot. Throw an error for no empty scenes
+  - [ ] For "new-scene" strategy: create new scene copying source scene properties (name, color, tempo, timeSignature)
+        but no other clips. Only copy up to the allowed max (reuse the constant in create-scene) and throw an error
+        during up-front validation when over the Max
+  - [ ] Update result format to include newSceneIndex and newSceneId when scenes are created. Handle multiples
+  - [ ] Add comprehensive test coverage for all conflict scenarios and strategies
 
 **Robustness:**
 
 - [x] Detect and protect the track hosting the MCP server device
-- [ ] When duplicating clips to the session (especially with count > 1) consider warning about clips that would get
-      overwritten and consider requiring an `overwrite: true` argument (consider supporting `overwrite: true` in
-      create-clip too)
+- [ ] Cleanup: Delete all traces of ToneLang and simplify the build script and GitHub action
 - [ ] Review and refine all tool descriptions for clarity, including BarBeat specification
 
 ## 🌟 Nice-to-Have (Stretch Goals)
@@ -80,21 +85,22 @@
 
 - [ ] Implement `Live.from(pathOrId)` that handles prepending "id " when needed (this pattern occurs all over the
       codebase)
+- [ ] Look for other opportunities to refactor recurring patterns of LiveAPI usage
 
 **Additional Duplicate Features:**
 
 - [ ] ClipSlot.duplicate_clip_to with bulk destination support
+
+**Robustness:**
+
+- [ ] Validation system for better error handling (start/end times, clip bounds, etc.)
+- [ ] Improved error messages and edge case handling
 
 **MIDI Routing:**
 
 - [ ] Implement track-to-track MIDI routing functionality
 - [ ] Support automatic routing setup for layered loops/patterns (e.g. multiple drum patterns with different loop
       lengths)
-
-**Robustness:**
-
-- [ ] Validation system for better error handling (start/end times, clip bounds, etc.)
-- [ ] Improved error messages and edge case handling
 
 **Testing Infra:**
 
@@ -104,7 +110,7 @@
       mocks. Specifically, the way we check the Nth call so we can than compare the Nth liveApi.path, etc to check the
       call occurred on the right object.
 
-## 🚀 Post-MVP (Future Releases)
+## 🚀 Post-MVP (Future Releases, Tentative)
 
 **BarBeat Enhancements:**
 

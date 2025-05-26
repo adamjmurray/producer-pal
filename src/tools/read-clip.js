@@ -1,6 +1,6 @@
 // src/tools/read-clip.js
+import { abletonBeatsToBarBeat } from "../notation/barbeat/barbeat-time";
 import { formatNotation } from "../notation/notation";
-
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
  * @param {Object} args - Arguments for the function
@@ -36,8 +36,8 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
   }
 
   const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
-  const signatureNumerator = clip.getProperty("signature_numerator");
-  const signatureDenominator = clip.getProperty("signature_denominator");
+  const timeSigNumerator = clip.getProperty("signature_numerator");
+  const timeSigDenominator = clip.getProperty("signature_denominator");
 
   const result = {
     id: clip.id,
@@ -46,19 +46,27 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     view: isArrangerClip ? "Arranger" : "Session",
     color: clip.getColor(),
     loop: clip.getProperty("looping") > 0,
-    length: clip.getProperty("length"),
-    startMarker: clip.getProperty("start_marker"),
-    endMarker: clip.getProperty("end_marker"),
-    loopStart: clip.getProperty("loop_start"),
-    loopEnd: clip.getProperty("loop_end"),
+    // convert "ableton beats" (quarter note offset) to musical beats, so it makes sense in e.g. 6/8 time signatures:
+    length: (clip.getProperty("length") * timeSigDenominator) / 4,
+    startMarker: abletonBeatsToBarBeat(clip.getProperty("start_marker"), timeSigNumerator, timeSigDenominator),
+    endMarker: abletonBeatsToBarBeat(clip.getProperty("end_marker"), timeSigNumerator, timeSigDenominator),
+    loopStart: abletonBeatsToBarBeat(clip.getProperty("loop_start"), timeSigNumerator, timeSigDenominator),
+    loopEnd: abletonBeatsToBarBeat(clip.getProperty("loop_end"), timeSigNumerator, timeSigDenominator),
     isPlaying: clip.getProperty("is_playing") > 0,
     isTriggered: clip.getProperty("is_triggered") > 0,
-    timeSignature: `${signatureNumerator}/${signatureDenominator}`,
+    timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
   };
 
   if (isArrangerClip) {
+    const liveSet = new LiveAPI("live_set");
+    const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+    const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
     result.trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)[1]);
-    result.arrangerStartTime = clip.getProperty("start_time");
+    result.arrangerStartTime = abletonBeatsToBarBeat(
+      clip.getProperty("start_time"),
+      songTimeSigNumerator,
+      songTimeSigDenominator
+    );
   } else {
     const pathMatch = clip.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
     result.trackIndex = Number.parseInt(pathMatch?.[1]);
@@ -71,10 +79,8 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     const notes = JSON.parse(notesDictionary).notes;
 
     result.noteCount = notes.length;
-    // Use the clip's time signature for notation formatting
-    result.notes = formatNotation(notes, { beatsPerBar: signatureNumerator });
-
-    const abletonBeatsPerBar = (signatureNumerator * 4) / signatureDenominator;
+    // TODO: pass time signature numerator and denominator into formatNotation (and parseNotation) to streamline this
+    const abletonBeatsPerBar = (timeSigNumerator * 4) / timeSigDenominator; // 0-indexed quarter note offset
     result.notes = formatNotation(notes, { beatsPerBar: abletonBeatsPerBar });
   }
 

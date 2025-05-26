@@ -227,12 +227,12 @@ export const expectedClip = (overrides = {}) => ({
   clipSlotIndex: 1,
   name: "Test Clip",
   color: "#3DC300",
-  length: 4,
-  startMarker: 1,
-  endMarker: 5,
+  length: 4, // Musical beats (4 Ableton beats in 4/4 is 4 musical beats)
+  startMarker: "1:2", // bar:beat format (1 Ableton beat = bar 1 beat 2)
+  endMarker: "2:2", // bar:beat format (5 Ableton beats = bar 2 beat 2 in 4/4)
   loop: false,
-  loopEnd: 5,
-  loopStart: 1,
+  loopEnd: "2:2", // bar:beat format
+  loopStart: "1:2", // bar:beat format
   isPlaying: false,
   isTriggered: false,
   timeSignature: "4/4",

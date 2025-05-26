@@ -240,7 +240,10 @@ describe("readTrack", () => {
       playingSlotIndex: 0,
       drumPads: null,
       arrangerClips: [],
-      sessionClips: [expectedClip({ clipSlotIndex: 0 }), expectedClip({ id: "clip2", clipSlotIndex: 2 })],
+      sessionClips: [
+        expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
+        expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
+      ],
     });
   });
 

@@ -5,7 +5,8 @@ import { notationDescription } from "../notation/notation";
 export function addToolReadClip(server, callLiveApi) {
   server.tool(
     "read-clip",
-    "Retrieves clip information including notes. Returns type ('midi' or 'audio'), name, and length for all clips. " +
+    "Retrieves clip information including notes. Returns type ('midi' or 'audio'), name, and time-based properties for all clips. " +
+      "Time-based properties (length, startMarker, endMarker, loopStart, loopEnd, arrangerStartTime) are returned in bar:beat format (e.g. '2:3.5') using musical beats. arrangerStartTime respects the song's time signature, while the other time-based properties depend on the clip's time signature (which may be different from the song). " +
       "For MIDI clips, also returns noteCount and notes as a string in the BarBeat notation format explained below. " +
       "For audio clips, notes and noteCount are null. Returns null values for all fields when the clip slot is empty.\n" +
       "Can be used to read clips by trackIndex and clipSlotIndex (for Session view) or directly by clipId.\n" +
