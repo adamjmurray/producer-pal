@@ -1,29 +1,41 @@
 // src/tools/read-clip.test.js
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { children, liveApiCall, liveApiId, liveApiPath, mockLiveApiGet } from "../mock-live-api";
-import * as notation from "../notation/notation";
 import { readClip } from "./read-clip";
 
-let formatNotationSpy;
-
 describe("readClip", () => {
-  beforeEach(() => {
-    formatNotationSpy = vi.spyOn(notation, "formatNotation");
-    formatNotationSpy.mockReturnValue("mocked notation");
-  });
-
-  afterEach(() => {
-    formatNotationSpy.mockClear();
-  });
-
   it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {
     liveApiCall.mockImplementation(function (method) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { note_id: 1, pitch: 60, start_time: 0, duration: 1, velocity: 70 },
-            { note_id: 2, pitch: 62, start_time: 1, duration: 1, velocity: 70 },
-            { note_id: 3, pitch: 64, start_time: 2, duration: 1, velocity: 70 },
+            {
+              note_id: 1,
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              note_id: 2,
+              pitch: 62,
+              start_time: 1,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              note_id: 3,
+              pitch: 64,
+              start_time: 2,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
           ],
         });
       }
@@ -59,7 +71,7 @@ describe("readClip", () => {
       isPlaying: false,
       isTriggered: false,
       timeSignature: "4/4",
-      notes: "mocked notation",
+      notes: "1:1 C3 1:2 D3 1:3 E3", // Real BarBeat output
       noteCount: 3,
     });
   });
@@ -69,9 +81,33 @@ describe("readClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { note_id: 1, pitch: 60, start_time: 0, duration: 1, velocity: 70 },
-            { note_id: 2, pitch: 62, start_time: 1, duration: 1, velocity: 70 },
-            { note_id: 3, pitch: 64, start_time: 2, duration: 1, velocity: 70 },
+            {
+              note_id: 1,
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              note_id: 2,
+              pitch: 62,
+              start_time: 1,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              note_id: 3,
+              pitch: 64,
+              start_time: 2,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
           ],
         });
       }
@@ -107,14 +143,12 @@ describe("readClip", () => {
       isPlaying: false,
       isTriggered: false,
       timeSignature: "6/8",
-      notes: "mocked notation",
+      notes: "1:1 C3 1:3 D3 1:5 E3", // Real BarBeat output in 6/8
       noteCount: 3,
     });
   });
 
   it("should format notes using clip's time signature", () => {
-    formatNotationSpy.mockRestore(); // Use real function
-
     mockLiveApiGet({
       Clip: {
         is_midi_clip: 1,
@@ -128,9 +162,9 @@ describe("readClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-            { pitch: 62, start_time: 3, duration: 1, velocity: 100 }, // Start of bar 2 in 3/4
-            { pitch: 64, start_time: 4, duration: 1, velocity: 100 }, // bar 2, beat 2
+            { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+            { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // Start of bar 2 in 3/4
+            { pitch: 64, start_time: 4, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 2
           ],
         });
       }
@@ -146,8 +180,6 @@ describe("readClip", () => {
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
-    formatNotationSpy.mockRestore(); // Use real function
-
     mockLiveApiGet({
       Clip: {
         is_midi_clip: 1,
@@ -161,9 +193,9 @@ describe("readClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-            { pitch: 62, start_time: 3, duration: 1, velocity: 100 }, // Start of bar 2 in 6/8 (3 quarter notes)
-            { pitch: 64, start_time: 3.5, duration: 1, velocity: 100 }, // bar 2, beat 2
+            { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+            { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // Start of bar 2 in 6/8 (3 quarter notes)
+            { pitch: 64, start_time: 3.5, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 2
           ],
         });
       }
@@ -291,7 +323,7 @@ describe("readClip", () => {
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
     expect(result.length).toBe(8); // 4 * 8 / 4 = 8 musical beats in 6/8
-    expect(result.startMarker).toBe("1:3"); // Uses clip time signature and needs to compensate for Ableton using quartern note beats instead of musical beats that respect the time signature
+    expect(result.startMarker).toBe("1:3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
   it("throws an error when neither clipId nor trackIndex+clipSlotIndex are provided", () => {
@@ -306,9 +338,6 @@ describe("readClip", () => {
 
   // E2E test with real BarBeat notation
   it("detects drum tracks and uses the drum-specific notation conversion (e2e)", () => {
-    // Restore real formatNotation for this test
-    formatNotationSpy.mockRestore();
-
     mockLiveApiGet({
       Track: { devices: children("drumRack") },
       drumRack: { can_have_drum_pads: 1 },
@@ -329,10 +358,42 @@ describe("readClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { note_id: 1, pitch: 36, start_time: 0, duration: 0.25, velocity: 100 },
-            { note_id: 2, pitch: 38, start_time: 1, duration: 0.25, velocity: 90 },
-            { note_id: 3, pitch: 36, start_time: 2, duration: 0.25, velocity: 100 },
-            { note_id: 4, pitch: 38, start_time: 3, duration: 0.25, velocity: 90 },
+            {
+              note_id: 1,
+              pitch: 36,
+              start_time: 0,
+              duration: 0.25,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              note_id: 2,
+              pitch: 38,
+              start_time: 1,
+              duration: 0.25,
+              velocity: 90,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              note_id: 3,
+              pitch: 36,
+              start_time: 2,
+              duration: 0.25,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              note_id: 4,
+              pitch: 38,
+              start_time: 3,
+              duration: 0.25,
+              velocity: 90,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
           ],
         });
       }

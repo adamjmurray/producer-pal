@@ -1,27 +1,10 @@
 // src/tools/create-clip.test.js
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet, MockSequence } from "../mock-live-api";
-import * as notation from "../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "./constants";
 import { createClip } from "./create-clip";
 
-let parseNotationSpy;
-
 describe("createClip", () => {
-  beforeEach(() => {
-    parseNotationSpy = vi.spyOn(notation, "parseNotation");
-    // Default mock implementation
-    parseNotationSpy.mockReturnValue([
-      { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-      { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
-      { pitch: 64, start_time: 0, duration: 1, velocity: 100 },
-    ]);
-  });
-
-  afterEach(() => {
-    parseNotationSpy.mockClear();
-  });
-
   it("should throw error when required parameters are missing", () => {
     expect(() => createClip({})).toThrow("createClip failed: view parameter is required");
     expect(() => createClip({ view: "Session" })).toThrow("createClip failed: trackIndex is required");
@@ -73,7 +56,13 @@ describe("createClip", () => {
       view: "Session",
     });
 
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 3, timeSigDenominator: 4 });
+    // Verify the parsed notes were correctly added to the clip
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // 3 beats per bar in 3/4
+      ],
+    });
   });
 
   it("should parse notes using provided time signature", () => {
@@ -86,10 +75,15 @@ describe("createClip", () => {
       trackIndex: 0,
       clipSlotIndex: 0,
       timeSignature: "3/4",
-      notes: "1:1 C3 2:1 D3", // Should parse with 6 beats per bar
+      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar
     });
 
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 3, timeSigDenominator: 4 });
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      ],
+    });
   });
 
   it("should correctly handle 6/8 time signature with Ableton's quarter-note beats", () => {
@@ -105,8 +99,13 @@ describe("createClip", () => {
       notes: "1:1 C3 2:1 D3",
     });
 
-    // Should parse with 3 beats per bar (6 * 4 / 8 = 3)
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
+    // In 6/8, beat 2:1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      ],
+    });
   });
 
   it("should create clip with length based on endMarker for non-looping clips", () => {
@@ -144,9 +143,6 @@ describe("createClip", () => {
   });
 
   it("should calculate clip length from notes when markers not provided", () => {
-    // Restore real parseNotation for this test
-    parseNotationSpy.mockRestore();
-
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
@@ -156,7 +152,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 t2 C3 1:4 t1.5 D3", // Notes ends at bar.beat 5.5, which is beat 0-indexed position 4.5,which should round up to 5
+      notes: "1:1 t2 C3 1:4 t1.5 D3", // Notes end at beat 4.5, which should round up to 5
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 5);
@@ -182,8 +178,6 @@ describe("createClip", () => {
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
     });
-
-    parseNotationSpy.mockReturnValue([]);
 
     createClip({
       view: "Session",
@@ -230,11 +224,11 @@ describe("createClip", () => {
       expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
       expect(liveApiSet).toHaveBeenCalledWith("looping", true);
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
-        notes: expect.arrayContaining([
-          expect.objectContaining({ pitch: 60, start_time: 0, duration: 1, velocity: 100 }),
-          expect.objectContaining({ pitch: 62, start_time: 0, duration: 1, velocity: 100 }),
-          expect.objectContaining({ pitch: 64, start_time: 0, duration: 1, velocity: 100 }),
-        ]),
+        notes: [
+          { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+          { pitch: 62, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+          { pitch: 64, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        ],
       });
       expect(liveApiCall).toHaveBeenCalledWith("fire");
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
@@ -433,8 +427,6 @@ describe("createClip", () => {
     });
 
     it("should create arranger clips with exact lengths and positions", () => {
-      parseNotationSpy.mockRestore();
-
       mockLiveApiGet({
         Track: { exists: () => true },
       });
@@ -534,9 +526,6 @@ describe("createClip", () => {
   });
 
   it("should calculate correct clip length based on note duration", () => {
-    // Restore real parseNotation for this test
-    parseNotationSpy.mockRestore();
-
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },

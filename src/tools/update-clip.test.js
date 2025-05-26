@@ -1,20 +1,10 @@
 // src/tools/update-clip.test.js
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { liveApiCall, liveApiId, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
-import * as notation from "../notation/notation";
 import { updateClip } from "./update-clip";
-
-let parseNotationSpy;
 
 describe("updateClip", () => {
   beforeEach(() => {
-    parseNotationSpy = vi.spyOn(notation, "parseNotation");
-    parseNotationSpy.mockReturnValue([
-      { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
-      { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
-      { pitch: 64, start_time: 0, duration: 1, velocity: 100 },
-    ]);
-
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id clip1":
@@ -42,10 +32,6 @@ describe("updateClip", () => {
     });
   });
 
-  afterEach(() => {
-    parseNotationSpy.mockClear();
-  });
-
   it("should throw error when ids is missing", () => {
     expect(() => updateClip({})).toThrow("updateClip failed: ids is required");
     expect(() => updateClip({ name: "Test" })).toThrow("updateClip failed: ids is required");
@@ -71,20 +57,11 @@ describe("updateClip", () => {
       name: "Updated Clip",
       color: "#FF0000",
       loop: true,
-      notes: "1:1 C3 D3 E3",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Updated Clip");
     expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
     expect(liveApiSet).toHaveBeenCalledWith("looping", true);
-    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
-      notes: expect.arrayContaining([
-        expect.objectContaining({ pitch: 60, start_time: 0, duration: 1, velocity: 100 }),
-        expect.objectContaining({ pitch: 62, start_time: 0, duration: 1, velocity: 100 }),
-        expect.objectContaining({ pitch: 64, start_time: 0, duration: 1, velocity: 100 }),
-      ]),
-    });
 
     expect(result).toEqual({
       id: "clip1",
@@ -95,7 +72,6 @@ describe("updateClip", () => {
       name: "Updated Clip",
       color: "#FF0000",
       loop: true,
-      notes: "1:1 C3 D3 E3",
     });
   });
 
@@ -198,7 +174,54 @@ describe("updateClip", () => {
     expect(result.timeSignature).toBe("6/8");
   });
 
-  it("should parse notes using provided time signature with Ableton quarter-note conversion", () => {
+  it("should replace existing notes with real BarBeat parsing in 4/4 time", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      notes: "1:1 v80 t2 C4 1:3 v120 t1 D4",
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        {
+          pitch: 72,
+          velocity: 80,
+          start_time: 0,
+          duration: 2,
+          probability: 1,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 74,
+          velocity: 120,
+          start_time: 2,
+          duration: 1,
+          probability: 1,
+          velocity_deviation: 0,
+        },
+      ],
+    });
+
+    expect(result).toEqual({
+      id: "clip1",
+      type: "midi",
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: "1:1 v80 t2 C4 1:3 v120 t1 D4",
+    });
+  });
+
+  it("should parse notes using provided time signature with real BarBeat parsing", () => {
     mockLiveApiGet({
       clip1: {
         is_arrangement_clip: 0,
@@ -212,11 +235,99 @@ describe("updateClip", () => {
       notes: "1:1 C3 2:1 D3",
     });
 
-    // Should parse with 3 beats per bar (6 * 4 / 8 = 3)
-    expect(parseNotationSpy).toHaveBeenCalledWith("1:1 C3 2:1 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
+    // In 6/8 time, bar 2 beat 1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 3,
+          duration: 1,
+          velocity: 100,
+          probability: 1,
+          velocity_deviation: 0,
+        },
+      ],
+    });
+
     expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
     expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result.timeSignature).toBe("6/8");
+    expect(result.notes).toBe("1:1 C3 2:1 D3");
+  });
+
+  it("should parse notes using clip's current time signature when timeSignature not provided", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 3, // 3/4 time
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 3, // Beat 3 in 3/4 time
+          duration: 1,
+          velocity: 100,
+          probability: 1,
+          velocity_deviation: 0,
+        },
+      ],
+    });
+
+    expect(result.notes).toBe("1:1 C3 2:1 D3");
+  });
+
+  it("should handle complex drum pattern with real BarBeat parsing", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      notes: "1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1:1.5 p0.6 Gb1 1:2 v90 p1.0 D1 v100 p0.9 Gb1",
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        { pitch: 36, start_time: 0, duration: 0.25, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 42, start_time: 0, duration: 0.25, velocity: 80, probability: 0.8, velocity_deviation: 20 },
+        { pitch: 42, start_time: 0.5, duration: 0.25, velocity: 80, probability: 0.6, velocity_deviation: 20 },
+        { pitch: 38, start_time: 1, duration: 0.25, velocity: 90, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 42, start_time: 1, duration: 0.25, velocity: 100, probability: 0.9, velocity_deviation: 0 },
+      ],
+    });
+
+    expect(result.notes).toBe("1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1:1.5 p0.6 Gb1 1:2 v90 p1.0 D1 v100 p0.9 Gb1");
   });
 
   it("should throw error for invalid time signature format", () => {
@@ -276,7 +387,9 @@ describe("updateClip", () => {
     expect(liveApiSet).toHaveBeenNthCalledWith(1, "name", "Only Name Update");
     expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id clip1");
 
-    expect(parseNotationSpy).not.toHaveBeenCalled();
+    expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
+    expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
+
     expect(result).toEqual({
       id: "clip1",
       type: "midi",
@@ -480,86 +593,5 @@ describe("updateClip", () => {
         name: "Filtered",
       },
     ]);
-  });
-
-  it("should replace existing notes when notes parameter is provided", () => {
-    // Restore real parseNotation for this test
-    parseNotationSpy.mockRestore();
-
-    mockLiveApiGet({
-      clip1: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
-
-    updateClip({
-      ids: "clip1",
-      notes: "1:1 v80 t2 C4 1:3 v120 t1 D4",
-    });
-
-    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
-      notes: [
-        {
-          pitch: 72,
-          velocity: 80,
-          start_time: 0,
-          duration: 2,
-          probability: 1,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 74,
-          velocity: 120,
-          start_time: 2,
-          duration: 1,
-          probability: 1,
-          velocity_deviation: 0,
-        },
-      ],
-    });
-  });
-
-  it("should not call parseNotation when notes parameter is not provided", () => {
-    mockLiveApiGet({
-      clip1: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
-
-    updateClip({
-      ids: "clip1",
-      name: "Only Name Update",
-    });
-
-    expect(parseNotationSpy).not.toHaveBeenCalled();
-    expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
-    expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
-  });
-
-  it("should parse notes using clip's current time signature", () => {
-    parseNotationSpy.mockRestore(); // Use real function
-
-    mockLiveApiGet({
-      clip1: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 3, // 3/4 time
-      },
-    });
-
-    updateClip({
-      ids: "clip1",
-      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar
-    });
-
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
-      notes: [
-        expect.objectContaining({ pitch: 60, start_time: 0 }),
-        expect.objectContaining({ pitch: 62, start_time: 3 }), // Beat 3 in 3/4 time
-      ],
-    });
   });
 });
