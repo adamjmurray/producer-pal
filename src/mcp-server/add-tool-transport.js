@@ -27,20 +27,24 @@ export function addToolTransport(server, callLiveApi) {
 - "stop": Stop all playback: stop the transport, stop arrangement playback, stop session playback (but currently playing clips in Session view will retain their playing state and start playing again when the transport is started)`
         ),
       startTime: z
-        .number()
-        .default(0)
+        .string()
         .optional()
         .describe(
-          "Arrangement position in beats to start playback from (only used when action is 'play'). Note that this position starts from 0, but bar numbers start from 1, so bar 1 is beat 0 and (in a 4/4 time signature) bar 5 = beat 16. To calculate this correctly, the song's time signature numerator should be used to multiply (bar - 1)."
+          "Arrangement position in bar:beat format to start playback from (only used when action is 'play-arrangement'). Format is 'bar:beat' where bar and beat are 1-based (e.g. '1:1' = first beat of first bar, '5:1' = first beat of fifth bar)."
         ),
       loop: z.boolean().optional().describe("Enable/disable Arrangement loop"),
       loopStart: z
-        .number()
+        .string()
         .optional()
         .describe(
-          "Loop start position in beats. Note that this position starts from 0, but bar numbers start from 1, so bar 1 is beat 0 and (in a 4/4 time signature) bar 5 = beat 16. To calculate this correctly, the song's time signature numerator should be used to multiply (bar - 1)."
+          "Loop start position in bar:beat format. Format is 'bar:beat' where bar and beat are 1-based (e.g. '1:1' = first beat of first bar)."
         ),
-      loopLength: z.number().optional().describe("Loop length in beats."),
+      loopEnd: z
+        .string()
+        .optional()
+        .describe(
+          "Loop end position in bar:beat format. Format is 'bar:beat' where bar and beat are 1-based (e.g. '5:1' = first beat of fifth bar)."
+        ),
       followingTrackIndexes: z
         .string()
         .optional()

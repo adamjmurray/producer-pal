@@ -53,7 +53,7 @@
   - [x] all timing data returned by read-clip
   - [x] all args for create-clip and update-clip
   - [x] the arrangerStartTime arg in duplicate
-  - [ ] all applicable args and result properties for transport
+  - [x] all applicable args and result properties for transport
   - [ ] manually test thoroughly and fix any issues (generate a manual test plan?)
 
 **Duplicate Tool:**
@@ -73,7 +73,7 @@
 **Live API Extensions:**
 
 - [ ] Implement `Live.from(pathOrId)` that handles prepending "id " when needed (this pattern occurs all over the
-      codebase)
+      codebase). It should detect digits-only strings and prepend id.
 - [ ] When setting lots of properties but only when they are not null, maybe we can have an extension like
       `liveApiObj.setValues({live_api_prop_name: maybeNullValue, ...})`
 - [ ] Look for other opportunities to refactor recurring patterns of LiveAPI usage

@@ -4,6 +4,16 @@ import { liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live
 import { transport } from "./transport";
 
 describe("transport", () => {
+  beforeEach(() => {
+    // Default time signature for tests
+    mockLiveApiGet({
+      LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+  });
+
   it("should throw an error when action is missing", () => {
     expect(() => transport({})).toThrow("transport failed: action is required");
   });
@@ -15,6 +25,8 @@ describe("transport", () => {
   it("should handle play-arrangement action", () => {
     mockLiveApiGet({
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         loop: 0,
         loop_start: 0,
         loop_length: 4,
@@ -23,26 +35,28 @@ describe("transport", () => {
 
     const result = transport({
       action: "play-arrangement",
-      startTime: 16,
+      startTime: "5:1",
     });
 
     expect(liveApiCall).toHaveBeenNthCalledWith(1, "show_view", "Arranger");
     expect(liveApiCall).toHaveBeenNthCalledWith(2, "start_playing");
-    expect(liveApiSet).toHaveBeenCalledWith("start_time", 16);
+    expect(liveApiSet).toHaveBeenCalledWith("start_time", 16); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       action: "play-arrangement",
-      currentTime: 16,
+      currentTime: "5:1",
       isPlaying: true,
       loop: false,
-      loopLength: 4,
-      loopStart: 0,
-      startTime: 16,
+      loopEnd: "2:1",
+      loopStart: "1:1",
+      startTime: "5:1",
     });
   });
 
   it("should handle update-arrangement action with followingTrackIndexes", () => {
     mockLiveApiGet({
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         is_playing: 1,
         current_song_time: 10,
         loop: 0,
@@ -54,32 +68,55 @@ describe("transport", () => {
     const result = transport({
       action: "update-arrangement",
       loop: true,
-      loopStart: 8,
-      loopLength: 16,
+      loopStart: "3:1",
+      loopEnd: "7:1",
       followingTrackIndexes: "0,2,3",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("loop", true);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 8);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 16);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 8); // bar 3 = 8 beats
+    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 16); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
     expect(liveApiSet).toHaveBeenCalledWith("back_to_arranger", 0);
     expect(liveApiSet).toHaveBeenCalledTimes(6); // 3 for loop/start/length, 3 for back_to_arranger
 
     expect(result).toStrictEqual({
       action: "update-arrangement",
-      currentTime: 10,
+      currentTime: "3:3",
       isPlaying: true,
       loop: true,
-      loopStart: 8,
-      loopLength: 16,
+      loopStart: "3:1",
+      loopEnd: "7:1",
       followingTrackIndexes: "0,2,3",
     });
+  });
+
+  it("should handle different time signatures", () => {
+    mockLiveApiGet({
+      LiveSet: {
+        signature_numerator: 3,
+        signature_denominator: 4,
+        loop: 0,
+        loop_start: 0,
+        loop_length: 3,
+      },
+    });
+
+    const result = transport({
+      action: "play-arrangement",
+      startTime: "3:1",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWith("start_time", 6); // bar 3 = 6 beats in 3/4
+    expect(result.currentTime).toBe("3:1");
+    expect(result.loopEnd).toBe("2:1"); // 3 beats = 1 bar in 3/4
   });
 
   it("should handle play-session-clip action with single track and clip", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         current_song_time: 5,
         loop: 0,
         loop_start: 0,
@@ -97,11 +134,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       action: "play-session-clip",
-      currentTime: 5,
+      currentTime: "2:2",
       isPlaying: true,
       loop: false,
-      loopStart: 0,
-      loopLength: 4,
+      loopStart: "1:1",
+      loopEnd: "2:1",
       trackIndexes: "0",
       clipSlotIndexes: "0",
     });
@@ -111,6 +148,8 @@ describe("transport", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         current_song_time: 5,
         loop: 0,
         loop_start: 0,
@@ -135,6 +174,8 @@ describe("transport", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         current_song_time: 5,
         loop: 0,
         loop_start: 0,
@@ -180,6 +221,8 @@ describe("transport", () => {
   it("should handle play-scene action", () => {
     mockLiveApiGet({
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         current_song_time: 5,
         loop: 0,
         loop_start: 0,
@@ -196,11 +239,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       action: "play-scene",
-      currentTime: 5,
+      currentTime: "2:2",
       isPlaying: true,
       loop: false,
-      loopStart: 0,
-      loopLength: 4,
+      loopStart: "1:1",
+      loopEnd: "2:1",
       sceneIndex: 1,
     });
   });
@@ -221,6 +264,8 @@ describe("transport", () => {
   it("should handle stop-track-session-clip action with single track", () => {
     mockLiveApiGet({
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         is_playing: 1,
         current_song_time: 5,
         loop: 0,
@@ -238,11 +283,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       action: "stop-track-session-clip",
-      currentTime: 5,
+      currentTime: "2:2",
       isPlaying: true, // transport/arrangement can still be playing
       loop: false,
-      loopStart: 0,
-      loopLength: 4,
+      loopStart: "1:1",
+      loopEnd: "2:1",
       trackIndexes: "1",
     });
   });
@@ -250,6 +295,8 @@ describe("transport", () => {
   it("should handle stop-track-session-clip action with multiple tracks", () => {
     mockLiveApiGet({
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         is_playing: 1,
         current_song_time: 5,
         loop: 0,
@@ -284,6 +331,8 @@ describe("transport", () => {
   it("should handle stop-all-clips action", () => {
     mockLiveApiGet({
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         is_playing: 1,
         current_song_time: 5,
         loop: 0,
@@ -298,17 +347,19 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       action: "stop-all-session-clips",
-      currentTime: 5,
+      currentTime: "2:2",
       isPlaying: true, // transport/arrangement can still be playing
       loop: false,
-      loopStart: 0,
-      loopLength: 4,
+      loopStart: "1:1",
+      loopEnd: "2:1",
     });
   });
 
   it("should handle stop action", () => {
     mockLiveApiGet({
       LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
         loop: 0,
         loop_start: 0,
         loop_length: 4,
@@ -321,11 +372,11 @@ describe("transport", () => {
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
     expect(result).toStrictEqual({
       action: "stop",
-      currentTime: 0,
+      currentTime: "1:1",
       isPlaying: false,
       loop: false,
-      loopLength: 4,
-      loopStart: 0,
+      loopEnd: "2:1",
+      loopStart: "1:1",
     });
   });
 
@@ -356,5 +407,56 @@ describe("transport", () => {
         followingTrackIndexes: "0,invalid,2",
       })
     ).toThrow('transport failed: invalid track index "0,invalid,2" in followingTrackIndexes');
+  });
+
+  it("should handle loop end calculation correctly", () => {
+    mockLiveApiGet({
+      LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        loop: 0,
+        loop_start: 8,
+        loop_length: 16,
+      },
+    });
+
+    const result = transport({
+      action: "update-arrangement",
+      loopEnd: "9:1",
+    });
+
+    // loopEnd 9:1 = 32 beats, loopStart is 8 beats, so length should be 24
+    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 24);
+    expect(result.loopStart).toBe("3:1"); // 8 beats = bar 3
+    expect(result.loopEnd).toBe("9:1");
+  });
+
+  it("should handle 6/8 time signature conversions", () => {
+    mockLiveApiGet({
+      LiveSet: {
+        signature_numerator: 6,
+        signature_denominator: 8,
+        loop: 0,
+        loop_start: 0,
+        loop_length: 3,
+      },
+    });
+
+    const result = transport({
+      action: "play-arrangement",
+      startTime: "2:1",
+      loopStart: "1:1",
+      loopEnd: "3:1",
+    });
+
+    // In 6/8, bar 2 = 3 Ableton beats (6 musical beats * 4/8)
+    expect(liveApiSet).toHaveBeenCalledWith("start_time", 3);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 0);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 6); // 2 bars = 6 Ableton beats
+
+    expect(result.startTime).toBe("2:1");
+    expect(result.currentTime).toBe("2:1");
+    expect(result.loopStart).toBe("1:1");
+    expect(result.loopEnd).toBe("3:1");
   });
 });
