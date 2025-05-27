@@ -51,27 +51,14 @@
 - [ ] Use bar.beat format for all applicable time-related inputs and outputs (arrangement times, clip lengths e.g.
       loopEnd, etc)
   - [x] all timing data returned by read-clip
-  - [ ] all args for create-clip and update-clip
-  - [ ] all timing data returned by transport
-  - [ ] all args for transport
+  - [x] all args for create-clip and update-clip
   - [ ] the arrangerStartTime arg in duplicate
+  - [ ] all applicable args and result properties for transport
+  - [ ] manually test thoroughly and fix any issues (generate a manual test plan?)
 
-**Duplicate Tool Improvements:**
+**Duplicate Tool:**
 
 - [x] Duplicate scene to arranger (all clips in scene → arranger)
-  - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
-        scene)
-  - [ ] Add an optional arg to set the length of the clips in the arrangement when copying a scene
-- [ ] Enhance clip duplication safety in duplicate tool:
-  - [ ] Add validation to detect when session clip duplication would overwrite existing clips (including with count > 1)
-  - [ ] Add onConflict parameter with options: "error" (default), "overwrite", "next-empty", "new-scene"
-  - [ ] Implement per-clip conflict resolution for multiple duplicates
-  - [ ] For "next-empty" strategy: scan downward to find first empty clip slot. Throw an error for no empty scenes
-  - [ ] For "new-scene" strategy: create new scene copying source scene properties (name, color, tempo, timeSignature)
-        but no other clips. Only copy up to the allowed max (reuse the constant in create-scene) and throw an error
-        during up-front validation when over the Max
-  - [ ] Update result format to include newSceneIndex and newSceneId when scenes are created. Handle multiples
-  - [ ] Add comprehensive test coverage for all conflict scenarios and strategies
 
 **Robustness:**
 
@@ -87,11 +74,36 @@
 
 - [ ] Implement `Live.from(pathOrId)` that handles prepending "id " when needed (this pattern occurs all over the
       codebase)
+- [ ] When setting lots of properties but only when they are not null, maybe we can have an extension like
+      `liveApiObj.setValues({live_api_prop_name: maybeNullValue, ...})`
 - [ ] Look for other opportunities to refactor recurring patterns of LiveAPI usage
 
-**Additional Duplicate Features:**
+**Arrangement Improvements:**
+
+- [ ] Allow changing the length of a clip, which isn't directly possible, but we can read all the notes, delete and
+      recreate the clip, and set all the notes on the new clip
+
+**Duplicate Tool:**
 
 - [ ] ClipSlot.duplicate_clip_to with bulk destination support
+- [ ] Duplicate scene to arranger (all clips in scene → arranger) enhancements
+  - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
+        scene)
+  - [ ] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
+        needed) when copying a scene
+- [ ] Duplicate clip to arranger enhancements
+  - [ ] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
+        needed) when copying a clip
+- [ ] Enhance clip duplication safety in duplicate tool:
+  - [ ] Add validation to detect when session clip duplication would overwrite existing clips (including with count > 1)
+  - [ ] Add onConflict parameter with options: "error" (default), "overwrite", "next-empty", "new-scene"
+  - [ ] Implement per-clip conflict resolution for multiple duplicates
+  - [ ] For "next-empty" strategy: scan downward to find first empty clip slot. Throw an error for no empty scenes
+  - [ ] For "new-scene" strategy: create new scene copying source scene properties (name, color, tempo, timeSignature)
+        but no other clips. Only copy up to the allowed max (reuse the constant in create-scene) and throw an error
+        during up-front validation when over the Max
+  - [ ] Update result format to include newSceneIndex and newSceneId when scenes are created. Handle multiples
+  - [ ] Add comprehensive test coverage for all conflict scenarios and strategies
 
 **Robustness:**
 

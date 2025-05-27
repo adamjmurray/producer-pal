@@ -15,17 +15,20 @@ export function addToolUpdateClip(server, callLiveApi) {
       timeSignature: z.string().optional().describe('Time signature in format "n/m" (e.g. "4/4").'),
 
       startMarker: z
-        .number()
+        .string()
         .optional()
-        .describe("Start marker position in beats (the start of both looped and un-looped clips)"),
-      endMarker: z.number().optional().describe("End marker position in beats (only applicable to un-looped clips)"),
+        .describe("Start marker position in bar:beat format (the start of both looped and un-looped clips)"),
+      endMarker: z
+        .string()
+        .optional()
+        .describe("End marker position in bar:beat format (only applicable to un-looped clips)"),
 
       loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
       loopStart: z
-        .number()
+        .string()
         .optional()
-        .describe("Loop start position in beats (not necessarily the same as startMarker)"),
-      loopEnd: z.number().optional().describe("Loop end position in beats"),
+        .describe("Loop start position in bar:beat format (not necessarily the same as startMarker)"),
+      loopEnd: z.string().optional().describe("Loop end position in bar:beat format"),
 
       notes: z
         .string()

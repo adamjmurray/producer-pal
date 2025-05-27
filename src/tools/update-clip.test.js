@@ -81,19 +81,21 @@ describe("updateClip", () => {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 16.0,
+        signature_numerator: 4,
+        signature_denominator: 4,
       },
     });
 
     const result = updateClip({
       ids: "clip3",
       name: "Arranger Clip",
-      startMarker: 2,
-      endMarker: 6,
+      startMarker: "1:3", // 2 beats = bar 1 beat 3 in 4/4
+      endMarker: "2:3", // 6 beats = bar 2 beat 3 in 4/4
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Arranger Clip");
-    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 2);
-    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6);
+    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 2); // 1:3 in 4/4 = 2 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // 2:3 in 4/4 = 6 Ableton beats
 
     expect(result).toEqual({
       id: "clip3",
@@ -102,8 +104,8 @@ describe("updateClip", () => {
       trackIndex: 2,
       arrangerStartTime: 16.0,
       name: "Arranger Clip",
-      startMarker: 2,
-      endMarker: 6,
+      startMarker: "1:3",
+      endMarker: "2:3",
     });
   });
 

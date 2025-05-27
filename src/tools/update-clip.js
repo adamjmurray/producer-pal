@@ -1,4 +1,5 @@
 // src/tools/update-clip.js
+import { barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
 import { MAX_CLIP_BEATS } from "./constants.js";
 
@@ -10,10 +11,10 @@ import { MAX_CLIP_BEATS } from "./constants.js";
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {number} [args.startMarker] - Start marker position in beats
- * @param {number} [args.endMarker] - End marker position in beats
- * @param {number} [args.loopStart] - Loop start position in beats
- * @param {number} [args.loopEnd] - Loop end position in beats
+ * @param {string} [args.startMarker] - Start marker position in bar:beat format
+ * @param {string} [args.endMarker] - End marker position in bar:beat format
+ * @param {string} [args.loopStart] - Loop start position in bar:beat format
+ * @param {string} [args.loopEnd] - Loop end position in bar:beat format
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
@@ -75,20 +76,21 @@ export function updateClip({
       timeSigDenominator = clip.getProperty("signature_denominator");
     }
 
+    // Handle timing conversions from bar:beat to Ableton beats
     if (startMarker != null) {
-      clip.set("start_marker", startMarker);
+      clip.set("start_marker", barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator));
     }
 
     if (endMarker != null) {
-      clip.set("end_marker", endMarker);
+      clip.set("end_marker", barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator));
     }
 
     if (loopStart != null) {
-      clip.set("loop_start", loopStart);
+      clip.set("loop_start", barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator));
     }
 
     if (loopEnd != null) {
-      clip.set("loop_end", loopEnd);
+      clip.set("loop_end", barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator));
     }
 
     if (loop != null) {
