@@ -52,7 +52,7 @@
       loopEnd, etc)
   - [x] all timing data returned by read-clip
   - [x] all args for create-clip and update-clip
-  - [ ] the arrangerStartTime arg in duplicate
+  - [x] the arrangerStartTime arg in duplicate
   - [ ] all applicable args and result properties for transport
   - [ ] manually test thoroughly and fix any issues (generate a manual test plan?)
 

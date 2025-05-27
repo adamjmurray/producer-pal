@@ -206,7 +206,7 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           destination: "arranger",
-          arrangerStartTime: 16,
+          arrangerStartTime: "5:1",
         });
 
         expect(liveApiCall).toHaveBeenCalledWith(
@@ -226,9 +226,9 @@ describe("duplicate", () => {
           id: "scene1",
           count: 1,
           destination: "arranger",
-          arrangerStartTime: 16,
+          arrangerStartTime: "5:1",
           duplicated: true,
-          newArrangerStartTime: 16,
+          newArrangerStartTime: "5:1",
           duplicatedClips: [
             {
               newId: "new_clip",
@@ -270,7 +270,7 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           destination: "arranger",
-          arrangerStartTime: 16,
+          arrangerStartTime: "5:1",
           count: 3,
           name: "Scene Copy",
         });
@@ -297,12 +297,12 @@ describe("duplicate", () => {
           id: "scene1",
           count: 3,
           destination: "arranger",
-          arrangerStartTime: 16,
+          arrangerStartTime: "5:1",
           name: "Scene Copy",
           duplicated: true,
           objects: [
             {
-              newArrangerStartTime: 16,
+              newArrangerStartTime: "5:1",
               name: "Scene Copy",
               duplicatedClips: [
                 {
@@ -312,7 +312,7 @@ describe("duplicate", () => {
               ],
             },
             {
-              newArrangerStartTime: 24,
+              newArrangerStartTime: "7:1",
               name: "Scene Copy 2",
               duplicatedClips: [
                 {
@@ -322,7 +322,7 @@ describe("duplicate", () => {
               ],
             },
             {
-              newArrangerStartTime: 32,
+              newArrangerStartTime: "9:1",
               name: "Scene Copy 3",
               duplicatedClips: [
                 {
@@ -356,7 +356,7 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           destination: "arranger",
-          arrangerStartTime: 16,
+          arrangerStartTime: "5:1",
         });
 
         expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
@@ -366,9 +366,9 @@ describe("duplicate", () => {
           id: "scene1",
           count: 1,
           destination: "arranger",
-          arrangerStartTime: 16,
+          arrangerStartTime: "5:1",
           duplicated: true,
-          newArrangerStartTime: 16,
+          newArrangerStartTime: "5:1",
           duplicatedClips: [],
         });
       });
@@ -507,7 +507,7 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           destination: "arranger",
-          arrangerStartTime: 8,
+          arrangerStartTime: "3:1",
         });
 
         expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 8);
@@ -518,11 +518,11 @@ describe("duplicate", () => {
           id: "clip1",
           count: 1,
           destination: "arranger",
-          arrangerStartTime: 8,
+          arrangerStartTime: "3:1",
           duplicated: true,
           newId: "arranger_clip",
           newTrackIndex: 0,
-          newArrangerStartTime: 8,
+          newArrangerStartTime: "3:1",
         });
       });
 
@@ -548,7 +548,7 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           destination: "arranger",
-          arrangerStartTime: 8,
+          arrangerStartTime: "3:1",
           count: 3,
           name: "Custom Clip",
         });
@@ -558,26 +558,26 @@ describe("duplicate", () => {
           id: "clip1",
           count: 3,
           destination: "arranger",
-          arrangerStartTime: 8,
+          arrangerStartTime: "3:1",
           name: "Custom Clip",
           duplicated: true,
           objects: [
             {
               newId: "arranger_clip",
               newTrackIndex: 0,
-              newArrangerStartTime: 8, // 8 + (0 * 4)
+              newArrangerStartTime: "3:1",
               name: "Custom Clip",
             },
             {
               newId: "arranger_clip",
               newTrackIndex: 0,
-              newArrangerStartTime: 12, // 8 + (1 * 4)
+              newArrangerStartTime: "4:1",
               name: "Custom Clip 2",
             },
             {
               newId: "arranger_clip",
               newTrackIndex: 0,
-              newArrangerStartTime: 16, // 8 + (2 * 4)
+              newArrangerStartTime: "5:1",
               name: "Custom Clip 3",
             },
           ],

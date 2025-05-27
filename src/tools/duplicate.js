@@ -1,4 +1,5 @@
 // src/tools/duplicate.js
+import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
 
 /**
  * Duplicates an object based on its type
@@ -7,7 +8,7 @@
  * @param {string} args.id - ID of the object to duplicate
  * @param {number} [args.count=1] - Number of duplicates to create
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arranger"), required when type is "clip"
- * @param {number} [args.arrangerStartTime] - Start time in beats for Arranger view, required when destination is "arranger"
+ * @param {number} [args.arrangerStartTime] - Start time in bar:beat format for Arranger view clips (uses song time signature)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
@@ -61,45 +62,53 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
 
     let newObjectMetadata;
 
-    // Track duplication
-    if (type === "track") {
-      const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
-      if (Number.isNaN(trackIndex)) {
-        throw new Error(`duplicate failed: no track index for id "${id}" (path="${object.path}")`);
-      }
-      // For multiple tracks, we need to account for previously created tracks
-      const actualTrackIndex = trackIndex + i;
-      newObjectMetadata = duplicateTrack(actualTrackIndex, objectName);
-    }
+    if (destination === "arranger") {
+      // All arranger operations need song time signature for bar:beat conversion
+      const liveSet = new LiveAPI("live_set");
+      const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+      const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-    // Scene duplication
-    else if (type === "scene") {
-      const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
-      if (Number.isNaN(sceneIndex)) {
-        throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
-      }
+      // Convert arrangerStartTime from bar:beat to Ableton beats once
+      const baseArrangerStartBeats = barBeatToAbletonBeats(
+        arrangerStartTime,
+        songTimeSigNumerator,
+        songTimeSigDenominator
+      );
 
-      if (destination === "arranger") {
-        // For arranger scenes, place them sequentially to avoid overlap
+      if (type === "scene") {
+        const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
+        if (Number.isNaN(sceneIndex)) {
+          throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
+        }
+
+        // For multiple scenes, place them sequentially to avoid overlap
         const sceneLength = calculateSceneLength(sceneIndex);
-        const actualArrangerStartTime = arrangerStartTime + i * sceneLength;
-        newObjectMetadata = duplicateSceneToArranger(id, actualArrangerStartTime, objectName);
-      } else {
-        // Default to session (existing behavior)
+        const actualArrangerStartBeats = baseArrangerStartBeats + i * sceneLength;
+        newObjectMetadata = duplicateSceneToArranger(id, actualArrangerStartBeats, objectName);
+      } else if (type === "clip") {
+        // For multiple clips, place them sequentially to avoid overlap
+        const clipLength = object.getProperty("length");
+        const actualArrangerStartBeats = baseArrangerStartBeats + i * clipLength;
+        newObjectMetadata = duplicateClipToArranger(id, actualArrangerStartBeats, objectName);
+      }
+    } else {
+      // Session view operations (no bar:beat conversion needed)
+      if (type === "track") {
+        const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
+        if (Number.isNaN(trackIndex)) {
+          throw new Error(`duplicate failed: no track index for id "${id}" (path="${object.path}")`);
+        }
+        // For multiple tracks, we need to account for previously created tracks
+        const actualTrackIndex = trackIndex + i;
+        newObjectMetadata = duplicateTrack(actualTrackIndex, objectName);
+      } else if (type === "scene") {
+        const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
+        if (Number.isNaN(sceneIndex)) {
+          throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
+        }
         const actualSceneIndex = sceneIndex + i;
         newObjectMetadata = duplicateScene(actualSceneIndex, objectName);
-      }
-    }
-
-    // Clip duplication
-    else if (type === "clip") {
-      if (destination === "arranger") {
-        // For arranger clips, place them sequentially to avoid overlap
-        const clipLength = object.getProperty("length");
-        const actualArrangerStartTime = arrangerStartTime + i * clipLength;
-        newObjectMetadata = duplicateClipToArranger(id, actualArrangerStartTime, objectName);
-      } else {
-        // destination === "session"
+      } else if (type === "clip") {
         const match = object.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
         if (!match) {
           throw new Error(`duplicate failed: no track or clip slot index for clip id "${id}" (path="${object.path}")`);
@@ -201,7 +210,7 @@ function calculateSceneLength(sceneIndex) {
   return maxLength;
 }
 
-function duplicateSceneToArranger(sceneId, arrangerStartTime, name) {
+function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name) {
   const scene = new LiveAPI(sceneId.startsWith("id ") ? sceneId : `id ${sceneId}`);
 
   if (!scene.exists()) {
@@ -226,7 +235,7 @@ function duplicateSceneToArranger(sceneId, arrangerStartTime, name) {
       const clip = new LiveAPI(`${clipSlot.path} clip`);
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-      const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTime)?.[1];
+      const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats)?.[1];
 
       if (newClipId != null) {
         if (name != null) {
@@ -245,9 +254,11 @@ function duplicateSceneToArranger(sceneId, arrangerStartTime, name) {
   const appView = new LiveAPI("live_app view");
   appView.call("show_view", "Arranger");
 
-  // Return optimistic metadata
+  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
   const result = {
-    newArrangerStartTime: arrangerStartTime,
+    newArrangerStartTime: abletonBeatsToBarBeat(arrangerStartTimeBeats, songTimeSigNumerator, songTimeSigDenominator),
     duplicatedClips,
   };
 
@@ -283,7 +294,7 @@ function duplicateClipSlot(trackIndex, sourceClipSlotIndex, name) {
   return result;
 }
 
-function duplicateClipToArranger(clipId, arrangerStartTime, name) {
+function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name) {
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clipPath = clipId.startsWith("id ") ? clipId : `id ${clipId}`;
   const clip = new LiveAPI(clipPath);
@@ -298,7 +309,7 @@ function duplicateClipToArranger(clipId, arrangerStartTime, name) {
   }
 
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTime)?.[1];
+  const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats)?.[1];
 
   if (newClipId == null) {
     throw new Error(`duplicate failed: clip failed to duplicate`);
@@ -312,11 +323,14 @@ function duplicateClipToArranger(clipId, arrangerStartTime, name) {
   const appView = new LiveAPI("live_app view");
   appView.call("show_view", "Arranger");
 
-  // Return optimistic metadata
+  const liveSet = new LiveAPI("live_set");
+  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
   const result = {
     newId: newClipId,
     newTrackIndex: trackIndex,
-    newArrangerStartTime: arrangerStartTime,
+    newArrangerStartTime: abletonBeatsToBarBeat(arrangerStartTimeBeats, songTimeSigNumerator, songTimeSigDenominator),
   };
 
   if (name != null) result.name = name;

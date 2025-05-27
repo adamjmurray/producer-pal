@@ -17,9 +17,9 @@ export function addToolDuplicate(server, callLiveApi) {
           "Destination for clip or scene duplication. Required when type is 'clip'. For scenes, defaults to 'session'."
         ),
       arrangerStartTime: z
-        .number()
+        .string()
         .optional()
-        .describe("Start time in beats for Arranger view. Required when destination is 'arranger'."),
+        .describe("Start time in bar:beat format for Arranger view. Required when destination is 'arranger'."),
       name: z
         .string()
         .optional()
