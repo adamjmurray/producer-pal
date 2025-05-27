@@ -63,6 +63,8 @@
 **Robustness:**
 
 - [x] Detect and protect the track hosting the MCP server device
+- [ ] Fix bug: when rounding up to nearest beat for clip length when creating clips, use actual musical beats instead of
+      "ableton beats" (quarter notes... so test with 2/2 and 6/8 time sig)
 - [ ] Review and refine all tool descriptions for clarity, including BarBeat specification (and maybe rename to
       `bar:beat` and distinguish the time syntax from the wider notation system that uses bar:beat, perhaps `bar:beat`
       implies the time syntax and `bar:beat notation` refers to the MIDI clip representation with the grammar, parser,

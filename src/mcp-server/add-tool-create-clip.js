@@ -13,7 +13,7 @@ export function addToolCreateClip(server, callLiveApi) {
       `Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of ${MAX_AUTO_CREATED_SCENES} scenes (sceneIndex == clipSlotIndex). ` +
       "Time Signature Behavior: arrangerStartTime uses the song's time signature for conversion from bar:beat format. " +
       "All other timing parameters (startMarker, endMarker, loopStart, loopEnd) use the clip's time signature (either provided or defaulting to song's time signature). " +
-      "bar:beat format: Uses 1-based numbering where '1:1' is the first beat of the first bar, '1:2' is the second beat of the first bar, '2:1' is the first beat of the second bar, etc. Fractional beats like 1:1.5 (the first \"upbeat\") are supported.",
+      "bar:beat format: Uses 1-based numbering where '1:1' is the first beat of the first bar, '1:2' is the second beat of the first bar, '2:1' is the first beat of the second bar, etc. Fractional beats like 1:1.5 (the first \"upbeat\") are supported. Clip length is set to the nearest whole beat after the last note end time. To ensure correct clip length, it is necessary to set endMarker and loopEnd (these should usually be the same).",
     {
       view: z
         .enum(["Session", "Arranger"])
