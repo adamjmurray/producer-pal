@@ -126,8 +126,8 @@ describe("BarBeat parseNotation()", () => {
     // 2/2 time: 1 musical beat (half note) = 2 Ableton beats (quarter notes)
     const result = parseNotation("1:1 C3 1:2 D3", { timeSigNumerator: 2, timeSigDenominator: 2 });
     expect(result).toEqual([
-      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-      { pitch: 62, start_time: 2, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 2 in 2/2 = 2 Ableton beats
+      { pitch: 60, start_time: 0, duration: 2, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 2, duration: 2, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 2 in 2/2 = 2 Ableton beats
     ]);
   });
 
@@ -147,8 +147,8 @@ describe("BarBeat parseNotation()", () => {
     // 6/8 time: 1 Ableton beat = 2 musical beats
     const result = parseNotation("1:1 C3 1:3 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
     expect(result).toEqual([
-      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-      { pitch: 62, start_time: 1, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 3 in 6/8 = 1 Ableton beat
+      { pitch: 60, start_time: 0, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 1, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 3 in 6/8 = 1 Ableton beat
     ]);
   });
 

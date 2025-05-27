@@ -243,7 +243,7 @@ describe("updateClip", () => {
         {
           pitch: 60,
           start_time: 0,
-          duration: 1,
+          duration: 0.5,
           velocity: 100,
           probability: 1,
           velocity_deviation: 0,
@@ -251,7 +251,7 @@ describe("updateClip", () => {
         {
           pitch: 62,
           start_time: 3,
-          duration: 1,
+          duration: 0.5,
           velocity: 100,
           probability: 1,
           velocity_deviation: 0,

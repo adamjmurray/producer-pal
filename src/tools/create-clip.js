@@ -126,9 +126,21 @@ export function createClip({
     // For non-looping clips, use endMarker
     clipLength = endMarkerBeats;
   } else if (notes.length > 0) {
-    // Calculate from notes, round up to nearest whole beat
-    const lastNoteEndTime = Math.max(...notes.map((note) => note.start_time + note.duration));
-    clipLength = Math.ceil(lastNoteEndTime);
+    // const lastNoteEndTime = Math.max(...notes.map((note) => note.start_time + note.duration));
+    // clipLength = Math.ceil(lastNoteEndTime);
+
+    const lastNoteEndTimeAbletonBeats = Math.max(...notes.map((note) => note.start_time + note.duration));
+
+    // Convert back to musical beats to round up conceptually
+    const lastNoteEndTimeMusicalBeats =
+      timeSigDenominator != null ? lastNoteEndTimeAbletonBeats * (timeSigDenominator / 4) : lastNoteEndTimeAbletonBeats;
+
+    // Round up to whole musical beats
+    const clipLengthMusicalBeats = Math.ceil(lastNoteEndTimeMusicalBeats);
+
+    // Convert back to Ableton beats for the Live API
+    clipLength =
+      timeSigDenominator != null ? clipLengthMusicalBeats * (4 / timeSigDenominator) : clipLengthMusicalBeats;
   } else {
     // Empty clip, use 1 beat minimum
     clipLength = 1;

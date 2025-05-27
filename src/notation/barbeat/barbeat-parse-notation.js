@@ -78,10 +78,13 @@ export function parseNotation(barBeatExpression, options = {}) {
           velocity_deviation = DEFAULT_VELOCITY_DEVIATION;
         }
 
+        const abletonDuration =
+          timeSigDenominator != null ? currentDuration * (4 / timeSigDenominator) : currentDuration;
+
         events.push({
           pitch: element.pitch,
           start_time: abletonBeats,
-          duration: currentDuration,
+          duration: abletonDuration,
           velocity: velocity,
           probability: currentProbability,
           velocity_deviation: velocity_deviation,

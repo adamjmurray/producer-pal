@@ -102,8 +102,8 @@ describe("createClip", () => {
     // In 6/8, beat 2:1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
       notes: [
-        { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-        { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 60, start_time: 0, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 62, start_time: 3, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
       ],
     });
   });
@@ -145,7 +145,7 @@ describe("createClip", () => {
   it("should calculate clip length from notes when markers not provided", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
-      LiveSet: { signature_numerator: 4 },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
     });
 
     createClip({
@@ -156,6 +156,42 @@ describe("createClip", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 5);
+  });
+
+  it("should handle time signatures with denominators other than 4", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 6, signature_denominator: 8 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      notes: "1:1 t2 C3 1:2 t1.5 D3", // Notes end at beat index 2.5, which should round up to 3
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1.5); // ends after three eighth notes, which is 1.5 quarter notes in "ableton beats"
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        {
+          duration: 1, // LiveAPI durations are in quarter notes, so this should be half the value from the notation string
+          pitch: 60,
+          probability: 1,
+          start_time: 0,
+          velocity: 100,
+          velocity_deviation: 0,
+        },
+        {
+          duration: 0.75, // LiveAPI durations are in quarter notes, so this should be half the value from the notation string
+          pitch: 62,
+          probability: 1,
+          start_time: 0.5,
+          velocity: 100,
+          velocity_deviation: 0,
+        },
+      ],
+    });
   });
 
   it("should create minimum 1-beat clip when empty", () => {
