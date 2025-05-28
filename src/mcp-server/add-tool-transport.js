@@ -30,20 +30,20 @@ export function addToolTransport(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          "Arrangement position in bar:beat format to start playback from (only used when action is 'play-arrangement'). Format is 'bar:beat' where bar and beat are 1-based (e.g. '1:1' = first beat of first bar, '5:1' = first beat of fifth bar)."
+          "Arrangement position in bar:beat format to start playback from (only used when action is 'play-arrangement'). Format is 'bar:beat' where bar and beat are 1-based. '1:1' = first beat of first bar. Uses song's time signature."
         ),
       loop: z.boolean().optional().describe("Enable/disable Arrangement loop"),
       loopStart: z
         .string()
         .optional()
         .describe(
-          "Loop start position in bar:beat format. Format is 'bar:beat' where bar and beat are 1-based (e.g. '1:1' = first beat of first bar)."
+          "Loop start position in bar:beat format. Format is 'bar:beat' where bar and beat are 1-based. '1:1' = first beat of first bar. Uses song's time signature."
         ),
       loopEnd: z
         .string()
         .optional()
         .describe(
-          "Loop end position in bar:beat format. Format is 'bar:beat' where bar and beat are 1-based (e.g. '5:1' = first beat of fifth bar)."
+          "Loop end position in bar:beat format. Format is 'bar:beat' where bar and beat are 1-based. For an N-bar clip, the end position is (startBar+N):startBeat. Uses song's time signature."
         ),
       followingTrackIndexes: z
         .string()

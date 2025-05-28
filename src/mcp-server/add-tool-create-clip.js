@@ -45,13 +45,13 @@ export function addToolCreateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          "Start marker position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+          "Start marker position in bar:beat format where bar and beat are 1-based. '1:1' = first beat of first bar (the default start position). Uses clip's time signature."
         ),
       endMarker: z
         .string()
         .optional()
         .describe(
-          "End marker position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+          "End marker position in bar:beat format where bar and beat are 1-based. For an N-bar clip starting on the first beat of the first bar, the end position is (N+1):1. Uses clip's time signature."
         ),
 
       loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
@@ -59,13 +59,13 @@ export function addToolCreateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          "Loop start position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+          "Loop start position in bar:beat format where bar and beat are 1-based. '1:1' = first beat of first bar (the default start position). Uses clip's time signature."
         ),
       loopEnd: z
         .string()
         .optional()
         .describe(
-          "Loop end position in bar:beat format where bar and beat are 1-based (e.g. '1:1' = first beat of first bar). Uses clip's time signature for conversion."
+          "Loop end position in bar:beat format where bar and beat are 1-based. For an N-bar clip starting on the first beat of the first bar, the end position is (N+1):1. Uses clip's time signature."
         ),
 
       notes: z
