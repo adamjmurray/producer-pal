@@ -208,4 +208,12 @@ describe("BarBeat parseNotation()", () => {
       { pitch: 66, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // Gb3 (same as F#3)
     ]);
   });
+
+  it("handles velocity 0 correctly", () => {
+    const result = parseNotation("v0 C3 v100 D3");
+    expect(result).toEqual([
+      { pitch: 60, start_time: 0, duration: 1, velocity: 0, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 62, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+    ]);
+  });
 });

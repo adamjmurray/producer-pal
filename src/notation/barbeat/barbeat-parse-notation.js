@@ -74,7 +74,7 @@ export function parseNotation(barBeatExpression, options = {}) {
           velocity = currentVelocityMin;
           velocity_deviation = currentVelocityMax - currentVelocityMin;
         } else {
-          velocity = currentVelocity || DEFAULT_VELOCITY;
+          velocity = currentVelocity ?? DEFAULT_VELOCITY;
           velocity_deviation = DEFAULT_VELOCITY_DEVIATION;
         }
 
