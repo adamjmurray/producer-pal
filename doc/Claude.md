@@ -25,7 +25,7 @@ new features.
 - All functionality within Live is provided by a single Max for Live device
 - We use the new StreamableHttp transport for MCP because the
   [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
-- Claude Desktop requires an adapter between its stdio transport and an HTTP MCP server. We use the library `mcp-proxy`
+- Claude Desktop requires an adapter between its stdio transport and an HTTP MCP server. We use the library `mcp-remote`
   for this.
 - We are using Live 12.2 and Max 9
 - We are using Node.js 20

@@ -45,6 +45,13 @@
 
 ### Critical Pre-Launch Features
 
+- [ ] Versioning system
+
+**Clip editing:**
+
+- [ ] Add replaceNotes boolean arg for `update-clip`, which can default to true (the current behavior of completely
+      replacing all notes) and when set to false, will add/overwrite notes when setting notes
+
 **BarBeat Improvements:**
 
 - [x] Support time signatures other than 4/4 in BarBeat notation
@@ -59,6 +66,12 @@
 **Duplicate Tool:**
 
 - [x] Duplicate scene to arranger (all clips in scene → arranger)
+- [ ] Duplicating tracks or scenes should return info about any duplicated clips inside of them. Consider updating the
+      tool descriptions to indicate clips will be duplicated and will need to be modified with update-clip rather than
+      attempting to create-clip. Claude's feedback "duplicate description should mention that it copies all clips and
+      explain the workflow for modifying them. create-clip description should explicitly state it fails if a clip
+      already exists at that slot. Maybe add a note about using update-clip for modifying duplicated clips"
+- [ ] Duplicating tracks or scenes should have the option to duplicate clips or not
 
 **Robustness:**
 
@@ -71,6 +84,11 @@
       formatter, etc)
 
 ## 🌟 Nice-to-Have (Stretch Goals)
+
+**Clip editing:**
+
+- [ ] support `v0` velocity, which will delete any existing note at the given pitch and start time when updating a clip
+      with `replaceNotes: false`
 
 **Live API Extensions:**
 
