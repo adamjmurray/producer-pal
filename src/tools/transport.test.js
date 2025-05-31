@@ -459,4 +459,36 @@ describe("transport", () => {
     expect(result.loopStart).toBe("1:1");
     expect(result.loopEnd).toBe("3:1");
   });
+
+  it("should handle play-arrangement action without startTime (defaults to 0)", () => {
+    mockLiveApiGet({
+      LiveSet: {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        loop: 0,
+        loop_start: 0,
+        loop_length: 4,
+      },
+    });
+
+    const result = transport({
+      action: "play-arrangement",
+      // no startTime provided
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(liveApiCall).toHaveBeenCalledWith("start_playing");
+    expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
+    expect(result.currentTime).toBe("1:1");
+    expect(result.startTime).toBeUndefined();
+  });
+
+  it("should throw error for invalid track indexes in stop-track-session-clip", () => {
+    expect(() =>
+      transport({
+        action: "stop-track-session-clip",
+        trackIndexes: "0,invalid,2",
+      })
+    ).toThrow('transport failed: invalid track index in trackIndexes "0,invalid,2"');
+  });
 });
