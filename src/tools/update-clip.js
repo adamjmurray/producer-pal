@@ -1,6 +1,7 @@
 // src/tools/update-clip.js
 import { barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
+import { parseCommaSeparatedIds } from "../utils.js";
 import { MAX_CLIP_BEATS } from "./constants.js";
 
 /**
@@ -37,10 +38,7 @@ export function updateClip({
   }
 
   // Parse comma-separated string into array
-  const clipIds = ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
+  const clipIds = parseCommaSeparatedIds(ids);
 
   const updatedClips = [];
   let isFirstClip = true;

@@ -387,7 +387,7 @@ describe("transport", () => {
         trackIndexes: "0,invalid,2",
         clipSlotIndexes: "0",
       })
-    ).toThrow("transport failed: invalid track index in trackIndexes");
+    ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 
   it("should throw error for invalid clip slot indexes in clipSlotIndexes", () => {
@@ -397,7 +397,7 @@ describe("transport", () => {
         trackIndexes: "0",
         clipSlotIndexes: "0,invalid,2",
       })
-    ).toThrow("transport failed: invalid clip slot index in clipSlotIndexes");
+    ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 
   it("should throw error for invalid track indexes in followingTrackIndexes", () => {
@@ -406,7 +406,7 @@ describe("transport", () => {
         action: "update-arrangement",
         followingTrackIndexes: "0,invalid,2",
       })
-    ).toThrow('transport failed: invalid track index "0,invalid,2" in followingTrackIndexes');
+    ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 
   it("should handle loop end calculation correctly", () => {
@@ -489,6 +489,6 @@ describe("transport", () => {
         action: "stop-track-session-clip",
         trackIndexes: "0,invalid,2",
       })
-    ).toThrow('transport failed: invalid track index in trackIndexes "0,invalid,2"');
+    ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 });

@@ -1,4 +1,5 @@
 // src/tools/update-scene.js
+import { parseCommaSeparatedIds } from "../utils.js";
 
 /**
  * Updates properties of existing scenes
@@ -16,10 +17,7 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
   }
 
   // Parse comma-separated string into array
-  const sceneIds = ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
+  const sceneIds = parseCommaSeparatedIds(ids);
 
   const updatedScenes = [];
 

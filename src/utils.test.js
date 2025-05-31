@@ -1,6 +1,6 @@
 // src/utils.test.js
 import { describe, expect, it } from "vitest";
-import { setAllNonNull, withoutNulls } from "./utils";
+import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices } from "./utils";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {
@@ -311,5 +311,123 @@ describe("withoutNulls", () => {
     });
     
     expect(result).not.toBe(original);
+  });
+});
+
+describe("parseCommaSeparatedIds", () => {
+  it("parses simple comma-separated IDs", () => {
+    const result = parseCommaSeparatedIds("1,2,3");
+    expect(result).toEqual(["1", "2", "3"]);
+  });
+
+  it("trims whitespace around IDs", () => {
+    const result = parseCommaSeparatedIds("1, 2 , 3");
+    expect(result).toEqual(["1", "2", "3"]);
+  });
+
+  it("handles extra spaces and mixed formats", () => {
+    const result = parseCommaSeparatedIds("  id1  ,  id2,id3  , id4  ");
+    expect(result).toEqual(["id1", "id2", "id3", "id4"]);
+  });
+
+  it("filters out empty strings", () => {
+    const result = parseCommaSeparatedIds("1,,2,,,3");
+    expect(result).toEqual(["1", "2", "3"]);
+  });
+
+  it("filters out empty strings with spaces", () => {
+    const result = parseCommaSeparatedIds("1, , 2,  , 3");
+    expect(result).toEqual(["1", "2", "3"]);
+  });
+
+  it("handles single ID without commas", () => {
+    const result = parseCommaSeparatedIds("single-id");
+    expect(result).toEqual(["single-id"]);
+  });
+
+  it("handles single ID with trailing comma", () => {
+    const result = parseCommaSeparatedIds("single-id,");
+    expect(result).toEqual(["single-id"]);
+  });
+
+  it("handles complex ID formats", () => {
+    const result = parseCommaSeparatedIds("track_1, scene-2, clip:3");
+    expect(result).toEqual(["track_1", "scene-2", "clip:3"]);
+  });
+
+  it("handles numeric and string IDs mixed", () => {
+    const result = parseCommaSeparatedIds("123, id_456, 789");
+    expect(result).toEqual(["123", "id_456", "789"]);
+  });
+
+  it("returns empty array for empty input after filtering", () => {
+    const result = parseCommaSeparatedIds(",,, , ,");
+    expect(result).toEqual([]);
+  });
+
+  it("handles leading and trailing commas", () => {
+    const result = parseCommaSeparatedIds(",1,2,3,");
+    expect(result).toEqual(["1", "2", "3"]);
+  });
+});
+
+describe("parseCommaSeparatedIndices", () => {
+  it("parses simple comma-separated indices", () => {
+    const result = parseCommaSeparatedIndices("0,1,2");
+    expect(result).toEqual([0, 1, 2]);
+  });
+
+  it("trims whitespace around indices", () => {
+    const result = parseCommaSeparatedIndices("0, 1 , 2");
+    expect(result).toEqual([0, 1, 2]);
+  });
+
+  it("handles extra spaces", () => {
+    const result = parseCommaSeparatedIndices("  0  ,  1,2  , 3  ");
+    expect(result).toEqual([0, 1, 2, 3]);
+  });
+
+  it("filters out empty strings", () => {
+    const result = parseCommaSeparatedIndices("0,,1,,,2");
+    expect(result).toEqual([0, 1, 2]);
+  });
+
+  it("handles single index without commas", () => {
+    const result = parseCommaSeparatedIndices("5");
+    expect(result).toEqual([5]);
+  });
+
+  it("handles negative indices", () => {
+    const result = parseCommaSeparatedIndices("-1, 0, 1");
+    expect(result).toEqual([-1, 0, 1]);
+  });
+
+  it("handles large indices", () => {
+    const result = parseCommaSeparatedIndices("100, 999, 1000");
+    expect(result).toEqual([100, 999, 1000]);
+  });
+
+  it("throws error for non-numeric strings", () => {
+    expect(() => parseCommaSeparatedIndices("0, abc, 2")).toThrow('Invalid index "abc" - must be a valid integer');
+  });
+
+  it("handles decimal numbers by truncating to integers", () => {
+    // parseInt("1.5", 10) returns 1, so this is expected behavior
+    const result = parseCommaSeparatedIndices("0, 1.5, 2");
+    expect(result).toEqual([0, 1, 2]);
+  });
+
+  it("throws error for mixed valid and invalid", () => {
+    expect(() => parseCommaSeparatedIndices("0, 1, invalid")).toThrow('Invalid index "invalid" - must be a valid integer');
+  });
+
+  it("returns empty array for empty input after filtering", () => {
+    const result = parseCommaSeparatedIndices(",,, , ,");
+    expect(result).toEqual([]);
+  });
+
+  it("handles leading and trailing commas", () => {
+    const result = parseCommaSeparatedIndices(",0,1,2,");
+    expect(result).toEqual([0, 1, 2]);
   });
 });

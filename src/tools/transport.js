@@ -1,5 +1,6 @@
 // src/tools/transport.js
 import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
+import { parseCommaSeparatedIndices } from "../utils.js";
 
 /**
  * Unified control for all playback functionality in both Arranger and Session views
@@ -59,16 +60,9 @@ export function transport({
   }
 
   if (followingTrackIndexes) {
-    const trackIndexList = followingTrackIndexes
-      .split(",")
-      .map((index) => index.trim())
-      .filter((index) => index.length > 0)
-      .map((index) => parseInt(index, 10));
+    const trackIndexList = parseCommaSeparatedIndices(followingTrackIndexes);
 
     for (const trackIndex of trackIndexList) {
-      if (isNaN(trackIndex)) {
-        throw new Error(`transport failed: invalid track index "${followingTrackIndexes}" in followingTrackIndexes`);
-      }
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
       if (track.exists()) {
         track.set("back_to_arranger", 0);
@@ -122,24 +116,8 @@ export function transport({
         throw new Error(`transport failed: clipSlotIndexes is required for action "play-session-clip"`);
       }
 
-      const trackIndexList = trackIndexes
-        .split(",")
-        .map((index) => index.trim())
-        .filter((index) => index.length > 0)
-        .map((index) => parseInt(index, 10));
-
-      const clipSlotIndexList = clipSlotIndexes
-        .split(",")
-        .map((index) => index.trim())
-        .filter((index) => index.length > 0)
-        .map((index) => parseInt(index, 10));
-
-      if (trackIndexList.some(isNaN)) {
-        throw new Error(`transport failed: invalid track index in trackIndexes "${trackIndexes}"`);
-      }
-      if (clipSlotIndexList.some(isNaN)) {
-        throw new Error(`transport failed: invalid clip slot index in clipSlotIndexes "${clipSlotIndexes}"`);
-      }
+      const trackIndexList = parseCommaSeparatedIndices(trackIndexes);
+      const clipSlotIndexList = parseCommaSeparatedIndices(clipSlotIndexes);
 
       appView.call("show_view", "Session");
 
@@ -170,15 +148,7 @@ export function transport({
         throw new Error(`transport failed: trackIndexes is required for action "stop-track-session-clip"`);
       }
 
-      const stopTrackIndexList = trackIndexes
-        .split(",")
-        .map((index) => index.trim())
-        .filter((index) => index.length > 0)
-        .map((index) => parseInt(index, 10));
-
-      if (stopTrackIndexList.some(isNaN)) {
-        throw new Error(`transport failed: invalid track index in trackIndexes "${trackIndexes}"`);
-      }
+      const stopTrackIndexList = parseCommaSeparatedIndices(trackIndexes);
 
       appView.call("show_view", "Session");
 

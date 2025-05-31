@@ -1,5 +1,6 @@
 // src/tools/delete.js
 import { getHostTrackIndex } from "../get-host-track-index";
+import { parseCommaSeparatedIds } from "../utils.js";
 /**
  * Deletes objects by ids
  * @param {Object} args - The parameters
@@ -19,10 +20,7 @@ export function deleteObject({ ids, type } = {}) {
   }
 
   // Parse comma-separated string into array
-  const objectIds = ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
+  const objectIds = parseCommaSeparatedIds(ids);
 
   const deletedObjects = [];
 

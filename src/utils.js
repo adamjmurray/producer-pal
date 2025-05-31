@@ -29,3 +29,35 @@ export function withoutNulls(obj) {
   }
   return result;
 }
+
+/**
+ * Parses a comma-separated string of IDs into an array of trimmed, non-empty strings
+ * @param {string} ids - Comma-separated string of IDs (e.g., "1, 2, 3" or "track1,track2")
+ * @returns {Array<string>} Array of trimmed ID strings
+ */
+export function parseCommaSeparatedIds(ids) {
+  return ids
+    .split(",")
+    .map((id) => id.trim())
+    .filter((id) => id.length > 0);
+}
+
+/**
+ * Parses a comma-separated string of indices into an array of integers
+ * @param {string} indices - Comma-separated string of indices (e.g., "0, 1, 2")
+ * @returns {Array<number>} Array of integer indices
+ * @throws {Error} If any index is not a valid integer
+ */
+export function parseCommaSeparatedIndices(indices) {
+  return indices
+    .split(",")
+    .map((index) => index.trim())
+    .filter((index) => index.length > 0)
+    .map((index) => {
+      const parsed = parseInt(index, 10);
+      if (isNaN(parsed)) {
+        throw new Error(`Invalid index "${index}" - must be a valid integer`);
+      }
+      return parsed;
+    });
+}

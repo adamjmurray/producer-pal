@@ -1,5 +1,5 @@
 // src/tools/update-track.js
-import { withoutNulls } from "../utils.js";
+import { withoutNulls, parseCommaSeparatedIds } from "../utils.js";
 
 /**
  * Updates properties of existing tracks
@@ -18,10 +18,7 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
   }
 
   // Parse comma-separated string into array
-  const trackIds = ids
-    .split(",")
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
+  const trackIds = parseCommaSeparatedIds(ids);
 
   const updatedTracks = [];
 
