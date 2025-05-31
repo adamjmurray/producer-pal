@@ -45,7 +45,7 @@
 
 ### Critical Pre-Launch Features
 
-- [ ] Versioning system
+- [x] Versioning system
 
 **Clip editing:**
 
@@ -86,6 +86,10 @@
       formatter, etc)
 
 ## 🌟 Nice-to-Have (Stretch Goals)
+
+**Versioning:**
+
+- [ ] Indicate when new versions are available and link to the download
 
 **Clip editing:**
 
@@ -131,7 +135,6 @@
 **Robustness:**
 
 - [ ] Validation system for better error handling (start/end times, clip bounds, etc.)
-- [ ] Improved error messages and edge case handling
 
 **MIDI Routing:**
 
