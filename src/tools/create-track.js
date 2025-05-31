@@ -51,26 +51,13 @@ export function createTrack({ trackIndex, count = 1, name, color, type = "midi",
     // Build the track name
     const trackName = name != null ? (count === 1 ? name : i === 0 ? name : `${name} ${i + 1}`) : undefined;
 
-    // Set properties if provided
-    if (trackName != null) {
-      track.set("name", trackName);
-    }
-
-    if (color != null) {
-      track.setColor(color);
-    }
-
-    if (mute != null) {
-      track.set("mute", mute);
-    }
-
-    if (solo != null) {
-      track.set("solo", solo);
-    }
-
-    if (arm != null) {
-      track.set("arm", arm);
-    }
+    track.setAll({
+      name: trackName,
+      color,
+      mute,
+      solo,
+      arm,
+    });
 
     // Build optimistic result object
     const trackResult = {

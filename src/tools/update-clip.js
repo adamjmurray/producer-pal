@@ -53,15 +53,7 @@ export function updateClip({
       throw new Error(`updateClip failed: clip with id "${id}" does not exist`);
     }
 
-    // Update properties if provided
-    if (name != null) {
-      clip.set("name", name);
-    }
-
-    if (color != null) {
-      clip.setColor(color);
-    }
-
+    // Parse time signature if provided to get numerator/denominator
     let timeSigNumerator, timeSigDenominator;
     if (timeSignature != null) {
       const match = timeSignature.match(/^(\d+)\/(\d+)$/);
@@ -70,33 +62,23 @@ export function updateClip({
       }
       timeSigNumerator = Number.parseInt(match[1]);
       timeSigDenominator = Number.parseInt(match[2]);
-      clip.set("signature_numerator", timeSigNumerator);
-      clip.set("signature_denominator", timeSigDenominator);
     } else {
       timeSigNumerator = clip.getProperty("signature_numerator");
       timeSigDenominator = clip.getProperty("signature_denominator");
     }
 
-    // Handle timing conversions from bar:beat to Ableton beats
-    if (startMarker != null) {
-      clip.set("start_marker", barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator));
-    }
-
-    if (endMarker != null) {
-      clip.set("end_marker", barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator));
-    }
-
-    if (loopStart != null) {
-      clip.set("loop_start", barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator));
-    }
-
-    if (loopEnd != null) {
-      clip.set("loop_end", barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator));
-    }
-
-    if (loop != null) {
-      clip.set("looping", loop);
-    }
+    clip.setAll({
+      name: name,
+      color: color,
+      signature_numerator: timeSignature != null ? timeSigNumerator : null,
+      signature_denominator: timeSignature != null ? timeSigDenominator : null,
+      start_marker:
+        startMarker != null ? barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator) : null,
+      end_marker: endMarker != null ? barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator) : null,
+      loop_start: loopStart != null ? barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator) : null,
+      loop_end: loopEnd != null ? barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator) : null,
+      looping: loop,
+    });
 
     if (notationString != null) {
       const notes = parseNotation(notationString, {

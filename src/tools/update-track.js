@@ -32,26 +32,13 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
       throw new Error(`updateTrack failed: track with id "${id}" does not exist`);
     }
 
-    // Update properties if provided
-    if (name != null) {
-      track.set("name", name);
-    }
-
-    if (color != null) {
-      track.setColor(color);
-    }
-
-    if (mute != null) {
-      track.set("mute", mute);
-    }
-
-    if (solo != null) {
-      track.set("solo", solo);
-    }
-
-    if (arm != null) {
-      track.set("arm", arm);
-    }
+    track.setAll({
+      name,
+      color,
+      mute,
+      solo,
+      arm,
+    });
 
     // Find trackIndex for consistency with readTrack format
     const trackIndex = Number(track.path.match(/live_set tracks (\d+)/)?.[1]);
