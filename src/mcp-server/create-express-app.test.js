@@ -34,6 +34,7 @@ vi.mock("max-api", () => ({ default: Max }));
 describe("MCP Express App", () => {
   let server;
   let serverUrl;
+  let defaultMaxHandler;
 
   beforeAll(async () => {
     // Import and start the server first
@@ -51,6 +52,12 @@ describe("MCP Express App", () => {
     // Verify that the handler was setup by createExpressApp
     expect(Max.addHandler).toHaveBeenCalledWith("mcp_response", expect.any(Function));
     expect(Max.mcpResponseHandler).toBeDefined();
+    defaultMaxHandler = Max.addHandler.mock.calls[0][1];
+  });
+
+  beforeEach(() => {
+    // ensure this is reset to the normal behavior for each test because some overwrite it to trigger error scenarios
+    Max.addHandler("mcp_response", defaultMaxHandler);
   });
 
   afterAll(async () => {
