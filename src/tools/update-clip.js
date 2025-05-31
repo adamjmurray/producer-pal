@@ -47,8 +47,7 @@ export function updateClip({
 
   for (const id of clipIds) {
     // Convert string ID to LiveAPI path if needed
-    const clipPath = id.startsWith("id ") ? id : `id ${id}`;
-    const clip = new LiveAPI(clipPath);
+    const clip = LiveAPI.from(id);
 
     if (!clip.exists()) {
       throw new Error(`updateClip failed: clip with id "${id}" does not exist`);

@@ -29,8 +29,7 @@ export function deleteObject({ ids, type } = {}) {
   // Validate all objects exist and are the correct type before deleting any
   const objectsToDelete = [];
   for (const id of objectIds) {
-    const objectPath = id.startsWith("id ") ? id : `id ${id}`;
-    const object = new LiveAPI(objectPath);
+    const object = LiveAPI.from(id);
 
     if (!object.exists()) {
       throw new Error(`delete failed: id "${id}" does not exist`);

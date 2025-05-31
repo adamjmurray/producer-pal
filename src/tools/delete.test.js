@@ -187,18 +187,20 @@ describe("deleteObject", () => {
   it("should throw an error when any object doesn't exist", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
-        case "id existing":
-          return "existing";
-        case "id nonexistent":
-          return "id 0";
+        case "id 123":
+          return "123";
+        case "id 999":
+          return "0";
+        default:
+          return "0";
       }
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === "existing") return "Track";
+      if (this._id === "123") return "Track";
     });
 
-    expect(() => deleteObject({ ids: "existing, nonexistent", type: "track" })).toThrow(
-      'delete failed: id "nonexistent" does not exist'
+    expect(() => deleteObject({ ids: "123, 999", type: "track" })).toThrow(
+      'delete failed: id "999" does not exist'
     );
   });
 

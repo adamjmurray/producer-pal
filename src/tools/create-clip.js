@@ -193,8 +193,8 @@ export function createClip({
         throw new Error(`createClip failed: track with index ${trackIndex} does not exist`);
       }
 
-      const newClipId = track.call("create_midi_clip", currentArrangerStartTimeBeats, clipLength)[1];
-      clip = new LiveAPI(`id ${newClipId}`);
+      const newClipResult = track.call("create_midi_clip", currentArrangerStartTimeBeats, clipLength);
+      clip = LiveAPI.from(newClipResult);
       if (!clip.exists()) {
         throw new Error("createClip failed: failed to create Arranger clip");
       }

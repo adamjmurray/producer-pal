@@ -25,8 +25,7 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
 
   for (const id of sceneIds) {
     // Convert string ID to LiveAPI path if needed
-    const scenePath = id.startsWith("id ") ? id : `id ${id}`;
-    const scene = new LiveAPI(scenePath);
+    const scene = LiveAPI.from(id);
 
     if (!scene.exists()) {
       throw new Error(`updateScene failed: scene with id "${id}" does not exist`);

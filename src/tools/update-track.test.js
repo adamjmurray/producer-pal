@@ -7,24 +7,24 @@ describe("updateTrack", () => {
   beforeEach(() => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
-        case "id track1":
-          return "track1";
-        case "id track2":
-          return "track2";
-        case "id track3":
-          return "track3";
+        case "id 123":
+          return "123";
+        case "id 456":
+          return "456";
+        case "id 789":
+          return "789";
         default:
-          return "id 0";
+          return "0";
       }
     });
 
     liveApiPath.mockImplementation(function () {
       switch (this._id) {
-        case "track1":
+        case "123":
           return "live_set tracks 0";
-        case "track2":
+        case "456":
           return "live_set tracks 1";
-        case "track3":
+        case "789":
           return "live_set tracks 2";
         default:
           return "";
@@ -34,7 +34,7 @@ describe("updateTrack", () => {
 
   it("should update a single track by ID", () => {
     const result = updateTrack({
-      ids: "track1",
+      ids: "123",
       name: "Updated Track",
       color: "#FF0000",
       mute: true,
@@ -48,7 +48,7 @@ describe("updateTrack", () => {
     expect(liveApiSet).toHaveBeenCalledWith("solo", false);
     expect(liveApiSet).toHaveBeenCalledWith("arm", true);
     expect(result).toEqual({
-      id: "track1",
+      id: "123",
       trackIndex: 0,
       name: "Updated Track",
       color: "#FF0000",
@@ -60,7 +60,7 @@ describe("updateTrack", () => {
 
   it("should update multiple tracks by comma-separated IDs", () => {
     const result = updateTrack({
-      ids: "track1, track2",
+      ids: "123, 456",
       color: "#00FF00",
       mute: true,
     });
@@ -71,13 +71,13 @@ describe("updateTrack", () => {
 
     expect(result).toEqual([
       {
-        id: "track1",
+        id: "123",
         trackIndex: 0,
         color: "#00FF00",
         mute: true,
       },
       {
-        id: "track2",
+        id: "456",
         trackIndex: 1,
         color: "#00FF00",
         mute: true,
@@ -87,13 +87,13 @@ describe("updateTrack", () => {
 
   it("should handle 'id ' prefixed track IDs", () => {
     const result = updateTrack({
-      ids: "id track1",
+      ids: "id 123",
       name: "Prefixed ID Track",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Prefixed ID Track");
     expect(result).toEqual({
-      id: "track1",
+      id: "123",
       trackIndex: 0,
       name: "Prefixed ID Track",
     });
@@ -101,14 +101,14 @@ describe("updateTrack", () => {
 
   it("should not update properties when not provided", () => {
     const result = updateTrack({
-      ids: "track1",
+      ids: "123",
       name: "Only Name Update",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Only Name Update");
     expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
-      id: "track1",
+      id: "123",
       trackIndex: 0,
       name: "Only Name Update",
     });
@@ -116,7 +116,7 @@ describe("updateTrack", () => {
 
   it("should handle boolean false values correctly", () => {
     const result = updateTrack({
-      ids: "track1",
+      ids: "123",
       mute: false,
       solo: false,
       arm: false,
@@ -126,7 +126,7 @@ describe("updateTrack", () => {
     expect(liveApiSet).toHaveBeenCalledWith("solo", false);
     expect(liveApiSet).toHaveBeenCalledWith("arm", false);
     expect(result).toEqual({
-      id: "track1",
+      id: "123",
       trackIndex: 0,
       mute: false,
       solo: false,
@@ -140,7 +140,7 @@ describe("updateTrack", () => {
   });
 
   it("should throw error when track ID doesn't exist", () => {
-    liveApiId.mockReturnValue("id 0");
+    liveApiId.mockReturnValue("0");
     expect(() => updateTrack({ ids: "nonexistent" })).toThrow(
       'updateTrack failed: track with id "nonexistent" does not exist'
     );
@@ -149,48 +149,48 @@ describe("updateTrack", () => {
   it("should throw error when any track ID in comma-separated list doesn't exist", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
-        case "id track1":
-          return "track1";
+        case "id 123":
+          return "123";
         case "id nonexistent":
-          return "id 0";
+          return "0";
         default:
-          return "id 0";
+          return "0";
       }
     });
 
-    expect(() => updateTrack({ ids: "track1, nonexistent", name: "Test" })).toThrow(
+    expect(() => updateTrack({ ids: "123, nonexistent", name: "Test" })).toThrow(
       'updateTrack failed: track with id "nonexistent" does not exist'
     );
   });
 
   it("should throw error when track path cannot be parsed", () => {
     liveApiPath.mockImplementation(function () {
-      if (this._id === "track1") return "invalid_path";
+      if (this._id === "123") return "invalid_path";
       return "";
     });
 
-    expect(() => updateTrack({ ids: "track1", name: "Test" })).toThrow(
-      'updateTrack failed: could not determine trackIndex for id "track1" (path="invalid_path")'
+    expect(() => updateTrack({ ids: "123", name: "Test" })).toThrow(
+      'updateTrack failed: could not determine trackIndex for id "123" (path="invalid_path")'
     );
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
-    const singleResult = updateTrack({ ids: "track1", name: "Single" });
-    const arrayResult = updateTrack({ ids: "track1, track2", name: "Multiple" });
+    const singleResult = updateTrack({ ids: "123", name: "Single" });
+    const arrayResult = updateTrack({ ids: "123, 456", name: "Multiple" });
 
     expect(singleResult).toEqual({
-      id: "track1",
+      id: "123",
       trackIndex: 0,
       name: "Single",
     });
     expect(arrayResult).toEqual([
       {
-        id: "track1",
+        id: "123",
         trackIndex: 0,
         name: "Multiple",
       },
       {
-        id: "track2",
+        id: "456",
         trackIndex: 1,
         name: "Multiple",
       },
@@ -199,23 +199,23 @@ describe("updateTrack", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     const result = updateTrack({
-      ids: " track1 , track2 , track3 ",
+      ids: " 123 , 456 , 789 ",
       color: "#0000FF",
     });
 
     expect(result).toEqual([
       {
-        id: "track1",
+        id: "123",
         trackIndex: 0,
         color: "#0000FF",
       },
       {
-        id: "track2",
+        id: "456",
         trackIndex: 1,
         color: "#0000FF",
       },
       {
-        id: "track3",
+        id: "789",
         trackIndex: 2,
         color: "#0000FF",
       },
@@ -224,24 +224,24 @@ describe("updateTrack", () => {
 
   it("should filter out empty IDs from comma-separated list", () => {
     const result = updateTrack({
-      ids: "track1,,track2,  ,track3",
+      ids: "123,,456,  ,789",
       name: "Filtered",
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
     expect(result).toEqual([
       {
-        id: "track1",
+        id: "123",
         trackIndex: 0,
         name: "Filtered",
       },
       {
-        id: "track2",
+        id: "456",
         trackIndex: 1,
         name: "Filtered",
       },
       {
-        id: "track3",
+        id: "789",
         trackIndex: 2,
         name: "Filtered",
       },

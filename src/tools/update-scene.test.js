@@ -7,24 +7,24 @@ describe("updateScene", () => {
   beforeEach(() => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
-        case "id scene1":
-          return "scene1";
-        case "id scene2":
-          return "scene2";
-        case "id scene3":
-          return "scene3";
+        case "id 123":
+          return "123";
+        case "id 456":
+          return "456";
+        case "id 789":
+          return "789";
         default:
-          return "id 0";
+          return "0";
       }
     });
 
     liveApiPath.mockImplementation(function () {
       switch (this._id) {
-        case "scene1":
+        case "123":
           return "live_set scenes 0";
-        case "scene2":
+        case "456":
           return "live_set scenes 1";
-        case "scene3":
+        case "789":
           return "live_set scenes 2";
         default:
           return "";
@@ -34,7 +34,7 @@ describe("updateScene", () => {
 
   it("should update a single scene by ID", () => {
     const result = updateScene({
-      ids: "scene1",
+      ids: "123",
       name: "Updated Scene",
       color: "#FF0000",
       tempo: 140,
@@ -49,7 +49,7 @@ describe("updateScene", () => {
     expect(liveApiSet).toHaveBeenCalledWith("time_signature_denominator", 4);
     expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", true);
     expect(result).toEqual({
-      id: "scene1",
+      id: "123",
       sceneIndex: 0,
       name: "Updated Scene",
       color: "#FF0000",
@@ -60,7 +60,7 @@ describe("updateScene", () => {
 
   it("should update multiple scenes by comma-separated IDs", () => {
     const result = updateScene({
-      ids: "scene1, scene2",
+      ids: "123, 456",
       color: "#00FF00",
       tempo: 120,
     });
@@ -72,13 +72,13 @@ describe("updateScene", () => {
 
     expect(result).toEqual([
       {
-        id: "scene1",
+        id: "123",
         sceneIndex: 0,
         color: "#00FF00",
         tempo: 120,
       },
       {
-        id: "scene2",
+        id: "456",
         sceneIndex: 1,
         color: "#00FF00",
         tempo: 120,
@@ -88,13 +88,13 @@ describe("updateScene", () => {
 
   it("should handle 'id ' prefixed scene IDs", () => {
     const result = updateScene({
-      ids: "id scene1",
+      ids: "id 123",
       name: "Prefixed ID Scene",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Prefixed ID Scene");
     expect(result).toEqual({
-      id: "scene1",
+      id: "123",
       sceneIndex: 0,
       name: "Prefixed ID Scene",
     });
@@ -102,14 +102,14 @@ describe("updateScene", () => {
 
   it("should not update properties when not provided", () => {
     const result = updateScene({
-      ids: "scene1",
+      ids: "123",
       name: "Only Name Update",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Only Name Update");
     expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
-      id: "scene1",
+      id: "123",
       sceneIndex: 0,
       name: "Only Name Update",
     });
@@ -117,14 +117,14 @@ describe("updateScene", () => {
 
   it("should disable tempo when -1 is passed", () => {
     const result = updateScene({
-      ids: "scene1",
+      ids: "123",
       tempo: -1,
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", false);
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
     expect(result).toEqual({
-      id: "scene1",
+      id: "123",
       sceneIndex: 0,
       tempo: "disabled",
     });
@@ -132,7 +132,7 @@ describe("updateScene", () => {
 
   it("should disable time signature when 'disabled' is passed", () => {
     const result = updateScene({
-      ids: "scene1",
+      ids: "123",
       timeSignature: "disabled",
     });
 
@@ -140,7 +140,7 @@ describe("updateScene", () => {
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
     expect(result).toEqual({
-      id: "scene1",
+      id: "123",
       sceneIndex: 0,
       timeSignature: "disabled",
     });
@@ -161,53 +161,53 @@ describe("updateScene", () => {
   it("should throw error when any scene ID in comma-separated list doesn't exist", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
-        case "id scene1":
-          return "scene1";
+        case "id 123":
+          return "123";
         case "id nonexistent":
           return "id 0";
         default:
-          return "id 0";
+          return "0";
       }
     });
 
-    expect(() => updateScene({ ids: "scene1, nonexistent", name: "Test" })).toThrow(
+    expect(() => updateScene({ ids: "123, nonexistent", name: "Test" })).toThrow(
       'updateScene failed: scene with id "nonexistent" does not exist'
     );
   });
 
   it("should throw error when scene path cannot be parsed", () => {
     liveApiPath.mockImplementation(function () {
-      if (this._id === "scene1") return "invalid_path";
+      if (this._id === "123") return "invalid_path";
       return "";
     });
 
-    expect(() => updateScene({ ids: "scene1", name: "Test" })).toThrow(
-      'updateScene failed: could not determine sceneIndex for id "scene1" (path="invalid_path")'
+    expect(() => updateScene({ ids: "123", name: "Test" })).toThrow(
+      'updateScene failed: could not determine sceneIndex for id "123" (path="invalid_path")'
     );
   });
 
   it("should throw error for invalid time signature format", () => {
-    expect(() => updateScene({ ids: "scene1", timeSignature: "invalid" })).toThrow("Time signature must be in format");
-    expect(() => updateScene({ ids: "scene1", timeSignature: "3-4" })).toThrow("Time signature must be in format");
+    expect(() => updateScene({ ids: "123", timeSignature: "invalid" })).toThrow("Time signature must be in format");
+    expect(() => updateScene({ ids: "123", timeSignature: "3-4" })).toThrow("Time signature must be in format");
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
-    const singleResult = updateScene({ ids: "scene1", name: "Single" });
-    const arrayResult = updateScene({ ids: "scene1, scene2", name: "Multiple" });
+    const singleResult = updateScene({ ids: "123", name: "Single" });
+    const arrayResult = updateScene({ ids: "123, 456", name: "Multiple" });
 
     expect(singleResult).toEqual({
-      id: "scene1",
+      id: "123",
       sceneIndex: 0,
       name: "Single",
     });
     expect(arrayResult).toEqual([
       {
-        id: "scene1",
+        id: "123",
         sceneIndex: 0,
         name: "Multiple",
       },
       {
-        id: "scene2",
+        id: "456",
         sceneIndex: 1,
         name: "Multiple",
       },
@@ -216,23 +216,23 @@ describe("updateScene", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     const result = updateScene({
-      ids: " scene1 , scene2 , scene3 ",
+      ids: " 123 , 456 , 789 ",
       color: "#0000FF",
     });
 
     expect(result).toEqual([
       {
-        id: "scene1",
+        id: "123",
         sceneIndex: 0,
         color: "#0000FF",
       },
       {
-        id: "scene2",
+        id: "456",
         sceneIndex: 1,
         color: "#0000FF",
       },
       {
-        id: "scene3",
+        id: "789",
         sceneIndex: 2,
         color: "#0000FF",
       },
@@ -241,24 +241,24 @@ describe("updateScene", () => {
 
   it("should filter out empty IDs from comma-separated list", () => {
     const result = updateScene({
-      ids: "scene1,,scene2,  ,scene3",
+      ids: "123,,456,  ,789",
       name: "Filtered",
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
     expect(result).toEqual([
       {
-        id: "scene1",
+        id: "123",
         sceneIndex: 0,
         name: "Filtered",
       },
       {
-        id: "scene2",
+        id: "456",
         sceneIndex: 1,
         name: "Filtered",
       },
       {
-        id: "scene3",
+        id: "789",
         sceneIndex: 2,
         name: "Filtered",
       },

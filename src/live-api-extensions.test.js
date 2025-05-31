@@ -137,6 +137,65 @@ describe("LiveAPI extensions", () => {
     });
   });
 
+  describe("from", () => {
+    it("creates LiveAPI with 'id ' prefix for numeric ID", () => {
+      const api = LiveAPI.from("123");
+      expect(api.path).toBe("id 123");
+    });
+
+    it("creates LiveAPI with 'id ' prefix for number type", () => {
+      const api = LiveAPI.from(456);
+      expect(api.path).toBe("id 456");
+    });
+
+    it("creates LiveAPI with 'id ' prefix for string digits only", () => {
+      const api = LiveAPI.from("789");
+      expect(api.path).toBe("id 789");
+    });
+
+    it("uses path as-is for already prefixed ID", () => {
+      const api = LiveAPI.from("id 123");
+      expect(api.path).toBe("id 123");
+    });
+
+    it("uses path as-is for normal Live API paths", () => {
+      const api = LiveAPI.from("live_set tracks 0");
+      expect(api.path).toBe("live_set tracks 0");
+    });
+
+    it("uses path as-is for strings with non-digit characters", () => {
+      const api = LiveAPI.from("123abc");
+      expect(api.path).toBe("123abc");
+    });
+
+    it("uses path as-is for strings with leading zero followed by non-digits", () => {
+      const api = LiveAPI.from("0x123");
+      expect(api.path).toBe("0x123");
+    });
+
+    it("handles ['id', '123'] array format from Live API calls", () => {
+      const api = LiveAPI.from(["id", "123"]);
+      expect(api.path).toBe("id 123");
+    });
+
+    it("handles ['id', 456] array format with numeric ID", () => {
+      const api = LiveAPI.from(["id", 456]);
+      expect(api.path).toBe("id 456");
+    });
+
+    it("throws error for array not in ['id', value] format", () => {
+      expect(() => LiveAPI.from(["something", "else"])).toThrow("Invalid array format");
+    });
+
+    it("throws error for array with wrong length", () => {
+      expect(() => LiveAPI.from(["id"])).toThrow("Invalid array format");
+    });
+
+    it("throws error for array where first element is not 'id'", () => {
+      expect(() => LiveAPI.from(["path", "123"])).toThrow("Invalid array format");
+    });
+  });
+
   describe("setColor", () => {
     beforeEach(() => {
       api.set = vi.fn();

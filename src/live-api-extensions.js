@@ -1,5 +1,24 @@
 // src/live-api-extensions.js
 if (typeof LiveAPI !== "undefined") {
+  /**
+   * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing
+   * @param {string|number|Array} idOrPath - ID number/string, full path, or ["id", "123"] array
+   * @returns {LiveAPI} New LiveAPI instance
+   */
+  LiveAPI.from = function (idOrPath) {
+    // Handle array format ["id", "123"] from Live API calls
+    if (Array.isArray(idOrPath)) {
+      if (idOrPath.length === 2 && idOrPath[0] === "id") {
+        return new LiveAPI(`id ${idOrPath[1]}`);
+      }
+      throw new Error(`Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`);
+    }
+    
+    if (typeof idOrPath === "number" || (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))) {
+      return new LiveAPI(`id ${idOrPath}`);
+    }
+    return new LiveAPI(idOrPath);
+  };
   LiveAPI.prototype.exists = function () {
     return this.id !== "id 0" && this.id != "0";
   };

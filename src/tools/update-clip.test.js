@@ -7,24 +7,24 @@ describe("updateClip", () => {
   beforeEach(() => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
-        case "id clip1":
-          return "clip1";
-        case "id clip2":
-          return "clip2";
-        case "id clip3":
-          return "clip3";
+        case "id 123":
+          return "123";
+        case "id 456":
+          return "456";
+        case "id 789":
+          return "789";
         default:
-          return "id 0";
+          return "0";
       }
     });
 
     liveApiPath.mockImplementation(function () {
       switch (this._id) {
-        case "clip1":
+        case "123":
           return "live_set tracks 0 clip_slots 0 clip";
-        case "clip2":
+        case "456":
           return "live_set tracks 1 clip_slots 1 clip";
-        case "clip3":
+        case "789":
           return "live_set tracks 2 arrangement_clips 0";
         default:
           return "";
@@ -38,7 +38,7 @@ describe("updateClip", () => {
   });
 
   it("should throw error when clip ID doesn't exist", () => {
-    liveApiId.mockReturnValue("id 0");
+    liveApiId.mockReturnValue("0");
     expect(() => updateClip({ ids: "nonexistent" })).toThrow(
       'updateClip failed: clip with id "nonexistent" does not exist'
     );
@@ -46,14 +46,14 @@ describe("updateClip", () => {
 
   it("should update a single session clip by ID", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       name: "Updated Clip",
       color: "#FF0000",
       loop: true,
@@ -64,7 +64,7 @@ describe("updateClip", () => {
     expect(liveApiSet).toHaveBeenCalledWith("looping", true);
 
     expect(result).toEqual({
-      id: "clip1",
+      id: "123",
       type: "midi",
       view: "Session",
       trackIndex: 0,
@@ -77,7 +77,7 @@ describe("updateClip", () => {
 
   it("should update a single arranger clip by ID", () => {
     mockLiveApiGet({
-      clip3: {
+      "789": {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 16.0,
@@ -87,7 +87,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip3",
+      ids: "789",
       name: "Arranger Clip",
       startMarker: "1:3", // 2 beats = bar 1 beat 3 in 4/4
       endMarker: "2:3", // 6 beats = bar 2 beat 3 in 4/4
@@ -98,7 +98,7 @@ describe("updateClip", () => {
     expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // 2:3 in 4/4 = 6 Ableton beats
 
     expect(result).toEqual({
-      id: "clip3",
+      id: "789",
       type: "midi",
       view: "Arranger",
       trackIndex: 2,
@@ -111,18 +111,18 @@ describe("updateClip", () => {
 
   it("should update multiple clips by comma-separated IDs", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      clip2: {
+      "456": {
         is_arrangement_clip: 0,
         is_midi_clip: 0, // audio clip
       },
     });
 
     const result = updateClip({
-      ids: "clip1, clip2",
+      ids: "123, 456",
       color: "#00FF00",
       loop: false,
     });
@@ -132,13 +132,13 @@ describe("updateClip", () => {
     expect(liveApiSet).toHaveBeenCalledTimes(5); // 2 calls per clip, plus view change
     expect(liveApiSet).toHaveBeenNthCalledWith(1, "color", 65280);
     expect(liveApiSet).toHaveBeenNthCalledWith(2, "looping", false);
-    expect(liveApiSet).toHaveBeenNthCalledWith(3, "detail_clip", "id clip1");
+    expect(liveApiSet).toHaveBeenNthCalledWith(3, "detail_clip", "id 123");
     expect(liveApiSet).toHaveBeenNthCalledWith(4, "color", 65280);
     expect(liveApiSet).toHaveBeenNthCalledWith(5, "looping", false);
 
     expect(result).toEqual([
       {
-        id: "clip1",
+        id: "123",
         type: "midi",
         view: "Session",
         trackIndex: 0,
@@ -147,7 +147,7 @@ describe("updateClip", () => {
         loop: false,
       },
       {
-        id: "clip2",
+        id: "456",
         type: "audio",
         view: "Session",
         trackIndex: 1,
@@ -160,14 +160,14 @@ describe("updateClip", () => {
 
   it("should update time signature when provided", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       timeSignature: "6/8",
     });
 
@@ -178,7 +178,7 @@ describe("updateClip", () => {
 
   it("should replace existing notes with real BarBeat parsing in 4/4 time", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -187,7 +187,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 v80 t2 C4 1:3 v120 t1 D4",
     });
 
@@ -214,7 +214,7 @@ describe("updateClip", () => {
     });
 
     expect(result).toEqual({
-      id: "clip1",
+      id: "123",
       type: "midi",
       view: "Session",
       trackIndex: 0,
@@ -226,14 +226,14 @@ describe("updateClip", () => {
 
   it("should parse notes using provided time signature with real BarBeat parsing", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       timeSignature: "6/8",
       notes: "1:1 C3 2:1 D3",
     });
@@ -268,7 +268,7 @@ describe("updateClip", () => {
 
   it("should parse notes using clip's current time signature when timeSignature not provided", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 3, // 3/4 time
@@ -277,7 +277,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar
     });
 
@@ -307,7 +307,7 @@ describe("updateClip", () => {
 
   it("should handle complex drum pattern with real BarBeat parsing", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -316,7 +316,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1:1.5 p0.6 Gb1 1:2 v90 p1.0 D1 v100 p0.9 Gb1",
     });
 
@@ -335,7 +335,7 @@ describe("updateClip", () => {
 
   it("should throw error for invalid time signature format", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -343,7 +343,7 @@ describe("updateClip", () => {
 
     expect(() =>
       updateClip({
-        ids: "clip1",
+        ids: "123",
         timeSignature: "invalid",
       })
     ).toThrow("Time signature must be in format");
@@ -351,20 +351,20 @@ describe("updateClip", () => {
 
   it("should handle 'id ' prefixed clip IDs", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
     const result = updateClip({
-      ids: "id clip1",
+      ids: "id 123",
       name: "Prefixed ID Clip",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Prefixed ID Clip");
     expect(result).toEqual({
-      id: "clip1",
+      id: "123",
       type: "midi",
       view: "Session",
       trackIndex: 0,
@@ -375,26 +375,26 @@ describe("updateClip", () => {
 
   it("should not update properties when not provided", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       name: "Only Name Update",
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(2);
     expect(liveApiSet).toHaveBeenNthCalledWith(1, "name", "Only Name Update");
-    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id clip1");
+    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id 123");
 
     expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
 
     expect(result).toEqual({
-      id: "clip1",
+      id: "123",
       type: "midi",
       view: "Session",
       trackIndex: 0,
@@ -405,20 +405,20 @@ describe("updateClip", () => {
 
   it("should handle boolean false values correctly", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       loop: false,
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("looping", false);
     expect(result).toEqual({
-      id: "clip1",
+      id: "123",
       type: "midi",
       view: "Session",
       trackIndex: 0,
@@ -430,55 +430,55 @@ describe("updateClip", () => {
   it("should throw error when any clip ID in comma-separated list doesn't exist", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
-        case "id clip1":
-          return "clip1";
+        case "id 123":
+          return "123";
         case "id nonexistent":
-          return "id 0";
+          return "0";
         default:
-          return "id 0";
+          return "0";
       }
     });
 
-    expect(() => updateClip({ ids: "clip1, nonexistent", name: "Test" })).toThrow(
+    expect(() => updateClip({ ids: "123, nonexistent", name: "Test" })).toThrow(
       'updateClip failed: clip with id "nonexistent" does not exist'
     );
   });
 
   it("should throw error when clip path cannot be parsed", () => {
     liveApiPath.mockImplementation(function () {
-      if (this._id === "clip1") return "invalid_path";
+      if (this._id === "123") return "invalid_path";
       return "";
     });
 
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
-    expect(() => updateClip({ ids: "clip1", name: "Test" })).toThrow(
-      'updateClip failed: could not determine trackIndex for id "clip1" (path="invalid_path")'
+    expect(() => updateClip({ ids: "123", name: "Test" })).toThrow(
+      'updateClip failed: could not determine trackIndex for id "123" (path="invalid_path")'
     );
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      clip2: {
+      "456": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
-    const singleResult = updateClip({ ids: "clip1", name: "Single" });
-    const arrayResult = updateClip({ ids: "clip1, clip2", name: "Multiple" });
+    const singleResult = updateClip({ ids: "123", name: "Single" });
+    const arrayResult = updateClip({ ids: "123, 456", name: "Multiple" });
 
     expect(singleResult).toEqual({
-      id: "clip1",
+      id: "123",
       type: "midi",
       view: "Session",
       trackIndex: 0,
@@ -487,7 +487,7 @@ describe("updateClip", () => {
     });
     expect(arrayResult).toEqual([
       {
-        id: "clip1",
+        id: "123",
         type: "midi",
         view: "Session",
         trackIndex: 0,
@@ -495,7 +495,7 @@ describe("updateClip", () => {
         name: "Multiple",
       },
       {
-        id: "clip2",
+        id: "456",
         type: "midi",
         view: "Session",
         trackIndex: 1,
@@ -507,15 +507,15 @@ describe("updateClip", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      clip2: {
+      "456": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      clip3: {
+      "789": {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 8.0,
@@ -523,13 +523,13 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: " clip1 , clip2 , clip3 ",
+      ids: " 123 , 456 , 789 ",
       color: "#0000FF",
     });
 
     expect(result).toEqual([
       {
-        id: "clip1",
+        id: "123",
         type: "midi",
         view: "Session",
         trackIndex: 0,
@@ -537,7 +537,7 @@ describe("updateClip", () => {
         color: "#0000FF",
       },
       {
-        id: "clip2",
+        id: "456",
         type: "midi",
         view: "Session",
         trackIndex: 1,
@@ -545,7 +545,7 @@ describe("updateClip", () => {
         color: "#0000FF",
       },
       {
-        id: "clip3",
+        id: "789",
         type: "midi",
         view: "Arranger",
         trackIndex: 2,
@@ -557,30 +557,30 @@ describe("updateClip", () => {
 
   it("should filter out empty IDs from comma-separated list", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      clip2: {
+      "456": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
     });
 
     const result = updateClip({
-      ids: "clip1,,clip2,  ,",
+      ids: "123,,456,  ,",
       name: "Filtered",
     });
 
     // set the names of the two clips, and display the clip detail view:
     expect(liveApiSet).toHaveBeenCalledTimes(3);
     expect(liveApiSet).toHaveBeenNthCalledWith(1, "name", "Filtered");
-    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id clip1");
+    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id 123");
     expect(liveApiSet).toHaveBeenNthCalledWith(3, "name", "Filtered");
 
     expect(result).toEqual([
       {
-        id: "clip1",
+        id: "123",
         type: "midi",
         view: "Session",
         trackIndex: 0,
@@ -588,7 +588,7 @@ describe("updateClip", () => {
         name: "Filtered",
       },
       {
-        id: "clip2",
+        id: "456",
         type: "midi",
         view: "Session",
         trackIndex: 1,
@@ -600,7 +600,7 @@ describe("updateClip", () => {
 
   it("should filter out v0 notes when updating clips", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -609,7 +609,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
     });
 
@@ -625,7 +625,7 @@ describe("updateClip", () => {
 
   it("should handle clips with all v0 notes filtered out during update", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -634,7 +634,7 @@ describe("updateClip", () => {
     });
 
     updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 v0 C3 D3 E3", // All notes should be filtered out
     });
 
@@ -644,7 +644,7 @@ describe("updateClip", () => {
 
   it("should replace notes by default (clearExistingNotes: true)", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -653,7 +653,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 C3",
       clearExistingNotes: true, // explicit true
     });
@@ -668,7 +668,7 @@ describe("updateClip", () => {
 
   it("should replace notes by default when clearExistingNotes is not specified", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -677,7 +677,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 C3",
       // clearExistingNotes not specified, should default to true
     });
@@ -692,7 +692,7 @@ describe("updateClip", () => {
 
   it("should add to existing notes when clearExistingNotes is false", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -701,7 +701,7 @@ describe("updateClip", () => {
     });
 
     const result = updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 C3",
       clearExistingNotes: false,
     });
@@ -716,7 +716,7 @@ describe("updateClip", () => {
 
   it("should not call add_new_notes when clearExistingNotes is false and notes array is empty", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -725,7 +725,7 @@ describe("updateClip", () => {
     });
 
     updateClip({
-      ids: "clip1",
+      ids: "123",
       notes: "1:1 v0 C3", // All notes filtered out
       clearExistingNotes: false,
     });
@@ -736,7 +736,7 @@ describe("updateClip", () => {
 
   it("should set loop markers when provided", () => {
     mockLiveApiGet({
-      clip1: {
+      "123": {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -745,7 +745,7 @@ describe("updateClip", () => {
     });
 
     updateClip({
-      ids: "clip1",
+      ids: "123",
       loopStart: "1:3",
       loopEnd: "2:1",
     });

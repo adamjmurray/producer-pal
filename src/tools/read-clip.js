@@ -16,13 +16,9 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
 
   // Support "id {id}" (such as returned by childIds()) and id values directly
   // TODO: Need test coverage of this logic
-  const clip = new LiveAPI(
-    clipId != null
-      ? typeof clipId === "string" && clipId.startsWith("id ")
-        ? clipId
-        : `id ${clipId}`
-      : `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`
-  );
+  const clip = clipId != null
+    ? LiveAPI.from(clipId)
+    : new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
 
   if (!clip.exists()) {
     if (clipId != null) throw new Error(`No clip exists for clipId "${clipId}"`);

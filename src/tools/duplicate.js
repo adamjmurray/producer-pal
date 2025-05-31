@@ -32,8 +32,7 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
   }
 
   // Convert string ID to LiveAPI path if needed
-  const objectPath = id.startsWith("id ") ? id : `id ${id}`;
-  const object = new LiveAPI(objectPath);
+  const object = LiveAPI.from(id);
 
   if (!object.exists()) {
     throw new Error(`duplicate failed: id "${id}" does not exist`);
@@ -335,7 +334,7 @@ function calculateSceneLength(sceneIndex) {
 }
 
 function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, includeClips) {
-  const scene = new LiveAPI(sceneId.startsWith("id ") ? sceneId : `id ${sceneId}`);
+  const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
     throw new Error(`duplicate failed: scene with id "${sceneId}" does not exist`);
@@ -361,10 +360,10 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, include
         const clip = new LiveAPI(`${clipSlot.path} clip`);
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-        const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats)?.[1];
+        const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats);
 
-        if (newClipId != null) {
-          const newClip = new LiveAPI(`id ${newClipId}`);
+        if (newClipResult?.[1] != null) {
+          const newClip = LiveAPI.from(newClipResult);
           if (name != null) {
             newClip.set("name", name);
             duplicatedClips.push({ ...getMinimalClipInfo(newClip), name });
@@ -419,8 +418,7 @@ function duplicateClipSlot(trackIndex, sourceClipSlotIndex, name) {
 
 function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name) {
   // Support "id {id}" (such as returned by childIds()) and id values directly
-  const clipPath = clipId.startsWith("id ") ? clipId : `id ${clipId}`;
-  const clip = new LiveAPI(clipPath);
+  const clip = LiveAPI.from(clipId);
 
   if (!clip.exists()) {
     throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
@@ -432,13 +430,13 @@ function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name) {
   }
 
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats)?.[1];
+  const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats);
 
-  if (newClipId == null) {
+  if (newClipResult?.[1] == null) {
     throw new Error(`duplicate failed: clip failed to duplicate`);
   }
 
-  const newClip = new LiveAPI(`id ${newClipId}`);
+  const newClip = LiveAPI.from(newClipResult);
   if (name != null) {
     newClip.set("name", name);
   }

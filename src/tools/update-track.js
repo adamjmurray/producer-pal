@@ -26,8 +26,7 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
 
   for (const id of trackIds) {
     // Convert string ID to LiveAPI path if needed
-    const trackPath = id.startsWith("id ") ? id : `id ${id}`;
-    const track = new LiveAPI(trackPath);
+    const track = LiveAPI.from(id);
 
     if (!track.exists()) {
       throw new Error(`updateTrack failed: track with id "${id}" does not exist`);
