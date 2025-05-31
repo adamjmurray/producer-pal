@@ -41,8 +41,8 @@ function callLiveApi(toolName, args, timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_M
   });
 }
 
-function handleLiveApiResult(responseJson) {
-  Max.post(`mcp_response(${responseJson})`);
+function handleLiveApiResult(responseJson, ...maxErrors) {
+  Max.post(`mcp_response(${responseJson}, maxErrors=[${maxErrors.join(", ")}])`);
   try {
     const response = JSON.parse(responseJson);
     const { requestId, result } = response;
@@ -52,6 +52,9 @@ function handleLiveApiResult(responseJson) {
       pendingRequests.delete(requestId);
       if (timeout) {
         clearTimeout(timeout);
+      }
+      for (const error of maxErrors) {
+        result.content.push({ type: "text", text: `WARNING: ${error}` });
       }
       resolve(result);
     } else {
