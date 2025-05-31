@@ -110,6 +110,54 @@ describe("duplicate", () => {
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track 2");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track 3");
     });
+
+    it("should duplicate a track without clips when includeClips is false", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      // Mock track with clips
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          clip_slots: children("slot0", "slot1", "slot2"),
+          arrangement_clips: children("arrangerClip0", "arrangerClip1"),
+        },
+        slot0: { has_clip: 1 },
+        slot1: { has_clip: 0 },
+        slot2: { has_clip: 1 },
+      });
+
+      const result = duplicate({ type: "track", id: "track1", includeClips: false });
+
+      expect(result).toStrictEqual({
+        type: "track",
+        id: "track1",
+        count: 1,
+        includeClips: false,
+        duplicated: true,
+        newTrackId: "live_set/tracks/1",
+        newTrackIndex: 1,
+        duplicatedClips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
+      
+      // Verify delete_clip was called for session clips (on clip slots)
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip");
+      
+      // Verify delete_clip was called for arranger clips (on track with clip IDs)
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangerClip0");
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangerClip1");
+      
+      // Verify the track instance called delete_clip for arranger clips
+      const trackDeleteCalls = liveApiCall.mock.calls.filter((call, index) => {
+        return call[0] === "delete_clip" && call[1] && liveApiCall.mock.instances[index].path === "live_set tracks 1";
+      });
+      expect(trackDeleteCalls.length).toBe(2);
+    });
   });
 
   describe("scene duplication", () => {
@@ -233,6 +281,45 @@ describe("duplicate", () => {
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene 2");
+    });
+
+    it("should duplicate a scene without clips when includeClips is false", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "scene1") {
+          return "live_set scenes 0";
+        }
+        return this._path;
+      });
+
+      // Mock scene with clips in tracks 0 and 1
+      mockLiveApiGet({
+        LiveSet: {
+          tracks: children("track0", "track1", "track2"),
+        },
+        "live_set tracks 0 clip_slots 1": { has_clip: 1 },
+        "live_set tracks 1 clip_slots 1": { has_clip: 1 },
+        "live_set tracks 2 clip_slots 1": { has_clip: 0 },
+      });
+
+      const result = duplicate({ type: "scene", id: "scene1", includeClips: false });
+
+      expect(result).toStrictEqual({
+        type: "scene",
+        id: "scene1",
+        count: 1,
+        includeClips: false,
+        duplicated: true,
+        newSceneId: "live_set/scenes/1",
+        newSceneIndex: 1,
+        duplicatedClips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
+      
+      // Verify delete_clip was called for clips in the duplicated scene
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip");
+      const deleteCallCount = liveApiCall.mock.calls.filter(call => call[0] === "delete_clip").length;
+      expect(deleteCallCount).toBe(2); // Should delete 2 clips (tracks 0 and 1)
     });
 
     describe("arranger destination", () => {
@@ -519,6 +606,53 @@ describe("duplicate", () => {
           count: 1,
           destination: "arranger",
           arrangerStartTime: "5:1",
+          duplicated: true,
+          arrangerStartTime: "5:1",
+          duplicatedClips: [],
+        });
+      });
+
+      it("should duplicate a scene to arranger without clips when includeClips is false", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "scene1") {
+            return "live_set scenes 0";
+          }
+          return this._path;
+        });
+
+        // Mock scene with clips in tracks 0 and 2
+        mockLiveApiGet({
+          LiveSet: {
+            tracks: children("track0", "track1", "track2"),
+          },
+          "live_set tracks 0 clip_slots 0": { has_clip: 1 },
+          "live_set tracks 1 clip_slots 0": { has_clip: 0 },
+          "live_set tracks 2 clip_slots 0": { has_clip: 1 },
+          "live_set tracks 0 clip_slots 0 clip": { length: 4 },
+          "live_set tracks 2 clip_slots 0 clip": { length: 8 },
+        });
+
+        const result = duplicate({
+          type: "scene",
+          id: "scene1",
+          destination: "arranger",
+          arrangerStartTime: "5:1",
+          includeClips: false,
+        });
+
+        // Verify that duplicate_clip_to_arrangement was NOT called
+        expect(liveApiCall).not.toHaveBeenCalledWith("duplicate_clip_to_arrangement", expect.any(String), expect.any(Number));
+        
+        // Verify that show_view was still called
+        expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+
+        expect(result).toStrictEqual({
+          type: "scene",
+          id: "scene1",
+          count: 1,
+          destination: "arranger",
+          arrangerStartTime: "5:1",
+          includeClips: false,
           duplicated: true,
           arrangerStartTime: "5:1",
           duplicatedClips: [],

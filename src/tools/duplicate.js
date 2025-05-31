@@ -10,9 +10,10 @@ import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbea
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arranger"), required when type is "clip"
  * @param {number} [args.arrangerStartTime] - Start time in bar:beat format for Arranger view clips (uses song time signature)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
+ * @param {boolean} [args.includeClips] - Whether to include clips when duplicating tracks or scenes
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
-export function duplicate({ type, id, count = 1, destination, arrangerStartTime, name } = {}) {
+export function duplicate({ type, id, count = 1, destination, arrangerStartTime, name, includeClips } = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
   }
@@ -84,7 +85,7 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
         // For multiple scenes, place them sequentially to avoid overlap
         const sceneLength = calculateSceneLength(sceneIndex);
         const actualArrangerStartBeats = baseArrangerStartBeats + i * sceneLength;
-        newObjectMetadata = duplicateSceneToArranger(id, actualArrangerStartBeats, objectName);
+        newObjectMetadata = duplicateSceneToArranger(id, actualArrangerStartBeats, objectName, includeClips);
       } else if (type === "clip") {
         // For multiple clips, place them sequentially to avoid overlap
         const clipLength = object.getProperty("length");
@@ -100,14 +101,14 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
         }
         // For multiple tracks, we need to account for previously created tracks
         const actualTrackIndex = trackIndex + i;
-        newObjectMetadata = duplicateTrack(actualTrackIndex, objectName);
+        newObjectMetadata = duplicateTrack(actualTrackIndex, objectName, includeClips);
       } else if (type === "scene") {
         const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
         if (Number.isNaN(sceneIndex)) {
           throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
         }
         const actualSceneIndex = sceneIndex + i;
-        newObjectMetadata = duplicateScene(actualSceneIndex, objectName);
+        newObjectMetadata = duplicateScene(actualSceneIndex, objectName, includeClips);
       } else if (type === "clip") {
         const match = object.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
         if (!match) {
@@ -138,6 +139,7 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
   if (destination != null) result.destination = destination;
   if (arrangerStartTime != null) result.arrangerStartTime = arrangerStartTime;
   if (name != null) result.name = name;
+  if (includeClips != null) result.includeClips = includeClips;
 
   // Return appropriate format based on count
   if (count === 1) {
@@ -201,7 +203,7 @@ function getMinimalClipInfo(clip) {
   }
 }
 
-function duplicateTrack(trackIndex, name) {
+function duplicateTrack(trackIndex, name, includeClips) {
   const liveSet = new LiveAPI("live_set");
   liveSet.call("duplicate_track", trackIndex);
 
@@ -215,24 +217,43 @@ function duplicateTrack(trackIndex, name) {
   // Get all duplicated clips
   const duplicatedClips = [];
 
-  // Session clips
-  const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
-  //for (let clipSlotIndex = 0; clipSlotIndex < sessionClipSlotIds.length; clipSlotIndex++) {
-  //const clipSlot = new LiveAPI(`live_set tracks ${newTrackIndex} clip_slots ${clipSlotIndex}`);
-  for (const clipSlotId of sessionClipSlotIds) {
-    const clipSlot = new LiveAPI(clipSlotId);
-    if (clipSlot.getProperty("has_clip")) {
-      const clip = new LiveAPI(`${clipSlot.path} clip`);
-      duplicatedClips.push(getMinimalClipInfo(clip));
+  if (includeClips === false) {
+    // Delete all clips that were duplicated
+    // Session clips
+    const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
+    for (const clipSlotId of sessionClipSlotIds) {
+      const clipSlot = new LiveAPI(clipSlotId);
+      if (clipSlot.getProperty("has_clip")) {
+        clipSlot.call("delete_clip");
+      }
     }
-  }
 
-  // Arranger clips
-  const arrangerClipIds = newTrack.getChildIds("arrangement_clips");
-  for (const clipId of arrangerClipIds) {
-    const clip = new LiveAPI(clipId);
-    if (clip.exists()) {
-      duplicatedClips.push(getMinimalClipInfo(clip));
+    // Arranger clips - must use track.delete_clip with clip ID
+    const arrangerClipIds = newTrack.getChildIds("arrangement_clips");
+    for (const clipId of arrangerClipIds) {
+      newTrack.call("delete_clip", clipId);
+    }
+  } else {
+    // Default behavior: collect info about duplicated clips
+    // Session clips
+    const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
+    //for (let clipSlotIndex = 0; clipSlotIndex < sessionClipSlotIds.length; clipSlotIndex++) {
+    //const clipSlot = new LiveAPI(`live_set tracks ${newTrackIndex} clip_slots ${clipSlotIndex}`);
+    for (const clipSlotId of sessionClipSlotIds) {
+      const clipSlot = new LiveAPI(clipSlotId);
+      if (clipSlot.getProperty("has_clip")) {
+        const clip = new LiveAPI(`${clipSlot.path} clip`);
+        duplicatedClips.push(getMinimalClipInfo(clip));
+      }
+    }
+
+    // Arranger clips
+    const arrangerClipIds = newTrack.getChildIds("arrangement_clips");
+    for (const clipId of arrangerClipIds) {
+      const clip = new LiveAPI(clipId);
+      if (clip.exists()) {
+        duplicatedClips.push(getMinimalClipInfo(clip));
+      }
     }
   }
 
@@ -247,7 +268,7 @@ function duplicateTrack(trackIndex, name) {
   return result;
 }
 
-function duplicateScene(sceneIndex, name) {
+function duplicateScene(sceneIndex, name, includeClips) {
   const liveSet = new LiveAPI("live_set");
   liveSet.call("duplicate_scene", sceneIndex);
 
@@ -262,12 +283,23 @@ function duplicateScene(sceneIndex, name) {
   const duplicatedClips = [];
   const trackIds = liveSet.getChildIds("tracks");
 
-  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`);
-    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-      const clip = new LiveAPI(`${clipSlot.path} clip`);
-      if (clip.exists()) {
-        duplicatedClips.push(getMinimalClipInfo(clip));
+  if (includeClips === false) {
+    // Delete all clips in the duplicated scene
+    for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+      const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`);
+      if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
+        clipSlot.call("delete_clip");
+      }
+    }
+  } else {
+    // Default behavior: collect info about duplicated clips
+    for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+      const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`);
+      if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
+        const clip = new LiveAPI(`${clipSlot.path} clip`);
+        if (clip.exists()) {
+          duplicatedClips.push(getMinimalClipInfo(clip));
+        }
       }
     }
   }
@@ -302,7 +334,7 @@ function calculateSceneLength(sceneIndex) {
   return maxLength;
 }
 
-function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name) {
+function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, includeClips) {
   const scene = new LiveAPI(sceneId.startsWith("id ") ? sceneId : `id ${sceneId}`);
 
   if (!scene.exists()) {
@@ -319,23 +351,26 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name) {
 
   const duplicatedClips = [];
 
-  // Find all clips in this scene and duplicate them to arranger
-  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
-    const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${sceneIndex}`);
+  if (includeClips !== false) {
+    // Only duplicate clips if includeClips is not explicitly false
+    // Find all clips in this scene and duplicate them to arranger
+    for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+      const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${sceneIndex}`);
 
-    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
-      const clip = new LiveAPI(`${clipSlot.path} clip`);
-      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+      if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
+        const clip = new LiveAPI(`${clipSlot.path} clip`);
+        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-      const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats)?.[1];
+        const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats)?.[1];
 
-      if (newClipId != null) {
-        const newClip = new LiveAPI(`id ${newClipId}`);
-        if (name != null) {
-          newClip.set("name", name);
-          duplicatedClips.push({ ...getMinimalClipInfo(newClip), name });
-        } else {
-          duplicatedClips.push(getMinimalClipInfo(newClip));
+        if (newClipId != null) {
+          const newClip = new LiveAPI(`id ${newClipId}`);
+          if (name != null) {
+            newClip.set("name", name);
+            duplicatedClips.push({ ...getMinimalClipInfo(newClip), name });
+          } else {
+            duplicatedClips.push(getMinimalClipInfo(newClip));
+          }
         }
       }
     }

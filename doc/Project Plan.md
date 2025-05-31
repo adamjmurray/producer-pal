@@ -55,19 +55,18 @@
 **BarBeat Improvements:**
 
 - [x] Support time signatures other than 4/4 in BarBeat notation
-- [ ] Use bar.beat format for all applicable time-related inputs and outputs (arrangement times, clip lengths e.g.
+- [x] Use bar.beat format for all applicable time-related inputs and outputs (arrangement times, clip lengths e.g.
       loopEnd, etc)
   - [x] all timing data returned by read-clip
   - [x] all args for create-clip and update-clip
   - [x] the arrangerStartTime arg in duplicate
   - [x] all applicable args and result properties for transport
-  - [ ] manually test thoroughly and fix any issues (generate a manual test plan?)
 
 **Duplicate Tool:**
 
 - [x] Duplicate scene to arranger (all clips in scene → arranger)
 - [x] Duplicating tracks or scenes should return info about any duplicated clips inside of them.
-- [ ] Duplicating tracks or scenes should have the option to duplicate clips or not
+- [x] Duplicating tracks or scenes should have the option to duplicate clips or not
 
 **Robustness:**
 
