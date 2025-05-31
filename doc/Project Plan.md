@@ -49,8 +49,8 @@
 
 **Clip editing:**
 
-- [ ] Add replaceNotes boolean arg for `update-clip`, which can default to true (the current behavior of completely
-      replacing all notes) and when set to false, will add/overwrite notes when setting notes
+- [x] Add clearExistingNotes boolean arg for `update-clip`, which can default to true (the current behavior of
+      completely replacing all notes) and when set to false, will add/overwrite notes when setting notes
 
 **BarBeat Improvements:**
 
@@ -95,7 +95,7 @@
 **Clip editing:**
 
 - [ ] support `v0` velocity, which will delete any existing note at the given pitch and start time when updating a clip
-      with `replaceNotes: false`
+      with `clearExistingNotes: false`
 
 **Live API Extensions:**
 

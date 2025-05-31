@@ -220,6 +220,7 @@ describe("updateClip", () => {
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1:1 v80 t2 C4 1:3 v120 t1 D4",
+      clearExistingNotes: true,
     });
   });
 
@@ -638,6 +639,98 @@ describe("updateClip", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
+    expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
+  });
+
+  it("should replace notes by default (clearExistingNotes: true)", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      notes: "1:1 C3",
+      clearExistingNotes: true, // explicit true
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],
+    });
+
+    expect(result.clearExistingNotes).toBe(true);
+  });
+
+  it("should replace notes by default when clearExistingNotes is not specified", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      notes: "1:1 C3",
+      // clearExistingNotes not specified, should default to true
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],
+    });
+
+    expect(result.clearExistingNotes).toBe(true);
+  });
+
+  it("should add to existing notes when clearExistingNotes is false", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      notes: "1:1 C3",
+      clearExistingNotes: false,
+    });
+
+    expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],
+    });
+
+    expect(result.clearExistingNotes).toBe(false);
+  });
+
+  it("should not call add_new_notes when clearExistingNotes is false and notes array is empty", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    updateClip({
+      ids: "clip1",
+      notes: "1:1 v0 C3", // All notes filtered out
+      clearExistingNotes: false,
+    });
+
+    expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
   });
 });

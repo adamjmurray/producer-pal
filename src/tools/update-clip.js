@@ -7,7 +7,8 @@ import { MAX_CLIP_BEATS } from "./constants.js";
  * Updates properties of existing clips
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
- * @param {string} [args.notes] - Musical notation string (replaces existing notes)
+ * @param {string} [args.notes] - Musical notation string
+ * @param {boolean} [args.clearExistingNotes=true] - Whether to replace all notes (true) or add to existing notes (false)
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -21,6 +22,7 @@ import { MAX_CLIP_BEATS } from "./constants.js";
 export function updateClip({
   ids,
   notes: notationString,
+  clearExistingNotes = true,
   name,
   color,
   timeSignature,
@@ -102,7 +104,11 @@ export function updateClip({
         timeSigNumerator,
         timeSigDenominator,
       });
-      clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
+
+      if (clearExistingNotes) {
+        clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
+      }
+
       if (notes.length > 0) {
         clip.call("add_new_notes", { notes });
       }
@@ -150,6 +156,7 @@ export function updateClip({
     if (loopEnd != null) clipResult.loopEnd = loopEnd;
     if (loop != null) clipResult.loop = loop;
     if (notationString != null) clipResult.notes = notationString;
+    if (notationString != null) clipResult.clearExistingNotes = clearExistingNotes;
 
     updatedClips.push(clipResult);
 

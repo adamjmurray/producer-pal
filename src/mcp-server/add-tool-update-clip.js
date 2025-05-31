@@ -34,7 +34,13 @@ export function addToolUpdateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          `Musical notation in the following BarBeat notation format. Replaces existing notes. ${notationDescription}`
+          `Musical notation in the following BarBeat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. ${notationDescription}`
+        ),
+      clearExistingNotes: z
+        .boolean()
+        .default(true)
+        .describe(
+          "When true (the default), replaces all existing notes with the provided notes. When false, adds the provided notes to existing notes without removing any (but overlapping notes will overwrite existing notes)."
         ),
     },
     async (args) => callLiveApi("update-clip", args)
