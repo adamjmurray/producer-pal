@@ -1,4 +1,4 @@
-// src/mcp-server.test.js
+// src/mcp-server/create-express-app.test.js
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -37,7 +37,7 @@ describe("MCP Express App", () => {
 
   beforeAll(async () => {
     // Import and start the server
-    const { createExpressApp } = await import("./mcp-server/create-express-app");
+    const { createExpressApp } = await import("./create-express-app");
 
     const app = createExpressApp();
     const port = await new Promise((resolve) => {
