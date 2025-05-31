@@ -1,4 +1,5 @@
 // src/tools/update-track.js
+import { setAllNonNull } from "../utils.js";
 
 /**
  * Updates properties of existing tracks
@@ -52,12 +53,13 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
       trackIndex,
     };
 
-    // Only include properties that were actually set
-    if (name != null) trackResult.name = name;
-    if (color != null) trackResult.color = color;
-    if (mute != null) trackResult.mute = mute;
-    if (solo != null) trackResult.solo = solo;
-    if (arm != null) trackResult.arm = arm;
+    setAllNonNull(trackResult, {
+      name,
+      color,
+      mute,
+      solo,
+      arm,
+    });
 
     updatedTracks.push(trackResult);
   }

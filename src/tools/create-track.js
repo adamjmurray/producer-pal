@@ -1,4 +1,5 @@
 // src/tools/create-track.js
+import { setAllNonNull } from "../utils.js";
 import { MAX_AUTO_CREATED_TRACKS } from "./constants.js";
 
 /**
@@ -67,11 +68,13 @@ export function createTrack({ trackIndex, count = 1, name, color, type = "midi",
     };
 
     // Only include properties that were actually set
-    if (trackName != null) trackResult.name = trackName;
-    if (color != null) trackResult.color = color;
-    if (mute != null) trackResult.mute = mute;
-    if (solo != null) trackResult.solo = solo;
-    if (arm != null) trackResult.arm = arm;
+    setAllNonNull(trackResult, {
+      name: trackName,
+      color,
+      mute,
+      solo,
+      arm,
+    });
 
     createdTracks.push(trackResult);
 

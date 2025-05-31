@@ -1,6 +1,7 @@
 // src/tools/create-clip.js
 import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
+import { setAllNonNull } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
 /**
@@ -221,18 +222,18 @@ export function createClip({
       }
     }
 
-    // Only include properties that were actually set
-    if (clipName != null) clipResult.name = clipName;
-    if (color != null) clipResult.color = color;
-    if (timeSigNumerator != null && timeSigDenominator != null) {
-      clipResult.timeSignature = `${timeSigNumerator}/${timeSigDenominator}`;
-    }
-    if (startMarker != null) clipResult.startMarker = startMarker;
-    if (endMarker != null) clipResult.endMarker = endMarker;
-    if (loopStart != null) clipResult.loopStart = loopStart;
-    if (loopEnd != null) clipResult.loopEnd = loopEnd;
-    if (loop != null) clipResult.loop = loop;
-    if (notationString != null) clipResult.notes = notationString;
+    setAllNonNull(clipResult, {
+      name: clipName,
+      color,
+      timeSignature:
+        timeSigNumerator != null && timeSigDenominator != null ? `${timeSigNumerator}/${timeSigDenominator}` : null,
+      startMarker,
+      endMarker,
+      loopStart,
+      loopEnd,
+      loop,
+      notes: notationString,
+    });
 
     createdClips.push(clipResult);
 

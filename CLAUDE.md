@@ -186,6 +186,8 @@ To update the version:
   instead of `x === undefined ? y : x` and similar expressions. Occasionally, we really do need to distinguish between
   null and undefined to support optional explicit nulls, and those are the only situations we should do things like
   `=== null` or `=== undefined`.
+- Use ES6 object shorthand property syntax when possible. Prefer `{ name, color }` over `{ name: name, color: color }`
+  when the property name and variable name are the same.
 - When update the playback state of live, like launching clips in Session view, updating the state of Live and then
   immediately reading the state may not reflect the state accurately. Previously we introduced sleep() delays to deal
   with this, but that is not ideal and may not work robustly across computers with different CPU characteristics.
