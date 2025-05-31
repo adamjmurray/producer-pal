@@ -85,4 +85,16 @@ if (typeof LiveAPI !== "undefined") {
     // Set in Live's color format (0x00RRGGBB)
     this.set("color", (r << 16) | (g << 8) | b);
   };
+
+  LiveAPI.prototype.setAll = function (properties) {
+    for (const [property, value] of Object.entries(properties)) {
+      if (value != null) {
+        if (property === "color") {
+          this.setColor(value);
+        } else {
+          this.set(property, value);
+        }
+      }
+    }
+  };
 }

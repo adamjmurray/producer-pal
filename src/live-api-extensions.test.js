@@ -252,4 +252,127 @@ describe("LiveAPI extensions", () => {
       expect(api.set).toHaveBeenCalledWith("color", originalColor);
     });
   });
+
+  describe("setAll", () => {
+    beforeEach(() => {
+      api.set = vi.fn();
+      api.setColor = vi.fn();
+    });
+
+    it("sets all non-null properties", () => {
+      api.setAll({
+        name: "Test Clip",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        start_marker: 0,
+        end_marker: 4
+      });
+
+      expect(api.set).toHaveBeenCalledWith("name", "Test Clip");
+      expect(api.set).toHaveBeenCalledWith("signature_numerator", 4);
+      expect(api.set).toHaveBeenCalledWith("signature_denominator", 4);
+      expect(api.set).toHaveBeenCalledWith("start_marker", 0);
+      expect(api.set).toHaveBeenCalledWith("end_marker", 4);
+      expect(api.set).toHaveBeenCalledTimes(5);
+    });
+
+    it("skips null values", () => {
+      api.setAll({
+        name: "Test",
+        start_marker: null,
+        end_marker: 4
+      });
+
+      expect(api.set).toHaveBeenCalledWith("name", "Test");
+      expect(api.set).toHaveBeenCalledWith("end_marker", 4);
+      expect(api.set).toHaveBeenCalledTimes(2);
+      expect(api.set).not.toHaveBeenCalledWith("start_marker", null);
+    });
+
+    it("skips undefined values", () => {
+      api.setAll({
+        name: "Test",
+        start_marker: undefined,
+        end_marker: 4
+      });
+
+      expect(api.set).toHaveBeenCalledWith("name", "Test");
+      expect(api.set).toHaveBeenCalledWith("end_marker", 4);
+      expect(api.set).toHaveBeenCalledTimes(2);
+      expect(api.set).not.toHaveBeenCalledWith("start_marker", undefined);
+    });
+
+    it("uses setColor for color property", () => {
+      api.setAll({
+        name: "Colored Clip",
+        color: "#FF0000"
+      });
+
+      expect(api.set).toHaveBeenCalledWith("name", "Colored Clip");
+      expect(api.setColor).toHaveBeenCalledWith("#FF0000");
+      expect(api.set).toHaveBeenCalledTimes(1);
+      expect(api.set).not.toHaveBeenCalledWith("color", "#FF0000");
+    });
+
+    it("handles empty object", () => {
+      api.setAll({});
+
+      expect(api.set).not.toHaveBeenCalled();
+      expect(api.setColor).not.toHaveBeenCalled();
+    });
+
+    it("handles mix of color and other properties with null values", () => {
+      api.setAll({
+        name: "Mixed",
+        color: "#00FF00",
+        loop_start: null,
+        loop_end: 8,
+        looping: true
+      });
+
+      expect(api.set).toHaveBeenCalledWith("name", "Mixed");
+      expect(api.setColor).toHaveBeenCalledWith("#00FF00");
+      expect(api.set).toHaveBeenCalledWith("loop_end", 8);
+      expect(api.set).toHaveBeenCalledWith("looping", true);
+      expect(api.set).toHaveBeenCalledTimes(3);
+      expect(api.set).not.toHaveBeenCalledWith("loop_start", null);
+    });
+
+    it("skips color when null", () => {
+      api.setAll({
+        name: "Test",
+        color: null
+      });
+
+      expect(api.set).toHaveBeenCalledWith("name", "Test");
+      expect(api.setColor).not.toHaveBeenCalled();
+    });
+
+    it("allows zero as a valid value", () => {
+      api.setAll({
+        start_marker: 0,
+        value: 0
+      });
+
+      expect(api.set).toHaveBeenCalledWith("start_marker", 0);
+      expect(api.set).toHaveBeenCalledWith("value", 0);
+      expect(api.set).toHaveBeenCalledTimes(2);
+    });
+
+    it("allows false as a valid value", () => {
+      api.setAll({
+        looping: false
+      });
+
+      expect(api.set).toHaveBeenCalledWith("looping", false);
+    });
+
+    it("allows empty string as a valid value", () => {
+      api.setAll({
+        name: ""
+      });
+
+      expect(api.set).toHaveBeenCalledWith("name", "");
+    });
+  });
 });

@@ -200,41 +200,17 @@ export function createClip({
       }
     }
 
-    // Set clip properties
-    if (clipName != null) {
-      clip.set("name", clipName);
-    }
-
-    if (color != null) {
-      clip.setColor(color);
-    }
-
-    if (timeSigNumerator != null) {
-      clip.set("signature_numerator", timeSigNumerator);
-    }
-    if (timeSigDenominator != null) {
-      clip.set("signature_denominator", timeSigDenominator);
-    }
-
-    if (startMarkerBeats != null) {
-      clip.set("start_marker", startMarkerBeats);
-    }
-
-    if (endMarkerBeats != null) {
-      clip.set("end_marker", endMarkerBeats);
-    }
-
-    if (loopStartBeats != null) {
-      clip.set("loop_start", loopStartBeats);
-    }
-
-    if (loopEndBeats != null) {
-      clip.set("loop_end", loopEndBeats);
-    }
-
-    if (loop != null) {
-      clip.set("looping", loop);
-    }
+    clip.setAll({
+      name: clipName,
+      color: color,
+      signature_numerator: timeSigNumerator,
+      signature_denominator: timeSigDenominator,
+      start_marker: startMarkerBeats,
+      end_marker: endMarkerBeats,
+      loop_start: loopStartBeats,
+      loop_end: loopEndBeats,
+      looping: loop,
+    });
 
     if (notes.length > 0) {
       clip.call("add_new_notes", { notes });
