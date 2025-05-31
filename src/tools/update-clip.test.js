@@ -733,4 +733,24 @@ describe("updateClip", () => {
     expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
   });
+
+  it("should set loop markers when provided", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    updateClip({
+      ids: "clip1",
+      loopStart: "1:3",
+      loopEnd: "2:1",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 2);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_end", 4);
+  });
 });

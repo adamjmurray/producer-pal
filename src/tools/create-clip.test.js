@@ -654,4 +654,24 @@ describe("createClip", () => {
 
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
   });
+
+  it("should set start and loop markers when provided", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    createClip({
+      view: "Session",
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      name: "Test Clip",
+      notes: "C3 D3",
+      startMarker: "1:2",
+      loopStart: "1:3",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 1);
+    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 2);
+  });
 });
