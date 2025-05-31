@@ -1,5 +1,6 @@
 // src/mcp-server/create-mcp-server.js
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { VERSION } from "../version";
 import { addToolCaptureScene } from "./add-tool-capture-scene";
 import { addToolCreateClip } from "./add-tool-create-clip";
 import { addToolCreateScene } from "./add-tool-create-scene";
@@ -19,7 +20,7 @@ import { addToolUpdateTrack } from "./add-tool-update-track";
 export function createMcpServer(callLiveApi) {
   const server = new McpServer({
     name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
-    version: "1.0.0",
+    version: VERSION,
   });
 
   addToolTransport(server, callLiveApi);

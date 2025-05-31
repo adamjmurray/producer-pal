@@ -129,6 +129,19 @@ export default function toolName(liveApi, args) {
 
 When modifying BarBeat notation grammar, remember to rebuild the parser with `npm run parser:build`.
 
+## Versioning
+
+The project uses semantic versioning (major.minor.patch) maintained in `src/version.js`. The version is:
+- Displayed in server startup logs
+- Sent to the MCP SDK as the server version
+- Output to Max via `Max.outlet("version", VERSION)` for display in the device
+
+Currently at v0.9.x, working towards the 1.0.0 release.
+
+To update the version:
+1. Edit `src/version.js` and update the `VERSION` constant
+2. Run `npm run build` to rebuild with the new version
+
 ## Project Rules
 
 - Minimize dependencies to reduce complexity and maintenance

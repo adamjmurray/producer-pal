@@ -2,6 +2,7 @@
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
 import { createExpressApp, DEFAULT_LIVE_API_CALL_TIMEOUT_MS } from "./mcp-server/create-express-app";
+import { VERSION } from "./version";
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
@@ -19,7 +20,7 @@ args.forEach((arg, index) => {
   }
 });
 
-Max.post(`[${now()}] MCP Server starting with port=${port}, Live API timeout=${timeoutMs}ms`);
+Max.post(`[${now()}] MCP Server v${VERSION} starting with port=${port}, Live API timeout=${timeoutMs}ms`);
 
 const appServer = createExpressApp({ timeoutMs });
 
@@ -27,6 +28,7 @@ appServer
   .listen(port, () => {
     const url = `http://localhost:${port}/mcp`;
     Max.post(`[${now()}] MCP Server running at ${url}`);
+    Max.outlet("version", VERSION);
     Max.outlet(
       "claude_config",
       `{
