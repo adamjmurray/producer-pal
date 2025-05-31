@@ -294,4 +294,52 @@ describe("deleteObject", () => {
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
   });
+
+  it("should throw error when track path is malformed (no track index)", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 0") return "track_0";
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "track_0") return "invalid_path_without_track_index";
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === "track_0") return "Track";
+    });
+
+    expect(() => deleteObject({ ids: "track_0", type: "track" })).toThrow(
+      'delete failed: no track index for id "track_0" (path="invalid_path_without_track_index")'
+    );
+  });
+
+  it("should throw error when scene path is malformed (no scene index)", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set scenes 0") return "scene_0";
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "scene_0") return "invalid_path_without_scene_index";
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === "scene_0") return "Scene";
+    });
+
+    expect(() => deleteObject({ ids: "scene_0", type: "scene" })).toThrow(
+      'delete failed: no scene index for id "scene_0" (path="invalid_path_without_scene_index")'
+    );
+  });
+
+  it("should throw error when clip path is malformed (no track index)", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 0 clip_slots 0 clip") return "clip_0";
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "clip_0") return "invalid_path_without_track_index";
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === "clip_0") return "Clip";
+    });
+
+    expect(() => deleteObject({ ids: "clip_0", type: "clip" })).toThrow(
+      'delete failed: no track index for id "clip_0" (path="invalid_path_without_track_index")'
+    );
+  });
 });
