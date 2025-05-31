@@ -232,4 +232,42 @@ describe("MCP Express App", () => {
       }
     });
   });
+
+  describe("Error Handling", () => {
+    it("should return method not allowed for GET /mcp", async () => {
+      const response = await fetch(serverUrl, {
+        method: "GET",
+      });
+
+      expect(response.status).toBe(405);
+      const errorResponse = await response.json();
+      expect(errorResponse.jsonrpc).toBe("2.0");
+      expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
+      expect(errorResponse.error.message).toBe("Method not allowed.");
+      expect(errorResponse.id).toBe(null);
+    });
+
+    it("should return method not allowed for DELETE /mcp", async () => {
+      const response = await fetch(serverUrl, {
+        method: "DELETE",
+      });
+
+      expect(response.status).toBe(405);
+      const errorResponse = await response.json();
+      expect(errorResponse.jsonrpc).toBe("2.0");
+      expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
+      expect(errorResponse.error.message).toBe("Method not allowed.");
+      expect(errorResponse.id).toBe(null);
+    });
+  });
+
+  describe("Configuration Options", () => {
+    it("should accept custom timeout options", async () => {
+      const { createExpressApp } = await import("./create-express-app");
+      const customApp = createExpressApp({ timeoutMs: 5000 });
+      
+      expect(customApp).toBeDefined();
+      // The timeout is used internally, so we just verify the app was created successfully
+    });
+  });
 });
