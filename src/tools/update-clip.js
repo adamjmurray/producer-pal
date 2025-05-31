@@ -103,7 +103,9 @@ export function updateClip({
         timeSigDenominator,
       });
       clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
-      clip.call("add_new_notes", { notes });
+      if (notes.length > 0) {
+        clip.call("add_new_notes", { notes });
+      }
     }
 
     // Determine view and indices from clip path

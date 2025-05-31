@@ -209,11 +209,25 @@ describe("BarBeat parseNotation()", () => {
     ]);
   });
 
-  it("handles velocity 0 correctly", () => {
-    const result = parseNotation("v0 C3 v100 D3");
+  it("filters out notes with velocity 0", () => {
+    const result = parseNotation("1:1 v100 C3 v0 D3 v80 E3");
     expect(result).toEqual([
-      { pitch: 60, start_time: 0, duration: 1, velocity: 0, probability: 1.0, velocity_deviation: 0 },
-      { pitch: 62, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+      // D3 with v0 should be filtered out
+      { pitch: 64, start_time: 0, duration: 1, velocity: 80, probability: 1.0, velocity_deviation: 0 },
     ]);
+  });
+
+  it("filters out notes with velocity range starting at 0", () => {
+    const result = parseNotation("1:1 v0-50 C3 v50-100 D3");
+    expect(result).toEqual([
+      // C3 with v0-50 should be filtered out
+      { pitch: 62, start_time: 0, duration: 1, velocity: 50, probability: 1.0, velocity_deviation: 50 },
+    ]);
+  });
+
+  it("handles all notes filtered out", () => {
+    const result = parseNotation("1:1 v0 C3 D3 E3");
+    expect(result).toEqual([]);
   });
 });

@@ -596,4 +596,48 @@ describe("updateClip", () => {
       },
     ]);
   });
+
+  it("should filter out v0 notes when updating clips", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "clip1",
+      notes: "1:1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+      notes: [
+        { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+        { pitch: 64, start_time: 0, duration: 1, velocity: 80, probability: 1.0, velocity_deviation: 0 },
+      ],
+    });
+
+    expect(result.notes).toBe("1:1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
+  });
+
+  it("should handle clips with all v0 notes filtered out during update", () => {
+    mockLiveApiGet({
+      clip1: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    updateClip({
+      ids: "clip1",
+      notes: "1:1 v0 C3 D3 E3", // All notes should be filtered out
+    });
+
+    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
+    expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
+  });
 });

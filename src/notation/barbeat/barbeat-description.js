@@ -19,7 +19,7 @@ BarBeat is a precise, stateful music notation format for MIDI sequencing.
   - 1.0 = note always plays, 0.0 = note never plays
   - Default: 1.0
 
-- **Velocity (\`v<0-127>\` or \`v<min>-<max>\`)**
+- **Velocity (\`v<1-127>\` or \`v<min>-<max>\`)**
   - Sets velocity for following notes until changed
   - Single value: \`v100\` (fixed velocity)
   - Range: \`v80-120\` or \`v120-80\` (random velocity between min and max, auto-ordered)

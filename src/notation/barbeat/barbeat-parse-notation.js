@@ -78,6 +78,11 @@ export function parseNotation(barBeatExpression, options = {}) {
           velocity_deviation = DEFAULT_VELOCITY_DEVIATION;
         }
 
+        // Filter out notes with velocity 0 to prevent Live API errors
+        if (velocity === 0) {
+          continue;
+        }
+
         const abletonDuration =
           timeSigDenominator != null ? currentDuration * (4 / timeSigDenominator) : currentDuration;
 
