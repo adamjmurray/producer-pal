@@ -12,7 +12,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary", "json", "html"],
       include: ["src/**"],
-      exclude: ["src/main.js", "src/console.js", "src/mcp-server.mjs", "src/mock-*", "src/mcp-server/**"],
+      exclude: ["src/main.js", "src/console.js", "src/mcp-server.js", "src/mock-*"],
       reportOnFailure: true,
     },
   },
