@@ -1,5 +1,5 @@
 // src/tools/update-track.js
-import { setAllNonNull } from "../utils.js";
+import { withoutNulls } from "../utils.js";
 
 /**
  * Updates properties of existing tracks
@@ -48,20 +48,17 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
     }
 
     // Build optimistic result object
-    const trackResult = {
-      id: track.id,
-      trackIndex,
-    };
-
-    setAllNonNull(trackResult, {
-      name,
-      color,
-      mute,
-      solo,
-      arm,
-    });
-
-    updatedTracks.push(trackResult);
+    updatedTracks.push(
+      withoutNulls({
+        id: track.id,
+        trackIndex,
+        name,
+        color,
+        mute,
+        solo,
+        arm,
+      })
+    );
   }
 
   // Return single object if single ID was provided, array if comma-separated IDs were provided

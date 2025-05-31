@@ -1,5 +1,5 @@
 // src/tools/create-track.js
-import { setAllNonNull } from "../utils.js";
+import { withoutNulls } from "../utils.js";
 import { MAX_AUTO_CREATED_TRACKS } from "./constants.js";
 
 /**
@@ -60,23 +60,19 @@ export function createTrack({ trackIndex, count = 1, name, color, type = "midi",
       arm,
     });
 
-    // Build optimistic result object
-    const trackResult = {
-      id: trackId,
-      trackIndex: currentIndex,
-      type,
-    };
-
-    // Only include properties that were actually set
-    setAllNonNull(trackResult, {
-      name: trackName,
-      color,
-      mute,
-      solo,
-      arm,
-    });
-
-    createdTracks.push(trackResult);
+    // Build optimistic result object  
+    createdTracks.push(
+      withoutNulls({
+        id: trackId,
+        trackIndex: currentIndex,
+        type,
+        name: trackName,
+        color,
+        mute,
+        solo,
+        arm,
+      })
+    );
 
     // For subsequent tracks, increment the index since tracks shift right
     currentIndex++;
