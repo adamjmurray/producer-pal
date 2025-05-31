@@ -26,6 +26,10 @@ npm run parser:build    # Rebuild parser from .peggy file
 npm run parser:watch    # Auto-rebuild parser
 ```
 
+### Build Warnings
+
+The build process shows circular dependency warnings from `zod-to-json-schema`. These are harmless and can be ignored - they come from the MCP SDK's dependencies and don't affect functionality.
+
 ## Architecture
 
 The system follows this communication flow:
