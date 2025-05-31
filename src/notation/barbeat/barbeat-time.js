@@ -61,12 +61,15 @@ export function abletonBeatsToBarBeat(abletonBeats, timeSigNumerator, timeSigDen
 
 /**
  * Convert bar:beat format to Ableton beats (quarter notes) using musical beats
- * @param {string} barBeat - Bar:beat format (e.g., "2:3.5")
+ * @param {string|null} barBeat - Bar:beat format (e.g., "2:3.5") or null
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number} Quarter note beats (0-based)
+ * @returns {number|null} Quarter note beats (0-based) or null if barBeat is null
  */
 export function barBeatToAbletonBeats(barBeat, timeSigNumerator, timeSigDenominator) {
+  if (barBeat == null) {
+    return null;
+  }
   const musicalBeatsPerBar = timeSigNumerator;
   const musicalBeats = barBeatToBeats(barBeat, musicalBeatsPerBar);
   return musicalBeats * (4 / timeSigDenominator);

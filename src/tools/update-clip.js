@@ -72,11 +72,10 @@ export function updateClip({
       color: color,
       signature_numerator: timeSignature != null ? timeSigNumerator : null,
       signature_denominator: timeSignature != null ? timeSigDenominator : null,
-      start_marker:
-        startMarker != null ? barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator) : null,
-      end_marker: endMarker != null ? barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator) : null,
-      loop_start: loopStart != null ? barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator) : null,
-      loop_end: loopEnd != null ? barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator) : null,
+      start_marker: barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator),
+      end_marker: barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator),
+      loop_start: barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator),
+      loop_end: barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator),
       looping: loop,
     });
 

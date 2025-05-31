@@ -83,31 +83,11 @@ export function createClip({
   }
 
   // Convert bar:beat timing parameters to Ableton beats
-  let arrangerStartTimeBeats = null;
-  let startMarkerBeats = null;
-  let endMarkerBeats = null;
-  let loopStartBeats = null;
-  let loopEndBeats = null;
-
-  if (arrangerStartTime != null) {
-    arrangerStartTimeBeats = barBeatToAbletonBeats(arrangerStartTime, songTimeSigNumerator, songTimeSigDenominator);
-  }
-
-  if (startMarker != null) {
-    startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
-  }
-
-  if (endMarker != null) {
-    endMarkerBeats = barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator);
-  }
-
-  if (loopStart != null) {
-    loopStartBeats = barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator);
-  }
-
-  if (loopEnd != null) {
-    loopEndBeats = barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator);
-  }
+  const arrangerStartTimeBeats = barBeatToAbletonBeats(arrangerStartTime, songTimeSigNumerator, songTimeSigDenominator);
+  const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
+  const endMarkerBeats = barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator);
+  const loopStartBeats = barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator);
+  const loopEndBeats = barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator);
 
   const notes =
     notationString != null

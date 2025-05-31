@@ -100,7 +100,7 @@
 
 - [x] Implement `Live.from(pathOrId)` that handles prepending "id " when needed (this pattern occurs all over the
       codebase). It should detect digits-only strings and prepend id.
-- [ ] When setting lots of properties but only when they are not null, maybe we can have an extension like
+- [x] When setting lots of properties but only when they are not null, maybe we can have an extension like
       `liveApiObj.setValues({live_api_prop_name: maybeNullValue, ...})`
 - [ ] Look for other opportunities to refactor recurring patterns of LiveAPI usage
   - [ ] I'm thinking about adding LiveAPI.prototype.trackIndex that attempts to parse it out of the current path or

@@ -232,6 +232,18 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToAbletonBeats("1:1.5", 6, 8)).toBe(0.25);
       expect(barBeatToAbletonBeats("1:2.5", 6, 8)).toBe(0.75);
     });
+
+    it("returns null when barBeat is null", () => {
+      expect(barBeatToAbletonBeats(null, 4, 4)).toBeNull();
+      expect(barBeatToAbletonBeats(null, 3, 4)).toBeNull();
+      expect(barBeatToAbletonBeats(null, 6, 8)).toBeNull();
+    });
+
+    it("returns null when barBeat is undefined", () => {
+      expect(barBeatToAbletonBeats(undefined, 4, 4)).toBeNull();
+      expect(barBeatToAbletonBeats(undefined, 3, 4)).toBeNull();
+      expect(barBeatToAbletonBeats(undefined, 6, 8)).toBeNull();
+    });
   });
 
   describe("round-trip conversions", () => {
