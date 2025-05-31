@@ -121,4 +121,4 @@ export function createExpressApp(options = {}) {
   return app;
 }
 
-export { callLiveApi };
+export { callLiveApi, handleLiveApiResult };
