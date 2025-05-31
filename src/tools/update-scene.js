@@ -1,5 +1,5 @@
 // src/tools/update-scene.js
-import { parseCommaSeparatedIds } from "../utils.js";
+import { parseCommaSeparatedIds, parseTimeSignature } from "../utils.js";
 
 /**
  * Updates properties of existing scenes
@@ -50,14 +50,9 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
     if (timeSignature === "disabled") {
       scene.set("time_signature_enabled", false);
     } else if (timeSignature != null) {
-      const match = timeSignature.match(/^(\d+)\/(\d+)$/);
-      if (!match) {
-        throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
-      }
-      const numerator = parseInt(match[1], 10);
-      const denominator = parseInt(match[2], 10);
-      scene.set("time_signature_numerator", numerator);
-      scene.set("time_signature_denominator", denominator);
+      const parsed = parseTimeSignature(timeSignature);
+      scene.set("time_signature_numerator", parsed.numerator);
+      scene.set("time_signature_denominator", parsed.denominator);
       scene.set("time_signature_enabled", true);
     }
 

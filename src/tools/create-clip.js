@@ -1,7 +1,7 @@
 // src/tools/create-clip.js
 import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
-import { setAllNonNull } from "../utils.js";
+import { setAllNonNull, parseTimeSignature } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
 /**
@@ -71,12 +71,9 @@ export function createClip({
   songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   if (timeSignature != null) {
-    const match = timeSignature.match(/^(\d+)\/(\d+)$/);
-    if (!match) {
-      throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
-    }
-    timeSigNumerator = parseInt(match[1], 10);
-    timeSigDenominator = parseInt(match[2], 10);
+    const parsed = parseTimeSignature(timeSignature);
+    timeSigNumerator = parsed.numerator;
+    timeSigDenominator = parsed.denominator;
   } else {
     // Use song time signature as default for clips
     timeSigNumerator = songTimeSigNumerator;

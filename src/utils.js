@@ -61,3 +61,20 @@ export function parseCommaSeparatedIndices(indices) {
       return parsed;
     });
 }
+
+/**
+ * Parses a time signature string into numerator and denominator
+ * @param {string} timeSignature - Time signature in format "n/m" (e.g., "4/4", "3/4", "6/8")
+ * @returns {{numerator: number, denominator: number}} Object with numerator and denominator
+ * @throws {Error} If time signature format is invalid
+ */
+export function parseTimeSignature(timeSignature) {
+  const match = timeSignature.match(/^(\d+)\/(\d+)$/);
+  if (!match) {
+    throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
+  }
+  return {
+    numerator: parseInt(match[1], 10),
+    denominator: parseInt(match[2], 10)
+  };
+}

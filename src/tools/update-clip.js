@@ -1,7 +1,7 @@
 // src/tools/update-clip.js
 import { barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
-import { parseCommaSeparatedIds } from "../utils.js";
+import { parseCommaSeparatedIds, parseTimeSignature } from "../utils.js";
 import { MAX_CLIP_BEATS } from "./constants.js";
 
 /**
@@ -54,12 +54,9 @@ export function updateClip({
     // Parse time signature if provided to get numerator/denominator
     let timeSigNumerator, timeSigDenominator;
     if (timeSignature != null) {
-      const match = timeSignature.match(/^(\d+)\/(\d+)$/);
-      if (!match) {
-        throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
-      }
-      timeSigNumerator = Number.parseInt(match[1]);
-      timeSigDenominator = Number.parseInt(match[2]);
+      const parsed = parseTimeSignature(timeSignature);
+      timeSigNumerator = parsed.numerator;
+      timeSigDenominator = parsed.denominator;
     } else {
       timeSigNumerator = clip.getProperty("signature_numerator");
       timeSigDenominator = clip.getProperty("signature_denominator");

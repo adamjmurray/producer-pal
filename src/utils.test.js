@@ -1,6 +1,6 @@
 // src/utils.test.js
 import { describe, expect, it } from "vitest";
-import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices } from "./utils";
+import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices, parseTimeSignature } from "./utils";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {
@@ -429,5 +429,74 @@ describe("parseCommaSeparatedIndices", () => {
   it("handles leading and trailing commas", () => {
     const result = parseCommaSeparatedIndices(",0,1,2,");
     expect(result).toEqual([0, 1, 2]);
+  });
+});
+
+describe("parseTimeSignature", () => {
+  it("parses common time signatures", () => {
+    expect(parseTimeSignature("4/4")).toEqual({ numerator: 4, denominator: 4 });
+    expect(parseTimeSignature("3/4")).toEqual({ numerator: 3, denominator: 4 });
+    expect(parseTimeSignature("2/4")).toEqual({ numerator: 2, denominator: 4 });
+    expect(parseTimeSignature("6/8")).toEqual({ numerator: 6, denominator: 8 });
+  });
+
+  it("parses complex time signatures", () => {
+    expect(parseTimeSignature("7/8")).toEqual({ numerator: 7, denominator: 8 });
+    expect(parseTimeSignature("5/4")).toEqual({ numerator: 5, denominator: 4 });
+    expect(parseTimeSignature("9/8")).toEqual({ numerator: 9, denominator: 8 });
+    expect(parseTimeSignature("12/8")).toEqual({ numerator: 12, denominator: 8 });
+  });
+
+  it("parses unusual time signatures", () => {
+    expect(parseTimeSignature("15/16")).toEqual({ numerator: 15, denominator: 16 });
+    expect(parseTimeSignature("1/1")).toEqual({ numerator: 1, denominator: 1 });
+    expect(parseTimeSignature("11/4")).toEqual({ numerator: 11, denominator: 4 });
+  });
+
+  it("handles large numbers", () => {
+    expect(parseTimeSignature("128/64")).toEqual({ numerator: 128, denominator: 64 });
+  });
+
+  it("throws error for invalid format - missing slash", () => {
+    expect(() => parseTimeSignature("44")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - multiple slashes", () => {
+    expect(() => parseTimeSignature("4/4/4")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - non-numeric numerator", () => {
+    expect(() => parseTimeSignature("four/4")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - non-numeric denominator", () => {
+    expect(() => parseTimeSignature("4/four")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - empty numerator", () => {
+    expect(() => parseTimeSignature("/4")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - empty denominator", () => {
+    expect(() => parseTimeSignature("4/")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - spaces", () => {
+    expect(() => parseTimeSignature("4 / 4")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+    expect(() => parseTimeSignature(" 4/4 ")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - decimal numbers", () => {
+    expect(() => parseTimeSignature("4.5/4")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+    expect(() => parseTimeSignature("4/4.5")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for invalid format - negative numbers", () => {
+    expect(() => parseTimeSignature("-4/4")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+    expect(() => parseTimeSignature("4/-4")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
+  });
+
+  it("throws error for empty string", () => {
+    expect(() => parseTimeSignature("")).toThrow('Time signature must be in format "n/m" (e.g. "4/4")');
   });
 });

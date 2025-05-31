@@ -1,4 +1,6 @@
 // src/tools/update-song.js
+import { parseTimeSignature } from "../utils.js";
+
 /**
  * Updates Live Set parameters like tempo, time signature, and playback state
  * @param {Object} args - The parameters
@@ -18,14 +20,9 @@ export function updateSong({ view, tempo, timeSignature } = {}) {
   }
 
   if (timeSignature != null) {
-    const match = timeSignature.match(/^(\d+)\/(\d+)$/);
-    if (!match) {
-      throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
-    }
-    const numerator = parseInt(match[1], 10);
-    const denominator = parseInt(match[2], 10);
-    liveSet.set("signature_numerator", numerator);
-    liveSet.set("signature_denominator", denominator);
+    const parsed = parseTimeSignature(timeSignature);
+    liveSet.set("signature_numerator", parsed.numerator);
+    liveSet.set("signature_denominator", parsed.denominator);
   }
 
   if (view != null) {
