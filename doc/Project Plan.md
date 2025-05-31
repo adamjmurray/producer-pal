@@ -66,11 +66,7 @@
 **Duplicate Tool:**
 
 - [x] Duplicate scene to arranger (all clips in scene → arranger)
-- [ ] Duplicating tracks or scenes should return info about any duplicated clips inside of them. Consider updating the
-      tool descriptions to indicate clips will be duplicated and will need to be modified with update-clip rather than
-      attempting to create-clip. Claude's feedback "duplicate description should mention that it copies all clips and
-      explain the workflow for modifying them. create-clip description should explicitly state it fails if a clip
-      already exists at that slot. Maybe add a note about using update-clip for modifying duplicated clips"
+- [x] Duplicating tracks or scenes should return info about any duplicated clips inside of them.
 - [ ] Duplicating tracks or scenes should have the option to duplicate clips or not
 
 **Robustness:**
@@ -112,6 +108,7 @@
 
 **Duplicate Tool:**
 
+- [ ] See docs/Duplicate Tool Response Format Improvement Plan.md
 - [ ] ClipSlot.duplicate_clip_to with bulk destination support
 - [ ] Duplicate scene to arranger (all clips in scene → arranger) enhancements
   - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the

@@ -1,6 +1,14 @@
 // src/tools/duplicate.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import {
+  children,
+  liveApiCall,
+  liveApiGet,
+  liveApiId,
+  liveApiPath,
+  liveApiSet,
+  mockLiveApiGet,
+} from "../mock-live-api";
 import { duplicate } from "./duplicate";
 
 describe("duplicate", () => {
@@ -47,8 +55,9 @@ describe("duplicate", () => {
         id: "track1",
         count: 1,
         duplicated: true,
-        newId: "live_set/tracks/1",
+        newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
+        duplicatedClips: [],
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
@@ -73,19 +82,22 @@ describe("duplicate", () => {
         duplicated: true,
         objects: [
           {
-            newId: "live_set/tracks/1",
+            newTrackId: "live_set/tracks/1",
             newTrackIndex: 1,
             name: "Custom Track",
+            duplicatedClips: [],
           },
           {
-            newId: "live_set/tracks/2",
+            newTrackId: "live_set/tracks/2",
             newTrackIndex: 2,
             name: "Custom Track 2",
+            duplicatedClips: [],
           },
           {
-            newId: "live_set/tracks/3",
+            newTrackId: "live_set/tracks/3",
             newTrackIndex: 3,
             name: "Custom Track 3",
+            duplicatedClips: [],
           },
         ],
       });
@@ -109,6 +121,15 @@ describe("duplicate", () => {
         return this._path;
       });
 
+      // Mock scene with clips in tracks 0 and 1
+      mockLiveApiGet({
+        LiveSet: {
+          tracks: children("track0", "track1"),
+        },
+        "live_set tracks 0 clip_slots 1": { has_clip: 1 },
+        "live_set tracks 1 clip_slots 1": { has_clip: 1 },
+      });
+
       const result = duplicate({ type: "scene", id: "scene1" });
 
       expect(result).toStrictEqual({
@@ -116,8 +137,22 @@ describe("duplicate", () => {
         id: "scene1",
         count: 1,
         duplicated: true,
-        newId: "live_set/scenes/1",
+        newSceneId: "live_set/scenes/1",
         newSceneIndex: 1,
+        duplicatedClips: [
+          {
+            id: "live_set/tracks/0/clip_slots/1/clip",
+            view: "Session",
+            trackIndex: 0,
+            clipSlotIndex: 1,
+          },
+          {
+            id: "live_set/tracks/1/clip_slots/1/clip",
+            view: "Session",
+            trackIndex: 1,
+            clipSlotIndex: 1,
+          },
+        ],
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
@@ -132,6 +167,17 @@ describe("duplicate", () => {
         return this._path;
       });
 
+      // Mock scene with clips in tracks 0 and 1
+      mockLiveApiGet({
+        LiveSet: {
+          tracks: children("track0", "track1"),
+        },
+        "live_set tracks 0 clip_slots 1": { has_clip: 1 },
+        "live_set tracks 1 clip_slots 1": { has_clip: 1 },
+        "live_set tracks 0 clip_slots 2": { has_clip: 1 },
+        "live_set tracks 1 clip_slots 2": { has_clip: 1 },
+      });
+
       const result = duplicate({ type: "scene", id: "scene1", count: 2, name: "Custom Scene" });
 
       expect(result).toStrictEqual({
@@ -142,14 +188,42 @@ describe("duplicate", () => {
         duplicated: true,
         objects: [
           {
-            newId: "live_set/scenes/1",
+            newSceneId: "live_set/scenes/1",
             newSceneIndex: 1,
             name: "Custom Scene",
+            duplicatedClips: [
+              {
+                id: "live_set/tracks/0/clip_slots/1/clip",
+                view: "Session",
+                trackIndex: 0,
+                clipSlotIndex: 1,
+              },
+              {
+                id: "live_set/tracks/1/clip_slots/1/clip",
+                view: "Session",
+                trackIndex: 1,
+                clipSlotIndex: 1,
+              },
+            ],
           },
           {
-            newId: "live_set/scenes/2",
+            newSceneId: "live_set/scenes/2",
             newSceneIndex: 2,
             name: "Custom Scene 2",
+            duplicatedClips: [
+              {
+                id: "live_set/tracks/0/clip_slots/2/clip",
+                view: "Session",
+                trackIndex: 0,
+                clipSlotIndex: 2,
+              },
+              {
+                id: "live_set/tracks/1/clip_slots/2/clip",
+                view: "Session",
+                trackIndex: 1,
+                clipSlotIndex: 2,
+              },
+            ],
           },
         ],
       });
@@ -195,11 +269,41 @@ describe("duplicate", () => {
           "live_set tracks 2 clip_slots 0 clip": { length: 8 },
         });
 
-        liveApiCall.mockImplementation(function (method) {
+        liveApiCall.mockImplementation(function (method, clipId, startTime) {
           if (method === "duplicate_clip_to_arrangement") {
-            return ["id", "new_clip"];
+            // Extract track index from the clip ID path
+            const trackMatch = clipId.match(/tracks\/(\d+)/);
+            const trackIndex = trackMatch ? trackMatch[1] : "0";
+            // Return a mock arranger clip ID
+            return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
           }
           return null;
+        });
+
+        // Add mocking for the arranger clips
+        // TODO: find a better way to do this
+        const originalGet = liveApiGet.getMockImplementation();
+        const originalPath = liveApiPath.getMockImplementation();
+
+        liveApiPath.mockImplementation(function () {
+          // For arranger clips created by ID, return a proper path
+          if (this._path.startsWith("id live_set tracks") && this._path.includes("arrangement_clips")) {
+            return this._path.slice(3); // Remove "id " prefix
+          }
+          return originalPath ? originalPath.call(this) : this._path;
+        });
+
+        liveApiGet.mockImplementation(function (prop) {
+          // Check if this is an arranger clip requesting is_arrangement_clip
+          if (this._path.includes("arrangement_clips") && prop === "is_arrangement_clip") {
+            return [1];
+          }
+          // Check if this is an arranger clip requesting start_time
+          if (this._path.includes("arrangement_clips") && prop === "start_time") {
+            return [16];
+          }
+          // Otherwise use the original mock implementation
+          return originalGet ? originalGet.call(this, prop) : [];
         });
 
         const result = duplicate({
@@ -228,15 +332,19 @@ describe("duplicate", () => {
           destination: "arranger",
           arrangerStartTime: "5:1",
           duplicated: true,
-          newArrangerStartTime: "5:1",
+          arrangerStartTime: "5:1",
           duplicatedClips: [
             {
-              newId: "new_clip",
-              newTrackIndex: 0,
+              id: "live_set tracks 0 arrangement_clips 0",
+              view: "Arranger",
+              trackIndex: 0,
+              arrangerStartTime: "5:1",
             },
             {
-              newId: "new_clip",
-              newTrackIndex: 2,
+              id: "live_set tracks 2 arrangement_clips 0",
+              view: "Arranger",
+              trackIndex: 2,
+              arrangerStartTime: "5:1",
             },
           ],
         });
@@ -259,11 +367,46 @@ describe("duplicate", () => {
           "live_set tracks 0 clip_slots 0 clip": { length: 8 },
         });
 
-        liveApiCall.mockImplementation(function (method) {
+        let clipCounter = 0;
+        liveApiCall.mockImplementation(function (method, clipId, startTime) {
           if (method === "duplicate_clip_to_arrangement") {
-            return ["id", "new_clip"];
+            // Return unique clip IDs for each duplication
+            const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+            clipCounter++;
+            return ["id", clipId];
           }
           return null;
+        });
+
+        // Add mocking for the arranger clips
+        const originalGet = liveApiGet.getMockImplementation();
+        const originalPath = liveApiPath.getMockImplementation();
+
+        liveApiPath.mockImplementation(function () {
+          // For arranger clips created by ID, return a proper path
+          if (this._path.startsWith("id live_set tracks") && this._path.includes("arrangement_clips")) {
+            return this._path.slice(3); // Remove "id " prefix
+          }
+          return originalPath ? originalPath.call(this) : this._path;
+        });
+
+        liveApiGet.mockImplementation(function (prop) {
+          // Check if this is an arranger clip requesting is_arrangement_clip
+          if (this._path.includes("arrangement_clips") && prop === "is_arrangement_clip") {
+            return [1];
+          }
+          // Check if this is an arranger clip requesting start_time
+          if (this._path.includes("arrangement_clips") && prop === "start_time") {
+            // Return different start times based on clip index
+            const clipMatch = this._path.match(/arrangement_clips (\d+)/);
+            if (clipMatch) {
+              const clipIndex = parseInt(clipMatch[1]);
+              return [16 + clipIndex * 8]; // 16, 24, 32
+            }
+            return [16];
+          }
+          // Otherwise use the original mock implementation
+          return originalGet ? originalGet.call(this, prop) : [];
         });
 
         const result = duplicate({
@@ -302,32 +445,41 @@ describe("duplicate", () => {
           duplicated: true,
           objects: [
             {
-              newArrangerStartTime: "5:1",
+              arrangerStartTime: "5:1",
               name: "Scene Copy",
               duplicatedClips: [
                 {
-                  newId: "new_clip",
-                  newTrackIndex: 0,
+                  id: "live_set tracks 0 arrangement_clips 0",
+                  view: "Arranger",
+                  trackIndex: 0,
+                  arrangerStartTime: "5:1",
+                  name: "Scene Copy",
                 },
               ],
             },
             {
-              newArrangerStartTime: "7:1",
+              arrangerStartTime: "7:1",
               name: "Scene Copy 2",
               duplicatedClips: [
                 {
-                  newId: "new_clip",
-                  newTrackIndex: 0,
+                  id: "live_set tracks 0 arrangement_clips 1",
+                  view: "Arranger",
+                  trackIndex: 0,
+                  arrangerStartTime: "7:1",
+                  name: "Scene Copy 2",
                 },
               ],
             },
             {
-              newArrangerStartTime: "9:1",
+              arrangerStartTime: "9:1",
               name: "Scene Copy 3",
               duplicatedClips: [
                 {
-                  newId: "new_clip",
-                  newTrackIndex: 0,
+                  id: "live_set tracks 0 arrangement_clips 2",
+                  view: "Arranger",
+                  trackIndex: 0,
+                  arrangerStartTime: "9:1",
+                  name: "Scene Copy 3",
                 },
               ],
             },
@@ -368,7 +520,7 @@ describe("duplicate", () => {
           destination: "arranger",
           arrangerStartTime: "5:1",
           duplicated: true,
-          newArrangerStartTime: "5:1",
+          arrangerStartTime: "5:1",
           duplicatedClips: [],
         });
       });
@@ -420,9 +572,12 @@ describe("duplicate", () => {
           count: 1,
           destination: "session",
           duplicated: true,
-          newId: "live_set/tracks/0/clip_slots/1/clip",
-          newTrackIndex: 0,
-          newClipSlotIndex: 1,
+          duplicatedClip: {
+            id: "live_set/tracks/0/clip_slots/1/clip",
+            view: "Session",
+            trackIndex: 0,
+            clipSlotIndex: 1,
+          },
         });
       });
 
@@ -451,16 +606,22 @@ describe("duplicate", () => {
           duplicated: true,
           objects: [
             {
-              newId: "live_set/tracks/0/clip_slots/1/clip",
-              newTrackIndex: 0,
-              newClipSlotIndex: 1,
-              name: "Custom Clip",
+              duplicatedClip: {
+                id: "live_set/tracks/0/clip_slots/1/clip",
+                view: "Session",
+                trackIndex: 0,
+                clipSlotIndex: 1,
+                name: "Custom Clip",
+              },
             },
             {
-              newId: "live_set/tracks/0/clip_slots/2/clip",
-              newTrackIndex: 0,
-              newClipSlotIndex: 2,
-              name: "Custom Clip 2",
+              duplicatedClip: {
+                id: "live_set/tracks/0/clip_slots/2/clip",
+                view: "Session",
+                trackIndex: 0,
+                clipSlotIndex: 2,
+                name: "Custom Clip 2",
+              },
             },
           ],
         });
@@ -497,11 +658,27 @@ describe("duplicate", () => {
         });
         liveApiCall.mockImplementation(function (method) {
           if (method === "duplicate_clip_to_arrangement") {
-            return ["id", "arranger_clip"];
+            return ["id", "live_set tracks 0 arrangement_clips 0"];
           }
           return null;
         });
-        mockLiveApiGet({ clip1: { exists: () => true } });
+
+        // Mock for getMinimalClipInfo on the new arranger clip
+        const originalPath = liveApiPath.getMockImplementation();
+        liveApiPath.mockImplementation(function () {
+          if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+            return "live_set tracks 0 arrangement_clips 0";
+          }
+          return originalPath ? originalPath.call(this) : this._path;
+        });
+
+        mockLiveApiGet({
+          clip1: { exists: () => true },
+          "live_set tracks 0 arrangement_clips 0": {
+            is_arrangement_clip: 1,
+            start_time: 8,
+          },
+        });
 
         const result = duplicate({
           type: "clip",
@@ -520,9 +697,13 @@ describe("duplicate", () => {
           destination: "arranger",
           arrangerStartTime: "3:1",
           duplicated: true,
-          newId: "arranger_clip",
-          newTrackIndex: 0,
-          newArrangerStartTime: "3:1",
+          arrangerStartTime: "3:1",
+          duplicatedClip: {
+            id: "live_set tracks 0 arrangement_clips 0",
+            view: "Arranger",
+            trackIndex: 0,
+            arrangerStartTime: "3:1",
+          },
         });
       });
 
@@ -533,15 +714,39 @@ describe("duplicate", () => {
           }
           return this._path;
         });
+        let clipCounter = 0;
         liveApiCall.mockImplementation(function (method) {
           if (method === "duplicate_clip_to_arrangement") {
-            return ["id", "arranger_clip"];
+            const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+            clipCounter++;
+            return ["id", clipId];
           }
           return null;
         });
+
+        // Mock for getMinimalClipInfo on the new arranger clips
+        const originalPath = liveApiPath.getMockImplementation();
+        liveApiPath.mockImplementation(function () {
+          if (this._path.startsWith("id live_set tracks") && this._path.includes("arrangement_clips")) {
+            return this._path.slice(3); // Remove "id " prefix
+          }
+          return originalPath ? originalPath.call(this) : this._path;
+        });
+
         mockLiveApiGet({
-          clip1: { exists: () => true },
           Clip: { length: 4 }, // Mock clip length of 4 beats
+          "live_set tracks 0 arrangement_clips 0": {
+            is_arrangement_clip: 1,
+            start_time: 8,
+          },
+          "live_set tracks 0 arrangement_clips 1": {
+            is_arrangement_clip: 1,
+            start_time: 12,
+          },
+          "live_set tracks 0 arrangement_clips 2": {
+            is_arrangement_clip: 1,
+            start_time: 16,
+          },
         });
 
         const result = duplicate({
@@ -563,22 +768,34 @@ describe("duplicate", () => {
           duplicated: true,
           objects: [
             {
-              newId: "arranger_clip",
-              newTrackIndex: 0,
-              newArrangerStartTime: "3:1",
+              arrangerStartTime: "3:1",
               name: "Custom Clip",
+              duplicatedClip: {
+                id: "live_set tracks 0 arrangement_clips 0",
+                view: "Arranger",
+                trackIndex: 0,
+                arrangerStartTime: "3:1",
+              },
             },
             {
-              newId: "arranger_clip",
-              newTrackIndex: 0,
-              newArrangerStartTime: "4:1",
+              arrangerStartTime: "4:1",
               name: "Custom Clip 2",
+              duplicatedClip: {
+                id: "live_set tracks 0 arrangement_clips 1",
+                view: "Arranger",
+                trackIndex: 0,
+                arrangerStartTime: "4:1",
+              },
             },
             {
-              newId: "arranger_clip",
-              newTrackIndex: 0,
-              newArrangerStartTime: "5:1",
+              arrangerStartTime: "5:1",
               name: "Custom Clip 3",
+              duplicatedClip: {
+                id: "live_set tracks 0 arrangement_clips 2",
+                view: "Arranger",
+                trackIndex: 0,
+                arrangerStartTime: "5:1",
+              },
             },
           ],
         });
@@ -603,14 +820,14 @@ describe("duplicate", () => {
 
       const result = duplicate({ type: "track", id: "track1", count: 1 });
 
-      expect(result).toMatchObject({
+      expect(result).toStrictEqual({
         type: "track",
         id: "track1",
         count: 1,
         duplicated: true,
-        // Should have new object metadata directly merged
-        newId: expect.any(String),
+        newTrackId: expect.any(String),
         newTrackIndex: expect.any(Number),
+        duplicatedClips: [],
       });
       expect(result.objects).toBeUndefined();
     });

@@ -149,6 +149,58 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
   }
 }
 
+/**
+ * Get minimal information about a clip for duplication results
+ * @param {LiveAPI} clip - The clip to get info from
+ * @returns {Object} Minimal clip info with id, trackIndex, and location
+ */
+function getMinimalClipInfo(clip) {
+  const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
+
+  if (isArrangerClip) {
+    const trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)?.[1]);
+    if (Number.isNaN(trackIndex)) {
+      throw new Error(`getMinimalClipInfo failed: could not determine trackIndex for clip (path="${clip.path}")`);
+    }
+
+    const arrangerStartTimeBeats = clip.getProperty("start_time");
+
+    // Convert to bar:beat format using song time signature
+    const liveSet = new LiveAPI("live_set");
+    const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+    const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+    const arrangerStartTime = abletonBeatsToBarBeat(
+      arrangerStartTimeBeats,
+      songTimeSigNumerator,
+      songTimeSigDenominator
+    );
+
+    return {
+      id: clip.id,
+      view: "Arranger",
+      trackIndex,
+      arrangerStartTime,
+    };
+  } else {
+    const pathMatch = clip.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
+    const trackIndex = Number.parseInt(pathMatch?.[1]);
+    const clipSlotIndex = Number.parseInt(pathMatch?.[2]);
+
+    if (Number.isNaN(trackIndex) || Number.isNaN(clipSlotIndex)) {
+      throw new Error(
+        `getMinimalClipInfo failed: could not determine trackIndex/clipSlotIndex for clip (path="${clip.path}")`
+      );
+    }
+
+    return {
+      id: clip.id,
+      view: "Session",
+      trackIndex,
+      clipSlotIndex,
+    };
+  }
+}
+
 function duplicateTrack(trackIndex, name) {
   const liveSet = new LiveAPI("live_set");
   liveSet.call("duplicate_track", trackIndex);
@@ -160,10 +212,35 @@ function duplicateTrack(trackIndex, name) {
     newTrack.set("name", name);
   }
 
+  // Get all duplicated clips
+  const duplicatedClips = [];
+
+  // Session clips
+  const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
+  //for (let clipSlotIndex = 0; clipSlotIndex < sessionClipSlotIds.length; clipSlotIndex++) {
+  //const clipSlot = new LiveAPI(`live_set tracks ${newTrackIndex} clip_slots ${clipSlotIndex}`);
+  for (const clipSlotId of sessionClipSlotIds) {
+    const clipSlot = new LiveAPI(clipSlotId);
+    if (clipSlot.getProperty("has_clip")) {
+      const clip = new LiveAPI(`${clipSlot.path} clip`);
+      duplicatedClips.push(getMinimalClipInfo(clip));
+    }
+  }
+
+  // Arranger clips
+  const arrangerClipIds = newTrack.getChildIds("arrangement_clips");
+  for (const clipId of arrangerClipIds) {
+    const clip = new LiveAPI(clipId);
+    if (clip.exists()) {
+      duplicatedClips.push(getMinimalClipInfo(clip));
+    }
+  }
+
   // Return optimistic metadata
   const result = {
-    newId: newTrack.id,
+    newTrackId: newTrack.id,
     newTrackIndex,
+    duplicatedClips,
   };
 
   if (name != null) result.name = name;
@@ -181,10 +258,25 @@ function duplicateScene(sceneIndex, name) {
     newScene.set("name", name);
   }
 
+  // Get all duplicated clips in this scene
+  const duplicatedClips = [];
+  const trackIds = liveSet.getChildIds("tracks");
+
+  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+    const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${newSceneIndex}`);
+    if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
+      const clip = new LiveAPI(`${clipSlot.path} clip`);
+      if (clip.exists()) {
+        duplicatedClips.push(getMinimalClipInfo(clip));
+      }
+    }
+  }
+
   // Return optimistic metadata
   const result = {
-    newId: newScene.id,
+    newSceneId: newScene.id,
     newSceneIndex,
+    duplicatedClips,
   };
 
   if (name != null) result.name = name;
@@ -238,15 +330,13 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name) {
       const newClipId = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats)?.[1];
 
       if (newClipId != null) {
+        const newClip = new LiveAPI(`id ${newClipId}`);
         if (name != null) {
-          const newClip = new LiveAPI(`id ${newClipId}`);
           newClip.set("name", name);
+          duplicatedClips.push({ ...getMinimalClipInfo(newClip), name });
+        } else {
+          duplicatedClips.push(getMinimalClipInfo(newClip));
         }
-
-        duplicatedClips.push({
-          newId: newClipId,
-          newTrackIndex: trackIndex,
-        });
       }
     }
   }
@@ -258,7 +348,7 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name) {
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   const result = {
-    newArrangerStartTime: abletonBeatsToBarBeat(arrangerStartTimeBeats, songTimeSigNumerator, songTimeSigDenominator),
+    arrangerStartTime: abletonBeatsToBarBeat(arrangerStartTimeBeats, songTimeSigNumerator, songTimeSigDenominator),
     duplicatedClips,
   };
 
@@ -285,12 +375,10 @@ function duplicateClipSlot(trackIndex, sourceClipSlotIndex, name) {
 
   // Return optimistic metadata
   const result = {
-    newId: newClip.id,
-    newTrackIndex: trackIndex,
-    newClipSlotIndex,
+    duplicatedClip: getMinimalClipInfo(newClip),
   };
 
-  if (name != null) result.name = name;
+  if (name != null) result.duplicatedClip.name = name;
   return result;
 }
 
@@ -315,8 +403,8 @@ function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name) {
     throw new Error(`duplicate failed: clip failed to duplicate`);
   }
 
+  const newClip = new LiveAPI(`id ${newClipId}`);
   if (name != null) {
-    const newClip = new LiveAPI(`id ${newClipId}`);
     newClip.set("name", name);
   }
 
@@ -328,9 +416,8 @@ function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name) {
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   const result = {
-    newId: newClipId,
-    newTrackIndex: trackIndex,
-    newArrangerStartTime: abletonBeatsToBarBeat(arrangerStartTimeBeats, songTimeSigNumerator, songTimeSigDenominator),
+    arrangerStartTime: abletonBeatsToBarBeat(arrangerStartTimeBeats, songTimeSigNumerator, songTimeSigDenominator),
+    duplicatedClip: getMinimalClipInfo(newClip),
   };
 
   if (name != null) result.name = name;

@@ -5,7 +5,7 @@ import { MAX_AUTO_CREATED_SCENES, MAX_AUTO_CREATED_TRACKS } from "../tools/const
 export function addToolDuplicate(server, callLiveApi) {
   server.tool(
     "duplicate",
-    `Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes.`,
+    `Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes. When duplicating scenes or tracks, all contained clips are also duplicated. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip.`,
     {
       type: z.enum(["track", "scene", "clip"]).describe("Type of object to duplicate"),
       id: z.string().describe("Object id to duplicate"),
