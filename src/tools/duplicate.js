@@ -361,15 +361,13 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, include
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
         const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats);
+        const newClip = LiveAPI.from(newClipResult);
 
-        if (newClipResult?.[1] != null) {
-          const newClip = LiveAPI.from(newClipResult);
-          if (name != null) {
-            newClip.set("name", name);
-            duplicatedClips.push({ ...getMinimalClipInfo(newClip), name });
-          } else {
-            duplicatedClips.push(getMinimalClipInfo(newClip));
-          }
+        if (name != null) {
+          newClip.set("name", name);
+          duplicatedClips.push({ ...getMinimalClipInfo(newClip), name });
+        } else {
+          duplicatedClips.push(getMinimalClipInfo(newClip));
         }
       }
     }
@@ -431,12 +429,8 @@ function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name) {
 
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
   const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats);
-
-  if (newClipResult?.[1] == null) {
-    throw new Error(`duplicate failed: clip failed to duplicate`);
-  }
-
   const newClip = LiveAPI.from(newClipResult);
+
   if (name != null) {
     newClip.set("name", name);
   }
