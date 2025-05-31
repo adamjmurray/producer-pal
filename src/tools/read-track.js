@@ -2,6 +2,7 @@
 import { getHostTrackIndex } from "../get-host-track-index";
 import { midiPitchToName } from "../notation/midi-pitch-to-name";
 import { readClip } from "./read-clip";
+import { VERSION } from "../version";
 
 export const DEVICE_TYPE_INSTRUMENT = 1;
 export const DEVICE_TYPE_AUDIO_EFFECT = 2;
@@ -67,6 +68,7 @@ export function readTrack({ trackIndex } = {}) {
 
   if (trackIndex === getHostTrackIndex()) {
     result.isProducerPalHostTrack = true;
+    result.producerPalVersion = VERSION;
   }
 
   return result;

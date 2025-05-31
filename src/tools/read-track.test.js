@@ -186,9 +186,11 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 1 });
     expect(result.isProducerPalHostTrack).toBe(true);
+    expect(result.producerPalVersion).toBe("0.9.0");
 
     const result2 = readTrack({ trackIndex: 0 });
     expect(result2.isProducerPalHostTrack).toBeUndefined();
+    expect(result2.producerPalVersion).toBeUndefined();
   });
 
   it("returns sessionClips information when the track has clips in Session view", () => {
