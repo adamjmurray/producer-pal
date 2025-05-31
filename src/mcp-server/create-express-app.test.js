@@ -152,6 +152,38 @@ describe("MCP Express App", () => {
       expect(updateTrackTool.description).toContain("Updates properties");
       expect(updateTrackTool.inputSchema.properties.ids).toBeDefined();
     });
+
+    it("should have valid input schemas for all tools", async () => {
+      const result = await client.listTools();
+
+      // Every tool should have required fields
+      result.tools.forEach((tool) => {
+        try {
+          expect(tool.name).toBeDefined();
+          expect(typeof tool.name).toBe("string");
+          expect(tool.name.length).toBeGreaterThan(0);
+
+          expect(tool.description).toBeDefined();
+          expect(typeof tool.description).toBe("string");
+          expect(tool.description.length).toBeGreaterThan(0);
+
+          expect(tool.inputSchema).toBeDefined();
+          expect(tool.inputSchema.type).toBe("object");
+          expect(tool.inputSchema.properties).toBeDefined();
+          expect(typeof tool.inputSchema.properties).toBe("object");
+        } catch (error) {
+          // Add tool name to error message for debugging
+          throw new Error(`Tool "${tool.name}" validation failed: ${error.message}`);
+        }
+      });
+
+      // Check create-clip specifically since it had the issue
+      const createClipTool = result.tools.find((tool) => tool.name === "create-clip");
+      expect(createClipTool).toBeDefined();
+      expect(createClipTool.description).toContain("Creates MIDI clips");
+      expect(createClipTool.inputSchema.properties.view).toBeDefined();
+      expect(createClipTool.inputSchema.properties.trackIndex).toBeDefined();
+    });
   });
 
   describe("Call Tool", () => {

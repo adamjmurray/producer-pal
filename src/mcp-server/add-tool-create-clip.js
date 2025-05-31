@@ -8,8 +8,8 @@ export function addToolCreateClip(server, callLiveApi) {
     "create-clip",
     "Creates MIDI clips in Session or Arranger view. " +
       "For Session view, provide trackIndex and clipSlotIndex. " +
-      "Creating a clip in Session view fails if a clip already exists at the specified trackIndex/clipSlotIndex combination. For modifying clips in slots that already contain clips (e.g., after duplicating scenes), use update-clip instead.",
-    "For Arranger view, provide trackIndex and arrangerStartTime. Existing arrangement clips will have overlapping areas overwritten. " +
+      "Creating a clip in Session view fails if a clip already exists at the specified trackIndex/clipSlotIndex combination. For modifying clips in slots that already contain clips (e.g., after duplicating scenes), use update-clip instead. " +
+      "For Arranger view, provide trackIndex and arrangerStartTime. Existing arrangement clips will have overlapping areas overwritten. " +
       "When count > 1, Session clips are created in successive clip slots, and Arranger clips are placed back-to-back. " +
       `Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of ${MAX_AUTO_CREATED_SCENES} scenes (sceneIndex == clipSlotIndex). ` +
       "Time Signature Behavior: arrangerStartTime uses the song's time signature for conversion from bar:beat format. " +
