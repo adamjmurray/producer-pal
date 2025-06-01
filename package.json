@@ -41,6 +41,6 @@
     "test:setup": "npm run parser:build",
     "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
-    "claude:project": "node tools/generate-claude-project.mjs"
+    "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs"
   }
 }

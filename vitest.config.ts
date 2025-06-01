@@ -10,7 +10,13 @@ export default defineConfig({
 
     coverage: {
       provider: "v8",
-      reporter: ["text", "json-summary", "json", "html"],
+      reporter: [
+        ["text", { file: "coverage-summary.txt" }],
+        "text", // Also display in console
+        "json-summary",
+        "json",
+        "html",
+      ],
       include: ["src/**"],
       exclude: ["src/main.js", "src/console.js", "src/mcp-server.js", "src/mock-*"],
       reportOnFailure: true,

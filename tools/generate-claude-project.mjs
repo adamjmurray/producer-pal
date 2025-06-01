@@ -80,6 +80,7 @@ async function copyDocsAndConfigs() {
     
     // Other important files
     { src: 'e2e/cli.mjs', flatName: 'e2e--cli.mjs' },
+    { src: 'coverage/coverage-summary.txt', flatName: 'test-coverage-summary.txt' },
   ];
   
   console.log('Copying documentation and configuration files...');
