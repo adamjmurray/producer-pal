@@ -131,6 +131,24 @@ When modifying BarBeat notation grammar, remember to rebuild the parser with `np
 
 Note: You generally don't need to run `npm run build` to verify changes - the test suite is sufficient to ensure correctness.
 
+### End-to-End Testing
+
+For real-world testing and debugging, the `e2e/cli.mjs` tool can connect directly to the MCP server running in Ableton Live:
+
+```bash
+# Show server info (default)
+node e2e/cli.mjs
+
+# List available tools
+node e2e/cli.mjs tools/list
+
+# Call a tool with JSON arguments
+node e2e/cli.mjs tools/call read-song '{}'
+node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arranger", "arrangerStartTime": "5:1"}'
+```
+
+**IMPORTANT:** ALWAYS ask the user for permission before using the e2e CLI tool. The user may be in the middle of their own tests and running commands could interfere with their work or produce unexpected results in their Ableton Live session.
+
 ## Versioning
 
 The project uses semantic versioning (major.minor.patch) maintained in `src/version.js`. The version is:
@@ -195,3 +213,6 @@ To update the version:
   with this, but that is not ideal and may not work robustly across computers with different CPU characteristics.
   Therefore, for playback-related state, we return optimistic results assuming the operation succeeded (e.g. assume a
   clip isTriggered:true when autoplaying it)
+- **NEVER use the e2e CLI tool (`e2e/cli.mjs`) without explicit permission from the user.** The user may be in the middle 
+  of their own testing or music production work, and running commands could interfere with their Ableton Live session or 
+  produce unexpected results.
