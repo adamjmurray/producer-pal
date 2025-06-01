@@ -92,6 +92,24 @@ The project extends the native Live API with helper methods in `src/live-api-ext
 - Time format: `bar:beat` (1-based indexing, bars are integers, beats are floating point)
 - Velocity 0 notes are filtered out (not sent to Live)
 
+### Musical Beats vs Ableton Beats
+
+**Musical beats** are defined by the time signature denominator:
+- 4/4 time signature: quarter note is the musical beat (denominator = 4)
+- 6/8 time signature: eighth note is the musical beat (denominator = 8)  
+- 2/2 time signature: half note is the musical beat (denominator = 2)
+- 3/4 time signature: quarter note is the musical beat (denominator = 4)
+
+**Ableton beats** are always quarter notes regardless of time signature. This is Ableton Live's internal timing unit.
+
+**Conversion**: To convert between musical beats and Ableton beats:
+- `abletonBeats = musicalBeats * 4 / timeSigDenominator`
+- `musicalBeats = abletonBeats * timeSigDenominator / 4`
+
+For example, in 6/8 time:
+- 6 musical beats (eighth notes) = `6 * 4 / 8` = 3 Ableton beats (quarter notes)
+- 3 Ableton beats = `3 * 8 / 4` = 6 musical beats (eighth notes)
+
 ## Tool Pattern
 
 All tools follow this structure:
