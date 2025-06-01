@@ -20,6 +20,10 @@ export function addToolDuplicate(server, callLiveApi) {
         .string()
         .optional()
         .describe("Start time in bar:beat format for Arranger view. Required when destination is 'arranger'."),
+      arrangerLength: z
+        .string()
+        .optional()
+        .describe("Length in bar:beat format for Arranger view clips (auto-duplicates looping clips to fill)"),
       name: z
         .string()
         .optional()

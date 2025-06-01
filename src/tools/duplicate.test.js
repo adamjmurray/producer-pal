@@ -989,4 +989,305 @@ describe("duplicate", () => {
       expect(result.newTrackIndex).toBeUndefined();
     });
   });
+
+  describe("arrangerLength functionality", () => {
+    it("should duplicate a clip to arranger with shorter length", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+      
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
+        if (method === "create_midi_clip") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] }); // Empty notes for testing
+        }
+        return null;
+      });
+
+      const originalPath = liveApiPath.getMockImplementation();
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { 
+          exists: () => true,
+          length: 8, // 8 beats original length
+          looping: 0,
+          name: "Test Clip",
+          color: 4047616,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop_start: 0,
+          loop_end: 8,
+          is_midi_clip: 1,
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 16,
+        },
+      });
+
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arranger",
+        arrangerStartTime: "5:1",
+        arrangerLength: "1:0", // 4 beats - shorter than original 8 beats
+      });
+
+      expect(result).toStrictEqual({
+        type: "clip",
+        id: "clip1",
+        count: 1,
+        destination: "arranger",
+        arrangerStartTime: "5:1",
+        arrangerLength: "1:0",
+        duplicated: true,
+        duplicatedClip: {
+          id: "live_set tracks 0 arrangement_clips 0",
+          view: "Arranger",
+          trackIndex: 0,
+          arrangerStartTime: "5:1",
+        },
+      });
+
+      // Should create clip with exact length instead of duplicating and shortening
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 4); // start=16, length=4
+      // Check that properties were copied correctly
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
+      expect(liveApiSet).toHaveBeenCalledWith("color", 4047616); // setColor converts hex to integer
+    });
+
+    it("should duplicate a looping clip multiple times to fill longer length", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+      
+      let clipCounter = 0;
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+          clipCounter++;
+          return ["id", clipId];
+        }
+        if (method === "create_midi_clip") {
+          const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+          clipCounter++;
+          return ["id", clipId];
+        }
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] }); // Empty notes for testing
+        }
+        return null;
+      });
+
+      const originalPath = liveApiPath.getMockImplementation();
+      liveApiPath.mockImplementation(function () {
+        if (this._path.startsWith("id live_set tracks") && this._path.includes("arrangement_clips")) {
+          return this._path.slice(3);
+        }
+        return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { 
+          exists: () => true,
+          length: 4, // 4 beats original length
+          looping: 1, // Looping enabled
+          name: "Test Clip",
+          color: 4047616,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop_start: 0,
+          loop_end: 4,
+          is_midi_clip: 1,
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 16,
+        },
+        "live_set tracks 0 arrangement_clips 1": {
+          is_arrangement_clip: 1,
+          start_time: 20,
+        },
+        "live_set tracks 0 arrangement_clips 2": {
+          is_arrangement_clip: 1,
+          start_time: 24,
+        },
+      });
+
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arranger",
+        arrangerStartTime: "5:1",
+        arrangerLength: "1:2", // 6 beats - longer than original 4 beats
+      });
+
+      // Should create 2 clips: one full (4 beats) + one partial (2 beats)
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 4); // First clip: start=16, length=4
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 20, 2); // Second clip: start=20, length=2
+
+      // Check that properties were copied correctly for both clips
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
+      expect(liveApiSet).toHaveBeenCalledWith("color", 4047616); // setColor converts hex to integer
+
+      expect(result.duplicatedClip).toHaveLength(2);
+    });
+
+    it("should duplicate a non-looping clip at original length when requested length is longer", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+      
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
+        return null;
+      });
+
+      const originalPath = liveApiPath.getMockImplementation();
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { 
+          exists: () => true,
+          length: 4, // 4 beats original length
+          looping: 0, // Not looping
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 16,
+        },
+      });
+
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arranger",
+        arrangerStartTime: "5:1",
+        arrangerLength: "2:0", // 8 beats - longer than original 4 beats
+      });
+
+      // Should create clip at original length (no end_marker set)
+      expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16);
+      expect(liveApiSet).not.toHaveBeenCalledWith("end_marker", expect.anything());
+
+      expect(result).toStrictEqual({
+        type: "clip",
+        id: "clip1",
+        count: 1,
+        destination: "arranger",
+        arrangerStartTime: "5:1",
+        arrangerLength: "2:0",
+        duplicated: true,
+        duplicatedClip: {
+          id: "live_set tracks 0 arrangement_clips 0",
+          view: "Arranger",
+          trackIndex: 0,
+          arrangerStartTime: "5:1",
+        },
+      });
+    });
+
+    it("should error when arrangerLength is zero or negative", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { 
+          exists: () => true,
+          length: 4,
+          looping: 1,
+        },
+      });
+
+      expect(() => duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arranger",
+        arrangerStartTime: "5:1",
+        arrangerLength: "0:0", // 0 bars + 0 beats = 0 total
+      })).toThrow('duplicate failed: arrangerLength must be positive, got "0:0"');
+    });
+
+    it("should work normally without arrangerLength (backward compatibility)", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+      
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
+        return null;
+      });
+
+      const originalPath = liveApiPath.getMockImplementation();
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { 
+          exists: () => true,
+          length: 8,
+          looping: 0,
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 16,
+        },
+      });
+
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arranger",
+        arrangerStartTime: "5:1",
+        // No arrangerLength specified
+      });
+
+      // Should use original behavior - no length manipulation
+      expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16);
+      // Check that no end_marker was set (setAll should only be called for name, which is undefined)
+      expect(liveApiSet).not.toHaveBeenCalledWith("end_marker", expect.anything());
+
+      expect(result.arrangerLength).toBeUndefined();
+    });
+  });
 });
