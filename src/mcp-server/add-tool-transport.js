@@ -5,7 +5,7 @@ export function addToolTransport(server, callLiveApi) {
   server.tool(
     "transport",
     "Controls the Arrangement and Session view transport, including playback, position, and loop settings. " +
-      "IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently. " +
+      "IMPORTANT: Tracks can only play one clip at a time. Session clips take precedence over Arrangement clips. " +
       "When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.",
     {
       action: z
@@ -22,7 +22,7 @@ export function addToolTransport(server, callLiveApi) {
           `Transport action to perform:
 - "play-arrangement": Start Arrangement timeline playback from specified position. Tracks currently playing Session clips will continue playing them unless specified in followingTrackIndexes
 - "update-arrangement": Modify arrangement loop and follow settings without affecting playback state
-- "play-scene": Launch all clips in a Session view scene (requires sceneIndex) - puts these tracks into non-following state
+- "play-scene": Launch all clips in a Session view scene (requires sceneIndex) - puts ALL tracks into non-following state, even tracks with empty clip slots in that scene
 - "play-session-clip": Trigger clips in Session view (requires trackIndexes and clipSlotIndexes) - puts these tracks into non-following state
 - "stop-track-session-clip": Stop Session view clips playing in specific tracks (tracks remain in non-following state)
 - "stop-all-session-clips": Stop all Session view clips in all tracks (tracks remain in non-following state)
