@@ -8,8 +8,8 @@ import { parseCommaSeparatedIndices } from "../utils.js";
  * @param {string} args.action - Action to perform
  * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
- * @param {string} [args.loopStart] - Loop start position in bar|beat format
- * @param {string} [args.loopEnd] - Loop end position in bar|beat format
+ * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
+ * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
  * @param {string} [args.followingTrackIndexes] - Comma-separated track indexes that should follow the arrangement
  * @param {number} [args.sceneIndex] - Scene index for Session view operations
  * @param {string} [args.trackIndexes] - Comma-separated track indexes for Session view operations

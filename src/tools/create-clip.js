@@ -16,10 +16,10 @@ import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.startMarker] - Start marker position in bar|beat format (uses clip time signature)
- * @param {string} [args.endMarker] - End marker position in bar|beat format (uses clip time signature)
- * @param {string} [args.loopStart] - Loop start position in bar|beat format (uses clip time signature)
- * @param {string} [args.loopEnd] - Loop end position in bar|beat format (uses clip time signature)
+ * @param {string} [args.startMarker] - Start marker position in bar|beat format relative to clip start
+ * @param {string} [args.endMarker] - End marker position in bar|beat format relative to clip start
+ * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
+ * @param {string} [args.loopEnd] - Loop end position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating it (Session only)
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1

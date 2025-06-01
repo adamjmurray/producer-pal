@@ -13,10 +13,10 @@ import { MAX_CLIP_BEATS } from "./constants.js";
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.startMarker] - Start marker position in bar|beat format
- * @param {string} [args.endMarker] - End marker position in bar|beat format
- * @param {string} [args.loopStart] - Loop start position in bar|beat format
- * @param {string} [args.loopEnd] - Loop end position in bar|beat format
+ * @param {string} [args.startMarker] - Start marker position in bar|beat format relative to clip start
+ * @param {string} [args.endMarker] - End marker position in bar|beat format relative to clip start
+ * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
+ * @param {string} [args.loopEnd] - Loop end position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
