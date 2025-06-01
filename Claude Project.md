@@ -5,12 +5,15 @@ integrates with the Live API using Max for Live.
 
 ## Goal
 
-We are developing the code for this project in a Claude Project. The code is in project resources. Most conversations
-will revolve around discussing how to improve the current code (adding features, fixing bugs, or improving the general
-code quality or test coverage), and generating those improvements. Because we are in a Claude Project (not Claude code),
-any generated code needs to be shown inline in the conversation, or in an artifact per the user's request. Other
-conversations will revolve around higher level project activities such as planning and prioritization, or brainstorming
-new features.
+We are developing the code with Claude Code. This Claude Project is used for brainstorming and analysis sessions. The
+code is in project resources, and to keep the context window under control, test code is omitted, but you should be able
+to see we have a vitest suite and some aspects of our mocking system (which needs improvement, to be honest). The test
+coverage is very good, above 90%.
+
+Most conversations will revolve around discussing how to improve the current code (adding features, fixing bugs, or
+improving the general code quality or test coverage). Because we are in a Claude Project, the outputs will commonly be
+technical plans in markdown format to be shared with Claude Code, and we might generate some code snippets to play
+around with ideas, which could also be copied over to Claude Code as appropriate.
 
 ## Project Rules
 

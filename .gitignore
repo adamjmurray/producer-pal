@@ -3,3 +3,4 @@ node_modules
 coverage
 device/*.js
 device/*.mjs
+claude-project
