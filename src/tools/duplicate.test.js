@@ -123,7 +123,7 @@ describe("duplicate", () => {
       mockLiveApiGet({
         "live_set tracks 1": {
           clip_slots: children("slot0", "slot1", "slot2"),
-          arrangement_clips: children("arrangerClip0", "arrangerClip1"),
+          arrangement_clips: children("arrangementClip0", "arrangementClip1"),
         },
         slot0: { has_clip: 1 },
         slot1: { has_clip: 0 },
@@ -148,11 +148,11 @@ describe("duplicate", () => {
       // Verify delete_clip was called for session clips (on clip slots)
       expect(liveApiCall).toHaveBeenCalledWith("delete_clip");
 
-      // Verify delete_clip was called for arranger clips (on track with clip IDs)
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangerClip0");
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangerClip1");
+      // Verify delete_clip was called for arrangement clips (on track with clip IDs)
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangementClip0");
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangementClip1");
 
-      // Verify the track instance called delete_clip for arranger clips
+      // Verify the track instance called delete_clip for arrangement clips
       const trackDeleteCalls = liveApiCall.mock.calls.filter((call, index) => {
         return call[0] === "delete_clip" && call[1] && liveApiCall.mock.instances[index].path === "live_set tracks 1";
       });
@@ -322,8 +322,8 @@ describe("duplicate", () => {
       expect(deleteCallCount).toBe(2); // Should delete 2 clips (tracks 0 and 1)
     });
 
-    describe("arranger destination", () => {
-      it("should throw error when arrangerStartTime is missing for scene to arranger", () => {
+    describe("arrangement destination", () => {
+      it("should throw error when arrangementStartTime is missing for scene to arrangement", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "scene1") {
             return "live_set scenes 0";
@@ -331,12 +331,12 @@ describe("duplicate", () => {
           return this._path;
         });
 
-        expect(() => duplicate({ type: "scene", id: "scene1", destination: "arranger" })).toThrow(
-          "duplicate failed: arrangerStartTime is required when destination is 'arranger'"
+        expect(() => duplicate({ type: "scene", id: "scene1", destination: "arrangement" })).toThrow(
+          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'"
         );
       });
 
-      it("should duplicate a scene to arranger view", () => {
+      it("should duplicate a scene to arrangement view", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "scene1") {
             return "live_set scenes 0";
@@ -382,7 +382,7 @@ describe("duplicate", () => {
             // Extract track index from the clip ID path
             const trackMatch = clipIdOrStartTime.match(/tracks\/(\d+)/);
             const trackIndex = trackMatch ? trackMatch[1] : "0";
-            // Return a mock arranger clip ID
+            // Return a mock arrangement clip ID
             return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
           }
           if (method === "create_midi_clip") {
@@ -404,13 +404,13 @@ describe("duplicate", () => {
           return null;
         });
 
-        // Add mocking for the arranger clips
+        // Add mocking for the arrangement clips
         // TODO: find a better way to do this
         const originalGet = liveApiGet.getMockImplementation();
         const originalPath = liveApiPath.getMockImplementation();
 
         liveApiPath.mockImplementation(function () {
-          // For arranger clips created by ID, return a proper path
+          // For arrangement clips created by ID, return a proper path
           if (this._path.startsWith("id live_set tracks") && this._path.includes("arrangement_clips")) {
             return this._path.slice(3); // Remove "id " prefix
           }
@@ -418,11 +418,11 @@ describe("duplicate", () => {
         });
 
         liveApiGet.mockImplementation(function (prop) {
-          // Check if this is an arranger clip requesting is_arrangement_clip
+          // Check if this is an arrangement clip requesting is_arrangement_clip
           if (this._path.includes("arrangement_clips") && prop === "is_arrangement_clip") {
             return [1];
           }
-          // Check if this is an arranger clip requesting start_time
+          // Check if this is an arrangement clip requesting start_time
           if (this._path.includes("arrangement_clips") && prop === "start_time") {
             return [16];
           }
@@ -433,8 +433,8 @@ describe("duplicate", () => {
         const result = duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
         });
 
         // Track 0 clip (4 beats) should use create_midi_clip since it's shorter than scene length (8 beats)
@@ -447,28 +447,28 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           count: 1,
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
           duplicated: true,
-          arrangerStartTime: "5|1",
+          arrangementStartTime: "5|1",
           duplicatedClips: [
             {
               id: "live_set tracks 0 arrangement_clips 0",
-              view: "Arranger",
+              view: "Arrangement",
               trackIndex: 0,
-              arrangerStartTime: "5|1",
+              arrangementStartTime: "5|1",
             },
             {
               id: "live_set tracks 2 arrangement_clips 0",
-              view: "Arranger",
+              view: "Arrangement",
               trackIndex: 2,
-              arrangerStartTime: "5|1",
+              arrangementStartTime: "5|1",
             },
           ],
         });
       });
 
-      it("should duplicate multiple scenes to arranger view at sequential positions", () => {
+      it("should duplicate multiple scenes to arrangement view at sequential positions", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "scene1") {
             return "live_set scenes 0";
@@ -515,12 +515,12 @@ describe("duplicate", () => {
           return null;
         });
 
-        // Add mocking for the arranger clips
+        // Add mocking for the arrangement clips
         const originalGet = liveApiGet.getMockImplementation();
         const originalPath = liveApiPath.getMockImplementation();
 
         liveApiPath.mockImplementation(function () {
-          // For arranger clips created by ID, return a proper path
+          // For arrangement clips created by ID, return a proper path
           if (this._path.startsWith("id live_set tracks") && this._path.includes("arrangement_clips")) {
             return this._path.slice(3); // Remove "id " prefix
           }
@@ -528,11 +528,11 @@ describe("duplicate", () => {
         });
 
         liveApiGet.mockImplementation(function (prop) {
-          // Check if this is an arranger clip requesting is_arrangement_clip
+          // Check if this is an arrangement clip requesting is_arrangement_clip
           if (this._path.includes("arrangement_clips") && prop === "is_arrangement_clip") {
             return [1];
           }
-          // Check if this is an arranger clip requesting start_time
+          // Check if this is an arrangement clip requesting start_time
           if (this._path.includes("arrangement_clips") && prop === "start_time") {
             // Return different start times based on clip index
             const clipMatch = this._path.match(/arrangement_clips (\d+)/);
@@ -549,8 +549,8 @@ describe("duplicate", () => {
         const result = duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
           count: 3,
           name: "Scene Copy",
         });
@@ -565,46 +565,46 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           count: 3,
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
           name: "Scene Copy",
           duplicated: true,
           objects: [
             {
-              arrangerStartTime: "5|1",
+              arrangementStartTime: "5|1",
               name: "Scene Copy",
               duplicatedClips: [
                 {
                   id: "live_set tracks 0 arrangement_clips 0",
-                  view: "Arranger",
+                  view: "Arrangement",
                   trackIndex: 0,
-                  arrangerStartTime: "5|1",
+                  arrangementStartTime: "5|1",
                   name: "Scene Copy",
                 },
               ],
             },
             {
-              arrangerStartTime: "7|1",
+              arrangementStartTime: "7|1",
               name: "Scene Copy 2",
               duplicatedClips: [
                 {
                   id: "live_set tracks 0 arrangement_clips 1",
-                  view: "Arranger",
+                  view: "Arrangement",
                   trackIndex: 0,
-                  arrangerStartTime: "7|1",
+                  arrangementStartTime: "7|1",
                   name: "Scene Copy 2",
                 },
               ],
             },
             {
-              arrangerStartTime: "9|1",
+              arrangementStartTime: "9|1",
               name: "Scene Copy 3",
               duplicatedClips: [
                 {
                   id: "live_set tracks 0 arrangement_clips 2",
-                  view: "Arranger",
+                  view: "Arrangement",
                   trackIndex: 0,
-                  arrangerStartTime: "9|1",
+                  arrangementStartTime: "9|1",
                   name: "Scene Copy 3",
                 },
               ],
@@ -633,8 +633,8 @@ describe("duplicate", () => {
         const result = duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
         });
 
         expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
@@ -643,15 +643,15 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           count: 1,
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
           duplicated: true,
-          arrangerStartTime: "5|1",
+          arrangementStartTime: "5|1",
           duplicatedClips: [],
         });
       });
 
-      it("should duplicate a scene to arranger without clips when includeClips is false", () => {
+      it("should duplicate a scene to arrangement without clips when includeClips is false", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "scene1") {
             return "live_set scenes 0";
@@ -674,8 +674,8 @@ describe("duplicate", () => {
         const result = duplicate({
           type: "scene",
           id: "scene1",
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
           includeClips: false,
         });
 
@@ -693,11 +693,11 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           count: 1,
-          destination: "arranger",
-          arrangerStartTime: "5|1",
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
           includeClips: false,
           duplicated: true,
-          arrangerStartTime: "5|1",
+          arrangementStartTime: "5|1",
           duplicatedClips: [],
         });
       });
@@ -725,7 +725,7 @@ describe("duplicate", () => {
         return this._path;
       });
       expect(() => duplicate({ type: "clip", id: "clip1", destination: "invalid" })).toThrow(
-        "duplicate failed: destination must be 'session' or 'arranger'"
+        "duplicate failed: destination must be 'session' or 'arrangement'"
       );
     });
 
@@ -811,8 +811,8 @@ describe("duplicate", () => {
       });
     });
 
-    describe("arranger destination", () => {
-      it("should throw an error when arrangerStartTime is missing", () => {
+    describe("arrangement destination", () => {
+      it("should throw an error when arrangementStartTime is missing", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "clip1") {
             return "live_set tracks 0 clip_slots 0 clip";
@@ -821,12 +821,12 @@ describe("duplicate", () => {
         });
         mockLiveApiGet({ clip1: { exists: () => true } });
 
-        expect(() => duplicate({ type: "clip", id: "clip1", destination: "arranger" })).toThrow(
-          "duplicate failed: arrangerStartTime is required when destination is 'arranger'"
+        expect(() => duplicate({ type: "clip", id: "clip1", destination: "arrangement" })).toThrow(
+          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'"
         );
       });
 
-      it("should duplicate a single clip to the arranger view", () => {
+      it("should duplicate a single clip to the arrangement view", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "clip1") {
             return "live_set tracks 0 clip_slots 0 clip";
@@ -840,7 +840,7 @@ describe("duplicate", () => {
           return null;
         });
 
-        // Mock for getMinimalClipInfo on the new arranger clip
+        // Mock for getMinimalClipInfo on the new arrangement clip
         const originalPath = liveApiPath.getMockImplementation();
         liveApiPath.mockImplementation(function () {
           if (this._path === "id live_set tracks 0 arrangement_clips 0") {
@@ -860,8 +860,8 @@ describe("duplicate", () => {
         const result = duplicate({
           type: "clip",
           id: "clip1",
-          destination: "arranger",
-          arrangerStartTime: "3|1",
+          destination: "arrangement",
+          arrangementStartTime: "3|1",
         });
 
         expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 8);
@@ -871,20 +871,20 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           count: 1,
-          destination: "arranger",
-          arrangerStartTime: "3|1",
+          destination: "arrangement",
+          arrangementStartTime: "3|1",
           duplicated: true,
-          arrangerStartTime: "3|1",
+          arrangementStartTime: "3|1",
           duplicatedClip: {
             id: "live_set tracks 0 arrangement_clips 0",
-            view: "Arranger",
+            view: "Arrangement",
             trackIndex: 0,
-            arrangerStartTime: "3|1",
+            arrangementStartTime: "3|1",
           },
         });
       });
 
-      it("should duplicate multiple clips to arranger view at sequential positions", () => {
+      it("should duplicate multiple clips to arrangement view at sequential positions", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "clip1") {
             return "live_set tracks 0 clip_slots 0 clip";
@@ -901,7 +901,7 @@ describe("duplicate", () => {
           return null;
         });
 
-        // Mock for getMinimalClipInfo on the new arranger clips
+        // Mock for getMinimalClipInfo on the new arrangement clips
         const originalPath = liveApiPath.getMockImplementation();
         liveApiPath.mockImplementation(function () {
           if (this._path.startsWith("id live_set tracks") && this._path.includes("arrangement_clips")) {
@@ -929,8 +929,8 @@ describe("duplicate", () => {
         const result = duplicate({
           type: "clip",
           id: "clip1",
-          destination: "arranger",
-          arrangerStartTime: "3|1",
+          destination: "arrangement",
+          arrangementStartTime: "3|1",
           count: 3,
           name: "Custom Clip",
         });
@@ -939,39 +939,39 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           count: 3,
-          destination: "arranger",
-          arrangerStartTime: "3|1",
+          destination: "arrangement",
+          arrangementStartTime: "3|1",
           name: "Custom Clip",
           duplicated: true,
           objects: [
             {
-              arrangerStartTime: "3|1",
+              arrangementStartTime: "3|1",
               name: "Custom Clip",
               duplicatedClip: {
                 id: "live_set tracks 0 arrangement_clips 0",
-                view: "Arranger",
+                view: "Arrangement",
                 trackIndex: 0,
-                arrangerStartTime: "3|1",
+                arrangementStartTime: "3|1",
               },
             },
             {
-              arrangerStartTime: "4|1",
+              arrangementStartTime: "4|1",
               name: "Custom Clip 2",
               duplicatedClip: {
                 id: "live_set tracks 0 arrangement_clips 1",
-                view: "Arranger",
+                view: "Arrangement",
                 trackIndex: 0,
-                arrangerStartTime: "4|1",
+                arrangementStartTime: "4|1",
               },
             },
             {
-              arrangerStartTime: "5|1",
+              arrangementStartTime: "5|1",
               name: "Custom Clip 3",
               duplicatedClip: {
                 id: "live_set tracks 0 arrangement_clips 2",
-                view: "Arranger",
+                view: "Arrangement",
                 trackIndex: 0,
-                arrangerStartTime: "5|1",
+                arrangementStartTime: "5|1",
               },
             },
           ],
@@ -1033,8 +1033,8 @@ describe("duplicate", () => {
     });
   });
 
-  describe("arrangerLength functionality", () => {
-    it("should duplicate a clip to arranger with shorter length", () => {
+  describe("arrangementLength functionality", () => {
+    it("should duplicate a clip to arrangement with shorter length", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
@@ -1085,24 +1085,24 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arranger",
-        arrangerStartTime: "5|1",
-        arrangerLength: "1:0", // 4 beats - shorter than original 8 beats
+        destination: "arrangement",
+        arrangementStartTime: "5|1",
+        arrangementLength: "1:0", // 4 beats - shorter than original 8 beats
       });
 
       expect(result).toStrictEqual({
         type: "clip",
         id: "clip1",
         count: 1,
-        destination: "arranger",
-        arrangerStartTime: "5|1",
-        arrangerLength: "1:0",
+        destination: "arrangement",
+        arrangementStartTime: "5|1",
+        arrangementLength: "1:0",
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arranger",
+          view: "Arrangement",
           trackIndex: 0,
-          arrangerStartTime: "5|1",
+          arrangementStartTime: "5|1",
         },
       });
 
@@ -1177,9 +1177,9 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arranger",
-        arrangerStartTime: "5|1",
-        arrangerLength: "1:2", // 6 beats - longer than original 4 beats
+        destination: "arrangement",
+        arrangementStartTime: "5|1",
+        arrangementLength: "1:2", // 6 beats - longer than original 4 beats
       });
 
       // Should create 2 clips: one full (4 beats) + one partial (2 beats)
@@ -1231,9 +1231,9 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arranger",
-        arrangerStartTime: "5|1",
-        arrangerLength: "2:0", // 8 beats - longer than original 4 beats
+        destination: "arrangement",
+        arrangementStartTime: "5|1",
+        arrangementLength: "2:0", // 8 beats - longer than original 4 beats
       });
 
       // Should create clip at original length (no end_marker set)
@@ -1244,15 +1244,15 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         count: 1,
-        destination: "arranger",
-        arrangerStartTime: "5|1",
-        arrangerLength: "2:0",
+        destination: "arrangement",
+        arrangementStartTime: "5|1",
+        arrangementLength: "2:0",
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arranger",
+          view: "Arrangement",
           trackIndex: 0,
-          arrangerStartTime: "5|1",
+          arrangementStartTime: "5|1",
         },
       });
     });
@@ -1322,9 +1322,9 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arranger",
-        arrangerStartTime: "1|1",
-        arrangerLength: "1:0", // This should be 3 Ableton beats in 6/8 time
+        destination: "arrangement",
+        arrangementStartTime: "1|1",
+        arrangementLength: "1:0", // This should be 3 Ableton beats in 6/8 time
       });
 
       // Verify that the implementation correctly converts "1|0" to 3 Ableton beats for 6/8 time signature
@@ -1334,15 +1334,15 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         count: 1,
-        destination: "arranger",
-        arrangerStartTime: "1|1",
-        arrangerLength: "1:0",
+        destination: "arrangement",
+        arrangementStartTime: "1|1",
+        arrangementLength: "1:0",
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arranger",
+          view: "Arrangement",
           trackIndex: 0,
-          arrangerStartTime: "1|1",
+          arrangementStartTime: "1|1",
         },
       });
     });
@@ -1407,9 +1407,9 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arranger",
-        arrangerStartTime: "1|1",
-        arrangerLength: "1:0", // This should be 4 Ableton beats in 2/2 time
+        destination: "arrangement",
+        arrangementStartTime: "1|1",
+        arrangementLength: "1:0", // This should be 4 Ableton beats in 2/2 time
       });
 
       // Verify that the implementation correctly converts "1|0" to 4 Ableton beats for 2/2 time signature
@@ -1419,20 +1419,20 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         count: 1,
-        destination: "arranger",
-        arrangerStartTime: "1|1",
-        arrangerLength: "1:0",
+        destination: "arrangement",
+        arrangementStartTime: "1|1",
+        arrangementLength: "1:0",
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arranger",
+          view: "Arrangement",
           trackIndex: 0,
-          arrangerStartTime: "1|1",
+          arrangementStartTime: "1|1",
         },
       });
     });
 
-    it("should error when arrangerLength is zero or negative", () => {
+    it("should error when arrangementLength is zero or negative", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
@@ -1452,14 +1452,14 @@ describe("duplicate", () => {
         duplicate({
           type: "clip",
           id: "clip1",
-          destination: "arranger",
-          arrangerStartTime: "5|1",
-          arrangerLength: "0:0", // 0 bars + 0 beats = 0 total
+          destination: "arrangement",
+          arrangementStartTime: "5|1",
+          arrangementLength: "0:0", // 0 bars + 0 beats = 0 total
         })
-      ).toThrow('duplicate failed: arrangerLength must be positive, got "0:0"');
+      ).toThrow('duplicate failed: arrangementLength must be positive, got "0:0"');
     });
 
-    it("should work normally without arrangerLength (backward compatibility)", () => {
+    it("should work normally without arrangementLength (backward compatibility)", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
@@ -1497,9 +1497,9 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "clip",
         id: "clip1",
-        destination: "arranger",
-        arrangerStartTime: "5|1",
-        // No arrangerLength specified
+        destination: "arrangement",
+        arrangementStartTime: "5|1",
+        // No arrangementLength specified
       });
 
       // Should use original behavior - no length manipulation
@@ -1507,7 +1507,7 @@ describe("duplicate", () => {
       // Check that no end_marker was set (setAll should only be called for name, which is undefined)
       expect(liveApiSet).not.toHaveBeenCalledWith("end_marker", expect.anything());
 
-      expect(result.arrangerLength).toBeUndefined();
+      expect(result.arrangementLength).toBeUndefined();
     });
   });
 });

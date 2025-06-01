@@ -14,7 +14,7 @@ export function readSong() {
     abletonLiveVersion: liveApp.call("get_version_string"),
     name: liveSet.getProperty("name"),
     isPlaying: liveSet.getProperty("is_playing") > 0,
-    followsArranger: liveSet.getProperty("back_to_arranger") === 0,
+    followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: `${liveSet.getProperty("signature_numerator")}/${liveSet.getProperty("signature_denominator")}`,
     isScaleModeEnabled: liveSet.getProperty("scale_mode") > 0,

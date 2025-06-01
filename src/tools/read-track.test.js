@@ -69,14 +69,14 @@ describe("readTrack", () => {
       isMuted: false,
       isSoloed: true,
       isArmed: true,
-      followsArranger: true,
+      followsArrangement: true,
       isGroup: false,
       isGroupMember: false,
       groupId: null,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       drumPads: null,
-      arrangerClips: [],
+      arrangementClips: [],
       sessionClips: [],
     });
   });
@@ -109,14 +109,14 @@ describe("readTrack", () => {
       isMuted: true,
       isSoloed: false,
       isArmed: false,
-      followsArranger: true,
+      followsArrangement: true,
       isGroup: false,
       isGroupMember: false,
       groupId: null,
       playingSlotIndex: -1,
       firedSlotIndex: -1,
       drumPads: null,
-      arrangerClips: [],
+      arrangementClips: [],
       sessionClips: [],
     });
   });
@@ -159,14 +159,14 @@ describe("readTrack", () => {
       isMuted: false,
       isSoloed: true,
       isArmed: true,
-      followsArranger: true,
+      followsArrangement: true,
       isGroup: true,
       isGroupMember: true,
       groupId: "456",
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       drumPads: null,
-      arrangerClips: [],
+      arrangementClips: [],
       sessionClips: [],
     });
   });
@@ -234,14 +234,14 @@ describe("readTrack", () => {
       isArmed: false,
       isMuted: false,
       isSoloed: false,
-      followsArranger: false,
+      followsArrangement: false,
       isGroup: false,
       isGroupMember: false,
       groupId: null,
       firedSlotIndex: -1,
       playingSlotIndex: 0,
       drumPads: null,
-      arrangerClips: [],
+      arrangementClips: [],
       sessionClips: [
         expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
         expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
@@ -249,7 +249,7 @@ describe("readTrack", () => {
     });
   });
 
-  it("returns arrangerClips when the track has clips in Arranger view", () => {
+  it("returns arrangementClips when the track has clips in Arrangement view", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 2":
@@ -274,7 +274,7 @@ describe("readTrack", () => {
     mockLiveApiGet({
       Track: {
         has_midi_input: 1,
-        name: "Track with Arranger Clips",
+        name: "Track with Arrangement Clips",
         color: 255,
         clip_slots: children("slot1", "slot2", "slot3"),
         arrangement_clips: children("arr_clip1", "arr_clip2"),
@@ -290,9 +290,9 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 2 });
 
-    expect(result.arrangerClips.length).toBe(2);
-    expect(result.arrangerClips[0].id).toBe("arr_clip1");
-    expect(result.arrangerClips[1].id).toBe("arr_clip2");
+    expect(result.arrangementClips.length).toBe(2);
+    expect(result.arrangementClips[0].id).toBe("arr_clip1");
+    expect(result.arrangementClips[1].id).toBe("arr_clip2");
   });
 
   describe("drumPads", () => {

@@ -16,9 +16,10 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
 
   // Support "id {id}" (such as returned by childIds()) and id values directly
   // TODO: Need test coverage of this logic
-  const clip = clipId != null
-    ? LiveAPI.from(clipId)
-    : new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
+  const clip =
+    clipId != null
+      ? LiveAPI.from(clipId)
+      : new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
 
   if (!clip.exists()) {
     if (clipId != null) throw new Error(`No clip exists for clipId "${clipId}"`);
@@ -31,7 +32,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     };
   }
 
-  const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
+  const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
   const timeSigNumerator = clip.getProperty("signature_numerator");
   const timeSigDenominator = clip.getProperty("signature_denominator");
 
@@ -39,7 +40,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     name: clip.getProperty("name"),
-    view: isArrangerClip ? "Arranger" : "Session",
+    view: isArrangementClip ? "Arrangement" : "Session",
     color: clip.getColor(),
     loop: clip.getProperty("looping") > 0,
     // convert "ableton beats" (quarter note offset) to musical beats, so it makes sense in e.g. 6/8 time signatures:
@@ -53,12 +54,12 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
   };
 
-  if (isArrangerClip) {
+  if (isArrangementClip) {
     const liveSet = new LiveAPI("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
     result.trackIndex = clip.trackIndex;
-    result.arrangerStartTime = abletonBeatsToBarBeat(
+    result.arrangementStartTime = abletonBeatsToBarBeat(
       clip.getProperty("start_time"),
       songTimeSigNumerator,
       songTimeSigDenominator

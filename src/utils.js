@@ -78,3 +78,18 @@ export function parseTimeSignature(timeSignature) {
     denominator: parseInt(match[2], 10)
   };
 }
+
+/**
+ * Converts user-facing view names to Live API view names
+ * @param {string} view - View name from user interface ("session" or "arrangement")
+ * @returns {string} Live API view name ("Session" or "Arranger")
+ * @throws {Error} If view name is not recognized
+ */
+export function toLiveApiView(view) {
+  const normalized = view.toLowerCase(); // for added flexibility even though should already be lower case
+  switch (normalized) {
+    case "session": return "Session";
+    case "arrangement": return "Arranger";  // Live API still uses "Arranger"
+    default: throw new Error(`Unknown view: ${view}`);
+  }
+}

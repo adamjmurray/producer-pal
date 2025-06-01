@@ -49,12 +49,12 @@
 
 **Arrangement Feature Improvements:**
 
-- [x] Duplicate scene to arranger (all clips in scene → arranger) enhancements
+- [x] Duplicate scene to arrangement (all clips in scene → arrangement) enhancements
   - [x] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
         scene)
   - [x] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
         needed) when copying a scene
-- [x] Duplicate clip to arranger enhancements
+- [x] Duplicate clip to arrangement enhancements
   - [x] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
         needed) when copying a clip
 
@@ -70,12 +70,12 @@
       loopEnd, etc)
   - [x] all timing data returned by read-clip
   - [x] all args for create-clip and update-clip
-  - [x] the arrangerStartTime arg in duplicate
+  - [x] the arrangementStartTime arg in duplicate
   - [x] all applicable args and result properties for transport
 
 **Duplicate Tool:**
 
-- [x] Duplicate scene to arranger (all clips in scene → arranger)
+- [x] Duplicate scene to arrangement (all clips in scene → arrangement)
 - [x] Duplicating tracks or scenes should return info about any duplicated clips inside of them.
 - [x] Duplicating tracks or scenes should have the option to duplicate clips or not
 

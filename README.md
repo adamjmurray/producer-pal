@@ -113,7 +113,7 @@ node e2e/cli.mjs tools/list
 
 # Call a tool with JSON arguments
 node e2e/cli.mjs tools/call read-song '{}'
-node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arranger", "arrangerStartTime": "5|1"}'
+node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 
 # Use a different server URL
 node e2e/cli.mjs http://localhost:6274/mcp tools/list

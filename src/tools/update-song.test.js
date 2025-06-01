@@ -41,7 +41,7 @@ describe("updateSong", () => {
     const result = updateSong({
       tempo: 125,
       timeSignature: "6/8",
-      view: "Arranger",
+      view: "arrangement",
     });
     expect(liveApiSet).toHaveBeenCalledWith("tempo", 125);
     expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
@@ -51,16 +51,16 @@ describe("updateSong", () => {
       id: "live_set_id",
       tempo: 125,
       timeSignature: "6/8",
-      view: "Arranger",
+      view: "arrangement",
     });
   });
 
-  it("should switch to Arranger view when requested", () => {
-    const result = updateSong({ view: "Arranger" });
+  it("should switch to Arrangement view when requested", () => {
+    const result = updateSong({ view: "arrangement" });
     expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
     expect(result).toEqual({
       id: "live_set_id",
-      view: "Arranger",
+      view: "arrangement",
     });
   });
 

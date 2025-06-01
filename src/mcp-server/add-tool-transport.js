@@ -4,7 +4,7 @@ import { z } from "zod";
 export function addToolTransport(server, callLiveApi) {
   server.tool(
     "transport",
-    "Controls the Arranger and Session view transport, including playback, position, and loop settings. " +
+    "Controls the Arrangement and Session view transport, including playback, position, and loop settings. " +
       "IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently. " +
       "When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.",
     {

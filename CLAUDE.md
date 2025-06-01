@@ -168,7 +168,7 @@ node e2e/cli.mjs tools/list
 
 # Call a tool with JSON arguments
 node e2e/cli.mjs tools/call read-song '{}'
-node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arranger", "arrangerStartTime": "5|1"}'
+node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 ```
 
 **IMPORTANT:** ALWAYS ask the user for permission before using the e2e CLI tool. The user may be in the middle of their

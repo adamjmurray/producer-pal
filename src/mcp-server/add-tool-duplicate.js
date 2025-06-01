@@ -13,22 +13,22 @@ export function addToolDuplicate(server, callLiveApi) {
       id: z.string().describe("Object id to duplicate"),
       count: z.number().int().min(1).default(1).describe("Number of duplicates to create (default: 1)"),
       destination: z
-        .enum(["session", "arranger"])
+        .enum(["session", "arrangement"])
         .optional()
         .describe(
           "Destination for clip or scene duplication. Required when type is 'clip'. For scenes, defaults to 'session'."
         ),
-      arrangerStartTime: z
+      arrangementStartTime: z
         .string()
         .optional()
         .describe(
-          "Arranger view start time in bar|beat position format using pipe separator (e.g., '5|1' = bar 5, beat 1 of the arrangement). Required when destination is 'arranger'."
+          "Arrangement view start time in bar|beat position format using pipe separator (e.g., '5|1' = bar 5, beat 1 of the arrangement). Required when destination is 'arrangement'."
         ),
-      arrangerLength: z
+      arrangementLength: z
         .string()
         .optional()
         .describe(
-          "Arranger view duration in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When not provided, this defaults to the clip length, or the longest clip in the scene. Auto-duplicates looping clips to fill the specified duration."
+          "Arrangement view duration in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When not provided, this defaults to the clip length, or the longest clip in the scene. Auto-duplicates looping clips to fill the specified duration."
         ),
       name: z
         .string()

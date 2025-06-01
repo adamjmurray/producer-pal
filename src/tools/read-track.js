@@ -1,8 +1,8 @@
 // src/tools/read-track.js
 import { getHostTrackIndex } from "../get-host-track-index";
 import { midiPitchToName } from "../notation/midi-pitch-to-name";
-import { readClip } from "./read-clip";
 import { VERSION } from "../version";
+import { readClip } from "./read-clip";
 
 export const DEVICE_TYPE_INSTRUMENT = 1;
 export const DEVICE_TYPE_AUDIO_EFFECT = 2;
@@ -39,7 +39,7 @@ export function readTrack({ trackIndex } = {}) {
     isArmed: track.getProperty("arm") > 0,
     playingSlotIndex: track.getProperty("playing_slot_index"),
     firedSlotIndex: track.getProperty("fired_slot_index"),
-    followsArranger: track.getProperty("back_to_arranger") === 0,
+    followsArrangement: track.getProperty("back_to_arranger") === 0,
     isGroup: track.getProperty("is_foldable") > 0,
     isGroupMember: track.getProperty("is_grouped") > 0,
     groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
@@ -49,7 +49,7 @@ export function readTrack({ trackIndex } = {}) {
       .map((_clipSlotId, clipSlotIndex) => readClip({ trackIndex, clipSlotIndex }))
       .filter((clip) => clip.id != null),
 
-    arrangerClips: track
+    arrangementClips: track
       .getChildIds("arrangement_clips")
       .map((clipId) => readClip({ clipId }))
       .filter((clip) => clip.id != null),

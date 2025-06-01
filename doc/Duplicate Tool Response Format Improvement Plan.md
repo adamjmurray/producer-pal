@@ -90,7 +90,7 @@
 }
 ```
 
-**Single Clip to Arranger (count=1)**
+**Single Clip to Arrangement (count=1)**
 
 ```json
 {
@@ -98,20 +98,20 @@
   "id": "293",
   "count": 1,
   "duplicated": true,
-  "destination": "arranger",
-  "arrangerStartTime": "1|1",
+  "destination": "arrangement",
+  "arrangementStartTime": "1|1",
   "duplicatedClip": {
     "id": "337",
-    "view": "Arranger",
+    "view": "Arrangement",
     "trackIndex": 4,
-    "arrangerStartTime": "1|1"
+    "arrangementStartTime": "1|1"
   }
 }
 ```
 
 ### Scene Duplication
 
-**Multiple Scenes to Arranger (count=2)**
+**Multiple Scenes to Arrangement (count=2)**
 
 ```json
 {
@@ -119,27 +119,27 @@
   "id": "2",
   "count": 2,
   "duplicated": true,
-  "destination": "arranger",
-  "arrangerStartTime": "5|1",
+  "destination": "arrangement",
+  "arrangementStartTime": "5|1",
   "objects": [
     {
-      "arrangerStartTime": "5|1",
+      "arrangementStartTime": "5|1",
       "duplicatedClips": [
-        { "id": "326", "view": "Arranger", "trackIndex": 0, "arrangerStartTime": "5|1" },
-        { "id": "327", "view": "Arranger", "trackIndex": 1, "arrangerStartTime": "5|1" },
-        { "id": "328", "view": "Arranger", "trackIndex": 2, "arrangerStartTime": "5|1" },
-        { "id": "329", "view": "Arranger", "trackIndex": 3, "arrangerStartTime": "5|1" },
-        { "id": "330", "view": "Arranger", "trackIndex": 4, "arrangerStartTime": "5|1" }
+        { "id": "326", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "5|1" },
+        { "id": "327", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "5|1" },
+        { "id": "328", "view": "Arrangement", "trackIndex": 2, "arrangementStartTime": "5|1" },
+        { "id": "329", "view": "Arrangement", "trackIndex": 3, "arrangementStartTime": "5|1" },
+        { "id": "330", "view": "Arrangement", "trackIndex": 4, "arrangementStartTime": "5|1" }
       ]
     },
     {
-      "arrangerStartTime": "9|1",
+      "arrangementStartTime": "9|1",
       "duplicatedClips": [
-        { "id": "331", "view": "Arranger", "trackIndex": 0, "arrangerStartTime": "9|1" },
-        { "id": "332", "view": "Arranger", "trackIndex": 1, "arrangerStartTime": "9|1" },
-        { "id": "333", "view": "Arranger", "trackIndex": 2, "arrangerStartTime": "9|1" },
-        { "id": "334", "view": "Arranger", "trackIndex": 3, "arrangerStartTime": "9|1" },
-        { "id": "335", "view": "Arranger", "trackIndex": 4, "arrangerStartTime": "9|1" }
+        { "id": "331", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "9|1" },
+        { "id": "332", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "9|1" },
+        { "id": "333", "view": "Arrangement", "trackIndex": 2, "arrangementStartTime": "9|1" },
+        { "id": "334", "view": "Arrangement", "trackIndex": 3, "arrangementStartTime": "9|1" },
+        { "id": "335", "view": "Arrangement", "trackIndex": 4, "arrangementStartTime": "9|1" }
       ]
     }
   ]
@@ -203,26 +203,26 @@
 }
 ```
 
-**Scene Duplication to Arranger**
+**Scene Duplication to Arrangement**
 
 ```json
 {
   "type": "scene",
   "id": "2",
   "count": 2,
-  "destination": "arranger",
-  "arrangerStartTime": "5|1",
+  "destination": "arrangement",
+  "arrangementStartTime": "5|1",
   "newScenes": [
     {
       "clips": [
-        { "id": "326", "view": "Arranger", "trackIndex": 0, "arrangerStartTime": "5|1" },
-        { "id": "327", "view": "Arranger", "trackIndex": 1, "arrangerStartTime": "5|1" }
+        { "id": "326", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "5|1" },
+        { "id": "327", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "5|1" }
       ]
     },
     {
       "clips": [
-        { "id": "331", "view": "Arranger", "trackIndex": 0, "arrangerStartTime": "9|1" },
-        { "id": "332", "view": "Arranger", "trackIndex": 1, "arrangerStartTime": "9|1" }
+        { "id": "331", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "9|1" },
+        { "id": "332", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "9|1" }
       ]
     }
   ]

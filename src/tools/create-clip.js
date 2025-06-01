@@ -1,16 +1,16 @@
 // src/tools/create-clip.js
 import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
-import { parseTimeSignature, setAllNonNull } from "../utils.js";
+import { parseTimeSignature, setAllNonNull, toLiveApiView } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
 /**
- * Creates MIDI clips in Session or Arranger view
+ * Creates MIDI clips in Session or Arrangement view
  * @param {Object} args - The clip parameters
- * @param {string} args.view - View for the clip ('Session' or 'Arranger')
+ * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for Session view
- * @param {string} [args.arrangerStartTime] - Start time in bar|beat format for Arranger view clips (uses song time signature)
+ * @param {string} [args.arrangementStartTime] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.name] - Base name for the clips
@@ -28,7 +28,7 @@ export function createClip({
   view,
   trackIndex,
   clipSlotIndex = null,
-  arrangerStartTime = null,
+  arrangementStartTime = null,
   count = 1,
   notes: notationString = null,
   name = null,
@@ -50,12 +50,12 @@ export function createClip({
     throw new Error("createClip failed: trackIndex is required");
   }
 
-  if (view === "Session" && clipSlotIndex == null) {
+  if (view === "session" && clipSlotIndex == null) {
     throw new Error("createClip failed: clipSlotIndex is required when view is 'Session'");
   }
 
-  if (view === "Arranger" && arrangerStartTime == null) {
-    throw new Error("createClip failed: arrangerStartTime is required when view is 'Arranger'");
+  if (view === "arrangement" && arrangementStartTime == null) {
+    throw new Error("createClip failed: arrangementStartTime is required when view is 'Arrangement'");
   }
 
   if (count < 1) {
@@ -66,7 +66,7 @@ export function createClip({
   let timeSigNumerator, timeSigDenominator;
   let songTimeSigNumerator, songTimeSigDenominator;
 
-  // Get song time signature for arrangerStartTime conversion
+  // Get song time signature for arrangementStartTime conversion
   songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
@@ -81,7 +81,11 @@ export function createClip({
   }
 
   // Convert bar|beat timing parameters to Ableton beats
-  const arrangerStartTimeBeats = barBeatToAbletonBeats(arrangerStartTime, songTimeSigNumerator, songTimeSigDenominator);
+  const arrangementStartTimeBeats = barBeatToAbletonBeats(
+    arrangementStartTime,
+    songTimeSigNumerator,
+    songTimeSigDenominator
+  );
   const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
   const endMarkerBeats = barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator);
   const loopStartBeats = barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator);
@@ -131,9 +135,9 @@ export function createClip({
     const clipName = name != null ? (count === 1 ? name : i === 0 ? name : `${name} ${i + 1}`) : undefined;
 
     let clip;
-    let currentClipSlotIndex, currentArrangerStartTimeBeats;
+    let currentClipSlotIndex, currentArrangementStartTimeBeats;
 
-    if (view === "Session") {
+    if (view === "session") {
       currentClipSlotIndex = clipSlotIndex + i;
 
       // Auto-create scenes if needed
@@ -163,18 +167,18 @@ export function createClip({
       clipSlot.call("create_clip", clipLength);
       clip = new LiveAPI(`${clipSlot.path} clip`);
     } else {
-      // Arranger view
-      currentArrangerStartTimeBeats = arrangerStartTimeBeats + i * clipLength;
+      // Arrangement view
+      currentArrangementStartTimeBeats = arrangementStartTimeBeats + i * clipLength;
 
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
       if (!track.exists()) {
         throw new Error(`createClip failed: track with index ${trackIndex} does not exist`);
       }
 
-      const newClipResult = track.call("create_midi_clip", currentArrangerStartTimeBeats, clipLength);
+      const newClipResult = track.call("create_midi_clip", currentArrangementStartTimeBeats, clipLength);
       clip = LiveAPI.from(newClipResult);
       if (!clip.exists()) {
-        throw new Error("createClip failed: failed to create Arranger clip");
+        throw new Error("createClip failed: failed to create Arrangement clip");
       }
     }
 
@@ -203,19 +207,19 @@ export function createClip({
     };
 
     // Add view-specific properties
-    if (view === "Session") {
+    if (view === "session") {
       clipResult.clipSlotIndex = currentClipSlotIndex;
     } else {
       // Calculate bar|beat position for this clip
       if (i === 0) {
-        clipResult.arrangerStartTime = arrangerStartTime;
+        clipResult.arrangementStartTime = arrangementStartTime;
       } else {
         // Convert clipLength back to bar|beat format and add to original position
         const clipLengthInMusicalBeats = clipLength * (songTimeSigDenominator / 4);
         const totalOffsetBeats = i * clipLengthInMusicalBeats;
-        const originalBeats = barBeatToBeats(arrangerStartTime, songTimeSigNumerator);
+        const originalBeats = barBeatToBeats(arrangementStartTime, songTimeSigNumerator);
         const newPositionBeats = originalBeats + totalOffsetBeats;
-        clipResult.arrangerStartTime = beatsToBarBeat(newPositionBeats, songTimeSigNumerator);
+        clipResult.arrangementStartTime = beatsToBarBeat(newPositionBeats, songTimeSigNumerator);
       }
     }
 
@@ -237,7 +241,7 @@ export function createClip({
     if (i === 0) {
       const appView = new LiveAPI("live_app view");
       const songView = new LiveAPI("live_set view");
-      appView.call("show_view", view);
+      appView.call("show_view", toLiveApiView(view));
       songView.set("detail_clip", `id ${clip.id}`);
       appView.call("focus_view", "Detail/Clip");
       if (loop) {
@@ -248,7 +252,7 @@ export function createClip({
   }
 
   // Handle autoplay for Session clips
-  if (autoplay && view === "Session") {
+  if (autoplay && view === "session") {
     for (let i = 0; i < count; i++) {
       const currentClipSlotIndex = clipSlotIndex + i;
       const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`);

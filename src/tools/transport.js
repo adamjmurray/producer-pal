@@ -3,7 +3,7 @@ import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbea
 import { parseCommaSeparatedIndices } from "../utils.js";
 
 /**
- * Unified control for all playback functionality in both Arranger and Session views.
+ * Unified control for all playback functionality in both Arrangement and Session views.
  * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
  * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
  * @param {Object} args - The parameters

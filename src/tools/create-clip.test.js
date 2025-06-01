@@ -7,17 +7,17 @@ import { createClip } from "./create-clip";
 describe("createClip", () => {
   it("should throw error when required parameters are missing", () => {
     expect(() => createClip({})).toThrow("createClip failed: view parameter is required");
-    expect(() => createClip({ view: "Session" })).toThrow("createClip failed: trackIndex is required");
-    expect(() => createClip({ view: "Session", trackIndex: 0 })).toThrow(
+    expect(() => createClip({ view: "session" })).toThrow("createClip failed: trackIndex is required");
+    expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
       "createClip failed: clipSlotIndex is required when view is 'Session'"
     );
-    expect(() => createClip({ view: "Arranger", trackIndex: 0 })).toThrow(
-      "createClip failed: arrangerStartTime is required when view is 'Arranger'"
+    expect(() => createClip({ view: "arrangement", trackIndex: 0 })).toThrow(
+      "createClip failed: arrangementStartTime is required when view is 'Arrangement'"
     );
   });
 
   it("should throw error when count is less than 1", () => {
-    expect(() => createClip({ view: "Session", trackIndex: 0, clipSlotIndex: 0, count: 0 })).toThrow(
+    expect(() => createClip({ view: "session", trackIndex: 0, clipSlotIndex: 0, count: 0 })).toThrow(
       "createClip failed: count must be at least 1"
     );
   });
@@ -25,7 +25,7 @@ describe("createClip", () => {
   it("should validate time signature early when provided", () => {
     expect(() =>
       createClip({
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         timeSignature: "invalid",
@@ -40,7 +40,7 @@ describe("createClip", () => {
     });
 
     const result = createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar from song
@@ -53,7 +53,7 @@ describe("createClip", () => {
       timeSignature: "3/4",
       trackIndex: 0,
       type: "midi",
-      view: "Session",
+      view: "session",
     });
 
     // Verify the parsed notes were correctly added to the clip
@@ -71,7 +71,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       timeSignature: "3/4",
@@ -92,7 +92,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       timeSignature: "6/8",
@@ -115,7 +115,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       endMarker: "2|3",
@@ -132,7 +132,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       loopEnd: "3|1",
@@ -149,7 +149,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 t2 C3 1|4 t1.5 D3", // Notes end at beat 4.5, which should round up to 5
@@ -165,7 +165,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 t2 C3 1|2 t1.5 D3", // Notes end at beat index 2.5, which should round up to 3
@@ -201,7 +201,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
     });
@@ -216,7 +216,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "",
@@ -245,7 +245,7 @@ describe("createClip", () => {
       });
 
       const result = createClip({
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         notes: "1|1 C3 D3 E3",
@@ -273,7 +273,7 @@ describe("createClip", () => {
       expect(result).toEqual({
         id: "clip_0_0",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         name: "New Clip",
@@ -307,7 +307,7 @@ describe("createClip", () => {
       });
 
       const result = createClip({
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 1,
         count: 3,
@@ -333,7 +333,7 @@ describe("createClip", () => {
         {
           id: "clip_0_1",
           type: "midi",
-          view: "Session",
+          view: "session",
           trackIndex: 0,
           clipSlotIndex: 1,
           name: "Loop",
@@ -343,7 +343,7 @@ describe("createClip", () => {
         {
           id: "clip_0_2",
           type: "midi",
-          view: "Session",
+          view: "session",
           trackIndex: 0,
           clipSlotIndex: 2,
           name: "Loop 2",
@@ -353,7 +353,7 @@ describe("createClip", () => {
         {
           id: "clip_0_3",
           type: "midi",
-          view: "Session",
+          view: "session",
           trackIndex: 0,
           clipSlotIndex: 3,
           name: "Loop 3",
@@ -373,7 +373,7 @@ describe("createClip", () => {
       });
 
       createClip({
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 4, // Needs scenes at indices 2, 3, 4
         name: "Future Clip",
@@ -394,7 +394,7 @@ describe("createClip", () => {
       });
       expect(() =>
         createClip({
-          view: "Session",
+          view: "session",
           trackIndex: 0,
           clipSlotIndex: 0,
           name: "This Should Fail",
@@ -405,7 +405,7 @@ describe("createClip", () => {
     it("should throw error if clipSlotIndex exceeds maximum allowed scenes", () => {
       expect(() =>
         createClip({
-          view: "Session",
+          view: "session",
           trackIndex: 0,
           clipSlotIndex: MAX_AUTO_CREATED_SCENES,
           name: "This Should Fail",
@@ -414,8 +414,8 @@ describe("createClip", () => {
     });
   });
 
-  describe("Arranger view", () => {
-    it("should create a single clip in arranger", () => {
+  describe("Arrangement view", () => {
+    it("should create a single clip in arrangement", () => {
       mockLiveApiGet({
         Track: { exists: () => true },
         LiveSet: { signature_numerator: 4 },
@@ -427,62 +427,62 @@ describe("createClip", () => {
 
       liveApiCall.mockImplementation((method, ...args) => {
         if (method === "create_midi_clip") {
-          return ["id", "arranger_clip"];
+          return ["id", "arrangement_clip"];
         }
         return null;
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arranger_clip") return "arranger_clip";
+        if (this._path === "id arrangement_clip") return "arrangement_clip";
         return "1";
       });
 
       const result = createClip({
-        view: "Arranger",
+        view: "arrangement",
         trackIndex: 0,
-        arrangerStartTime: "3|1",
+        arrangementStartTime: "3|1",
         notes: "1|1 C3 D3 E3",
-        name: "Arranger Clip",
+        name: "Arrangement Clip",
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 1); // Length based on notes
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Arranger Clip");
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Arrangement Clip");
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-      expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id arranger_clip");
+      expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id arrangement_clip");
 
       expect(result).toEqual({
-        id: "arranger_clip",
+        id: "arrangement_clip",
         type: "midi",
-        view: "Arranger",
+        view: "arrangement",
         trackIndex: 0,
-        arrangerStartTime: "3|1",
-        name: "Arranger Clip",
+        arrangementStartTime: "3|1",
+        name: "Arrangement Clip",
         notes: "1|1 C3 D3 E3",
         timeSignature: "4/4",
       });
     });
 
-    it("should create arranger clips with exact lengths and positions", () => {
+    it("should create arrangement clips with exact lengths and positions", () => {
       mockLiveApiGet({
         Track: { exists: () => true },
       });
 
       liveApiCall.mockImplementation((method, ...args) => {
         if (method === "create_midi_clip") {
-          return ["id", "arranger_clip"];
+          return ["id", "arrangement_clip"];
         }
         return null;
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arranger_clip") return "arranger_clip";
+        if (this._path === "id arrangement_clip") return "arrangement_clip";
         return "1";
       });
 
       const result = createClip({
-        view: "Arranger",
+        view: "arrangement",
         trackIndex: 0,
-        arrangerStartTime: "3|1",
+        arrangementStartTime: "3|1",
         count: 3,
         name: "Sequence",
         notes: "C3 1|2 D3",
@@ -495,31 +495,31 @@ describe("createClip", () => {
 
       expect(result).toEqual([
         {
-          id: "arranger_clip",
+          id: "arrangement_clip",
           type: "midi",
-          view: "Arranger",
+          view: "arrangement",
           trackIndex: 0,
-          arrangerStartTime: "3|1",
+          arrangementStartTime: "3|1",
           name: "Sequence",
           timeSignature: "4/4",
           notes: "C3 1|2 D3",
         },
         {
-          id: "arranger_clip",
+          id: "arrangement_clip",
           type: "midi",
-          view: "Arranger",
+          view: "arrangement",
           trackIndex: 0,
-          arrangerStartTime: "3|3",
+          arrangementStartTime: "3|3",
           name: "Sequence 2",
           timeSignature: "4/4",
           notes: "C3 1|2 D3",
         },
         {
-          id: "arranger_clip",
+          id: "arrangement_clip",
           type: "midi",
-          view: "Arranger",
+          view: "arrangement",
           trackIndex: 0,
-          arrangerStartTime: "4|1",
+          arrangementStartTime: "4|1",
           name: "Sequence 3",
           timeSignature: "4/4",
           notes: "C3 1|2 D3",
@@ -532,9 +532,9 @@ describe("createClip", () => {
 
       expect(() =>
         createClip({
-          view: "Arranger",
+          view: "arrangement",
           trackIndex: 99,
-          arrangerStartTime: "3|1",
+          arrangementStartTime: "3|1",
         })
       ).toThrow("createClip failed: track with index 99 does not exist");
     });
@@ -550,7 +550,7 @@ describe("createClip", () => {
     });
 
     const result = createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       timeSignature: "6/8",
@@ -568,7 +568,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 t2 C3 1|3 t3 D3", // Notes at beats 0 and 2, with durations 2 and 3, so end at beat 5
@@ -584,7 +584,7 @@ describe("createClip", () => {
     });
 
     const singleResult = createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       count: 1,
@@ -592,7 +592,7 @@ describe("createClip", () => {
     });
 
     const arrayResult = createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 1,
       count: 2,
@@ -602,7 +602,7 @@ describe("createClip", () => {
     expect(singleResult).toMatchObject({
       id: expect.any(String),
       type: "midi",
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       name: "Single",
@@ -623,7 +623,7 @@ describe("createClip", () => {
     });
 
     const result = createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
@@ -646,7 +646,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
@@ -662,7 +662,7 @@ describe("createClip", () => {
     });
 
     createClip({
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       name: "Test Clip",

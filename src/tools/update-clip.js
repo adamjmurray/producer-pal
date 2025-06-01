@@ -90,12 +90,12 @@ export function updateClip({
     }
 
     // Determine view and indices from clip path
-    const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
-    let trackIndex, clipSlotIndex, arrangerStartTime;
+    const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+    let trackIndex, clipSlotIndex, arrangementStartTime;
 
-    if (isArrangerClip) {
+    if (isArrangementClip) {
       trackIndex = clip.trackIndex;
-      arrangerStartTime = clip.getProperty("start_time");
+      arrangementStartTime = clip.getProperty("start_time");
     } else {
       trackIndex = clip.trackIndex;
       clipSlotIndex = clip.clipSlotIndex;
@@ -109,13 +109,13 @@ export function updateClip({
     const clipResult = {
       id: clip.id,
       type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
-      view: isArrangerClip ? "Arranger" : "Session",
+      view: isArrangementClip ? "Arrangement" : "Session",
       trackIndex,
     };
 
     // Add view-specific properties
-    if (isArrangerClip) {
-      clipResult.arrangerStartTime = arrangerStartTime;
+    if (isArrangementClip) {
+      clipResult.arrangementStartTime = arrangementStartTime;
     } else {
       clipResult.clipSlotIndex = clipSlotIndex;
     }
@@ -137,8 +137,7 @@ export function updateClip({
     if (isFirstClip) {
       const appView = new LiveAPI("live_app view");
       const songView = new LiveAPI("live_set view");
-      const clipView = isArrangerClip ? "Arranger" : "Session";
-      appView.call("show_view", clipView);
+      appView.call("show_view", isArrangementClip ? "Arranger" : "Session");
       songView.set("detail_clip", `id ${clip.id}`);
       appView.call("focus_view", "Detail/Clip");
       if (loop || clip.getProperty("looping")) {

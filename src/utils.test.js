@@ -1,6 +1,6 @@
 // src/utils.test.js
 import { describe, expect, it } from "vitest";
-import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices, parseTimeSignature } from "./utils";
+import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices, parseTimeSignature, toLiveApiView } from "./utils";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {
@@ -164,6 +164,25 @@ describe("setAllNonNull", () => {
       existing: "value",
       new: "property"
     });
+  });
+});
+
+describe("toLiveApiView", () => {
+  it("converts lowercase view names to Live API format", () => {
+    expect(toLiveApiView("session")).toBe("Session");
+    expect(toLiveApiView("arrangement")).toBe("Arranger");
+  });
+
+  it("handles mixed case input", () => {
+    expect(toLiveApiView("Session")).toBe("Session");
+    expect(toLiveApiView("ARRANGEMENT")).toBe("Arranger");
+    expect(toLiveApiView("ArRaNgEmEnT")).toBe("Arranger");
+  });
+
+  it("throws error for unknown view names", () => {
+    expect(() => toLiveApiView("unknown")).toThrow("Unknown view: unknown");
+    expect(() => toLiveApiView("")).toThrow("Unknown view: ");
+    expect(() => toLiveApiView("arranger")).toThrow("Unknown view: arranger"); // We don't accept "arranger"
   });
 });
 

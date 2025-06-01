@@ -13,6 +13,8 @@ describe("updateClip", () => {
           return "456";
         case "id 789":
           return "789";
+        case "id 999":
+          return "999";
         default:
           return "0";
       }
@@ -26,6 +28,8 @@ describe("updateClip", () => {
           return "live_set tracks 1 clip_slots 1 clip";
         case "789":
           return "live_set tracks 2 arrangement_clips 0";
+        case "999":
+          return "live_set tracks 3 arrangement_clips 1";
         default:
           return "";
       }
@@ -75,7 +79,7 @@ describe("updateClip", () => {
     });
   });
 
-  it("should update a single arranger clip by ID", () => {
+  it("should update a single arrangement clip by ID", () => {
     mockLiveApiGet({
       789: {
         is_arrangement_clip: 1,
@@ -88,25 +92,45 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "789",
-      name: "Arranger Clip",
+      name: "Arrangement Clip",
       startMarker: "1|3", // 2 beats = bar 1 beat 3 in 4/4
       endMarker: "2|3", // 6 beats = bar 2 beat 3 in 4/4
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Arranger Clip");
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Arrangement Clip");
     expect(liveApiSet).toHaveBeenCalledWith("start_marker", 2); // 1|3 in 4/4 = 2 Ableton beats
     expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // 2|3 in 4/4 = 6 Ableton beats
 
     expect(result).toEqual({
       id: "789",
       type: "midi",
-      view: "Arranger",
+      view: "Arrangement",
       trackIndex: 2,
-      arrangerStartTime: 16.0,
-      name: "Arranger Clip",
+      arrangementStartTime: 16.0,
+      name: "Arrangement Clip",
       startMarker: "1|3",
       endMarker: "2|3",
     });
+  });
+
+  it("should switch to Arranger view when updating arrangement clips", () => {
+    mockLiveApiGet({
+      999: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 1,
+        start_time: 32.0,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    updateClip({
+      ids: "999",
+      name: "Test Arrangement Clip",
+    });
+
+    // Should call show_view with "Arranger" for Live API compatibility
+    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
   });
 
   it("should update multiple clips by comma-separated IDs", () => {
@@ -547,9 +571,9 @@ describe("updateClip", () => {
       {
         id: "789",
         type: "midi",
-        view: "Arranger",
+        view: "Arrangement",
         trackIndex: 2,
-        arrangerStartTime: 8.0,
+        arrangementStartTime: 8.0,
         color: "#0000FF",
       },
     ]);
