@@ -57,16 +57,15 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     const liveSet = new LiveAPI("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
-    result.trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)[1]);
+    result.trackIndex = clip.trackIndex;
     result.arrangerStartTime = abletonBeatsToBarBeat(
       clip.getProperty("start_time"),
       songTimeSigNumerator,
       songTimeSigDenominator
     );
   } else {
-    const pathMatch = clip.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
-    result.trackIndex = Number.parseInt(pathMatch?.[1]);
-    result.clipSlotIndex = Number.parseInt(pathMatch?.[2]);
+    result.trackIndex = clip.trackIndex;
+    result.clipSlotIndex = clip.clipSlotIndex;
   }
 
   if (result.type === "midi") {

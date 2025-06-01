@@ -47,6 +47,17 @@
 
 - [x] Versioning system
 
+**Arrangement Feature Improvements:**
+
+- [ ] Duplicate scene to arranger (all clips in scene → arranger) enhancements
+  - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
+        scene)
+  - [ ] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
+        needed) when copying a scene
+- [ ] Duplicate clip to arranger enhancements
+  - [ ] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
+        needed) when copying a clip
+
 **Clip editing:**
 
 - [x] Add clearExistingNotes boolean arg for `update-clip`, which can default to true (the current behavior of
@@ -115,14 +126,6 @@
 
 - [ ] See docs/Duplicate Tool Response Format Improvement Plan.md
 - [ ] ClipSlot.duplicate_clip_to with bulk destination support
-- [ ] Duplicate scene to arranger (all clips in scene → arranger) enhancements
-  - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
-        scene)
-  - [ ] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
-        needed) when copying a scene
-- [ ] Duplicate clip to arranger enhancements
-  - [ ] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
-        needed) when copying a clip
 - [ ] Enhance clip duplication safety in duplicate tool:
   - [ ] Add validation to detect when session clip duplication would overwrite existing clips (including with count > 1)
   - [ ] Add onConflict parameter with options: "error" (default), "overwrite", "next-empty", "new-scene"

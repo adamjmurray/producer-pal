@@ -86,24 +86,24 @@ const pathMatch = object.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
 
 **Proposed Solution**:
 ```javascript
-// In utils.js
-export function extractTrackIndex(path) {
-  const match = path.match(/live_set tracks (\d+)/);
-  if (!match) return null;
-  return Number(match[1]);
-}
-
-export function extractClipSlotIndices(path) {
-  const match = path.match(/live_set tracks (\d+) clip_slots (\d+)/);
-  if (!match) return null;
-  return {
-    trackIndex: Number(match[1]),
-    clipSlotIndex: Number(match[2])
-  };
-}
+// As LiveAPI prototype getters
+Object.defineProperty(LiveAPI.prototype, 'trackIndex', {
+  get: function() {
+    const match = this.path.match(/live_set tracks (\d+)/);
+    return match ? Number(match[1]) : null;
+  }
+});
+// Similar for sceneIndex and clipSlotIndex
 ```
 
-**Status**: 🔲 Not Started
+**Status**: ✅ Complete
+
+**Implementation Notes**:
+- Implemented as LiveAPI prototype getters for direct access: `liveApi.trackIndex`, `liveApi.sceneIndex`, `liveApi.clipSlotIndex`
+- Enhanced sceneIndex and clipSlotIndex to work with both path patterns for Session view compatibility
+- Added 39 comprehensive test cases covering all patterns and edge cases
+- Safe property definition prevents redefinition errors in test environments
+- Session view integration: clip_slots paths return both trackIndex and sceneIndex/clipSlotIndex
 
 ---
 
@@ -198,10 +198,18 @@ if (!object.exists()) {
 
 ---
 
+### ✅ LiveAPI Path Parsing Extensions
+**Completed**: Created LiveAPI prototype getters for index extraction
+- **Properties Added**: trackIndex, sceneIndex, clipSlotIndex
+- **Impact**: Direct property access for path parsing with Session view compatibility
+- **Status**: ✅ Complete
+
+---
+
 ## Tracking
 
 **Next Review Date**: TBD  
 **Last Updated**: 2025-01-31  
 **Total Patterns Identified**: 6  
-**Patterns Addressed**: 5  
+**Patterns Addressed**: 6  
 **Remaining High Priority**: 0

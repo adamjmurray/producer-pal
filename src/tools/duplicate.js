@@ -76,8 +76,8 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
       );
 
       if (type === "scene") {
-        const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
-        if (Number.isNaN(sceneIndex)) {
+        const sceneIndex = object.sceneIndex;
+        if (sceneIndex == null) {
           throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
         }
 
@@ -94,27 +94,26 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
     } else {
       // Session view operations (no bar:beat conversion needed)
       if (type === "track") {
-        const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
-        if (Number.isNaN(trackIndex)) {
+        const trackIndex = object.trackIndex;
+        if (trackIndex == null) {
           throw new Error(`duplicate failed: no track index for id "${id}" (path="${object.path}")`);
         }
         // For multiple tracks, we need to account for previously created tracks
         const actualTrackIndex = trackIndex + i;
         newObjectMetadata = duplicateTrack(actualTrackIndex, objectName, includeClips);
       } else if (type === "scene") {
-        const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
-        if (Number.isNaN(sceneIndex)) {
+        const sceneIndex = object.sceneIndex;
+        if (sceneIndex == null) {
           throw new Error(`duplicate failed: no scene index for id "${id}" (path="${object.path}")`);
         }
         const actualSceneIndex = sceneIndex + i;
         newObjectMetadata = duplicateScene(actualSceneIndex, objectName, includeClips);
       } else if (type === "clip") {
-        const match = object.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
-        if (!match) {
+        const trackIndex = object.trackIndex;
+        const clipSlotIndex = object.clipSlotIndex;
+        if (trackIndex == null || clipSlotIndex == null) {
           throw new Error(`duplicate failed: no track or clip slot index for clip id "${id}" (path="${object.path}")`);
         }
-        const trackIndex = Number(match[1]);
-        const clipSlotIndex = Number(match[2]);
 
         // For session clips, duplicate_clip_slot always creates at source+1,
         // so we call it on the progressively increasing source index
@@ -159,8 +158,8 @@ function getMinimalClipInfo(clip) {
   const isArrangerClip = clip.getProperty("is_arrangement_clip") > 0;
 
   if (isArrangerClip) {
-    const trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)?.[1]);
-    if (Number.isNaN(trackIndex)) {
+    const trackIndex = clip.trackIndex;
+    if (trackIndex == null) {
       throw new Error(`getMinimalClipInfo failed: could not determine trackIndex for clip (path="${clip.path}")`);
     }
 
@@ -183,11 +182,10 @@ function getMinimalClipInfo(clip) {
       arrangerStartTime,
     };
   } else {
-    const pathMatch = clip.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
-    const trackIndex = Number.parseInt(pathMatch?.[1]);
-    const clipSlotIndex = Number.parseInt(pathMatch?.[2]);
+    const trackIndex = clip.trackIndex;
+    const clipSlotIndex = clip.clipSlotIndex;
 
-    if (Number.isNaN(trackIndex) || Number.isNaN(clipSlotIndex)) {
+    if (trackIndex == null || clipSlotIndex == null) {
       throw new Error(
         `getMinimalClipInfo failed: could not determine trackIndex/clipSlotIndex for clip (path="${clip.path}")`
       );
@@ -340,8 +338,8 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, include
     throw new Error(`duplicate failed: scene with id "${sceneId}" does not exist`);
   }
 
-  const sceneIndex = Number(scene.path.match(/live_set scenes (\d+)/)?.[1]);
-  if (Number.isNaN(sceneIndex)) {
+  const sceneIndex = scene.sceneIndex;
+  if (sceneIndex == null) {
     throw new Error(`duplicate failed: no scene index for id "${sceneId}" (path="${scene.path}")`);
   }
 
@@ -422,8 +420,8 @@ function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name) {
     throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
   }
 
-  const trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)?.[1]);
-  if (Number.isNaN(trackIndex)) {
+  const trackIndex = clip.trackIndex;
+  if (trackIndex == null) {
     throw new Error(`duplicate failed: no track index for clipId "${clipId}" (path=${clip.path})`);
   }
 

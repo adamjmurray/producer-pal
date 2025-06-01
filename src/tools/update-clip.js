@@ -94,15 +94,14 @@ export function updateClip({
     let trackIndex, clipSlotIndex, arrangerStartTime;
 
     if (isArrangerClip) {
-      trackIndex = Number.parseInt(clip.path.match(/live_set tracks (\d+)/)?.[1]);
+      trackIndex = clip.trackIndex;
       arrangerStartTime = clip.getProperty("start_time");
     } else {
-      const pathMatch = clip.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
-      trackIndex = Number.parseInt(pathMatch?.[1]);
-      clipSlotIndex = Number.parseInt(pathMatch?.[2]);
+      trackIndex = clip.trackIndex;
+      clipSlotIndex = clip.clipSlotIndex;
     }
 
-    if (Number.isNaN(trackIndex)) {
+    if (trackIndex == null) {
       throw new Error(`updateClip failed: could not determine trackIndex for id "${id}" (path="${clip.path}")`);
     }
 
