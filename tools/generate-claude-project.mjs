@@ -42,8 +42,8 @@ async function findSourceFiles(dir, baseDir, skipTests = true) {
       const ext = path.extname(entry.name);
       const isTestFile = entry.name.includes('.test.') || entry.name.includes('.spec.');
       
-      // Include JavaScript files, but skip tests if requested
-      if (ext === '.js' && (!skipTests || !isTestFile)) {
+      // Include JavaScript and Peggy grammar files, but skip tests if requested
+      if ((ext === '.js' || ext === '.peggy') && (!skipTests || !isTestFile)) {
         files.push(fullPath);
       }
     }
