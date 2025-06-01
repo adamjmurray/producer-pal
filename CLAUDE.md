@@ -28,7 +28,8 @@ npm run parser:watch    # Auto-rebuild parser
 
 ### Build Warnings
 
-The build process shows circular dependency warnings from `zod-to-json-schema`. These are harmless and can be ignored - they come from the MCP SDK's dependencies and don't affect functionality.
+The build process shows circular dependency warnings from `zod-to-json-schema`. These are harmless and can be ignored -
+they come from the MCP SDK's dependencies and don't affect functionality.
 
 ## Architecture
 
@@ -60,9 +61,9 @@ Communication between Node.js and V8 uses:
 The project uses a custom notation for musical timing and notes:
 
 ```
-1:1 v100 t1.0 C3 E3 G3  // C major chord at bar 1, beat 1
-1:2 D3                   // D note at bar 1, beat 2
-2:1.5 v80 A3             // A note at bar 2, beat 1.5, velocity 80
+1|1 v100 t1.0 C3 E3 G3  // C major chord at bar 1, beat 1
+1|2 D3                   // D note at bar 1, beat 2
+2|1.5 v80 A3             // A note at bar 2, beat 1.5, velocity 80
 ```
 
 Grammar file: `src/notation/barbeat/barbeat-grammar.peggy`
@@ -89,24 +90,27 @@ The project extends the native Live API with helper methods in `src/live-api-ext
 - Protected track detection prevents modifying the device's host track
 - Default timeout: 15 seconds for Live API calls
 - Color format: `#RRGGBB` hex strings
-- Time format: `bar:beat` (1-based indexing, bars are integers, beats are floating point)
+- Time format: `bar|beat` (1-based indexing, bars are integers, beats are floating point)
 - Velocity 0 notes are filtered out (not sent to Live)
 
 ### Musical Beats vs Ableton Beats
 
 **Musical beats** are defined by the time signature denominator:
+
 - 4/4 time signature: quarter note is the musical beat (denominator = 4)
-- 6/8 time signature: eighth note is the musical beat (denominator = 8)  
+- 6/8 time signature: eighth note is the musical beat (denominator = 8)
 - 2/2 time signature: half note is the musical beat (denominator = 2)
 - 3/4 time signature: quarter note is the musical beat (denominator = 4)
 
 **Ableton beats** are always quarter notes regardless of time signature. This is Ableton Live's internal timing unit.
 
 **Conversion**: To convert between musical beats and Ableton beats:
+
 - `abletonBeats = musicalBeats * 4 / timeSigDenominator`
 - `musicalBeats = abletonBeats * timeSigDenominator / 4`
 
 For example, in 6/8 time:
+
 - 6 musical beats (eighth notes) = `6 * 4 / 8` = 3 Ableton beats (quarter notes)
 - 3 Ableton beats = `3 * 8 / 4` = 6 musical beats (eighth notes)
 
@@ -147,11 +151,13 @@ export default function toolName(liveApi, args) {
 
 When modifying BarBeat notation grammar, remember to rebuild the parser with `npm run parser:build`.
 
-Note: You generally don't need to run `npm run build` to verify changes - the test suite is sufficient to ensure correctness.
+Note: You generally don't need to run `npm run build` to verify changes - the test suite is sufficient to ensure
+correctness.
 
 ### End-to-End Testing
 
-For real-world testing and debugging, the `e2e/cli.mjs` tool can connect directly to the MCP server running in Ableton Live:
+For real-world testing and debugging, the `e2e/cli.mjs` tool can connect directly to the MCP server running in Ableton
+Live:
 
 ```bash
 # Show server info (default)
@@ -162,14 +168,17 @@ node e2e/cli.mjs tools/list
 
 # Call a tool with JSON arguments
 node e2e/cli.mjs tools/call read-song '{}'
-node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arranger", "arrangerStartTime": "5:1"}'
+node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arranger", "arrangerStartTime": "5|1"}'
 ```
 
-**IMPORTANT:** ALWAYS ask the user for permission before using the e2e CLI tool. The user may be in the middle of their own tests and running commands could interfere with their work or produce unexpected results in their Ableton Live session.
+**IMPORTANT:** ALWAYS ask the user for permission before using the e2e CLI tool. The user may be in the middle of their
+own tests and running commands could interfere with their work or produce unexpected results in their Ableton Live
+session.
 
 ## Versioning
 
 The project uses semantic versioning (major.minor.patch) maintained in `src/version.js`. The version is:
+
 - Displayed in server startup logs
 - Sent to the MCP SDK as the server version
 - Output to Max via `Max.outlet("version", VERSION)` for display in the device
@@ -177,6 +186,7 @@ The project uses semantic versioning (major.minor.patch) maintained in `src/vers
 Currently at v0.9.x, working towards the 1.0.0 release.
 
 To update the version:
+
 1. Edit `src/version.js` and update the `VERSION` constant
 2. Run `npm run build` to rebuild with the new version
 
@@ -231,6 +241,6 @@ To update the version:
   with this, but that is not ideal and may not work robustly across computers with different CPU characteristics.
   Therefore, for playback-related state, we return optimistic results assuming the operation succeeded (e.g. assume a
   clip isTriggered:true when autoplaying it)
-- **NEVER use the e2e CLI tool (`e2e/cli.mjs`) without explicit permission from the user.** The user may be in the middle 
-  of their own testing or music production work, and running commands could interfere with their Ableton Live session or 
-  produce unexpected results.
+- **NEVER use the e2e CLI tool (`e2e/cli.mjs`) without explicit permission from the user.** The user may be in the
+  middle of their own testing or music production work, and running commands could interfere with their Ableton Live
+  session or produce unexpected results.

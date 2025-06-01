@@ -19,7 +19,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("handles time state changes", () => {
-    const result = parseNotation("1:1 C3 1:2 D3 2:1 E3");
+    const result = parseNotation("1|1 C3 1|2 D3 2|1 E3");
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 1, beat 1
       { pitch: 62, start_time: 1, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 1, beat 2
@@ -73,7 +73,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("handles sub-beat timing", () => {
-    const result = parseNotation("1:1.5 C3 1:2.25 D3");
+    const result = parseNotation("1|1.5 C3 1|2.25 D3");
     expect(result).toEqual([
       { pitch: 60, start_time: 0.5, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 1.5 = 0.5 beats from start
       { pitch: 62, start_time: 1.25, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 2.25 = 1.25 beats from start
@@ -81,7 +81,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("handles complex state combinations", () => {
-    const result = parseNotation("1:1 v100 t0.25 p0.9 C3 D3 1:2 v80-120 t1.0 p0.7 E3 F3");
+    const result = parseNotation("1|1 v100 t0.25 p0.9 C3 D3 1|2 v80-120 t1.0 p0.7 E3 F3");
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 0.25, velocity: 100, probability: 0.9, velocity_deviation: 0 },
       { pitch: 62, start_time: 0, duration: 0.25, velocity: 100, probability: 0.9, velocity_deviation: 0 },
@@ -92,9 +92,9 @@ describe("BarBeat parseNotation()", () => {
 
   it("handles drum pattern example with probability and velocity range", () => {
     const result = parseNotation(`
-      1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
-      1:1.5 p0.6 Gb1  
-      1:2 v90 p1.0 D1
+      1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
+      1|1.5 p0.6 Gb1  
+      1|2 v90 p1.0 D1
       v100 p0.9 Gb1
     `);
     expect(result).toEqual([
@@ -107,7 +107,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("supports different time signatures via the beatsPerBar option (legacy)", () => {
-    const result = parseNotation("1:1 C3 2:1 D3", { beatsPerBar: 3 });
+    const result = parseNotation("1|1 C3 2|1 D3", { beatsPerBar: 3 });
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 1, beat 1
       { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 1 (3 beats per bar)
@@ -115,7 +115,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("supports different time signatures via timeSigNumerator/timeSigDenominator", () => {
-    const result = parseNotation("1:1 C3 2:1 D3", { timeSigNumerator: 3, timeSigDenominator: 4 });
+    const result = parseNotation("1|1 C3 2|1 D3", { timeSigNumerator: 3, timeSigDenominator: 4 });
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 1, beat 1
       { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 1 (3 beats per bar)
@@ -124,7 +124,7 @@ describe("BarBeat parseNotation()", () => {
 
   it("converts time signatures with half-note denominators correctly", () => {
     // 2/2 time: 1 musical beat (half note) = 2 Ableton beats (quarter notes)
-    const result = parseNotation("1:1 C3 1:2 D3", { timeSigNumerator: 2, timeSigDenominator: 2 });
+    const result = parseNotation("1|1 C3 1|2 D3", { timeSigNumerator: 2, timeSigDenominator: 2 });
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 2, velocity: 100, probability: 1.0, velocity_deviation: 0 },
       { pitch: 62, start_time: 2, duration: 2, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 2 in 2/2 = 2 Ableton beats
@@ -132,7 +132,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
-    const result = parseNotation("1:1 C3 2:1 D3", {
+    const result = parseNotation("1|1 C3 2|1 D3", {
       beatsPerBar: 4,
       timeSigNumerator: 3,
       timeSigDenominator: 4,
@@ -145,7 +145,7 @@ describe("BarBeat parseNotation()", () => {
 
   it("converts time signatures with different denominators correctly", () => {
     // 6/8 time: 1 Ableton beat = 2 musical beats
-    const result = parseNotation("1:1 C3 1:3 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
+    const result = parseNotation("1|1 C3 1|3 D3", { timeSigNumerator: 6, timeSigDenominator: 8 });
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
       { pitch: 62, start_time: 1, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // beat 3 in 6/8 = 1 Ableton beat
@@ -165,7 +165,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("maintains state across multiple bar boundaries", () => {
-    const result = parseNotation("1:1 v80 t0.5 p0.8 C3 3:2 D3 5:1 E3");
+    const result = parseNotation("1|1 v80 t0.5 p0.8 C3 3|2 D3 5|1 E3");
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 0.5, velocity: 80, probability: 0.8, velocity_deviation: 0 }, // bar 1, beat 1
       { pitch: 62, start_time: 9, duration: 0.5, velocity: 80, probability: 0.8, velocity_deviation: 0 }, // bar 3, beat 2 = (3-1)*4 + (2-1) = 9
@@ -192,7 +192,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("handles mixed order of state changes", () => {
-    const result = parseNotation("t0.5 1:1 v80 p0.7 C3 v100 2:1 t1.0 p1.0 D3");
+    const result = parseNotation("t0.5 1|1 v80 p0.7 C3 v100 2|1 t1.0 p1.0 D3");
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 0.5, velocity: 80, probability: 0.7, velocity_deviation: 0 },
       { pitch: 62, start_time: 4, duration: 1.0, velocity: 100, probability: 1.0, velocity_deviation: 0 },
@@ -210,7 +210,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("filters out notes with velocity 0", () => {
-    const result = parseNotation("1:1 v100 C3 v0 D3 v80 E3");
+    const result = parseNotation("1|1 v100 C3 v0 D3 v80 E3");
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
       // D3 with v0 should be filtered out
@@ -219,7 +219,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("filters out notes with velocity range starting at 0", () => {
-    const result = parseNotation("1:1 v0-50 C3 v50-100 D3");
+    const result = parseNotation("1|1 v0-50 C3 v50-100 D3");
     expect(result).toEqual([
       // C3 with v0-50 should be filtered out
       { pitch: 62, start_time: 0, duration: 1, velocity: 50, probability: 1.0, velocity_deviation: 50 },
@@ -227,7 +227,7 @@ describe("BarBeat parseNotation()", () => {
   });
 
   it("handles all notes filtered out", () => {
-    const result = parseNotation("1:1 v0 C3 D3 E3");
+    const result = parseNotation("1|1 v0 C3 D3 E3");
     expect(result).toEqual([]);
   });
 });

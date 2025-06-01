@@ -17,18 +17,18 @@ export function addToolUpdateClip(server, callLiveApi) {
       startMarker: z
         .string()
         .optional()
-        .describe("Start marker position in bar:beat format (the start of both looped and un-looped clips)"),
+        .describe("Start marker position in bar|beat format (the start of both looped and un-looped clips)"),
       endMarker: z
         .string()
         .optional()
-        .describe("End marker position in bar:beat format (only applicable to un-looped clips)"),
+        .describe("End marker position in bar|beat format (only applicable to un-looped clips)"),
 
       loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
       loopStart: z
         .string()
         .optional()
-        .describe("Loop start position in bar:beat format (not necessarily the same as startMarker)"),
-      loopEnd: z.string().optional().describe("Loop end position in bar:beat format"),
+        .describe("Loop start position in bar|beat format (not necessarily the same as startMarker)"),
+      loopEnd: z.string().optional().describe("Loop end position in bar|beat format"),
 
       notes: z
         .string()

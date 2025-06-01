@@ -6,10 +6,10 @@ import { parseCommaSeparatedIndices } from "../utils.js";
  * Unified control for all playback functionality in both Arranger and Session views
  * @param {Object} args - The parameters
  * @param {string} args.action - Action to perform
- * @param {string} [args.startTime] - Position in bar:beat format to start playback from in the arrangement
+ * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
- * @param {string} [args.loopStart] - Loop start position in bar:beat format
- * @param {string} [args.loopEnd] - Loop end position in bar:beat format
+ * @param {string} [args.loopStart] - Loop start position in bar|beat format
+ * @param {string} [args.loopEnd] - Loop end position in bar|beat format
  * @param {string} [args.followingTrackIndexes] - Comma-separated track indexes that should follow the arrangement
  * @param {number} [args.sceneIndex] - Scene index for Session view operations
  * @param {string} [args.trackIndexes] - Comma-separated track indexes for Session view operations
@@ -33,11 +33,11 @@ export function transport({
   const liveSet = new LiveAPI("live_set");
   const appView = new LiveAPI("live_app view");
 
-  // Get song time signature for bar:beat conversions
+  // Get song time signature for bar|beat conversions
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-  // Convert bar:beat inputs to Ableton beats
+  // Convert bar|beat inputs to Ableton beats
   let startTimeBeats, loopStartBeats, loopEndBeats;
 
   if (startTime != null) {
@@ -182,10 +182,10 @@ export function transport({
       throw new Error(`transport failed: unknown action "${action}"`);
   }
 
-  // Convert beats back to bar:beat for the response
+  // Convert beats back to bar|beat for the response
   const currentTime = abletonBeatsToBarBeat(currentTimeBeats, songTimeSigNumerator, songTimeSigDenominator);
 
-  // Get current loop state and convert to bar:beat
+  // Get current loop state and convert to bar|beat
   const currentLoopStartBeats = liveSet.getProperty("loop_start");
   const currentLoopLengthBeats = liveSet.getProperty("loop_length");
   const currentLoopStart = abletonBeatsToBarBeat(currentLoopStartBeats, songTimeSigNumerator, songTimeSigDenominator);

@@ -1,7 +1,7 @@
 // src/tools/create-clip.js
 import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
-import { setAllNonNull, parseTimeSignature } from "../utils.js";
+import { parseTimeSignature, setAllNonNull } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
 /**
@@ -10,16 +10,16 @@ import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
  * @param {string} args.view - View for the clip ('Session' or 'Arranger')
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for Session view
- * @param {string} [args.arrangerStartTime] - Start time in bar:beat format for Arranger view clips (uses song time signature)
+ * @param {string} [args.arrangerStartTime] - Start time in bar|beat format for Arranger view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.startMarker] - Start marker position in bar:beat format (uses clip time signature)
- * @param {string} [args.endMarker] - End marker position in bar:beat format (uses clip time signature)
- * @param {string} [args.loopStart] - Loop start position in bar:beat format (uses clip time signature)
- * @param {string} [args.loopEnd] - Loop end position in bar:beat format (uses clip time signature)
+ * @param {string} [args.startMarker] - Start marker position in bar|beat format (uses clip time signature)
+ * @param {string} [args.endMarker] - End marker position in bar|beat format (uses clip time signature)
+ * @param {string} [args.loopStart] - Loop start position in bar|beat format (uses clip time signature)
+ * @param {string} [args.loopEnd] - Loop end position in bar|beat format (uses clip time signature)
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating it (Session only)
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
@@ -80,7 +80,7 @@ export function createClip({
     timeSigDenominator = songTimeSigDenominator;
   }
 
-  // Convert bar:beat timing parameters to Ableton beats
+  // Convert bar|beat timing parameters to Ableton beats
   const arrangerStartTimeBeats = barBeatToAbletonBeats(arrangerStartTime, songTimeSigNumerator, songTimeSigDenominator);
   const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
   const endMarkerBeats = barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator);
@@ -206,11 +206,11 @@ export function createClip({
     if (view === "Session") {
       clipResult.clipSlotIndex = currentClipSlotIndex;
     } else {
-      // Calculate bar:beat position for this clip
+      // Calculate bar|beat position for this clip
       if (i === 0) {
         clipResult.arrangerStartTime = arrangerStartTime;
       } else {
-        // Convert clipLength back to bar:beat format and add to original position
+        // Convert clipLength back to bar|beat format and add to original position
         const clipLengthInMusicalBeats = clipLength * (songTimeSigDenominator / 4);
         const totalOffsetBeats = i * clipLengthInMusicalBeats;
         const originalBeats = barBeatToBeats(arrangerStartTime, songTimeSigNumerator);

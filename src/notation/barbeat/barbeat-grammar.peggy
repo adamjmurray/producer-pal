@@ -25,7 +25,7 @@ element
   = time / probability / velocity / duration / note
 
 time
-  = bar:positiveInt ":" beat:positiveFloat {
+  = bar:positiveInt "|" beat:positiveFloat {
     return { bar, beat };
   }
 

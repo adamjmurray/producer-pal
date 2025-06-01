@@ -14,7 +14,7 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("parses mixed elements (state + notes)", () => {
-      expect(parser.parse("1:1 v100 t0.5 p0.8 C3 D3")).toStrictEqual([
+      expect(parser.parse("1|1 v100 t0.5 p0.8 C3 D3")).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
         { duration: 0.5 },
@@ -25,7 +25,7 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("parses state-only input", () => {
-      expect(parser.parse("2:3 v80 t0.25 p0.9")).toStrictEqual([
+      expect(parser.parse("2|3 v80 t0.25 p0.9")).toStrictEqual([
         { bar: 2, beat: 3 },
         { velocity: 80 },
         { duration: 0.25 },
@@ -36,7 +36,7 @@ describe("BarBeatScript Parser", () => {
 
   describe("time declarations", () => {
     it("parses integer and floating point beats", () => {
-      expect(parser.parse("1:1 C3 1:1.5 D3 1:2.25 E3")).toStrictEqual([
+      expect(parser.parse("1|1 C3 1|1.5 D3 1|2.25 E3")).toStrictEqual([
         { bar: 1, beat: 1 },
         { pitch: 60 },
         { bar: 1, beat: 1.5 },
@@ -134,23 +134,17 @@ describe("BarBeatScript Parser", () => {
 
   describe("velocity range edge cases", () => {
     it("handles reversed velocity ranges correctly", () => {
-      expect(parser.parse("v120-80 C3")).toStrictEqual([
-        { velocityMin: 80, velocityMax: 120 },
-        { pitch: 60 }
-      ]);
+      expect(parser.parse("v120-80 C3")).toStrictEqual([{ velocityMin: 80, velocityMax: 120 }, { pitch: 60 }]);
     });
 
     it("handles same value velocity ranges", () => {
-      expect(parser.parse("v100-100 C3")).toStrictEqual([
-        { velocityMin: 100, velocityMax: 100 },
-        { pitch: 60 }
-      ]);
+      expect(parser.parse("v100-100 C3")).toStrictEqual([{ velocityMin: 100, velocityMax: 100 }, { pitch: 60 }]);
     });
   });
 
   describe("float parsing edge cases", () => {
     it("handles integer floats with trailing decimal in time", () => {
-      expect(parser.parse("1:1.")).toStrictEqual([{ bar: 1, beat: 1 }]);
+      expect(parser.parse("1|1.")).toStrictEqual([{ bar: 1, beat: 1 }]);
     });
 
     it("handles decimal-only floats in duration", () => {
@@ -165,15 +159,14 @@ describe("BarBeatScript Parser", () => {
       expect(parser.parse("p0.5 t1.25 v64")).toStrictEqual([
         { probability: 0.5 },
         { duration: 1.25 },
-        { velocity: 64 }
+        { velocity: 64 },
       ]);
     });
   });
 
   describe("parser options and configuration", () => {
     it("throws error for invalid start rule", () => {
-      expect(() => parser.parse("C3", { startRule: "invalid" }))
-        .toThrow('Can\'t start parsing from rule "invalid".');
+      expect(() => parser.parse("C3", { startRule: "invalid" })).toThrow('Can\'t start parsing from rule "invalid".');
     });
 
     it("returns library object when peg$library option is true", () => {
@@ -197,7 +190,7 @@ describe("BarBeatScript Parser", () => {
   describe("syntax error formatting", () => {
     it("formats syntax errors with source context", () => {
       try {
-        parser.parse("1:1 X3", { grammarSource: "test.txt" });
+        parser.parse("1|1 X3", { grammarSource: "test.txt" });
         expect.fail("Should have thrown an error");
       } catch (error) {
         expect(error.name).toBe("SyntaxError");
@@ -209,19 +202,19 @@ describe("BarBeatScript Parser", () => {
 
     it("formats errors with custom source", () => {
       try {
-        parser.parse("1:1 X3");
+        parser.parse("1|1 X3");
         expect.fail("Should have thrown an error");
       } catch (error) {
-        const formatted = error.format([{ source: undefined, text: "1:1 X3" }]);
+        const formatted = error.format([{ source: undefined, text: "1|1 X3" }]);
         expect(formatted).toContain("Error:");
-        expect(formatted).toContain("1:1 X3");
+        expect(formatted).toContain("1|1 X3");
         expect(formatted).toContain("^");
       }
     });
 
     it("handles formatting without source text", () => {
       try {
-        parser.parse("1:1 X3", { grammarSource: "test.txt" });
+        parser.parse("1|1 X3", { grammarSource: "test.txt" });
         expect.fail("Should have thrown an error");
       } catch (error) {
         const formatted = error.format([]);
@@ -258,23 +251,23 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("rejects invalid characters with proper error messages", () => {
-      expect(() => parser.parse("1:1 @")).toThrow();
-      expect(() => parser.parse("1:1 #")).toThrow();
-      expect(() => parser.parse("1:1 $")).toThrow();
+      expect(() => parser.parse("1|1 @")).toThrow();
+      expect(() => parser.parse("1|1 #")).toThrow();
+      expect(() => parser.parse("1|1 $")).toThrow();
     });
 
     it("handles control characters in error messages", () => {
-      expect(() => parser.parse("1:1 \x00")).toThrow();
-      expect(() => parser.parse("1:1 \x1F")).toThrow();
+      expect(() => parser.parse("1|1 \x00")).toThrow();
+      expect(() => parser.parse("1|1 \x1F")).toThrow();
     });
   });
 
   describe("advanced parser features", () => {
     it("handles complex multi-line input with mixed whitespace", () => {
-      const input = `1:1 v100 C3
-        1:2\t\tD3
+      const input = `1|1 v100 C3
+        1|2\t\tD3
         
-        2:1 v80 E3`;
+        2|1 v80 E3`;
       expect(parser.parse(input)).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 100 },
@@ -283,7 +276,7 @@ describe("BarBeatScript Parser", () => {
         { pitch: 62 },
         { bar: 2, beat: 1 },
         { velocity: 80 },
-        { pitch: 64 }
+        { pitch: 64 },
       ]);
     });
 
@@ -295,22 +288,22 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("handles zero values correctly", () => {
-      expect(parser.parse("1:1 v0 p0.0 t0.0 C0")).toStrictEqual([
+      expect(parser.parse("1|1 v0 p0.0 t0.0 C0")).toStrictEqual([
         { bar: 1, beat: 1 },
         { velocity: 0 },
         { probability: 0.0 },
         { duration: 0.0 },
-        { pitch: 24 }
+        { pitch: 24 },
       ]);
     });
 
     it("handles maximum values correctly", () => {
-      expect(parser.parse("999:999.999 v127 p1.0 t999.999 G8")).toStrictEqual([
+      expect(parser.parse("999|999.999 v127 p1.0 t999.999 G8")).toStrictEqual([
         { bar: 999, beat: 999.999 },
         { velocity: 127 },
         { probability: 1.0 },
         { duration: 999.999 },
-        { pitch: 127 }
+        { pitch: 127 },
       ]);
     });
   });
@@ -318,9 +311,9 @@ describe("BarBeatScript Parser", () => {
   describe("integration", () => {
     it("handles real-world drum pattern example with probability and velocity range", () => {
       const input = `
-        1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
-        1:1.5 p0.6 Gb1
-        2:2 v90 p1.0 D1
+        1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
+        1|1.5 p0.6 Gb1
+        2|2 v90 p1.0 D1
         v100 p0.9 Gb1
       `;
       expect(parser.parse(input)).toStrictEqual([

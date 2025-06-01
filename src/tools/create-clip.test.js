@@ -43,13 +43,13 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar from song
+      notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar from song
     });
 
     expect(result).toEqual({
       clipSlotIndex: 0,
       id: "live_set/tracks/0/clip_slots/0/clip",
-      notes: "1:1 C3 2:1 D3",
+      notes: "1|1 C3 2|1 D3",
       timeSignature: "3/4",
       trackIndex: 0,
       type: "midi",
@@ -75,7 +75,7 @@ describe("createClip", () => {
       trackIndex: 0,
       clipSlotIndex: 0,
       timeSignature: "3/4",
-      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar
+      notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -96,10 +96,10 @@ describe("createClip", () => {
       trackIndex: 0,
       clipSlotIndex: 0,
       timeSignature: "6/8",
-      notes: "1:1 C3 2:1 D3",
+      notes: "1|1 C3 2|1 D3",
     });
 
-    // In 6/8, beat 2:1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
+    // In 6/8, beat 2|1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
       notes: [
         { pitch: 60, start_time: 0, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
@@ -118,7 +118,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      endMarker: "2:3",
+      endMarker: "2|3",
       loop: false,
     });
 
@@ -135,7 +135,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      loopEnd: "3:1",
+      loopEnd: "3|1",
       loop: true,
     });
 
@@ -152,7 +152,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 t2 C3 1:4 t1.5 D3", // Notes end at beat 4.5, which should round up to 5
+      notes: "1|1 t2 C3 1|4 t1.5 D3", // Notes end at beat 4.5, which should round up to 5
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 5);
@@ -168,7 +168,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 t2 C3 1:2 t1.5 D3", // Notes end at beat index 2.5, which should round up to 3
+      notes: "1|1 t2 C3 1|2 t1.5 D3", // Notes end at beat index 2.5, which should round up to 3
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 1.5); // ends after three eighth notes, which is 1.5 quarter notes in "ableton beats"
@@ -248,7 +248,7 @@ describe("createClip", () => {
         view: "Session",
         trackIndex: 0,
         clipSlotIndex: 0,
-        notes: "1:1 C3 D3 E3",
+        notes: "1|1 C3 D3 E3",
         name: "New Clip",
         color: "#FF0000",
         loop: true,
@@ -279,7 +279,7 @@ describe("createClip", () => {
         name: "New Clip",
         color: "#FF0000",
         loop: true,
-        notes: "1:1 C3 D3 E3",
+        notes: "1|1 C3 D3 E3",
         timeSignature: "4/4",
         isTriggered: true,
       });
@@ -440,8 +440,8 @@ describe("createClip", () => {
       const result = createClip({
         view: "Arranger",
         trackIndex: 0,
-        arrangerStartTime: "3:1",
-        notes: "1:1 C3 D3 E3",
+        arrangerStartTime: "3|1",
+        notes: "1|1 C3 D3 E3",
         name: "Arranger Clip",
       });
 
@@ -455,9 +455,9 @@ describe("createClip", () => {
         type: "midi",
         view: "Arranger",
         trackIndex: 0,
-        arrangerStartTime: "3:1",
+        arrangerStartTime: "3|1",
         name: "Arranger Clip",
-        notes: "1:1 C3 D3 E3",
+        notes: "1|1 C3 D3 E3",
         timeSignature: "4/4",
       });
     });
@@ -482,10 +482,10 @@ describe("createClip", () => {
       const result = createClip({
         view: "Arranger",
         trackIndex: 0,
-        arrangerStartTime: "3:1",
+        arrangerStartTime: "3|1",
         count: 3,
         name: "Sequence",
-        notes: "C3 1:2 D3",
+        notes: "C3 1|2 D3",
       });
 
       // Clips should be created with exact length (2 beats) at correct positions
@@ -499,30 +499,30 @@ describe("createClip", () => {
           type: "midi",
           view: "Arranger",
           trackIndex: 0,
-          arrangerStartTime: "3:1",
+          arrangerStartTime: "3|1",
           name: "Sequence",
           timeSignature: "4/4",
-          notes: "C3 1:2 D3",
+          notes: "C3 1|2 D3",
         },
         {
           id: "arranger_clip",
           type: "midi",
           view: "Arranger",
           trackIndex: 0,
-          arrangerStartTime: "3:3",
+          arrangerStartTime: "3|3",
           name: "Sequence 2",
           timeSignature: "4/4",
-          notes: "C3 1:2 D3",
+          notes: "C3 1|2 D3",
         },
         {
           id: "arranger_clip",
           type: "midi",
           view: "Arranger",
           trackIndex: 0,
-          arrangerStartTime: "4:1",
+          arrangerStartTime: "4|1",
           name: "Sequence 3",
           timeSignature: "4/4",
-          notes: "C3 1:2 D3",
+          notes: "C3 1|2 D3",
         },
       ]);
     });
@@ -534,7 +534,7 @@ describe("createClip", () => {
         createClip({
           view: "Arranger",
           trackIndex: 99,
-          arrangerStartTime: "3:1",
+          arrangerStartTime: "3|1",
         })
       ).toThrow("createClip failed: track with index 99 does not exist");
     });
@@ -571,7 +571,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 t2 C3 1:3 t3 D3", // Notes at beats 0 and 2, with durations 2 and 3, so end at beat 5
+      notes: "1|1 t2 C3 1|3 t3 D3", // Notes at beats 0 and 2, with durations 2 and 3, so end at beat 5
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("create_clip", 5);
@@ -626,7 +626,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
+      notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -636,7 +636,7 @@ describe("createClip", () => {
       ],
     });
 
-    expect(result.notes).toBe("1:1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
+    expect(result.notes).toBe("1|1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
   });
 
   it("should handle clips with all v0 notes filtered out", () => {
@@ -649,7 +649,7 @@ describe("createClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 v0 C3 D3 E3", // All notes should be filtered out
+      notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
     });
 
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
@@ -667,8 +667,8 @@ describe("createClip", () => {
       clipSlotIndex: 0,
       name: "Test Clip",
       notes: "C3 D3",
-      startMarker: "1:2",
-      loopStart: "1:3",
+      startMarker: "1|2",
+      loopStart: "1|3",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("start_marker", 1);

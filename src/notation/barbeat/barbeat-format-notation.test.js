@@ -16,7 +16,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 C3 D3 E3");
+    expect(result).toBe("1|1 C3 D3 E3");
   });
 
   it("formats notes with time changes", () => {
@@ -26,7 +26,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 4, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 C3 1:2 D3 2:1 E3");
+    expect(result).toBe("1|1 C3 1|2 D3 2|1 E3");
   });
 
   it("formats notes with probability changes", () => {
@@ -36,7 +36,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 0, duration: 1, velocity: 100, probability: 0.5, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 p0.8 C3 p0.5 D3 E3");
+    expect(result).toBe("1|1 p0.8 C3 p0.5 D3 E3");
   });
 
   it("formats notes with velocity changes", () => {
@@ -46,7 +46,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 0, duration: 1, velocity: 120, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 v80 C3 v120 D3 E3");
+    expect(result).toBe("1|1 v80 C3 v120 D3 E3");
   });
 
   it("formats notes with velocity range changes", () => {
@@ -56,7 +56,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 0, duration: 1, velocity: 60, probability: 1.0, velocity_deviation: 40 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 v80-120 C3 v60-100 D3 E3");
+    expect(result).toBe("1|1 v80-120 C3 v60-100 D3 E3");
   });
 
   it("formats notes with mixed velocity and velocity range", () => {
@@ -66,7 +66,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 0, duration: 1, velocity: 90, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 C3 v80-120 D3 v90 E3");
+    expect(result).toBe("1|1 C3 v80-120 D3 v90 E3");
   });
 
   it("formats notes with duration changes", () => {
@@ -76,7 +76,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 0, duration: 2.0, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 t0.5 C3 t2 D3 E3");
+    expect(result).toBe("1|1 t0.5 C3 t2 D3 E3");
   });
 
   it("formats sub-beat timing", () => {
@@ -85,7 +85,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 62, start_time: 1.25, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1.5 C3 1:2.25 D3");
+    expect(result).toBe("1|1.5 C3 1|2.25 D3");
   });
 
   it("handles different time signatures with beatsPerBar option (legacy)", () => {
@@ -94,7 +94,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes, { beatsPerBar: 3 });
-    expect(result).toBe("1:1 C3 2:1 D3");
+    expect(result).toBe("1|1 C3 2|1 D3");
   });
 
   it("handles different time signatures with timeSigNumerator/timeSigDenominator", () => {
@@ -103,7 +103,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes, { timeSigNumerator: 3, timeSigDenominator: 4 });
-    expect(result).toBe("1:1 C3 2:1 D3");
+    expect(result).toBe("1|1 C3 2|1 D3");
   });
 
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
@@ -116,7 +116,7 @@ describe("BarBeat formatNotation()", () => {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
-    expect(result).toBe("1:1 C3 2:1 D3"); // Uses 3 beats per bar, not 4
+    expect(result).toBe("1|1 C3 2|1 D3"); // Uses 3 beats per bar, not 4
   });
 
   it("throws error when only timeSigNumerator is provided", () => {
@@ -140,7 +140,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 2, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 C3 1:2 D3 1:3 E3");
+    expect(result).toBe("1|1 C3 1|2 D3 1|3 E3");
   });
 
   it("sorts notes by time then pitch", () => {
@@ -150,11 +150,11 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 62, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 C3 D3 E3");
+    expect(result).toBe("1|1 C3 D3 E3");
   });
 
   it("creates roundtrip compatibility with parseNotation", () => {
-    const original = "1:1 p0.8 v80-120 t0.5 C3 D3 1:2.25 v120 p1.0 t2 E3 F3";
+    const original = "1|1 p0.8 v80-120 t0.5 C3 D3 1|2.25 v120 p1.0 t2 E3 F3";
     const parsed = parseNotation(original);
     const formatted = formatNotation(parsed);
     const reparsed = parseNotation(formatted);
@@ -163,7 +163,7 @@ describe("BarBeat formatNotation()", () => {
   });
 
   it("creates roundtrip compatibility with parseNotation using time signatures", () => {
-    const original = "1:1 p0.8 v80-120 t0.5 C3 D3 1:2.25 v120 p1.0 t2 E3 F3";
+    const original = "1|1 p0.8 v80-120 t0.5 C3 D3 1|2.25 v120 p1.0 t2 E3 F3";
     const parsed = parseNotation(original, { timeSigNumerator: 3, timeSigDenominator: 4 });
     const formatted = formatNotation(parsed, { timeSigNumerator: 3, timeSigDenominator: 4 });
     const reparsed = parseNotation(formatted, { timeSigNumerator: 3, timeSigDenominator: 4 });
@@ -180,7 +180,7 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 42, start_time: 1, duration: 0.25, velocity: 100, probability: 0.9, velocity_deviation: 0 }, // Gb1 (hihat)
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 t0.25 C1 v80-100 p0.8 Gb1 1:1.5 p0.6 Gb1 1:2 v90 p1 D1 v100 p0.9 Gb1");
+    expect(result).toBe("1|1 t0.25 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1 D1 v100 p0.9 Gb1");
   });
 
   it("handles notes with missing probability and velocity_deviation properties", () => {
@@ -190,6 +190,6 @@ describe("BarBeat formatNotation()", () => {
       { pitch: 64, start_time: 0, duration: 1, velocity: 100, velocity_deviation: 20 }, // Missing probability
     ];
     const result = formatNotation(notes);
-    expect(result).toBe("1:1 v80 C3 v100 p0.7 D3 v100-120 p1 E3");
+    expect(result).toBe("1|1 v80 C3 v100 p0.7 D3 v100-120 p1 E3");
   });
 });

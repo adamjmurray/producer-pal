@@ -35,7 +35,7 @@ describe("transport", () => {
 
     const result = transport({
       action: "play-arrangement",
-      startTime: "5:1",
+      startTime: "5|1",
     });
 
     expect(liveApiCall).toHaveBeenNthCalledWith(1, "show_view", "Arranger");
@@ -43,12 +43,12 @@ describe("transport", () => {
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 16); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       action: "play-arrangement",
-      currentTime: "5:1",
+      currentTime: "5|1",
       isPlaying: true,
       loop: false,
-      loopEnd: "2:1",
-      loopStart: "1:1",
-      startTime: "5:1",
+      loopEnd: "2|1",
+      loopStart: "1|1",
+      startTime: "5|1",
     });
   });
 
@@ -68,8 +68,8 @@ describe("transport", () => {
     const result = transport({
       action: "update-arrangement",
       loop: true,
-      loopStart: "3:1",
-      loopEnd: "7:1",
+      loopStart: "3|1",
+      loopEnd: "7|1",
       followingTrackIndexes: "0,2,3",
     });
 
@@ -81,11 +81,11 @@ describe("transport", () => {
 
     expect(result).toStrictEqual({
       action: "update-arrangement",
-      currentTime: "3:3",
+      currentTime: "3|3",
       isPlaying: true,
       loop: true,
-      loopStart: "3:1",
-      loopEnd: "7:1",
+      loopStart: "3|1",
+      loopEnd: "7|1",
       followingTrackIndexes: "0,2,3",
     });
   });
@@ -103,12 +103,12 @@ describe("transport", () => {
 
     const result = transport({
       action: "play-arrangement",
-      startTime: "3:1",
+      startTime: "3|1",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 6); // bar 3 = 6 beats in 3/4
-    expect(result.currentTime).toBe("3:1");
-    expect(result.loopEnd).toBe("2:1"); // 3 beats = 1 bar in 3/4
+    expect(result.currentTime).toBe("3|1");
+    expect(result.loopEnd).toBe("2|1"); // 3 beats = 1 bar in 3/4
   });
 
   it("should handle play-session-clip action with single track and clip", () => {
@@ -134,11 +134,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       action: "play-session-clip",
-      currentTime: "2:2",
+      currentTime: "2|2",
       isPlaying: true,
       loop: false,
-      loopStart: "1:1",
-      loopEnd: "2:1",
+      loopStart: "1|1",
+      loopEnd: "2|1",
       trackIndexes: "0",
       clipSlotIndexes: "0",
     });
@@ -239,11 +239,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       action: "play-scene",
-      currentTime: "2:2",
+      currentTime: "2|2",
       isPlaying: true,
       loop: false,
-      loopStart: "1:1",
-      loopEnd: "2:1",
+      loopStart: "1|1",
+      loopEnd: "2|1",
       sceneIndex: 1,
     });
   });
@@ -283,11 +283,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       action: "stop-track-session-clip",
-      currentTime: "2:2",
+      currentTime: "2|2",
       isPlaying: true, // transport/arrangement can still be playing
       loop: false,
-      loopStart: "1:1",
-      loopEnd: "2:1",
+      loopStart: "1|1",
+      loopEnd: "2|1",
       trackIndexes: "1",
     });
   });
@@ -347,11 +347,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       action: "stop-all-session-clips",
-      currentTime: "2:2",
+      currentTime: "2|2",
       isPlaying: true, // transport/arrangement can still be playing
       loop: false,
-      loopStart: "1:1",
-      loopEnd: "2:1",
+      loopStart: "1|1",
+      loopEnd: "2|1",
     });
   });
 
@@ -372,11 +372,11 @@ describe("transport", () => {
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
     expect(result).toStrictEqual({
       action: "stop",
-      currentTime: "1:1",
+      currentTime: "1|1",
       isPlaying: false,
       loop: false,
-      loopEnd: "2:1",
-      loopStart: "1:1",
+      loopEnd: "2|1",
+      loopStart: "1|1",
     });
   });
 
@@ -422,13 +422,13 @@ describe("transport", () => {
 
     const result = transport({
       action: "update-arrangement",
-      loopEnd: "9:1",
+      loopEnd: "9|1",
     });
 
-    // loopEnd 9:1 = 32 beats, loopStart is 8 beats, so length should be 24
+    // loopEnd 9|1 = 32 beats, loopStart is 8 beats, so length should be 24
     expect(liveApiSet).toHaveBeenCalledWith("loop_length", 24);
-    expect(result.loopStart).toBe("3:1"); // 8 beats = bar 3
-    expect(result.loopEnd).toBe("9:1");
+    expect(result.loopStart).toBe("3|1"); // 8 beats = bar 3
+    expect(result.loopEnd).toBe("9|1");
   });
 
   it("should handle 6/8 time signature conversions", () => {
@@ -444,9 +444,9 @@ describe("transport", () => {
 
     const result = transport({
       action: "play-arrangement",
-      startTime: "2:1",
-      loopStart: "1:1",
-      loopEnd: "3:1",
+      startTime: "2|1",
+      loopStart: "1|1",
+      loopEnd: "3|1",
     });
 
     // In 6/8, bar 2 = 3 Ableton beats (6 musical beats * 4/8)
@@ -454,10 +454,10 @@ describe("transport", () => {
     expect(liveApiSet).toHaveBeenCalledWith("loop_start", 0);
     expect(liveApiSet).toHaveBeenCalledWith("loop_length", 6); // 2 bars = 6 Ableton beats
 
-    expect(result.startTime).toBe("2:1");
-    expect(result.currentTime).toBe("2:1");
-    expect(result.loopStart).toBe("1:1");
-    expect(result.loopEnd).toBe("3:1");
+    expect(result.startTime).toBe("2|1");
+    expect(result.currentTime).toBe("2|1");
+    expect(result.loopStart).toBe("1|1");
+    expect(result.loopEnd).toBe("3|1");
   });
 
   it("should handle play-arrangement action without startTime (defaults to 0)", () => {
@@ -479,7 +479,7 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
     expect(liveApiCall).toHaveBeenCalledWith("start_playing");
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
-    expect(result.currentTime).toBe("1:1");
+    expect(result.currentTime).toBe("1|1");
     expect(result.startTime).toBeUndefined();
   });
 

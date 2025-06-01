@@ -61,7 +61,7 @@ export function parseNotation(barBeatExpression, options = {}) {
       } else if (element.probability !== undefined) {
         currentProbability = element.probability;
       } else if (element.pitch !== undefined) {
-        // Convert bar:beat to absolute beats (in musical beats)
+        // Convert bar|beat to absolute beats (in musical beats)
         const absoluteBeats = (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
 
         // Convert from musical beats to Ableton beats if we have time signature

@@ -84,7 +84,7 @@
 - [x] Detect and protect the track hosting the MCP server device
 - [x] Fix bug: when rounding up to nearest beat for clip length when creating clips, use actual musical beats instead of
       "ableton beats" (quarter notes... so test with 2/2 and 6/8 time sig)
-- [x] Don't try to add velocity 0 notes to clips (bar:beat notation supports it, and we want to support it to remove
+- [x] Don't try to add velocity 0 notes to clips (bar|beat notation supports it, and we want to support it to remove
       notes, but as a quick fix, consider filtering out any velocity 0 notes before calling the LiveAPI to add notes)
 - [x] Errors from the Max patch (i.e. any warnings calling the Live API) needs to be captured as "warnings" and returned
       in the tool call results so the LLM can see it and understand why things might not have worked - [ ] This works
@@ -92,8 +92,8 @@
       there are situations where it's not a problem and confuses the AI... guess we just need to test and find out if
       this is actually needed)
 - [ ] Review and refine all tool descriptions for clarity, including BarBeat specification (and maybe rename to
-      `bar:beat` and distinguish the time syntax from the wider notation system that uses bar:beat, perhaps `bar:beat`
-      implies the time syntax and `bar:beat notation` refers to the MIDI clip representation with the grammar, parser,
+      `bar|beat` and distinguish the time syntax from the wider notation system that uses bar|beat, perhaps `bar|beat`
+      implies the time syntax and `bar|beat notation` refers to the MIDI clip representation with the grammar, parser,
       formatter, etc)
 
 ## 🌟 Nice-to-Have (Stretch Goals)

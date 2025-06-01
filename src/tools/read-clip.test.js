@@ -64,14 +64,14 @@ describe("readClip", () => {
       color: "#3DC300",
       length: 4, // Musical beats (4 * 4 / 4 = 4)
       loop: false,
-      startMarker: "1:2", // 1 Ableton beat = bar 1 beat 2 in 4/4
-      endMarker: "2:2", // 5 Ableton beats = bar 2 beat 2 in 4/4
-      loopStart: "1:2",
-      loopEnd: "2:2",
+      startMarker: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
+      endMarker: "2|2", // 5 Ableton beats = bar 2 beat 2 in 4/4
+      loopStart: "1|2",
+      loopEnd: "2|2",
       isPlaying: false,
       isTriggered: false,
       timeSignature: "4/4",
-      notes: "1:1 C3 1:2 D3 1:3 E3", // Real BarBeat output
+      notes: "1|1 C3 1|2 D3 1|3 E3", // Real BarBeat output
       noteCount: 3,
     });
   });
@@ -136,14 +136,14 @@ describe("readClip", () => {
       color: "#3DC300",
       length: 8, // Musical beats (4 * 8 / 4 = 8)
       loop: false,
-      startMarker: "1:3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
-      endMarker: "2:5", // 5 Ableton beats = 10 musical beats = bar 2 beat 5 in 6/8
-      loopStart: "1:3",
-      loopEnd: "2:5",
+      startMarker: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
+      endMarker: "2|5", // 5 Ableton beats = 10 musical beats = bar 2 beat 5 in 6/8
+      loopStart: "1|3",
+      loopEnd: "2|5",
       isPlaying: false,
       isTriggered: false,
       timeSignature: "6/8",
-      notes: "1:1 C3 1:3 D3 1:5 E3", // Real BarBeat output in 6/8
+      notes: "1|1 C3 1|3 D3 1|5 E3", // Real BarBeat output in 6/8
       noteCount: 3,
     });
   });
@@ -174,7 +174,7 @@ describe("readClip", () => {
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
 
     // In 3/4 time, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("1:1 C3 2:1 D3 2:2 E3");
+    expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
     expect(result.timeSignature).toBe("3/4");
     expect(result.length).toBe(4); // 4 Ableton beats * 4 / 4 = 4 musical beats
   });
@@ -205,7 +205,7 @@ describe("readClip", () => {
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("1:1 C3 2:1 D3 2:2 E3");
+    expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
     expect(result.timeSignature).toBe("6/8");
     expect(result.length).toBe(6); // 3 Ableton beats * 8 / 4 = 6 musical beats
   });
@@ -249,10 +249,10 @@ describe("readClip", () => {
       color: "#3DC300",
       length: 4, // 4 Ableton beats * 4 / 4 = 4 musical beats
       loop: true,
-      startMarker: "1:2",
-      endMarker: "2:2",
-      loopStart: "1:2",
-      loopEnd: "2:2",
+      startMarker: "1|2",
+      endMarker: "2|2",
+      loopStart: "1|2",
+      loopEnd: "2|2",
       isPlaying: true,
       isTriggered: false,
       timeSignature: "4/4",
@@ -285,7 +285,7 @@ describe("readClip", () => {
     expect(result.clipSlotIndex).toBe(4);
     expect(result.view).toBe("Session");
     expect(result.length).toBe(4);
-    expect(result.startMarker).toBe("1:2");
+    expect(result.startMarker).toBe("1|2");
   });
 
   it("reads an Arranger clip by ID using song time signature for arrangerStartTime", () => {
@@ -319,11 +319,11 @@ describe("readClip", () => {
     expect(result.trackIndex).toBe(3);
     expect(result.clipSlotIndex).toBeUndefined();
     // arrangerStartTime uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
-    expect(result.arrangerStartTime).toBe("5:1");
+    expect(result.arrangerStartTime).toBe("5|1");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
     expect(result.length).toBe(8); // 4 * 8 / 4 = 8 musical beats in 6/8
-    expect(result.startMarker).toBe("1:3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
+    expect(result.startMarker).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
   it("throws an error when neither clipId nor trackIndex+clipSlotIndex are provided", () => {
@@ -411,16 +411,16 @@ describe("readClip", () => {
       clipSlotIndex: 0,
       color: "#3DC300",
       length: 4,
-      startMarker: "1:2",
-      endMarker: "2:2",
+      startMarker: "1|2",
+      endMarker: "2|2",
       loop: false,
-      loopEnd: "2:2",
-      loopStart: "1:2",
+      loopEnd: "2|2",
+      loopStart: "1|2",
       isPlaying: false,
       isTriggered: true,
       timeSignature: "4/4",
       noteCount: 4,
-      notes: "1:1 t0.25 C1 1:2 v90 D1 1:3 v100 C1 1:4 v90 D1",
+      notes: "1|1 t0.25 C1 1|2 v90 D1 1|3 v100 C1 1|4 v90 D1",
     });
   });
 });

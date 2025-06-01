@@ -7,12 +7,12 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 ## Core Syntax
 
 ```
-[bar:beat]  [v<velocity>] [t<duration>] [p<probability>] note [note ...]
+[bar|beat]  [v<velocity>] [t<duration>] [p<probability>] note [note ...]
 ```
 
 ### Components:
 
-- **Start Time (`bar:beat`)** Absolute timestamp for event start.
+- **Start Time (`bar|beat`)** Absolute timestamp for event start.
 
   - `bar` – 1-based bar number (integer)
   - `beat` – 1-based beat number within bar (float for sub-beat precision)
@@ -63,7 +63,7 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
 All components are stateful:
 
-- **Time**: Set with `bar:beat`, applies to following notes until changed
+- **Time**: Set with `bar|beat`, applies to following notes until changed
 - **Probability**: Set with `p<value>`, applies to following notes until changed
 - **Velocity**: Set with `v<value>` or `v<min>-<max>`, applies to following notes until changed
 - **Duration**: Set with `t<value>`, applies to following notes until changed
@@ -74,32 +74,32 @@ All components are stateful:
 
 ```
 // C major triad at bar 1, beat 1
-1:1 C3 E3 G3
+1|1 C3 E3 G3
 
 // Simple melody with state changes
-1:1 v100 t1.0 C3
-1:2 D3
-1:3 E3
-1:4 F3
-2:1 v80 t2.0 G3
+1|1 v100 t1.0 C3
+1|2 D3
+1|3 E3
+1|4 F3
+2|1 v80 t2.0 G3
 
 // Sub-beat timing with floating points
-1:1 v100 t0.25 C3
-1:1.5 D3
-1:2.25 E3
-1:3.75 F3
+1|1 v100 t0.25 C3
+1|1.5 D3
+1|2.25 E3
+1|3.75 F3
 
 // Drum pattern with probability and velocity variation
-1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
-1:1.5 p0.6 Gb1
-1:2 v90 p1.0 D1
+1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
+1|1.5 p0.6 Gb1
+1|2 v90 p1.0 D1
 v100 p0.9 Gb1
 
 // Complex rhythm with probability
-1:1 v100 t0.5 p0.9 C3
+1|1 v100 t0.5 p0.9 C3
 v80 p0.7 D3 E3
 t1.0 p1.0 F3
-2:1.25 v120 p0.8 G3 A3
+2|1.25 v120 p0.8 G3 A3
 ```
 
 ---
@@ -107,7 +107,7 @@ t1.0 p1.0 F3
 ## Parsing Rules
 
 1. State is maintained throughout parsing - time, probability, velocity, and duration settings persist
-2. `bar:beat` can appear standalone to set time context
+2. `bar|beat` can appear standalone to set time context
 3. Probability (`p`), velocity (`v`), and duration (`t`) can appear standalone to set defaults
 4. Multiple notes at same time are whitespace-separated
 5. No commas required between events

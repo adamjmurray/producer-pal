@@ -46,7 +46,7 @@ describe("updateClip", () => {
 
   it("should update a single session clip by ID", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -77,7 +77,7 @@ describe("updateClip", () => {
 
   it("should update a single arranger clip by ID", () => {
     mockLiveApiGet({
-      "789": {
+      789: {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 16.0,
@@ -89,13 +89,13 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "789",
       name: "Arranger Clip",
-      startMarker: "1:3", // 2 beats = bar 1 beat 3 in 4/4
-      endMarker: "2:3", // 6 beats = bar 2 beat 3 in 4/4
+      startMarker: "1|3", // 2 beats = bar 1 beat 3 in 4/4
+      endMarker: "2|3", // 6 beats = bar 2 beat 3 in 4/4
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Arranger Clip");
-    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 2); // 1:3 in 4/4 = 2 Ableton beats
-    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // 2:3 in 4/4 = 6 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 2); // 1|3 in 4/4 = 2 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // 2|3 in 4/4 = 6 Ableton beats
 
     expect(result).toEqual({
       id: "789",
@@ -104,18 +104,18 @@ describe("updateClip", () => {
       trackIndex: 2,
       arrangerStartTime: 16.0,
       name: "Arranger Clip",
-      startMarker: "1:3",
-      endMarker: "2:3",
+      startMarker: "1|3",
+      endMarker: "2|3",
     });
   });
 
   it("should update multiple clips by comma-separated IDs", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      "456": {
+      456: {
         is_arrangement_clip: 0,
         is_midi_clip: 0, // audio clip
       },
@@ -160,7 +160,7 @@ describe("updateClip", () => {
 
   it("should update time signature when provided", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -178,7 +178,7 @@ describe("updateClip", () => {
 
   it("should replace existing notes with real BarBeat parsing in 4/4 time", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -188,7 +188,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1:1 v80 t2 C4 1:3 v120 t1 D4",
+      notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
@@ -219,14 +219,14 @@ describe("updateClip", () => {
       view: "Session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      notes: "1:1 v80 t2 C4 1:3 v120 t1 D4",
+      notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
       clearExistingNotes: true,
     });
   });
 
   it("should parse notes using provided time signature with real BarBeat parsing", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -235,7 +235,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       timeSignature: "6/8",
-      notes: "1:1 C3 2:1 D3",
+      notes: "1|1 C3 2|1 D3",
     });
 
     // In 6/8 time, bar 2 beat 1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
@@ -263,12 +263,12 @@ describe("updateClip", () => {
     expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
     expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
     expect(result.timeSignature).toBe("6/8");
-    expect(result.notes).toBe("1:1 C3 2:1 D3");
+    expect(result.notes).toBe("1|1 C3 2|1 D3");
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 3, // 3/4 time
@@ -278,7 +278,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1:1 C3 2:1 D3", // Should parse with 3 beats per bar
+      notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -302,12 +302,12 @@ describe("updateClip", () => {
       ],
     });
 
-    expect(result.notes).toBe("1:1 C3 2:1 D3");
+    expect(result.notes).toBe("1|1 C3 2|1 D3");
   });
 
   it("should handle complex drum pattern with real BarBeat parsing", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -317,7 +317,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1:1.5 p0.6 Gb1 1:2 v90 p1.0 D1 v100 p0.9 Gb1",
+      notes: "1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1.0 D1 v100 p0.9 Gb1",
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -330,12 +330,12 @@ describe("updateClip", () => {
       ],
     });
 
-    expect(result.notes).toBe("1:1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1:1.5 p0.6 Gb1 1:2 v90 p1.0 D1 v100 p0.9 Gb1");
+    expect(result.notes).toBe("1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1.0 D1 v100 p0.9 Gb1");
   });
 
   it("should throw error for invalid time signature format", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -351,7 +351,7 @@ describe("updateClip", () => {
 
   it("should handle 'id ' prefixed clip IDs", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -375,7 +375,7 @@ describe("updateClip", () => {
 
   it("should not update properties when not provided", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -405,7 +405,7 @@ describe("updateClip", () => {
 
   it("should handle boolean false values correctly", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -451,7 +451,7 @@ describe("updateClip", () => {
     });
 
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -464,11 +464,11 @@ describe("updateClip", () => {
 
   it("should return single object for single ID and array for comma-separated IDs", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      "456": {
+      456: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -507,15 +507,15 @@ describe("updateClip", () => {
 
   it("should handle whitespace in comma-separated IDs", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      "456": {
+      456: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      "789": {
+      789: {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 8.0,
@@ -557,11 +557,11 @@ describe("updateClip", () => {
 
   it("should filter out empty IDs from comma-separated list", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
-      "456": {
+      456: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
       },
@@ -600,7 +600,7 @@ describe("updateClip", () => {
 
   it("should filter out v0 notes when updating clips", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -610,7 +610,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1:1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
+      notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -620,12 +620,12 @@ describe("updateClip", () => {
       ],
     });
 
-    expect(result.notes).toBe("1:1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
+    expect(result.notes).toBe("1|1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
   });
 
   it("should handle clips with all v0 notes filtered out during update", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -635,7 +635,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1:1 v0 C3 D3 E3", // All notes should be filtered out
+      notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
@@ -644,7 +644,7 @@ describe("updateClip", () => {
 
   it("should replace notes by default (clearExistingNotes: true)", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -654,7 +654,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1:1 C3",
+      notes: "1|1 C3",
       clearExistingNotes: true, // explicit true
     });
 
@@ -668,7 +668,7 @@ describe("updateClip", () => {
 
   it("should replace notes by default when clearExistingNotes is not specified", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -678,7 +678,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1:1 C3",
+      notes: "1|1 C3",
       // clearExistingNotes not specified, should default to true
     });
 
@@ -692,7 +692,7 @@ describe("updateClip", () => {
 
   it("should add to existing notes when clearExistingNotes is false", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -702,7 +702,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1:1 C3",
+      notes: "1|1 C3",
       clearExistingNotes: false,
     });
 
@@ -716,7 +716,7 @@ describe("updateClip", () => {
 
   it("should not call add_new_notes when clearExistingNotes is false and notes array is empty", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -726,7 +726,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1:1 v0 C3", // All notes filtered out
+      notes: "1|1 v0 C3", // All notes filtered out
       clearExistingNotes: false,
     });
 
@@ -736,7 +736,7 @@ describe("updateClip", () => {
 
   it("should set loop markers when provided", () => {
     mockLiveApiGet({
-      "123": {
+      123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
@@ -746,8 +746,8 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      loopStart: "1:3",
-      loopEnd: "2:1",
+      loopStart: "1|3",
+      loopEnd: "2|1",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("loop_start", 2);

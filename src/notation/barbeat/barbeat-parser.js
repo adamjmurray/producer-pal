@@ -180,7 +180,7 @@ function peg$parse(input, options) {
   };
   let peg$startRuleFunction = peg$parsestart;
 
-  const peg$c0 = ":";
+  const peg$c0 = "|";
   const peg$c1 = "p";
   const peg$c2 = "v";
   const peg$c3 = "-";
@@ -202,7 +202,7 @@ function peg$parse(input, options) {
   const peg$r2 = /^[1-9]/;
   const peg$r3 = /^[ \t\r\n]/;
 
-  const peg$e0 = peg$literalExpectation(":", false);
+  const peg$e0 = peg$literalExpectation("|", false);
   const peg$e1 = peg$literalExpectation("p", false);
   const peg$e2 = peg$literalExpectation("v", false);
   const peg$e3 = peg$literalExpectation("-", false);
@@ -543,7 +543,7 @@ function peg$parse(input, options) {
     s0 = peg$currPos;
     s1 = peg$parsepositiveInt();
     if (s1 !== peg$FAILED) {
-      if (input.charCodeAt(peg$currPos) === 58) {
+      if (input.charCodeAt(peg$currPos) === 124) {
         s2 = peg$c0;
         peg$currPos++;
       } else {

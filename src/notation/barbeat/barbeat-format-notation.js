@@ -46,7 +46,7 @@ export function formatNotation(clipNotes, options = {}) {
   let currentVelocityDeviation = DEFAULT_VELOCITY_DEVIATION;
 
   for (const note of sortedNotes) {
-    // Convert absolute beats to bar:beat
+    // Convert absolute beats to bar|beat
     let startTime = Math.round(note.start_time * 1000) / 1000;
     // Convert from Ableton beats to musical beats if we have time signature
     if (timeSigNumerator != null) {
@@ -60,7 +60,7 @@ export function formatNotation(clipNotes, options = {}) {
     if (!currentTime || currentTime.bar !== newTime.bar || Math.abs(currentTime.beat - newTime.beat) > 0.001) {
       // Format beat - avoid unnecessary decimals
       const beatFormatted = beat % 1 === 0 ? beat.toString() : beat.toFixed(3).replace(/\.?0+$/, "");
-      elements.push(`${bar}:${beatFormatted}`);
+      elements.push(`${bar}|${beatFormatted}`);
       currentTime = newTime;
     }
 

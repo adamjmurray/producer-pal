@@ -7,20 +7,13 @@ import {
 import { MAX_CLIP_BEATS } from "./constants";
 
 /**
- * Parse arrangerLength from bar|beat duration format to absolute beats
- * @param {string} arrangerLength - Length in bar|beat duration format (e.g. "2|0" for exactly two bars)
+ * Parse arrangerLength from bar:beat duration format to absolute beats
+ * @param {string} arrangerLength - Length in bar:beat duration format (e.g. "2:0" for exactly two bars)
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} Length in Ableton beats
  */
 function parseArrangerLength(arrangerLength, timeSigNumerator, timeSigDenominator) {
-  const match = arrangerLength.match(/^(\d+)\|(\d+(?:\.\d+)?)$/);
-  if (!match) {
-    throw new Error(
-      `duplicate failed: arrangerLength must be in bar|beat duration format (e.g. "2|1"), got "${arrangerLength}"`
-    );
-  }
-
   try {
     const arrangerLengthBeats = barBeatDurationToAbletonBeats(arrangerLength, timeSigNumerator, timeSigDenominator);
 
@@ -30,7 +23,7 @@ function parseArrangerLength(arrangerLength, timeSigNumerator, timeSigDenominato
 
     return arrangerLengthBeats;
   } catch (error) {
-    if (error.message.includes("Invalid bar|beat duration format")) {
+    if (error.message.includes("Invalid bar:beat duration format")) {
       throw new Error(`duplicate failed: ${error.message}`);
     }
     if (error.message.includes("must be 0 or greater")) {
@@ -44,8 +37,8 @@ function parseArrangerLength(arrangerLength, timeSigNumerator, timeSigDenominato
  * Create clips to fill the specified arrangement length
  * @param {LiveAPI} sourceClip - The source clip to duplicate
  * @param {LiveAPI} track - The track to create clips on
- * @param {number} arrangerStartTimeBeats - Start time in beats
- * @param {number} arrangerLengthBeats - Total length to fill in beats
+ * @param {number} arrangerStartTimeBeats - Start time in beats  (TODO: clarify if this is ableton beats or musical beats)
+ * @param {number} arrangerLengthBeats - Total length to fill in beats (TODO: clarify if this is ableton beats or musical beats)
  * @param {string} [name] - Optional name for the clips
  * @returns {Array<Object>} Array of minimal clip info objects
  */
@@ -137,8 +130,8 @@ function copyClipProperties(sourceClip, destClip, name) {
  * @param {string} args.id - ID of the object to duplicate
  * @param {number} [args.count=1] - Number of duplicates to create
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arranger"), required when type is "clip"
- * @param {number} [args.arrangerStartTime] - Start time in bar:beat format for Arranger view clips (uses song time signature)
- * @param {string} [args.arrangerLength] - Duration in bar|beat format (0-indexed beats). E.g., '4|0' = exactly 4 bars, '2|2' = 2 bars + 2 beats. For range "bars X to Y": use (Y-X)|0. Auto-duplicates looping clips to fill.
+ * @param {number} [args.arrangerStartTime] - Start time in bar|beat format for Arranger view clips (uses song time signature)
+ * @param {string} [args.arrangerLength] - Duration in bar:beat format using colon separator (bar:beat). Represents 'number of bars:additional beats' with 0-indexed beats. Examples: '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats. Uses colon (:) unlike position format (bar|beat) which uses pipe (|) and 1-indexed beats. Auto-duplicates looping clips to fill the specified duration.
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.includeClips] - Whether to include clips when duplicating tracks or scenes
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
@@ -202,12 +195,12 @@ export function duplicate({
     let newObjectMetadata;
 
     if (destination === "arranger") {
-      // All arranger operations need song time signature for bar:beat conversion
+      // All arranger operations need song time signature for bar|beat conversion
       const liveSet = new LiveAPI("live_set");
       const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
       const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-      // Convert arrangerStartTime from bar:beat to Ableton beats once
+      // Convert arrangerStartTime from bar|beat to Ableton beats once
       const baseArrangerStartBeats = barBeatToAbletonBeats(
         arrangerStartTime,
         songTimeSigNumerator,
@@ -246,7 +239,7 @@ export function duplicate({
         );
       }
     } else {
-      // Session view operations (no bar:beat conversion needed)
+      // Session view operations (no bar|beat conversion needed)
       if (type === "track") {
         const trackIndex = object.trackIndex;
         if (trackIndex == null) {
@@ -320,7 +313,7 @@ function getMinimalClipInfo(clip) {
 
     const arrangerStartTimeBeats = clip.getProperty("start_time");
 
-    // Convert to bar:beat format using song time signature
+    // Convert to bar|beat format using song time signature
     const liveSet = new LiveAPI("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
