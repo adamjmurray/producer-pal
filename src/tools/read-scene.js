@@ -23,7 +23,7 @@ export function readScene({ sceneIndex, includeClips = false }) {
   const isTempoEnabled = scene.getProperty("tempo_enabled") > 0;
   const isTimeSignatureEnabled = scene.getProperty("time_signature_enabled") > 0;
 
-  return {
+  const result = {
     id: scene.id,
     name: scene.getProperty("name"),
     sceneIndex,
@@ -34,11 +34,14 @@ export function readScene({ sceneIndex, includeClips = false }) {
     timeSignature: isTimeSignatureEnabled
       ? `${scene.getProperty("time_signature_numerator")}/${scene.getProperty("time_signature_denominator")}`
       : "disabled",
-    clips: includeClips
-      ? liveSet
-          .getChildIds("tracks")
-          .map((_trackId, trackIndex) => readClip({ trackIndex, clipSlotIndex: sceneIndex }))
-          .filter((clip) => clip.id != null)
-      : undefined,
   };
+
+  if (includeClips) {
+    result.clips = liveSet
+      .getChildIds("tracks")
+      .map((_trackId, trackIndex) => readClip({ trackIndex, clipSlotIndex: sceneIndex }))
+      .filter((clip) => clip.id != null);
+  }
+
+  return result;
 }

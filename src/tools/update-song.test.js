@@ -65,11 +65,11 @@ describe("updateSong", () => {
   });
 
   it("should switch to Session view when requested", () => {
-    const result = updateSong({ view: "Session" });
+    const result = updateSong({ view: "session" });
     expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
     expect(result).toEqual({
       id: "live_set_id",
-      view: "Session",
+      view: "session",
     });
   });
 

@@ -1,4 +1,5 @@
 // src/tools/read-song.js
+import { fromLiveApiView } from "../utils.js";
 import { readScene } from "./read-scene";
 import { readTrack } from "./read-track";
 
@@ -21,7 +22,7 @@ export function readSong() {
     scaleName: liveSet.getProperty("scale_name"),
     scaleRootNote: liveSet.getProperty("root_note"),
     scaleIntervals: liveSet.getProperty("scale_intervals"),
-    view: appView.getProperty("focused_document_view"),
+    view: fromLiveApiView(appView.getProperty("focused_document_view")),
     tracks: trackIds.map((_trackId, trackIndex) => readTrack({ trackIndex })),
     scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
   };

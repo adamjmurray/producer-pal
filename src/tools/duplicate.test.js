@@ -190,13 +190,13 @@ describe("duplicate", () => {
         duplicatedClips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
-            view: "Session",
+            view: "session",
             trackIndex: 0,
             clipSlotIndex: 1,
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
-            view: "Session",
+            view: "session",
             trackIndex: 1,
             clipSlotIndex: 1,
           },
@@ -242,13 +242,13 @@ describe("duplicate", () => {
             duplicatedClips: [
               {
                 id: "live_set/tracks/0/clip_slots/1/clip",
-                view: "Session",
+                view: "session",
                 trackIndex: 0,
                 clipSlotIndex: 1,
               },
               {
                 id: "live_set/tracks/1/clip_slots/1/clip",
-                view: "Session",
+                view: "session",
                 trackIndex: 1,
                 clipSlotIndex: 1,
               },
@@ -261,13 +261,13 @@ describe("duplicate", () => {
             duplicatedClips: [
               {
                 id: "live_set/tracks/0/clip_slots/2/clip",
-                view: "Session",
+                view: "session",
                 trackIndex: 0,
                 clipSlotIndex: 2,
               },
               {
                 id: "live_set/tracks/1/clip_slots/2/clip",
-                view: "Session",
+                view: "session",
                 trackIndex: 1,
                 clipSlotIndex: 2,
               },
@@ -454,13 +454,13 @@ describe("duplicate", () => {
           duplicatedClips: [
             {
               id: "live_set tracks 0 arrangement_clips 0",
-              view: "Arrangement",
+              view: "arrangement",
               trackIndex: 0,
               arrangementStartTime: "5|1",
             },
             {
               id: "live_set tracks 2 arrangement_clips 0",
-              view: "Arrangement",
+              view: "arrangement",
               trackIndex: 2,
               arrangementStartTime: "5|1",
             },
@@ -576,7 +576,7 @@ describe("duplicate", () => {
               duplicatedClips: [
                 {
                   id: "live_set tracks 0 arrangement_clips 0",
-                  view: "Arrangement",
+                  view: "arrangement",
                   trackIndex: 0,
                   arrangementStartTime: "5|1",
                   name: "Scene Copy",
@@ -589,7 +589,7 @@ describe("duplicate", () => {
               duplicatedClips: [
                 {
                   id: "live_set tracks 0 arrangement_clips 1",
-                  view: "Arrangement",
+                  view: "arrangement",
                   trackIndex: 0,
                   arrangementStartTime: "7|1",
                   name: "Scene Copy 2",
@@ -602,7 +602,7 @@ describe("duplicate", () => {
               duplicatedClips: [
                 {
                   id: "live_set tracks 0 arrangement_clips 2",
-                  view: "Arrangement",
+                  view: "arrangement",
                   trackIndex: 0,
                   arrangementStartTime: "9|1",
                   name: "Scene Copy 3",
@@ -751,7 +751,7 @@ describe("duplicate", () => {
           duplicated: true,
           duplicatedClip: {
             id: "live_set/tracks/0/clip_slots/1/clip",
-            view: "Session",
+            view: "session",
             trackIndex: 0,
             clipSlotIndex: 1,
           },
@@ -785,7 +785,7 @@ describe("duplicate", () => {
             {
               duplicatedClip: {
                 id: "live_set/tracks/0/clip_slots/1/clip",
-                view: "Session",
+                view: "session",
                 trackIndex: 0,
                 clipSlotIndex: 1,
                 name: "Custom Clip",
@@ -794,7 +794,7 @@ describe("duplicate", () => {
             {
               duplicatedClip: {
                 id: "live_set/tracks/0/clip_slots/2/clip",
-                view: "Session",
+                view: "session",
                 trackIndex: 0,
                 clipSlotIndex: 2,
                 name: "Custom Clip 2",
@@ -877,7 +877,7 @@ describe("duplicate", () => {
           arrangementStartTime: "3|1",
           duplicatedClip: {
             id: "live_set tracks 0 arrangement_clips 0",
-            view: "Arrangement",
+            view: "arrangement",
             trackIndex: 0,
             arrangementStartTime: "3|1",
           },
@@ -949,7 +949,7 @@ describe("duplicate", () => {
               name: "Custom Clip",
               duplicatedClip: {
                 id: "live_set tracks 0 arrangement_clips 0",
-                view: "Arrangement",
+                view: "arrangement",
                 trackIndex: 0,
                 arrangementStartTime: "3|1",
               },
@@ -959,7 +959,7 @@ describe("duplicate", () => {
               name: "Custom Clip 2",
               duplicatedClip: {
                 id: "live_set tracks 0 arrangement_clips 1",
-                view: "Arrangement",
+                view: "arrangement",
                 trackIndex: 0,
                 arrangementStartTime: "4|1",
               },
@@ -969,7 +969,7 @@ describe("duplicate", () => {
               name: "Custom Clip 3",
               duplicatedClip: {
                 id: "live_set tracks 0 arrangement_clips 2",
-                view: "Arrangement",
+                view: "arrangement",
                 trackIndex: 0,
                 arrangementStartTime: "5|1",
               },
@@ -1100,7 +1100,7 @@ describe("duplicate", () => {
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arrangement",
+          view: "arrangement",
           trackIndex: 0,
           arrangementStartTime: "5|1",
         },
@@ -1250,7 +1250,7 @@ describe("duplicate", () => {
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arrangement",
+          view: "arrangement",
           trackIndex: 0,
           arrangementStartTime: "5|1",
         },
@@ -1340,7 +1340,7 @@ describe("duplicate", () => {
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arrangement",
+          view: "arrangement",
           trackIndex: 0,
           arrangementStartTime: "1|1",
         },
@@ -1425,7 +1425,7 @@ describe("duplicate", () => {
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
-          view: "Arrangement",
+          view: "arrangement",
           trackIndex: 0,
           arrangementStartTime: "1|1",
         },

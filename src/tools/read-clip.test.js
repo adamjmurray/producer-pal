@@ -60,7 +60,7 @@ describe("readClip", () => {
       type: "midi",
       clipSlotIndex: 1,
       trackIndex: 1,
-      view: "Session",
+      view: "session",
       color: "#3DC300",
       length: 4, // Musical beats (4 * 4 / 4 = 4)
       loop: false,
@@ -132,7 +132,7 @@ describe("readClip", () => {
       type: "midi",
       clipSlotIndex: 1,
       trackIndex: 1,
-      view: "Session",
+      view: "session",
       color: "#3DC300",
       length: 8, // Musical beats (4 * 8 / 4 = 8)
       loop: false,
@@ -245,7 +245,7 @@ describe("readClip", () => {
       type: "audio",
       clipSlotIndex: 0,
       trackIndex: 0,
-      view: "Session",
+      view: "session",
       color: "#3DC300",
       length: 4, // 4 Ableton beats * 4 / 4 = 4 musical beats
       loop: true,
@@ -283,7 +283,7 @@ describe("readClip", () => {
     expect(result.id).toBe("session_clip_id");
     expect(result.trackIndex).toBe(2);
     expect(result.clipSlotIndex).toBe(4);
-    expect(result.view).toBe("Session");
+    expect(result.view).toBe("session");
     expect(result.length).toBe(4);
     expect(result.startMarker).toBe("1|2");
   });
@@ -315,7 +315,7 @@ describe("readClip", () => {
 
     const result = readClip({ clipId: "id arrangement_clip_id" });
     expect(result.id).toBe("arrangement_clip_id");
-    expect(result.view).toBe("Arrangement");
+    expect(result.view).toBe("arrangement");
     expect(result.trackIndex).toBe(3);
     expect(result.clipSlotIndex).toBeUndefined();
     // arrangementStartTime uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
@@ -405,7 +405,7 @@ describe("readClip", () => {
     expect(result).toEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       type: "midi",
-      view: "Session",
+      view: "session",
       name: "Test Clip",
       trackIndex: 0,
       clipSlotIndex: 0,

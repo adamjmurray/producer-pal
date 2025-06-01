@@ -40,7 +40,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     name: clip.getProperty("name"),
-    view: isArrangementClip ? "Arrangement" : "Session",
+    view: isArrangementClip ? "arrangement" : "session",
     color: clip.getColor(),
     loop: clip.getProperty("looping") > 0,
     // convert "ableton beats" (quarter note offset) to musical beats, so it makes sense in e.g. 6/8 time signatures:

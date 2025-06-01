@@ -1,6 +1,6 @@
 // src/utils.test.js
 import { describe, expect, it } from "vitest";
-import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices, parseTimeSignature, toLiveApiView } from "./utils";
+import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices, parseTimeSignature, toLiveApiView, fromLiveApiView } from "./utils";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {
@@ -183,6 +183,20 @@ describe("toLiveApiView", () => {
     expect(() => toLiveApiView("unknown")).toThrow("Unknown view: unknown");
     expect(() => toLiveApiView("")).toThrow("Unknown view: ");
     expect(() => toLiveApiView("arranger")).toThrow("Unknown view: arranger"); // We don't accept "arranger"
+  });
+});
+
+describe("fromLiveApiView", () => {
+  it("converts Live API view names to user-facing view names", () => {
+    expect(fromLiveApiView("Session")).toBe("session");
+    expect(fromLiveApiView("Arranger")).toBe("arrangement");
+  });
+
+  it("throws error for unknown Live API view names", () => {
+    expect(() => fromLiveApiView("Unknown")).toThrow("Unknown Live API view: Unknown");
+    expect(() => fromLiveApiView("")).toThrow("Unknown Live API view: ");
+    expect(() => fromLiveApiView("session")).toThrow("Unknown Live API view: session"); // Should be "Session"
+    expect(() => fromLiveApiView("arrangement")).toThrow("Unknown Live API view: arrangement"); // Should be "Arranger"
   });
 });
 

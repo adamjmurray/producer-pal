@@ -93,3 +93,17 @@ export function toLiveApiView(view) {
     default: throw new Error(`Unknown view: ${view}`);
   }
 }
+
+/**
+ * Converts Live API view names to user-facing view names
+ * @param {string} liveApiView - Live API view name ("Session" or "Arranger")
+ * @returns {string} User-facing view name ("session" or "arrangement")
+ * @throws {Error} If view name is not recognized
+ */
+export function fromLiveApiView(liveApiView) {
+  switch (liveApiView) {
+    case "Session": return "session";
+    case "Arranger": return "arrangement";  // Live API uses "Arranger" but we use "arrangement"
+    default: throw new Error(`Unknown Live API view: ${liveApiView}`);
+  }
+}

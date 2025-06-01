@@ -222,7 +222,7 @@ export const expectedScene = (overrides = {}) => ({
 export const expectedClip = (overrides = {}) => ({
   id: "clip1",
   type: "midi",
-  view: "Session",
+  view: "session",
   trackIndex: 2,
   clipSlotIndex: 1,
   name: "Test Clip",

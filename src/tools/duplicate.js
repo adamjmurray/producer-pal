@@ -330,7 +330,7 @@ function getMinimalClipInfo(clip) {
 
     return {
       id: clip.id,
-      view: "Arrangement",
+      view: "arrangement",
       trackIndex,
       arrangementStartTime,
     };
@@ -346,7 +346,7 @@ function getMinimalClipInfo(clip) {
 
     return {
       id: clip.id,
-      view: "Session",
+      view: "session",
       trackIndex,
       clipSlotIndex,
     };

@@ -70,7 +70,7 @@ describe("updateClip", () => {
     expect(result).toEqual({
       id: "123",
       type: "midi",
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       name: "Updated Clip",
@@ -104,7 +104,7 @@ describe("updateClip", () => {
     expect(result).toEqual({
       id: "789",
       type: "midi",
-      view: "Arrangement",
+      view: "arrangement",
       trackIndex: 2,
       arrangementStartTime: 16.0,
       name: "Arrangement Clip",
@@ -164,7 +164,7 @@ describe("updateClip", () => {
       {
         id: "123",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         color: "#00FF00",
@@ -173,7 +173,7 @@ describe("updateClip", () => {
       {
         id: "456",
         type: "audio",
-        view: "Session",
+        view: "session",
         trackIndex: 1,
         clipSlotIndex: 1,
         color: "#00FF00",
@@ -240,7 +240,7 @@ describe("updateClip", () => {
     expect(result).toEqual({
       id: "123",
       type: "midi",
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
@@ -390,7 +390,7 @@ describe("updateClip", () => {
     expect(result).toEqual({
       id: "123",
       type: "midi",
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       name: "Prefixed ID Clip",
@@ -420,7 +420,7 @@ describe("updateClip", () => {
     expect(result).toEqual({
       id: "123",
       type: "midi",
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       name: "Only Name Update",
@@ -444,7 +444,7 @@ describe("updateClip", () => {
     expect(result).toEqual({
       id: "123",
       type: "midi",
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       loop: false,
@@ -504,7 +504,7 @@ describe("updateClip", () => {
     expect(singleResult).toEqual({
       id: "123",
       type: "midi",
-      view: "Session",
+      view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
       name: "Single",
@@ -513,7 +513,7 @@ describe("updateClip", () => {
       {
         id: "123",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         name: "Multiple",
@@ -521,7 +521,7 @@ describe("updateClip", () => {
       {
         id: "456",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 1,
         clipSlotIndex: 1,
         name: "Multiple",
@@ -555,7 +555,7 @@ describe("updateClip", () => {
       {
         id: "123",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         color: "#0000FF",
@@ -563,7 +563,7 @@ describe("updateClip", () => {
       {
         id: "456",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 1,
         clipSlotIndex: 1,
         color: "#0000FF",
@@ -571,7 +571,7 @@ describe("updateClip", () => {
       {
         id: "789",
         type: "midi",
-        view: "Arrangement",
+        view: "arrangement",
         trackIndex: 2,
         arrangementStartTime: 8.0,
         color: "#0000FF",
@@ -606,7 +606,7 @@ describe("updateClip", () => {
       {
         id: "123",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 0,
         clipSlotIndex: 0,
         name: "Filtered",
@@ -614,7 +614,7 @@ describe("updateClip", () => {
       {
         id: "456",
         type: "midi",
-        view: "Session",
+        view: "session",
         trackIndex: 1,
         clipSlotIndex: 1,
         name: "Filtered",

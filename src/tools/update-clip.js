@@ -109,7 +109,7 @@ export function updateClip({
     const clipResult = {
       id: clip.id,
       type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
-      view: isArrangementClip ? "Arrangement" : "Session",
+      view: isArrangementClip ? "arrangement" : "session",
       trackIndex,
     };
 
