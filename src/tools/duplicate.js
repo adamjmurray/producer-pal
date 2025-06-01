@@ -138,7 +138,7 @@ function copyClipProperties(sourceClip, destClip, name) {
  * @param {number} [args.count=1] - Number of duplicates to create
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arranger"), required when type is "clip"
  * @param {number} [args.arrangerStartTime] - Start time in bar:beat format for Arranger view clips (uses song time signature)
- * @param {string} [args.arrangerLength] - Length in bar|beat duration format for Arranger view clips (auto-duplicates looping clips to fill)
+ * @param {string} [args.arrangerLength] - Duration in bar|beat format (0-indexed beats). E.g., '4|0' = exactly 4 bars, '2|2' = 2 bars + 2 beats. For range "bars X to Y": use (Y-X)|0. Auto-duplicates looping clips to fill.
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.includeClips] - Whether to include clips when duplicating tracks or scenes
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
