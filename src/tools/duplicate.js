@@ -1,5 +1,40 @@
 // src/tools/duplicate.js
 import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
+import { MAX_CLIP_BEATS } from "./constants";
+
+/**
+ * Copy all properties from source clip to destination clip
+ * @param {LiveAPI} sourceClip - The clip to copy from
+ * @param {LiveAPI} destClip - The clip to copy to
+ * @param {string} [name] - Optional name override
+ */
+function copyClipProperties(sourceClip, destClip, name) {
+  // Get all the properties we want to copy
+  const properties = {
+    name: (name ?? sourceClip.getProperty("name")) || null, // empty names are not allowed
+    color: sourceClip.getColor(), // Use getColor() to get hex format
+    signature_numerator: sourceClip.getProperty("signature_numerator"),
+    signature_denominator: sourceClip.getProperty("signature_denominator"),
+    looping: sourceClip.getProperty("looping"),
+    loop_start: sourceClip.getProperty("loop_start"),
+    loop_end: sourceClip.getProperty("loop_end"),
+  };
+
+  // Set all properties using setAll
+  destClip.setAll(properties);
+
+  // Copy notes if it's a MIDI clip
+  if (sourceClip.getProperty("is_midi_clip")) {
+    const { notes } = JSON.parse(sourceClip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS));
+    if (notes && notes.length > 0) {
+      for (const note of notes) {
+        delete note.note_id; // we must remove these IDs to create new notes in a new clip
+      }
+      // Add notes to destination clip
+      destClip.call("add_new_notes", { notes });
+    }
+  }
+}
 
 /**
  * Duplicates an object based on its type
@@ -14,7 +49,16 @@ import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbea
  * @param {boolean} [args.includeClips] - Whether to include clips when duplicating tracks or scenes
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
-export function duplicate({ type, id, count = 1, destination, arrangerStartTime, arrangerLength, name, includeClips } = {}) {
+export function duplicate({
+  type,
+  id,
+  count = 1,
+  destination,
+  arrangerStartTime,
+  arrangerLength,
+  name,
+  includeClips,
+} = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
   }
@@ -90,7 +134,14 @@ export function duplicate({ type, id, count = 1, destination, arrangerStartTime,
         // For multiple clips, place them sequentially to avoid overlap
         const clipLength = object.getProperty("length");
         const actualArrangerStartBeats = baseArrangerStartBeats + i * clipLength;
-        newObjectMetadata = duplicateClipToArranger(id, actualArrangerStartBeats, objectName, arrangerLength, songTimeSigNumerator, songTimeSigDenominator);
+        newObjectMetadata = duplicateClipToArranger(
+          id,
+          actualArrangerStartBeats,
+          objectName,
+          arrangerLength,
+          songTimeSigNumerator,
+          songTimeSigDenominator
+        );
       }
     } else {
       // Session view operations (no bar:beat conversion needed)
@@ -414,7 +465,14 @@ function duplicateClipSlot(trackIndex, sourceClipSlotIndex, name) {
   return result;
 }
 
-function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name, arrangerLength, songTimeSigNumerator, songTimeSigDenominator) {
+function duplicateClipToArranger(
+  clipId,
+  arrangerStartTimeBeats,
+  name,
+  arrangerLength,
+  songTimeSigNumerator,
+  songTimeSigDenominator
+) {
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clip = LiveAPI.from(clipId);
 
@@ -430,94 +488,81 @@ function duplicateClipToArranger(clipId, arrangerStartTimeBeats, name, arrangerL
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
   const originalClipLength = clip.getProperty("length");
   const isLooping = clip.getProperty("looping") > 0;
-  
+
   const duplicatedClips = [];
-  
+
   if (arrangerLength != null) {
     // Convert arrangerLength from bar:beat duration format to absolute beats
     // Format "bars:beats" means bars * beatsPerBar + beats duration
     const match = arrangerLength.match(/^(\d+):(\d+(?:\.\d+)?)$/);
     if (!match) {
-      throw new Error(`duplicate failed: arrangerLength must be in bar:beat format (e.g. "2:1"), got "${arrangerLength}"`);
+      throw new Error(
+        `duplicate failed: arrangerLength must be in bar:beat format (e.g. "2:1"), got "${arrangerLength}"`
+      );
     }
     const bars = Number.parseInt(match[1]);
     const beats = Number.parseFloat(match[2]);
-    
+
     if (bars < 0 || beats < 0) {
       throw new Error(`duplicate failed: arrangerLength must be positive, got "${arrangerLength}"`);
     }
-    
+
     // Calculate total duration: complete bars + additional beats
     const arrangerLengthBeats = bars * songTimeSigNumerator + beats;
-    
+
     if (arrangerLengthBeats <= 0) {
       throw new Error(`duplicate failed: arrangerLength must be positive, got "${arrangerLength}"`);
     }
-    
+
     if (arrangerLengthBeats <= originalClipLength) {
-      // Case 1: Shorter than or equal to clip length - create one clip and shorten it
-      const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats);
+      // Case 1: Shorter than or equal to clip length - create clip with exact length
+      const newClipResult = track.call("create_midi_clip", arrangerStartTimeBeats, arrangerLengthBeats);
       const newClip = LiveAPI.from(newClipResult);
-      
-      // Set the end marker to shorten the clip
-      const endMarkerBeats = arrangerStartTimeBeats + arrangerLengthBeats;
-      newClip.setAll({
-        name: name,
-        end_marker: endMarkerBeats,
-      });
-      
+
+      // Copy all properties from the original clip
+      copyClipProperties(clip, newClip, name);
+
       duplicatedClips.push(getMinimalClipInfo(newClip));
-      
     } else if (isLooping) {
-      // Case 2: Longer than clip length and clip is looping - duplicate multiple times
+      // Case 2: Longer than clip length and clip is looping - create multiple clips
       let currentStartBeats = arrangerStartTimeBeats;
       let remainingLength = arrangerLengthBeats;
-      
+
       while (remainingLength > 0) {
-        const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, currentStartBeats);
+        const clipLength = Math.min(remainingLength, originalClipLength);
+
+        const newClipResult = track.call("create_midi_clip", currentStartBeats, clipLength);
+
         const newClip = LiveAPI.from(newClipResult);
-        
-        if (remainingLength >= originalClipLength) {
-          // Full clip duration
-          newClip.setAll({
-            name: name,
-          });
-          remainingLength -= originalClipLength;
-          currentStartBeats += originalClipLength;
-        } else {
-          // Final partial clip - shorten it
-          const endMarkerBeats = currentStartBeats + remainingLength;
-          newClip.setAll({
-            name: name,
-            end_marker: endMarkerBeats,
-          });
-          remainingLength = 0;
-        }
-        
+
+        // Copy all properties from the original clip
+        copyClipProperties(clip, newClip, name);
+
         duplicatedClips.push(getMinimalClipInfo(newClip));
+
+        remainingLength -= clipLength;
+        currentStartBeats += clipLength;
       }
-      
     } else {
       // Case 3: Longer than clip length but clip is not looping - use original length
       const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats);
       const newClip = LiveAPI.from(newClipResult);
-      
+
       newClip.setAll({
         name: name,
       });
-      
+
       duplicatedClips.push(getMinimalClipInfo(newClip));
     }
-    
   } else {
     // No length specified - use original behavior
     const newClipResult = track.call("duplicate_clip_to_arrangement", `id ${clip.id}`, arrangerStartTimeBeats);
     const newClip = LiveAPI.from(newClipResult);
-    
+
     newClip.setAll({
       name: name,
     });
-    
+
     duplicatedClips.push(getMinimalClipInfo(newClip));
   }
 

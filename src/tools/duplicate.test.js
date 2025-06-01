@@ -1003,6 +1003,9 @@ describe("duplicate", () => {
         if (method === "duplicate_clip_to_arrangement") {
           return ["id", "live_set tracks 0 arrangement_clips 0"];
         }
+        if (method === "create_midi_clip") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
         return null;
       });
 
@@ -1019,6 +1022,13 @@ describe("duplicate", () => {
           exists: () => true,
           length: 8, // 8 beats original length
           looping: 0,
+          name: "Test Clip",
+          color: 4047616,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop_start: 0,
+          loop_end: 8,
+          is_midi_clip: 1,
         },
         "live_set tracks 0 arrangement_clips 0": {
           is_arrangement_clip: 1,
@@ -1050,11 +1060,11 @@ describe("duplicate", () => {
         },
       });
 
-      // Should set end_marker to shorten the clip
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16);
-      // Check that properties were set correctly via setAll -> set calls
-      expect(liveApiSet).toHaveBeenCalledWith("end_marker", 20); // 16 + 4 beats
-      // name is undefined so it shouldn't be set
+      // Should create clip with exact length instead of duplicating and shortening
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 4); // start=16, length=4
+      // Check that properties were copied correctly
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
+      expect(liveApiSet).toHaveBeenCalledWith("color", 4047616); // setColor converts hex to integer
     });
 
     it("should duplicate a looping clip multiple times to fill longer length", () => {
@@ -1068,6 +1078,11 @@ describe("duplicate", () => {
       let clipCounter = 0;
       liveApiCall.mockImplementation(function (method) {
         if (method === "duplicate_clip_to_arrangement") {
+          const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+          clipCounter++;
+          return ["id", clipId];
+        }
+        if (method === "create_midi_clip") {
           const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
           clipCounter++;
           return ["id", clipId];
@@ -1088,6 +1103,13 @@ describe("duplicate", () => {
           exists: () => true,
           length: 4, // 4 beats original length
           looping: 1, // Looping enabled
+          name: "Test Clip",
+          color: 4047616,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop_start: 0,
+          loop_end: 4,
+          is_midi_clip: 1,
         },
         "live_set tracks 0 arrangement_clips 0": {
           is_arrangement_clip: 1,
@@ -1112,13 +1134,12 @@ describe("duplicate", () => {
       });
 
       // Should create 2 clips: one full (4 beats) + one partial (2 beats)
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16); // First clip at 5:1
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 20); // Second clip at 6:1
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 4); // First clip: start=16, length=4
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 20, 2); // Second clip: start=20, length=2
 
-      // Check that properties were set correctly via setAll -> set calls
-      // Second clip should be shortened to 2 beats (only the second clip gets end_marker)
-      expect(liveApiSet).toHaveBeenCalledWith("end_marker", 22); // 20 + 2 beats
-      // name is undefined so it shouldn't be set for either clip
+      // Check that properties were copied correctly for both clips
+      expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
+      expect(liveApiSet).toHaveBeenCalledWith("color", 4047616); // setColor converts hex to integer
 
       expect(result.duplicatedClip).toHaveLength(2);
     });
