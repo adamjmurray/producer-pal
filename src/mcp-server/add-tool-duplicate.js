@@ -23,7 +23,7 @@ export function addToolDuplicate(server, callLiveApi) {
       arrangerLength: z
         .string()
         .optional()
-        .describe("Length in bar:beat format for Arranger view clips (auto-duplicates looping clips to fill)"),
+        .describe("Length in bar|beat duration format for Arranger view clips (auto-duplicates looping clips to fill)"),
       name: z
         .string()
         .optional()

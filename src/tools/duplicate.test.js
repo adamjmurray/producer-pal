@@ -1083,7 +1083,7 @@ describe("duplicate", () => {
         id: "clip1",
         destination: "arranger",
         arrangerStartTime: "5:1",
-        arrangerLength: "1:0", // 4 beats - shorter than original 8 beats
+        arrangerLength: "1|0", // 4 beats - shorter than original 8 beats
       });
 
       expect(result).toStrictEqual({
@@ -1092,7 +1092,7 @@ describe("duplicate", () => {
         count: 1,
         destination: "arranger",
         arrangerStartTime: "5:1",
-        arrangerLength: "1:0",
+        arrangerLength: "1|0",
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
@@ -1175,7 +1175,7 @@ describe("duplicate", () => {
         id: "clip1",
         destination: "arranger",
         arrangerStartTime: "5:1",
-        arrangerLength: "1:2", // 6 beats - longer than original 4 beats
+        arrangerLength: "1|2", // 6 beats - longer than original 4 beats
       });
 
       // Should create 2 clips: one full (4 beats) + one partial (2 beats)
@@ -1229,7 +1229,7 @@ describe("duplicate", () => {
         id: "clip1",
         destination: "arranger",
         arrangerStartTime: "5:1",
-        arrangerLength: "2:0", // 8 beats - longer than original 4 beats
+        arrangerLength: "2|0", // 8 beats - longer than original 4 beats
       });
 
       // Should create clip at original length (no end_marker set)
@@ -1242,13 +1242,188 @@ describe("duplicate", () => {
         count: 1,
         destination: "arranger",
         arrangerStartTime: "5:1",
-        arrangerLength: "2:0",
+        arrangerLength: "2|0",
         duplicated: true,
         duplicatedClip: {
           id: "live_set tracks 0 arrangement_clips 0",
           view: "Arranger",
           trackIndex: 0,
           arrangerStartTime: "5:1",
+        },
+      });
+    });
+
+    it("should correctly handle 6/8 time signature duration conversion", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+      
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "create_midi_clip") {
+          // Track which track this is called on
+          let trackIndex = "0";
+          if (this.path) {
+            const trackMatch = this.path.match(/live_set tracks (\d+)/);
+            if (trackMatch) {
+              trackIndex = trackMatch[1];
+            }
+          }
+          return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
+        }
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] });
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
+        return null;
+      });
+
+      const originalPath = liveApiPath.getMockImplementation();
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { 
+          exists: () => true,
+          length: 12, // 12 Ableton beats = 4 bars in 6/8 time (longer than requested length)
+          looping: 0,
+          name: "Test Clip 6/8",
+          color: 4047616,
+          signature_numerator: 6,
+          signature_denominator: 8,
+          loop_start: 0,
+          loop_end: 12,
+          is_midi_clip: 1,
+        },
+        "live_set": {
+          signature_numerator: 4, // Song is in 4/4, but clip is in 6/8 - this causes the bug
+          signature_denominator: 4,
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 0,
+        },
+      });
+
+      // This test verifies correct duration conversion: "1|0" duration should be 3 Ableton beats in 6/8 time
+      // The implementation now correctly uses the CLIP time signature (6/8) for parsing
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arranger",
+        arrangerStartTime: "1:1",
+        arrangerLength: "1|0", // This should be 3 Ableton beats in 6/8 time
+      });
+
+      // Verify that the implementation correctly converts "1|0" to 3 Ableton beats for 6/8 time signature
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 0, 3);
+
+      expect(result).toStrictEqual({
+        type: "clip",
+        id: "clip1",
+        count: 1,
+        destination: "arranger",
+        arrangerStartTime: "1:1",
+        arrangerLength: "1|0",
+        duplicated: true,
+        duplicatedClip: {
+          id: "live_set tracks 0 arrangement_clips 0",
+          view: "Arranger",
+          trackIndex: 0,
+          arrangerStartTime: "1:1",
+        },
+      });
+    });
+
+    it("should correctly handle 2/2 time signature duration conversion", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+      
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "create_midi_clip") {
+          let trackIndex = "0";
+          if (this.path) {
+            const trackMatch = this.path.match(/live_set tracks (\d+)/);
+            if (trackMatch) {
+              trackIndex = trackMatch[1];
+            }
+          }
+          return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
+        }
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] });
+        }
+        return null;
+      });
+
+      const originalPath = liveApiPath.getMockImplementation();
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { 
+          exists: () => true,
+          length: 8, // 8 Ableton beats = 2 bars in 2/2 time (longer than requested length)
+          looping: 0,
+          name: "Test Clip 2/2",
+          color: 4047616,
+          signature_numerator: 2,
+          signature_denominator: 2,
+          loop_start: 0,
+          loop_end: 8,
+          is_midi_clip: 1,
+        },
+        "live_set": {
+          signature_numerator: 4, // Song is in 4/4, but clip is in 2/2
+          signature_denominator: 4,
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 0,
+        },
+      });
+
+      // In 2/2 time, "1|0" duration should be 4 Ableton beats (1 bar = 2 half notes = 4 quarter notes)
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arranger",
+        arrangerStartTime: "1:1",
+        arrangerLength: "1|0", // This should be 4 Ableton beats in 2/2 time
+      });
+
+      // Verify that the implementation correctly converts "1|0" to 4 Ableton beats for 2/2 time signature
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+
+      expect(result).toStrictEqual({
+        type: "clip",
+        id: "clip1",
+        count: 1,
+        destination: "arranger",
+        arrangerStartTime: "1:1",
+        arrangerLength: "1|0",
+        duplicated: true,
+        duplicatedClip: {
+          id: "live_set tracks 0 arrangement_clips 0",
+          view: "Arranger",
+          trackIndex: 0,
+          arrangerStartTime: "1:1",
         },
       });
     });
@@ -1274,8 +1449,8 @@ describe("duplicate", () => {
         id: "clip1",
         destination: "arranger",
         arrangerStartTime: "5:1",
-        arrangerLength: "0:0", // 0 bars + 0 beats = 0 total
-      })).toThrow('duplicate failed: arrangerLength must be positive, got "0:0"');
+        arrangerLength: "0|0", // 0 bars + 0 beats = 0 total
+      })).toThrow('duplicate failed: arrangerLength must be positive, got "0|0"');
     });
 
     it("should work normally without arrangerLength (backward compatibility)", () => {

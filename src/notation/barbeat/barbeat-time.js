@@ -74,3 +74,59 @@ export function barBeatToAbletonBeats(barBeat, timeSigNumerator, timeSigDenomina
   const musicalBeats = barBeatToBeats(barBeat, musicalBeatsPerBar);
   return musicalBeats * (4 / timeSigDenominator);
 }
+
+/**
+ * Convert Ableton beats (quarter notes) to bar|beat duration format using musical beats
+ * @param {number} abletonBeats - Quarter note beats (duration, not position)
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {string} Bar|beat duration format (e.g., "2|1.5" = 2 bars + 1.5 beats)
+ */
+export function abletonBeatsToBarBeatDuration(abletonBeats, timeSigNumerator, timeSigDenominator) {
+  if (abletonBeats < 0) {
+    throw new Error(`Duration cannot be negative, got: ${abletonBeats}`);
+  }
+  
+  // Convert Ableton beats to musical beats
+  const musicalBeats = abletonBeats * (timeSigDenominator / 4);
+  const musicalBeatsPerBar = timeSigNumerator;
+  
+  // Calculate bars and remaining beats (0-based for duration)
+  const bars = Math.floor(musicalBeats / musicalBeatsPerBar);
+  const remainingBeats = musicalBeats % musicalBeatsPerBar;
+  
+  // Format remaining beats - avoid unnecessary decimals
+  const beatsFormatted = remainingBeats % 1 === 0 ? 
+    remainingBeats.toString() : 
+    remainingBeats.toFixed(3).replace(/\.?0+$/, "");
+  
+  return `${bars}|${beatsFormatted}`;
+}
+
+/**
+ * Convert bar|beat duration format to Ableton beats (quarter notes) using musical beats
+ * @param {string} barBeatDuration - Bar|beat duration format (e.g., "2|1.5")
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} Quarter note beats (duration)
+ */
+export function barBeatDurationToAbletonBeats(barBeatDuration, timeSigNumerator, timeSigDenominator) {
+  const match = barBeatDuration.match(/^(-?\d+)\|(-?\d+(?:\.\d+)?)$/);
+  if (!match) {
+    throw new Error(`Invalid bar|beat duration format: "${barBeatDuration}". Expected "{int}|{float}" like "1|2" or "2|1.5"`);
+  }
+  
+  const bars = Number.parseInt(match[1]);
+  const beats = Number.parseFloat(match[2]);
+  
+  if (bars < 0) throw new Error(`Bars in duration must be 0 or greater, got: ${bars}`);
+  if (beats < 0) throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
+  
+  const musicalBeatsPerBar = timeSigNumerator;
+  
+  // Calculate total musical beats (0-based duration)
+  const totalMusicalBeats = bars * musicalBeatsPerBar + beats;
+  
+  // Convert musical beats to Ableton beats
+  return totalMusicalBeats * (4 / timeSigDenominator);
+}

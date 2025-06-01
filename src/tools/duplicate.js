@@ -1,35 +1,43 @@
 // src/tools/duplicate.js
-import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
+import {
+  abletonBeatsToBarBeat,
+  barBeatDurationToAbletonBeats,
+  barBeatToAbletonBeats,
+} from "../notation/barbeat/barbeat-time";
 import { MAX_CLIP_BEATS } from "./constants";
 
 /**
- * Parse arrangerLength from bar:beat format to absolute beats
- * @param {string} arrangerLength - Length in bar:beat format (e.g. "2:1")
- * @param {number} songTimeSigNumerator - Song time signature numerator
- * @returns {number} Length in beats
+ * Parse arrangerLength from bar|beat duration format to absolute beats
+ * @param {string} arrangerLength - Length in bar|beat duration format (e.g. "2|0" for exactly two bars)
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} Length in Ableton beats
  */
-function parseArrangerLength(arrangerLength, songTimeSigNumerator) {
-  const match = arrangerLength.match(/^(\d+):(\d+(?:\.\d+)?)$/);
+function parseArrangerLength(arrangerLength, timeSigNumerator, timeSigDenominator) {
+  const match = arrangerLength.match(/^(\d+)\|(\d+(?:\.\d+)?)$/);
   if (!match) {
     throw new Error(
-      `duplicate failed: arrangerLength must be in bar:beat format (e.g. "2:1"), got "${arrangerLength}"`
+      `duplicate failed: arrangerLength must be in bar|beat duration format (e.g. "2|1"), got "${arrangerLength}"`
     );
   }
-  const bars = Number.parseInt(match[1]);
-  const beats = Number.parseFloat(match[2]);
 
-  if (bars < 0 || beats < 0) {
-    throw new Error(`duplicate failed: arrangerLength must be positive, got "${arrangerLength}"`);
+  try {
+    const arrangerLengthBeats = barBeatDurationToAbletonBeats(arrangerLength, timeSigNumerator, timeSigDenominator);
+
+    if (arrangerLengthBeats <= 0) {
+      throw new Error(`duplicate failed: arrangerLength must be positive, got "${arrangerLength}"`);
+    }
+
+    return arrangerLengthBeats;
+  } catch (error) {
+    if (error.message.includes("Invalid bar|beat duration format")) {
+      throw new Error(`duplicate failed: ${error.message}`);
+    }
+    if (error.message.includes("must be 0 or greater")) {
+      throw new Error(`duplicate failed: arrangerLength ${error.message.replace("in duration ", "")}`);
+    }
+    throw error;
   }
-
-  // Calculate total duration: complete bars + additional beats
-  const arrangerLengthBeats = bars * songTimeSigNumerator + beats;
-
-  if (arrangerLengthBeats <= 0) {
-    throw new Error(`duplicate failed: arrangerLength must be positive, got "${arrangerLength}"`);
-  }
-
-  return arrangerLengthBeats;
 }
 
 /**
@@ -130,7 +138,7 @@ function copyClipProperties(sourceClip, destClip, name) {
  * @param {number} [args.count=1] - Number of duplicates to create
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arranger"), required when type is "clip"
  * @param {number} [args.arrangerStartTime] - Start time in bar:beat format for Arranger view clips (uses song time signature)
- * @param {string} [args.arrangerLength] - Length in bar:beat format for Arranger view clips (auto-duplicates looping clips to fill)
+ * @param {string} [args.arrangerLength] - Length in bar|beat duration format for Arranger view clips (auto-duplicates looping clips to fill)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.includeClips] - Whether to include clips when duplicating tracks or scenes
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
@@ -215,7 +223,15 @@ export function duplicate({
         // For multiple scenes, place them sequentially to avoid overlap
         const sceneLength = calculateSceneLength(sceneIndex);
         const actualArrangerStartBeats = baseArrangerStartBeats + i * sceneLength;
-        newObjectMetadata = duplicateSceneToArranger(id, actualArrangerStartBeats, objectName, includeClips, arrangerLength, songTimeSigNumerator, songTimeSigDenominator);
+        newObjectMetadata = duplicateSceneToArranger(
+          id,
+          actualArrangerStartBeats,
+          objectName,
+          includeClips,
+          arrangerLength,
+          songTimeSigNumerator,
+          songTimeSigDenominator
+        );
       } else if (type === "clip") {
         // For multiple clips, place them sequentially to avoid overlap
         const clipLength = object.getProperty("length");
@@ -470,7 +486,15 @@ function calculateSceneLength(sceneIndex) {
   return maxLength;
 }
 
-function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, includeClips, arrangerLength, songTimeSigNumerator, songTimeSigDenominator) {
+function duplicateSceneToArranger(
+  sceneId,
+  arrangerStartTimeBeats,
+  name,
+  includeClips,
+  arrangerLength,
+  songTimeSigNumerator,
+  songTimeSigDenominator
+) {
   const scene = LiveAPI.from(sceneId);
 
   if (!scene.exists()) {
@@ -491,7 +515,7 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, include
     // Determine the length to use for all clips
     let arrangerLengthBeats;
     if (arrangerLength != null) {
-      arrangerLengthBeats = parseArrangerLength(arrangerLength, songTimeSigNumerator);
+      arrangerLengthBeats = parseArrangerLength(arrangerLength, songTimeSigNumerator, songTimeSigDenominator);
     } else {
       // Default to the length of the longest clip in the scene
       arrangerLengthBeats = calculateSceneLength(sceneIndex);
@@ -508,14 +532,14 @@ function duplicateSceneToArranger(sceneId, arrangerStartTimeBeats, name, include
 
         // Use the new length-aware clip creation logic
         const clipsForTrack = createClipsForLength(clip, track, arrangerStartTimeBeats, arrangerLengthBeats, name);
-        
+
         // Add the scene name to each clip result if provided
         if (name != null) {
           for (const clipInfo of clipsForTrack) {
             clipInfo.name = name;
           }
         }
-        
+
         duplicatedClips.push(...clipsForTrack);
       }
     }
@@ -584,7 +608,10 @@ function duplicateClipToArranger(
   const duplicatedClips = [];
 
   if (arrangerLength != null) {
-    const arrangerLengthBeats = parseArrangerLength(arrangerLength, songTimeSigNumerator);
+    // Use the clip's time signature for duration calculation
+    const clipTimeSigNumerator = clip.getProperty("signature_numerator");
+    const clipTimeSigDenominator = clip.getProperty("signature_denominator");
+    const arrangerLengthBeats = parseArrangerLength(arrangerLength, clipTimeSigNumerator, clipTimeSigDenominator);
     const clipsCreated = createClipsForLength(clip, track, arrangerStartTimeBeats, arrangerLengthBeats, name);
     duplicatedClips.push(...clipsCreated);
   } else {
