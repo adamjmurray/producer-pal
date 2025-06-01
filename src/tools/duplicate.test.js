@@ -352,17 +352,54 @@ describe("duplicate", () => {
           "live_set tracks 0 clip_slots 0": { has_clip: 1 },
           "live_set tracks 1 clip_slots 0": { has_clip: 0 },
           "live_set tracks 2 clip_slots 0": { has_clip: 1 },
-          "live_set tracks 0 clip_slots 0 clip": { length: 4 },
-          "live_set tracks 2 clip_slots 0 clip": { length: 8 },
+          "live_set tracks 0 clip_slots 0 clip": { 
+            length: 4,
+            name: "Clip 1",
+            color: 4047616,
+            signature_numerator: 4,
+            signature_denominator: 4,
+            looping: 0,
+            loop_start: 0,
+            loop_end: 4,
+            is_midi_clip: 1,
+          },
+          "live_set tracks 2 clip_slots 0 clip": { 
+            length: 8,
+            name: "Clip 2", 
+            color: 8355711,
+            signature_numerator: 4,
+            signature_denominator: 4,
+            looping: 0,
+            loop_start: 0,
+            loop_end: 8,
+            is_midi_clip: 1,
+          },
         });
 
-        liveApiCall.mockImplementation(function (method, clipId, startTime) {
+        let clipCounter = 0;
+        liveApiCall.mockImplementation(function (method, clipIdOrStartTime, startTimeOrLength) {
           if (method === "duplicate_clip_to_arrangement") {
             // Extract track index from the clip ID path
-            const trackMatch = clipId.match(/tracks\/(\d+)/);
+            const trackMatch = clipIdOrStartTime.match(/tracks\/(\d+)/);
             const trackIndex = trackMatch ? trackMatch[1] : "0";
             // Return a mock arranger clip ID
             return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
+          }
+          if (method === "create_midi_clip") {
+            // For create_midi_clip, determine track index from the calling context (this.path)
+            let trackIndex = "0";
+            if (this.path) {
+              const trackMatch = this.path.match(/live_set tracks (\d+)/);
+              if (trackMatch) {
+                trackIndex = trackMatch[1];
+              }
+            }
+            const result = ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
+            clipCounter++;
+            return result;
+          }
+          if (method === "get_notes_extended") {
+            return JSON.stringify({ notes: [] }); // Empty notes for testing
           }
           return null;
         });
@@ -400,16 +437,10 @@ describe("duplicate", () => {
           arrangerStartTime: "5:1",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWith(
-          "duplicate_clip_to_arrangement",
-          "id live_set/tracks/0/clip_slots/0/clip",
-          16
-        );
-        expect(liveApiCall).toHaveBeenCalledWith(
-          "duplicate_clip_to_arrangement",
-          "id live_set/tracks/2/clip_slots/0/clip",
-          16
-        );
+        // Track 0 clip (4 beats) should use create_midi_clip since it's shorter than scene length (8 beats)
+        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 8);
+        // Track 2 clip (8 beats) should also use create_midi_clip since it equals scene length  
+        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 8);
         expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
 
         expect(result).toStrictEqual({
@@ -451,16 +482,35 @@ describe("duplicate", () => {
             tracks: children("track0"),
           },
           "live_set tracks 0 clip_slots 0": { has_clip: 1 },
-          "live_set tracks 0 clip_slots 0 clip": { length: 8 },
+          "live_set tracks 0 clip_slots 0 clip": { 
+            length: 8,
+            name: "Scene Clip",
+            color: 4047616,
+            signature_numerator: 4,
+            signature_denominator: 4,
+            looping: 0,
+            loop_start: 0,
+            loop_end: 8,
+            is_midi_clip: 1,
+          },
         });
 
         let clipCounter = 0;
-        liveApiCall.mockImplementation(function (method, clipId, startTime) {
+        liveApiCall.mockImplementation(function (method, clipIdOrStartTime, startTimeOrLength) {
           if (method === "duplicate_clip_to_arrangement") {
             // Return unique clip IDs for each duplication
             const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
             clipCounter++;
             return ["id", clipId];
+          }
+          if (method === "create_midi_clip") {
+            // For create_midi_clip, first param is startTime, second is length
+            const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
+            clipCounter++;
+            return ["id", clipId];
+          }
+          if (method === "get_notes_extended") {
+            return JSON.stringify({ notes: [] }); // Empty notes for testing
           }
           return null;
         });
@@ -506,21 +556,10 @@ describe("duplicate", () => {
         });
 
         // Scenes should be placed at sequential positions based on scene length (8 beats)
-        expect(liveApiCall).toHaveBeenCalledWith(
-          "duplicate_clip_to_arrangement",
-          "id live_set/tracks/0/clip_slots/0/clip",
-          16
-        );
-        expect(liveApiCall).toHaveBeenCalledWith(
-          "duplicate_clip_to_arrangement",
-          "id live_set/tracks/0/clip_slots/0/clip",
-          24
-        );
-        expect(liveApiCall).toHaveBeenCalledWith(
-          "duplicate_clip_to_arrangement",
-          "id live_set/tracks/0/clip_slots/0/clip",
-          32
-        );
+        // Should use create_midi_clip for exact length control
+        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 8);
+        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 24, 8);
+        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 32, 8);
 
         expect(result).toStrictEqual({
           type: "scene",

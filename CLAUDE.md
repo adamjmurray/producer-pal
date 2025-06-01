@@ -129,6 +129,8 @@ export default function toolName(liveApi, args) {
 
 When modifying BarBeat notation grammar, remember to rebuild the parser with `npm run parser:build`.
 
+Note: You generally don't need to run `npm run build` to verify changes - the test suite is sufficient to ensure correctness.
+
 ## Versioning
 
 The project uses semantic versioning (major.minor.patch) maintained in `src/version.js`. The version is:
