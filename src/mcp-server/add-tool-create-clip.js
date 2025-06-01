@@ -71,7 +71,7 @@ export function addToolCreateClip(server, callLiveApi) {
         .boolean()
         .default(false)
         .describe(
-          "Play the clips (only applicable to Session view clips). Can be used when creating new clips to automatically play them after creation."
+          "Play the clips (only applicable to Session view clips). Puts tracks into non-following state, stopping any currently playing Arrangement clips. Can be used when creating new clips to automatically play them after creation."
         ),
     },
     async (args) => callLiveApi("create-clip", args)

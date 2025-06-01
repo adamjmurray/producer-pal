@@ -3,15 +3,17 @@ import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbea
 import { parseCommaSeparatedIndices } from "../utils.js";
 
 /**
- * Unified control for all playback functionality in both Arranger and Session views
+ * Unified control for all playback functionality in both Arranger and Session views.
+ * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
+ * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
  * @param {Object} args - The parameters
  * @param {string} args.action - Action to perform
  * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
  * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
  * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
- * @param {string} [args.followingTrackIndexes] - Comma-separated track indexes that should follow the arrangement
- * @param {number} [args.sceneIndex] - Scene index for Session view operations
+ * @param {string} [args.followingTrackIndexes] - Comma-separated track indexes that should return to following the arrangement (like clicking 'Back to Arrangement' buttons)
+ * @param {number} [args.sceneIndex] - Scene index for Session view operations (puts tracks into non-following state)
  * @param {string} [args.trackIndexes] - Comma-separated track indexes for Session view operations
  * @param {string} [args.clipSlotIndexes] - Comma-separated clip slot indexes for Session view operations
  * @returns {Object} Result with transport state

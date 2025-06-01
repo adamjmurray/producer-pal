@@ -50,7 +50,7 @@
 **Arrangement Feature Improvements:**
 
 - [x] Duplicate scene to arranger (all clips in scene → arranger) enhancements
-  - [ ] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
+  - [x] Scene duplication should repeat any looping clips for the duration fo the scene (i.e. the max clip length in the
         scene)
   - [x] Add an optional arg to set the length of the clips in the arrangement (truncating or re-duplicating to "loop" as
         needed) when copying a scene
@@ -91,7 +91,7 @@
       great but I wonder if there should be a toggle switch in the device UI to suppress Max console errors (in case
       there are situations where it's not a problem and confuses the AI... guess we just need to test and find out if
       this is actually needed)
-- [ ] Review and refine all tool descriptions for clarity, including BarBeat specification (and maybe rename to
+- [x] Review and refine all tool descriptions for clarity, including BarBeat specification (and maybe rename to
       `bar|beat` and distinguish the time syntax from the wider notation system that uses bar|beat, perhaps `bar|beat`
       implies the time syntax and `bar|beat notation` refers to the MIDI clip representation with the grammar, parser,
       formatter, etc)
@@ -113,14 +113,15 @@
       codebase). It should detect digits-only strings and prepend id.
 - [x] When setting lots of properties but only when they are not null, maybe we can have an extension like
       `liveApiObj.setValues({live_api_prop_name: maybeNullValue, ...})`
-- [ ] Look for other opportunities to refactor recurring patterns of LiveAPI usage
-  - [ ] I'm thinking about adding LiveAPI.prototype.trackIndex that attempts to parse it out of the current path or
+- [x] Look for other opportunities to refactor recurring patterns of LiveAPI usage
+  - [x] I'm thinking about adding LiveAPI.prototype.trackIndex that attempts to parse it out of the current path or
         return null. We could do similar with sceneIndex and clipSlotIndex if we wanted...
 
 **Arrangement Improvements:**
 
 - [ ] Allow changing the length of a clip, which isn't directly possible, but we can read all the notes, delete and
-      recreate the clip, and set all the notes on the new clip
+      recreate the clip, and set all the notes on the new clip... which the LLM can already do with existing tools. So
+      maybe this doesn't really need to be streamlined.
 
 **Duplicate Tool:**
 

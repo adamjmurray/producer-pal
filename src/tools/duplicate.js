@@ -124,7 +124,8 @@ function copyClipProperties(sourceClip, destClip, name) {
 }
 
 /**
- * Duplicates an object based on its type
+ * Duplicates an object based on its type.
+ * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
  * @param {Object} args - The parameters
  * @param {string} args.type - Type of object to duplicate ("track", "scene", or "clip")
  * @param {string} args.id - ID of the object to duplicate

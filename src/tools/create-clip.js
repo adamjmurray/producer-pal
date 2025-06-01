@@ -21,7 +21,7 @@ import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
  * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
  * @param {string} [args.loopEnd] - Loop end position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
- * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating it (Session only)
+ * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating (Session only). Puts tracks into non-following state, stopping any currently playing Arrangement clips.
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
  */
 export function createClip({
