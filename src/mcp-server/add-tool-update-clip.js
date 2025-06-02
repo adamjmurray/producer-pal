@@ -5,7 +5,7 @@ export function addToolUpdateClip(server, callLiveApi) {
   server.tool(
     "update-clip",
     "Updates properties of existing clips by ID. Supports bulk operations when provided with comma-separated clip IDs. All properties except ids are optional. Use this tool to modify clips that already exist, including clips created by duplicating scenes or tracks. To create new clips in empty clip slots, use create-clip instead. " +
-      "IMPORTANT: All timing parameters (startMarker, endMarker, loopStart, loopEnd) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline.",
+      "IMPORTANT: All timing parameters (startMarker, length) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline.",
     {
       ids: z.string().describe("Clip ID or comma-separated list of clip IDs to update"),
       name: z.string().optional().describe("Name for the clips"),
@@ -17,11 +17,11 @@ export function addToolUpdateClip(server, callLiveApi) {
         .describe(
           "Clip start marker in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the clip). Relative to clip start."
         ),
-      endMarker: z
+      length: z
         .string()
         .optional()
         .describe(
-          "Clip end marker in bar|beat position format using pipe separator (e.g., '5|1' = first beat of fifth bar of the clip). Relative to clip start."
+          "Clip length in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When provided, automatically sets the clip end marker and loop end. Uses clip's time signature."
         ),
       loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
       loopStart: z
@@ -29,12 +29,6 @@ export function addToolUpdateClip(server, callLiveApi) {
         .optional()
         .describe(
           "Clip loop start in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the clip). Relative to clip start."
-        ),
-      loopEnd: z
-        .string()
-        .optional()
-        .describe(
-          "Clip loop end in bar|beat position format using pipe separator (e.g., '5|1' = first beat of fifth bar of the clip). Relative to clip start."
         ),
       notes: z
         .string()

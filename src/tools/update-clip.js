@@ -1,5 +1,5 @@
 // src/tools/update-clip.js
-import { barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
+import { barBeatToAbletonBeats, barBeatDurationToAbletonBeats } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../utils.js";
 import { MAX_CLIP_BEATS } from "./constants.js";
@@ -14,9 +14,8 @@ import { MAX_CLIP_BEATS } from "./constants.js";
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.startMarker] - Start marker position in bar|beat format relative to clip start
- * @param {string} [args.endMarker] - End marker position in bar|beat format relative to clip start
+ * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars)
  * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
- * @param {string} [args.loopEnd] - Loop end position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
@@ -28,10 +27,9 @@ export function updateClip({
   color,
   timeSignature,
   startMarker,
-  endMarker,
+  length,
   loop,
   loopStart,
-  loopEnd,
 } = {}) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
@@ -62,15 +60,25 @@ export function updateClip({
       timeSigDenominator = clip.getProperty("signature_denominator");
     }
 
+    // Convert length parameter to end_marker and loop_end
+    let endMarkerBeats = null;
+    let loopEndBeats = null;
+    if (length != null) {
+      const lengthBeats = barBeatDurationToAbletonBeats(length, timeSigNumerator, timeSigDenominator);
+      const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator) || 0;
+      endMarkerBeats = startMarkerBeats + lengthBeats;
+      loopEndBeats = startMarkerBeats + lengthBeats;
+    }
+
     clip.setAll({
       name: name,
       color: color,
       signature_numerator: timeSignature != null ? timeSigNumerator : null,
       signature_denominator: timeSignature != null ? timeSigDenominator : null,
       start_marker: barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator),
-      end_marker: barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator),
+      end_marker: endMarkerBeats,
       loop_start: barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator),
-      loop_end: barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator),
+      loop_end: loopEndBeats,
       looping: loop,
     });
 
@@ -125,9 +133,8 @@ export function updateClip({
     if (color != null) clipResult.color = color;
     if (timeSignature != null) clipResult.timeSignature = timeSignature;
     if (startMarker != null) clipResult.startMarker = startMarker;
-    if (endMarker != null) clipResult.endMarker = endMarker;
+    if (length != null) clipResult.length = length;
     if (loopStart != null) clipResult.loopStart = loopStart;
-    if (loopEnd != null) clipResult.loopEnd = loopEnd;
     if (loop != null) clipResult.loop = loop;
     if (notationString != null) clipResult.notes = notationString;
     if (notationString != null) clipResult.clearExistingNotes = clearExistingNotes;

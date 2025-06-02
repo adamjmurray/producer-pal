@@ -1,5 +1,5 @@
 // src/tools/create-clip.js
-import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat } from "../notation/barbeat/barbeat-time";
+import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat, barBeatDurationToAbletonBeats } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
 import { parseTimeSignature, setAllNonNull, toLiveApiView } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
@@ -17,9 +17,8 @@ import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.startMarker] - Start marker position in bar|beat format relative to clip start
- * @param {string} [args.endMarker] - End marker position in bar|beat format relative to clip start
+ * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars)
  * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
- * @param {string} [args.loopEnd] - Loop end position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating (Session only). Puts tracks into non-following state, stopping any currently playing Arrangement clips.
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
@@ -35,10 +34,9 @@ export function createClip({
   color = null,
   timeSignature = null,
   startMarker = null,
-  endMarker = null,
+  length = null,
   loop = null,
   loopStart = null,
-  loopEnd = null,
   autoplay = false,
 }) {
   // Validate parameters
@@ -87,9 +85,17 @@ export function createClip({
     songTimeSigDenominator
   );
   const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
-  const endMarkerBeats = barBeatToAbletonBeats(endMarker, timeSigNumerator, timeSigDenominator);
   const loopStartBeats = barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator);
-  const loopEndBeats = barBeatToAbletonBeats(loopEnd, timeSigNumerator, timeSigDenominator);
+
+  // Convert length parameter to endMarker and loopEnd
+  let endMarkerBeats = null;
+  let loopEndBeats = null;
+  if (length != null) {
+    const lengthBeats = barBeatDurationToAbletonBeats(length, timeSigNumerator, timeSigDenominator);
+    const startOffsetBeats = startMarkerBeats || 0;
+    endMarkerBeats = startOffsetBeats + lengthBeats;
+    loopEndBeats = startOffsetBeats + lengthBeats;
+  }
 
   const notes =
     notationString != null
@@ -229,9 +235,8 @@ export function createClip({
       timeSignature:
         timeSigNumerator != null && timeSigDenominator != null ? `${timeSigNumerator}/${timeSigDenominator}` : null,
       startMarker,
-      endMarker,
+      length,
       loopStart,
-      loopEnd,
       loop,
       notes: notationString,
     });

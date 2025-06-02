@@ -108,7 +108,7 @@ describe("createClip", () => {
     });
   });
 
-  it("should create clip with length based on endMarker for non-looping clips", () => {
+  it("should create clip with specified length", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
@@ -118,14 +118,14 @@ describe("createClip", () => {
       view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      endMarker: "2|3",
+      length: "1:3",
       loop: false,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 6);
+    expect(liveApiCall).toHaveBeenCalledWith("create_clip", 7);
   });
 
-  it("should create clip with length based on loopEnd for looping clips", () => {
+  it("should create clip with specified length for looping clips", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
@@ -135,7 +135,7 @@ describe("createClip", () => {
       view: "session",
       trackIndex: 0,
       clipSlotIndex: 0,
-      loopEnd: "3|1",
+      length: "2:0",
       loop: true,
     });
 

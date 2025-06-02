@@ -94,12 +94,12 @@ describe("updateClip", () => {
       ids: "789",
       name: "Arrangement Clip",
       startMarker: "1|3", // 2 beats = bar 1 beat 3 in 4/4
-      endMarker: "2|3", // 6 beats = bar 2 beat 3 in 4/4
+      length: "1:0", // 4 beats = 1 bar
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Arrangement Clip");
     expect(liveApiSet).toHaveBeenCalledWith("start_marker", 2); // 1|3 in 4/4 = 2 Ableton beats
-    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // 2|3 in 4/4 = 6 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // startMarker (2) + length (4) = 6 Ableton beats
 
     expect(result).toEqual({
       id: "789",
@@ -109,7 +109,7 @@ describe("updateClip", () => {
       arrangementStartTime: 16.0,
       name: "Arrangement Clip",
       startMarker: "1|3",
-      endMarker: "2|3",
+      length: "1:0",
     });
   });
 
@@ -758,7 +758,7 @@ describe("updateClip", () => {
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
   });
 
-  it("should set loop markers when provided", () => {
+  it("should set loop start when provided", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -771,10 +771,8 @@ describe("updateClip", () => {
     updateClip({
       ids: "123",
       loopStart: "1|3",
-      loopEnd: "2|1",
     });
 
     expect(liveApiSet).toHaveBeenCalledWith("loop_start", 2);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_end", 4);
   });
 });
