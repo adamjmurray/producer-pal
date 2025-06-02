@@ -4,7 +4,9 @@ import { z } from "zod";
 export function addToolUpdateScene(server, callLiveApi) {
   server.tool(
     "update-scene",
-    "Updates properties of existing scenes by ID. Supports bulk operations when provided with comma-separated scene IDs. All properties except ids are optional.",
+    "Updates properties of existing scenes by ID. Supports bulk operations when provided with comma-separated scene IDs. " +
+      "Note: This only modifies scene properties - does not affect playback or launch scenes. " +
+      "All properties except ids are optional.",
     {
       ids: z.string().describe("Scene ID or comma-separated list of scene IDs to update"),
       name: z.string().optional().describe("Name for the scene"),

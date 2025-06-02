@@ -4,7 +4,9 @@ import { z } from "zod";
 export function addToolCreateScene(server, callLiveApi) {
   server.tool(
     "create-scene",
-    "Creates new scenes at the specified index. Scenes will be inserted at the given index and existing scenes will shift down. All properties are optional except sceneIndex.",
+    "Creates new scenes at the specified index. Scenes will be inserted at the given index and existing scenes will shift down. " +
+      "Note: This only creates scene objects - use the transport tool's play-scene action to launch scenes and trigger their clips. " +
+      "All properties are optional except sceneIndex.",
     {
       sceneIndex: z.number().int().min(0).describe("Scene index (0-based) where to insert new scenes"),
       count: z.number().int().min(1).default(1).describe("Number of scenes to create (default: 1)"),

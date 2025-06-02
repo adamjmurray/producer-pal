@@ -6,7 +6,7 @@ import { MAX_AUTO_CREATED_SCENES } from "../tools/constants";
 export function addToolCreateClip(server, callLiveApi) {
   server.tool(
     "create-clip",
-    "Creates MIDI clips in Session or Arrangement view. " +
+    "Creates MIDI clips in Session or Arrangement. " +
       "For Session view, provide trackIndex and clipSlotIndex. " +
       "Creating a clip in Session view fails if a clip already exists at the specified trackIndex/clipSlotIndex combination. For modifying clips in slots that already contain clips (e.g., after duplicating scenes), use update-clip instead. " +
       "For Arrangement view, provide trackIndex and arrangementStartTime. Existing arrangement clips will have overlapping areas overwritten. " +
@@ -15,9 +15,7 @@ export function addToolCreateClip(server, callLiveApi) {
       "IMPORTANT: For Arrangement view clips, all timing parameters (startMarker, endMarker, loopStart, loopEnd) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline. A clip placed at arrangementStartTime '17|1' with notes starting at '1|1' will play those notes at global arrangement bar 17. " +
       "Clip length is set to the nearest whole beat after the last note end time. To ensure correct clip length, it is necessary to set endMarker and loopEnd (these should usually be the same).",
     {
-      view: z
-        .enum(["session", "arrangement"])
-        .describe("Location of the clips - either in Live's 'Session' or 'Arrangement' view"),
+      view: z.enum(["session", "arrangement"]).describe("Location of the clips - either in Session or Arrangement"),
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
       clipSlotIndex: z
         .number()
@@ -71,7 +69,7 @@ export function addToolCreateClip(server, callLiveApi) {
         .boolean()
         .default(false)
         .describe(
-          "Play the clips (only applicable to Session view clips). Puts tracks into non-following state, stopping any currently playing Arrangement clips. Can be used when creating new clips to automatically play them after creation."
+          "Play the clips immediately after creation (Session clips only). This launches Session clips, which take precedence over any currently playing Arrangement clips on those tracks, stopping Arrangement playback until restored via the transport tool."
         ),
     },
     async (args) => callLiveApi("create-clip", args)
