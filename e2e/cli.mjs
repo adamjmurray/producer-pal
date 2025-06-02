@@ -3,6 +3,14 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
+// Helper function to print large text without truncation
+function printLargeText(text, prefix = "") {
+  const lines = text.split("\n");
+  lines.forEach(line => {
+    console.log(prefix + line);
+  });
+}
+
 // Default URL for the MCP server running in Ableton Live
 const DEFAULT_URL = "http://localhost:3350/mcp";
 
@@ -86,7 +94,9 @@ async function main() {
             console.log(`   Description: ${tool.description}`);
           }
           if (tool.inputSchema) {
-            console.log(`   Input Schema: ${JSON.stringify(tool.inputSchema, null, 2).split("\n").join("\n   ")}`);
+            console.log(`   Input Schema:`);
+            const schemaJson = JSON.stringify(tool.inputSchema, null, 2);
+            printLargeText(schemaJson, "   ");
           }
         });
       } else {
