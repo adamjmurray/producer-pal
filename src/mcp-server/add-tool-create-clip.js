@@ -69,7 +69,8 @@ export function addToolCreateClip(server, callLiveApi) {
         .boolean()
         .default(false)
         .describe(
-          "Play the clips immediately after creation (Session clips only). This launches Session clips, which take precedence over any currently playing Arrangement clips on those tracks, stopping Arrangement playback until restored via the transport tool."
+          "Play the clips immediately after creation (Session clips only). " +
+            "IMPORTANT: This puts the affected track into non-arrangement-following state - it will play Session clips instead of Arrangement clips until restored via the transport tool's followingTrackIndexes parameter."
         ),
     },
     async (args) => callLiveApi("create-clip", args)
