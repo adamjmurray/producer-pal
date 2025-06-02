@@ -46,7 +46,7 @@ export function addToolUpdateClip(server, callLiveApi) {
         .boolean()
         .default(true)
         .describe(
-          "When true (the default), replaces all existing notes with the provided notes. When false, adds the provided notes to existing notes without removing any (but overlapping notes will overwrite existing notes)."
+          "When true (the default), replaces all existing notes - use for complete rewrites. When false, adds to existing notes - use for incremental changes like 'add hi-hats' or 'adjust snare velocity'. Overlapping notes will overwrite existing notes at the same pitch and time."
         ),
     },
     async (args) => callLiveApi("update-clip", args)
