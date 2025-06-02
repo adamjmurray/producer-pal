@@ -1,6 +1,5 @@
 // src/mcp-server/add-tool-update-clip.js
 import { z } from "zod";
-import { notationDescription } from "../notation/notation";
 
 export function addToolUpdateClip(server, callLiveApi) {
   server.tool(
@@ -41,7 +40,7 @@ export function addToolUpdateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          `Musical notation in the following BarBeat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. ${notationDescription}`
+          "Musical notation in BarBeat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. For complete BarBeat notation syntax reference, see the create-clip tool description."
         ),
       clearExistingNotes: z
         .boolean()

@@ -1,17 +1,16 @@
 // src/mcp-server/add-tool-read-clip.js
 import { z } from "zod";
-import { notationDescription } from "../notation/notation";
 
 export function addToolReadClip(server, callLiveApi) {
   server.tool(
     "read-clip",
     "Retrieves clip information including notes. Returns type ('midi' or 'audio'), name, and time-based properties for all clips. " +
       "Time-based properties (length, startMarker, endMarker, loopStart, loopEnd, arrangementStartTime) are returned in bar|beat format (e.g. '2|3.5') using musical beats. arrangementStartTime respects the song's time signature, while the other time-based properties depend on the clip's time signature (which may be different from the song). " +
-      "For MIDI clips, also returns noteCount and notes as a string in the BarBeat notation format explained below. " +
+      "For MIDI clips, also returns noteCount and notes as a string in BarBeat notation format. " +
       "For audio clips, notes and noteCount are null. Returns null values for all fields when the clip slot is empty. " +
-      "Understanding clip state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline.\n" +
-      "Can be used to read clips by trackIndex and clipSlotIndex (for Session clips) or directly by clipId.\n" +
-      notationDescription,
+      "Understanding clip state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline. " +
+      "Can be used to read clips by trackIndex and clipSlotIndex (for Session clips) or directly by clipId. " +
+      "For complete BarBeat notation syntax reference, see the create-clip tool description.",
     {
       trackIndex: z
         .number()
