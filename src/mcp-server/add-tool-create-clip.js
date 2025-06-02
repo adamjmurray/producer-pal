@@ -46,7 +46,7 @@ export function addToolCreateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          "Clip length in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When provided, automatically sets the clip end marker and loop end. Uses clip's time signature."
+          "Clip length in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When provided, automatically sets the clip end marker and loop end. If loopStart is also specified, the effective loop length may be shorter than this total length. Uses clip's time signature."
         ),
       loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
       loopStart: z

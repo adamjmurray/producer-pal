@@ -1,5 +1,5 @@
 // src/tools/read-clip.js
-import { abletonBeatsToBarBeat } from "../notation/barbeat/barbeat-time";
+import { abletonBeatsToBarBeat, abletonBeatsToBarBeatDuration } from "../notation/barbeat/barbeat-time";
 import { formatNotation } from "../notation/notation";
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
@@ -36,19 +36,19 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
   const timeSigNumerator = clip.getProperty("signature_numerator");
   const timeSigDenominator = clip.getProperty("signature_denominator");
 
+  const isLooping = clip.getProperty("looping") > 0;
+  const lengthBeats = clip.getProperty("length"); // Live API already gives us the effective length!
+
   const result = {
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     name: clip.getProperty("name"),
     view: isArrangementClip ? "arrangement" : "session",
     color: clip.getColor(),
-    loop: clip.getProperty("looping") > 0,
-    // convert "ableton beats" (quarter note offset) to musical beats, so it makes sense in e.g. 6/8 time signatures:
-    length: (clip.getProperty("length") * timeSigDenominator) / 4,
+    loop: isLooping,
+    length: abletonBeatsToBarBeatDuration(lengthBeats, timeSigNumerator, timeSigDenominator),
     startMarker: abletonBeatsToBarBeat(clip.getProperty("start_marker"), timeSigNumerator, timeSigDenominator),
-    endMarker: abletonBeatsToBarBeat(clip.getProperty("end_marker"), timeSigNumerator, timeSigDenominator),
     loopStart: abletonBeatsToBarBeat(clip.getProperty("loop_start"), timeSigNumerator, timeSigDenominator),
-    loopEnd: abletonBeatsToBarBeat(clip.getProperty("loop_end"), timeSigNumerator, timeSigDenominator),
     isPlaying: clip.getProperty("is_playing") > 0,
     isTriggered: clip.getProperty("is_triggered") > 0,
     timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
@@ -70,7 +70,8 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
   }
 
   if (result.type === "midi") {
-    const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, result.length);
+    // Use the Live API's length property directly
+    const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, lengthBeats);
     const notes = JSON.parse(notesDictionary).notes;
     result.noteCount = notes.length;
     result.notes = formatNotation(notes, { timeSigNumerator, timeSigDenominator });

@@ -62,12 +62,10 @@ describe("readClip", () => {
       trackIndex: 1,
       view: "session",
       color: "#3DC300",
-      length: 4, // Musical beats (4 * 4 / 4 = 4)
+      length: "1:0", // 1 bar duration (from Live API)
       loop: false,
       startMarker: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
-      endMarker: "2|2", // 5 Ableton beats = bar 2 beat 2 in 4/4
       loopStart: "1|2",
-      loopEnd: "2|2",
       isPlaying: false,
       isTriggered: false,
       timeSignature: "4/4",
@@ -134,12 +132,10 @@ describe("readClip", () => {
       trackIndex: 1,
       view: "session",
       color: "#3DC300",
-      length: 8, // Musical beats (4 * 8 / 4 = 8)
+      length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
       loop: false,
       startMarker: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
-      endMarker: "2|5", // 5 Ableton beats = 10 musical beats = bar 2 beat 5 in 6/8
       loopStart: "1|3",
-      loopEnd: "2|5",
       isPlaying: false,
       isTriggered: false,
       timeSignature: "6/8",
@@ -176,7 +172,7 @@ describe("readClip", () => {
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
     expect(result.timeSignature).toBe("3/4");
-    expect(result.length).toBe(4); // 4 Ableton beats * 4 / 4 = 4 musical beats
+    expect(result.length).toBe("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
@@ -207,7 +203,7 @@ describe("readClip", () => {
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
     expect(result.timeSignature).toBe("6/8");
-    expect(result.length).toBe(6); // 3 Ableton beats * 8 / 4 = 6 musical beats
+    expect(result.length).toBe("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
 
   it("returns null values when no clip exists", () => {
@@ -247,12 +243,10 @@ describe("readClip", () => {
       trackIndex: 0,
       view: "session",
       color: "#3DC300",
-      length: 4, // 4 Ableton beats * 4 / 4 = 4 musical beats
+      length: "1:0", // 1 bar (from Live API)
       loop: true,
       startMarker: "1|2",
-      endMarker: "2|2",
       loopStart: "1|2",
-      loopEnd: "2|2",
       isPlaying: true,
       isTriggered: false,
       timeSignature: "4/4",
@@ -284,7 +278,7 @@ describe("readClip", () => {
     expect(result.trackIndex).toBe(2);
     expect(result.clipSlotIndex).toBe(4);
     expect(result.view).toBe("session");
-    expect(result.length).toBe(4);
+    expect(result.length).toBe("1:0");
     expect(result.startMarker).toBe("1|2");
   });
 
@@ -322,7 +316,7 @@ describe("readClip", () => {
     expect(result.arrangementStartTime).toBe("5|1");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
-    expect(result.length).toBe(8); // 4 * 8 / 4 = 8 musical beats in 6/8
+    expect(result.length).toBe("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
     expect(result.startMarker).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
@@ -410,11 +404,9 @@ describe("readClip", () => {
       trackIndex: 0,
       clipSlotIndex: 0,
       color: "#3DC300",
-      length: 4,
+      length: "1:0",
       startMarker: "1|2",
-      endMarker: "2|2",
       loop: false,
-      loopEnd: "2|2",
       loopStart: "1|2",
       isPlaying: false,
       isTriggered: true,
