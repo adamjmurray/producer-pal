@@ -16,19 +16,19 @@ export function addToolDuplicate(server, callLiveApi) {
         .enum(["session", "arrangement"])
         .optional()
         .describe(
-          "Destination for clip or scene duplication. Required when type is 'clip'. For scenes, defaults to 'session'."
+          "Destination for clip or scene duplication. Required when type is 'clip'. For scenes, defaults to 'session'.",
         ),
       arrangementStartTime: z
         .string()
         .optional()
         .describe(
-          "Arrangement view start time in bar|beat position format using pipe separator (e.g., '5|1' = bar 5, beat 1 of the arrangement). Required when destination is 'arrangement'."
+          "Arrangement view start time in bar|beat position format using pipe separator (e.g., '5|1' = bar 5, beat 1 of the arrangement). Required when destination is 'arrangement'.",
         ),
       arrangementLength: z
         .string()
         .optional()
         .describe(
-          "Arrangement view duration in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When not provided, this defaults to the clip length, or the longest clip in the scene. Auto-duplicates looping clips to fill the specified duration."
+          "Arrangement view duration in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When not provided, this defaults to the clip length, or the longest clip in the scene. Auto-duplicates looping clips to fill the specified duration.",
         ),
       name: z
         .string()
@@ -39,6 +39,6 @@ export function addToolDuplicate(server, callLiveApi) {
         .optional()
         .describe("Whether to include clips when duplicating tracks or scenes (default: true)"),
     },
-    async (args) => callLiveApi("duplicate", args)
+    async (args) => callLiveApi("duplicate", args),
   );
 }

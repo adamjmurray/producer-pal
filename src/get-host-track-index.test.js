@@ -1,7 +1,7 @@
 // src/get-host-track-index.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { LiveAPI, liveApiPath } from "./mock-live-api.js";
 import { getHostTrackIndex } from "./get-host-track-index.js";
+import { liveApiPath } from "./mock-live-api.js";
 
 describe("getHostTrackIndex", () => {
   beforeEach(() => {

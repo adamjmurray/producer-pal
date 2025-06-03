@@ -75,7 +75,7 @@ export function parseTimeSignature(timeSignature) {
   }
   return {
     numerator: parseInt(match[1], 10),
-    denominator: parseInt(match[2], 10)
+    denominator: parseInt(match[2], 10),
   };
 }
 
@@ -88,9 +88,12 @@ export function parseTimeSignature(timeSignature) {
 export function toLiveApiView(view) {
   const normalized = view.toLowerCase(); // for added flexibility even though should already be lower case
   switch (normalized) {
-    case "session": return "Session";
-    case "arrangement": return "Arranger";  // Live API still uses "Arranger"
-    default: throw new Error(`Unknown view: ${view}`);
+    case "session":
+      return "Session";
+    case "arrangement":
+      return "Arranger"; // Live API still uses "Arranger"
+    default:
+      throw new Error(`Unknown view: ${view}`);
   }
 }
 
@@ -102,8 +105,11 @@ export function toLiveApiView(view) {
  */
 export function fromLiveApiView(liveApiView) {
   switch (liveApiView) {
-    case "Session": return "session";
-    case "Arranger": return "arrangement";  // Live API uses "Arranger" but we use "arrangement"
-    default: throw new Error(`Unknown Live API view: ${liveApiView}`);
+    case "Session":
+      return "session";
+    case "Arranger":
+      return "arrangement"; // Live API uses "Arranger" but we use "arrangement"
+    default:
+      throw new Error(`Unknown Live API view: ${liveApiView}`);
   }
 }

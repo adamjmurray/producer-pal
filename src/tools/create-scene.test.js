@@ -29,17 +29,17 @@ describe("createScene", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "scene1" }),
       "time_signature_numerator",
-      3
+      3,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "scene1" }),
       "time_signature_denominator",
-      4
+      4,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "scene1" }),
       "time_signature_enabled",
-      true
+      true,
     );
     expect(result).toEqual({
       id: "scene1",
@@ -63,19 +63,19 @@ describe("createScene", () => {
       1,
       expect.objectContaining({ path: "live_set" }),
       "create_scene",
-      0
+      0,
     );
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       2,
       expect.objectContaining({ path: "live_set" }),
       "create_scene",
-      1
+      1,
     );
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       3,
       expect.objectContaining({ path: "live_set" }),
       "create_scene",
-      2
+      2,
     );
 
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Verse");
@@ -153,7 +153,7 @@ describe("createScene", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "scene1" }),
       "time_signature_enabled",
-      false
+      false,
     );
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
@@ -179,7 +179,7 @@ describe("createScene", () => {
       createScene({
         sceneIndex: MAX_AUTO_CREATED_SCENES - 2,
         count: 5,
-      })
+      }),
     ).toThrow(/would exceed the maximum allowed scenes/);
   });
 

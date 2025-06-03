@@ -122,14 +122,14 @@ describe("BarBeat formatNotation()", () => {
   it("throws error when only timeSigNumerator is provided", () => {
     const notes = [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }];
     expect(() => formatNotation(notes, { timeSigNumerator: 4 })).toThrow(
-      "Time signature must be specified with both numerator and denominator"
+      "Time signature must be specified with both numerator and denominator",
     );
   });
 
   it("throws error when only timeSigDenominator is provided", () => {
     const notes = [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }];
     expect(() => formatNotation(notes, { timeSigDenominator: 4 })).toThrow(
-      "Time signature must be specified with both numerator and denominator"
+      "Time signature must be specified with both numerator and denominator",
     );
   });
 

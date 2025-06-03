@@ -24,8 +24,16 @@ describe("updateSong", () => {
 
   it("should update time signature", () => {
     const result = updateSong({ timeSignature: "3/4" });
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_numerator", 3);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_denominator", 4);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_numerator",
+      3,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_denominator",
+      4,
+    );
     expect(result).toEqual({
       id: "live_set_id",
       timeSignature: "3/4",
@@ -44,12 +52,20 @@ describe("updateSong", () => {
       view: "arrangement",
     });
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "tempo", 125);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_numerator", 6);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_denominator", 8);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_numerator",
+      6,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_denominator",
+      8,
+    );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Arranger"
+      "Arranger",
     );
     expect(result).toEqual({
       id: "live_set_id",
@@ -64,7 +80,7 @@ describe("updateSong", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Arranger"
+      "Arranger",
     );
     expect(result).toEqual({
       id: "live_set_id",
@@ -77,7 +93,7 @@ describe("updateSong", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Session"
+      "Session",
     );
     expect(result).toEqual({
       id: "live_set_id",

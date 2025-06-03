@@ -131,12 +131,12 @@ export function transport({
         const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
         if (!clipSlot.exists()) {
           throw new Error(
-            `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`
+            `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`,
           );
         }
         if (!clipSlot.getProperty("has_clip")) {
           throw new Error(
-            `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`
+            `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`,
           );
         }
         clipSlot.call("fire");
@@ -158,7 +158,7 @@ export function transport({
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
         if (!track.exists()) {
           throw new Error(
-            `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`
+            `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`,
           );
         }
         track.call("stop_all_clips");
@@ -194,7 +194,7 @@ export function transport({
   const currentLoopEnd = abletonBeatsToBarBeat(
     currentLoopStartBeats + currentLoopLengthBeats,
     songTimeSigNumerator,
-    songTimeSigDenominator
+    songTimeSigDenominator,
   );
 
   return Object.fromEntries(
@@ -212,6 +212,6 @@ export function transport({
       // and include some additional relevant state:
       isPlaying,
       currentTime,
-    }).filter(([_, v]) => v !== undefined) // remove any undefined args
+    }).filter(([_, v]) => v !== undefined), // remove any undefined args
   );
 }

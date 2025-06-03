@@ -22,20 +22,20 @@ describe("duplicate", () => {
 
   it("should throw an error when type is invalid", () => {
     expect(() => duplicate({ type: "invalid", id: "some-id" })).toThrow(
-      "duplicate failed: type must be one of track, scene, clip"
+      "duplicate failed: type must be one of track, scene, clip",
     );
   });
 
   it("should throw an error when count is less than 1", () => {
     expect(() => duplicate({ type: "track", id: "some-id", count: 0 })).toThrow(
-      "duplicate failed: count must be at least 1"
+      "duplicate failed: count must be at least 1",
     );
   });
 
   it("should throw an error when the object doesn't exist", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() => duplicate({ type: "track", id: "nonexistent" })).toThrow(
-      'duplicate failed: id "nonexistent" does not exist'
+      'duplicate failed: id "nonexistent" does not exist',
     );
   });
 
@@ -108,17 +108,17 @@ describe("duplicate", () => {
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 1" }),
         "name",
-        "Custom Track"
+        "Custom Track",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 2" }),
         "name",
-        "Custom Track 2"
+        "Custom Track 2",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 3" }),
         "name",
-        "Custom Track 3"
+        "Custom Track 3",
       );
     });
 
@@ -159,31 +159,31 @@ describe("duplicate", () => {
       // Verify delete_clip was called for session clips (on clip slots)
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: expect.stringContaining("slot") }),
-        "delete_clip"
+        "delete_clip",
       );
 
       // Verify delete_clip was called for arrangement clips (on track with clip IDs)
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 1" }),
         "delete_clip",
-        "id arrangementClip0"
+        "id arrangementClip0",
       );
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 1" }),
         "delete_clip",
-        "id arrangementClip1"
+        "id arrangementClip1",
       );
 
       // Verify the track instance called delete_clip for arrangement clips
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 1" }),
         "delete_clip",
-        "id arrangementClip0"
+        "id arrangementClip0",
       );
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 1" }),
         "delete_clip",
-        "id arrangementClip1"
+        "id arrangementClip1",
       );
     });
   });
@@ -309,12 +309,12 @@ describe("duplicate", () => {
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set scenes 1" }),
         "name",
-        "Custom Scene"
+        "Custom Scene",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set scenes 2" }),
         "name",
-        "Custom Scene 2"
+        "Custom Scene 2",
       );
     });
 
@@ -354,7 +354,7 @@ describe("duplicate", () => {
       // Verify delete_clip was called for clips in the duplicated scene
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
-        "delete_clip"
+        "delete_clip",
       );
       const deleteCallCount = liveApiCall.mock.calls.filter((call) => call[0] === "delete_clip").length;
       expect(deleteCallCount).toBe(2); // Should delete 2 clips (tracks 0 and 1)
@@ -370,7 +370,7 @@ describe("duplicate", () => {
         });
 
         expect(() => duplicate({ type: "scene", id: "scene1", destination: "arrangement" })).toThrow(
-          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'"
+          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'",
         );
       });
 
@@ -480,19 +480,19 @@ describe("duplicate", () => {
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_to_arrangement",
           "id live_set/tracks/0/clip_slots/0/clip",
-          16
+          16,
         );
         // Track 2 clip (8 beats) should also use create_midi_clip since it equals scene length
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 2" }),
           "create_midi_clip",
           16,
-          8
+          8,
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_app view" }),
           "show_view",
-          "Arranger"
+          "Arranger",
         );
 
         expect(result).toStrictEqual({
@@ -613,19 +613,19 @@ describe("duplicate", () => {
           expect.objectContaining({ path: "live_set tracks 0" }),
           "create_midi_clip",
           16,
-          8
+          8,
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
           "create_midi_clip",
           24,
-          8
+          8,
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
           "create_midi_clip",
           32,
-          8
+          8,
         );
 
         expect(result).toStrictEqual({
@@ -707,7 +707,7 @@ describe("duplicate", () => {
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_app view" }),
           "show_view",
-          "Arranger"
+          "Arranger",
         );
 
         expect(result).toStrictEqual({
@@ -754,14 +754,14 @@ describe("duplicate", () => {
         expect(liveApiCall).not.toHaveBeenCalledWith(
           "duplicate_clip_to_arrangement",
           expect.any(String),
-          expect.any(Number)
+          expect.any(Number),
         );
 
         // Verify that show_view was still called
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_app view" }),
           "show_view",
-          "Arranger"
+          "Arranger",
         );
 
         expect(result).toStrictEqual({
@@ -788,7 +788,7 @@ describe("duplicate", () => {
         return this._path;
       });
       expect(() => duplicate({ type: "clip", id: "clip1" })).toThrow(
-        "duplicate failed: destination is required for type 'clip'"
+        "duplicate failed: destination is required for type 'clip'",
       );
     });
 
@@ -800,7 +800,7 @@ describe("duplicate", () => {
         return this._path;
       });
       expect(() => duplicate({ type: "clip", id: "clip1", destination: "invalid" })).toThrow(
-        "duplicate failed: destination must be 'session' or 'arrangement'"
+        "duplicate failed: destination must be 'session' or 'arrangement'",
       );
     });
 
@@ -818,7 +818,7 @@ describe("duplicate", () => {
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_slot",
-          0
+          0,
         );
 
         expect(result).toStrictEqual({
@@ -884,23 +884,23 @@ describe("duplicate", () => {
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_slot",
-          0
+          0,
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_slot",
-          1
+          1,
         );
 
         expect(liveApiSet).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0 clip_slots 1 clip" }),
           "name",
-          "Custom Clip"
+          "Custom Clip",
         );
         expect(liveApiSet).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0 clip_slots 2 clip" }),
           "name",
-          "Custom Clip 2"
+          "Custom Clip 2",
         );
       });
     });
@@ -916,7 +916,7 @@ describe("duplicate", () => {
         mockLiveApiGet({ clip1: { exists: () => true } });
 
         expect(() => duplicate({ type: "clip", id: "clip1", destination: "arrangement" })).toThrow(
-          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'"
+          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'",
         );
       });
 
@@ -962,12 +962,12 @@ describe("duplicate", () => {
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_to_arrangement",
           "id clip1",
-          8
+          8,
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_app view" }),
           "show_view",
-          "Arranger"
+          "Arranger",
         );
 
         expect(result).toStrictEqual({
@@ -1085,19 +1085,19 @@ describe("duplicate", () => {
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_to_arrangement",
           "id clip1",
-          8
+          8,
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_to_arrangement",
           "id clip1",
-          12
+          12,
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
           "duplicate_clip_to_arrangement",
           "id clip1",
-          16
+          16,
         );
         expect(liveApiCall).toHaveBeenCalledTimes(6); // 3 duplicates + 3 show_view calls
       });
@@ -1229,18 +1229,18 @@ describe("duplicate", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         16,
-        4
+        4,
       ); // start=16, length=4
       // Check that properties were copied correctly
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
         "name",
-        "Test Clip"
+        "Test Clip",
       ); // Copied from source
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
         "color",
-        4047616
+        4047616,
       ); // setColor converts hex to integer
     });
 
@@ -1318,25 +1318,25 @@ describe("duplicate", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         16,
-        4
+        4,
       ); // First clip: start=16, length=4
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         20,
-        2
+        2,
       ); // Second clip: start=20, length=2
 
       // Check that properties were copied correctly for both clips
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
         "name",
-        "Test Clip"
+        "Test Clip",
       ); // Copied from source
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
         "color",
-        4047616
+        4047616,
       ); // setColor converts hex to integer
 
       expect(result.duplicatedClip).toHaveLength(2);
@@ -1390,7 +1390,7 @@ describe("duplicate", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "duplicate_clip_to_arrangement",
         "id clip1",
-        16
+        16,
       );
       expect(liveApiSet).not.toHaveBeenCalledWith("end_marker", expect.anything());
 
@@ -1486,7 +1486,7 @@ describe("duplicate", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         0,
-        3
+        3,
       );
 
       expect(result).toStrictEqual({
@@ -1576,7 +1576,7 @@ describe("duplicate", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         0,
-        4
+        4,
       );
 
       expect(result).toStrictEqual({
@@ -1619,7 +1619,7 @@ describe("duplicate", () => {
           destination: "arrangement",
           arrangementStartTime: "5|1",
           arrangementLength: "0:0", // 0 bars + 0 beats = 0 total
-        })
+        }),
       ).toThrow('duplicate failed: arrangementLength must be positive, got "0:0"');
     });
 
@@ -1671,7 +1671,7 @@ describe("duplicate", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "duplicate_clip_to_arrangement",
         "id clip1",
-        16
+        16,
       );
       // Check that no end_marker was set (setAll should only be called for name, which is undefined)
       expect(liveApiSet).not.toHaveBeenCalledWith("end_marker", expect.anything());

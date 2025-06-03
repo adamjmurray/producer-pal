@@ -265,7 +265,7 @@ describe("LiveAPI extensions", () => {
         signature_numerator: 4,
         signature_denominator: 4,
         start_marker: 0,
-        end_marker: 4
+        end_marker: 4,
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "Test Clip");
@@ -280,7 +280,7 @@ describe("LiveAPI extensions", () => {
       api.setAll({
         name: "Test",
         start_marker: null,
-        end_marker: 4
+        end_marker: 4,
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "Test");
@@ -293,7 +293,7 @@ describe("LiveAPI extensions", () => {
       api.setAll({
         name: "Test",
         start_marker: undefined,
-        end_marker: 4
+        end_marker: 4,
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "Test");
@@ -305,7 +305,7 @@ describe("LiveAPI extensions", () => {
     it("uses setColor for color property", () => {
       api.setAll({
         name: "Colored Clip",
-        color: "#FF0000"
+        color: "#FF0000",
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "Colored Clip");
@@ -327,7 +327,7 @@ describe("LiveAPI extensions", () => {
         color: "#00FF00",
         loop_start: null,
         loop_end: 8,
-        looping: true
+        looping: true,
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "Mixed");
@@ -341,7 +341,7 @@ describe("LiveAPI extensions", () => {
     it("skips color when null", () => {
       api.setAll({
         name: "Test",
-        color: null
+        color: null,
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "Test");
@@ -351,7 +351,7 @@ describe("LiveAPI extensions", () => {
     it("allows zero as a valid value", () => {
       api.setAll({
         start_marker: 0,
-        value: 0
+        value: 0,
       });
 
       expect(api.set).toHaveBeenCalledWith("start_marker", 0);
@@ -361,7 +361,7 @@ describe("LiveAPI extensions", () => {
 
     it("allows false as a valid value", () => {
       api.setAll({
-        looping: false
+        looping: false,
       });
 
       expect(api.set).toHaveBeenCalledWith("looping", false);
@@ -369,7 +369,7 @@ describe("LiveAPI extensions", () => {
 
     it("allows empty string as a valid value", () => {
       api.setAll({
-        name: ""
+        name: "",
       });
 
       expect(api.set).toHaveBeenCalledWith("name", "");

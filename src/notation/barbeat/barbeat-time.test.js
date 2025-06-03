@@ -485,20 +485,20 @@ describe("barBeatDurationToAbletonBeats", () => {
 
   it("throws error for invalid format", () => {
     expect(() => barBeatDurationToAbletonBeats("1|2", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1|2". Expected "{int}:{float}" like "1:2" or "2:1.5"'
+      'Invalid bar:beat duration format: "1|2". Expected "{int}:{float}" like "1:2" or "2:1.5"',
     );
     expect(() => barBeatDurationToAbletonBeats("1", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1". Expected "{int}:{float}" like "1:2" or "2:1.5"'
+      'Invalid bar:beat duration format: "1". Expected "{int}:{float}" like "1:2" or "2:1.5"',
     );
     expect(() => barBeatDurationToAbletonBeats("1:", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1:". Expected "{int}:{float}" like "1:2" or "2:1.5"'
+      'Invalid bar:beat duration format: "1:". Expected "{int}:{float}" like "1:2" or "2:1.5"',
     );
   });
 
   it("throws error for negative values", () => {
     expect(() => barBeatDurationToAbletonBeats("-1:0", 4, 4)).toThrow("Bars in duration must be 0 or greater, got: -1");
     expect(() => barBeatDurationToAbletonBeats("0:-1", 4, 4)).toThrow(
-      "Beats in duration must be 0 or greater, got: -1"
+      "Beats in duration must be 0 or greater, got: -1",
     );
   });
 });

@@ -32,7 +32,7 @@ export function createTrack({ trackIndex, count = 1, name, color, type = "midi",
 
   if (trackIndex + count > MAX_AUTO_CREATED_TRACKS) {
     throw new Error(
-      `createTrack failed: creating ${count} tracks at index ${trackIndex} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`
+      `createTrack failed: creating ${count} tracks at index ${trackIndex} would exceed the maximum allowed tracks (${MAX_AUTO_CREATED_TRACKS})`,
     );
   }
 
@@ -60,7 +60,7 @@ export function createTrack({ trackIndex, count = 1, name, color, type = "midi",
       arm,
     });
 
-    // Build optimistic result object  
+    // Build optimistic result object
     createdTracks.push(
       withoutNulls({
         id: trackId,
@@ -71,7 +71,7 @@ export function createTrack({ trackIndex, count = 1, name, color, type = "midi",
         mute,
         solo,
         arm,
-      })
+      }),
     );
 
     // For subsequent tracks, increment the index since tracks shift right

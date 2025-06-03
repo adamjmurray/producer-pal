@@ -62,7 +62,7 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     result.arrangementStartTime = abletonBeatsToBarBeat(
       clip.getProperty("start_time"),
       songTimeSigNumerator,
-      songTimeSigDenominator
+      songTimeSigDenominator,
     );
   } else {
     result.trackIndex = clip.trackIndex;

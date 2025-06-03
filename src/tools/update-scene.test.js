@@ -49,7 +49,7 @@ describe("updateScene", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "time_signature_denominator",
-      4
+      4,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "time_signature_enabled", true);
     expect(result).toEqual({
@@ -146,7 +146,7 @@ describe("updateScene", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "time_signature_enabled",
-      false
+      false,
     );
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
@@ -165,7 +165,7 @@ describe("updateScene", () => {
   it("should throw error when scene ID doesn't exist", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() => updateScene({ ids: "nonexistent" })).toThrow(
-      'updateScene failed: scene with id "nonexistent" does not exist'
+      'updateScene failed: scene with id "nonexistent" does not exist',
     );
   });
 
@@ -183,7 +183,7 @@ describe("updateScene", () => {
     });
 
     expect(() => updateScene({ ids: "123, nonexistent", name: "Test" })).toThrow(
-      'updateScene failed: scene with id "nonexistent" does not exist'
+      'updateScene failed: scene with id "nonexistent" does not exist',
     );
   });
 
@@ -194,7 +194,7 @@ describe("updateScene", () => {
     });
 
     expect(() => updateScene({ ids: "123", name: "Test" })).toThrow(
-      'updateScene failed: could not determine sceneIndex for id "123" (path="invalid_path")'
+      'updateScene failed: could not determine sceneIndex for id "123" (path="invalid_path")',
     );
   });
 

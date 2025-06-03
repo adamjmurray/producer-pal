@@ -142,7 +142,7 @@ describe("updateTrack", () => {
   it("should throw error when track ID doesn't exist", () => {
     liveApiId.mockReturnValue("0");
     expect(() => updateTrack({ ids: "nonexistent" })).toThrow(
-      'updateTrack failed: track with id "nonexistent" does not exist'
+      'updateTrack failed: track with id "nonexistent" does not exist',
     );
   });
 
@@ -160,7 +160,7 @@ describe("updateTrack", () => {
     });
 
     expect(() => updateTrack({ ids: "123, nonexistent", name: "Test" })).toThrow(
-      'updateTrack failed: track with id "nonexistent" does not exist'
+      'updateTrack failed: track with id "nonexistent" does not exist',
     );
   });
 
@@ -171,7 +171,7 @@ describe("updateTrack", () => {
     });
 
     expect(() => updateTrack({ ids: "123", name: "Test" })).toThrow(
-      'updateTrack failed: could not determine trackIndex for id "123" (path="invalid_path")'
+      'updateTrack failed: could not determine trackIndex for id "123" (path="invalid_path")',
     );
   });
 

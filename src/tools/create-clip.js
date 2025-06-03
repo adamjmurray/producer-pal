@@ -1,5 +1,10 @@
 // src/tools/create-clip.js
-import { barBeatToAbletonBeats, barBeatToBeats, beatsToBarBeat, barBeatDurationToAbletonBeats } from "../notation/barbeat/barbeat-time";
+import {
+  barBeatToAbletonBeats,
+  barBeatToBeats,
+  beatsToBarBeat,
+  barBeatDurationToAbletonBeats,
+} from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
 import { parseTimeSignature, setAllNonNull, toLiveApiView } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
@@ -82,7 +87,7 @@ export function createClip({
   const arrangementStartTimeBeats = barBeatToAbletonBeats(
     arrangementStartTime,
     songTimeSigNumerator,
-    songTimeSigDenominator
+    songTimeSigDenominator,
   );
   const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
   const loopStartBeats = barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator);
@@ -151,7 +156,7 @@ export function createClip({
         throw new Error(
           `createClip failed: clip slot index ${currentClipSlotIndex} exceeds the maximum allowed value of ${
             MAX_AUTO_CREATED_SCENES - 1
-          }`
+          }`,
         );
       }
 
@@ -167,7 +172,7 @@ export function createClip({
       const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`);
       if (clipSlot.getProperty("has_clip")) {
         throw new Error(
-          `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentClipSlotIndex}`
+          `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentClipSlotIndex}`,
         );
       }
       clipSlot.call("create_clip", clipLength);

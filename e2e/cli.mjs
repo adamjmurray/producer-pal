@@ -6,7 +6,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 // Helper function to print large text without truncation
 function printLargeText(text, prefix = "") {
   const lines = text.split("\n");
-  lines.forEach(line => {
+  lines.forEach((line) => {
     console.log(prefix + line);
   });
 }
@@ -64,7 +64,7 @@ async function main() {
     },
     {
       capabilities: {},
-    }
+    },
   );
 
   try {

@@ -25,6 +25,7 @@
     "@vitest/coverage-v8": "^3.1.4",
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.3",
+    "prettier": "^3.5.3",
     "rollup": "^4.41.1",
     "vitest": "^3.1.4"
   },
@@ -41,6 +42,8 @@
     "test:setup": "npm run parser:build",
     "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs"
   }
 }

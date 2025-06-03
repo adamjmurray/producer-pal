@@ -27,7 +27,7 @@ export function formatNotation(clipNotes, options = {}) {
   ) {
     throw new Error("Time signature must be specified with both numerator and denominator");
   }
-  const beatsPerBar = timeSigNumerator != null ? timeSigNumerator : beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR;
+  const beatsPerBar = timeSigNumerator != null ? timeSigNumerator : (beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR);
 
   // Sort notes by start time, then by pitch for consistent output
   const sortedNotes = [...clipNotes].sort((a, b) => {

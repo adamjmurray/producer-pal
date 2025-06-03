@@ -10,6 +10,6 @@ export function addToolUpdateSong(server, callLiveApi) {
       timeSignature: z.string().optional().describe('Time signature in format "n/m" (e.g. "4/4")'),
       view: z.enum(["session", "arrangement"]).optional().describe("Switch between Session and Arrangement views"),
     },
-    async (args) => callLiveApi("update-song", args)
+    async (args) => callLiveApi("update-song", args),
   );
 }

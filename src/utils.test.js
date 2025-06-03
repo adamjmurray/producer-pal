@@ -1,6 +1,14 @@
 // src/utils.test.js
 import { describe, expect, it } from "vitest";
-import { setAllNonNull, withoutNulls, parseCommaSeparatedIds, parseCommaSeparatedIndices, parseTimeSignature, toLiveApiView, fromLiveApiView } from "./utils";
+import {
+  setAllNonNull,
+  withoutNulls,
+  parseCommaSeparatedIds,
+  parseCommaSeparatedIndices,
+  parseTimeSignature,
+  toLiveApiView,
+  fromLiveApiView,
+} from "./utils";
 
 describe("setAllNonNull", () => {
   it("sets all non-null properties", () => {
@@ -11,7 +19,7 @@ describe("setAllNonNull", () => {
       flag: true,
       zero: 0,
       emptyString: "",
-      falseBool: false
+      falseBool: false,
     });
 
     expect(target).toEqual({
@@ -20,7 +28,7 @@ describe("setAllNonNull", () => {
       flag: true,
       zero: 0,
       emptyString: "",
-      falseBool: false
+      falseBool: false,
     });
   });
 
@@ -29,12 +37,12 @@ describe("setAllNonNull", () => {
     setAllNonNull(target, {
       name: "Test",
       nullValue: null,
-      value: 42
+      value: 42,
     });
 
     expect(target).toEqual({
       name: "Test",
-      value: 42
+      value: 42,
     });
     expect(target).not.toHaveProperty("nullValue");
   });
@@ -44,12 +52,12 @@ describe("setAllNonNull", () => {
     setAllNonNull(target, {
       name: "Test",
       undefinedValue: undefined,
-      value: 42
+      value: 42,
     });
 
     expect(target).toEqual({
       name: "Test",
-      value: 42
+      value: 42,
     });
     expect(target).not.toHaveProperty("undefinedValue");
   });
@@ -58,52 +66,52 @@ describe("setAllNonNull", () => {
     const target = {};
     setAllNonNull(target, {
       zero: 0,
-      negativeZero: -0
+      negativeZero: -0,
     });
 
     expect(target).toEqual({
       zero: 0,
-      negativeZero: -0
+      negativeZero: -0,
     });
   });
 
   it("allows false as a valid value", () => {
     const target = {};
     setAllNonNull(target, {
-      flag: false
+      flag: false,
     });
 
     expect(target).toEqual({
-      flag: false
+      flag: false,
     });
   });
 
   it("allows empty string as a valid value", () => {
     const target = {};
     setAllNonNull(target, {
-      name: ""
+      name: "",
     });
 
     expect(target).toEqual({
-      name: ""
+      name: "",
     });
   });
 
   it("updates existing properties", () => {
     const target = {
       existingProp: "original",
-      keepThis: "unchanged"
+      keepThis: "unchanged",
     };
 
     setAllNonNull(target, {
       existingProp: "updated",
-      newProp: "new"
+      newProp: "new",
     });
 
     expect(target).toEqual({
       existingProp: "updated",
       keepThis: "unchanged",
-      newProp: "new"
+      newProp: "new",
     });
   });
 
@@ -112,7 +120,7 @@ describe("setAllNonNull", () => {
     setAllNonNull(target, {});
 
     expect(target).toEqual({
-      existing: "value"
+      existing: "value",
     });
   });
 
@@ -124,12 +132,12 @@ describe("setAllNonNull", () => {
     setAllNonNull(target, {
       object: obj,
       array: arr,
-      nullValue: null
+      nullValue: null,
     });
 
     expect(target).toEqual({
       object: obj,
-      array: arr
+      array: arr,
     });
     expect(target.object).toBe(obj); // Same reference
     expect(target.array).toBe(arr); // Same reference
@@ -144,25 +152,25 @@ describe("setAllNonNull", () => {
       d: undefined,
       e: false,
       f: null,
-      g: "another"
+      g: "another",
     });
 
     expect(target).toEqual({
       a: "value",
       c: 42,
       e: false,
-      g: "another"
+      g: "another",
     });
   });
 
   it("returns the target object for chaining", () => {
     const target = { existing: "value" };
     const result = setAllNonNull(target, { new: "property" });
-    
+
     expect(result).toBe(target);
     expect(result).toEqual({
       existing: "value",
-      new: "property"
+      new: "property",
     });
   });
 });
@@ -208,7 +216,7 @@ describe("withoutNulls", () => {
       flag: true,
       zero: 0,
       emptyString: "",
-      falseBool: false
+      falseBool: false,
     });
 
     expect(result).toEqual({
@@ -217,7 +225,7 @@ describe("withoutNulls", () => {
       flag: true,
       zero: 0,
       emptyString: "",
-      falseBool: false
+      falseBool: false,
     });
   });
 
@@ -225,12 +233,12 @@ describe("withoutNulls", () => {
     const result = withoutNulls({
       name: "Test",
       nullValue: null,
-      value: 42
+      value: 42,
     });
 
     expect(result).toEqual({
       name: "Test",
-      value: 42
+      value: 42,
     });
     expect(result).not.toHaveProperty("nullValue");
   });
@@ -239,12 +247,12 @@ describe("withoutNulls", () => {
     const result = withoutNulls({
       name: "Test",
       undefinedValue: undefined,
-      value: 42
+      value: 42,
     });
 
     expect(result).toEqual({
       name: "Test",
-      value: 42
+      value: 42,
     });
     expect(result).not.toHaveProperty("undefinedValue");
   });
@@ -252,32 +260,32 @@ describe("withoutNulls", () => {
   it("allows zero as a valid value", () => {
     const result = withoutNulls({
       zero: 0,
-      negativeZero: -0
+      negativeZero: -0,
     });
 
     expect(result).toEqual({
       zero: 0,
-      negativeZero: -0
+      negativeZero: -0,
     });
   });
 
   it("allows false as a valid value", () => {
     const result = withoutNulls({
-      flag: false
+      flag: false,
     });
 
     expect(result).toEqual({
-      flag: false
+      flag: false,
     });
   });
 
   it("allows empty string as a valid value", () => {
     const result = withoutNulls({
-      name: ""
+      name: "",
     });
 
     expect(result).toEqual({
-      name: ""
+      name: "",
     });
   });
 
@@ -293,12 +301,12 @@ describe("withoutNulls", () => {
     const result = withoutNulls({
       object: obj,
       array: arr,
-      nullValue: null
+      nullValue: null,
     });
 
     expect(result).toEqual({
       object: obj,
-      array: arr
+      array: arr,
     });
     expect(result.object).toBe(obj); // Same reference
     expect(result.array).toBe(arr); // Same reference
@@ -312,14 +320,14 @@ describe("withoutNulls", () => {
       d: undefined,
       e: false,
       f: null,
-      g: "another"
+      g: "another",
     });
 
     expect(result).toEqual({
       a: "value",
       c: 42,
       e: false,
-      g: "another"
+      g: "another",
     });
   });
 
@@ -327,22 +335,22 @@ describe("withoutNulls", () => {
     const original = {
       keep: "this",
       remove: null,
-      alsoKeep: 42
+      alsoKeep: 42,
     };
-    
+
     const result = withoutNulls(original);
-    
+
     expect(original).toEqual({
       keep: "this",
       remove: null,
-      alsoKeep: 42
+      alsoKeep: 42,
     });
-    
+
     expect(result).toEqual({
       keep: "this",
-      alsoKeep: 42
+      alsoKeep: 42,
     });
-    
+
     expect(result).not.toBe(original);
   });
 });
@@ -451,7 +459,9 @@ describe("parseCommaSeparatedIndices", () => {
   });
 
   it("throws error for mixed valid and invalid", () => {
-    expect(() => parseCommaSeparatedIndices("0, 1, invalid")).toThrow('Invalid index "invalid" - must be a valid integer');
+    expect(() => parseCommaSeparatedIndices("0, 1, invalid")).toThrow(
+      'Invalid index "invalid" - must be a valid integer',
+    );
   });
 
   it("returns empty array for empty input after filtering", () => {

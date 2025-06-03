@@ -154,13 +154,13 @@ describe("BarBeat parseNotation()", () => {
 
   it("throws error when only timeSigNumerator is provided", () => {
     expect(() => parseNotation("C3", { timeSigNumerator: 4 })).toThrow(
-      "Time signature must be specified with both numerator and denominator"
+      "Time signature must be specified with both numerator and denominator",
     );
   });
 
   it("throws error when only timeSigDenominator is provided", () => {
     expect(() => parseNotation("C3", { timeSigDenominator: 4 })).toThrow(
-      "Time signature must be specified with both numerator and denominator"
+      "Time signature must be specified with both numerator and denominator",
     );
   });
 

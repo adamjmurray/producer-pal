@@ -19,7 +19,7 @@ describe("captureScene", () => {
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
-      "capture_and_insert_scene"
+      "capture_and_insert_scene",
     );
 
     expect(result).toEqual({
@@ -49,12 +49,12 @@ describe("captureScene", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set view" }),
       "selected_scene",
-      "id live_set/scenes/2"
+      "id live_set/scenes/2",
     );
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
-      "capture_and_insert_scene"
+      "capture_and_insert_scene",
     );
   });
 
@@ -68,13 +68,13 @@ describe("captureScene", () => {
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
-      "capture_and_insert_scene"
+      "capture_and_insert_scene",
     );
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set scenes 2" }),
       "name",
-      "Captured Custom Name"
+      "Captured Custom Name",
     );
 
     expect(result).toEqual({

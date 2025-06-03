@@ -114,7 +114,7 @@ export function barBeatDurationToAbletonBeats(barBeatDuration, timeSigNumerator,
   const match = barBeatDuration.match(/^(-?\d+):(-?\d+(?:\.\d+)?)$/);
   if (!match) {
     throw new Error(
-      `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5"`
+      `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5"`,
     );
   }
 

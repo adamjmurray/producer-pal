@@ -44,7 +44,7 @@ describe("updateClip", () => {
   it("should throw error when clip ID doesn't exist", () => {
     liveApiId.mockReturnValue("0");
     expect(() => updateClip({ ids: "nonexistent" })).toThrow(
-      'updateClip failed: clip with id "nonexistent" does not exist'
+      'updateClip failed: clip with id "nonexistent" does not exist',
     );
   });
 
@@ -133,7 +133,7 @@ describe("updateClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Arranger"
+      "Arranger",
     );
   });
 
@@ -160,7 +160,11 @@ describe("updateClip", () => {
     expect(liveApiSet).toHaveBeenCalledTimes(5); // 2 calls per clip, plus view change
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "color", 65280);
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "looping", false);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set view" }), "detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 123",
+    );
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 65280);
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "looping", false);
 
@@ -225,7 +229,7 @@ describe("updateClip", () => {
       0,
       127,
       0,
-      1000000
+      1000000,
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [
@@ -380,7 +384,7 @@ describe("updateClip", () => {
       updateClip({
         ids: "123",
         timeSignature: "invalid",
-      })
+      }),
     ).toThrow("Time signature must be in format");
   });
 
@@ -423,7 +427,11 @@ describe("updateClip", () => {
 
     expect(liveApiSet).toHaveBeenCalledTimes(2);
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Only Name Update");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set view" }), "detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 123",
+    );
 
     expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
@@ -476,7 +484,7 @@ describe("updateClip", () => {
     });
 
     expect(() => updateClip({ ids: "123, nonexistent", name: "Test" })).toThrow(
-      'updateClip failed: clip with id "nonexistent" does not exist'
+      'updateClip failed: clip with id "nonexistent" does not exist',
     );
   });
 
@@ -494,7 +502,7 @@ describe("updateClip", () => {
     });
 
     expect(() => updateClip({ ids: "123", name: "Test" })).toThrow(
-      'updateClip failed: could not determine trackIndex for id "123" (path="invalid_path")'
+      'updateClip failed: could not determine trackIndex for id "123" (path="invalid_path")',
     );
   });
 
@@ -611,7 +619,11 @@ describe("updateClip", () => {
     // set the names of the two clips, and display the clip detail view:
     expect(liveApiSet).toHaveBeenCalledTimes(3);
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Filtered");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set view" }), "detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 123",
+    );
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "name", "Filtered");
 
     expect(result).toEqual([
@@ -680,7 +692,7 @@ describe("updateClip", () => {
       0,
       127,
       0,
-      1000000
+      1000000,
     );
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
   });
@@ -707,7 +719,7 @@ describe("updateClip", () => {
       0,
       127,
       0,
-      1000000
+      1000000,
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],
@@ -738,7 +750,7 @@ describe("updateClip", () => {
       0,
       127,
       0,
-      1000000
+      1000000,
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],

@@ -34,7 +34,7 @@ describe("deleteObject", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_track",
-      trackIndex
+      trackIndex,
     );
   });
 
@@ -75,19 +75,19 @@ describe("deleteObject", () => {
       1,
       expect.objectContaining({ path: "live_set" }),
       "delete_track",
-      2
+      2,
     );
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       2,
       expect.objectContaining({ path: "live_set" }),
       "delete_track",
-      1
+      1,
     );
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       3,
       expect.objectContaining({ path: "live_set" }),
       "delete_track",
-      0
+      0,
     );
 
     expect(result).toEqual([
@@ -127,7 +127,7 @@ describe("deleteObject", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "delete_scene",
-      sceneIndex
+      sceneIndex,
     );
   });
 
@@ -164,13 +164,13 @@ describe("deleteObject", () => {
       1,
       expect.objectContaining({ path: "live_set" }),
       "delete_scene",
-      2
+      2,
     );
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       2,
       expect.objectContaining({ path: "live_set" }),
       "delete_scene",
-      0
+      0,
     );
 
     expect(result).toEqual([
@@ -210,12 +210,12 @@ describe("deleteObject", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0" }),
       "delete_clip",
-      "id clip_0_0"
+      "id clip_0_0",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 1" }),
       "delete_clip",
-      "id clip_1_1"
+      "id clip_1_1",
     );
 
     expect(result).toEqual([
@@ -276,7 +276,7 @@ describe("deleteObject", () => {
     });
 
     expect(() => deleteObject({ ids: "track_1, scene_1", type: "track" })).toThrow(
-      'delete failed: id "scene_1" is not a track (type=Scene)'
+      'delete failed: id "scene_1" is not a track (type=Scene)',
     );
   });
 
@@ -291,7 +291,7 @@ describe("deleteObject", () => {
       return this._path;
     });
     expect(() => deleteObject({ ids: "track_1", type: "track" })).toThrow(
-      "cannot delete track hosting the Producer Pal device"
+      "cannot delete track hosting the Producer Pal device",
     );
   });
 
@@ -376,7 +376,7 @@ describe("deleteObject", () => {
     });
 
     expect(() => deleteObject({ ids: "track_0", type: "track" })).toThrow(
-      'delete failed: no track index for id "track_0" (path="invalid_path_without_track_index")'
+      'delete failed: no track index for id "track_0" (path="invalid_path_without_track_index")',
     );
   });
 
@@ -394,7 +394,7 @@ describe("deleteObject", () => {
     });
 
     expect(() => deleteObject({ ids: "scene_0", type: "scene" })).toThrow(
-      'delete failed: no scene index for id "scene_0" (path="invalid_path_without_scene_index")'
+      'delete failed: no scene index for id "scene_0" (path="invalid_path_without_scene_index")',
     );
   });
 
@@ -412,7 +412,7 @@ describe("deleteObject", () => {
     });
 
     expect(() => deleteObject({ ids: "clip_0", type: "clip" })).toThrow(
-      'delete failed: no track index for id "clip_0" (path="invalid_path_without_track_index")'
+      'delete failed: no track index for id "clip_0" (path="invalid_path_without_track_index")',
     );
   });
 });

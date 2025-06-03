@@ -17,9 +17,9 @@ export function addToolCreateScene(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          'Time signature in format "n/m" (e.g. "4/4"). Pass "disabled" to disable the scene\'s time signature.'
+          'Time signature in format "n/m" (e.g. "4/4"). Pass "disabled" to disable the scene\'s time signature.',
         ),
     },
-    async (args) => callLiveApi("create-scene", args)
+    async (args) => callLiveApi("create-scene", args),
   );
 }

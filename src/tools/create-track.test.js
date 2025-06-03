@@ -33,12 +33,12 @@ describe("createTrack", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "id midi_track_1" }),
       "name",
-      "New MIDI Track"
+      "New MIDI Track",
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "id midi_track_1" }),
       "color",
-      16711680
+      16711680,
     );
     expect(result).toEqual({
       id: "midi_track_1",
@@ -59,12 +59,12 @@ describe("createTrack", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "create_audio_track",
-      0
+      0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "id audio_track_0" }),
       "name",
-      "New Audio Track"
+      "New Audio Track",
     );
     expect(result).toEqual({
       id: "audio_track_0",
@@ -86,36 +86,24 @@ describe("createTrack", () => {
       1,
       expect.objectContaining({ path: "live_set" }),
       "create_midi_track",
-      2
+      2,
     );
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       2,
       expect.objectContaining({ path: "live_set" }),
       "create_midi_track",
-      3
+      3,
     );
     expect(liveApiCall).toHaveBeenNthCalledWithThis(
       3,
       expect.objectContaining({ path: "live_set" }),
       "create_midi_track",
-      4
+      4,
     );
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_2" }),
-      "name",
-      "Drum"
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_3" }),
-      "name",
-      "Drum 2"
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_4" }),
-      "name",
-      "Drum 3"
-    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_2" }), "name", "Drum");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_3" }), "name", "Drum 2");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_4" }), "name", "Drum 3");
 
     expect(result).toEqual([
       {
@@ -166,23 +154,11 @@ describe("createTrack", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "id midi_track_0" }),
       "name",
-      "Armed Track"
+      "Armed Track",
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_0" }),
-      "mute",
-      true
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_0" }),
-      "solo",
-      false
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_0" }),
-      "arm",
-      true
-    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_0" }), "mute", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_0" }), "solo", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_0" }), "arm", true);
     expect(result).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
@@ -202,21 +178,9 @@ describe("createTrack", () => {
       arm: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_0" }),
-      "mute",
-      false
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_0" }),
-      "solo",
-      false
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "id midi_track_0" }),
-      "arm",
-      false
-    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_0" }), "mute", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_0" }), "solo", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "id midi_track_0" }), "arm", false);
     expect(result).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
@@ -239,7 +203,7 @@ describe("createTrack", () => {
 
   it("should throw error when type is invalid", () => {
     expect(() => createTrack({ trackIndex: 0, type: "invalid" })).toThrow(
-      'createTrack failed: type must be "midi" or "audio"'
+      'createTrack failed: type must be "midi" or "audio"',
     );
   });
 
@@ -248,7 +212,7 @@ describe("createTrack", () => {
       createTrack({
         trackIndex: MAX_AUTO_CREATED_TRACKS - 2,
         count: 5,
-      })
+      }),
     ).toThrow(/would exceed the maximum allowed tracks/);
   });
 
@@ -262,7 +226,7 @@ describe("createTrack", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "id midi_track_0" }),
       "name",
-      "Solo Track"
+      "Solo Track",
     );
     expect(result.name).toBe("Solo Track");
   });
@@ -272,7 +236,7 @@ describe("createTrack", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "create_audio_track",
-      0
+      0,
     );
 
     createTrack({ trackIndex: 1, type: "midi" });

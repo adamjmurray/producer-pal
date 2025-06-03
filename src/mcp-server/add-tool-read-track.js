@@ -9,6 +9,6 @@ export function addToolReadTrack(server, callLiveApi) {
     {
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
     },
-    async (args) => callLiveApi("read-track", args)
+    async (args) => callLiveApi("read-track", args),
   );
 }

@@ -61,7 +61,7 @@ describe("readClip", () => {
       0,
       127,
       0,
-      4
+      4,
     );
 
     expect(result).toEqual({
@@ -141,7 +141,7 @@ describe("readClip", () => {
       0,
       127,
       0,
-      4
+      4,
     );
 
     expect(result).toEqual({
@@ -195,7 +195,7 @@ describe("readClip", () => {
       0,
       127,
       0,
-      4
+      4,
     );
 
     // In 3/4 time, beat 3 should be bar 2 beat 1
@@ -235,7 +235,7 @@ describe("readClip", () => {
       0,
       127,
       0,
-      3
+      3,
     );
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
@@ -363,10 +363,10 @@ describe("readClip", () => {
   it("throws an error when neither clipId nor trackIndex+clipSlotIndex are provided", () => {
     expect(() => readClip({})).toThrow("Either clipId or both trackIndex and clipSlotIndex must be provided");
     expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "Either clipId or both trackIndex and clipSlotIndex must be provided"
+      "Either clipId or both trackIndex and clipSlotIndex must be provided",
     );
     expect(() => readClip({ clipSlotIndex: 1 })).toThrow(
-      "Either clipId or both trackIndex and clipSlotIndex must be provided"
+      "Either clipId or both trackIndex and clipSlotIndex must be provided",
     );
   });
 
@@ -442,7 +442,7 @@ describe("readClip", () => {
       0,
       127,
       0,
-      4
+      4,
     );
 
     expect(result).toEqual({

@@ -42,7 +42,7 @@ appServer
       ]
     }
   }
-}`
+}`,
     );
   })
   .on("error", (error) => {

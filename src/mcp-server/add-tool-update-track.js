@@ -13,6 +13,6 @@ export function addToolUpdateTrack(server, callLiveApi) {
       solo: z.boolean().optional().describe("Set solo state for the track"),
       arm: z.boolean().optional().describe("Set arm state for the track"),
     },
-    async (args) => callLiveApi("update-track", args)
+    async (args) => callLiveApi("update-track", args),
   );
 }

@@ -1,20 +1,25 @@
 # Refactoring Plans
 
-This document tracks repetitive patterns found in the codebase and proposed refactoring opportunities. Each section includes priority, impact assessment, and implementation notes.
+This document tracks repetitive patterns found in the codebase and proposed refactoring opportunities. Each section
+includes priority, impact assessment, and implementation notes.
 
 ## 🔴 High Priority - High Impact
 
 ### 1. Comma-separated ID Parsing
+
 **Pattern Found**: Almost identical in 5+ files
+
 ```javascript
 const xIds = ids
   .split(",")
   .map((id) => id.trim())
   .filter((id) => id.length > 0);
 ```
+
 **Files**: update-track.js, update-clip.js, update-scene.js, delete.js, transport.js
 
-**Proposed Solution**: 
+**Proposed Solution**:
+
 ```javascript
 // In utils.js
 export function parseCommaSeparatedIds(ids) {
@@ -28,6 +33,7 @@ export function parseCommaSeparatedIds(ids) {
 **Status**: ✅ Complete
 
 **Implementation Notes**:
+
 - Also created `parseCommaSeparatedIndices()` for integer parsing with validation
 - Updated 5 files: update-track.js, update-clip.js, update-scene.js, delete.js, transport.js
 - Added 23 comprehensive test cases
@@ -37,7 +43,9 @@ export function parseCommaSeparatedIds(ids) {
 ---
 
 ### 2. Time Signature Parsing
+
 **Pattern Found**: Nearly identical in 5+ files
+
 ```javascript
 const match = timeSignature.match(/^(\d+)\/(\d+)$/);
 if (!match) {
@@ -46,9 +54,11 @@ if (!match) {
 const numerator = parseInt(match[1], 10);
 const denominator = parseInt(match[2], 10);
 ```
+
 **Files**: create-clip.js, update-clip.js, update-scene.js, create-scene.js, update-song.js
 
 **Proposed Solution**:
+
 ```javascript
 // In utils.js
 export function parseTimeSignature(timeSignature) {
@@ -58,7 +68,7 @@ export function parseTimeSignature(timeSignature) {
   }
   return {
     numerator: parseInt(match[1], 10),
-    denominator: parseInt(match[2], 10)
+    denominator: parseInt(match[2], 10),
   };
 }
 ```
@@ -66,6 +76,7 @@ export function parseTimeSignature(timeSignature) {
 **Status**: ✅ Complete
 
 **Implementation Notes**:
+
 - Updated 5 files: create-clip.js, update-clip.js, update-scene.js, create-scene.js, update-song.js
 - Added 14 comprehensive test cases covering edge cases and error conditions
 - Eliminated ~40 lines of repetitive parsing and validation code
@@ -77,7 +88,9 @@ export function parseTimeSignature(timeSignature) {
 ## 🟡 Medium Priority - Medium Impact
 
 ### 3. LiveAPI Path Parsing for Indices
+
 **Pattern Found**: 6+ files with variations
+
 ```javascript
 const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
 // or:
@@ -85,13 +98,14 @@ const pathMatch = object.path.match(/live_set tracks (\d+) clip_slots (\d+)/);
 ```
 
 **Proposed Solution**:
+
 ```javascript
 // As LiveAPI prototype getters
-Object.defineProperty(LiveAPI.prototype, 'trackIndex', {
-  get: function() {
+Object.defineProperty(LiveAPI.prototype, "trackIndex", {
+  get: function () {
     const match = this.path.match(/live_set tracks (\d+)/);
     return match ? Number(match[1]) : null;
-  }
+  },
 });
 // Similar for sceneIndex and clipSlotIndex
 ```
@@ -99,7 +113,9 @@ Object.defineProperty(LiveAPI.prototype, 'trackIndex', {
 **Status**: ✅ Complete
 
 **Implementation Notes**:
-- Implemented as LiveAPI prototype getters for direct access: `liveApi.trackIndex`, `liveApi.sceneIndex`, `liveApi.clipSlotIndex`
+
+- Implemented as LiveAPI prototype getters for direct access: `liveApi.trackIndex`, `liveApi.sceneIndex`,
+  `liveApi.clipSlotIndex`
 - Enhanced sceneIndex and clipSlotIndex to work with both path patterns for Session view compatibility
 - Added 39 comprehensive test cases covering all patterns and edge cases
 - Safe property definition prevents redefinition errors in test environments
@@ -108,16 +124,19 @@ Object.defineProperty(LiveAPI.prototype, 'trackIndex', {
 ---
 
 ### 4. Single vs Array Return Logic
+
 **Pattern Found**: 2 patterns across all multi-item functions
+
 ```javascript
 // Update functions (based on input IDs):
 return xIds.length > 1 ? results : results[0];
 
-// Create functions (based on count):  
+// Create functions (based on count):
 return count === 1 ? results[0] : results;
 ```
 
 **Proposed Solution**:
+
 ```javascript
 // In utils.js
 export function returnSingleOrArray(items, shouldReturnArray) {
@@ -134,12 +153,15 @@ export function returnSingleOrArray(items, shouldReturnArray) {
 ---
 
 ### 5. Standardized Error Creation
+
 **Pattern Found**: Consistent patterns across all tools
+
 ```javascript
 throw new Error(`functionName failed: reason`);
 ```
 
 **Proposed Solution**:
+
 ```javascript
 // In utils.js
 export function createToolError(toolName, reason) {
@@ -154,7 +176,9 @@ export function createToolError(toolName, reason) {
 ## 🟢 Lower Priority - Nice to Have
 
 ### 6. LiveAPI Existence Check Pattern
+
 **Pattern Found**: Consistent across many files
+
 ```javascript
 if (!object.exists()) {
   throw new Error(`functionName failed: X with id "${id}" does not exist`);
@@ -170,19 +194,25 @@ if (!object.exists()) {
 ## 🔵 Completed Refactorings
 
 ### ✅ Object Property Setting
+
 **Completed**: Created `setAllNonNull()` and `withoutNulls()` utilities
+
 - **Files Updated**: create-clip.js, update-clip.js, create-track.js, update-track.js
 - **Impact**: Eliminated ~50+ lines of repetitive conditional property setting
 - **Status**: ✅ Complete
 
 ### ✅ LiveAPI Extensions
+
 **Completed**: Created `LiveAPI.setAll()` for LiveAPI-specific object property setting
-- **Files Updated**: create-clip.js, update-clip.js, create-track.js, update-track.js  
+
+- **Files Updated**: create-clip.js, update-clip.js, create-track.js, update-track.js
 - **Impact**: Simplified LiveAPI property setting with automatic color handling
 - **Status**: ✅ Complete
 
 ### ✅ Null-safe BarBeat Conversion
+
 **Completed**: Updated `barBeatToAbletonBeats()` to handle null inputs
+
 - **Files Updated**: create-clip.js, update-clip.js
 - **Impact**: Eliminated repetitive null checks around time conversion calls
 - **Status**: ✅ Complete
@@ -199,7 +229,9 @@ if (!object.exists()) {
 ---
 
 ### ✅ LiveAPI Path Parsing Extensions
+
 **Completed**: Created LiveAPI prototype getters for index extraction
+
 - **Properties Added**: trackIndex, sceneIndex, clipSlotIndex
 - **Impact**: Direct property access for path parsing with Session view compatibility
 - **Status**: ✅ Complete

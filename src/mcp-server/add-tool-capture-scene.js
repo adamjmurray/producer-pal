@@ -12,6 +12,6 @@ export function addToolCaptureScene(server, callLiveApi) {
       sceneIndex: z.number().int().min(0).optional().describe("Optional scene index to select before capturing"),
       name: z.string().optional().describe("Optional name for the captured scene"),
     },
-    async (args) => callLiveApi("capture-scene", args)
+    async (args) => callLiveApi("capture-scene", args),
   );
 }

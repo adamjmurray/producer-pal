@@ -26,13 +26,13 @@ export function addToolReadClip(server, callLiveApi) {
         .min(0)
         .optional()
         .describe(
-          "Clip slot index (0-based) for reading Session clips. This is the same as the sceneIndex of the scene containing this clip. Can be omitted only if clipId is provided."
+          "Clip slot index (0-based) for reading Session clips. This is the same as the sceneIndex of the scene containing this clip. Can be omitted only if clipId is provided.",
         ),
       clipId: z
         .string()
         .optional()
         .describe("Clip ID to directly access any clip. Either this or trackIndex and clipSlotIndex must be provided."),
     },
-    async (args) => callLiveApi("read-clip", args)
+    async (args) => callLiveApi("read-clip", args),
   );
 }

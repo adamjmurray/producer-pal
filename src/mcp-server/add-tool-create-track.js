@@ -16,6 +16,6 @@ export function addToolCreateTrack(server, callLiveApi) {
       solo: z.boolean().optional().describe("Set solo state for the tracks"),
       arm: z.boolean().optional().describe("Set arm state for the tracks"),
     },
-    async (args) => callLiveApi("create-track", args)
+    async (args) => callLiveApi("create-track", args),
   );
 }

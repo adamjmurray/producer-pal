@@ -9,6 +9,6 @@ export function addToolDelete(server, callLiveApi) {
       ids: z.string().describe("Object ID or comma-separated list of object IDs to delete (all must be same type)"),
       type: z.enum(["track", "scene", "clip"]).describe("Type of objects to delete"),
     },
-    async (args) => callLiveApi("delete", args)
+    async (args) => callLiveApi("delete", args),
   );
 }

@@ -26,7 +26,7 @@ export function createScene({ sceneIndex, count = 1, name, color, tempo, timeSig
 
   if (sceneIndex + count > MAX_AUTO_CREATED_SCENES) {
     throw new Error(
-      `createScene failed: creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`
+      `createScene failed: creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
     );
   }
 

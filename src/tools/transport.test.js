@@ -41,7 +41,7 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Arranger"
+      "Arranger",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 16); // bar 5 = 16 beats in 4/4
@@ -80,9 +80,21 @@ describe("transport", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop", true);
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_start", 8); // bar 3 = 8 beats
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_length", 16); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set tracks 0" }), "back_to_arranger", 0);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set tracks 2" }), "back_to_arranger", 0);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set tracks 3" }), "back_to_arranger", 0);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 0" }),
+      "back_to_arranger",
+      0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 2" }),
+      "back_to_arranger",
+      0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 3" }),
+      "back_to_arranger",
+      0,
+    );
     expect(liveApiSet).toHaveBeenCalledTimes(6); // 3 for loop/start/length, 3 for back_to_arranger
 
     expect(result).toStrictEqual({
@@ -139,11 +151,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Session"
+      "Session",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-      "fire"
+      "fire",
     );
     expect(result).toStrictEqual({
       action: "play-session-clip",
@@ -179,11 +191,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Session"
+      "Session",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
-      "fire"
+      "fire",
     );
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 fire calls
     expect(result.trackIndexes).toBe("0,1,2");
@@ -212,32 +224,32 @@ describe("transport", () => {
     // Should fire clips at (0,0), (1,1), and (2,1) - reusing clipSlotIndex 1 for track 2
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
-      "fire"
+      "fire",
     );
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 fire calls
   });
 
   it("should throw error when required parameters are missing for play-session-clip", () => {
     expect(() => transport({ action: "play-session-clip" })).toThrow(
-      'transport failed: trackIndexes is required for action "play-session-clip"'
+      'transport failed: trackIndexes is required for action "play-session-clip"',
     );
 
     expect(() => transport({ action: "play-session-clip", trackIndexes: "0" })).toThrow(
-      'transport failed: clipSlotIndexes is required for action "play-session-clip"'
+      'transport failed: clipSlotIndexes is required for action "play-session-clip"',
     );
   });
 
   it("should throw error when clip slot doesn't exist for play-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() => transport({ action: "play-session-clip", trackIndexes: "99", clipSlotIndexes: "0" })).toThrow(
-      "transport play-session-clip action failed: clip slot at trackIndex=99, clipSlotIndex=0 does not exist"
+      "transport play-session-clip action failed: clip slot at trackIndex=99, clipSlotIndex=0 does not exist",
     );
   });
 
   it("should throw error when clip slot is empty for play-session-clip", () => {
     mockLiveApiGet({ ClipSlot: { has_clip: 0 } });
     expect(() => transport({ action: "play-session-clip", trackIndexes: "0", clipSlotIndexes: "0" })).toThrow(
-      "transport play-session-clip action failed: no clip at trackIndex=0, clipSlotIndex=0"
+      "transport play-session-clip action failed: no clip at trackIndex=0, clipSlotIndex=0",
     );
   });
 
@@ -261,7 +273,7 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Session"
+      "Session",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set scenes 1" }), "fire");
     expect(result).toStrictEqual({
@@ -277,14 +289,14 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for play-scene", () => {
     expect(() => transport({ action: "play-scene" })).toThrow(
-      'transport failed: sceneIndex is required for action "play-scene"'
+      'transport failed: sceneIndex is required for action "play-scene"',
     );
   });
 
   it("should throw an error when scene doesn't exist for play-scene", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() => transport({ action: "play-scene", sceneIndex: 99 })).toThrow(
-      "transport play-session-scene action failed: scene at sceneIndex=99 does not exist"
+      "transport play-session-scene action failed: scene at sceneIndex=99 does not exist",
     );
   });
 
@@ -309,11 +321,11 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Session"
+      "Session",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 1" }),
-      "stop_all_clips"
+      "stop_all_clips",
     );
     expect(result).toStrictEqual({
       action: "stop-track-session-clip",
@@ -347,25 +359,25 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Session"
+      "Session",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: expect.stringContaining("tracks") }),
-      "stop_all_clips"
+      "stop_all_clips",
     );
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 stop_all_clips calls
   });
 
   it("should throw an error when required parameters are missing for stop-track-session-clip", () => {
     expect(() => transport({ action: "stop-track-session-clip" })).toThrow(
-      'transport failed: trackIndexes is required for action "stop-track-session-clip"'
+      'transport failed: trackIndexes is required for action "stop-track-session-clip"',
     );
   });
 
   it("should throw an error when track doesn't exist for stop-track-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() => transport({ action: "stop-track-session-clip", trackIndexes: "99" })).toThrow(
-      "transport stop-track-session-clip action failed: track at trackIndex=99 does not exist"
+      "transport stop-track-session-clip action failed: track at trackIndex=99 does not exist",
     );
   });
 
@@ -387,7 +399,7 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Session"
+      "Session",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "stop_all_clips");
     expect(result).toStrictEqual({
@@ -431,7 +443,7 @@ describe("transport", () => {
         action: "play-session-clip",
         trackIndexes: "0,invalid,2",
         clipSlotIndexes: "0",
-      })
+      }),
     ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 
@@ -441,7 +453,7 @@ describe("transport", () => {
         action: "play-session-clip",
         trackIndexes: "0",
         clipSlotIndexes: "0,invalid,2",
-      })
+      }),
     ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 
@@ -450,7 +462,7 @@ describe("transport", () => {
       transport({
         action: "update-arrangement",
         followingTrackIndexes: "0,invalid,2",
-      })
+      }),
     ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 
@@ -524,7 +536,7 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
-      "Arranger"
+      "Arranger",
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
     expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 0);
@@ -537,7 +549,7 @@ describe("transport", () => {
       transport({
         action: "stop-track-session-clip",
         trackIndexes: "0,invalid,2",
-      })
+      }),
     ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 });

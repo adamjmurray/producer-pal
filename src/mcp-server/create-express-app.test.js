@@ -22,7 +22,7 @@ class Max {
       setTimeout(() => {
         // TODO: Make a way for these mock responses from v8 to be customized on a per-test basis
         Max.mcpResponseHandler(
-          JSON.stringify({ requestId: data.requestId, result: { content: [{ type: "text", text: "{}" }] } })
+          JSON.stringify({ requestId: data.requestId, result: { content: [{ type: "text", text: "{}" }] } }),
         );
       }, 1);
     }
@@ -224,7 +224,7 @@ describe("MCP Express App", () => {
 
       expect(Max.outlet).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
-        expect.stringMatching(/^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1}}$/)
+        expect.stringMatching(/^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1}}$/),
       );
     });
 
@@ -251,7 +251,7 @@ describe("MCP Express App", () => {
         client.callTool({
           name: "delete-scene",
           arguments: {}, // Missing sceneIndex
-        })
+        }),
       ).rejects.toThrow();
     });
 
@@ -260,7 +260,7 @@ describe("MCP Express App", () => {
         client.callTool({
           name: "nonexistent-tool",
           arguments: {},
-        })
+        }),
       ).rejects.toThrow();
     });
   });
@@ -370,7 +370,7 @@ describe("Exported Functions", () => {
         JSON.stringify({
           requestId: requestData.requestId,
           result: { content: [{ type: "text", text: "test response" }] },
-        })
+        }),
       );
 
       const result = await promise;
@@ -403,7 +403,7 @@ describe("Exported Functions", () => {
         JSON.stringify({
           requestId: requestData.requestId,
           result: { content: [{ type: "text", text: "test response" }] },
-        })
+        }),
       );
 
       await promise;
@@ -467,7 +467,7 @@ describe("Exported Functions", () => {
         JSON.stringify({
           requestId: "unknown-id",
           result: { content: [] },
-        })
+        }),
       );
 
       // Should log but not throw

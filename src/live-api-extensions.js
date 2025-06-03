@@ -13,7 +13,7 @@ if (typeof LiveAPI !== "undefined") {
       }
       throw new Error(`Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`);
     }
-    
+
     if (typeof idOrPath === "number" || (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))) {
       return new LiveAPI(`id ${idOrPath}`);
     }
@@ -99,40 +99,40 @@ if (typeof LiveAPI !== "undefined") {
   };
 
   // Index extraction getters (only define if not already defined)
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, 'trackIndex')) {
-    Object.defineProperty(LiveAPI.prototype, 'trackIndex', {
-      get: function() {
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "trackIndex")) {
+    Object.defineProperty(LiveAPI.prototype, "trackIndex", {
+      get: function () {
         const match = this.path.match(/live_set tracks (\d+)/);
         return match ? Number(match[1]) : null;
-      }
+      },
     });
   }
 
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, 'sceneIndex')) {
-    Object.defineProperty(LiveAPI.prototype, 'sceneIndex', {
-      get: function() {
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "sceneIndex")) {
+    Object.defineProperty(LiveAPI.prototype, "sceneIndex", {
+      get: function () {
         // Try scene path first
         let match = this.path.match(/live_set scenes (\d+)/);
         if (match) return Number(match[1]);
-        
+
         // Also try clip_slots path (scene index is the clip slot index in session view)
         match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
         return match ? Number(match[1]) : null;
-      }
+      },
     });
   }
 
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, 'clipSlotIndex')) {
-    Object.defineProperty(LiveAPI.prototype, 'clipSlotIndex', {
-      get: function() {
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "clipSlotIndex")) {
+    Object.defineProperty(LiveAPI.prototype, "clipSlotIndex", {
+      get: function () {
         // Try clip_slots path first
         let match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
         if (match) return Number(match[1]);
-        
+
         // Also try scene path (clip slot index is the scene index in session view)
         match = this.path.match(/live_set scenes (\d+)/);
         return match ? Number(match[1]) : null;
-      }
+      },
     });
   }
 }

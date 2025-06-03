@@ -86,7 +86,7 @@ export async function mcp_request(serializedJSON) {
       JSON.stringify({
         requestId,
         result,
-      })
+      }),
     );
   } catch (error) {
     // Handle JSON parsing errors or other top-level errors
@@ -96,7 +96,7 @@ export async function mcp_request(serializedJSON) {
       JSON.stringify({
         requestId: -1, // Use -1 when we don't know the original requestId
         result: formatErrorResponse(`Error processing request: ${error.message}`),
-      })
+      }),
     );
   }
 }

@@ -27,7 +27,7 @@ export function addToolCreateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          "Arrangement view start time in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the arrangement, '2|3.5' = halfway through third beat of second bar of the arrangement). Uses song's time signature for conversion. Required when view is 'Arrangement'."
+          "Arrangement view start time in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the arrangement, '2|3.5' = halfway through third beat of second bar of the arrangement). Uses song's time signature for conversion. Required when view is 'Arrangement'.",
         ),
       count: z.number().int().min(1).default(1).describe("Number of clips to create (default: 1)"),
       name: z.string().optional().describe("Base name for the clips (auto-increments for count > 1)"),
@@ -40,20 +40,20 @@ export function addToolCreateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          "Clip start marker in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the clip). Relative to clip start. Uses clip's time signature."
+          "Clip start marker in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the clip). Relative to clip start. Uses clip's time signature.",
         ),
       length: z
         .string()
         .optional()
         .describe(
-          "Clip length in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When provided, automatically sets the clip end marker and loop end. If loopStart is also specified, the effective loop length may be shorter than this total length. Uses clip's time signature."
+          "Clip length in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When provided, automatically sets the clip end marker and loop end. If loopStart is also specified, the effective loop length may be shorter than this total length. Uses clip's time signature.",
         ),
       loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
       loopStart: z
         .string()
         .optional()
         .describe(
-          "Clip loop start in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the clip). Relative to clip start. Uses clip's time signature."
+          "Clip loop start in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the clip). Relative to clip start. Uses clip's time signature.",
         ),
       notes: z
         .string()
@@ -64,9 +64,9 @@ export function addToolCreateClip(server, callLiveApi) {
         .default(false)
         .describe(
           "Play the clips immediately after creation (Session clips only). " +
-            "IMPORTANT: This puts the affected track into non-arrangement-following state - it will play Session clips instead of Arrangement clips until restored via the transport tool's followingTrackIndexes parameter."
+            "IMPORTANT: This puts the affected track into non-arrangement-following state - it will play Session clips instead of Arrangement clips until restored via the transport tool's followingTrackIndexes parameter.",
         ),
     },
-    async (args) => callLiveApi("create-clip", args)
+    async (args) => callLiveApi("create-clip", args),
   );
 }

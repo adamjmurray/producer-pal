@@ -21,6 +21,10 @@ npm test
 npm run test:watch      # Watch mode for TDD
 npm run test:coverage   # Coverage report
 
+# Code formatting
+npm run format          # Format all files with Prettier
+npm run format:check    # Check if files are properly formatted
+
 # Parser commands (when modifying BarBeat grammar)
 npm run parser:build    # Rebuild parser from .peggy file
 npm run parser:watch    # Auto-rebuild parser
@@ -192,6 +196,8 @@ To update the version:
 
 ## Project Rules
 
+- At the end of a block of work (e.g. the end of a TODO list), the code should be formatted with `npm run format`
+- At the end of a block of work (e.g. the end of a TODO list), the full test suite `npm test` should be run
 - Minimize dependencies to reduce complexity and maintenance
 - Ideally we always have comprehensive test coverage, so tests should always be written or adjusted for changes to the
   code. Don't go overboard with every possible combination of edge cases because too many tests are a maintenance

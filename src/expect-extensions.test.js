@@ -132,7 +132,7 @@ describe("toHaveBeenCalledWithThis", () => {
         }),
       }),
       { complex: "object" },
-      ["array", "arg"]
+      ["array", "arg"],
     );
   });
 });
@@ -341,7 +341,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(expect.objectContaining({ id: "test-id" }), "first", 1);
     } catch (error) {
       expect(error.message).toContain(
-        "Expected mock function to have been called exactly once, but it was called 3 times:"
+        "Expected mock function to have been called exactly once, but it was called 3 times:",
       );
       expect(error.message).toContain("Call 1:");
       expect(error.message).toContain("Call 2:");
@@ -363,7 +363,7 @@ describe("toHaveBeenCalledExactlyOnceWithThis", () => {
       expect(mock.fn).toHaveBeenCalledExactlyOnceWithThis(
         expect.objectContaining({ id: "wrong-id" }),
         "expected",
-        "call"
+        "call",
       );
     } catch (error) {
       expect(error.message).toContain("Expected mock function to have been called exactly once with:");

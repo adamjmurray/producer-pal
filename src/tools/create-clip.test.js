@@ -9,16 +9,16 @@ describe("createClip", () => {
     expect(() => createClip({})).toThrow("createClip failed: view parameter is required");
     expect(() => createClip({ view: "session" })).toThrow("createClip failed: trackIndex is required");
     expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
-      "createClip failed: clipSlotIndex is required when view is 'Session'"
+      "createClip failed: clipSlotIndex is required when view is 'Session'",
     );
     expect(() => createClip({ view: "arrangement", trackIndex: 0 })).toThrow(
-      "createClip failed: arrangementStartTime is required when view is 'Arrangement'"
+      "createClip failed: arrangementStartTime is required when view is 'Arrangement'",
     );
   });
 
   it("should throw error when count is less than 1", () => {
     expect(() => createClip({ view: "session", trackIndex: 0, clipSlotIndex: 0, count: 0 })).toThrow(
-      "createClip failed: count must be at least 1"
+      "createClip failed: count must be at least 1",
     );
   });
 
@@ -29,7 +29,7 @@ describe("createClip", () => {
         trackIndex: 0,
         clipSlotIndex: 0,
         timeSignature: "invalid",
-      })
+      }),
     ).toThrow("Time signature must be in format");
   });
 
@@ -65,7 +65,7 @@ describe("createClip", () => {
           { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
           { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // 3 beats per bar in 3/4
         ],
-      }
+      },
     );
   });
 
@@ -90,7 +90,7 @@ describe("createClip", () => {
           { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
           { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
         ],
-      }
+      },
     );
   });
 
@@ -116,7 +116,7 @@ describe("createClip", () => {
           { pitch: 60, start_time: 0, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
           { pitch: 62, start_time: 3, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
         ],
-      }
+      },
     );
   });
 
@@ -137,7 +137,7 @@ describe("createClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "create_clip",
-      7
+      7,
     );
   });
 
@@ -158,7 +158,7 @@ describe("createClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "create_clip",
-      8
+      8,
     );
   });
 
@@ -178,7 +178,7 @@ describe("createClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "create_clip",
-      5
+      5,
     );
   });
 
@@ -198,7 +198,7 @@ describe("createClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "create_clip",
-      1.5
+      1.5,
     ); // ends after three eighth notes, which is 1.5 quarter notes in "ableton beats"
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
@@ -222,7 +222,7 @@ describe("createClip", () => {
             velocity_deviation: 0,
           },
         ],
-      }
+      },
     );
   });
 
@@ -241,7 +241,7 @@ describe("createClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "create_clip",
-      1
+      1,
     );
   });
 
@@ -261,7 +261,7 @@ describe("createClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "create_clip",
-      1
+      1,
     );
   });
 
@@ -298,22 +298,22 @@ describe("createClip", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
         "create_clip",
-        1
+        1,
       ); // Length based on notes
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
         "name",
-        "New Clip"
+        "New Clip",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
         "color",
-        16711680
+        16711680,
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
         "looping",
-        true
+        true,
       );
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
@@ -324,21 +324,21 @@ describe("createClip", () => {
             { pitch: 62, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
             { pitch: 64, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
           ],
-        }
+        },
       );
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
-        "fire"
+        "fire",
       );
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_app view" }),
         "show_view",
-        "Session"
+        "Session",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set view" }),
         "detail_clip",
-        "id clip_0_0"
+        "id clip_0_0",
       );
 
       expect(result).toEqual({
@@ -393,39 +393,39 @@ describe("createClip", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 1" }),
         "create_clip",
-        1
+        1,
       ); // clip in slot 1
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 2" }),
         "create_clip",
-        1
+        1,
       ); // clip in slot 2
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 3" }),
         "create_clip",
-        1
+        1,
       ); // clip in slot 3
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 1 clip" }),
         "name",
-        "Loop"
+        "Loop",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 2 clip" }),
         "name",
-        "Loop 2"
+        "Loop 2",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 3 clip" }),
         "name",
-        "Loop 3"
+        "Loop 3",
       );
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set view" }),
         "detail_clip",
-        "id clip_0_1"
+        "id clip_0_1",
       );
 
       expect(result).toEqual([
@@ -486,7 +486,7 @@ describe("createClip", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 4" }),
         "create_clip",
-        1
+        1,
       );
     });
 
@@ -501,7 +501,7 @@ describe("createClip", () => {
           trackIndex: 0,
           clipSlotIndex: 0,
           name: "This Should Fail",
-        })
+        }),
       ).toThrow("createClip failed: a clip already exists at track 0, clip slot 0");
     });
 
@@ -512,7 +512,7 @@ describe("createClip", () => {
           trackIndex: 0,
           clipSlotIndex: MAX_AUTO_CREATED_SCENES,
           name: "This Should Fail",
-        })
+        }),
       ).toThrow(/exceeds the maximum allowed value/);
     });
   });
@@ -552,22 +552,22 @@ describe("createClip", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         8,
-        1
+        1,
       ); // Length based on notes
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ id: "arrangement_clip" }),
         "name",
-        "Arrangement Clip"
+        "Arrangement Clip",
       );
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_app view" }),
         "show_view",
-        "Arranger"
+        "Arranger",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set view" }),
         "detail_clip",
-        "id arrangement_clip"
+        "id arrangement_clip",
       );
 
       expect(result).toEqual({
@@ -613,19 +613,19 @@ describe("createClip", () => {
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         8,
-        2
+        2,
       ); // 8 + (0 * 2)
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         10,
-        2
+        2,
       ); // 8 + (1 * 2)
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_midi_clip",
         12,
-        2
+        2,
       ); // 8 + (2 * 2)
 
       expect(result).toEqual([
@@ -670,7 +670,7 @@ describe("createClip", () => {
           view: "arrangement",
           trackIndex: 99,
           arrangementStartTime: "3|1",
-        })
+        }),
       ).toThrow("createClip failed: track with index 99 does not exist");
     });
   });
@@ -694,12 +694,12 @@ describe("createClip", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "signature_numerator",
-      6
+      6,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "signature_denominator",
-      8
+      8,
     );
     expect(result.timeSignature).toBe("6/8");
   });
@@ -720,7 +720,7 @@ describe("createClip", () => {
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "create_clip",
-      5
+      5,
     );
   });
 
@@ -784,7 +784,7 @@ describe("createClip", () => {
           { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
           { pitch: 64, start_time: 0, duration: 1, velocity: 80, probability: 1.0, velocity_deviation: 0 },
         ],
-      }
+      },
     );
 
     expect(result.notes).toBe("1|1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
@@ -825,12 +825,12 @@ describe("createClip", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "start_marker",
-      1
+      1,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "loop_start",
-      2
+      2,
     );
   });
 });

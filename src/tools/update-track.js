@@ -54,7 +54,7 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
         mute,
         solo,
         arm,
-      })
+      }),
     );
   }
 
