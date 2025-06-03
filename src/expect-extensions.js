@@ -1,6 +1,8 @@
 // src/expect-extensions.js
 import { expect } from "vitest";
 
+const inspect = (obj) => JSON.stringify(obj, null, 2);
+
 expect.extend({
   toHaveBeenCalledWithThis(received, expectedThis, ...expectedArgs) {
     if (typeof received !== "function" || !received.mock) {
@@ -15,8 +17,10 @@ expect.extend({
 
     const hasMatchingCall = calls.some((call, index) => {
       const context = contexts[index];
+
       const contextMatches = this.equals(context, expectedThis);
       const argsMatch = this.equals(call, expectedArgs);
+
       return contextMatches && argsMatch;
     });
 
@@ -25,8 +29,8 @@ expect.extend({
         pass: true,
         message: () =>
           `Expected mock function not to have been called with this context and args:\n` +
-          `  Context: ${JSON.stringify(expectedThis, null, 2)}\n` +
-          `  Args: ${JSON.stringify(expectedArgs, null, 2)}`,
+          `  Context: ${inspect(expectedThis)}\n` +
+          `  Args: ${inspect(expectedArgs)}`,
       };
     }
 
@@ -35,15 +39,13 @@ expect.extend({
       message: () => {
         return (
           `Expected mock function to have been called with:\n` +
-          `  Context: ${JSON.stringify(expectedThis, null, 2)}\n` +
-          `  Args: ${JSON.stringify(expectedArgs, null, 2)}\n\n` +
+          `  Context: ${inspect(expectedThis)}\n` +
+          `  Args: ${inspect(expectedArgs)}\n\n` +
           `But it was called with:\n` +
           calls
             .map((call, index) => {
               return (
-                `  Call ${index + 1}:\n` +
-                `    Context: ${JSON.stringify(contexts[index], null, 2)}\n` +
-                `    Args: ${JSON.stringify(call, null, 2)}`
+                `  Call ${index + 1}:\n` + `    Context: ${inspect(contexts[index])}\n` + `    Args: ${inspect(call)}`
               );
             })
             .join("\n")
@@ -81,23 +83,21 @@ expect.extend({
       return {
         pass: true,
         message: () =>
-          `Expected mock function not to have been called the ${nthCall}${this.utils.EXPECTED_COLOR(
-            "th"
-          )} time with:\n` +
-          `  Context: ${JSON.stringify(expectedThis, null, 2)}\n` +
-          `  Args: ${JSON.stringify(expectedArgs, null, 2)}`,
+          `Expected mock function not to have been called the ${nthCall}th time with:\n` +
+          `  Context: ${inspect(expectedThis)}\n` +
+          `  Args: ${inspect(expectedArgs)}`,
       };
     }
 
     return {
       pass: false,
       message: () =>
-        `Expected mock function to have been called the ${nthCall}${this.utils.EXPECTED_COLOR("th")} time with:\n` +
-        `  Context: ${JSON.stringify(expectedThis, null, 2)}\n` +
-        `  Args: ${JSON.stringify(expectedArgs, null, 2)}\n\n` +
-        `But the ${nthCall}${this.utils.RECEIVED_COLOR("th")} call was:\n` +
-        `  Context: ${JSON.stringify(actualContext, null, 2)}\n` +
-        `  Args: ${JSON.stringify(actualCall, null, 2)}`,
+        `Expected mock function to have been called the ${nthCall}th time with:\n` +
+        `  Context: ${inspect(expectedThis)}\n` +
+        `  Args: ${inspect(expectedArgs)}\n\n` +
+        `But the ${nthCall}th call was:\n` +
+        `  Context: ${inspect(actualContext)}\n` +
+        `  Args: ${inspect(actualCall)}`,
     };
   },
 
@@ -105,6 +105,7 @@ expect.extend({
     if (typeof received !== "function" || !received.mock) {
       return { pass: false, message: () => "Expected a mock function" };
     }
+
     const { calls, contexts } = received.mock;
 
     if (calls.length === 0) {
@@ -122,9 +123,7 @@ expect.extend({
           calls
             .map((call, index) => {
               return (
-                `  Call ${index + 1}:\n` +
-                `    Context: ${JSON.stringify(contexts[index], null, 2)}\n` +
-                `    Args: ${JSON.stringify(call, null, 2)}`
+                `  Call ${index + 1}:\n` + `    Context: ${inspect(contexts[index])}\n` + `    Args: ${inspect(call)}`
               );
             })
             .join("\n"),
@@ -142,8 +141,8 @@ expect.extend({
         pass: true,
         message: () =>
           `Expected mock function not to have been called exactly once with:\n` +
-          `  Context: ${JSON.stringify(expectedThis, null, 2)}\n` +
-          `  Args: ${JSON.stringify(expectedArgs, null, 2)}`,
+          `  Context: ${inspect(expectedThis)}\n` +
+          `  Args: ${inspect(expectedArgs)}`,
       };
     }
 
@@ -151,11 +150,11 @@ expect.extend({
       pass: false,
       message: () =>
         `Expected mock function to have been called exactly once with:\n` +
-        `  Context: ${JSON.stringify(expectedThis, null, 2)}\n` +
-        `  Args: ${JSON.stringify(expectedArgs, null, 2)}\n\n` +
+        `  Context: ${inspect(expectedThis)}\n` +
+        `  Args: ${inspect(expectedArgs)}\n\n` +
         `But it was called once with:\n` +
-        `  Context: ${JSON.stringify(actualContext, null, 2)}\n` +
-        `  Args: ${JSON.stringify(actualCall, null, 2)}`,
+        `  Context: ${inspect(actualContext)}\n` +
+        `  Args: ${inspect(actualCall)}`,
     };
   },
 });
