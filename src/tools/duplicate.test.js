@@ -105,9 +105,21 @@ describe("duplicate", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 1);
       expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 2);
 
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track");
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track 2");
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track 3");
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "name",
+        "Custom Track"
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 2" }),
+        "name",
+        "Custom Track 2"
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 3" }),
+        "name",
+        "Custom Track 3"
+      );
     });
 
     it("should duplicate a track without clips when includeClips is false", () => {
@@ -294,8 +306,16 @@ describe("duplicate", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_scene", 0);
       expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_scene", 1);
 
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene");
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene 2");
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set scenes 1" }),
+        "name",
+        "Custom Scene"
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set scenes 2" }),
+        "name",
+        "Custom Scene 2"
+      );
     });
 
     it("should duplicate a scene without clips when includeClips is false", () => {
@@ -872,8 +892,16 @@ describe("duplicate", () => {
           1
         );
 
-        expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip");
-        expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip 2");
+        expect(liveApiSet).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0 clip_slots 1 clip" }),
+          "name",
+          "Custom Clip"
+        );
+        expect(liveApiSet).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0 clip_slots 2 clip" }),
+          "name",
+          "Custom Clip 2"
+        );
       });
     });
 
@@ -1204,8 +1232,16 @@ describe("duplicate", () => {
         4
       ); // start=16, length=4
       // Check that properties were copied correctly
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
-      expect(liveApiSet).toHaveBeenCalledWith("color", 4047616); // setColor converts hex to integer
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
+        "name",
+        "Test Clip"
+      ); // Copied from source
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
+        "color",
+        4047616
+      ); // setColor converts hex to integer
     });
 
     it("should duplicate a looping clip multiple times to fill longer length", () => {
@@ -1292,8 +1328,16 @@ describe("duplicate", () => {
       ); // Second clip: start=20, length=2
 
       // Check that properties were copied correctly for both clips
-      expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
-      expect(liveApiSet).toHaveBeenCalledWith("color", 4047616); // setColor converts hex to integer
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
+        "name",
+        "Test Clip"
+      ); // Copied from source
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0 arrangement_clips 0" }),
+        "color",
+        4047616
+      ); // setColor converts hex to integer
 
       expect(result.duplicatedClip).toHaveLength(2);
     });

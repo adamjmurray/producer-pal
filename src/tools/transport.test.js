@@ -44,7 +44,7 @@ describe("transport", () => {
       "Arranger"
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
-    expect(liveApiSet).toHaveBeenCalledWith("start_time", 16); // bar 5 = 16 beats in 4/4
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 16); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       action: "play-arrangement",
       currentTime: "5|1",
@@ -77,10 +77,12 @@ describe("transport", () => {
       followingTrackIndexes: "0,2,3",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("loop", true);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 8); // bar 3 = 8 beats
-    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 16); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
-    expect(liveApiSet).toHaveBeenCalledWith("back_to_arranger", 0);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_start", 8); // bar 3 = 8 beats
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_length", 16); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set tracks 0" }), "back_to_arranger", 0);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set tracks 2" }), "back_to_arranger", 0);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set tracks 3" }), "back_to_arranger", 0);
     expect(liveApiSet).toHaveBeenCalledTimes(6); // 3 for loop/start/length, 3 for back_to_arranger
 
     expect(result).toStrictEqual({
@@ -110,7 +112,7 @@ describe("transport", () => {
       startTime: "3|1",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("start_time", 6); // bar 3 = 6 beats in 3/4
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 6); // bar 3 = 6 beats in 3/4
     expect(result.currentTime).toBe("3|1");
     expect(result.loopEnd).toBe("2|1"); // 3 beats = 1 bar in 3/4
   });
@@ -412,7 +414,7 @@ describe("transport", () => {
     const result = transport({ action: "stop" });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "stop_playing");
-    expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 0);
     expect(result).toStrictEqual({
       action: "stop",
       currentTime: "1|1",
@@ -469,7 +471,7 @@ describe("transport", () => {
     });
 
     // loopEnd 9|1 = 32 beats, loopStart is 8 beats, so length should be 24
-    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 24);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_length", 24);
     expect(result.loopStart).toBe("3|1"); // 8 beats = bar 3
     expect(result.loopEnd).toBe("9|1");
   });
@@ -493,9 +495,9 @@ describe("transport", () => {
     });
 
     // In 6/8, bar 2 = 3 Ableton beats (6 musical beats * 4/8)
-    expect(liveApiSet).toHaveBeenCalledWith("start_time", 3);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 0);
-    expect(liveApiSet).toHaveBeenCalledWith("loop_length", 6); // 2 bars = 6 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 3);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_start", 0);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_length", 6); // 2 bars = 6 Ableton beats
 
     expect(result.startTime).toBe("2|1");
     expect(result.currentTime).toBe("2|1");
@@ -525,7 +527,7 @@ describe("transport", () => {
       "Arranger"
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
-    expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 0);
     expect(result.currentTime).toBe("1|1");
     expect(result.startTime).toBeUndefined();
   });

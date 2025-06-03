@@ -10,7 +10,7 @@ describe("updateSong", () => {
 
   it("should update tempo", () => {
     const result = updateSong({ tempo: 140 });
-    expect(liveApiSet).toHaveBeenCalledWith("tempo", 140);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "tempo", 140);
     expect(result).toEqual({
       id: "live_set_id",
       tempo: 140,
@@ -24,8 +24,8 @@ describe("updateSong", () => {
 
   it("should update time signature", () => {
     const result = updateSong({ timeSignature: "3/4" });
-    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 3);
-    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 4);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_numerator", 3);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_denominator", 4);
     expect(result).toEqual({
       id: "live_set_id",
       timeSignature: "3/4",
@@ -43,9 +43,9 @@ describe("updateSong", () => {
       timeSignature: "6/8",
       view: "arrangement",
     });
-    expect(liveApiSet).toHaveBeenCalledWith("tempo", 125);
-    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
-    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "tempo", 125);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_numerator", 6);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "signature_denominator", 8);
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",

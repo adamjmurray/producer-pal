@@ -63,9 +63,9 @@ describe("updateClip", () => {
       loop: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Updated Clip");
-    expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
-    expect(liveApiSet).toHaveBeenCalledWith("looping", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Updated Clip");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 16711680);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "looping", true);
 
     expect(result).toEqual({
       id: "123",
@@ -97,9 +97,9 @@ describe("updateClip", () => {
       length: "1:0", // 4 beats = 1 bar
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Arrangement Clip");
-    expect(liveApiSet).toHaveBeenCalledWith("start_marker", 2); // 1|3 in 4/4 = 2 Ableton beats
-    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 6); // startMarker (2) + length (4) = 6 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "789" }), "name", "Arrangement Clip");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "789" }), "start_marker", 2); // 1|3 in 4/4 = 2 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "789" }), "end_marker", 6); // startMarker (2) + length (4) = 6 Ableton beats
 
     expect(result).toEqual({
       id: "789",
@@ -155,14 +155,14 @@ describe("updateClip", () => {
       loop: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWith("looping", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "looping", false);
     expect(liveApiSet).toHaveBeenCalledTimes(5); // 2 calls per clip, plus view change
-    expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWith("looping", false);
-    expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 123");
-    expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWith("looping", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "looping", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set view" }), "detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "looping", false);
 
     expect(result).toEqual([
       {
@@ -199,8 +199,8 @@ describe("updateClip", () => {
       timeSignature: "6/8",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
-    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "signature_numerator", 6);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "signature_denominator", 8);
     expect(result.timeSignature).toBe("6/8");
   });
 
@@ -295,8 +295,8 @@ describe("updateClip", () => {
       ],
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
-    expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "signature_numerator", 6);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "signature_denominator", 8);
     expect(result.timeSignature).toBe("6/8");
     expect(result.notes).toBe("1|1 C3 2|1 D3");
   });
@@ -397,7 +397,7 @@ describe("updateClip", () => {
       name: "Prefixed ID Clip",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Prefixed ID Clip");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Prefixed ID Clip");
     expect(result).toEqual({
       id: "123",
       type: "midi",
@@ -422,8 +422,8 @@ describe("updateClip", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(2);
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Only Name Update");
-    expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Only Name Update");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set view" }), "detail_clip", "id 123");
 
     expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
@@ -451,7 +451,7 @@ describe("updateClip", () => {
       loop: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("looping", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "looping", false);
     expect(result).toEqual({
       id: "123",
       type: "midi",
@@ -610,9 +610,9 @@ describe("updateClip", () => {
 
     // set the names of the two clips, and display the clip detail view:
     expect(liveApiSet).toHaveBeenCalledTimes(3);
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Filtered");
-    expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 123");
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Filtered");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Filtered");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set view" }), "detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "name", "Filtered");
 
     expect(result).toEqual([
       {
@@ -806,6 +806,6 @@ describe("updateClip", () => {
       loopStart: "1|3",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("loop_start", 2);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "loop_start", 2);
   });
 });

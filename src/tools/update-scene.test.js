@@ -128,7 +128,7 @@ describe("updateScene", () => {
       tempo: -1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo_enabled", false);
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
     expect(result).toEqual({
       id: "123",
@@ -143,7 +143,11 @@ describe("updateScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "time_signature_enabled",
+      false
+    );
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
     expect(result).toEqual({
