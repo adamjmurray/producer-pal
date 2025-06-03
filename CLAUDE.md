@@ -239,9 +239,11 @@ To update the version:
 - In tests, to best ensure correctness with the LiveAPI, all `expect(liveApiCall)` and `expect(liveApiSet)` calls should
   not use toHaveBeenCalledWith() or toHaveBeenNthCalledWith() but instead use toHaveBeenCalledWithThis() or
   toHaveBeenNthCalledWithThis() where the first `this` arg matcher is expect.objectContaining({...}) with typically an
-  id or path property depending on the test. Do not use `expect.anything()` for LiveAPI mock expectations.
-  - Exception: Instead of `.not.toHaveBeenCalledWithThis(expect.anything(), ...)` which conceptually does make sense for
-    most negative tests, prefer the simpler `.not.toHaveBeenCalledWith(...)`
+  `id` or `path` property depending on the test (if you have trouble using `id `for the `this` expectation, try using
+  `path`, or vice versa. Avoid using `_id` or `_path` if possible).
+  - Do not use `expect.anything()` for LiveAPI mock expectations, except: instead of
+    `.not.toHaveBeenCalledWithThis(expect.anything(), ...)` which conceptually does make sense for most negative tests,
+    prefer the simpler `.not.toHaveBeenCalledWith(...)`
 - If you can't write a test the correct way after a few attempts, and you have to compromise, like loosening up a
   matcher significantly from the original plan, leave a TODO comment explaining what happened so we can revisit and try
   again or improve it later.

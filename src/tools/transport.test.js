@@ -130,7 +130,11 @@ describe("transport", () => {
       clipSlotIndexes: "0",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session"
+    );
     expect(liveApiCall).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       action: "play-session-clip",
@@ -163,7 +167,11 @@ describe("transport", () => {
       clipSlotIndexes: "0,1,2",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session"
+    );
     expect(liveApiCall).toHaveBeenCalledWith("fire");
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 fire calls
     expect(result.trackIndexes).toBe("0,1,2");
@@ -235,7 +243,11 @@ describe("transport", () => {
       sceneIndex: 1,
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session"
+    );
     expect(liveApiCall).toHaveBeenCalledWith("fire");
     expect(result).toStrictEqual({
       action: "play-scene",
@@ -279,7 +291,11 @@ describe("transport", () => {
       trackIndexes: "1",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session"
+    );
     expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       action: "stop-track-session-clip",
@@ -310,7 +326,11 @@ describe("transport", () => {
       trackIndexes: "0,1,2",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session"
+    );
     expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 stop_all_clips calls
   });
@@ -343,7 +363,11 @@ describe("transport", () => {
 
     const result = transport({ action: "stop-all-session-clips" });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session"
+    );
     expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
     expect(result).toStrictEqual({
       action: "stop-all-session-clips",

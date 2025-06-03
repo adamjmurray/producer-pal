@@ -60,11 +60,7 @@ describe("duplicate", () => {
         duplicatedClips: [],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "duplicate_track",
-        0
-      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 0);
     });
 
     it("should duplicate multiple tracks with auto-incrementing names", () => {
@@ -212,11 +208,7 @@ describe("duplicate", () => {
         ],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set" }),
-        "duplicate_scene",
-        0
-      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_scene", 0);
     });
 
     it("should duplicate multiple scenes with auto-incrementing names", () => {

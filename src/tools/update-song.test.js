@@ -46,7 +46,11 @@ describe("updateSong", () => {
     expect(liveApiSet).toHaveBeenCalledWith("tempo", 125);
     expect(liveApiSet).toHaveBeenCalledWith("signature_numerator", 6);
     expect(liveApiSet).toHaveBeenCalledWith("signature_denominator", 8);
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Arranger");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Arranger"
+    );
     expect(result).toEqual({
       id: "live_set_id",
       tempo: 125,
@@ -57,7 +61,11 @@ describe("updateSong", () => {
 
   it("should switch to Arrangement view when requested", () => {
     const result = updateSong({ view: "arrangement" });
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Arranger");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Arranger"
+    );
     expect(result).toEqual({
       id: "live_set_id",
       view: "arrangement",
@@ -66,7 +74,11 @@ describe("updateSong", () => {
 
   it("should switch to Session view when requested", () => {
     const result = updateSong({ view: "session" });
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session"
+    );
     expect(result).toEqual({
       id: "live_set_id",
       view: "session",

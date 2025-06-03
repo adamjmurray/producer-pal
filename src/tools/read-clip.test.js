@@ -54,6 +54,16 @@ describe("readClip", () => {
     });
 
     const result = readClip({ trackIndex: 1, clipSlotIndex: 1 });
+
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      4
+    );
+
     expect(result).toEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
@@ -124,6 +134,16 @@ describe("readClip", () => {
     });
 
     const result = readClip({ trackIndex: 1, clipSlotIndex: 1 });
+
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      4
+    );
+
     expect(result).toEqual({
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
@@ -169,6 +189,15 @@ describe("readClip", () => {
 
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
 
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      4
+    );
+
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
     expect(result.timeSignature).toBe("3/4");
@@ -199,6 +228,15 @@ describe("readClip", () => {
     });
 
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      3
+    );
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
@@ -395,6 +433,15 @@ describe("readClip", () => {
     });
 
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ _path: "live_set tracks 0 clip_slots 0 clip" }),
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      4
+    );
 
     expect(result).toEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
