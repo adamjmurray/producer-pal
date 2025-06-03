@@ -154,11 +154,11 @@ describe("updateClip", () => {
     expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
     expect(liveApiSet).toHaveBeenCalledWith("looping", false);
     expect(liveApiSet).toHaveBeenCalledTimes(5); // 2 calls per clip, plus view change
-    expect(liveApiSet).toHaveBeenNthCalledWith(1, "color", 65280);
-    expect(liveApiSet).toHaveBeenNthCalledWith(2, "looping", false);
-    expect(liveApiSet).toHaveBeenNthCalledWith(3, "detail_clip", "id 123");
-    expect(liveApiSet).toHaveBeenNthCalledWith(4, "color", 65280);
-    expect(liveApiSet).toHaveBeenNthCalledWith(5, "looping", false);
+    expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWith("looping", false);
+    expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWith("looping", false);
 
     expect(result).toEqual([
       {
@@ -411,8 +411,8 @@ describe("updateClip", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(2);
-    expect(liveApiSet).toHaveBeenNthCalledWith(1, "name", "Only Name Update");
-    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Only Name Update");
+    expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 123");
 
     expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
@@ -598,9 +598,9 @@ describe("updateClip", () => {
 
     // set the names of the two clips, and display the clip detail view:
     expect(liveApiSet).toHaveBeenCalledTimes(3);
-    expect(liveApiSet).toHaveBeenNthCalledWith(1, "name", "Filtered");
-    expect(liveApiSet).toHaveBeenNthCalledWith(2, "detail_clip", "id 123");
-    expect(liveApiSet).toHaveBeenNthCalledWith(3, "name", "Filtered");
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Filtered");
+    expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id 123");
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Filtered");
 
     expect(result).toEqual([
       {

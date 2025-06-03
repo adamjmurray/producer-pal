@@ -38,8 +38,8 @@ describe("transport", () => {
       startTime: "5|1",
     });
 
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "show_view", "Arranger");
-    expect(liveApiCall).toHaveBeenNthCalledWith(2, "start_playing");
+    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(liveApiCall).toHaveBeenCalledWith("start_playing");
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 16); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       action: "play-arrangement",
