@@ -236,6 +236,15 @@ To update the version:
   `=== null` or `=== undefined`.
 - Use ES6 object shorthand property syntax when possible. Prefer `{ name, color }` over `{ name: name, color: color }`
   when the property name and variable name are the same.
+- In tests, to best ensure correctness with the LiveAPI, all `expect(liveApiCall)` and `expect(liveApiSet)` calls should
+  not use toHaveBeenCalledWith() or toHaveBeenNthCalledWith() but instead use toHaveBeenCalledWithThis() or
+  toHaveBeenNthCalledWithThis() where the first `this` arg matcher is expect.objectContaining({...}) with typically an
+  id or path property depending on the test. Do not use `expect.anything()` for LiveAPI mock expectations.
+  - Exception: Instead of `.not.toHaveBeenCalledWithThis(expect.anything(), ...)` which conceptually does make sense for
+    most negative tests, prefer the simpler `.not.toHaveBeenCalledWith(...)`
+- If you can't write a test the correct way after a few attempts, and you have to compromise, like loosening up a
+  matcher significantly from the original plan, leave a TODO comment explaining what happened so we can revisit and try
+  again or improve it later.
 - When update the playback state of live, like launching clips in Session view, updating the state of Live and then
   immediately reading the state may not reflect the state accurately. Previously we introduced sleep() delays to deal
   with this, but that is not ideal and may not work robustly across computers with different CPU characteristics.

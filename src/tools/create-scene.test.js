@@ -22,13 +22,25 @@ describe("createScene", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", 1);
-    expect(liveApiSet).toHaveBeenCalledWith("name", "New Scene");
-    expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
-    expect(liveApiSet).toHaveBeenCalledWith("tempo", 120);
-    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", true);
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_numerator", 3);
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_denominator", 4);
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "New Scene");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "color", 16711680);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "tempo", 120);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "tempo_enabled", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "time_signature_numerator",
+      3
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "time_signature_denominator",
+      4
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "time_signature_enabled",
+      true
+    );
     expect(result).toEqual({
       id: "scene1",
       sceneIndex: 1,
@@ -66,9 +78,9 @@ describe("createScene", () => {
       2
     );
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Verse");
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Verse 2");
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Verse 3");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Verse");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Verse 2");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Verse 3");
 
     expect(result).toEqual([
       {
@@ -128,7 +140,7 @@ describe("createScene", () => {
       tempo: -1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "tempo_enabled", false);
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
   });
 
@@ -138,7 +150,11 @@ describe("createScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "time_signature_enabled",
+      false
+    );
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
     expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
   });
@@ -190,7 +206,7 @@ describe("createScene", () => {
       name: "Solo Scene",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Solo Scene");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Solo Scene");
     expect(result.name).toBe("Solo Scene");
   });
 
