@@ -1,5 +1,8 @@
 // src/tools/update-clip.js
-import { barBeatToAbletonBeats, barBeatDurationToAbletonBeats } from "../notation/barbeat/barbeat-time";
+import {
+  barBeatToAbletonBeats,
+  barBeatDurationToAbletonBeats,
+} from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../utils.js";
 import { MAX_CLIP_BEATS } from "./constants.js";
@@ -64,8 +67,17 @@ export function updateClip({
     let endMarkerBeats = null;
     let loopEndBeats = null;
     if (length != null) {
-      const lengthBeats = barBeatDurationToAbletonBeats(length, timeSigNumerator, timeSigDenominator);
-      const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator) || 0;
+      const lengthBeats = barBeatDurationToAbletonBeats(
+        length,
+        timeSigNumerator,
+        timeSigDenominator,
+      );
+      const startMarkerBeats =
+        barBeatToAbletonBeats(
+          startMarker,
+          timeSigNumerator,
+          timeSigDenominator,
+        ) || 0;
       endMarkerBeats = startMarkerBeats + lengthBeats;
       loopEndBeats = startMarkerBeats + lengthBeats;
     }
@@ -75,9 +87,17 @@ export function updateClip({
       color: color,
       signature_numerator: timeSignature != null ? timeSigNumerator : null,
       signature_denominator: timeSignature != null ? timeSigDenominator : null,
-      start_marker: barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator),
+      start_marker: barBeatToAbletonBeats(
+        startMarker,
+        timeSigNumerator,
+        timeSigDenominator,
+      ),
       end_marker: endMarkerBeats,
-      loop_start: barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator),
+      loop_start: barBeatToAbletonBeats(
+        loopStart,
+        timeSigNumerator,
+        timeSigDenominator,
+      ),
       loop_end: loopEndBeats,
       looping: loop,
     });
@@ -110,7 +130,9 @@ export function updateClip({
     }
 
     if (trackIndex == null) {
-      throw new Error(`updateClip failed: could not determine trackIndex for id "${id}" (path="${clip.path}")`);
+      throw new Error(
+        `updateClip failed: could not determine trackIndex for id "${id}" (path="${clip.path}")`,
+      );
     }
 
     // Build optimistic result object
@@ -137,7 +159,8 @@ export function updateClip({
     if (loopStart != null) clipResult.loopStart = loopStart;
     if (loop != null) clipResult.loop = loop;
     if (notationString != null) clipResult.notes = notationString;
-    if (notationString != null) clipResult.clearExistingNotes = clearExistingNotes;
+    if (notationString != null)
+      clipResult.clearExistingNotes = clearExistingNotes;
 
     updatedClips.push(clipResult);
 

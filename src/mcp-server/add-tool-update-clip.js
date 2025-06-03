@@ -7,10 +7,15 @@ export function addToolUpdateClip(server, callLiveApi) {
     "Updates properties of existing clips by ID. Supports bulk operations when provided with comma-separated clip IDs. All properties except ids are optional. Use this tool to modify clips that already exist, including clips created by duplicating scenes or tracks. To create new clips in empty clip slots, use create-clip instead. " +
       "IMPORTANT: All timing parameters (startMarker, length) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline.",
     {
-      ids: z.string().describe("Clip ID or comma-separated list of clip IDs to update"),
+      ids: z
+        .string()
+        .describe("Clip ID or comma-separated list of clip IDs to update"),
       name: z.string().optional().describe("Name for the clips"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
-      timeSignature: z.string().optional().describe('Time signature in format "n/m" (e.g. "4/4").'),
+      timeSignature: z
+        .string()
+        .optional()
+        .describe('Time signature in format "n/m" (e.g. "4/4").'),
       startMarker: z
         .string()
         .optional()
@@ -23,7 +28,10 @@ export function addToolUpdateClip(server, callLiveApi) {
         .describe(
           "Clip length in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When provided, automatically sets the clip end marker and loop end. If loopStart is also specified, the effective loop length may be shorter than this total length. Uses clip's time signature.",
         ),
-      loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
+      loop: z
+        .boolean()
+        .optional()
+        .describe("Enable or disable looping for the clips"),
       loopStart: z
         .string()
         .optional()

@@ -46,7 +46,9 @@ export function readTrack({ trackIndex } = {}) {
 
     sessionClips: track
       .getChildIds("clip_slots")
-      .map((_clipSlotId, clipSlotIndex) => readClip({ trackIndex, clipSlotIndex }))
+      .map((_clipSlotId, clipSlotIndex) =>
+        readClip({ trackIndex, clipSlotIndex }),
+      )
       .filter((clip) => clip.id != null),
 
     arrangementClips: track

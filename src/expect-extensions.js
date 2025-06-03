@@ -12,7 +12,10 @@ expect.extend({
     const { calls, contexts } = received.mock;
 
     if (calls.length === 0 || contexts.length === 0) {
-      return { pass: false, message: () => "Expected mock function to have been called" };
+      return {
+        pass: false,
+        message: () => "Expected mock function to have been called",
+      };
     }
 
     const hasMatchingCall = calls.some((call, index) => {
@@ -45,7 +48,9 @@ expect.extend({
           calls
             .map((call, index) => {
               return (
-                `  Call ${index + 1}:\n` + `    Context: ${inspect(contexts[index])}\n` + `    Args: ${inspect(call)}`
+                `  Call ${index + 1}:\n` +
+                `    Context: ${inspect(contexts[index])}\n` +
+                `    Args: ${inspect(call)}`
               );
             })
             .join("\n")
@@ -54,14 +59,22 @@ expect.extend({
     };
   },
 
-  toHaveBeenNthCalledWithThis(received, nthCall, expectedThis, ...expectedArgs) {
+  toHaveBeenNthCalledWithThis(
+    received,
+    nthCall,
+    expectedThis,
+    ...expectedArgs
+  ) {
     if (typeof received !== "function" || !received.mock) {
       return { pass: false, message: () => "Expected a mock function" };
     }
     const { calls, contexts } = received.mock;
 
     if (typeof nthCall !== "number" || nthCall < 1) {
-      return { pass: false, message: () => "Expected nthCall to be a positive number (1-indexed)" };
+      return {
+        pass: false,
+        message: () => "Expected nthCall to be a positive number (1-indexed)",
+      };
     }
 
     if (calls.length < nthCall) {
@@ -111,7 +124,8 @@ expect.extend({
     if (calls.length === 0) {
       return {
         pass: false,
-        message: () => "Expected mock function to have been called exactly once, but it was not called",
+        message: () =>
+          "Expected mock function to have been called exactly once, but it was not called",
       };
     }
 
@@ -123,7 +137,9 @@ expect.extend({
           calls
             .map((call, index) => {
               return (
-                `  Call ${index + 1}:\n` + `    Context: ${inspect(contexts[index])}\n` + `    Args: ${inspect(call)}`
+                `  Call ${index + 1}:\n` +
+                `    Context: ${inspect(contexts[index])}\n` +
+                `    Args: ${inspect(call)}`
               );
             })
             .join("\n"),

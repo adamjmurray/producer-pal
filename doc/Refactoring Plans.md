@@ -1,7 +1,8 @@
 # Refactoring Plans
 
-This document tracks repetitive patterns found in the codebase and proposed refactoring opportunities. Each section
-includes priority, impact assessment, and implementation notes.
+This document tracks repetitive patterns found in the codebase and proposed
+refactoring opportunities. Each section includes priority, impact assessment,
+and implementation notes.
 
 ## 🔴 High Priority - High Impact
 
@@ -16,7 +17,8 @@ const xIds = ids
   .filter((id) => id.length > 0);
 ```
 
-**Files**: update-track.js, update-clip.js, update-scene.js, delete.js, transport.js
+**Files**: update-track.js, update-clip.js, update-scene.js, delete.js,
+transport.js
 
 **Proposed Solution**:
 
@@ -34,8 +36,10 @@ export function parseCommaSeparatedIds(ids) {
 
 **Implementation Notes**:
 
-- Also created `parseCommaSeparatedIndices()` for integer parsing with validation
-- Updated 5 files: update-track.js, update-clip.js, update-scene.js, delete.js, transport.js
+- Also created `parseCommaSeparatedIndices()` for integer parsing with
+  validation
+- Updated 5 files: update-track.js, update-clip.js, update-scene.js, delete.js,
+  transport.js
 - Added 23 comprehensive test cases
 - Eliminated ~25 lines of repetitive parsing code
 - Error messages are now more specific and helpful
@@ -55,7 +59,8 @@ const numerator = parseInt(match[1], 10);
 const denominator = parseInt(match[2], 10);
 ```
 
-**Files**: create-clip.js, update-clip.js, update-scene.js, create-scene.js, update-song.js
+**Files**: create-clip.js, update-clip.js, update-scene.js, create-scene.js,
+update-song.js
 
 **Proposed Solution**:
 
@@ -77,7 +82,8 @@ export function parseTimeSignature(timeSignature) {
 
 **Implementation Notes**:
 
-- Updated 5 files: create-clip.js, update-clip.js, update-scene.js, create-scene.js, update-song.js
+- Updated 5 files: create-clip.js, update-clip.js, update-scene.js,
+  create-scene.js, update-song.js
 - Added 14 comprehensive test cases covering edge cases and error conditions
 - Eliminated ~40 lines of repetitive parsing and validation code
 - Standardized error messages across all time signature parsing
@@ -114,12 +120,14 @@ Object.defineProperty(LiveAPI.prototype, "trackIndex", {
 
 **Implementation Notes**:
 
-- Implemented as LiveAPI prototype getters for direct access: `liveApi.trackIndex`, `liveApi.sceneIndex`,
-  `liveApi.clipSlotIndex`
-- Enhanced sceneIndex and clipSlotIndex to work with both path patterns for Session view compatibility
+- Implemented as LiveAPI prototype getters for direct access:
+  `liveApi.trackIndex`, `liveApi.sceneIndex`, `liveApi.clipSlotIndex`
+- Enhanced sceneIndex and clipSlotIndex to work with both path patterns for
+  Session view compatibility
 - Added 39 comprehensive test cases covering all patterns and edge cases
 - Safe property definition prevents redefinition errors in test environments
-- Session view integration: clip_slots paths return both trackIndex and sceneIndex/clipSlotIndex
+- Session view integration: clip_slots paths return both trackIndex and
+  sceneIndex/clipSlotIndex
 
 ---
 
@@ -197,15 +205,18 @@ if (!object.exists()) {
 
 **Completed**: Created `setAllNonNull()` and `withoutNulls()` utilities
 
-- **Files Updated**: create-clip.js, update-clip.js, create-track.js, update-track.js
+- **Files Updated**: create-clip.js, update-clip.js, create-track.js,
+  update-track.js
 - **Impact**: Eliminated ~50+ lines of repetitive conditional property setting
 - **Status**: ✅ Complete
 
 ### ✅ LiveAPI Extensions
 
-**Completed**: Created `LiveAPI.setAll()` for LiveAPI-specific object property setting
+**Completed**: Created `LiveAPI.setAll()` for LiveAPI-specific object property
+setting
 
-- **Files Updated**: create-clip.js, update-clip.js, create-track.js, update-track.js
+- **Files Updated**: create-clip.js, update-clip.js, create-track.js,
+  update-track.js
 - **Impact**: Simplified LiveAPI property setting with automatic color handling
 - **Status**: ✅ Complete
 
@@ -222,9 +233,12 @@ if (!object.exists()) {
 ## Implementation Notes
 
 - **Priority Order**: Start with high-impact, frequently repeated patterns first
-- **Testing Strategy**: Each utility should have comprehensive tests before adoption
-- **Migration Strategy**: Update one file at a time, ensure tests pass between changes
-- **Validation**: Use existing test suite to validate refactoring doesn't break functionality
+- **Testing Strategy**: Each utility should have comprehensive tests before
+  adoption
+- **Migration Strategy**: Update one file at a time, ensure tests pass between
+  changes
+- **Validation**: Use existing test suite to validate refactoring doesn't break
+  functionality
 
 ---
 
@@ -233,7 +247,8 @@ if (!object.exists()) {
 **Completed**: Created LiveAPI prototype getters for index extraction
 
 - **Properties Added**: trackIndex, sceneIndex, clipSlotIndex
-- **Impact**: Direct property access for path parsing with Session view compatibility
+- **Impact**: Direct property access for path parsing with Session view
+  compatibility
 - **Status**: ✅ Complete
 
 ---

@@ -1,6 +1,11 @@
 // src/tools/delete.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiPath, liveApiType } from "../mock-live-api";
+import {
+  liveApiCall,
+  liveApiId,
+  liveApiPath,
+  liveApiType,
+} from "../mock-live-api";
 import { deleteObject } from "./delete";
 
 describe("deleteObject", () => {
@@ -237,8 +242,11 @@ describe("deleteObject", () => {
   });
 
   it("should throw an error when type arg is invalid", () => {
-    const expectedError = 'delete failed: type must be one of "track", "scene", or "clip"';
-    expect(() => deleteObject({ ids: "clip_1", type: "invalid" })).toThrow(expectedError);
+    const expectedError =
+      'delete failed: type must be one of "track", "scene", or "clip"';
+    expect(() => deleteObject({ ids: "clip_1", type: "invalid" })).toThrow(
+      expectedError,
+    );
   });
 
   it("should throw an error when any object doesn't exist", () => {
@@ -256,7 +264,9 @@ describe("deleteObject", () => {
       if (this._id === "123") return "Track";
     });
 
-    expect(() => deleteObject({ ids: "123, 999", type: "track" })).toThrow('delete failed: id "999" does not exist');
+    expect(() => deleteObject({ ids: "123, 999", type: "track" })).toThrow(
+      'delete failed: id "999" does not exist',
+    );
   });
 
   it("should throw an error when any object is not of the expected type", () => {
@@ -275,9 +285,9 @@ describe("deleteObject", () => {
       if (this._id === "scene_1") return "Scene";
     });
 
-    expect(() => deleteObject({ ids: "track_1, scene_1", type: "track" })).toThrow(
-      'delete failed: id "scene_1" is not a track (type=Scene)',
-    );
+    expect(() =>
+      deleteObject({ ids: "track_1, scene_1", type: "track" }),
+    ).toThrow('delete failed: id "scene_1" is not a track (type=Scene)');
   });
 
   it("should throw error when trying to delete Producer Pal host track", () => {
@@ -355,9 +365,16 @@ describe("deleteObject", () => {
     });
 
     const singleResult = deleteObject({ ids: "track_0", type: "track" });
-    const arrayResult = deleteObject({ ids: "track_0, track_1", type: "track" });
+    const arrayResult = deleteObject({
+      ids: "track_0, track_1",
+      type: "track",
+    });
 
-    expect(singleResult).toEqual({ id: "track_0", type: "track", deleted: true });
+    expect(singleResult).toEqual({
+      id: "track_0",
+      type: "track",
+      deleted: true,
+    });
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
   });

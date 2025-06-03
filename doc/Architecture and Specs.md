@@ -4,12 +4,18 @@
 
 The main parts of the system are:
 
-- Claude Desktop connects to `mcp-remote`, a proxy that adapts the stdio transport to the streamable HTTP transport
-- `mcp-remote` connects to an MCP server in a Node.js process using the streamable HTTP transport
-- the Node.js process is running in a Node for Max object in a Max for Live device in Ableton Live
-- the Node.js process doesn't have direct access to the Live API, so it sends serialized JSON strings to a Max v8 object
-  (a V8-based JavaScript engine) in the same Max for Live device (via a Max message sent over a virtual patch cable)
-- the Max v8 object calls the Live API to read and write to the state of, and execute commands in Ableton Live
+- Claude Desktop connects to `mcp-remote`, a proxy that adapts the stdio
+  transport to the streamable HTTP transport
+- `mcp-remote` connects to an MCP server in a Node.js process using the
+  streamable HTTP transport
+- the Node.js process is running in a Node for Max object in a Max for Live
+  device in Ableton Live
+- the Node.js process doesn't have direct access to the Live API, so it sends
+  serialized JSON strings to a Max v8 object (a V8-based JavaScript engine) in
+  the same Max for Live device (via a Max message sent over a virtual patch
+  cable)
+- the Max v8 object calls the Live API to read and write to the state of, and
+  execute commands in Ableton Live
 
 ### Architecture Diagram
 
@@ -53,8 +59,10 @@ The main parts of the system are:
 
 ## Implementation Details
 
-- the Node for Max MCP server is bootstrapped by `src/mcp-server.mjs`, which `import`s files in `src/mcp-server/**.mjs`
-- the v8 Max object bootstraps with `main.js`, which `require()`s other JavaScript files in the same folder
+- the Node for Max MCP server is bootstrapped by `src/mcp-server.mjs`, which
+  `import`s files in `src/mcp-server/**.mjs`
+- the v8 Max object bootstraps with `main.js`, which `require()`s other
+  JavaScript files in the same folder
 
 ## Message Format Specification
 
@@ -134,7 +142,8 @@ Messages sent from v8 back to Node for Max:
 
 ## BarBeat: custom Music Notation Syntax
 
-See the dedicated BarBeat Specification. Implemented with a parser generator library `peggy`.
+See the dedicated BarBeat Specification. Implemented with a parser generator
+library `peggy`.
 
 ## MCP tool interfaces
 

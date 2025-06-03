@@ -10,7 +10,11 @@ describe("updateSong", () => {
 
   it("should update tempo", () => {
     const result = updateSong({ tempo: 140 });
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "tempo", 140);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "tempo",
+      140,
+    );
     expect(result).toEqual({
       id: "live_set_id",
       tempo: 140,
@@ -41,8 +45,12 @@ describe("updateSong", () => {
   });
 
   it("should throw error for invalid time signature format", () => {
-    expect(() => updateSong({ timeSignature: "invalid" })).toThrow("Time signature must be in format");
-    expect(() => updateSong({ timeSignature: "3-4" })).toThrow("Time signature must be in format");
+    expect(() => updateSong({ timeSignature: "invalid" })).toThrow(
+      "Time signature must be in format",
+    );
+    expect(() => updateSong({ timeSignature: "3-4" })).toThrow(
+      "Time signature must be in format",
+    );
   });
 
   it("should update multiple properties simultaneously", () => {
@@ -51,7 +59,11 @@ describe("updateSong", () => {
       timeSignature: "6/8",
       view: "arrangement",
     });
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "tempo", 125);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "tempo",
+      125,
+    );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "signature_numerator",

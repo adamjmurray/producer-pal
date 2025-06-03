@@ -19,7 +19,9 @@ export function addToolReadClip(server, callLiveApi) {
         .int()
         .min(0)
         .optional()
-        .describe("Track index (0-based) for reading Session clips. Can be omitted only if clipId is provided."),
+        .describe(
+          "Track index (0-based) for reading Session clips. Can be omitted only if clipId is provided.",
+        ),
       clipSlotIndex: z
         .number()
         .int()
@@ -31,7 +33,9 @@ export function addToolReadClip(server, callLiveApi) {
       clipId: z
         .string()
         .optional()
-        .describe("Clip ID to directly access any clip. Either this or trackIndex and clipSlotIndex must be provided."),
+        .describe(
+          "Clip ID to directly access any clip. Either this or trackIndex and clipSlotIndex must be provided.",
+        ),
     },
     async (args) => callLiveApi("read-clip", args),
   );

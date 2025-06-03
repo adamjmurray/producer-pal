@@ -1,6 +1,12 @@
 // src/tools/read-clip.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, liveApiPath, mockLiveApiGet } from "../mock-live-api";
+import {
+  children,
+  liveApiCall,
+  liveApiId,
+  liveApiPath,
+  mockLiveApiGet,
+} from "../mock-live-api";
 import { readClip } from "./read-clip";
 
 describe("readClip", () => {
@@ -178,9 +184,30 @@ describe("readClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-            { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // Start of bar 2 in 3/4
-            { pitch: 64, start_time: 4, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 2
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              pitch: 62,
+              start_time: 3,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            }, // Start of bar 2 in 3/4
+            {
+              pitch: 64,
+              start_time: 4,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            }, // bar 2, beat 2
           ],
         });
       }
@@ -218,9 +245,30 @@ describe("readClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-            { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // Start of bar 2 in 6/8 (3 quarter notes)
-            { pitch: 64, start_time: 3.5, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // bar 2, beat 2
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              pitch: 62,
+              start_time: 3,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            }, // Start of bar 2 in 6/8 (3 quarter notes)
+            {
+              pitch: 64,
+              start_time: 3.5,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            }, // bar 2, beat 2
           ],
         });
       }
@@ -361,7 +409,9 @@ describe("readClip", () => {
   });
 
   it("throws an error when neither clipId nor trackIndex+clipSlotIndex are provided", () => {
-    expect(() => readClip({})).toThrow("Either clipId or both trackIndex and clipSlotIndex must be provided");
+    expect(() => readClip({})).toThrow(
+      "Either clipId or both trackIndex and clipSlotIndex must be provided",
+    );
     expect(() => readClip({ trackIndex: 1 })).toThrow(
       "Either clipId or both trackIndex and clipSlotIndex must be provided",
     );

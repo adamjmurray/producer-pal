@@ -16,7 +16,9 @@ export class LiveAPI {
     this.get = liveApiGet;
     this.set = liveApiSet;
     this.call = liveApiCall;
-    this._id = path.startsWith("id ") ? path.slice(3) : path.replaceAll(/\s+/g, "/");
+    this._id = path.startsWith("id ")
+      ? path.slice(3)
+      : path.replaceAll(/\s+/g, "/");
   }
 
   get id() {
@@ -66,7 +68,8 @@ export class LiveAPI {
 
 export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
-    const overridesByProp = overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
+    const overridesByProp =
+      overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
     // console.log("[DEBUG] mockLiveApiGet", {
     //   prop,
     //   id: this.id,

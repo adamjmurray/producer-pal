@@ -15,7 +15,16 @@ import { MAX_AUTO_CREATED_TRACKS } from "./constants.js";
  * @param {boolean} [args.arm] - Arm state for the tracks
  * @returns {Object|Array<Object>} Single track object when count=1, array when count>1
  */
-export function createTrack({ trackIndex, count = 1, name, color, type = "midi", mute, solo, arm } = {}) {
+export function createTrack({
+  trackIndex,
+  count = 1,
+  name,
+  color,
+  type = "midi",
+  mute,
+  solo,
+  arm,
+} = {}) {
   if (trackIndex == null) {
     throw new Error("createTrack failed: trackIndex is required");
   }
@@ -50,7 +59,14 @@ export function createTrack({ trackIndex, count = 1, name, color, type = "midi",
     const track = new LiveAPI(`id ${trackId}`);
 
     // Build the track name
-    const trackName = name != null ? (count === 1 ? name : i === 0 ? name : `${name} ${i + 1}`) : undefined;
+    const trackName =
+      name != null
+        ? count === 1
+          ? name
+          : i === 0
+            ? name
+            : `${name} ${i + 1}`
+        : undefined;
 
     track.setAll({
       name: trackName,

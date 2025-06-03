@@ -1,5 +1,18 @@
 // src/notation/midi-pitch-to-name.js
-export const PITCH_CLASS_NAMES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+export const PITCH_CLASS_NAMES = [
+  "C",
+  "Db",
+  "D",
+  "Eb",
+  "E",
+  "F",
+  "Gb",
+  "G",
+  "Ab",
+  "A",
+  "Bb",
+  "B",
+];
 
 /**
  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")

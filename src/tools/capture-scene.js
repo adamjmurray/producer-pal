@@ -17,9 +17,13 @@ export function captureScene({ sceneIndex, name } = {}) {
   }
 
   const selectedScene = new LiveAPI("live_set view selected_scene");
-  const selectedSceneIndex = Number.parseInt(selectedScene.path.match(/live_set scenes (\d+)/)?.[1]);
+  const selectedSceneIndex = Number.parseInt(
+    selectedScene.path.match(/live_set scenes (\d+)/)?.[1],
+  );
   if (Number.isNaN(selectedSceneIndex)) {
-    throw new Error(`capture-scene failed: couldn't determine selected scene index`);
+    throw new Error(
+      `capture-scene failed: couldn't determine selected scene index`,
+    );
   }
 
   liveSet.call("capture_and_insert_scene");

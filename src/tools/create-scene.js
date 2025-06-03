@@ -13,7 +13,14 @@ import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
  * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
  * @returns {Object|Array<Object>} Single scene object when count=1, array when count>1
  */
-export function createScene({ sceneIndex, count = 1, name, color, tempo, timeSignature } = {}) {
+export function createScene({
+  sceneIndex,
+  count = 1,
+  name,
+  color,
+  tempo,
+  timeSignature,
+} = {}) {
   if (sceneIndex == null) {
     throw new Error("createScene failed: sceneIndex is required");
   }
@@ -48,7 +55,14 @@ export function createScene({ sceneIndex, count = 1, name, color, tempo, timeSig
     const scene = new LiveAPI(`live_set scenes ${currentIndex}`);
 
     // Build the scene name
-    const sceneName = name != null ? (count === 1 ? name : i === 0 ? name : `${name} ${i + 1}`) : undefined;
+    const sceneName =
+      name != null
+        ? count === 1
+          ? name
+          : i === 0
+            ? name
+            : `${name} ${i + 1}`
+        : undefined;
 
     // Set properties if provided
     if (sceneName != null) {

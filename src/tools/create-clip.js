@@ -54,11 +54,15 @@ export function createClip({
   }
 
   if (view === "session" && clipSlotIndex == null) {
-    throw new Error("createClip failed: clipSlotIndex is required when view is 'Session'");
+    throw new Error(
+      "createClip failed: clipSlotIndex is required when view is 'Session'",
+    );
   }
 
   if (view === "arrangement" && arrangementStartTime == null) {
-    throw new Error("createClip failed: arrangementStartTime is required when view is 'Arrangement'");
+    throw new Error(
+      "createClip failed: arrangementStartTime is required when view is 'Arrangement'",
+    );
   }
 
   if (count < 1) {
@@ -89,14 +93,26 @@ export function createClip({
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
-  const startMarkerBeats = barBeatToAbletonBeats(startMarker, timeSigNumerator, timeSigDenominator);
-  const loopStartBeats = barBeatToAbletonBeats(loopStart, timeSigNumerator, timeSigDenominator);
+  const startMarkerBeats = barBeatToAbletonBeats(
+    startMarker,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  const loopStartBeats = barBeatToAbletonBeats(
+    loopStart,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
   // Convert length parameter to endMarker and loopEnd
   let endMarkerBeats = null;
   let loopEndBeats = null;
   if (length != null) {
-    const lengthBeats = barBeatDurationToAbletonBeats(length, timeSigNumerator, timeSigDenominator);
+    const lengthBeats = barBeatDurationToAbletonBeats(
+      length,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
     const startOffsetBeats = startMarkerBeats || 0;
     endMarkerBeats = startOffsetBeats + lengthBeats;
     loopEndBeats = startOffsetBeats + lengthBeats;
@@ -122,18 +138,24 @@ export function createClip({
     // const lastNoteEndTime = Math.max(...notes.map((note) => note.start_time + note.duration));
     // clipLength = Math.ceil(lastNoteEndTime);
 
-    const lastNoteEndTimeAbletonBeats = Math.max(...notes.map((note) => note.start_time + note.duration));
+    const lastNoteEndTimeAbletonBeats = Math.max(
+      ...notes.map((note) => note.start_time + note.duration),
+    );
 
     // Convert back to musical beats to round up conceptually
     const lastNoteEndTimeMusicalBeats =
-      timeSigDenominator != null ? lastNoteEndTimeAbletonBeats * (timeSigDenominator / 4) : lastNoteEndTimeAbletonBeats;
+      timeSigDenominator != null
+        ? lastNoteEndTimeAbletonBeats * (timeSigDenominator / 4)
+        : lastNoteEndTimeAbletonBeats;
 
     // Round up to whole musical beats
     const clipLengthMusicalBeats = Math.ceil(lastNoteEndTimeMusicalBeats);
 
     // Convert back to Ableton beats for the Live API
     clipLength =
-      timeSigDenominator != null ? clipLengthMusicalBeats * (4 / timeSigDenominator) : clipLengthMusicalBeats;
+      timeSigDenominator != null
+        ? clipLengthMusicalBeats * (4 / timeSigDenominator)
+        : clipLengthMusicalBeats;
   } else {
     // Empty clip, use 1 beat minimum
     clipLength = 1;
@@ -143,7 +165,14 @@ export function createClip({
 
   for (let i = 0; i < count; i++) {
     // Build the clip name
-    const clipName = name != null ? (count === 1 ? name : i === 0 ? name : `${name} ${i + 1}`) : undefined;
+    const clipName =
+      name != null
+        ? count === 1
+          ? name
+          : i === 0
+            ? name
+            : `${name} ${i + 1}`
+        : undefined;
 
     let clip;
     let currentClipSlotIndex, currentArrangementStartTimeBeats;
@@ -169,7 +198,9 @@ export function createClip({
         }
       }
 
-      const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`);
+      const clipSlot = new LiveAPI(
+        `live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`,
+      );
       if (clipSlot.getProperty("has_clip")) {
         throw new Error(
           `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentClipSlotIndex}`,
@@ -179,14 +210,21 @@ export function createClip({
       clip = new LiveAPI(`${clipSlot.path} clip`);
     } else {
       // Arrangement view
-      currentArrangementStartTimeBeats = arrangementStartTimeBeats + i * clipLength;
+      currentArrangementStartTimeBeats =
+        arrangementStartTimeBeats + i * clipLength;
 
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
       if (!track.exists()) {
-        throw new Error(`createClip failed: track with index ${trackIndex} does not exist`);
+        throw new Error(
+          `createClip failed: track with index ${trackIndex} does not exist`,
+        );
       }
 
-      const newClipResult = track.call("create_midi_clip", currentArrangementStartTimeBeats, clipLength);
+      const newClipResult = track.call(
+        "create_midi_clip",
+        currentArrangementStartTimeBeats,
+        clipLength,
+      );
       clip = LiveAPI.from(newClipResult);
       if (!clip.exists()) {
         throw new Error("createClip failed: failed to create Arrangement clip");
@@ -226,11 +264,18 @@ export function createClip({
         clipResult.arrangementStartTime = arrangementStartTime;
       } else {
         // Convert clipLength back to bar|beat format and add to original position
-        const clipLengthInMusicalBeats = clipLength * (songTimeSigDenominator / 4);
+        const clipLengthInMusicalBeats =
+          clipLength * (songTimeSigDenominator / 4);
         const totalOffsetBeats = i * clipLengthInMusicalBeats;
-        const originalBeats = barBeatToBeats(arrangementStartTime, songTimeSigNumerator);
+        const originalBeats = barBeatToBeats(
+          arrangementStartTime,
+          songTimeSigNumerator,
+        );
         const newPositionBeats = originalBeats + totalOffsetBeats;
-        clipResult.arrangementStartTime = beatsToBarBeat(newPositionBeats, songTimeSigNumerator);
+        clipResult.arrangementStartTime = beatsToBarBeat(
+          newPositionBeats,
+          songTimeSigNumerator,
+        );
       }
     }
 
@@ -238,7 +283,9 @@ export function createClip({
       name: clipName,
       color,
       timeSignature:
-        timeSigNumerator != null && timeSigDenominator != null ? `${timeSigNumerator}/${timeSigDenominator}` : null,
+        timeSigNumerator != null && timeSigDenominator != null
+          ? `${timeSigNumerator}/${timeSigDenominator}`
+          : null,
       startMarker,
       length,
       loopStart,
@@ -265,7 +312,9 @@ export function createClip({
   if (autoplay && view === "session") {
     for (let i = 0; i < count; i++) {
       const currentClipSlotIndex = clipSlotIndex + i;
-      const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`);
+      const clipSlot = new LiveAPI(
+        `live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`,
+      );
       clipSlot.call("fire");
       // Mark as triggered in optimistic results
       createdClips[i].isTriggered = true;

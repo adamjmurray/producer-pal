@@ -20,7 +20,9 @@ const str = (any) => {
       return `Dict("${any.name}") ${any.stringify().replaceAll("\n", " ")}`;
   }
   const s = String(any);
-  return s === "[object Object]" ? any.constructor.name + JSON.stringify(any) : s;
+  return s === "[object Object]"
+    ? any.constructor.name + JSON.stringify(any)
+    : s;
 };
 
 export const log = (...any) => post(...any.map(str), "\n");

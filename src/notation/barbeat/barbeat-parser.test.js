@@ -10,7 +10,11 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("parses a sequence of notes", () => {
-      expect(parser.parse("C3 E3 G3")).toStrictEqual([{ pitch: 60 }, { pitch: 64 }, { pitch: 67 }]);
+      expect(parser.parse("C3 E3 G3")).toStrictEqual([
+        { pitch: 60 },
+        { pitch: 64 },
+        { pitch: 67 },
+      ]);
     });
 
     it("parses mixed elements (state + notes)", () => {
@@ -60,7 +64,9 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("rejects out-of-range probability", () => {
-      expect(() => parser.parse("p1.5 C3")).toThrow("Note probability 1.5 outside valid range 0.0-1.0");
+      expect(() => parser.parse("p1.5 C3")).toThrow(
+        "Note probability 1.5 outside valid range 0.0-1.0",
+      );
     });
   });
 
@@ -84,16 +90,24 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("rejects out-of-range velocity", () => {
-      expect(() => parser.parse("v128 C3")).toThrow("MIDI velocity 128 outside valid range 0-127");
+      expect(() => parser.parse("v128 C3")).toThrow(
+        "MIDI velocity 128 outside valid range 0-127",
+      );
     });
 
     it("rejects invalid velocity ranges", () => {
-      expect(() => parser.parse("v128-130 C3")).toThrow("Invalid velocity range 128-130");
-      expect(() => parser.parse("v0-128 C3")).toThrow("Invalid velocity range 0-128");
+      expect(() => parser.parse("v128-130 C3")).toThrow(
+        "Invalid velocity range 128-130",
+      );
+      expect(() => parser.parse("v0-128 C3")).toThrow(
+        "Invalid velocity range 0-128",
+      );
     });
 
     it("rejects negative velocity", () => {
-      expect(() => parser.parse("v-1 C3")).toThrow('Expected [0-9] but "-" found.');
+      expect(() => parser.parse("v-1 C3")).toThrow(
+        'Expected [0-9] but "-" found.',
+      );
     });
   });
 
@@ -134,11 +148,17 @@ describe("BarBeatScript Parser", () => {
 
   describe("velocity range edge cases", () => {
     it("handles reversed velocity ranges correctly", () => {
-      expect(parser.parse("v120-80 C3")).toStrictEqual([{ velocityMin: 80, velocityMax: 120 }, { pitch: 60 }]);
+      expect(parser.parse("v120-80 C3")).toStrictEqual([
+        { velocityMin: 80, velocityMax: 120 },
+        { pitch: 60 },
+      ]);
     });
 
     it("handles same value velocity ranges", () => {
-      expect(parser.parse("v100-100 C3")).toStrictEqual([{ velocityMin: 100, velocityMax: 100 }, { pitch: 60 }]);
+      expect(parser.parse("v100-100 C3")).toStrictEqual([
+        { velocityMin: 100, velocityMax: 100 },
+        { pitch: 60 },
+      ]);
     });
   });
 
@@ -148,11 +168,17 @@ describe("BarBeatScript Parser", () => {
     });
 
     it("handles decimal-only floats in duration", () => {
-      expect(parser.parse("t.25 C3")).toStrictEqual([{ duration: 0.25 }, { pitch: 60 }]);
+      expect(parser.parse("t.25 C3")).toStrictEqual([
+        { duration: 0.25 },
+        { pitch: 60 },
+      ]);
     });
 
     it("handles decimal-only floats in probability", () => {
-      expect(parser.parse("p.5 C3")).toStrictEqual([{ probability: 0.5 }, { pitch: 60 }]);
+      expect(parser.parse("p.5 C3")).toStrictEqual([
+        { probability: 0.5 },
+        { pitch: 60 },
+      ]);
     });
 
     it("handles various float formats", () => {
@@ -166,7 +192,9 @@ describe("BarBeatScript Parser", () => {
 
   describe("parser options and configuration", () => {
     it("throws error for invalid start rule", () => {
-      expect(() => parser.parse("C3", { startRule: "invalid" })).toThrow('Can\'t start parsing from rule "invalid".');
+      expect(() => parser.parse("C3", { startRule: "invalid" })).toThrow(
+        'Can\'t start parsing from rule "invalid".',
+      );
     });
 
     it("returns library object when peg$library option is true", () => {
@@ -243,11 +271,17 @@ describe("BarBeatScript Parser", () => {
 
   describe("special character handling", () => {
     it("handles tab and newline characters in input", () => {
-      expect(parser.parse("C3\t\nD3")).toStrictEqual([{ pitch: 60 }, { pitch: 62 }]);
+      expect(parser.parse("C3\t\nD3")).toStrictEqual([
+        { pitch: 60 },
+        { pitch: 62 },
+      ]);
     });
 
     it("handles carriage return characters", () => {
-      expect(parser.parse("C3\r\nD3")).toStrictEqual([{ pitch: 60 }, { pitch: 62 }]);
+      expect(parser.parse("C3\r\nD3")).toStrictEqual([
+        { pitch: 60 },
+        { pitch: 62 },
+      ]);
     });
 
     it("rejects invalid characters with proper error messages", () => {

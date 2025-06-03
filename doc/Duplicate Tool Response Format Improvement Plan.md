@@ -83,9 +83,33 @@
   "destination": "session",
   "name": "DUPE",
   "objects": [
-    { "duplicatedClip": { "id": "291", "view": "Session", "trackIndex": 2, "clipSlotIndex": 2, "name": "DUPE" } },
-    { "duplicatedClip": { "id": "292", "view": "Session", "trackIndex": 2, "clipSlotIndex": 3, "name": "DUPE 2" } },
-    { "duplicatedClip": { "id": "293", "view": "Session", "trackIndex": 2, "clipSlotIndex": 4, "name": "DUPE 3" } }
+    {
+      "duplicatedClip": {
+        "id": "291",
+        "view": "Session",
+        "trackIndex": 2,
+        "clipSlotIndex": 2,
+        "name": "DUPE"
+      }
+    },
+    {
+      "duplicatedClip": {
+        "id": "292",
+        "view": "Session",
+        "trackIndex": 2,
+        "clipSlotIndex": 3,
+        "name": "DUPE 2"
+      }
+    },
+    {
+      "duplicatedClip": {
+        "id": "293",
+        "view": "Session",
+        "trackIndex": 2,
+        "clipSlotIndex": 4,
+        "name": "DUPE 3"
+      }
+    }
   ]
 }
 ```
@@ -125,21 +149,71 @@
     {
       "arrangementStartTime": "5|1",
       "duplicatedClips": [
-        { "id": "326", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "5|1" },
-        { "id": "327", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "5|1" },
-        { "id": "328", "view": "Arrangement", "trackIndex": 2, "arrangementStartTime": "5|1" },
-        { "id": "329", "view": "Arrangement", "trackIndex": 3, "arrangementStartTime": "5|1" },
-        { "id": "330", "view": "Arrangement", "trackIndex": 4, "arrangementStartTime": "5|1" }
+        {
+          "id": "326",
+          "view": "Arrangement",
+          "trackIndex": 0,
+          "arrangementStartTime": "5|1"
+        },
+        {
+          "id": "327",
+          "view": "Arrangement",
+          "trackIndex": 1,
+          "arrangementStartTime": "5|1"
+        },
+        {
+          "id": "328",
+          "view": "Arrangement",
+          "trackIndex": 2,
+          "arrangementStartTime": "5|1"
+        },
+        {
+          "id": "329",
+          "view": "Arrangement",
+          "trackIndex": 3,
+          "arrangementStartTime": "5|1"
+        },
+        {
+          "id": "330",
+          "view": "Arrangement",
+          "trackIndex": 4,
+          "arrangementStartTime": "5|1"
+        }
       ]
     },
     {
       "arrangementStartTime": "9|1",
       "duplicatedClips": [
-        { "id": "331", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "9|1" },
-        { "id": "332", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "9|1" },
-        { "id": "333", "view": "Arrangement", "trackIndex": 2, "arrangementStartTime": "9|1" },
-        { "id": "334", "view": "Arrangement", "trackIndex": 3, "arrangementStartTime": "9|1" },
-        { "id": "335", "view": "Arrangement", "trackIndex": 4, "arrangementStartTime": "9|1" }
+        {
+          "id": "331",
+          "view": "Arrangement",
+          "trackIndex": 0,
+          "arrangementStartTime": "9|1"
+        },
+        {
+          "id": "332",
+          "view": "Arrangement",
+          "trackIndex": 1,
+          "arrangementStartTime": "9|1"
+        },
+        {
+          "id": "333",
+          "view": "Arrangement",
+          "trackIndex": 2,
+          "arrangementStartTime": "9|1"
+        },
+        {
+          "id": "334",
+          "view": "Arrangement",
+          "trackIndex": 3,
+          "arrangementStartTime": "9|1"
+        },
+        {
+          "id": "335",
+          "view": "Arrangement",
+          "trackIndex": 4,
+          "arrangementStartTime": "9|1"
+        }
       ]
     }
   ]
@@ -148,10 +222,12 @@
 
 ## Current Issues
 
-1. **Inconsistent Structure**: Single count uses direct fields (`newTrackId`, `duplicatedClip`), multiple count uses
-   `objects` array
-2. **Redundant Wrapping**: In multi-count responses, each item in `objects` array unnecessarily wraps the actual data
-3. **Inconsistent Naming**: `duplicatedClips` vs `duplicatedClip` vs `newTrackId`
+1. **Inconsistent Structure**: Single count uses direct fields (`newTrackId`,
+   `duplicatedClip`), multiple count uses `objects` array
+2. **Redundant Wrapping**: In multi-count responses, each item in `objects`
+   array unnecessarily wraps the actual data
+3. **Inconsistent Naming**: `duplicatedClips` vs `duplicatedClip` vs
+   `newTrackId`
 4. **Mixed Terminology**: "duplicated" vs "new" prefixes
 
 ## Proposed Unified Format
@@ -196,9 +272,27 @@
   "destination": "session",
   "name": "DUPE",
   "newClips": [
-    { "id": "291", "view": "Session", "trackIndex": 2, "clipSlotIndex": 2, "name": "DUPE" },
-    { "id": "292", "view": "Session", "trackIndex": 2, "clipSlotIndex": 3, "name": "DUPE 2" },
-    { "id": "293", "view": "Session", "trackIndex": 2, "clipSlotIndex": 4, "name": "DUPE 3" }
+    {
+      "id": "291",
+      "view": "Session",
+      "trackIndex": 2,
+      "clipSlotIndex": 2,
+      "name": "DUPE"
+    },
+    {
+      "id": "292",
+      "view": "Session",
+      "trackIndex": 2,
+      "clipSlotIndex": 3,
+      "name": "DUPE 2"
+    },
+    {
+      "id": "293",
+      "view": "Session",
+      "trackIndex": 2,
+      "clipSlotIndex": 4,
+      "name": "DUPE 3"
+    }
   ]
 }
 ```
@@ -215,14 +309,34 @@
   "newScenes": [
     {
       "clips": [
-        { "id": "326", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "5|1" },
-        { "id": "327", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "5|1" }
+        {
+          "id": "326",
+          "view": "Arrangement",
+          "trackIndex": 0,
+          "arrangementStartTime": "5|1"
+        },
+        {
+          "id": "327",
+          "view": "Arrangement",
+          "trackIndex": 1,
+          "arrangementStartTime": "5|1"
+        }
       ]
     },
     {
       "clips": [
-        { "id": "331", "view": "Arrangement", "trackIndex": 0, "arrangementStartTime": "9|1" },
-        { "id": "332", "view": "Arrangement", "trackIndex": 1, "arrangementStartTime": "9|1" }
+        {
+          "id": "331",
+          "view": "Arrangement",
+          "trackIndex": 0,
+          "arrangementStartTime": "9|1"
+        },
+        {
+          "id": "332",
+          "view": "Arrangement",
+          "trackIndex": 1,
+          "arrangementStartTime": "9|1"
+        }
       ]
     }
   ]
@@ -260,13 +374,16 @@
 
 ## Benefits of Proposed Format
 
-1. **Consistent Structure**: Always use arrays (`newTracks`, `newClips`, `newScenes`) regardless of count
+1. **Consistent Structure**: Always use arrays (`newTracks`, `newClips`,
+   `newScenes`) regardless of count
 2. **Predictable Naming**: Operation type determines array name
-3. **Clean Nesting**: Contained clips use simple `clips` array, not `duplicatedClips`
+3. **Clean Nesting**: Contained clips use simple `clips` array, not
+   `duplicatedClips`
 4. **No Redundant Wrappers**: Eliminate unnecessary object layers
-5. **Type-Safe Parsing**: Response structure is predictable based on operation type
+5. **Type-Safe Parsing**: Response structure is predictable based on operation
+   type
 
 ## Implementation Priority
 
-**Low Priority** - Current format is functional and understandable. This is a polish/consistency improvement that can be
-addressed when convenient.
+**Low Priority** - Current format is functional and understandable. This is a
+polish/consistency improvement that can be addressed when convenient.

@@ -1,5 +1,8 @@
 // src/tools/read-clip.js
-import { abletonBeatsToBarBeat, abletonBeatsToBarBeatDuration } from "../notation/barbeat/barbeat-time";
+import {
+  abletonBeatsToBarBeat,
+  abletonBeatsToBarBeatDuration,
+} from "../notation/barbeat/barbeat-time";
 import { formatNotation } from "../notation/notation";
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
@@ -9,9 +12,15 @@ import { formatNotation } from "../notation/notation";
  * @param {string} [args.clipId] - Clip ID to directly access any clip
  * @returns {Object} Result object with clip information
  */
-export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = null }) {
+export function readClip({
+  trackIndex = null,
+  clipSlotIndex = null,
+  clipId = null,
+}) {
   if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
-    throw new Error("Either clipId or both trackIndex and clipSlotIndex must be provided");
+    throw new Error(
+      "Either clipId or both trackIndex and clipSlotIndex must be provided",
+    );
   }
 
   // Support "id {id}" (such as returned by childIds()) and id values directly
@@ -19,10 +28,13 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
   const clip =
     clipId != null
       ? LiveAPI.from(clipId)
-      : new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
+      : new LiveAPI(
+          `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`,
+        );
 
   if (!clip.exists()) {
-    if (clipId != null) throw new Error(`No clip exists for clipId "${clipId}"`);
+    if (clipId != null)
+      throw new Error(`No clip exists for clipId "${clipId}"`);
     return {
       id: null,
       type: null,
@@ -46,9 +58,21 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
     view: isArrangementClip ? "arrangement" : "session",
     color: clip.getColor(),
     loop: isLooping,
-    length: abletonBeatsToBarBeatDuration(lengthBeats, timeSigNumerator, timeSigDenominator),
-    startMarker: abletonBeatsToBarBeat(clip.getProperty("start_marker"), timeSigNumerator, timeSigDenominator),
-    loopStart: abletonBeatsToBarBeat(clip.getProperty("loop_start"), timeSigNumerator, timeSigDenominator),
+    length: abletonBeatsToBarBeatDuration(
+      lengthBeats,
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
+    startMarker: abletonBeatsToBarBeat(
+      clip.getProperty("start_marker"),
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
+    loopStart: abletonBeatsToBarBeat(
+      clip.getProperty("loop_start"),
+      timeSigNumerator,
+      timeSigDenominator,
+    ),
     isPlaying: clip.getProperty("is_playing") > 0,
     isTriggered: clip.getProperty("is_triggered") > 0,
     timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
@@ -71,10 +95,19 @@ export function readClip({ trackIndex = null, clipSlotIndex = null, clipId = nul
 
   if (result.type === "midi") {
     // Use the Live API's length property directly
-    const notesDictionary = clip.call("get_notes_extended", 0, 127, 0, lengthBeats);
+    const notesDictionary = clip.call(
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      lengthBeats,
+    );
     const notes = JSON.parse(notesDictionary).notes;
     result.noteCount = notes.length;
-    result.notes = formatNotation(notes, { timeSigNumerator, timeSigDenominator });
+    result.notes = formatNotation(notes, {
+      timeSigNumerator,
+      timeSigDenominator,
+    });
   }
 
   return result;

@@ -11,10 +11,15 @@ if (typeof LiveAPI !== "undefined") {
       if (idOrPath.length === 2 && idOrPath[0] === "id") {
         return new LiveAPI(`id ${idOrPath[1]}`);
       }
-      throw new Error(`Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`);
+      throw new Error(
+        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`,
+      );
     }
 
-    if (typeof idOrPath === "number" || (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))) {
+    if (
+      typeof idOrPath === "number" ||
+      (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))
+    ) {
       return new LiveAPI(`id ${idOrPath}`);
     }
     return new LiveAPI(idOrPath);
@@ -122,7 +127,9 @@ if (typeof LiveAPI !== "undefined") {
     });
   }
 
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "clipSlotIndex")) {
+  if (
+    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "clipSlotIndex")
+  ) {
     Object.defineProperty(LiveAPI.prototype, "clipSlotIndex", {
       get: function () {
         // Try clip_slots path first

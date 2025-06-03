@@ -1,5 +1,8 @@
 // src/tools/transport.js
-import { abletonBeatsToBarBeat, barBeatToAbletonBeats } from "../notation/barbeat/barbeat-time";
+import {
+  abletonBeatsToBarBeat,
+  barBeatToAbletonBeats,
+} from "../notation/barbeat/barbeat-time";
 import { parseCommaSeparatedIndices } from "../utils.js";
 
 /**
@@ -43,20 +46,33 @@ export function transport({
   let startTimeBeats, loopStartBeats, loopEndBeats;
 
   if (startTime != null) {
-    startTimeBeats = barBeatToAbletonBeats(startTime, songTimeSigNumerator, songTimeSigDenominator);
+    startTimeBeats = barBeatToAbletonBeats(
+      startTime,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
     liveSet.set("start_time", startTimeBeats);
   }
   if (loop != null) {
     liveSet.set("loop", loop);
   }
   if (loopStart != null) {
-    loopStartBeats = barBeatToAbletonBeats(loopStart, songTimeSigNumerator, songTimeSigDenominator);
+    loopStartBeats = barBeatToAbletonBeats(
+      loopStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
     liveSet.set("loop_start", loopStartBeats);
   }
   if (loopEnd != null) {
-    loopEndBeats = barBeatToAbletonBeats(loopEnd, songTimeSigNumerator, songTimeSigDenominator);
+    loopEndBeats = barBeatToAbletonBeats(
+      loopEnd,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
     // Live API uses loop_length, not loop_end, so we need to calculate the length
-    const actualLoopStartBeats = loopStartBeats ?? liveSet.getProperty("loop_start");
+    const actualLoopStartBeats =
+      loopStartBeats ?? liveSet.getProperty("loop_start");
     const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
     liveSet.set("loop_length", loopLengthBeats);
   }
@@ -97,11 +113,15 @@ export function transport({
 
     case "play-scene":
       if (sceneIndex == null) {
-        throw new Error(`transport failed: sceneIndex is required for action "play-scene"`);
+        throw new Error(
+          `transport failed: sceneIndex is required for action "play-scene"`,
+        );
       }
       const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
       if (!scene.exists()) {
-        throw new Error(`transport play-session-scene action failed: scene at sceneIndex=${sceneIndex} does not exist`);
+        throw new Error(
+          `transport play-session-scene action failed: scene at sceneIndex=${sceneIndex} does not exist`,
+        );
       }
 
       appView.call("show_view", "Session");
@@ -112,10 +132,14 @@ export function transport({
 
     case "play-session-clip":
       if (!trackIndexes) {
-        throw new Error(`transport failed: trackIndexes is required for action "play-session-clip"`);
+        throw new Error(
+          `transport failed: trackIndexes is required for action "play-session-clip"`,
+        );
       }
       if (!clipSlotIndexes) {
-        throw new Error(`transport failed: clipSlotIndexes is required for action "play-session-clip"`);
+        throw new Error(
+          `transport failed: clipSlotIndexes is required for action "play-session-clip"`,
+        );
       }
 
       const trackIndexList = parseCommaSeparatedIndices(trackIndexes);
@@ -126,9 +150,13 @@ export function transport({
       for (let i = 0; i < trackIndexList.length; i++) {
         const trackIndex = trackIndexList[i];
         const clipSlotIndex =
-          i < clipSlotIndexList.length ? clipSlotIndexList[i] : clipSlotIndexList[clipSlotIndexList.length - 1];
+          i < clipSlotIndexList.length
+            ? clipSlotIndexList[i]
+            : clipSlotIndexList[clipSlotIndexList.length - 1];
 
-        const clipSlot = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`);
+        const clipSlot = new LiveAPI(
+          `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`,
+        );
         if (!clipSlot.exists()) {
           throw new Error(
             `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`,
@@ -147,7 +175,9 @@ export function transport({
 
     case "stop-track-session-clip":
       if (!trackIndexes) {
-        throw new Error(`transport failed: trackIndexes is required for action "stop-track-session-clip"`);
+        throw new Error(
+          `transport failed: trackIndexes is required for action "stop-track-session-clip"`,
+        );
       }
 
       const stopTrackIndexList = parseCommaSeparatedIndices(trackIndexes);
@@ -185,12 +215,20 @@ export function transport({
   }
 
   // Convert beats back to bar|beat for the response
-  const currentTime = abletonBeatsToBarBeat(currentTimeBeats, songTimeSigNumerator, songTimeSigDenominator);
+  const currentTime = abletonBeatsToBarBeat(
+    currentTimeBeats,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 
   // Get current loop state and convert to bar|beat
   const currentLoopStartBeats = liveSet.getProperty("loop_start");
   const currentLoopLengthBeats = liveSet.getProperty("loop_length");
-  const currentLoopStart = abletonBeatsToBarBeat(currentLoopStartBeats, songTimeSigNumerator, songTimeSigDenominator);
+  const currentLoopStart = abletonBeatsToBarBeat(
+    currentLoopStartBeats,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
   const currentLoopEnd = abletonBeatsToBarBeat(
     currentLoopStartBeats + currentLoopLengthBeats,
     songTimeSigNumerator,

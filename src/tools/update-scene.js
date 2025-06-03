@@ -26,7 +26,9 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
     const scene = LiveAPI.from(id);
 
     if (!scene.exists()) {
-      throw new Error(`updateScene failed: scene with id "${id}" does not exist`);
+      throw new Error(
+        `updateScene failed: scene with id "${id}" does not exist`,
+      );
     }
 
     // Update properties if provided
@@ -59,7 +61,9 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
     // Find sceneIndex for consistency with readScene format
     const sceneIndex = Number(scene.path.match(/live_set scenes (\d+)/)?.[1]);
     if (Number.isNaN(sceneIndex)) {
-      throw new Error(`updateScene failed: could not determine sceneIndex for id "${id}" (path="${scene.path}")`);
+      throw new Error(
+        `updateScene failed: could not determine sceneIndex for id "${id}" (path="${scene.path}")`,
+      );
     }
 
     // Build optimistic result object

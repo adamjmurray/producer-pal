@@ -1,6 +1,9 @@
 // src/mcp-server/add-tool-duplicate.js
 import { z } from "zod";
-import { MAX_AUTO_CREATED_SCENES, MAX_AUTO_CREATED_TRACKS } from "../tools/constants";
+import {
+  MAX_AUTO_CREATED_SCENES,
+  MAX_AUTO_CREATED_TRACKS,
+} from "../tools/constants";
 
 export function addToolDuplicate(server, callLiveApi) {
   server.tool(
@@ -9,9 +12,16 @@ export function addToolDuplicate(server, callLiveApi) {
       "IMPORTANT: For Arrangement clips, all timing is relative to each clip's start time, not the global arrangement timeline. " +
       "IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arrangement clips will only play if their tracks are currently in arrangement-following state (see transport tool).",
     {
-      type: z.enum(["track", "scene", "clip"]).describe("Type of object to duplicate"),
+      type: z
+        .enum(["track", "scene", "clip"])
+        .describe("Type of object to duplicate"),
       id: z.string().describe("Object id to duplicate"),
-      count: z.number().int().min(1).default(1).describe("Number of duplicates to create (default: 1)"),
+      count: z
+        .number()
+        .int()
+        .min(1)
+        .default(1)
+        .describe("Number of duplicates to create (default: 1)"),
       destination: z
         .enum(["session", "arrangement"])
         .optional()
@@ -33,11 +43,15 @@ export function addToolDuplicate(server, callLiveApi) {
       name: z
         .string()
         .optional()
-        .describe("Optional name for the duplicated object(s) (auto-increments for count > 1)"),
+        .describe(
+          "Optional name for the duplicated object(s) (auto-increments for count > 1)",
+        ),
       includeClips: z
         .boolean()
         .optional()
-        .describe("Whether to include clips when duplicating tracks or scenes (default: true)"),
+        .describe(
+          "Whether to include clips when duplicating tracks or scenes (default: true)",
+        ),
     },
     async (args) => callLiveApi("duplicate", args),
   );

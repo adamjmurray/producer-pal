@@ -1,6 +1,12 @@
 // src/tools/create-scene.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import {
+  children,
+  liveApiCall,
+  liveApiId,
+  liveApiSet,
+  mockLiveApiGet,
+} from "../mock-live-api";
 import { MAX_AUTO_CREATED_SCENES } from "./constants";
 import { createScene } from "./create-scene";
 
@@ -21,11 +27,31 @@ describe("createScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", 1);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "New Scene");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "color", 16711680);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "tempo", 120);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "tempo_enabled", true);
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      1,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "name",
+      "New Scene",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "color",
+      16711680,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "tempo",
+      120,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "tempo_enabled",
+      true,
+    );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "scene1" }),
       "time_signature_numerator",
@@ -78,9 +104,21 @@ describe("createScene", () => {
       2,
     );
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Verse");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Verse 2");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Verse 3");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "name",
+      "Verse",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "name",
+      "Verse 2",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "name",
+      "Verse 3",
+    );
 
     expect(result).toEqual([
       {
@@ -107,7 +145,11 @@ describe("createScene", () => {
   it("should create scenes without setting properties when not provided", () => {
     const result = createScene({ sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", 0);
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      0,
+    );
     expect(liveApiSet).not.toHaveBeenCalled();
     expect(result).toEqual({
       id: "scene1",
@@ -126,10 +168,26 @@ describe("createScene", () => {
     });
 
     // Should create 3 padding scenes (indices 2,3,4) then the actual scene at index 5
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 1
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 2
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 3
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", 5); // actual scene
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      -1,
+    ); // padding scene 1
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      -1,
+    ); // padding scene 2
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      -1,
+    ); // padding scene 3
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      5,
+    ); // actual scene
 
     expect(liveApiCall).toHaveBeenCalledTimes(4);
   });
@@ -140,7 +198,11 @@ describe("createScene", () => {
       tempo: -1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "tempo_enabled", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "tempo_enabled",
+      false,
+    );
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
   });
 
@@ -155,23 +217,41 @@ describe("createScene", () => {
       "time_signature_enabled",
       false,
     );
-    expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
-    expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
+    expect(liveApiSet).not.toHaveBeenCalledWith(
+      "time_signature_numerator",
+      expect.any(Number),
+    );
+    expect(liveApiSet).not.toHaveBeenCalledWith(
+      "time_signature_denominator",
+      expect.any(Number),
+    );
   });
 
   it("should throw error when sceneIndex is missing", () => {
-    expect(() => createScene({})).toThrow("createScene failed: sceneIndex is required");
-    expect(() => createScene({ count: 2 })).toThrow("createScene failed: sceneIndex is required");
+    expect(() => createScene({})).toThrow(
+      "createScene failed: sceneIndex is required",
+    );
+    expect(() => createScene({ count: 2 })).toThrow(
+      "createScene failed: sceneIndex is required",
+    );
   });
 
   it("should throw error when count is less than 1", () => {
-    expect(() => createScene({ sceneIndex: 0, count: 0 })).toThrow("createScene failed: count must be at least 1");
-    expect(() => createScene({ sceneIndex: 0, count: -1 })).toThrow("createScene failed: count must be at least 1");
+    expect(() => createScene({ sceneIndex: 0, count: 0 })).toThrow(
+      "createScene failed: count must be at least 1",
+    );
+    expect(() => createScene({ sceneIndex: 0, count: -1 })).toThrow(
+      "createScene failed: count must be at least 1",
+    );
   });
 
   it("should throw error for invalid time signature format", () => {
-    expect(() => createScene({ sceneIndex: 0, timeSignature: "invalid" })).toThrow("Time signature must be in format");
-    expect(() => createScene({ sceneIndex: 0, timeSignature: "3-4" })).toThrow("Time signature must be in format");
+    expect(() =>
+      createScene({ sceneIndex: 0, timeSignature: "invalid" }),
+    ).toThrow("Time signature must be in format");
+    expect(() => createScene({ sceneIndex: 0, timeSignature: "3-4" })).toThrow(
+      "Time signature must be in format",
+    );
   });
 
   it("should throw error when creating scenes would exceed maximum", () => {
@@ -184,8 +264,16 @@ describe("createScene", () => {
   });
 
   it("should return single object for count=1 and array for count>1", () => {
-    const singleResult = createScene({ sceneIndex: 0, count: 1, name: "Single" });
-    const arrayResult = createScene({ sceneIndex: 1, count: 2, name: "Multiple" });
+    const singleResult = createScene({
+      sceneIndex: 0,
+      count: 1,
+      name: "Single",
+    });
+    const arrayResult = createScene({
+      sceneIndex: 1,
+      count: 2,
+      name: "Multiple",
+    });
 
     expect(singleResult).toEqual({
       id: "scene1",
@@ -206,7 +294,11 @@ describe("createScene", () => {
       name: "Solo Scene",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "scene1" }), "name", "Solo Scene");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "scene1" }),
+      "name",
+      "Solo Scene",
+    );
     expect(result.name).toBe("Solo Scene");
   });
 

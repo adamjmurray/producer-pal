@@ -1,13 +1,24 @@
 // src/tools/create-clip.test.js
 import { describe, expect, it } from "vitest";
-import { children, liveApiCall, liveApiId, liveApiSet, mockLiveApiGet, MockSequence } from "../mock-live-api";
+import {
+  children,
+  liveApiCall,
+  liveApiId,
+  liveApiSet,
+  mockLiveApiGet,
+  MockSequence,
+} from "../mock-live-api";
 import { MAX_AUTO_CREATED_SCENES } from "./constants";
 import { createClip } from "./create-clip";
 
 describe("createClip", () => {
   it("should throw error when required parameters are missing", () => {
-    expect(() => createClip({})).toThrow("createClip failed: view parameter is required");
-    expect(() => createClip({ view: "session" })).toThrow("createClip failed: trackIndex is required");
+    expect(() => createClip({})).toThrow(
+      "createClip failed: view parameter is required",
+    );
+    expect(() => createClip({ view: "session" })).toThrow(
+      "createClip failed: trackIndex is required",
+    );
     expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
       "createClip failed: clipSlotIndex is required when view is 'Session'",
     );
@@ -17,9 +28,14 @@ describe("createClip", () => {
   });
 
   it("should throw error when count is less than 1", () => {
-    expect(() => createClip({ view: "session", trackIndex: 0, clipSlotIndex: 0, count: 0 })).toThrow(
-      "createClip failed: count must be at least 1",
-    );
+    expect(() =>
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        count: 0,
+      }),
+    ).toThrow("createClip failed: count must be at least 1");
   });
 
   it("should validate time signature early when provided", () => {
@@ -62,8 +78,22 @@ describe("createClip", () => {
       "add_new_notes",
       {
         notes: [
-          { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-          { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }, // 3 beats per bar in 3/4
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 62,
+            start_time: 3,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          }, // 3 beats per bar in 3/4
         ],
       },
     );
@@ -87,8 +117,22 @@ describe("createClip", () => {
       "add_new_notes",
       {
         notes: [
-          { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-          { pitch: 62, start_time: 3, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 62,
+            start_time: 3,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
         ],
       },
     );
@@ -113,8 +157,22 @@ describe("createClip", () => {
       "add_new_notes",
       {
         notes: [
-          { pitch: 60, start_time: 0, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-          { pitch: 62, start_time: 3, duration: 0.5, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 0.5,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 62,
+            start_time: 3,
+            duration: 0.5,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
         ],
       },
     );
@@ -301,28 +359,57 @@ describe("createClip", () => {
         1,
       ); // Length based on notes
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
+        expect.objectContaining({
+          path: "live_set tracks 0 clip_slots 0 clip",
+        }),
         "name",
         "New Clip",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
+        expect.objectContaining({
+          path: "live_set tracks 0 clip_slots 0 clip",
+        }),
         "color",
         16711680,
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
+        expect.objectContaining({
+          path: "live_set tracks 0 clip_slots 0 clip",
+        }),
         "looping",
         true,
       );
       expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
+        expect.objectContaining({
+          path: "live_set tracks 0 clip_slots 0 clip",
+        }),
         "add_new_notes",
         {
           notes: [
-            { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-            { pitch: 62, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-            { pitch: 64, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              pitch: 62,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              pitch: 64,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
           ],
         },
       );
@@ -387,9 +474,21 @@ describe("createClip", () => {
       });
 
       // Should create 3 scenes first (for slots 1, 2, 3), then 3 clips
-      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // scene for slot 1
-      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // scene for slot 2
-      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // scene for slot 3
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_scene",
+        -1,
+      ); // scene for slot 1
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_scene",
+        -1,
+      ); // scene for slot 2
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_scene",
+        -1,
+      ); // scene for slot 3
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 1" }),
         "create_clip",
@@ -407,17 +506,23 @@ describe("createClip", () => {
       ); // clip in slot 3
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0 clip_slots 1 clip" }),
+        expect.objectContaining({
+          path: "live_set tracks 0 clip_slots 1 clip",
+        }),
         "name",
         "Loop",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0 clip_slots 2 clip" }),
+        expect.objectContaining({
+          path: "live_set tracks 0 clip_slots 2 clip",
+        }),
         "name",
         "Loop 2",
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set tracks 0 clip_slots 3 clip" }),
+        expect.objectContaining({
+          path: "live_set tracks 0 clip_slots 3 clip",
+        }),
         "name",
         "Loop 3",
       );
@@ -479,9 +584,21 @@ describe("createClip", () => {
       });
 
       // Should create 3 padding scenes (indices 2,3,4)
-      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 1
-      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 2
-      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 3
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_scene",
+        -1,
+      ); // padding scene 1
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_scene",
+        -1,
+      ); // padding scene 2
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_scene",
+        -1,
+      ); // padding scene 3
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 4" }),
@@ -502,7 +619,9 @@ describe("createClip", () => {
           clipSlotIndex: 0,
           name: "This Should Fail",
         }),
-      ).toThrow("createClip failed: a clip already exists at track 0, clip slot 0");
+      ).toThrow(
+        "createClip failed: a clip already exists at track 0, clip slot 0",
+      );
     });
 
     it("should throw error if clipSlotIndex exceeds maximum allowed scenes", () => {
@@ -781,8 +900,22 @@ describe("createClip", () => {
       "add_new_notes",
       {
         notes: [
-          { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
-          { pitch: 64, start_time: 0, duration: 1, velocity: 80, probability: 1.0, velocity_deviation: 0 },
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 64,
+            start_time: 0,
+            duration: 1,
+            velocity: 80,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
         ],
       },
     );
@@ -803,7 +936,10 @@ describe("createClip", () => {
       notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
+    expect(liveApiCall).not.toHaveBeenCalledWith(
+      "add_new_notes",
+      expect.anything(),
+    );
   });
 
   it("should set start and loop markers when provided", () => {

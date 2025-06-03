@@ -16,7 +16,9 @@ export function deleteObject({ ids, type } = {}) {
     throw new Error("delete failed: type is required");
   }
   if (!["track", "scene", "clip"].includes(type)) {
-    throw new Error(`delete failed: type must be one of "track", "scene", or "clip"`);
+    throw new Error(
+      `delete failed: type must be one of "track", "scene", or "clip"`,
+    );
   }
 
   // Parse comma-separated string into array
@@ -34,7 +36,9 @@ export function deleteObject({ ids, type } = {}) {
     }
 
     if (object.type.toLowerCase() !== type) {
-      throw new Error(`delete failed: id "${id}" is not a ${type} (type=${object.type})`);
+      throw new Error(
+        `delete failed: id "${id}" is not a ${type} (type=${object.type})`,
+      );
     }
 
     objectsToDelete.push({ id, object });
@@ -44,7 +48,8 @@ export function deleteObject({ ids, type } = {}) {
   if (type === "track" || type === "scene") {
     // Sort by index in descending order to delete from highest to lowest index
     objectsToDelete.sort((a, b) => {
-      const pathRegex = type === "track" ? /live_set tracks (\d+)/ : /live_set scenes (\d+)/;
+      const pathRegex =
+        type === "track" ? /live_set tracks (\d+)/ : /live_set scenes (\d+)/;
       const indexA = Number(a.object.path.match(pathRegex)?.[1]);
       const indexB = Number(b.object.path.match(pathRegex)?.[1]);
       return indexB - indexA; // Descending order
@@ -53,29 +58,41 @@ export function deleteObject({ ids, type } = {}) {
 
   for (const { id, object } of objectsToDelete) {
     if (type === "track") {
-      const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
+      const trackIndex = Number(
+        object.path.match(/live_set tracks (\d+)/)?.[1],
+      );
       if (Number.isNaN(trackIndex)) {
-        throw new Error(`delete failed: no track index for id "${id}" (path="${object.path}")`);
+        throw new Error(
+          `delete failed: no track index for id "${id}" (path="${object.path}")`,
+        );
       }
 
       const hostTrackIndex = getHostTrackIndex();
       if (trackIndex === hostTrackIndex) {
-        throw new Error("delete failed: cannot delete track hosting the Producer Pal device");
+        throw new Error(
+          "delete failed: cannot delete track hosting the Producer Pal device",
+        );
       }
 
       const liveSet = new LiveAPI("live_set");
       liveSet.call("delete_track", trackIndex);
     } else if (type === "scene") {
-      const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
+      const sceneIndex = Number(
+        object.path.match(/live_set scenes (\d+)/)?.[1],
+      );
       if (Number.isNaN(sceneIndex)) {
-        throw new Error(`delete failed: no scene index for id "${id}" (path="${object.path}")`);
+        throw new Error(
+          `delete failed: no scene index for id "${id}" (path="${object.path}")`,
+        );
       }
       const liveSet = new LiveAPI("live_set");
       liveSet.call("delete_scene", sceneIndex);
     } else if (type === "clip") {
       const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
       if (!trackIndex) {
-        throw new Error(`delete failed: no track index for id "${id}" (path="${object.path}")`);
+        throw new Error(
+          `delete failed: no track index for id "${id}" (path="${object.path}")`,
+        );
       }
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
       track.call("delete_clip", `id ${object.id}`);

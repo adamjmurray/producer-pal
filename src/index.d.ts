@@ -46,7 +46,11 @@ declare module "vitest" {
      *
      * @see expect-extensions.js
      */
-    toHaveBeenNthCalledWithThis(nthCall: number, expectedThis: any, ...expectedArgs: any[]): T;
+    toHaveBeenNthCalledWithThis(
+      nthCall: number,
+      expectedThis: any,
+      ...expectedArgs: any[]
+    ): T;
 
     /**
      * Asserts that a mock function was called exactly once with a specific `this` context and arguments.
@@ -68,6 +72,9 @@ declare module "vitest" {
      *
      * @see expect-extensions.js
      */
-    toHaveBeenCalledExactlyOnceWithThis(expectedThis: any, ...expectedArgs: any[]): T;
+    toHaveBeenCalledExactlyOnceWithThis(
+      expectedThis: any,
+      ...expectedArgs: any[]
+    ): T;
   }
 }

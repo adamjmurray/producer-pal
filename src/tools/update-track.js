@@ -27,7 +27,9 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
     const track = LiveAPI.from(id);
 
     if (!track.exists()) {
-      throw new Error(`updateTrack failed: track with id "${id}" does not exist`);
+      throw new Error(
+        `updateTrack failed: track with id "${id}" does not exist`,
+      );
     }
 
     track.setAll({
@@ -41,7 +43,9 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
     // Find trackIndex for consistency with readTrack format
     const trackIndex = Number(track.path.match(/live_set tracks (\d+)/)?.[1]);
     if (Number.isNaN(trackIndex)) {
-      throw new Error(`updateTrack failed: could not determine trackIndex for id "${id}" (path="${track.path}")`);
+      throw new Error(
+        `updateTrack failed: could not determine trackIndex for id "${id}" (path="${track.path}")`,
+      );
     }
 
     // Build optimistic result object

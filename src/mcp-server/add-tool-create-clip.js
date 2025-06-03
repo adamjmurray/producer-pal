@@ -15,27 +15,41 @@ export function addToolCreateClip(server, callLiveApi) {
       "IMPORTANT: For Arrangement view clips, all timing parameters (startMarker, length) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline. A clip placed at arrangementStartTime '17|1' with notes starting at '1|1' will play those notes at global arrangement bar 17. " +
       "Clip length defaults to fit the notes, or can be explicitly set with the length parameter.",
     {
-      view: z.enum(["session", "arrangement"]).describe("Location of the clips - either in Session or Arrangement"),
+      view: z
+        .enum(["session", "arrangement"])
+        .describe("Location of the clips - either in Session or Arrangement"),
       trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
       clipSlotIndex: z
         .number()
         .int()
         .min(0)
         .optional()
-        .describe("Clip slot index (0-based). Required when view is 'Session'."),
+        .describe(
+          "Clip slot index (0-based). Required when view is 'Session'.",
+        ),
       arrangementStartTime: z
         .string()
         .optional()
         .describe(
           "Arrangement view start time in bar|beat position format using pipe separator (e.g., '1|1' = first beat of first bar of the arrangement, '2|3.5' = halfway through third beat of second bar of the arrangement). Uses song's time signature for conversion. Required when view is 'Arrangement'.",
         ),
-      count: z.number().int().min(1).default(1).describe("Number of clips to create (default: 1)"),
-      name: z.string().optional().describe("Base name for the clips (auto-increments for count > 1)"),
+      count: z
+        .number()
+        .int()
+        .min(1)
+        .default(1)
+        .describe("Number of clips to create (default: 1)"),
+      name: z
+        .string()
+        .optional()
+        .describe("Base name for the clips (auto-increments for count > 1)"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
       timeSignature: z
         .string()
         .optional()
-        .describe('Time signature in format "n/m" (e.g. "4/4"). Defaults to the song\'s time signature for new clips.'),
+        .describe(
+          'Time signature in format "n/m" (e.g. "4/4"). Defaults to the song\'s time signature for new clips.',
+        ),
       startMarker: z
         .string()
         .optional()
@@ -48,7 +62,10 @@ export function addToolCreateClip(server, callLiveApi) {
         .describe(
           "Clip length in bar:beat duration format using colon separator (e.g., '4:0' = exactly 4 bars, '2:1.5' = 2 bars + 1.5 beats). When provided, automatically sets the clip end marker and loop end. If loopStart is also specified, the effective loop length may be shorter than this total length. Uses clip's time signature.",
         ),
-      loop: z.boolean().optional().describe("Enable or disable looping for the clips"),
+      loop: z
+        .boolean()
+        .optional()
+        .describe("Enable or disable looping for the clips"),
       loopStart: z
         .string()
         .optional()
@@ -58,7 +75,9 @@ export function addToolCreateClip(server, callLiveApi) {
       notes: z
         .string()
         .optional()
-        .describe(`Musical notation in the following BarBeat notation format. ${notationDescription}`),
+        .describe(
+          `Musical notation in the following BarBeat notation format. ${notationDescription}`,
+        ),
       autoplay: z
         .boolean()
         .default(false)

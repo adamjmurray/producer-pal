@@ -1,6 +1,11 @@
 // src/tools/transport.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import {
+  liveApiCall,
+  liveApiId,
+  liveApiSet,
+  mockLiveApiGet,
+} from "../mock-live-api";
 import { transport } from "./transport";
 
 describe("transport", () => {
@@ -19,7 +24,9 @@ describe("transport", () => {
   });
 
   it("should throw an error for unknown action", () => {
-    expect(() => transport({ action: "invalid-action" })).toThrow("transport failed: unknown action");
+    expect(() => transport({ action: "invalid-action" })).toThrow(
+      "transport failed: unknown action",
+    );
   });
 
   it("should handle play-arrangement action", () => {
@@ -43,8 +50,15 @@ describe("transport", () => {
       "show_view",
       "Arranger",
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 16); // bar 5 = 16 beats in 4/4
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_playing",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_time",
+      16,
+    ); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       action: "play-arrangement",
       currentTime: "5|1",
@@ -77,9 +91,21 @@ describe("transport", () => {
       followingTrackIndexes: "0,2,3",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop", true);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_start", 8); // bar 3 = 8 beats
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_length", 16); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "loop",
+      true,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "loop_start",
+      8,
+    ); // bar 3 = 8 beats
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "loop_length",
+      16,
+    ); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0" }),
       "back_to_arranger",
@@ -124,7 +150,11 @@ describe("transport", () => {
       startTime: "3|1",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 6); // bar 3 = 6 beats in 3/4
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_time",
+      6,
+    ); // bar 3 = 6 beats in 3/4
     expect(result.currentTime).toBe("3|1");
     expect(result.loopEnd).toBe("2|1"); // 3 beats = 1 bar in 3/4
   });
@@ -234,21 +264,35 @@ describe("transport", () => {
       'transport failed: trackIndexes is required for action "play-session-clip"',
     );
 
-    expect(() => transport({ action: "play-session-clip", trackIndexes: "0" })).toThrow(
+    expect(() =>
+      transport({ action: "play-session-clip", trackIndexes: "0" }),
+    ).toThrow(
       'transport failed: clipSlotIndexes is required for action "play-session-clip"',
     );
   });
 
   it("should throw error when clip slot doesn't exist for play-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
-    expect(() => transport({ action: "play-session-clip", trackIndexes: "99", clipSlotIndexes: "0" })).toThrow(
+    expect(() =>
+      transport({
+        action: "play-session-clip",
+        trackIndexes: "99",
+        clipSlotIndexes: "0",
+      }),
+    ).toThrow(
       "transport play-session-clip action failed: clip slot at trackIndex=99, clipSlotIndex=0 does not exist",
     );
   });
 
   it("should throw error when clip slot is empty for play-session-clip", () => {
     mockLiveApiGet({ ClipSlot: { has_clip: 0 } });
-    expect(() => transport({ action: "play-session-clip", trackIndexes: "0", clipSlotIndexes: "0" })).toThrow(
+    expect(() =>
+      transport({
+        action: "play-session-clip",
+        trackIndexes: "0",
+        clipSlotIndexes: "0",
+      }),
+    ).toThrow(
       "transport play-session-clip action failed: no clip at trackIndex=0, clipSlotIndex=0",
     );
   });
@@ -275,7 +319,10 @@ describe("transport", () => {
       "show_view",
       "Session",
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set scenes 1" }), "fire");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set scenes 1" }),
+      "fire",
+    );
     expect(result).toStrictEqual({
       action: "play-scene",
       currentTime: "2|2",
@@ -376,7 +423,9 @@ describe("transport", () => {
 
   it("should throw an error when track doesn't exist for stop-track-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
-    expect(() => transport({ action: "stop-track-session-clip", trackIndexes: "99" })).toThrow(
+    expect(() =>
+      transport({ action: "stop-track-session-clip", trackIndexes: "99" }),
+    ).toThrow(
       "transport stop-track-session-clip action failed: track at trackIndex=99 does not exist",
     );
   });
@@ -401,7 +450,10 @@ describe("transport", () => {
       "show_view",
       "Session",
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "stop_all_clips");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "stop_all_clips",
+    );
     expect(result).toStrictEqual({
       action: "stop-all-session-clips",
       currentTime: "2|2",
@@ -425,8 +477,15 @@ describe("transport", () => {
 
     const result = transport({ action: "stop" });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "stop_playing");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 0);
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "stop_playing",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_time",
+      0,
+    );
     expect(result).toStrictEqual({
       action: "stop",
       currentTime: "1|1",
@@ -483,7 +542,11 @@ describe("transport", () => {
     });
 
     // loopEnd 9|1 = 32 beats, loopStart is 8 beats, so length should be 24
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_length", 24);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "loop_length",
+      24,
+    );
     expect(result.loopStart).toBe("3|1"); // 8 beats = bar 3
     expect(result.loopEnd).toBe("9|1");
   });
@@ -507,9 +570,21 @@ describe("transport", () => {
     });
 
     // In 6/8, bar 2 = 3 Ableton beats (6 musical beats * 4/8)
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 3);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_start", 0);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "loop_length", 6); // 2 bars = 6 Ableton beats
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_time",
+      3,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "loop_start",
+      0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "loop_length",
+      6,
+    ); // 2 bars = 6 Ableton beats
 
     expect(result.startTime).toBe("2|1");
     expect(result.currentTime).toBe("2|1");
@@ -538,8 +613,15 @@ describe("transport", () => {
       "show_view",
       "Arranger",
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_time", 0);
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_playing",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_time",
+      0,
+    );
     expect(result.currentTime).toBe("1|1");
     expect(result.startTime).toBeUndefined();
   });

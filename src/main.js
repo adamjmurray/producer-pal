@@ -95,7 +95,9 @@ export async function mcp_request(serializedJSON) {
       "mcp_response",
       JSON.stringify({
         requestId: -1, // Use -1 when we don't know the original requestId
-        result: formatErrorResponse(`Error processing request: ${error.message}`),
+        result: formatErrorResponse(
+          `Error processing request: ${error.message}`,
+        ),
       }),
     );
   }

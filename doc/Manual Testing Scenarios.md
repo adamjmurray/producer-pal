@@ -6,7 +6,8 @@
 
 **Conversation starter:**
 
-> "I want to make some music but I'm not sure where to start. Can you help me get going?"
+> "I want to make some music but I'm not sure where to start. Can you help me
+> get going?"
 
 **Expected flow:**
 
@@ -27,17 +28,20 @@
 
 **Setup:**
 
-- Create one track with a simple 2-4 bar MIDI clip (basic chord progression or simple melody)
+- Create one track with a simple 2-4 bar MIDI clip (basic chord progression or
+  simple melody)
 - Name the track appropriately ("Chords" or "Lead")
 
 **Conversation starter:**
 
-> "I have this basic idea going. Can you help me expand it into something fuller?"
+> "I have this basic idea going. Can you help me expand it into something
+> fuller?"
 
 **Expected flow:**
 
 - AI should analyze existing content
-- Suggest complementary elements (drums if you have chords, bass if you have melody, etc.)
+- Suggest complementary elements (drums if you have chords, bass if you have
+  melody, etc.)
 - Build around the existing material rather than replacing it
 
 **Follow-ups to test:**
@@ -54,7 +58,8 @@
 
 **Conversation starter:**
 
-> "I want to start with a killer drum pattern. Something that really drives the track forward."
+> "I want to start with a killer drum pattern. Something that really drives the
+> track forward."
 
 **Expected flow:**
 
@@ -77,7 +82,8 @@
 
 **Conversation starter:**
 
-> "I want to build around a chord progression. Something in a minor key that feels emotional."
+> "I want to build around a chord progression. Something in a minor key that
+> feels emotional."
 
 **Expected flow:**
 
@@ -100,7 +106,8 @@
 
 **Conversation starter:**
 
-> "I want the bass to be the star of this track. Something groovy that everything else revolves around."
+> "I want the bass to be the star of this track. Something groovy that
+> everything else revolves around."
 
 **Expected flow:**
 
@@ -123,7 +130,8 @@
 
 **Conversation starter:**
 
-> "I need a catchy melody that will stick in people's heads. Something memorable."
+> "I need a catchy melody that will stick in people's heads. Something
+> memorable."
 
 **Expected flow:**
 
@@ -149,7 +157,8 @@
 
 **Conversation starter:**
 
-> "I've been working on this for a while but I'm stuck. It feels like it's missing something or going nowhere."
+> "I've been working on this for a while but I'm stuck. It feels like it's
+> missing something or going nowhere."
 
 **Expected flow:**
 
@@ -176,7 +185,8 @@
 
 **Conversation starter:**
 
-> "I have these loops that sound great together, but I don't know how to turn them into an actual song structure."
+> "I have these loops that sound great together, but I don't know how to turn
+> them into an actual song structure."
 
 **Expected flow:**
 
@@ -200,7 +210,8 @@
 
 **Conversation starter:**
 
-> "I have 15 minutes to get a rough demo together. Help me move fast and get something that sounds decent quickly."
+> "I have 15 minutes to get a rough demo together. Help me move fast and get
+> something that sounds decent quickly."
 
 **Expected flow:**
 
@@ -223,8 +234,8 @@
 
 **Conversation starter:**
 
-> "I want to learn about [jazz harmony/modal scales/polyrhythms/etc.] by actually making music. Can you teach me while
-> we create something?"
+> "I want to learn about [jazz harmony/modal scales/polyrhythms/etc.] by
+> actually making music. Can you teach me while we create something?"
 
 **Expected flow:**
 

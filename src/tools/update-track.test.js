@@ -42,11 +42,31 @@ describe("updateTrack", () => {
       arm: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Updated Track");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 16711680);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "mute", true);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "solo", false);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "arm", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "name",
+      "Updated Track",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "color",
+      16711680,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "mute",
+      true,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "solo",
+      false,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "arm",
+      true,
+    );
     expect(result).toEqual({
       id: "123",
       trackIndex: 0,
@@ -65,8 +85,16 @@ describe("updateTrack", () => {
       mute: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "mute", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "color",
+      65280,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "mute",
+      true,
+    );
     expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per track
 
     expect(result).toEqual([
@@ -91,7 +119,11 @@ describe("updateTrack", () => {
       name: "Prefixed ID Track",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Prefixed ID Track");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "name",
+      "Prefixed ID Track",
+    );
     expect(result).toEqual({
       id: "123",
       trackIndex: 0,
@@ -105,7 +137,11 @@ describe("updateTrack", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Only Name Update");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "name",
+      "Only Name Update",
+    );
     expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       id: "123",
@@ -122,9 +158,21 @@ describe("updateTrack", () => {
       arm: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "mute", false);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "solo", false);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "arm", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "mute",
+      false,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "solo",
+      false,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "arm",
+      false,
+    );
     expect(result).toEqual({
       id: "123",
       trackIndex: 0,
@@ -135,8 +183,12 @@ describe("updateTrack", () => {
   });
 
   it("should throw error when ids is missing", () => {
-    expect(() => updateTrack({})).toThrow("updateTrack failed: ids is required");
-    expect(() => updateTrack({ name: "Test" })).toThrow("updateTrack failed: ids is required");
+    expect(() => updateTrack({})).toThrow(
+      "updateTrack failed: ids is required",
+    );
+    expect(() => updateTrack({ name: "Test" })).toThrow(
+      "updateTrack failed: ids is required",
+    );
   });
 
   it("should throw error when track ID doesn't exist", () => {
@@ -159,9 +211,9 @@ describe("updateTrack", () => {
       }
     });
 
-    expect(() => updateTrack({ ids: "123, nonexistent", name: "Test" })).toThrow(
-      'updateTrack failed: track with id "nonexistent" does not exist',
-    );
+    expect(() =>
+      updateTrack({ ids: "123, nonexistent", name: "Test" }),
+    ).toThrow('updateTrack failed: track with id "nonexistent" does not exist');
   });
 
   it("should throw error when track path cannot be parsed", () => {

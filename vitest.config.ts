@@ -18,7 +18,12 @@ export default defineConfig({
         "html",
       ],
       include: ["src/**"],
-      exclude: ["src/main.js", "src/console.js", "src/mcp-server.js", "src/mock-*"],
+      exclude: [
+        "src/main.js",
+        "src/console.js",
+        "src/mcp-server.js",
+        "src/mock-*",
+      ],
       reportOnFailure: true,
     },
   },

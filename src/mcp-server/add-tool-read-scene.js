@@ -11,8 +11,14 @@ export function addToolReadScene(server, callLiveApi) {
         .number()
         .int()
         .min(0)
-        .describe("Scene index (0-based). This is also the clipSlotIndex of every clip in this scene."),
-      includeClips: z.boolean().optional().default(false).describe("Whether to include clip information"),
+        .describe(
+          "Scene index (0-based). This is also the clipSlotIndex of every clip in this scene.",
+        ),
+      includeClips: z
+        .boolean()
+        .optional()
+        .default(false)
+        .describe("Whether to include clip information"),
     },
     async (args) => callLiveApi("read-scene", args),
   );

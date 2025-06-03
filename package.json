@@ -30,7 +30,6 @@
     "vitest": "^3.1.4"
   },
   "prettier": {
-    "printWidth": 120,
     "proseWrap": "always"
   },
   "scripts": {

@@ -22,7 +22,10 @@ class Max {
       setTimeout(() => {
         // TODO: Make a way for these mock responses from v8 to be customized on a per-test basis
         Max.mcpResponseHandler(
-          JSON.stringify({ requestId: data.requestId, result: { content: [{ type: "text", text: "{}" }] } }),
+          JSON.stringify({
+            requestId: data.requestId,
+            result: { content: [{ type: "text", text: "{}" }] },
+          }),
         );
       }, 1);
     }
@@ -50,7 +53,10 @@ describe("MCP Express App", () => {
     serverUrl = `http://localhost:${port}/mcp`;
 
     // Verify that the handler was setup by createExpressApp
-    expect(Max.addHandler).toHaveBeenCalledWith("mcp_response", expect.any(Function));
+    expect(Max.addHandler).toHaveBeenCalledWith(
+      "mcp_response",
+      expect.any(Function),
+    );
     expect(Max.mcpResponseHandler).toBeDefined();
     defaultMaxHandler = Max.addHandler.mock.calls[0][1];
   });
@@ -129,25 +135,33 @@ describe("MCP Express App", () => {
     it("should provide tool schemas with correct names and descriptions", async () => {
       const result = await client.listTools();
 
-      const readSongTool = result.tools.find((tool) => tool.name === "read-song");
+      const readSongTool = result.tools.find(
+        (tool) => tool.name === "read-song",
+      );
       expect(readSongTool).toBeDefined();
       expect(readSongTool.description).toContain("the Live Set");
       expect(readSongTool.description).toContain("global settings");
       expect(readSongTool.description).toContain("all tracks");
 
-      const updateClipTool = result.tools.find((tool) => tool.name === "update-clip");
+      const updateClipTool = result.tools.find(
+        (tool) => tool.name === "update-clip",
+      );
       expect(updateClipTool).toBeDefined();
       expect(updateClipTool.inputSchema).toBeDefined();
       expect(updateClipTool.inputSchema.properties).toBeDefined();
       expect(updateClipTool.inputSchema.properties.ids).toBeDefined();
 
-      const createTrackTool = result.tools.find((tool) => tool.name === "create-track");
+      const createTrackTool = result.tools.find(
+        (tool) => tool.name === "create-track",
+      );
       expect(createTrackTool).toBeDefined();
       expect(createTrackTool.description).toContain("Creates new tracks");
       expect(createTrackTool.inputSchema.properties.trackIndex).toBeDefined();
       expect(createTrackTool.inputSchema.properties.count).toBeDefined();
 
-      const updateTrackTool = result.tools.find((tool) => tool.name === "update-track");
+      const updateTrackTool = result.tools.find(
+        (tool) => tool.name === "update-track",
+      );
       expect(updateTrackTool).toBeDefined();
       expect(updateTrackTool.description).toContain("Updates properties");
       expect(updateTrackTool.inputSchema.properties.ids).toBeDefined();
@@ -173,12 +187,16 @@ describe("MCP Express App", () => {
           expect(typeof tool.inputSchema.properties).toBe("object");
         } catch (error) {
           // Add tool name to error message for debugging
-          throw new Error(`Tool "${tool.name}" validation failed: ${error.message}`);
+          throw new Error(
+            `Tool "${tool.name}" validation failed: ${error.message}`,
+          );
         }
       });
 
       // Check create-clip specifically since it had the issue
-      const createClipTool = result.tools.find((tool) => tool.name === "create-clip");
+      const createClipTool = result.tools.find(
+        (tool) => tool.name === "create-clip",
+      );
       expect(createClipTool).toBeDefined();
       expect(createClipTool.description).toContain("Creates MIDI clips");
       expect(createClipTool.inputSchema.properties.view).toBeDefined();
@@ -224,7 +242,9 @@ describe("MCP Express App", () => {
 
       expect(Max.outlet).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
-        expect.stringMatching(/^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1}}$/),
+        expect.stringMatching(
+          /^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1}}$/,
+        ),
       );
     });
 
@@ -243,7 +263,9 @@ describe("MCP Express App", () => {
       // The MCP SDK returns a structured error response instead of throwing
       expect(result.isError).toBe(true);
       expect(result.content).toBeDefined();
-      expect(result.content[0].text).toContain("Tool call 'read-song' timed out after 100ms");
+      expect(result.content[0].text).toContain(
+        "Tool call 'read-song' timed out after 100ms",
+      );
     });
 
     it("should handle tool with missing required arguments", async () => {
@@ -278,7 +300,9 @@ describe("MCP Express App", () => {
             version: "1.0.0",
           });
 
-          const transport = new StreamableHTTPClientTransport(new URL(serverUrl));
+          const transport = new StreamableHTTPClientTransport(
+            new URL(serverUrl),
+          );
           await client.connect(transport);
 
           clients.push(client);
@@ -286,7 +310,9 @@ describe("MCP Express App", () => {
         }
 
         // All clients should be able to list tools
-        const results = await Promise.all(clients.map((client) => client.listTools()));
+        const results = await Promise.all(
+          clients.map((client) => client.listTools()),
+        );
 
         results.forEach((result) => {
           expect(result.tools).toBeDefined();
@@ -350,11 +376,16 @@ describe("Exported Functions", () => {
     });
 
     it("should create a request with unique ID and call Max.outlet", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import("./create-express-app");
+      const { callLiveApi, handleLiveApiResult } = await import(
+        "./create-express-app"
+      );
 
       const promise = callLiveApi("test-tool", { arg1: "value1" });
 
-      expect(Max.outlet).toHaveBeenCalledWith("mcp_request", expect.stringMatching(/^\{.*\}$/));
+      expect(Max.outlet).toHaveBeenCalledWith(
+        "mcp_request",
+        expect.stringMatching(/^\{.*\}$/),
+      );
 
       // Parse the JSON to verify structure
       const callArgs = Max.outlet.mock.calls[0];
@@ -383,13 +414,17 @@ describe("Exported Functions", () => {
       // Use a very short timeout for testing
       const promise = callLiveApi("test-tool", {}, 50);
 
-      await expect(promise).rejects.toThrow("Tool call 'test-tool' timed out after 50ms");
+      await expect(promise).rejects.toThrow(
+        "Tool call 'test-tool' timed out after 50ms",
+      );
 
       expect(Max.outlet).toHaveBeenCalled();
     });
 
     it("should use default timeout when not specified", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import("./create-express-app");
+      const { callLiveApi, handleLiveApiResult } = await import(
+        "./create-express-app"
+      );
 
       const promise = callLiveApi("test-tool", {});
 
@@ -419,7 +454,9 @@ describe("Exported Functions", () => {
     });
 
     it("should handle valid response with matching request ID", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import("./create-express-app");
+      const { callLiveApi, handleLiveApiResult } = await import(
+        "./create-express-app"
+      );
 
       // Start a request to create a pending request
       const promise = callLiveApi("test-tool", {});
@@ -438,7 +475,9 @@ describe("Exported Functions", () => {
     });
 
     it("should add maxErrors to result content", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import("./create-express-app");
+      const { callLiveApi, handleLiveApiResult } = await import(
+        "./create-express-app"
+      );
 
       // Start a request
       const promise = callLiveApi("test-tool", {});
@@ -450,13 +489,23 @@ describe("Exported Functions", () => {
 
       // Simulate response with errors
       const mockResult = { content: [{ type: "text", text: "success" }] };
-      handleLiveApiResult(JSON.stringify({ requestId, result: mockResult }), "Error 1", "Error 2");
+      handleLiveApiResult(
+        JSON.stringify({ requestId, result: mockResult }),
+        "Error 1",
+        "Error 2",
+      );
 
       const result = await promise;
       expect(result.content).toHaveLength(3);
       expect(result.content[0]).toEqual({ type: "text", text: "success" });
-      expect(result.content[1]).toEqual({ type: "text", text: "WARNING: Error 1" });
-      expect(result.content[2]).toEqual({ type: "text", text: "WARNING: Error 2" });
+      expect(result.content[1]).toEqual({
+        type: "text",
+        text: "WARNING: Error 1",
+      });
+      expect(result.content[2]).toEqual({
+        type: "text",
+        text: "WARNING: Error 2",
+      });
     });
 
     it("should handle unknown request ID", async () => {
@@ -471,7 +520,9 @@ describe("Exported Functions", () => {
       );
 
       // Should log but not throw
-      expect(Max.post).toHaveBeenCalledWith("Received response for unknown request ID: unknown-id");
+      expect(Max.post).toHaveBeenCalledWith(
+        "Received response for unknown request ID: unknown-id",
+      );
     });
 
     it("should handle malformed JSON response", async () => {
@@ -481,7 +532,9 @@ describe("Exported Functions", () => {
       handleLiveApiResult("{ malformed json");
 
       // Should log error but not throw
-      expect(Max.post).toHaveBeenCalledWith(expect.stringContaining("Error handling response from Max:"));
+      expect(Max.post).toHaveBeenCalledWith(
+        expect.stringContaining("Error handling response from Max:"),
+      );
     });
   });
 });

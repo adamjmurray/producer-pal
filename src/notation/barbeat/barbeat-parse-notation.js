@@ -21,14 +21,21 @@ import * as parser from "./barbeat-parser";
 export function parseNotation(barBeatExpression, options = {}) {
   if (!barBeatExpression) return [];
 
-  const { beatsPerBar: beatsPerBarOption, timeSigNumerator, timeSigDenominator } = options;
+  const {
+    beatsPerBar: beatsPerBarOption,
+    timeSigNumerator,
+    timeSigDenominator,
+  } = options;
   if (
     (timeSigNumerator != null && timeSigDenominator == null) ||
     (timeSigDenominator != null && timeSigNumerator == null)
   ) {
-    throw new Error("Time signature must be specified with both numerator and denominator");
+    throw new Error(
+      "Time signature must be specified with both numerator and denominator",
+    );
   }
-  const beatsPerBar = timeSigNumerator ?? beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR;
+  const beatsPerBar =
+    timeSigNumerator ?? beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR;
 
   try {
     const ast = parser.parse(barBeatExpression);
@@ -51,7 +58,10 @@ export function parseNotation(barBeatExpression, options = {}) {
         // Clear velocity range when single velocity is set
         currentVelocityMin = null;
         currentVelocityMax = null;
-      } else if (element.velocityMin !== undefined && element.velocityMax !== undefined) {
+      } else if (
+        element.velocityMin !== undefined &&
+        element.velocityMax !== undefined
+      ) {
         currentVelocityMin = element.velocityMin;
         currentVelocityMax = element.velocityMax;
         // Clear single velocity when range is set
@@ -62,10 +72,14 @@ export function parseNotation(barBeatExpression, options = {}) {
         currentProbability = element.probability;
       } else if (element.pitch !== undefined) {
         // Convert bar|beat to absolute beats (in musical beats)
-        const absoluteBeats = (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
+        const absoluteBeats =
+          (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
 
         // Convert from musical beats to Ableton beats if we have time signature
-        const abletonBeats = timeSigDenominator != null ? absoluteBeats * (4 / timeSigDenominator) : absoluteBeats;
+        const abletonBeats =
+          timeSigDenominator != null
+            ? absoluteBeats * (4 / timeSigDenominator)
+            : absoluteBeats;
 
         // Determine velocity and velocity_deviation
         let velocity, velocity_deviation;
@@ -84,7 +98,9 @@ export function parseNotation(barBeatExpression, options = {}) {
         }
 
         const abletonDuration =
-          timeSigDenominator != null ? currentDuration * (4 / timeSigDenominator) : currentDuration;
+          timeSigDenominator != null
+            ? currentDuration * (4 / timeSigDenominator)
+            : currentDuration;
 
         events.push({
           pitch: element.pitch,

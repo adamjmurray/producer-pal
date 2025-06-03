@@ -33,8 +33,12 @@ function parseArgs() {
     command = args[0];
     if (command === "tools/call") {
       if (!args[1] || !args[2]) {
-        console.error("Error: tools/call requires tool name and JSON arguments");
-        console.error("Usage: cli.mjs [url] tools/call <tool-name> '<json-args>'");
+        console.error(
+          "Error: tools/call requires tool name and JSON arguments",
+        );
+        console.error(
+          "Usage: cli.mjs [url] tools/call <tool-name> '<json-args>'",
+        );
         process.exit(1);
       }
       toolName = args[1];
@@ -163,7 +167,9 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("  cli.mjs tools/list");
   console.log("  cli.mjs tools/call read-song '{}'");
   console.log("  cli.mjs http://localhost:6274/mcp tools/list");
-  console.log('  cli.mjs tools/call create-track \'{"trackIndex": 0, "name": "Test"}\'');
+  console.log(
+    '  cli.mjs tools/call create-track \'{"trackIndex": 0, "name": "Test"}\'',
+  );
   process.exit(0);
 }
 

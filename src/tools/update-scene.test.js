@@ -41,17 +41,41 @@ describe("updateScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Updated Scene");
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 16711680);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo", 140);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo_enabled", true);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "time_signature_numerator", 3);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "name",
+      "Updated Scene",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "color",
+      16711680,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "tempo",
+      140,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "tempo_enabled",
+      true,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "time_signature_numerator",
+      3,
+    );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "time_signature_denominator",
       4,
     );
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "time_signature_enabled", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "time_signature_enabled",
+      true,
+    );
     expect(result).toEqual({
       id: "123",
       sceneIndex: 0,
@@ -70,12 +94,36 @@ describe("updateScene", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(6); // 3 calls per scene
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo", 120);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo_enabled", true);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "tempo", 120);
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "tempo_enabled", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "color",
+      65280,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "tempo",
+      120,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "tempo_enabled",
+      true,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "456" }),
+      "color",
+      65280,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "456" }),
+      "tempo",
+      120,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "456" }),
+      "tempo_enabled",
+      true,
+    );
 
     expect(result).toEqual([
       {
@@ -99,7 +147,11 @@ describe("updateScene", () => {
       name: "Prefixed ID Scene",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Prefixed ID Scene");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "name",
+      "Prefixed ID Scene",
+    );
     expect(result).toEqual({
       id: "123",
       sceneIndex: 0,
@@ -113,7 +165,11 @@ describe("updateScene", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Only Name Update");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "name",
+      "Only Name Update",
+    );
     expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       id: "123",
@@ -128,7 +184,11 @@ describe("updateScene", () => {
       tempo: -1,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo_enabled", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "tempo_enabled",
+      false,
+    );
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
     expect(result).toEqual({
       id: "123",
@@ -148,8 +208,14 @@ describe("updateScene", () => {
       "time_signature_enabled",
       false,
     );
-    expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_numerator", expect.any(Number));
-    expect(liveApiSet).not.toHaveBeenCalledWith("time_signature_denominator", expect.any(Number));
+    expect(liveApiSet).not.toHaveBeenCalledWith(
+      "time_signature_numerator",
+      expect.any(Number),
+    );
+    expect(liveApiSet).not.toHaveBeenCalledWith(
+      "time_signature_denominator",
+      expect.any(Number),
+    );
     expect(result).toEqual({
       id: "123",
       sceneIndex: 0,
@@ -158,8 +224,12 @@ describe("updateScene", () => {
   });
 
   it("should throw error when ids is missing", () => {
-    expect(() => updateScene({})).toThrow("updateScene failed: ids is required");
-    expect(() => updateScene({ name: "Test" })).toThrow("updateScene failed: ids is required");
+    expect(() => updateScene({})).toThrow(
+      "updateScene failed: ids is required",
+    );
+    expect(() => updateScene({ name: "Test" })).toThrow(
+      "updateScene failed: ids is required",
+    );
   });
 
   it("should throw error when scene ID doesn't exist", () => {
@@ -182,9 +252,9 @@ describe("updateScene", () => {
       }
     });
 
-    expect(() => updateScene({ ids: "123, nonexistent", name: "Test" })).toThrow(
-      'updateScene failed: scene with id "nonexistent" does not exist',
-    );
+    expect(() =>
+      updateScene({ ids: "123, nonexistent", name: "Test" }),
+    ).toThrow('updateScene failed: scene with id "nonexistent" does not exist');
   });
 
   it("should throw error when scene path cannot be parsed", () => {
@@ -199,8 +269,12 @@ describe("updateScene", () => {
   });
 
   it("should throw error for invalid time signature format", () => {
-    expect(() => updateScene({ ids: "123", timeSignature: "invalid" })).toThrow("Time signature must be in format");
-    expect(() => updateScene({ ids: "123", timeSignature: "3-4" })).toThrow("Time signature must be in format");
+    expect(() => updateScene({ ids: "123", timeSignature: "invalid" })).toThrow(
+      "Time signature must be in format",
+    );
+    expect(() => updateScene({ ids: "123", timeSignature: "3-4" })).toThrow(
+      "Time signature must be in format",
+    );
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {

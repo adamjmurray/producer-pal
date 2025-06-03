@@ -40,7 +40,8 @@ async function findSourceFiles(dir, baseDir, skipTests = true) {
       files.push(...(await findSourceFiles(fullPath, baseDir, skipTests)));
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name);
-      const isTestFile = entry.name.includes(".test.") || entry.name.includes(".spec.");
+      const isTestFile =
+        entry.name.includes(".test.") || entry.name.includes(".spec.");
 
       // Include JavaScript and Peggy grammar files, but skip tests if requested
       if ((ext === ".js" || ext === ".peggy") && (!skipTests || !isTestFile)) {
@@ -80,7 +81,10 @@ async function copyDocsAndConfigs() {
 
     // Other important files
     { src: "e2e/cli.mjs", flatName: "e2e--cli.mjs" },
-    { src: "coverage/coverage-summary.txt", flatName: "test-coverage-summary.txt" },
+    {
+      src: "coverage/coverage-summary.txt",
+      flatName: "test-coverage-summary.txt",
+    },
   ];
 
   console.log("Copying documentation and configuration files...");
@@ -98,7 +102,9 @@ async function copyDocsAndConfigs() {
           const flatName = flattenPath(filePath, projectRoot);
           const targetPath = path.join(outputDir, flatName);
           await copyFile(filePath, targetPath);
-          console.log(`  ${path.relative(projectRoot, filePath)} → ${flatName}`);
+          console.log(
+            `  ${path.relative(projectRoot, filePath)} → ${flatName}`,
+          );
         }
       } else if (stat.isFile()) {
         // Copy single file
@@ -143,7 +149,9 @@ async function main() {
     await copySourceFiles();
     await copyDocsAndConfigs();
 
-    console.log(`\nComplete! Files copied to: ${path.relative(projectRoot, outputDir)}`);
+    console.log(
+      `\nComplete! Files copied to: ${path.relative(projectRoot, outputDir)}`,
+    );
 
     const files = await fs.readdir(outputDir);
     console.log(`Total files: ${files.length}`);

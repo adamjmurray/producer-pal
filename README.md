@@ -1,29 +1,36 @@
 # Ableton Producer Pal
 
-Make music in Ableton Live with an AI assistant such as [Anthropic Claude](https://www.anthropic.com/claude).
+Make music in Ableton Live with an AI assistant such as
+[Anthropic Claude](https://www.anthropic.com/claude).
 
 ## Goals and Use Cases
 
-- Supplement, complement, and enhance human creativity. Don't replace human creativity!
+- Supplement, complement, and enhance human creativity. Don't replace human
+  creativity!
 
-- Get unblocked when creatively blocked. Get started when you don't know where to start.
+- Get unblocked when creatively blocked. Get started when you don't know where
+  to start.
 
-- Experiment with music in terms of high level ideas instead of the low level piano roll events. Try things you never
-  tried before.
+- Experiment with music in terms of high level ideas instead of the low level
+  piano roll events. Try things you never tried before.
 
-- Hands-on learning for music theory, composition, and arrangement. Go as deep (or shallow) as you want.
+- Hands-on learning for music theory, composition, and arrangement. Go as deep
+  (or shallow) as you want.
 
-- Help people with disabilities produce music (assuming Claude Desktop or an alternative chat client can be used in a
-  hands-free voice mode, this should be possible)
+- Help people with disabilities produce music (assuming Claude Desktop or an
+  alternative chat client can be used in a hands-free voice mode, this should be
+  possible)
 
 ## Dependencies
 
-- [Ableton Live 12.2+](https://www.ableton.com/live/) with [Max for Live](https://www.ableton.com/live/max-for-live/)
-  (e.g. Ableton Live Suite edition)
-- [Claude Desktop](https://claude.ai/download) (or potentially any [MCP-compatible](https://modelcontextprotocol.io/) AI
-  chat client, but only Claude Desktop has been tested so far)
-- [Node.js](https://nodejs.org/). Install the default version (LTS version, or newer works too). You should add Node.js
-  to your PATH if given the option.
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
+  Suite edition)
+- [Claude Desktop](https://claude.ai/download) (or potentially any
+  [MCP-compatible](https://modelcontextprotocol.io/) AI chat client, but only
+  Claude Desktop has been tested so far)
+- [Node.js](https://nodejs.org/). Install the default version (LTS version, or
+  newer works too). You should add Node.js to your PATH if given the option.
 
 ## Setup
 
@@ -31,12 +38,14 @@ Make music in Ableton Live with an AI assistant such as [Anthropic Claude](https
    - clone this repository
    - `npm install`
    - `npm run build`
-   - Add the `device/Producer Pal.amxd` Max for Live device to your Ableton Live Set (drag the file to a MIDI track)
+   - Add the `device/Producer Pal.amxd` Max for Live device to your Ableton Live
+     Set (drag the file to a MIDI track)
 2. Configure Claude Desktop to connect to the Producer Pal
 
-   - Go to Claude Desktop → Settings → Developer → Edit Config → Open `claude_desktop_config.json` in a text editor
-   - Copy the settings from the Producer Pal Max for Live device into `claude_desktop_config.json`. It should look
-     something like this:
+   - Go to Claude Desktop → Settings → Developer → Edit Config → Open
+     `claude_desktop_config.json` in a text editor
+   - Copy the settings from the Producer Pal Max for Live device into
+     `claude_desktop_config.json`. It should look something like this:
 
    ```
    {
@@ -55,9 +64,11 @@ Make music in Ableton Live with an AI assistant such as [Anthropic Claude](https
 
 3. Restart Claude Desktop
 
-   - In the "Search and Tools" button below the chat input, you should see `Ableton Producer Pal` and if you click into
-     it, there should be 12 tools such as `read-song` and `write-song`. Make sure `Ableton Producer Pal` and its tools
-     are enabled (they should be enabled by default, unless you disable them).
+   - In the "Search and Tools" button below the chat input, you should see
+     `Ableton Producer Pal` and if you click into it, there should be 12 tools
+     such as `read-song` and `write-song`. Make sure `Ableton Producer Pal` and
+     its tools are enabled (they should be enabled by default, unless you
+     disable them).
 
 ## Usage Examples
 
@@ -71,7 +82,8 @@ Make music in Ableton Live with an AI assistant such as [Anthropic Claude](https
 
 - Setup some pads or keys in a track called "Chords" and ask:
 
-  > In the Chords track, generate a 4-chord progression of whole notes in C minor
+  > In the Chords track, generate a 4-chord progression of whole notes in C
+  > minor
 
 - Then:
 
@@ -97,12 +109,13 @@ To test/debug, you can use:
 npx @modelcontextprotocol/inspector
 ```
 
-and then open http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350/mcp
+and then open
+http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350/mcp
 
 ### End-to-End Testing
 
-For real-world testing and debugging, use the CLI tool at `e2e/cli.mjs` to directly connect to the MCP server running in
-Ableton Live:
+For real-world testing and debugging, use the CLI tool at `e2e/cli.mjs` to
+directly connect to the MCP server running in Ableton Live:
 
 ```sh
 # Show server info (default)
@@ -122,5 +135,6 @@ node e2e/cli.mjs http://localhost:6274/mcp tools/list
 node e2e/cli.mjs --help
 ```
 
-This CLI tool connects directly to your running Ableton Live session and can help debug real-world issues by exercising
-the full MCP stack with actual Live data.
+This CLI tool connects directly to your running Ableton Live session and can
+help debug real-world issues by exercising the full MCP stack with actual Live
+data.

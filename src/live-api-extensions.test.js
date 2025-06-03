@@ -184,7 +184,9 @@ describe("LiveAPI extensions", () => {
     });
 
     it("throws error for array not in ['id', value] format", () => {
-      expect(() => LiveAPI.from(["something", "else"])).toThrow("Invalid array format");
+      expect(() => LiveAPI.from(["something", "else"])).toThrow(
+        "Invalid array format",
+      );
     });
 
     it("throws error for array with wrong length", () => {
@@ -192,7 +194,9 @@ describe("LiveAPI extensions", () => {
     });
 
     it("throws error for array where first element is not 'id'", () => {
-      expect(() => LiveAPI.from(["path", "123"])).toThrow("Invalid array format");
+      expect(() => LiveAPI.from(["path", "123"])).toThrow(
+        "Invalid array format",
+      );
     });
   });
 
@@ -522,7 +526,9 @@ describe("LiveAPI extensions", () => {
       });
 
       it("should work with complex nested session paths", () => {
-        const nestedPath = new LiveAPI("live_set tracks 3 clip_slots 7 clip notes 5");
+        const nestedPath = new LiveAPI(
+          "live_set tracks 3 clip_slots 7 clip notes 5",
+        );
         expect(nestedPath.trackIndex).toBe(3);
         expect(nestedPath.sceneIndex).toBe(7);
         expect(nestedPath.clipSlotIndex).toBe(7);

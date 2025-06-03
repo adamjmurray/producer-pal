@@ -21,7 +21,8 @@ export function readScene({ sceneIndex, includeClips = false }) {
   }
 
   const isTempoEnabled = scene.getProperty("tempo_enabled") > 0;
-  const isTimeSignatureEnabled = scene.getProperty("time_signature_enabled") > 0;
+  const isTimeSignatureEnabled =
+    scene.getProperty("time_signature_enabled") > 0;
 
   const result = {
     id: scene.id,
@@ -39,7 +40,9 @@ export function readScene({ sceneIndex, includeClips = false }) {
   if (includeClips) {
     result.clips = liveSet
       .getChildIds("tracks")
-      .map((_trackId, trackIndex) => readClip({ trackIndex, clipSlotIndex: sceneIndex }))
+      .map((_trackId, trackIndex) =>
+        readClip({ trackIndex, clipSlotIndex: sceneIndex }),
+      )
       .filter((clip) => clip.id != null);
   }
 

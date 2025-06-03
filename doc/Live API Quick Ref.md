@@ -19,7 +19,8 @@
 **Currently Used:**
 
 - `create_scene(index)` - Create scene at index (-1 = end)
-- `create_midi_track(index)` / `create_audio_track(index)` - Returns ["id", trackId]
+- `create_midi_track(index)` / `create_audio_track(index)` - Returns ["id",
+  trackId]
 - `capture_and_insert_scene()` - Capture playing clips
 - `stop_all_clips()` - Stop all session clips
 - `start_playing()` / `stop_playing()` - Transport control
@@ -123,14 +124,16 @@
 - `gain` (float) - 0.0-1.0
 - `pitch_coarse` (int) - -48 to 48 semitones
 - `pitch_fine` (float) - -50 to 49 cents
-- `warp_mode` (int) - 0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 5=REX, 6=Complex Pro
+- `warp_mode` (int) - 0=Beats, 1=Tones, 2=Texture, 3=Re-Pitch, 4=Complex, 5=REX,
+  6=Complex Pro
 - `warping` (bool)
 
 ### Methods
 
 **Currently Used:**
 
-- `get_notes_extended(from_pitch, pitch_span, from_time, time_span)` - Returns JSON
+- `get_notes_extended(from_pitch, pitch_span, from_time, time_span)` - Returns
+  JSON
 - `add_new_notes({notes: [...]})` - Add MIDI notes
 - `remove_notes_extended(from_pitch, pitch_span, from_time, time_span)`
 

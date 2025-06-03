@@ -97,22 +97,34 @@ describe("barbeat-time utilities", () => {
     });
 
     it("throws error for invalid format", () => {
-      expect(() => barBeatToBeats("invalid", 4)).toThrow("Invalid bar|beat format");
+      expect(() => barBeatToBeats("invalid", 4)).toThrow(
+        "Invalid bar|beat format",
+      );
       expect(() => barBeatToBeats("1", 4)).toThrow("Invalid bar|beat format");
       expect(() => barBeatToBeats("1:", 4)).toThrow("Invalid bar|beat format");
       expect(() => barBeatToBeats(":2", 4)).toThrow("Invalid bar|beat format");
-      expect(() => barBeatToBeats("1|2:3", 4)).toThrow("Invalid bar|beat format");
+      expect(() => barBeatToBeats("1|2:3", 4)).toThrow(
+        "Invalid bar|beat format",
+      );
       expect(() => barBeatToBeats("a:b", 4)).toThrow("Invalid bar|beat format");
     });
 
     it("throws error for bar number less than 1", () => {
-      expect(() => barBeatToBeats("0|1", 4)).toThrow("Bar number must be 1 or greater");
-      expect(() => barBeatToBeats("-1|1", 4)).toThrow("Bar number must be 1 or greater");
+      expect(() => barBeatToBeats("0|1", 4)).toThrow(
+        "Bar number must be 1 or greater",
+      );
+      expect(() => barBeatToBeats("-1|1", 4)).toThrow(
+        "Bar number must be 1 or greater",
+      );
     });
 
     it("throws error for beat number less than 1", () => {
-      expect(() => barBeatToBeats("1|0", 4)).toThrow("Beat must be 1 or greater");
-      expect(() => barBeatToBeats("1|-1", 3)).toThrow("Beat must be 1 or greater");
+      expect(() => barBeatToBeats("1|0", 4)).toThrow(
+        "Beat must be 1 or greater",
+      );
+      expect(() => barBeatToBeats("1|-1", 3)).toThrow(
+        "Beat must be 1 or greater",
+      );
     });
   });
 
@@ -407,7 +419,9 @@ describe("abletonBeatsToBarBeatDuration", () => {
   });
 
   it("throws error for negative durations", () => {
-    expect(() => abletonBeatsToBarBeatDuration(-1, 4, 4)).toThrow("Duration cannot be negative, got: -1");
+    expect(() => abletonBeatsToBarBeatDuration(-1, 4, 4)).toThrow(
+      "Duration cannot be negative, got: -1",
+    );
   });
 });
 
@@ -496,7 +510,9 @@ describe("barBeatDurationToAbletonBeats", () => {
   });
 
   it("throws error for negative values", () => {
-    expect(() => barBeatDurationToAbletonBeats("-1:0", 4, 4)).toThrow("Bars in duration must be 0 or greater, got: -1");
+    expect(() => barBeatDurationToAbletonBeats("-1:0", 4, 4)).toThrow(
+      "Bars in duration must be 0 or greater, got: -1",
+    );
     expect(() => barBeatDurationToAbletonBeats("0:-1", 4, 4)).toThrow(
       "Beats in duration must be 0 or greater, got: -1",
     );
@@ -505,8 +521,14 @@ describe("barBeatDurationToAbletonBeats", () => {
 
 describe("duration function round-trip consistency", () => {
   const testCases = [
-    { timeSig: [4, 4], abletonBeats: [0, 1, 2, 3, 4, 5, 8, 12, 1.5, 2.25, 4.5, 7.75] },
-    { timeSig: [6, 8], abletonBeats: [0, 0.5, 1, 1.5, 3, 3.5, 6, 9, 0.25, 1.75, 2.5] },
+    {
+      timeSig: [4, 4],
+      abletonBeats: [0, 1, 2, 3, 4, 5, 8, 12, 1.5, 2.25, 4.5, 7.75],
+    },
+    {
+      timeSig: [6, 8],
+      abletonBeats: [0, 0.5, 1, 1.5, 3, 3.5, 6, 9, 0.25, 1.75, 2.5],
+    },
     { timeSig: [2, 2], abletonBeats: [0, 2, 4, 6, 8, 1, 3, 5, 7] },
     { timeSig: [3, 4], abletonBeats: [0, 1, 2, 3, 4, 6, 9, 1.5, 2.5] },
   ];
@@ -515,8 +537,16 @@ describe("duration function round-trip consistency", () => {
     describe(`${timeSig[0]}/${timeSig[1]} time signature`, () => {
       abletonBeats.forEach((beats) => {
         it(`round-trip consistency for ${beats} Ableton beats`, () => {
-          const duration = abletonBeatsToBarBeatDuration(beats, timeSig[0], timeSig[1]);
-          const converted = barBeatDurationToAbletonBeats(duration, timeSig[0], timeSig[1]);
+          const duration = abletonBeatsToBarBeatDuration(
+            beats,
+            timeSig[0],
+            timeSig[1],
+          );
+          const converted = barBeatDurationToAbletonBeats(
+            duration,
+            timeSig[0],
+            timeSig[1],
+          );
           expect(converted).toBeCloseTo(beats, 10); // High precision due to floating point
         });
       });

@@ -8,10 +8,17 @@ export function addToolUpdateScene(server, callLiveApi) {
       "Note: This only modifies scene properties - does not affect playback or launch scenes. " +
       "All properties except ids are optional.",
     {
-      ids: z.string().describe("Scene ID or comma-separated list of scene IDs to update"),
+      ids: z
+        .string()
+        .describe("Scene ID or comma-separated list of scene IDs to update"),
       name: z.string().optional().describe("Name for the scene"),
       color: z.string().optional().describe("Color in #RRGGBB hex format"),
-      tempo: z.number().optional().describe("Tempo in BPM for the scene. Pass -1 to disable the scene's tempo."),
+      tempo: z
+        .number()
+        .optional()
+        .describe(
+          "Tempo in BPM for the scene. Pass -1 to disable the scene's tempo.",
+        ),
       timeSignature: z
         .string()
         .optional()

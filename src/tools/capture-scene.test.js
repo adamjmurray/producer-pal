@@ -1,6 +1,11 @@
 // src/tools/capture-scene.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiCall, liveApiPath, liveApiSet, mockLiveApiGet } from "../mock-live-api";
+import {
+  liveApiCall,
+  liveApiPath,
+  liveApiSet,
+  mockLiveApiGet,
+} from "../mock-live-api";
 import { captureScene } from "./capture-scene";
 
 describe("captureScene", () => {
@@ -60,7 +65,8 @@ describe("captureScene", () => {
 
   it("should set the scene name when provided", () => {
     liveApiPath.mockImplementation(function () {
-      if (this._path === "live_set view selected_scene") return "live_set scenes 1";
+      if (this._path === "live_set view selected_scene")
+        return "live_set scenes 1";
       return this._path;
     });
 
@@ -86,6 +92,8 @@ describe("captureScene", () => {
 
   it("should throw an error when selected scene index can't be determined", () => {
     liveApiPath.mockReturnValue("");
-    expect(() => captureScene()).toThrow("capture-scene failed: couldn't determine selected scene index");
+    expect(() => captureScene()).toThrow(
+      "capture-scene failed: couldn't determine selected scene index",
+    );
   });
 });

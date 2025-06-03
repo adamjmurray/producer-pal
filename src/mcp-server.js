@@ -1,7 +1,10 @@
 // src/mcp-server.js
 // the entry point / loader script for the MCP server running inside Ableton Live via Node for Max
 import Max from "max-api";
-import { createExpressApp, DEFAULT_LIVE_API_CALL_TIMEOUT_MS } from "./mcp-server/create-express-app";
+import {
+  createExpressApp,
+  DEFAULT_LIVE_API_CALL_TIMEOUT_MS,
+} from "./mcp-server/create-express-app";
 import { VERSION } from "./version";
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
@@ -20,7 +23,9 @@ args.forEach((arg, index) => {
   }
 });
 
-Max.post(`[${now()}] MCP Server v${VERSION} starting with port=${port}, Live API timeout=${timeoutMs}ms`);
+Max.post(
+  `[${now()}] MCP Server v${VERSION} starting with port=${port}, Live API timeout=${timeoutMs}ms`,
+);
 
 const appServer = createExpressApp({ timeoutMs });
 
@@ -46,5 +51,9 @@ appServer
     );
   })
   .on("error", (error) => {
-    throw new Error(error.code === "EADDRINUSE" ? `Port ${port} is already in use.` : `Server error: ${error}`);
+    throw new Error(
+      error.code === "EADDRINUSE"
+        ? `Port ${port} is already in use.`
+        : `Server error: ${error}`,
+    );
   });

@@ -1,6 +1,12 @@
 // src/tools/read-song.test.js
 import { describe, expect, it } from "vitest";
-import { children, expectedClip, expectedTrack, liveApiId, mockLiveApiGet } from "../mock-live-api";
+import {
+  children,
+  expectedClip,
+  expectedTrack,
+  liveApiId,
+  mockLiveApiGet,
+} from "../mock-live-api";
 import { readSong } from "./read-song";
 
 describe("readSong", () => {
@@ -150,7 +156,9 @@ describe("readSong", () => {
           firedSlotIndex: 3,
           drumPads: null,
           arrangementClips: [],
-          sessionClips: [expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 })],
+          sessionClips: [
+            expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
+          ],
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],

@@ -1,6 +1,11 @@
 // src/tools/read-scene.test.js
 import { describe, expect, it } from "vitest";
-import { children, expectedClip, liveApiId, mockLiveApiGet } from "../mock-live-api";
+import {
+  children,
+  expectedClip,
+  liveApiId,
+  mockLiveApiGet,
+} from "../mock-live-api";
 import { readScene } from "./read-scene";
 
 describe("readScene", () => {

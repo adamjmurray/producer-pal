@@ -53,14 +53,22 @@ export function addToolTransport(server, callLiveApi) {
         .describe(
           "Comma-separated list of track indexes (0-based) that should return to following the Arrangement timeline (like clicking their 'Back to Arrangement' buttons). Use when tracks are playing Session clips but you want them to switch back to playing Arrangement clips.",
         ),
-      trackIndexes: z.string().optional().describe("Comma-separated list of track indexes (0-based)"),
+      trackIndexes: z
+        .string()
+        .optional()
+        .describe("Comma-separated list of track indexes (0-based)"),
       clipSlotIndexes: z
         .string()
         .optional()
         .describe(
           "Comma-separated list of clip slot indexes (0-based). If fewer indexes than trackIndexes, the last clipSlotIndex will be reused.",
         ),
-      sceneIndex: z.number().int().min(0).optional().describe("Scene index (0-based), required for play-scene"),
+      sceneIndex: z
+        .number()
+        .int()
+        .min(0)
+        .optional()
+        .describe("Scene index (0-based), required for play-scene"),
     },
     async (args) => callLiveApi("transport", args),
   );

@@ -20,14 +20,23 @@ import {
 export function formatNotation(clipNotes, options = {}) {
   if (!clipNotes || clipNotes.length === 0) return "";
 
-  const { beatsPerBar: beatsPerBarOption, timeSigNumerator, timeSigDenominator } = options;
+  const {
+    beatsPerBar: beatsPerBarOption,
+    timeSigNumerator,
+    timeSigDenominator,
+  } = options;
   if (
     (timeSigNumerator != null && timeSigDenominator == null) ||
     (timeSigDenominator != null && timeSigNumerator == null)
   ) {
-    throw new Error("Time signature must be specified with both numerator and denominator");
+    throw new Error(
+      "Time signature must be specified with both numerator and denominator",
+    );
   }
-  const beatsPerBar = timeSigNumerator != null ? timeSigNumerator : (beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR);
+  const beatsPerBar =
+    timeSigNumerator != null
+      ? timeSigNumerator
+      : (beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR);
 
   // Sort notes by start time, then by pitch for consistent output
   const sortedNotes = [...clipNotes].sort((a, b) => {
@@ -57,16 +66,25 @@ export function formatNotation(clipNotes, options = {}) {
 
     // Check if we need to output time change
     const newTime = { bar, beat };
-    if (!currentTime || currentTime.bar !== newTime.bar || Math.abs(currentTime.beat - newTime.beat) > 0.001) {
+    if (
+      !currentTime ||
+      currentTime.bar !== newTime.bar ||
+      Math.abs(currentTime.beat - newTime.beat) > 0.001
+    ) {
       // Format beat - avoid unnecessary decimals
-      const beatFormatted = beat % 1 === 0 ? beat.toString() : beat.toFixed(3).replace(/\.?0+$/, "");
+      const beatFormatted =
+        beat % 1 === 0
+          ? beat.toString()
+          : beat.toFixed(3).replace(/\.?0+$/, "");
       elements.push(`${bar}|${beatFormatted}`);
       currentTime = newTime;
     }
 
     // Check velocity/velocity range change
     const noteVelocity = Math.round(note.velocity);
-    const noteVelocityDeviation = Math.round(note.velocity_deviation ?? DEFAULT_VELOCITY_DEVIATION);
+    const noteVelocityDeviation = Math.round(
+      note.velocity_deviation ?? DEFAULT_VELOCITY_DEVIATION,
+    );
 
     if (noteVelocityDeviation > 0) {
       // Output velocity range if deviation is present
@@ -75,7 +93,10 @@ export function formatNotation(clipNotes, options = {}) {
       const currentVelocityMin = currentVelocity;
       const currentVelocityMax = currentVelocity + currentVelocityDeviation;
 
-      if (velocityMin !== currentVelocityMin || velocityMax !== currentVelocityMax) {
+      if (
+        velocityMin !== currentVelocityMin ||
+        velocityMax !== currentVelocityMax
+      ) {
         elements.push(`v${velocityMin}-${velocityMax}`);
         currentVelocity = velocityMin;
         currentVelocityDeviation = noteVelocityDeviation;
@@ -94,7 +115,9 @@ export function formatNotation(clipNotes, options = {}) {
     if (Math.abs(noteDuration - currentDuration) > 0.001) {
       // Format duration - avoid unnecessary decimals
       const durationFormatted =
-        noteDuration % 1 === 0 ? noteDuration.toString() : noteDuration.toFixed(3).replace(/\.?0+$/, "");
+        noteDuration % 1 === 0
+          ? noteDuration.toString()
+          : noteDuration.toFixed(3).replace(/\.?0+$/, "");
       elements.push(`t${durationFormatted}`);
       currentDuration = noteDuration;
     }
@@ -104,7 +127,9 @@ export function formatNotation(clipNotes, options = {}) {
     if (Math.abs(noteProbability - currentProbability) > 0.001) {
       // Format probability - avoid unnecessary decimals
       const probabilityFormatted =
-        noteProbability % 1 === 0 ? noteProbability.toString() : noteProbability.toFixed(3).replace(/\.?0+$/, "");
+        noteProbability % 1 === 0
+          ? noteProbability.toString()
+          : noteProbability.toFixed(3).replace(/\.?0+$/, "");
       elements.push(`p${probabilityFormatted}`);
       currentProbability = noteProbability;
     }
