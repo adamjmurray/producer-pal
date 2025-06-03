@@ -63,9 +63,9 @@ describe("deleteObject", () => {
     const result = deleteObject({ ids, type: "track" });
 
     // Should delete in descending order (2, 1, 0) to maintain indices
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "delete_track", 2);
-    expect(liveApiCall).toHaveBeenNthCalledWith(2, "delete_track", 1);
-    expect(liveApiCall).toHaveBeenNthCalledWith(3, "delete_track", 0);
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(1, expect.objectContaining({ path: "live_set" }), "delete_track", 2);
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(2, expect.objectContaining({ path: "live_set" }), "delete_track", 1);
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(3, expect.objectContaining({ path: "live_set" }), "delete_track", 0);
 
     expect(result).toEqual([
       { id: "track_2", type: "track", deleted: true },
@@ -129,8 +129,8 @@ describe("deleteObject", () => {
     const result = deleteObject({ ids, type: "scene" });
 
     // Should delete in descending order (2, 0) to maintain indices
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "delete_scene", 2);
-    expect(liveApiCall).toHaveBeenNthCalledWith(2, "delete_scene", 0);
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(1, expect.objectContaining({ path: "live_set" }), "delete_scene", 2);
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(2, expect.objectContaining({ path: "live_set" }), "delete_scene", 0);
 
     expect(result).toEqual([
       { id: "scene_2", type: "scene", deleted: true },

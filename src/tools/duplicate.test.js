@@ -105,9 +105,9 @@ describe("duplicate", () => {
         ],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 1);
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 2);
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 0);
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 1);
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 2);
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Track 2");
@@ -146,7 +146,7 @@ describe("duplicate", () => {
         duplicatedClips: [],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 0);
 
       // Verify delete_clip was called for session clips (on clip slots)
       expect(liveApiCall).toHaveBeenCalledWith("delete_clip");
@@ -288,8 +288,8 @@ describe("duplicate", () => {
         ],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 1);
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_scene", 0);
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_scene", 1);
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene");
       expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Scene 2");
@@ -326,7 +326,7 @@ describe("duplicate", () => {
         duplicatedClips: [],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_scene", 0);
 
       // Verify delete_clip was called for clips in the duplicated scene
       expect(liveApiCall).toHaveBeenCalledWith("delete_clip");

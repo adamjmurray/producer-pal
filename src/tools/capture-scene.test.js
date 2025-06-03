@@ -17,7 +17,10 @@ describe("captureScene", () => {
 
     const result = captureScene();
 
-    expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "capture_and_insert_scene"
+    );
 
     expect(result).toEqual({
       id: "live_set/scenes/2",
@@ -63,7 +66,10 @@ describe("captureScene", () => {
 
     const result = captureScene({ name: "Captured Custom Name" });
 
-    expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "capture_and_insert_scene"
+    );
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set scenes 2" }),
