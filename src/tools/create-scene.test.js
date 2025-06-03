@@ -21,11 +21,7 @@ describe("createScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "create_scene",
-      1
-    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", 1);
     expect(liveApiSet).toHaveBeenCalledWith("name", "New Scene");
     expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
     expect(liveApiSet).toHaveBeenCalledWith("tempo", 120);
@@ -51,9 +47,24 @@ describe("createScene", () => {
       color: "#00FF00",
     });
 
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "create_scene", 0);
-    expect(liveApiCall).toHaveBeenNthCalledWith(2, "create_scene", 1);
-    expect(liveApiCall).toHaveBeenNthCalledWith(3, "create_scene", 2);
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(
+      1,
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      0
+    );
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(
+      2,
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      1
+    );
+    expect(liveApiCall).toHaveBeenNthCalledWithThis(
+      3,
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      2
+    );
 
     expect(liveApiSet).toHaveBeenCalledWith("name", "Verse");
     expect(liveApiSet).toHaveBeenCalledWith("name", "Verse 2");
@@ -84,7 +95,7 @@ describe("createScene", () => {
   it("should create scenes without setting properties when not provided", () => {
     const result = createScene({ sceneIndex: 0 });
 
-    expect(liveApiCall).toHaveBeenCalledWith("create_scene", 0);
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", 0);
     expect(liveApiSet).not.toHaveBeenCalled();
     expect(result).toEqual({
       id: "scene1",
@@ -103,10 +114,10 @@ describe("createScene", () => {
     });
 
     // Should create 3 padding scenes (indices 2,3,4) then the actual scene at index 5
-    expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // padding scene 1
-    expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // padding scene 2
-    expect(liveApiCall).toHaveBeenCalledWith("create_scene", -1); // padding scene 3
-    expect(liveApiCall).toHaveBeenCalledWith("create_scene", 5); // actual scene
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 1
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 2
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", -1); // padding scene 3
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_scene", 5); // actual scene
 
     expect(liveApiCall).toHaveBeenCalledTimes(4);
   });
