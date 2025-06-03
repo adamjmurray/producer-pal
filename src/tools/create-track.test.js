@@ -30,8 +30,16 @@ describe("createTrack", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "create_midi_track", 1);
-    expect(liveApiSet).toHaveBeenCalledWith("name", "New MIDI Track");
-    expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_1" }),
+      "name",
+      "New MIDI Track"
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_1" }),
+      "color",
+      16711680
+    );
     expect(result).toEqual({
       id: "midi_track_1",
       trackIndex: 1,
@@ -48,8 +56,16 @@ describe("createTrack", () => {
       name: "New Audio Track",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("create_audio_track", 0);
-    expect(liveApiSet).toHaveBeenCalledWith("name", "New Audio Track");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_audio_track",
+      0
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id audio_track_0" }),
+      "name",
+      "New Audio Track"
+    );
     expect(result).toEqual({
       id: "audio_track_0",
       trackIndex: 0,
@@ -85,9 +101,21 @@ describe("createTrack", () => {
       4
     );
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Drum");
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Drum 2");
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Drum 3");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_2" }),
+      "name",
+      "Drum"
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_3" }),
+      "name",
+      "Drum 2"
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_4" }),
+      "name",
+      "Drum 3"
+    );
 
     expect(result).toEqual([
       {
@@ -135,10 +163,26 @@ describe("createTrack", () => {
       arm: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Armed Track");
-    expect(liveApiSet).toHaveBeenCalledWith("mute", true);
-    expect(liveApiSet).toHaveBeenCalledWith("solo", false);
-    expect(liveApiSet).toHaveBeenCalledWith("arm", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "name",
+      "Armed Track"
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "mute",
+      true
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "solo",
+      false
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "arm",
+      true
+    );
     expect(result).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
@@ -158,9 +202,21 @@ describe("createTrack", () => {
       arm: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("mute", false);
-    expect(liveApiSet).toHaveBeenCalledWith("solo", false);
-    expect(liveApiSet).toHaveBeenCalledWith("arm", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "mute",
+      false
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "solo",
+      false
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "arm",
+      false
+    );
     expect(result).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
@@ -203,7 +259,11 @@ describe("createTrack", () => {
       name: "Solo Track",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Solo Track");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_0" }),
+      "name",
+      "Solo Track"
+    );
     expect(result.name).toBe("Solo Track");
   });
 
