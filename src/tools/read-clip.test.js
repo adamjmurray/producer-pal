@@ -435,7 +435,7 @@ describe("readClip", () => {
     const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ _path: "live_set tracks 0 clip_slots 0 clip" }),
+      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "get_notes_extended",
       0,
       127,

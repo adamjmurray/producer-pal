@@ -38,8 +38,12 @@ describe("transport", () => {
       startTime: "5|1",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-    expect(liveApiCall).toHaveBeenCalledWith("start_playing");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Arranger"
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 16); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       action: "play-arrangement",
@@ -135,7 +139,10 @@ describe("transport", () => {
       "show_view",
       "Session"
     );
-    expect(liveApiCall).toHaveBeenCalledWith("fire");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
+      "fire"
+    );
     expect(result).toStrictEqual({
       action: "play-session-clip",
       currentTime: "2|2",
@@ -172,7 +179,10 @@ describe("transport", () => {
       "show_view",
       "Session"
     );
-    expect(liveApiCall).toHaveBeenCalledWith("fire");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
+      "fire"
+    );
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 fire calls
     expect(result.trackIndexes).toBe("0,1,2");
     expect(result.clipSlotIndexes).toBe("0,1,2");
@@ -198,7 +208,10 @@ describe("transport", () => {
     });
 
     // Should fire clips at (0,0), (1,1), and (2,1) - reusing clipSlotIndex 1 for track 2
-    expect(liveApiCall).toHaveBeenCalledWith("fire");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
+      "fire"
+    );
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 fire calls
   });
 
@@ -248,7 +261,7 @@ describe("transport", () => {
       "show_view",
       "Session"
     );
-    expect(liveApiCall).toHaveBeenCalledWith("fire");
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set scenes 1" }), "fire");
     expect(result).toStrictEqual({
       action: "play-scene",
       currentTime: "2|2",
@@ -296,7 +309,10 @@ describe("transport", () => {
       "show_view",
       "Session"
     );
-    expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 1" }),
+      "stop_all_clips"
+    );
     expect(result).toStrictEqual({
       action: "stop-track-session-clip",
       currentTime: "2|2",
@@ -331,7 +347,10 @@ describe("transport", () => {
       "show_view",
       "Session"
     );
-    expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: expect.stringContaining("tracks") }),
+      "stop_all_clips"
+    );
     expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 stop_all_clips calls
   });
 
@@ -368,7 +387,7 @@ describe("transport", () => {
       "show_view",
       "Session"
     );
-    expect(liveApiCall).toHaveBeenCalledWith("stop_all_clips");
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "stop_all_clips");
     expect(result).toStrictEqual({
       action: "stop-all-session-clips",
       currentTime: "2|2",
@@ -500,8 +519,12 @@ describe("transport", () => {
       // no startTime provided
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-    expect(liveApiCall).toHaveBeenCalledWith("start_playing");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Arranger"
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "start_playing");
     expect(liveApiSet).toHaveBeenCalledWith("start_time", 0);
     expect(result.currentTime).toBe("1|1");
     expect(result.startTime).toBeUndefined();

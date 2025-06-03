@@ -145,11 +145,22 @@ describe("duplicate", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_track", 0);
 
       // Verify delete_clip was called for session clips (on clip slots)
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip");
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: expect.stringContaining("slot") }),
+        "delete_clip"
+      );
 
       // Verify delete_clip was called for arrangement clips (on track with clip IDs)
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangementClip0");
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangementClip1");
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_clip",
+        "id arrangementClip0"
+      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_clip",
+        "id arrangementClip1"
+      );
 
       // Verify the track instance called delete_clip for arrangement clips
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -321,7 +332,10 @@ describe("duplicate", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_set" }), "duplicate_scene", 0);
 
       // Verify delete_clip was called for clips in the duplicated scene
-      expect(liveApiCall).toHaveBeenCalledWith("delete_clip");
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
+        "delete_clip"
+      );
       const deleteCallCount = liveApiCall.mock.calls.filter((call) => call[0] === "delete_clip").length;
       expect(deleteCallCount).toBe(2); // Should delete 2 clips (tracks 0 and 1)
     });
@@ -441,11 +455,25 @@ describe("duplicate", () => {
           arrangementStartTime: "5|1",
         });
 
-        // Track 0 clip (4 beats) should use create_midi_clip since it's shorter than scene length (8 beats)
-        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 8);
+        // Track 0 clip (4 beats) should use duplicate_clip_to_arrangement since it already exists
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_to_arrangement",
+          "id live_set/tracks/0/clip_slots/0/clip",
+          16
+        );
         // Track 2 clip (8 beats) should also use create_midi_clip since it equals scene length
-        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 8);
-        expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 2" }),
+          "create_midi_clip",
+          16,
+          8
+        );
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_app view" }),
+          "show_view",
+          "Arranger"
+        );
 
         expect(result).toStrictEqual({
           type: "scene",
@@ -561,9 +589,24 @@ describe("duplicate", () => {
 
         // Scenes should be placed at sequential positions based on scene length (8 beats)
         // Should use create_midi_clip for exact length control
-        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 8);
-        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 24, 8);
-        expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 32, 8);
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "create_midi_clip",
+          16,
+          8
+        );
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "create_midi_clip",
+          24,
+          8
+        );
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "create_midi_clip",
+          32,
+          8
+        );
 
         expect(result).toStrictEqual({
           type: "scene",
@@ -641,7 +684,11 @@ describe("duplicate", () => {
           arrangementStartTime: "5|1",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_app view" }),
+          "show_view",
+          "Arranger"
+        );
 
         expect(result).toStrictEqual({
           type: "scene",
@@ -691,7 +738,11 @@ describe("duplicate", () => {
         );
 
         // Verify that show_view was still called
-        expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_app view" }),
+          "show_view",
+          "Arranger"
+        );
 
         expect(result).toStrictEqual({
           type: "scene",
@@ -810,8 +861,16 @@ describe("duplicate", () => {
           ],
         });
 
-        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_slot", 0);
-        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_slot", 1);
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_slot",
+          0
+        );
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_slot",
+          1
+        );
 
         expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip");
         expect(liveApiSet).toHaveBeenCalledWith("name", "Custom Clip 2");
@@ -871,8 +930,17 @@ describe("duplicate", () => {
           arrangementStartTime: "3|1",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 8);
-        expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_to_arrangement",
+          "id clip1",
+          8
+        );
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_app view" }),
+          "show_view",
+          "Arranger"
+        );
 
         expect(result).toStrictEqual({
           type: "clip",
@@ -985,9 +1053,24 @@ describe("duplicate", () => {
         });
 
         // Clips should be placed at sequential positions
-        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 8);
-        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 12);
-        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16);
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_to_arrangement",
+          "id clip1",
+          8
+        );
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_to_arrangement",
+          "id clip1",
+          12
+        );
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_to_arrangement",
+          "id clip1",
+          16
+        );
         expect(liveApiCall).toHaveBeenCalledTimes(6); // 3 duplicates + 3 show_view calls
       });
     });
@@ -1114,7 +1197,12 @@ describe("duplicate", () => {
       });
 
       // Should create clip with exact length instead of duplicating and shortening
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 4); // start=16, length=4
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "create_midi_clip",
+        16,
+        4
+      ); // start=16, length=4
       // Check that properties were copied correctly
       expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
       expect(liveApiSet).toHaveBeenCalledWith("color", 4047616); // setColor converts hex to integer
@@ -1190,8 +1278,18 @@ describe("duplicate", () => {
       });
 
       // Should create 2 clips: one full (4 beats) + one partial (2 beats)
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 16, 4); // First clip: start=16, length=4
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 20, 2); // Second clip: start=20, length=2
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "create_midi_clip",
+        16,
+        4
+      ); // First clip: start=16, length=4
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "create_midi_clip",
+        20,
+        2
+      ); // Second clip: start=20, length=2
 
       // Check that properties were copied correctly for both clips
       expect(liveApiSet).toHaveBeenCalledWith("name", "Test Clip"); // Copied from source
@@ -1244,7 +1342,12 @@ describe("duplicate", () => {
       });
 
       // Should create clip at original length (no end_marker set)
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        16
+      );
       expect(liveApiSet).not.toHaveBeenCalledWith("end_marker", expect.anything());
 
       expect(result).toStrictEqual({
@@ -1335,7 +1438,12 @@ describe("duplicate", () => {
       });
 
       // Verify that the implementation correctly converts "1|0" to 3 Ableton beats for 6/8 time signature
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 0, 3);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "create_midi_clip",
+        0,
+        3
+      );
 
       expect(result).toStrictEqual({
         type: "clip",
@@ -1420,7 +1528,12 @@ describe("duplicate", () => {
       });
 
       // Verify that the implementation correctly converts "1|0" to 4 Ableton beats for 2/2 time signature
-      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 0, 4);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "create_midi_clip",
+        0,
+        4
+      );
 
       expect(result).toStrictEqual({
         type: "clip",
@@ -1510,7 +1623,12 @@ describe("duplicate", () => {
       });
 
       // Should use original behavior - no length manipulation
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_to_arrangement", "id clip1", 16);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "duplicate_clip_to_arrangement",
+        "id clip1",
+        16
+      );
       // Check that no end_marker was set (setAll should only be called for name, which is undefined)
       expect(liveApiSet).not.toHaveBeenCalledWith("end_marker", expect.anything());
 

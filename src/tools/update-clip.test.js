@@ -16,7 +16,7 @@ describe("updateClip", () => {
         case "id 999":
           return "999";
         default:
-          return "0";
+          return this._id;
       }
     });
 
@@ -31,7 +31,7 @@ describe("updateClip", () => {
         case "999":
           return "live_set tracks 3 arrangement_clips 1";
         default:
-          return "";
+          return this._path;
       }
     });
   });
@@ -130,7 +130,11 @@ describe("updateClip", () => {
     });
 
     // Should call show_view with "Arranger" for Live API compatibility
-    expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Arranger"
+    );
   });
 
   it("should update multiple clips by comma-separated IDs", () => {
@@ -215,8 +219,15 @@ describe("updateClip", () => {
       notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "remove_notes_extended",
+      0,
+      127,
+      0,
+      1000000
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [
         {
           pitch: 72,
@@ -263,7 +274,7 @@ describe("updateClip", () => {
     });
 
     // In 6/8 time, bar 2 beat 1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [
         {
           pitch: 60,
@@ -305,7 +316,7 @@ describe("updateClip", () => {
       notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [
         {
           pitch: 60,
@@ -344,7 +355,7 @@ describe("updateClip", () => {
       notes: "1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1.0 D1 v100 p0.9 Gb1",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [
         { pitch: 36, start_time: 0, duration: 0.25, velocity: 100, probability: 1.0, velocity_deviation: 0 },
         { pitch: 42, start_time: 0, duration: 0.25, velocity: 80, probability: 0.8, velocity_deviation: 20 },
@@ -637,7 +648,7 @@ describe("updateClip", () => {
       notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [
         { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 },
         { pitch: 64, start_time: 0, duration: 1, velocity: 80, probability: 1.0, velocity_deviation: 0 },
@@ -662,7 +673,14 @@ describe("updateClip", () => {
       notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "remove_notes_extended",
+      0,
+      127,
+      0,
+      1000000
+    );
     expect(liveApiCall).not.toHaveBeenCalledWith("add_new_notes", expect.anything());
   });
 
@@ -682,8 +700,15 @@ describe("updateClip", () => {
       clearExistingNotes: true, // explicit true
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "remove_notes_extended",
+      0,
+      127,
+      0,
+      1000000
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],
     });
 
@@ -706,8 +731,15 @@ describe("updateClip", () => {
       // clearExistingNotes not specified, should default to true
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("remove_notes_extended", 0, 127, 0, 1000000);
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "remove_notes_extended",
+      0,
+      127,
+      0,
+      1000000
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],
     });
 
@@ -731,7 +763,7 @@ describe("updateClip", () => {
     });
 
     expect(liveApiCall).not.toHaveBeenCalledWith("remove_notes_extended", expect.anything());
-    expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+    expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "add_new_notes", {
       notes: [{ pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1.0, velocity_deviation: 0 }],
     });
 

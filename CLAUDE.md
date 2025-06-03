@@ -236,11 +236,24 @@ To update the version:
   `=== null` or `=== undefined`.
 - Use ES6 object shorthand property syntax when possible. Prefer `{ name, color }` over `{ name: name, color: color }`
   when the property name and variable name are the same.
+- In tests, liveApiId.mockImplementation() and liveApiPath.mockImplementation() implementations should always return
+  this.\_id and this.\_path as the default after adding any custom behaviors in order to ensure correct expectations on
+  live object mocks' `id` and `path` properties
+  - `liveApiId.mockImplementation(function () {` and `liveApiPath.mockImplementation(function () {` need to be used
+    instead of anonymous functions because we need `this` to be correct in the context of the callback so we can return
+    the `this._id` and `this._path` default values.
 - In tests, to best ensure correctness with the LiveAPI, all `expect(liveApiCall)` and `expect(liveApiSet)` calls should
   not use toHaveBeenCalledWith() or toHaveBeenNthCalledWith() but instead use toHaveBeenCalledWithThis() or
   toHaveBeenNthCalledWithThis() where the first `this` arg matcher is expect.objectContaining({...}) with typically an
-  `id` or `path` property depending on the test (if you have trouble using `id `for the `this` expectation, try using
-  `path`, or vice versa. Avoid using `_id` or `_path` if possible).
+  `id` or `path` property depending on the test
+  - if you have trouble using `id `for the `this` expectation, try using `path`, or vice versa. Avoid using `_id` or
+    `_path` if possible.
+  - IMPORTANT: When this matcher fails it will tell you there's an object with `_id` or `_path` properties. Don't match
+    on these, match on `id` or `path`. Sometimes these don't match because `id` and `path` can be overwritten by mock
+    implementations, which is the whole point of the mocking system. In these cases you should be able to assert based
+    on the mock setup earlier in the test. If it is not working, it is almost certainly because a
+    `liveApiId.mockImplementation()` or `liveApiPath.mockImplementation()` is not returning the correct default value
+    (`this._id` and `this._path`, respectively) `_path` in tests that are passing.
   - Do not use `expect.anything()` for LiveAPI mock expectations, except: instead of
     `.not.toHaveBeenCalledWithThis(expect.anything(), ...)` which conceptually does make sense for most negative tests,
     prefer the simpler `.not.toHaveBeenCalledWith(...)`
