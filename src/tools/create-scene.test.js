@@ -21,8 +21,11 @@ describe("createScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(liveApiCall).toHaveBeenCalledWith("create_scene", 1);
-    expect(liveApiCall.mock.instances[0].path).toBe("live_set");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_scene",
+      1
+    );
     expect(liveApiSet).toHaveBeenCalledWith("name", "New Scene");
     expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
     expect(liveApiSet).toHaveBeenCalledWith("tempo", 120);

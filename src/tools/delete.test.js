@@ -27,8 +27,11 @@ describe("deleteObject", () => {
     const result = deleteObject({ ids: id, type: "track" });
 
     expect(result).toEqual({ id, type: "track", deleted: true });
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "delete_track", trackIndex);
-    expect(liveApiCall.mock.instances[0].path).toBe("live_set");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "delete_track",
+      trackIndex
+    );
   });
 
   it("should delete multiple tracks in descending index order", () => {
@@ -94,8 +97,11 @@ describe("deleteObject", () => {
     const result = deleteObject({ ids: id, type: "scene" });
 
     expect(result).toEqual({ id, type: "scene", deleted: true });
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "delete_scene", sceneIndex);
-    expect(liveApiCall.mock.instances[0].path).toBe("live_set");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "delete_scene",
+      sceneIndex
+    );
   });
 
   it("should delete multiple scenes in descending index order", () => {
@@ -156,10 +162,16 @@ describe("deleteObject", () => {
 
     const result = deleteObject({ ids, type: "clip" });
 
-    expect(liveApiCall).toHaveBeenNthCalledWith(1, "delete_clip", "id clip_0_0");
-    expect(liveApiCall).toHaveBeenNthCalledWith(2, "delete_clip", "id clip_1_1");
-    expect(liveApiCall.mock.instances[0].path).toBe("live_set tracks 0");
-    expect(liveApiCall.mock.instances[1].path).toBe("live_set tracks 1");
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 0" }),
+      "delete_clip",
+      "id clip_0_0"
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 1" }),
+      "delete_clip",
+      "id clip_1_1"
+    );
 
     expect(result).toEqual([
       { id: "clip_0_0", type: "clip", deleted: true },

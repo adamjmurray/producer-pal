@@ -60,8 +60,11 @@ describe("duplicate", () => {
         duplicatedClips: [],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_track", 0);
-      expect(liveApiCall.mock.instances[0].path).toBe("live_set");
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0
+      );
     });
 
     it("should duplicate multiple tracks with auto-incrementing names", () => {
@@ -153,10 +156,16 @@ describe("duplicate", () => {
       expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id arrangementClip1");
 
       // Verify the track instance called delete_clip for arrangement clips
-      const trackDeleteCalls = liveApiCall.mock.calls.filter((call, index) => {
-        return call[0] === "delete_clip" && call[1] && liveApiCall.mock.instances[index].path === "live_set tracks 1";
-      });
-      expect(trackDeleteCalls.length).toBe(2);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_clip",
+        "id arrangementClip0"
+      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_clip",
+        "id arrangementClip1"
+      );
     });
   });
 
@@ -203,8 +212,11 @@ describe("duplicate", () => {
         ],
       });
 
-      expect(liveApiCall).toHaveBeenCalledWith("duplicate_scene", 0);
-      expect(liveApiCall.mock.instances[0].path).toBe("live_set");
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_scene",
+        0
+      );
     });
 
     it("should duplicate multiple scenes with auto-incrementing names", () => {
@@ -740,8 +752,11 @@ describe("duplicate", () => {
 
         const result = duplicate({ type: "clip", id: "clip1", destination: "session" });
 
-        expect(liveApiCall).toHaveBeenCalledWith("duplicate_clip_slot", 0);
-        expect(liveApiCall.mock.instances[0].path).toBe("live_set tracks 0");
+        expect(liveApiCall).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "duplicate_clip_slot",
+          0
+        );
 
         expect(result).toStrictEqual({
           type: "clip",

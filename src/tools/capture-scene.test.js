@@ -65,8 +65,11 @@ describe("captureScene", () => {
 
     expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Captured Custom Name");
-    expect(liveApiSet.mock.instances[0].path).toBe("live_set scenes 2");
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set scenes 2" }),
+      "name",
+      "Captured Custom Name"
+    );
 
     expect(result).toEqual({
       id: "live_set/scenes/2",
