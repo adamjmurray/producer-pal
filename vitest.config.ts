@@ -23,6 +23,7 @@ export default defineConfig({
         "src/console.js",
         "src/mcp-server.js",
         "src/mock-*",
+        "**/*.d.ts",
       ],
       reportOnFailure: true,
     },
