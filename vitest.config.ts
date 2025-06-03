@@ -7,7 +7,7 @@ export default defineConfig({
     environment: "node",
     include: ["src/**/*.test.js"],
     setupFiles: ["./test-setup.js"],
-
+    restoreMocks: true,
     coverage: {
       provider: "v8",
       reporter: [

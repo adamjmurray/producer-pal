@@ -161,6 +161,7 @@
 **BarBeat Enhancements:**
 
 - Percussion notation features (`X...x...` for 16th notes with accents)
+- Duration format consistency: Consider extending `t<duration>` to support bar:beat format (e.g., `t2:1.5` for 2 bars + 1.5 beats) while maintaining backward compatibility with simple beat values (e.g., `t1.5`). Would provide consistency with other duration parameters but may add complexity for limited practical benefit since note durations are typically sub-bar.
 
 ### Advanced Composition Features
 

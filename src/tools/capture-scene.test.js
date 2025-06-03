@@ -38,15 +38,21 @@ describe("captureScene", () => {
 
     const result = captureScene({ sceneIndex: 2 });
 
-    expect(liveApiSet).toHaveBeenCalledWith("selected_scene", "id live_set/scenes/2");
-    expect(liveApiSet.mock.instances[0].path).toBe("live_set view");
-
-    expect(liveApiCall).toHaveBeenCalledWith("capture_and_insert_scene");
-
     expect(result).toEqual({
       id: "live_set/scenes/3",
       sceneIndex: 3,
     });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "selected_scene",
+      "id live_set/scenes/2"
+    );
+
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "capture_and_insert_scene"
+    );
   });
 
   it("should set the scene name when provided", () => {

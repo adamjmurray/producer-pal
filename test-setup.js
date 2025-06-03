@@ -1,5 +1,6 @@
 // test-setup.js
-import { afterEach, beforeEach, vi } from "vitest";
+import { beforeEach } from "vitest";
+import "./src/expect-extensions";
 import { LiveAPI, liveApiCall, mockLiveApiGet } from "./src/mock-live-api";
 import { Task } from "./src/mock-task";
 
@@ -9,8 +10,6 @@ require("./src/live-api-extensions");
 globalThis.Task = Task;
 
 beforeEach(() => {
-  vi.resetAllMocks();
-
   // default mocking behaviors:
   mockLiveApiGet();
   // TODO: this should move into mockLiveApiCall (and maybe introduce mockLiveApiId and mockLiveApiPath and eventually wrap the whole thing in mockLiveApi)
@@ -24,8 +23,4 @@ beforeEach(() => {
         return null;
     }
   });
-});
-
-afterEach(() => {
-  vi.restoreAllMocks();
 });
