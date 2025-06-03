@@ -41,13 +41,17 @@ describe("updateScene", () => {
       timeSignature: "3/4",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Updated Scene");
-    expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
-    expect(liveApiSet).toHaveBeenCalledWith("tempo", 140);
-    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", true);
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_numerator", 3);
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_denominator", 4);
-    expect(liveApiSet).toHaveBeenCalledWith("time_signature_enabled", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Updated Scene");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 16711680);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo", 140);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo_enabled", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "time_signature_numerator", 3);
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "time_signature_denominator",
+      4
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "time_signature_enabled", true);
     expect(result).toEqual({
       id: "123",
       sceneIndex: 0,
@@ -65,10 +69,13 @@ describe("updateScene", () => {
       tempo: 120,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWith("tempo", 120);
-    expect(liveApiSet).toHaveBeenCalledWith("tempo_enabled", true);
     expect(liveApiSet).toHaveBeenCalledTimes(6); // 3 calls per scene
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo", 120);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "tempo_enabled", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "tempo", 120);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "456" }), "tempo_enabled", true);
 
     expect(result).toEqual([
       {
@@ -92,7 +99,7 @@ describe("updateScene", () => {
       name: "Prefixed ID Scene",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Prefixed ID Scene");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Prefixed ID Scene");
     expect(result).toEqual({
       id: "123",
       sceneIndex: 0,
@@ -106,7 +113,7 @@ describe("updateScene", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Only Name Update");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Only Name Update");
     expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       id: "123",

@@ -267,7 +267,7 @@ describe("createClip", () => {
         ],
       });
       expect(liveApiCall).toHaveBeenCalledWith("fire");
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Session");
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_0_0");
 
       expect(result).toEqual({
@@ -447,7 +447,7 @@ describe("createClip", () => {
 
       expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 8, 1); // Length based on notes
       expect(liveApiSet).toHaveBeenCalledWith("name", "Arrangement Clip");
-      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(liveApiCall).toHaveBeenCalledWithThis(expect.objectContaining({ path: "live_app view" }), "show_view", "Arranger");
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id arrangement_clip");
 
       expect(result).toEqual({

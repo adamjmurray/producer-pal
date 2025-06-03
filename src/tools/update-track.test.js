@@ -42,11 +42,11 @@ describe("updateTrack", () => {
       arm: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Updated Track");
-    expect(liveApiSet).toHaveBeenCalledWith("color", 16711680);
-    expect(liveApiSet).toHaveBeenCalledWith("mute", true);
-    expect(liveApiSet).toHaveBeenCalledWith("solo", false);
-    expect(liveApiSet).toHaveBeenCalledWith("arm", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Updated Track");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 16711680);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "mute", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "solo", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "arm", true);
     expect(result).toEqual({
       id: "123",
       trackIndex: 0,
@@ -65,8 +65,8 @@ describe("updateTrack", () => {
       mute: true,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("color", 65280);
-    expect(liveApiSet).toHaveBeenCalledWith("mute", true);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "color", 65280);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "mute", true);
     expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per track
 
     expect(result).toEqual([
@@ -91,7 +91,7 @@ describe("updateTrack", () => {
       name: "Prefixed ID Track",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Prefixed ID Track");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Prefixed ID Track");
     expect(result).toEqual({
       id: "123",
       trackIndex: 0,
@@ -105,7 +105,7 @@ describe("updateTrack", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("name", "Only Name Update");
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "name", "Only Name Update");
     expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(result).toEqual({
       id: "123",
@@ -122,9 +122,9 @@ describe("updateTrack", () => {
       arm: false,
     });
 
-    expect(liveApiSet).toHaveBeenCalledWith("mute", false);
-    expect(liveApiSet).toHaveBeenCalledWith("solo", false);
-    expect(liveApiSet).toHaveBeenCalledWith("arm", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "mute", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "solo", false);
+    expect(liveApiSet).toHaveBeenCalledWithThis(expect.objectContaining({ id: "123" }), "arm", false);
     expect(result).toEqual({
       id: "123",
       trackIndex: 0,
