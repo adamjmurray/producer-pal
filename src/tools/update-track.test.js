@@ -14,7 +14,7 @@ describe("updateTrack", () => {
         case "id 789":
           return "789";
         default:
-          return "0";
+          return this._id;
       }
     });
 
@@ -27,7 +27,7 @@ describe("updateTrack", () => {
         case "789":
           return "live_set tracks 2";
         default:
-          return "";
+          return this._path;
       }
     });
   });
@@ -154,6 +154,7 @@ describe("updateTrack", () => {
         case "id nonexistent":
           return "0";
         default:
+          // make default mocks appear to not exist:
           return "0";
       }
     });
@@ -166,7 +167,7 @@ describe("updateTrack", () => {
   it("should throw error when track path cannot be parsed", () => {
     liveApiPath.mockImplementation(function () {
       if (this._id === "123") return "invalid_path";
-      return "";
+      return this._path;
     });
 
     expect(() => updateTrack({ ids: "123", name: "Test" })).toThrow(

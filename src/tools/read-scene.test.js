@@ -88,7 +88,7 @@ describe("readScene", () => {
         case "live_set tracks 1 clip_slots 0 clip":
           return "clip_1_0";
         default:
-          return "id 0";
+          return this._id;
       }
     });
 

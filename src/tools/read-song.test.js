@@ -26,6 +26,8 @@ describe("readSong", () => {
         case "live_set tracks 1 clip_slots 0 clip":
           return "clip3";
         default:
+          // normally we should return this._id but in this test we mocked out everything
+          // and don't want any of the default mocks for clips or tracks to look like they exist:
           return "id 0";
       }
     });

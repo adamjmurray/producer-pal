@@ -470,6 +470,7 @@ describe("updateClip", () => {
         case "id nonexistent":
           return "0";
         default:
+          // make default mocks appear to not exist:
           return "0";
       }
     });
@@ -482,7 +483,7 @@ describe("updateClip", () => {
   it("should throw error when clip path cannot be parsed", () => {
     liveApiPath.mockImplementation(function () {
       if (this._id === "123") return "invalid_path";
-      return "";
+      return this._path;
     });
 
     mockLiveApiGet({

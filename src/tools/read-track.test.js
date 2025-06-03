@@ -40,6 +40,7 @@ describe("readTrack", () => {
         case "live_set tracks 0":
           return "track1";
         default:
+          // make default mocks appear to not exist:
           return "id 0";
       }
     });
@@ -127,6 +128,7 @@ describe("readTrack", () => {
         case "live_set tracks 0":
           return "track1";
         default:
+          // make default mocks appear to not exist:
           return "id 0";
       }
     });
@@ -203,6 +205,7 @@ describe("readTrack", () => {
         case "live_set tracks 2 clip_slots 2 clip":
           return "clip2";
         default:
+          // make default mocks appear to not exist:
           return "id 0";
       }
     });
@@ -258,6 +261,7 @@ describe("readTrack", () => {
         case "id arr_clip2":
           return this._path.substring(3);
         default:
+          // make default mocks appear to not exist:
           return "id 0";
       }
     });
@@ -268,6 +272,8 @@ describe("readTrack", () => {
           return "live_set tracks 2 arrangement_clips 0";
         case "arr_clip2":
           return "live_set tracks 2 arrangement_clips 1";
+        default:
+          return this._path;
       }
     });
 

@@ -14,7 +14,7 @@ describe("updateScene", () => {
         case "id 789":
           return "789";
         default:
-          return "0";
+          return this._id;
       }
     });
 
@@ -27,7 +27,7 @@ describe("updateScene", () => {
         case "789":
           return "live_set scenes 2";
         default:
-          return "";
+          return this._path;
       }
     });
   });
@@ -173,6 +173,7 @@ describe("updateScene", () => {
         case "id nonexistent":
           return "id 0";
         default:
+          // make default mocks appear to not exist:
           return "0";
       }
     });
@@ -185,7 +186,7 @@ describe("updateScene", () => {
   it("should throw error when scene path cannot be parsed", () => {
     liveApiPath.mockImplementation(function () {
       if (this._id === "123") return "invalid_path";
-      return "";
+      return this._path;
     });
 
     expect(() => updateScene({ ids: "123", name: "Test" })).toThrow(

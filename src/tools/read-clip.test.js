@@ -309,6 +309,7 @@ describe("readClip", () => {
       if (this._id === "session_clip_id") {
         return "live_set tracks 2 clip_slots 4 clip";
       }
+      return this._path;
     });
 
     const result = readClip({ clipId: "id session_clip_id" });
@@ -343,6 +344,7 @@ describe("readClip", () => {
       if (this._id === "arrangement_clip_id") {
         return "live_set tracks 3 arrangement_clips 2";
       }
+      return this._path;
     });
 
     const result = readClip({ clipId: "id arrangement_clip_id" });

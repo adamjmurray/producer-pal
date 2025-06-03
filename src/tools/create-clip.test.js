@@ -272,7 +272,7 @@ describe("createClip", () => {
           case "live_set tracks 0 clip_slots 0 clip":
             return "clip_0_0";
           default:
-            return this._path.replace(/\s+/g, "/");
+            return this._id;
         }
       });
       mockLiveApiGet({
@@ -366,7 +366,7 @@ describe("createClip", () => {
           case "live_set tracks 0 clip_slots 3 clip":
             return "clip_0_3";
           default:
-            return this._path.replace(/\s+/g, "/");
+            return this._id;
         }
       });
       mockLiveApiGet({
@@ -537,7 +537,7 @@ describe("createClip", () => {
 
       liveApiId.mockImplementation(function () {
         if (this._path === "id arrangement_clip") return "arrangement_clip";
-        return "1";
+        return this._id;
       });
 
       const result = createClip({
@@ -596,7 +596,7 @@ describe("createClip", () => {
 
       liveApiId.mockImplementation(function () {
         if (this._path === "id arrangement_clip") return "arrangement_clip";
-        return "1";
+        return this._id;
       });
 
       const result = createClip({
