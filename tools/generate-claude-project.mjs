@@ -56,8 +56,9 @@ async function copyDirectoriesAndFiles() {
     { src: "tools", isDir: true },
 
     // Individual files (no prefix)
-    { src: "README.md" },
+    { src: "LICENSE.md" },
     { src: "package.json" },
+    { src: "README.md" },
     { src: "rollup.config.mjs" },
     { src: "vitest.config.ts" },
     { src: "test-setup.js" },
