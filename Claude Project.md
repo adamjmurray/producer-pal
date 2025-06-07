@@ -7,10 +7,7 @@ Live.
 ## Goal
 
 We are developing the code with Claude Code. This Claude Project is used for
-brainstorming and analysis sessions. The code is in project resources, and to
-keep the context window under control, test code is omitted, but you should be
-able to see we have a vitest suite and some aspects of our mocking system (which
-needs improvement, to be honest). The test coverage is very good, above 90%.
+brainstorming and analysis sessions. The code is in project resources.
 
 Most conversations will revolve around discussing how to improve the current
 code (adding features, fixing bugs, or improving the general code quality or
