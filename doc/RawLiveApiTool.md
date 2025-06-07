@@ -33,11 +33,11 @@ Rollup's `@rollup/plugin-replace` plugin.
   path?: string,              // Optional LiveAPI path (e.g., "live_set tracks 0")
   operations: [               // Array of operations (max 50)
     {
-      type: "get" | "call" | "set",
-      property?: string,      // For get/set operations
-      method?: string,        // For call operations
-      args?: any[],          // For call operations
-      value?: any            // For set operations
+      type: "get_property" | "set_property" | "call_method" | "get" | "set" | "call" | "goto" | "info" | "getProperty" | "getChildIds" | "exists" | "getColor" | "setColor",
+      property?: string,      // For get_property/set_property/get/set/getProperty operations
+      method?: string,        // For call_method/call operations
+      args?: any[],          // For call_method/call operations
+      value?: any            // For set_property/set operations, path for goto, or color for setColor
     }
   ]
 }
@@ -60,9 +60,41 @@ Rollup's `@rollup/plugin-replace` plugin.
 
 ### Operation Types
 
-- `get` - Get property value: `{type: "get", property: "name"}`
-- `call` - Call method: `{type: "call", method: "get", args: ["name"]}`
-- `set` - Set property: `{type: "set", property: "name", value: "My Track"}`
+**Core Operations (Explicit)**
+
+- `get_property` - Direct property access:
+  `{type: "get_property", property: "id"}`
+- `set_property` - Direct property assignment:
+  `{type: "set_property", property: "name", value: "My Track"}`
+- `call_method` - Method calls:
+  `{type: "call_method", method: "get", args: ["tempo"]}`
+
+**Convenience Shortcuts**
+
+- `get` - Calls `get()` method: `{type: "get", property: "tempo"}` (equivalent
+  to `liveApi.get("tempo")`)
+- `set` - Calls `set()` method:
+  `{type: "set", property: "name", value: "My Track"}` (equivalent to
+  `liveApi.set("name", "My Track")`)
+- `call` - Calls `call()` method:
+  `{type: "call", method: "function_name", args: ["arg1", "arg2"]}` (equivalent
+  to `liveApi.call("function_name", "arg1", "arg2")`)
+- `goto` - Calls `goto()` method:
+  `{type: "goto", value: "live_set tracks 0"}` (equivalent to
+  `liveApi.goto("live_set tracks 0")`)
+- `info` - Gets `info` property: `{type: "info"}` (equivalent to `liveApi.info`)
+- `getProperty` - Calls `getProperty()` extension:
+  `{type: "getProperty", property: "name"}` (equivalent to
+  `liveApi.getProperty("name")`)
+- `getChildIds` - Calls `getChildIds()` extension: `{type: "getChildIds"}`
+  (equivalent to `liveApi.getChildIds()`)
+- `exists` - Calls `exists()` extension: `{type: "exists"}` (equivalent to
+  `liveApi.exists()`)
+- `getColor` - Calls `getColor()` extension: `{type: "getColor"}` (equivalent to
+  `liveApi.getColor()`)
+- `setColor` - Calls `setColor()` extension:
+  `{type: "setColor", value: "#FF0000"}` (equivalent to
+  `liveApi.setColor("#FF0000")`)
 
 ## Supported LiveAPI Features
 
@@ -76,6 +108,13 @@ Rollup's `@rollup/plugin-replace` plugin.
 - `property` - Observed property name
 - `proptype` - Type of observed property (read-only)
 - `type` - Object type (read-only)
+
+### Extension Properties (from live-api-extensions.js)
+
+- `trackIndex` - Get track index for track objects (0-based)
+- `sceneIndex` - Get scene index for scene objects (0-based)
+- `clipSlotIndex` - Get clip slot index for clip objects (0-based, same as
+  sceneIndex)
 
 ### Built-in Methods
 
@@ -110,8 +149,9 @@ configuration is required.
 
 ## Implementation Approach
 
-1. **Build-Time Conditional Compilation**: Uses Rollup's `@rollup/plugin-replace`
-   to replace `process.env.ENABLE_RAW_LIVE_API` with literal values at build time
+1. **Build-Time Conditional Compilation**: Uses Rollup's
+   `@rollup/plugin-replace` to replace `process.env.ENABLE_RAW_LIVE_API` with
+   literal values at build time
 2. **Tree Shaking**: When the environment variable is not "true", the entire
    tool and its dependencies are eliminated from the bundle via dead code
    elimination
@@ -129,7 +169,7 @@ The build-time environment variable is integrated into the development workflow:
 ### Scripts
 
 - `npm run build` - Production build (excludes raw API tool completely)
-- `npm run build:all` - Development build (includes raw API tool)  
+- `npm run build:all` - Development build (includes raw API tool)
 - `npm run dev` - Development mode with auto-rebuild (includes raw API tool)
 
 ### Implementation
@@ -152,9 +192,11 @@ The `@rollup/plugin-replace` plugin handles the build-time replacement:
 
 ```javascript
 replace({
-  "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(process.env.ENABLE_RAW_LIVE_API),
+  "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
+    process.env.ENABLE_RAW_LIVE_API,
+  ),
   preventAssignment: true,
-})
+});
 ```
 
 This replaces all instances of `process.env.ENABLE_RAW_LIVE_API` in the source
@@ -163,15 +205,29 @@ elimination when the tool is disabled.
 
 ## Example Usage
 
-### Basic Property Access
+### Basic Property and Method Access
 
 ```javascript
 {
   "path": "live_set tracks 0",
   "operations": [
-    { "type": "get", "property": "id" },
-    { "type": "get", "property": "children" },
-    { "type": "call", "method": "get", "args": ["name"] }
+    { "type": "get_property", "property": "id" },
+    { "type": "get_property", "property": "children" },
+    { "type": "get", "property": "name" }
+  ]
+}
+```
+
+### Using Core Operations vs Convenience Shortcuts
+
+```javascript
+{
+  "path": "live_set",
+  "operations": [
+    { "type": "info" },                                                    // Convenience: gets info property
+    { "type": "get_property", "property": "info" },                       // Equivalent core operation
+    { "type": "get", "property": "tempo" },                               // Convenience: calls get("tempo")
+    { "type": "call_method", "method": "get", "args": ["tempo"] }          // Equivalent core operation
   ]
 }
 ```
@@ -182,9 +238,11 @@ elimination when the tool is disabled.
 {
   "path": "live_set tracks 0 devices 0",
   "operations": [
-    { "type": "get", "property": "info" },
-    { "type": "call", "method": "getProperty", "args": ["name"] },
-    { "type": "call", "method": "exists" }
+    { "type": "info" },
+    { "type": "getProperty", "property": "name" },
+    { "type": "exists" },
+    { "type": "getChildIds" },
+    { "type": "getColor" }
   ]
 }
 ```
@@ -194,9 +252,9 @@ elimination when the tool is disabled.
 ```javascript
 {
   "operations": [
-    { "type": "call", "method": "goto", "args": ["live_set tracks 0"] },
+    { "type": "goto", "value": "live_set tracks 0" },
     { "type": "set", "property": "name", "value": "My Track" },
-    { "type": "call", "method": "get", "args": ["name"] }
+    { "type": "get", "property": "name" }
   ]
 }
 ```
