@@ -18,10 +18,6 @@ async function cleanAndCreateOutputDir() {
   await fs.mkdir(outputDir, { recursive: true });
 }
 
-function flattenPath(filePath, baseDir) {
-  const relativePath = path.relative(baseDir, filePath);
-  return relativePath.replace(/[/\\]/g, "--");
-}
 
 async function copyFile(sourcePath, targetPath) {
   const content = await fs.readFile(sourcePath, "utf8");
@@ -53,70 +49,57 @@ async function findSourceFiles(dir, baseDir, skipTests = true) {
   return files;
 }
 
-async function copySourceFiles() {
-  const srcDir = path.join(projectRoot, "src");
-  const sourceFiles = await findSourceFiles(srcDir, srcDir, true);
-
-  console.log(`Copying ${sourceFiles.length} source files...`);
-
-  for (const filePath of sourceFiles) {
-    const flatName = "src--" + flattenPath(filePath, srcDir);
-    const targetPath = path.join(outputDir, flatName);
-    await copyFile(filePath, targetPath);
-    console.log(`  ${path.relative(projectRoot, filePath)} → ${flatName}`);
-  }
-}
-
-async function copyDocsAndConfigs() {
-  const filesToCopy = [
-    // Documentation
+async function copyDirectoriesAndFiles() {
+  const itemsToCopy = [
+    // Directories (automatically get directory prefix)
+    { src: "src", isDir: true, skipTests: true },
     { src: "doc", isDir: true },
+    { src: "tools", isDir: true },
+    
+    // Individual files (no prefix)
     { src: "README.md" },
-
-    // Configuration files
     { src: "package.json" },
     { src: "rollup.config.mjs" },
     { src: "vitest.config.ts" },
     { src: "test-setup.js" },
-
-    // Tools directory
-    { src: "tools", isDir: true },
-
-    // Other important files
     {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
   ];
 
-  console.log("Copying documentation and configuration files...");
+  console.log("Copying files...");
 
-  for (const file of filesToCopy) {
-    const sourcePath = path.join(projectRoot, file.src);
+  for (const item of itemsToCopy) {
+    const sourcePath = path.join(projectRoot, item.src);
 
     try {
       const stat = await fs.stat(sourcePath);
 
-      if (file.isDir && stat.isDirectory()) {
-        // Copy all files from directory with flattened names
-        const files = await findAllFiles(sourcePath);
+      if (item.isDir && stat.isDirectory()) {
+        // Copy all files from directory with automatic prefix
+        const files = item.skipTests 
+          ? await findSourceFiles(sourcePath, sourcePath, true)
+          : await findAllFiles(sourcePath);
+          
+        const dirName = path.basename(item.src);
+        
         for (const filePath of files) {
-          const flatName = flattenPath(filePath, projectRoot);
+          const relativePath = path.relative(sourcePath, filePath);
+          const flatName = dirName + "--" + relativePath.replace(/[/\\]/g, "--");
           const targetPath = path.join(outputDir, flatName);
           await copyFile(filePath, targetPath);
-          console.log(
-            `  ${path.relative(projectRoot, filePath)} → ${flatName}`,
-          );
+          console.log(`  ${path.relative(projectRoot, filePath)} → ${flatName}`);
         }
       } else if (stat.isFile()) {
         // Copy single file
-        const targetName = file.flatName || path.basename(file.src);
+        const targetName = item.flatName || path.basename(item.src);
         const targetPath = path.join(outputDir, targetName);
         await copyFile(sourcePath, targetPath);
-        console.log(`  ${file.src} → ${targetName}`);
+        console.log(`  ${item.src} → ${targetName}`);
       }
     } catch (error) {
-      console.log(`  Skipping ${file.src} (not found)`);
+      console.log(`  Skipping ${item.src} (not found)`);
     }
   }
 }
@@ -148,8 +131,7 @@ async function main() {
     console.log("Generating Claude Project files...");
 
     await cleanAndCreateOutputDir();
-    await copySourceFiles();
-    await copyDocsAndConfigs();
+    await copyDirectoriesAndFiles();
 
     console.log(
       `\nComplete! Files copied to: ${path.relative(projectRoot, outputDir)}`,
