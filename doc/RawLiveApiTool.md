@@ -34,7 +34,7 @@ Rollup's `@rollup/plugin-replace` plugin.
   operations: [               // Array of operations (max 50)
     {
       type: "get_property" | "set_property" | "call_method" | "get" | "set" | "call" | "goto" | "info" | "getProperty" | "getChildIds" | "exists" | "getColor" | "setColor",
-      property?: string,      // For get_property/set_property/get/set/getProperty operations
+      property?: string,      // For get_property/set_property/get/set/getProperty/getChildIds operations
       method?: string,        // For call_method/call operations
       args?: any[],          // For call_method/call operations
       value?: any            // For set_property/set operations, path for goto, or color for setColor
@@ -86,8 +86,8 @@ Rollup's `@rollup/plugin-replace` plugin.
 - `getProperty` - Calls `getProperty()` extension:
   `{type: "getProperty", property: "name"}` (equivalent to
   `liveApi.getProperty("name")`)
-- `getChildIds` - Calls `getChildIds()` extension: `{type: "getChildIds"}`
-  (equivalent to `liveApi.getChildIds()`)
+- `getChildIds` - Calls `getChildIds()` extension: `{type: "getChildIds", property: "clip_slots"}`
+  (equivalent to `liveApi.getChildIds("clip_slots")`)
 - `exists` - Calls `exists()` extension: `{type: "exists"}` (equivalent to
   `liveApi.exists()`)
 - `getColor` - Calls `getColor()` extension: `{type: "getColor"}` (equivalent to
@@ -236,12 +236,12 @@ elimination when the tool is disabled.
 
 ```javascript
 {
-  "path": "live_set tracks 0 devices 0",
+  "path": "live_set tracks 0",
   "operations": [
     { "type": "info" },
     { "type": "getProperty", "property": "name" },
     { "type": "exists" },
-    { "type": "getChildIds" },
+    { "type": "getChildIds", "property": "clip_slots" },
     { "type": "getColor" }
   ]
 }
@@ -277,6 +277,13 @@ elimination when the tool is disabled.
 - LiveAPI errors are propagated as tool errors with descriptive messages
 - Invalid operation types throw errors immediately
 - Operations are processed sequentially until an error occurs
+
+## Warning Handling and Debugging
+
+- Live API warnings (e.g., "Invalid syntax") may appear during operations
+- **Important limitation**: When running multiple operations in a single tool call, warnings appear at the end without indicating which specific operation triggered them
+- **Debugging recommendation**: If you encounter warnings, run operations individually to isolate which operation causes the warning
+- This limitation is inherent to the Live API's warning system and cannot be easily resolved
 
 ## Performance Notes
 

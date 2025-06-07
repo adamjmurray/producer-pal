@@ -106,7 +106,10 @@ export function rawLiveApi({ path, operations } = {}) {
           break;
 
         case "getChildIds":
-          result = api.getChildIds();
+          if (!operation.property) {
+            throw new Error("getChildIds operation requires property (child type)");
+          }
+          result = api.getChildIds(operation.property);
           break;
 
         case "exists":
