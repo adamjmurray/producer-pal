@@ -2,6 +2,7 @@
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
+import replace from "@rollup/plugin-replace";
 export default [
   {
     input: "src/main.js",
@@ -10,6 +11,10 @@ export default [
       format: "es",
     },
     plugins: [
+      replace({
+        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(process.env.ENABLE_RAW_LIVE_API),
+        preventAssignment: true,
+      }),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
     ],
   },
@@ -26,6 +31,10 @@ export default [
       // (!) Circular dependencies in node_modules/zod-to-json-schema
       // and
       // (!) "this" has been rewritten to "undefined" in node_modules/zod
+      replace({
+        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(process.env.ENABLE_RAW_LIVE_API),
+        preventAssignment: true,
+      }),
       resolve({
         preferBuiltins: true,
         browser: false,

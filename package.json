@@ -19,6 +19,7 @@
     "@rollup/plugin-commonjs": "^28.0.3",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-replace": "^6.0.2",
     "@types/express": "^5.0.3",
     "@types/max-api": "^2.0.3",
     "@types/node": "^22.15.30",
@@ -34,7 +35,8 @@
   },
   "scripts": {
     "build": "npm run parser:build && rollup -c",
-    "dev": "rollup -c -w",
+    "build:all": "ENABLE_RAW_LIVE_API=true npm run parser:build && ENABLE_RAW_LIVE_API=true rollup -c",
+    "dev": "ENABLE_RAW_LIVE_API=true rollup -c -w",
     "test": "npm run test:setup && vitest run",
     "test:watch": "npm run test:setup && vitest",
     "test:coverage": "npm run test:setup && vitest run --coverage",

@@ -9,6 +9,7 @@ import { createScene } from "./tools/create-scene";
 import { createTrack } from "./tools/create-track";
 import { deleteObject } from "./tools/delete";
 import { duplicate } from "./tools/duplicate";
+import { rawLiveApi } from "./tools/raw-live-api";
 import { readClip } from "./tools/read-clip";
 import { readScene } from "./tools/read-scene";
 import { readSong } from "./tools/read-song";
@@ -36,6 +37,10 @@ const tools = {
   "capture-scene": (args) => captureScene(args),
   transport: (args) => transport(args),
 };
+
+if (process.env.ENABLE_RAW_LIVE_API === "true") {
+  tools["raw-live-api"] = (args) => rawLiveApi(args);
+}
 
 function callTool(toolName, args) {
   const tool = tools[toolName];

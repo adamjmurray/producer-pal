@@ -11,17 +11,18 @@ tools.
 **Important**: This tool is intended for development use only and will not be
 included in production builds.
 
-## Environment Configuration
+## Build-Time Configuration
 
-The tool will be conditionally registered with the MCP server based on an
-environment variable:
+The tool is conditionally included in builds using a build-time environment
+variable:
 
 ```bash
 ENABLE_RAW_LIVE_API=true
 ```
 
-When this environment variable is not set or is false, the tool will not be
-available.
+**Important**: This is a build-time flag, not a runtime flag. The tool is either
+compiled into the bundle or completely excluded during the build process using
+Rollup's `@rollup/plugin-replace` plugin.
 
 ## Tool Interface
 
@@ -109,25 +110,31 @@ configuration is required.
 
 ## Implementation Approach
 
-1. **Conditional Registration**: Check `ENABLE_RAW_LIVE_API` environment
-   variable in MCP server setup
-2. **LiveAPI Creation**: Instantiate `LiveAPI(path)` with optional path
+1. **Build-Time Conditional Compilation**: Uses Rollup's `@rollup/plugin-replace`
+   to replace `process.env.ENABLE_RAW_LIVE_API` with literal values at build time
+2. **Tree Shaking**: When the environment variable is not "true", the entire
+   tool and its dependencies are eliminated from the bundle via dead code
+   elimination
+3. **LiveAPI Creation**: Instantiate `LiveAPI(path)` with optional path
    parameter
-3. **Extensions Application**: Automatically apply Live API extensions
-4. **Operation Processing**: Execute operations sequentially, capturing results
-5. **Result Aggregation**: Return structured response with all operation results
+4. **Extensions Application**: Automatically apply Live API extensions using
+   `applyLiveApiExtensions()`
+5. **Operation Processing**: Execute operations sequentially, capturing results
+6. **Result Aggregation**: Return structured response with all operation results
 
 ## NPM Scripts Integration
 
-The environment variable will be integrated into the development workflow:
+The build-time environment variable is integrated into the development workflow:
 
 ### Scripts
 
-- `npm run build` - Production build (no raw API tool)
-- `npm run build:all` - Development build (includes raw API tool)
+- `npm run build` - Production build (excludes raw API tool completely)
+- `npm run build:all` - Development build (includes raw API tool)  
 - `npm run dev` - Development mode with auto-rebuild (includes raw API tool)
 
 ### Implementation
+
+The package.json scripts set the environment variable at build time:
 
 ```json
 {
@@ -138,6 +145,21 @@ The environment variable will be integrated into the development workflow:
   }
 }
 ```
+
+### Rollup Configuration
+
+The `@rollup/plugin-replace` plugin handles the build-time replacement:
+
+```javascript
+replace({
+  "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(process.env.ENABLE_RAW_LIVE_API),
+  preventAssignment: true,
+})
+```
+
+This replaces all instances of `process.env.ENABLE_RAW_LIVE_API` in the source
+code with the actual string value ("true" or undefined), enabling dead code
+elimination when the tool is disabled.
 
 ## Example Usage
 
@@ -209,11 +231,17 @@ The environment variable will be integrated into the development workflow:
 1. **Path Handling**: Empty/null path creates LiveAPI without arguments (follows
    constructor behavior)
 2. **Extensions Application**: Extensions are automatically applied to the
-   LiveAPI instance
-3. **Result Consistency**: All operations return results in the same format for
+   LiveAPI instance using `applyLiveApiExtensions()`
+3. **Parameter Destructuring**: Tool function uses standard parameter
+   destructuring: `rawLiveApi({ path, operations } = {})`
+4. **JSDoc Documentation**: Comprehensive JSDoc comments document all parameters
+   and return values
+5. **Result Consistency**: All operations return results in the same format for
    predictable parsing
-4. **Error Propagation**: Any operation failure stops execution and propagates
+6. **Error Propagation**: Any operation failure stops execution and propagates
    as a tool error
+7. **Build-Time Exclusion**: In production builds, the tool code is completely
+   removed via dead code elimination, resulting in zero bundle size impact
 
 ## Future Enhancements
 
