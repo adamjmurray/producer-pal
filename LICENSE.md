@@ -40,7 +40,13 @@ terms. Modified versions must include a notice of the changes made.
 
 ---
 
-### 4. Disclaimer
+### 4. Creative Output Ownership
+
+Users retain full ownership and all rights to any music, compositions, or other creative works created using this Software. The author makes no claim to any creative output produced with this Software.
+
+---
+
+### 5. Disclaimer
 
 THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS

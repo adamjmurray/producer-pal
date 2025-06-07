@@ -1,9 +1,13 @@
 // rollup.config.mjs
+import { readFileSync } from "fs";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
+
+const licenseText = readFileSync("LICENSE.md", "utf-8");
+const licenseHeader = `/*\n${licenseText}\n*/\n\n`;
 
 const terserOptions = {
   compress: false,
@@ -14,6 +18,13 @@ const terserOptions = {
     indent_level: 2,
   },
 };
+
+const addLicenseHeader = () => ({
+  name: "add-license-header",
+  renderChunk(code) {
+    return licenseHeader + code;
+  },
+});
 
 export default [
   {
@@ -31,6 +42,7 @@ export default [
       }),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
+      addLicenseHeader(),
     ],
   },
   {
@@ -59,6 +71,7 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
+      addLicenseHeader(),
     ],
   },
 ];
