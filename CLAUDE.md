@@ -15,8 +15,11 @@ Protocol (MCP) to enable AI assistants to manipulate music in Ableton Live.
 # Build the project (required after changes)
 npm run build
 
-# Development mode with auto-rebuild
+# Development mode with auto-rebuild (includes raw-live-api tool)
 npm run dev
+
+# Build with all tools including raw-live-api
+npm run build:all
 
 # Run tests
 npm test
@@ -189,6 +192,31 @@ node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination
 The user may be in the middle of their own tests and running commands could
 interfere with their work or produce unexpected results in their Ableton Live
 session.
+
+### Raw Live API Tool
+
+For development and debugging, a `raw-live-api` tool is available when building 
+with `npm run dev` or `npm run build:all`. This tool provides direct access to 
+the Live API for research and debugging purposes:
+
+```bash
+# Example: Multiple operation types on live_set tempo
+node e2e/cli.mjs tools/call raw-live-api '{
+  "path": "live_set", 
+  "operations": [
+    {"type": "get", "property": "tempo"},
+    {"type": "getProperty", "property": "tempo"}
+  ]
+}'
+```
+
+The tool supports 13 operation types:
+- **Core operations**: `get_property`, `set_property`, `call_method`
+- **Convenience shortcuts**: `get`, `set`, `call`, `goto`, `info`  
+- **Extension methods**: `getProperty`, `getChildIds`, `exists`, `getColor`, `setColor`
+
+**Note**: When running multiple operations, warnings appear at the end without 
+indicating which operation triggered them - this is a limitation of the Live API.
 
 ## Versioning
 

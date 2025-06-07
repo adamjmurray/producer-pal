@@ -65,8 +65,9 @@ Make music in Ableton Live with an AI assistant such as
 3. Restart Claude Desktop
 
    - In the "Search and Tools" button below the chat input, you should see
-     `Ableton Producer Pal` and if you click into it, there should be 12 tools
-     such as `read-song` and `write-song`. Make sure `Ableton Producer Pal` and
+     `Ableton Producer Pal` and if you click into it, there should be 15 tools
+     such as `read-song` and `write-song` (16 tools if you built with the 
+     development `raw-live-api` tool enabled). Make sure `Ableton Producer Pal` and
      its tools are enabled (they should be enabled by default, unless you
      disable them).
 
@@ -138,3 +139,31 @@ node e2e/cli.mjs --help
 This CLI tool connects directly to your running Ableton Live session and can
 help debug real-world issues by exercising the full MCP stack with actual Live
 data.
+
+### Development Tools
+
+#### Raw Live API Access
+
+For development and debugging, a `raw-live-api` tool is available when building with `npm run dev` or `npm run build:all`. This tool provides direct access to the Live API for research and advanced debugging:
+
+```sh
+# Example: Get tempo using multiple operation types
+node e2e/cli.mjs tools/call raw-live-api '{
+  "path": "live_set",
+  "operations": [
+    {"type": "get", "property": "tempo"},
+    {"type": "getProperty", "property": "tempo"}
+  ]
+}'
+
+# Example: Navigate to a track and check if it exists
+node e2e/cli.mjs tools/call raw-live-api '{
+  "operations": [
+    {"type": "goto", "value": "live_set tracks 0"},
+    {"type": "exists"},
+    {"type": "getProperty", "property": "name"}
+  ]
+}'
+```
+
+The `raw-live-api` tool supports 13 operation types including core operations (`get_property`, `set_property`, `call_method`), convenience shortcuts (`get`, `set`, `call`, `goto`, `info`), and extension methods (`getProperty`, `getChildIds`, `exists`, `getColor`, `setColor`).
