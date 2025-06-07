@@ -272,9 +272,16 @@ To update the version:
       bundled along with the source code for easy distribution (so end users
       don't have to install any npm modules)
   - The entry point for the v8 code is `src/main.js`
-- source code files must always include the relative path to the file in a
-  comment on the first line, so the context is clear when these files are added
-  to project knowledge
+- **Source file path comments**: All source files in `src/**` and `tools/**`
+  must always include the relative path to the file in a comment on the first
+  line (or second line after a shebang for executable files). This rule ensures
+  that when files are copied to the Claude Project with flattened names like
+  `src--tools--create-clip.js`, Claude can understand the original file
+  structure, relationships between files, and import dependencies. Examples:
+  - `src/main.js` → first line: `// src/main.js`
+  - `tools/cli.mjs` → second line: `// tools/cli.mjs` (after
+    `#!/usr/bin/env node`)
+  - `src/tools/duplicate.js` → first line: `// src/tools/duplicate.js`
 - Keep code commenting to a minimum
 - The Max for Live device is in
   `/Users/adammurray/workspace/ableton-live-composition-assistant/device`. The
