@@ -3,6 +3,18 @@ import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
+import terser from "@rollup/plugin-terser";
+
+const terserOptions = {
+  compress: false,
+  mangle: false,
+  format: {
+    comments: false,
+    beautify: true,
+    indent_level: 2,
+  },
+};
+
 export default [
   {
     input: "src/main.js",
@@ -18,6 +30,7 @@ export default [
         preventAssignment: true,
       }),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
+      terser(terserOptions),
     ],
   },
   {
@@ -45,6 +58,7 @@ export default [
       }),
       commonjs(),
       json(),
+      terser(terserOptions),
     ],
   },
 ];
