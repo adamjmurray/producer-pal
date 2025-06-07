@@ -82,7 +82,7 @@ export function addToolCreateClip(server, callLiveApi) {
         .enum(["play-scene", "play-clip"])
         .optional()
         .describe(
-          "Automatic playback action after clip creation. 'play-scene' relaunches the entire scene for synchronization (recommended). 'play-clip' plays only the created clip(s). Omit for no automatic playback. Session clips only - Arrangement clips ignore this parameter. IMPORTANT: Both options put the affected track into non-arrangement-following state - it will play Session clips instead of Arrangement clips until restored via the transport tool's followingTrackIndexes parameter.",
+          "Automatic playback action after clip creation. 'play-scene' relaunches the entire scene for synchronization. Use this when: building multi-instrument arrangements, adding to existing grooves, or when other clips should play together. 'play-clip' plays only the created clip(s). Use this when: auditioning standalone ideas or creating clips that shouldn't trigger other instruments. Default to 'play-scene' unless you specifically need isolation. Omit for no automatic playback. Session clips only - Arrangement clips ignore this parameter. IMPORTANT: Both options put the affected track into non-arrangement-following state - it will play Session clips instead of Arrangement clips until restored via the transport tool's followingTrackIndexes parameter.",
         ),
     },
     async (args) => callLiveApi("create-clip", args),
