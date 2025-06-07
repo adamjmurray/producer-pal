@@ -18,7 +18,6 @@ async function cleanAndCreateOutputDir() {
   await fs.mkdir(outputDir, { recursive: true });
 }
 
-
 async function copyFile(sourcePath, targetPath) {
   const content = await fs.readFile(sourcePath, "utf8");
   await fs.writeFile(targetPath, content);
@@ -52,10 +51,10 @@ async function findSourceFiles(dir, baseDir, skipTests = true) {
 async function copyDirectoriesAndFiles() {
   const itemsToCopy = [
     // Directories (automatically get directory prefix)
-    { src: "src", isDir: true, skipTests: true },
+    { src: "src", isDir: true, skipTests: false },
     { src: "doc", isDir: true },
     { src: "tools", isDir: true },
-    
+
     // Individual files (no prefix)
     { src: "README.md" },
     { src: "package.json" },
@@ -78,18 +77,21 @@ async function copyDirectoriesAndFiles() {
 
       if (item.isDir && stat.isDirectory()) {
         // Copy all files from directory with automatic prefix
-        const files = item.skipTests 
+        const files = item.skipTests
           ? await findSourceFiles(sourcePath, sourcePath, true)
           : await findAllFiles(sourcePath);
-          
+
         const dirName = path.basename(item.src);
-        
+
         for (const filePath of files) {
           const relativePath = path.relative(sourcePath, filePath);
-          const flatName = dirName + "--" + relativePath.replace(/[/\\]/g, "--");
+          const flatName =
+            dirName + "--" + relativePath.replace(/[/\\]/g, "--");
           const targetPath = path.join(outputDir, flatName);
           await copyFile(filePath, targetPath);
-          console.log(`  ${path.relative(projectRoot, filePath)} → ${flatName}`);
+          console.log(
+            `  ${path.relative(projectRoot, filePath)} → ${flatName}`,
+          );
         }
       } else if (stat.isFile()) {
         // Copy single file
