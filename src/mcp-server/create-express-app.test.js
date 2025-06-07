@@ -40,6 +40,9 @@ describe("MCP Express App", () => {
   let defaultMaxHandler;
 
   beforeAll(async () => {
+    // Enable raw-live-api tool for testing
+    process.env.ENABLE_RAW_LIVE_API = "true";
+
     // Import and start the server first
     const { createExpressApp } = await import("./create-express-app");
 
@@ -129,6 +132,7 @@ describe("MCP Express App", () => {
         "update-clip",
         "delete",
         "duplicate",
+        "raw-live-api",
       ]);
     });
 

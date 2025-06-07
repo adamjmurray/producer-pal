@@ -16,9 +16,9 @@ export class LiveAPI {
     this.get = liveApiGet;
     this.set = liveApiSet;
     this.call = liveApiCall;
-    this._id = path.startsWith("id ")
+    this._id = path?.startsWith("id ")
       ? path.slice(3)
-      : path.replaceAll(/\s+/g, "/");
+      : path?.replaceAll(/\s+/g, "/");
   }
 
   get id() {
