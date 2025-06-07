@@ -12,7 +12,9 @@ export default [
     },
     plugins: [
       replace({
-        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(process.env.ENABLE_RAW_LIVE_API),
+        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
+          process.env.ENABLE_RAW_LIVE_API,
+        ),
         preventAssignment: true,
       }),
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
@@ -32,7 +34,9 @@ export default [
       // and
       // (!) "this" has been rewritten to "undefined" in node_modules/zod
       replace({
-        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(process.env.ENABLE_RAW_LIVE_API),
+        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
+          process.env.ENABLE_RAW_LIVE_API,
+        ),
         preventAssignment: true,
       }),
       resolve({

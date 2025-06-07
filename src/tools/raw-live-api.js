@@ -107,7 +107,9 @@ export function rawLiveApi({ path, operations } = {}) {
 
         case "getChildIds":
           if (!operation.property) {
-            throw new Error("getChildIds operation requires property (child type)");
+            throw new Error(
+              "getChildIds operation requires property (child type)",
+            );
           }
           result = api.getChildIds(operation.property);
           break;
@@ -128,7 +130,9 @@ export function rawLiveApi({ path, operations } = {}) {
           break;
 
         default:
-          throw new Error(`Unknown operation type: ${type}. Valid types: get_property, set_property, call_method, get, set, call, goto, info, getProperty, getChildIds, exists, getColor, setColor`);
+          throw new Error(
+            `Unknown operation type: ${type}. Valid types: get_property, set_property, call_method, get, set, call, goto, info, getProperty, getChildIds, exists, getColor, setColor`,
+          );
       }
     } catch (error) {
       throw new Error(`Operation failed: ${error.message}`);

@@ -79,15 +79,15 @@ Rollup's `@rollup/plugin-replace` plugin.
 - `call` - Calls `call()` method:
   `{type: "call", method: "function_name", args: ["arg1", "arg2"]}` (equivalent
   to `liveApi.call("function_name", "arg1", "arg2")`)
-- `goto` - Calls `goto()` method:
-  `{type: "goto", value: "live_set tracks 0"}` (equivalent to
-  `liveApi.goto("live_set tracks 0")`)
+- `goto` - Calls `goto()` method: `{type: "goto", value: "live_set tracks 0"}`
+  (equivalent to `liveApi.goto("live_set tracks 0")`)
 - `info` - Gets `info` property: `{type: "info"}` (equivalent to `liveApi.info`)
 - `getProperty` - Calls `getProperty()` extension:
   `{type: "getProperty", property: "name"}` (equivalent to
   `liveApi.getProperty("name")`)
-- `getChildIds` - Calls `getChildIds()` extension: `{type: "getChildIds", property: "clip_slots"}`
-  (equivalent to `liveApi.getChildIds("clip_slots")`)
+- `getChildIds` - Calls `getChildIds()` extension:
+  `{type: "getChildIds", property: "clip_slots"}` (equivalent to
+  `liveApi.getChildIds("clip_slots")`)
 - `exists` - Calls `exists()` extension: `{type: "exists"}` (equivalent to
   `liveApi.exists()`)
 - `getColor` - Calls `getColor()` extension: `{type: "getColor"}` (equivalent to
@@ -281,9 +281,13 @@ elimination when the tool is disabled.
 ## Warning Handling and Debugging
 
 - Live API warnings (e.g., "Invalid syntax") may appear during operations
-- **Important limitation**: When running multiple operations in a single tool call, warnings appear at the end without indicating which specific operation triggered them
-- **Debugging recommendation**: If you encounter warnings, run operations individually to isolate which operation causes the warning
-- This limitation is inherent to the Live API's warning system and cannot be easily resolved
+- **Important limitation**: When running multiple operations in a single tool
+  call, warnings appear at the end without indicating which specific operation
+  triggered them
+- **Debugging recommendation**: If you encounter warnings, run operations
+  individually to isolate which operation causes the warning
+- This limitation is inherent to the Live API's warning system and cannot be
+  easily resolved
 
 ## Performance Notes
 
