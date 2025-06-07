@@ -115,25 +115,25 @@ http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350
 
 ### End-to-End Testing
 
-For real-world testing and debugging, use the CLI tool at `e2e/cli.mjs` to
+For real-world testing and debugging, use the CLI tool at `tools/cli.mjs` to
 directly connect to the MCP server running in Ableton Live:
 
 ```sh
 # Show server info (default)
-node e2e/cli.mjs
+node tools/cli.mjs
 
 # List available tools
-node e2e/cli.mjs tools/list
+node tools/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node e2e/cli.mjs tools/call read-song '{}'
-node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+node tools/cli.mjs tools/call read-song '{}'
+node tools/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 
 # Use a different server URL
-node e2e/cli.mjs http://localhost:6274/mcp tools/list
+node tools/cli.mjs http://localhost:6274/mcp tools/list
 
 # Show help
-node e2e/cli.mjs --help
+node tools/cli.mjs --help
 ```
 
 This CLI tool connects directly to your running Ableton Live session and can
@@ -148,7 +148,7 @@ For development and debugging, a `raw-live-api` tool is available when building 
 
 ```sh
 # Example: Get tempo using multiple operation types
-node e2e/cli.mjs tools/call raw-live-api '{
+node tools/cli.mjs tools/call raw-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -157,7 +157,7 @@ node e2e/cli.mjs tools/call raw-live-api '{
 }'
 
 # Example: Navigate to a track and check if it exists
-node e2e/cli.mjs tools/call raw-live-api '{
+node tools/cli.mjs tools/call raw-live-api '{
   "operations": [
     {"type": "goto", "value": "live_set tracks 0"},
     {"type": "exists"},

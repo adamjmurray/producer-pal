@@ -60,7 +60,7 @@ async function copySourceFiles() {
   console.log(`Copying ${sourceFiles.length} source files...`);
 
   for (const filePath of sourceFiles) {
-    const flatName = flattenPath(filePath, srcDir);
+    const flatName = "src--" + flattenPath(filePath, srcDir);
     const targetPath = path.join(outputDir, flatName);
     await copyFile(filePath, targetPath);
     console.log(`  ${path.relative(projectRoot, filePath)} → ${flatName}`);
@@ -79,8 +79,10 @@ async function copyDocsAndConfigs() {
     { src: "vitest.config.ts" },
     { src: "test-setup.js" },
 
+    // Tools directory
+    { src: "tools", isDir: true },
+
     // Other important files
-    { src: "e2e/cli.mjs", flatName: "e2e--cli.mjs" },
     {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",

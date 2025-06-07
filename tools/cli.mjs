@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// e2e/cli.mjs
+// tools/cli.mjs
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
@@ -63,7 +63,7 @@ async function main() {
 
   const client = new Client(
     {
-      name: "e2e-cli",
+      name: "cli-tool",
       version: "1.0.0",
     },
     {

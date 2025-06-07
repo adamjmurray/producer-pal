@@ -173,36 +173,36 @@ test suite is sufficient to ensure correctness.
 
 ### End-to-End Testing
 
-For real-world testing and debugging, the `e2e/cli.mjs` tool can connect
+For real-world testing and debugging, the `tools/cli.mjs` tool can connect
 directly to the MCP server running in Ableton Live:
 
 ```bash
 # Show server info (default)
-node e2e/cli.mjs
+node tools/cli.mjs
 
 # List available tools
-node e2e/cli.mjs tools/list
+node tools/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node e2e/cli.mjs tools/call read-song '{}'
-node e2e/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+node tools/cli.mjs tools/call read-song '{}'
+node tools/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 ```
 
-**IMPORTANT:** ALWAYS ask the user for permission before using the e2e CLI tool.
-The user may be in the middle of their own tests and running commands could
+**IMPORTANT:** ALWAYS ask the user for permission before using the CLI tool. The
+user may be in the middle of their own tests and running commands could
 interfere with their work or produce unexpected results in their Ableton Live
 session.
 
 ### Raw Live API Tool
 
-For development and debugging, a `raw-live-api` tool is available when building 
-with `npm run dev` or `npm run build:all`. This tool provides direct access to 
+For development and debugging, a `raw-live-api` tool is available when building
+with `npm run dev` or `npm run build:all`. This tool provides direct access to
 the Live API for research and debugging purposes:
 
 ```bash
 # Example: Multiple operation types on live_set tempo
-node e2e/cli.mjs tools/call raw-live-api '{
-  "path": "live_set", 
+node tools/cli.mjs tools/call raw-live-api '{
+  "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
     {"type": "getProperty", "property": "tempo"}
@@ -211,12 +211,15 @@ node e2e/cli.mjs tools/call raw-live-api '{
 ```
 
 The tool supports 13 operation types:
-- **Core operations**: `get_property`, `set_property`, `call_method`
-- **Convenience shortcuts**: `get`, `set`, `call`, `goto`, `info`  
-- **Extension methods**: `getProperty`, `getChildIds`, `exists`, `getColor`, `setColor`
 
-**Note**: When running multiple operations, warnings appear at the end without 
-indicating which operation triggered them - this is a limitation of the Live API.
+- **Core operations**: `get_property`, `set_property`, `call_method`
+- **Convenience shortcuts**: `get`, `set`, `call`, `goto`, `info`
+- **Extension methods**: `getProperty`, `getChildIds`, `exists`, `getColor`,
+  `setColor`
+
+**Note**: When running multiple operations, warnings appear at the end without
+indicating which operation triggered them - this is a limitation of the Live
+API.
 
 ## Versioning
 
@@ -337,7 +340,7 @@ To update the version:
   with different CPU characteristics. Therefore, for playback-related state, we
   return optimistic results assuming the operation succeeded (e.g. assume a clip
   isTriggered:true when autoplaying it)
-- **NEVER use the e2e CLI tool (`e2e/cli.mjs`) without explicit permission from
+- **NEVER use the CLI tool (`tools/cli.mjs`) without explicit permission from
   the user.** The user may be in the middle of their own testing or music
   production work, and running commands could interfere with their Ableton Live
   session or produce unexpected results.
