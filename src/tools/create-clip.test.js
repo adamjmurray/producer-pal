@@ -350,7 +350,7 @@ describe("createClip", () => {
         name: "New Clip",
         color: "#FF0000",
         loop: true,
-        autoplay: true,
+        auto: "play-clip",
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -441,6 +441,57 @@ describe("createClip", () => {
         timeSignature: "4/4",
         isTriggered: true,
       });
+    });
+
+    it("should fire the scene when auto=play-scene", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        Clip: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      const result = createClip({
+        view: "session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        notes: "1|1 C3",
+        auto: "play-scene",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set scenes 0" }),
+        "fire",
+      );
+      expect(result.isTriggered).toBe(true);
+    });
+
+    it("should throw error for invalid auto value", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        Clip: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      expect(() =>
+        createClip({
+          view: "session",
+          trackIndex: 0,
+          clipSlotIndex: 0,
+          auto: "invalid-value",
+        }),
+      ).toThrow('createClip failed: unknown auto value "invalid-value"');
     });
 
     it("should create multiple clips in successive slots", () => {

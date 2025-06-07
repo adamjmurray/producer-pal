@@ -78,12 +78,11 @@ export function addToolCreateClip(server, callLiveApi) {
         .describe(
           `Musical notation in the following BarBeat notation format. ${notationDescription}`,
         ),
-      autoplay: z
-        .boolean()
-        .default(false)
+      auto: z
+        .enum(["play-scene", "play-clip"])
+        .optional()
         .describe(
-          "Play the clips immediately after creation (Session clips only). " +
-            "IMPORTANT: This puts the affected track into non-arrangement-following state - it will play Session clips instead of Arrangement clips until restored via the transport tool's followingTrackIndexes parameter.",
+          "Automatic playback action after clip creation. 'play-scene' relaunches the entire scene for synchronization (recommended). 'play-clip' plays only the created clip(s). Omit for no automatic playback. Session clips only - Arrangement clips ignore this parameter. IMPORTANT: Both options put the affected track into non-arrangement-following state - it will play Session clips instead of Arrangement clips until restored via the transport tool's followingTrackIndexes parameter.",
         ),
     },
     async (args) => callLiveApi("create-clip", args),

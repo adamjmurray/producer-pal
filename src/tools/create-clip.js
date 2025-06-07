@@ -25,7 +25,7 @@ import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
  * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars)
  * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
- * @param {boolean} [args.autoplay=false] - Automatically play the clip after creating (Session only). Puts tracks into non-following state, stopping any currently playing Arrangement clips.
+ * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only. Puts tracks into non-following state.
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
  */
 export function createClip({
@@ -42,7 +42,7 @@ export function createClip({
   length = null,
   loop = null,
   loopStart = null,
-  autoplay = false,
+  auto = null,
 }) {
   // Validate parameters
   if (!view) {
@@ -308,16 +308,41 @@ export function createClip({
     }
   }
 
-  // Handle autoplay for Session clips
-  if (autoplay && view === "session") {
-    for (let i = 0; i < count; i++) {
-      const currentClipSlotIndex = clipSlotIndex + i;
-      const clipSlot = new LiveAPI(
-        `live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`,
-      );
-      clipSlot.call("fire");
-      // Mark as triggered in optimistic results
-      createdClips[i].isTriggered = true;
+  // Handle automatic playback for Session clips
+  if (auto && view === "session") {
+    switch (auto) {
+      case "play-scene":
+        // Launch the entire scene for synchronization
+        const scene = new LiveAPI(`live_set scenes ${clipSlotIndex}`);
+        if (!scene.exists()) {
+          throw new Error(
+            `createClip auto="play-scene" failed: scene at clipSlotIndex=${clipSlotIndex} does not exist`,
+          );
+        }
+        scene.call("fire");
+        // Mark all created clips as triggered in optimistic results
+        for (let i = 0; i < count; i++) {
+          createdClips[i].isTriggered = true;
+        }
+        break;
+
+      case "play-clip":
+        // Fire individual clips (original autoplay behavior)
+        for (let i = 0; i < count; i++) {
+          const currentClipSlotIndex = clipSlotIndex + i;
+          const clipSlot = new LiveAPI(
+            `live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`,
+          );
+          clipSlot.call("fire");
+          // Mark as triggered in optimistic results
+          createdClips[i].isTriggered = true;
+        }
+        break;
+
+      default:
+        throw new Error(
+          `createClip failed: unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
+        );
     }
   }
 
