@@ -3,4 +3,5 @@ node_modules
 coverage
 device/*.js
 device/*.mjs
+device/LICENSE.md
 claude-project

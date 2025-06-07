@@ -1,5 +1,5 @@
 // rollup.config.mjs
-import { readFileSync } from "fs";
+import { readFileSync, copyFileSync } from "fs";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
@@ -26,6 +26,13 @@ const addLicenseHeader = () => ({
   },
 });
 
+const copyLicense = () => ({
+  name: "copy-license",
+  writeBundle() {
+    copyFileSync("LICENSE.md", "device/LICENSE.md");
+  },
+});
+
 export default [
   {
     input: "src/main.js",
@@ -43,6 +50,7 @@ export default [
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
+      copyLicense(),
     ],
   },
   {
