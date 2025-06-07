@@ -42,7 +42,7 @@ appServer
       "command": "npx",
       "args": [
         "-y",
-        "mcp-remote@0.1.9",
+        "mcp-remote@0.1.14",
         "${url}"
       ]
     }

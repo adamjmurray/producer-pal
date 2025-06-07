@@ -54,7 +54,7 @@ Make music in Ableton Live with an AI assistant such as
         "command": "npx",
         "args": [
           "-y",
-          "mcp-remote@0.1.9",
+          "mcp-remote@0.1.14",
           "http://localhost:3350/mcp"
         ]
       }
