@@ -1061,9 +1061,30 @@ describe("updateClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1, velocity_deviation: 0 }, // C3 at 1|1 - should be deleted
-            { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // D3 at 1|2 - should remain
-            { pitch: 64, start_time: 0, duration: 1, velocity: 90, probability: 1, velocity_deviation: 0 }, // E3 at 1|1 - should remain
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // C3 at 1|1 - should be deleted
+            {
+              pitch: 62,
+              start_time: 1,
+              duration: 1,
+              velocity: 80,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // D3 at 1|2 - should remain
+            {
+              pitch: 64,
+              start_time: 0,
+              duration: 1,
+              velocity: 90,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // E3 at 1|1 - should remain
           ],
         });
       }
@@ -1103,8 +1124,22 @@ describe("updateClip", () => {
       {
         notes: [
           // Existing notes minus the deleted C3 at 1|1 (cleaned for Live API)
-          { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // D3 at 1|2
-          { pitch: 64, start_time: 0, duration: 1, velocity: 90, probability: 1, velocity_deviation: 0 }, // E3 at 1|1
+          {
+            pitch: 62,
+            start_time: 1,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          }, // D3 at 1|2
+          {
+            pitch: 64,
+            start_time: 0,
+            duration: 1,
+            velocity: 90,
+            probability: 1,
+            velocity_deviation: 0,
+          }, // E3 at 1|1
           // New F3 note
           {
             pitch: 65,
@@ -1136,7 +1171,14 @@ describe("updateClip", () => {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
-            { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // D3 at 1|2 - no match
+            {
+              pitch: 62,
+              start_time: 1,
+              duration: 1,
+              velocity: 80,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // D3 at 1|2 - no match
           ],
         });
       }
@@ -1171,7 +1213,14 @@ describe("updateClip", () => {
       "add_new_notes",
       {
         notes: [
-          { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // Original note preserved
+          {
+            pitch: 62,
+            start_time: 1,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          }, // Original note preserved
         ],
       },
     );

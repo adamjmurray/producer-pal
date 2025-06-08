@@ -81,7 +81,7 @@ v100 p0.9 Gb1
 When using \`update-clip\` with \`clearExistingNotes: false\`, notes with \`v0\` velocity delete existing notes at the exact same bar|beat position and pitch:
 
 \`\`\`
-2|1.5 v0 Gb1  // Deletes hi-hat at bar 2, beat 1.5
+v0 2|1.5 Gb1  // Deletes hi-hat at bar 2, beat 1.5
 \`\`\`
 
 **Requirements for successful deletion:**
@@ -103,21 +103,17 @@ When using \`update-clip\` with \`clearExistingNotes: false\`, notes with \`v0\`
 
 ### Common Deletion Examples
 
-**Remove busy hi-hats (thin out pattern):**
+**Remove downbeats from 16th note hi-hats:**
 \`\`\`
-// After reading clip and identifying positions
-1|1.25 v0 Gb1 1|1.75 v0 Gb1 1|3.25 v0 Gb1 1|3.75 v0 Gb1
-\`\`\`
-
-**Remove all notes on off-beats:**
-\`\`\`
-// Removes notes at beats 1.5, 2.5, 3.5, 4.5
-1|1.5 v0 Gb1 1|2.5 v0 Gb1 1|3.5 v0 Gb1 1|4.5 v0 Gb1
+// Before: 1|1 Gb1 1|1.25 Gb1 1|1.5 Gb1 1|1.75 Gb1 1|2 Gb1 1|2.25 Gb1 1|2.5 Gb1 1|2.75 Gb1
+// Delete: v0 1|1 Gb1 1|2 Gb1
+// After:  1|1.25 Gb1 1|1.5 Gb1 1|1.75 Gb1 1|2.25 Gb1 1|2.5 Gb1 1|2.75 Gb1
 \`\`\`
 
-**Delete specific overlapping notes:**
+**Delete specific chord notes:**
 \`\`\`
-// Remove doubled kick hits at exact same time
-1|1 v0 C1 1|3 v0 C1
+// Before: 1|1 C3 E3 G3 B3
+// Delete: v0 1|1 E3 B3
+// After:  1|1 C3 G3
 \`\`\`
 </barbeat-notation>`;

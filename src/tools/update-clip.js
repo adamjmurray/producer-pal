@@ -122,17 +122,20 @@ export function updateClip({
         // When not clearing, handle v0 notes as deletions
         if (v0Notes.length > 0) {
           // Get existing notes and parse the JSON result
-          const existingNotesResult = JSON.parse(clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS));
+          const existingNotesResult = JSON.parse(
+            clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS),
+          );
           const existingNotes = existingNotesResult?.notes || [];
 
           // Filter out notes that match v0 note pitch and start time
           const filteredExistingNotes = existingNotes.filter((existingNote) => {
-            return !v0Notes.some((v0Note) => 
-              v0Note.pitch === existingNote.pitch && 
-              Math.abs(v0Note.start_time - existingNote.start_time) < 0.001
+            return !v0Notes.some(
+              (v0Note) =>
+                v0Note.pitch === existingNote.pitch &&
+                Math.abs(v0Note.start_time - existingNote.start_time) < 0.001,
             );
           });
-          
+
           // Clean up existing notes to only include properties that add_new_notes accepts
           const cleanExistingNotes = filteredExistingNotes.map((note) => ({
             pitch: note.pitch,
