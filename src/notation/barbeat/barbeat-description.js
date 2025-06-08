@@ -20,10 +20,11 @@ BarBeat is a precise, stateful music notation format for MIDI sequencing.
   - 1.0 = note always plays, 0.0 = note never plays
   - Default: 1.0
 
-- **Velocity (\`v<1-127>\` or \`v<min>-<max>\`)**
+- **Velocity (\`v<0-127>\` or \`v<min>-<max>\`)**
   - Sets velocity for following notes until changed
   - Single value: \`v100\` (fixed velocity)
   - Range: \`v80-120\` or \`v120-80\` (random velocity between min and max, auto-ordered)
+  - Special: \`v0\` for note deletion (update-clip only, requires clearExistingNotes: false)
   - Default: 100
 
 - **Duration (\`t<float>\`)**
@@ -71,5 +72,35 @@ Drum pattern with probability and velocity variation
 1|1.5 p0.6 Gb1
 1|2 v90 p1.0 D1
 v100 p0.9 Gb1
+\`\`\`
+
+## Tool-Specific Behavior
+
+### v0 Note Deletion (update-clip only)
+
+When using \`update-clip\` with \`clearExistingNotes: false\`, notes with \`v0\` velocity delete existing notes at the exact same bar|beat position and pitch:
+
+\`\`\`
+2|1.5 v0 Gb1  // Deletes hi-hat at bar 2, beat 1.5
+\`\`\`
+
+**Requirements for successful deletion:**
+- Exact timing match: \`3|2.5\` will not delete a note at \`3|2.6\`
+- Exact pitch match: \`Gb1\` will not delete \`F#1\` (even though they're enharmonic)
+- Must use \`clearExistingNotes: false\`
+
+**Tool differences:**
+- \`create-clip\`: v0 notes are filtered out (not added to the clip)
+- \`update-clip\`: v0 notes become deletion requests when \`clearExistingNotes: false\`
+
+### Recommended Workflow
+
+1. Use \`read-clip\` to identify exact positions and pitches
+2. Use \`update-clip\` with \`v0\` to delete specific notes
+3. Verify results with another \`read-clip\`
+
+\`\`\`
+// Example: Remove busy hi-hats from a drum pattern
+1|1.25 v0 Gb1 1|1.75 v0 Gb1 1|3.25 v0 Gb1
 \`\`\`
 </barbeat-notation>`;
