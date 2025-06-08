@@ -1045,4 +1045,178 @@ describe("updateClip", () => {
       2,
     );
   });
+
+  it("should delete specific notes with v0 when clearExistingNotes is false", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock existing notes in the clip
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            { pitch: 60, start_time: 0, duration: 1, velocity: 100, probability: 1, velocity_deviation: 0 }, // C3 at 1|1 - should be deleted
+            { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // D3 at 1|2 - should remain
+            { pitch: 64, start_time: 0, duration: 1, velocity: 90, probability: 1, velocity_deviation: 0 }, // E3 at 1|1 - should remain
+          ],
+        });
+      }
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      notes: "1|1 v0 C3 v100 F3", // Delete C3 at 1|1, add F3 at 1|1
+      clearExistingNotes: false,
+    });
+
+    // Should call get_notes_extended to read existing notes
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      1000000,
+    );
+
+    // Should remove all notes
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "remove_notes_extended",
+      0,
+      127,
+      0,
+      1000000,
+    );
+
+    // Should add back filtered existing notes plus new regular notes
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          // Existing notes minus the deleted C3 at 1|1 (cleaned for Live API)
+          { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // D3 at 1|2
+          { pitch: 64, start_time: 0, duration: 1, velocity: 90, probability: 1, velocity_deviation: 0 }, // E3 at 1|1
+          // New F3 note
+          {
+            pitch: 65,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+        ],
+      },
+    );
+
+    expect(result.clearExistingNotes).toBe(false);
+  });
+
+  it("should handle v0 notes when no existing notes match", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock existing notes that don't match the v0 note
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // D3 at 1|2 - no match
+          ],
+        });
+      }
+      return {};
+    });
+
+    updateClip({
+      ids: "123",
+      notes: "1|1 v0 C3", // Try to delete C3 at 1|1 (doesn't exist)
+      clearExistingNotes: false,
+    });
+
+    // Should still read existing notes and remove/add them back
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      1000000,
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "remove_notes_extended",
+      0,
+      127,
+      0,
+      1000000,
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          { pitch: 62, start_time: 1, duration: 1, velocity: 80, probability: 1, velocity_deviation: 0 }, // Original note preserved
+        ],
+      },
+    );
+  });
+
+  it("should not call get_notes_extended when clearExistingNotes is false but no v0 notes", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    updateClip({
+      ids: "123",
+      notes: "1|1 v100 C3", // No v0 notes
+      clearExistingNotes: false,
+    });
+
+    // Should not call get_notes_extended since no v0 notes
+    expect(liveApiCall).not.toHaveBeenCalledWith(
+      "get_notes_extended",
+      expect.anything(),
+    );
+    expect(liveApiCall).not.toHaveBeenCalledWith(
+      "remove_notes_extended",
+      expect.anything(),
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+        ],
+      },
+    );
+  });
 });

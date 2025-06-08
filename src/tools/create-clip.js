@@ -243,8 +243,10 @@ export function createClip({
       looping: loop,
     });
 
-    if (notes.length > 0) {
-      clip.call("add_new_notes", { notes });
+    // Filter out v0 notes for Live API (Live API can't handle velocity 0)
+    const validNotes = notes.filter((note) => note.velocity > 0);
+    if (validNotes.length > 0) {
+      clip.call("add_new_notes", { notes: validNotes });
     }
 
     // Build optimistic result object

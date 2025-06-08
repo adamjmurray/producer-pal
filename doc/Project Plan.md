@@ -57,7 +57,7 @@
 
 **Clip editing:**
 
-- [ ] Support `v0` velocity to delete existing notes when updating with
+- [x] Support `v0` velocity to delete existing notes when updating with
       `clearExistingNotes: false`
 
 **Arrangement Improvements:**

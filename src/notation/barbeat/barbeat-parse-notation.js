@@ -92,10 +92,7 @@ export function parseNotation(barBeatExpression, options = {}) {
           velocity_deviation = DEFAULT_VELOCITY_DEVIATION;
         }
 
-        // Filter out notes with velocity 0 to prevent Live API errors
-        if (velocity === 0) {
-          continue;
-        }
+        // Note: v0 notes are now preserved for deletion logic in update-clip
 
         const abletonDuration =
           timeSigDenominator != null

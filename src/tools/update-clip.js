@@ -108,12 +108,53 @@ export function updateClip({
         timeSigDenominator,
       });
 
+      // Separate v0 notes (deletion requests) from regular notes
+      const v0Notes = notes.filter((note) => note.velocity === 0);
+      const regularNotes = notes.filter((note) => note.velocity > 0);
+
       if (clearExistingNotes) {
         clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
-      }
+        // Only add regular notes when clearing (v0 notes are filtered out for Live API)
+        if (regularNotes.length > 0) {
+          clip.call("add_new_notes", { notes: regularNotes });
+        }
+      } else {
+        // When not clearing, handle v0 notes as deletions
+        if (v0Notes.length > 0) {
+          // Get existing notes and parse the JSON result
+          const existingNotesResult = JSON.parse(clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS));
+          const existingNotes = existingNotesResult?.notes || [];
 
-      if (notes.length > 0) {
-        clip.call("add_new_notes", { notes });
+          // Filter out notes that match v0 note pitch and start time
+          const filteredExistingNotes = existingNotes.filter((existingNote) => {
+            return !v0Notes.some((v0Note) => 
+              v0Note.pitch === existingNote.pitch && 
+              Math.abs(v0Note.start_time - existingNote.start_time) < 0.001
+            );
+          });
+          
+          // Clean up existing notes to only include properties that add_new_notes accepts
+          const cleanExistingNotes = filteredExistingNotes.map((note) => ({
+            pitch: note.pitch,
+            start_time: note.start_time,
+            duration: note.duration,
+            velocity: note.velocity,
+            probability: note.probability,
+            velocity_deviation: note.velocity_deviation,
+          }));
+
+          // Remove all notes and add back filtered existing notes plus new regular notes
+          clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
+          const allNotesToAdd = [...cleanExistingNotes, ...regularNotes];
+          if (allNotesToAdd.length > 0) {
+            clip.call("add_new_notes", { notes: allNotesToAdd });
+          }
+        } else {
+          // No v0 notes, just add regular notes
+          if (regularNotes.length > 0) {
+            clip.call("add_new_notes", { notes: regularNotes });
+          }
+        }
       }
     }
 
