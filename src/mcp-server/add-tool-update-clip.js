@@ -42,13 +42,13 @@ export function addToolUpdateClip(server, callLiveApi) {
         .string()
         .optional()
         .describe(
-          "Musical notation in BarBeat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. Special feature: Use 'v0' (velocity 0) with clearExistingNotes: false to delete existing notes at exact bar|beat position and pitch (e.g., '2|1.5 v0 Gb1' deletes hi-hat at bar 2, beat 1.5). Requires precise timing and pitch match. For complete BarBeat notation syntax reference, see the create-clip tool description.",
+          "Musical notation in BarBeat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. DELETION FEATURE: Use 'v0' (velocity 0) with clearExistingNotes: false to delete existing notes at exact bar|beat position and pitch (e.g., '2|1.5 v0 Gb1' deletes hi-hat at bar 2, beat 1.5). CRITICAL: Use read-clip first to identify exact positions - guessing will fail due to precise timing/pitch requirements. For complete BarBeat notation syntax reference, see the create-clip tool description.",
         ),
       clearExistingNotes: z
         .boolean()
         .default(true)
         .describe(
-          "When true (the default), replaces all existing notes - use for complete rewrites. When false, adds to existing notes - use for incremental changes like 'add hi-hats' or 'adjust snare velocity'. When false, also enables v0 deletion: notes with velocity 0 will delete existing notes at the exact same bar|beat position and pitch. Overlapping notes will overwrite existing notes at the same pitch and time.",
+          "When true (the default), replaces all existing notes - use for complete rewrites. When false, adds to existing notes AND enables v0 deletion: notes with 'v0' velocity will delete existing notes at the exact same bar|beat position and pitch. WORKFLOW: Use read-clip first to identify exact positions, then use v0 deletion for surgical note removal. Overlapping notes will overwrite existing notes at the same pitch and time.",
         ),
     },
     async (args) => callLiveApi("update-clip", args),

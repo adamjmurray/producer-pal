@@ -24,7 +24,7 @@ BarBeat is a precise, stateful music notation format for MIDI sequencing.
   - Sets velocity for following notes until changed
   - Single value: \`v100\` (fixed velocity)
   - Range: \`v80-120\` or \`v120-80\` (random velocity between min and max, auto-ordered)
-  - Special: \`v0\` for note deletion (update-clip only, requires clearExistingNotes: false)
+  - **⚠️ SPECIAL: \`v0\` = DELETE NOTES** (update-clip only, requires clearExistingNotes: false)
   - Default: 100
 
 - **Duration (\`t<float>\`)**
@@ -93,14 +93,31 @@ When using \`update-clip\` with \`clearExistingNotes: false\`, notes with \`v0\`
 - \`create-clip\`: v0 notes are filtered out (not added to the clip)
 - \`update-clip\`: v0 notes become deletion requests when \`clearExistingNotes: false\`
 
-### Recommended Workflow
+### ⚠️ CRITICAL: Read-First Workflow
 
-1. Use \`read-clip\` to identify exact positions and pitches
-2. Use \`update-clip\` with \`v0\` to delete specific notes
-3. Verify results with another \`read-clip\`
+**ALWAYS read the clip first** to get exact positions - guessing will fail!
 
+1. **Read**: \`read-clip\` to identify exact positions and pitches
+2. **Delete**: \`update-clip\` with \`clearExistingNotes: false\` and \`v0\` notes  
+3. **Verify**: \`read-clip\` again to confirm changes
+
+### Common Deletion Examples
+
+**Remove busy hi-hats (thin out pattern):**
 \`\`\`
-// Example: Remove busy hi-hats from a drum pattern
-1|1.25 v0 Gb1 1|1.75 v0 Gb1 1|3.25 v0 Gb1
+// After reading clip and identifying positions
+1|1.25 v0 Gb1 1|1.75 v0 Gb1 1|3.25 v0 Gb1 1|3.75 v0 Gb1
+\`\`\`
+
+**Remove all notes on off-beats:**
+\`\`\`
+// Removes notes at beats 1.5, 2.5, 3.5, 4.5
+1|1.5 v0 Gb1 1|2.5 v0 Gb1 1|3.5 v0 Gb1 1|4.5 v0 Gb1
+\`\`\`
+
+**Delete specific overlapping notes:**
+\`\`\`
+// Remove doubled kick hits at exact same time
+1|1 v0 C1 1|3 v0 C1
 \`\`\`
 </barbeat-notation>`;
