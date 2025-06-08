@@ -107,6 +107,8 @@ The project extends the native Live API with helper methods in
 - Time format: `bar|beat` (1-based indexing, bars are integers, beats are
   floating point)
 - Velocity 0 notes are filtered out (not sent to Live)
+- Drum pad detection: Only supports direct drum racks and drum racks nested as
+  the first device in the first chain of an instrument rack
 
 ### Musical Beats vs Ableton Beats
 

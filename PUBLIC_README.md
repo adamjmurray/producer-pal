@@ -267,8 +267,10 @@ instructions or knowledge base.
   but cannot do anything useful with audio clips.
 - **Network dependency**: Requires internet connection for AI communication
 - **Performance**: Large Live sets may cause slower response times
-- **Complex time signatures**: Some edge cases with unusual time signatures may
-  not work correctly
+- **Drum Rack support**: Drum pad detection (so the AI knows which pitches to
+  use for drums) works with Drum Racks directly and with Drum Racks as the first
+  device in the first chain nested inside an Instrument Rack. Other nested
+  configurations are currently not supported.
 
 ## Known Issues
 

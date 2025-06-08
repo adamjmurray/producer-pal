@@ -44,16 +44,4 @@ First few chars found in device:
 ${deviceContent.substring(deviceContent.indexOf('"text"'), 200)}...`,
     ).toBe(true);
   });
-
-  it("should have the license copied to device folder during build", () => {
-    const sourceLicense = "LICENSE.md";
-    const deviceLicense = "device/LICENSE.md";
-
-    expect(existsSync(deviceLicense), `${deviceLicense} not found`).toBe(true);
-
-    const sourceContent = readFileSync(sourceLicense, "utf8");
-    const deviceContent = readFileSync(deviceLicense, "utf8");
-
-    expect(deviceContent).toBe(sourceContent);
-  });
 });

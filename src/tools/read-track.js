@@ -9,6 +9,58 @@ export const DEVICE_TYPE_AUDIO_EFFECT = 2;
 export const DEVICE_TYPE_MIDI_EFFECT = 4;
 
 /**
+ * Find drum pads on a track, including those nested in instrument racks
+ * @param {Object} track - Live API track object
+ * @returns {Array|null} Array of drum pad objects or null if none found
+ */
+function findDrumPads(track) {
+  const devices = track.getChildren("devices");
+
+  // First, look for direct drum racks
+  const directDrumRack = devices.find((device) =>
+    device.getProperty("can_have_drum_pads"),
+  );
+  if (directDrumRack) {
+    return extractDrumPads(directDrumRack);
+  }
+
+  // Then, look for drum racks nested in instrument racks
+  for (const device of devices) {
+    // Check if this is an instrument rack
+    if (device.getProperty("class_name") === "InstrumentGroupDevice") {
+      const chains = device.getChildren("chains");
+      if (chains.length > 0) {
+        // Check first device in first chain
+        const chainDevices = chains[0].getChildren("devices");
+        if (chainDevices.length > 0) {
+          const firstChainDevice = chainDevices[0];
+          if (firstChainDevice.getProperty("can_have_drum_pads")) {
+            return extractDrumPads(firstChainDevice);
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Extract drum pad information from a drum rack device
+ * @param {Object} drumRack - Live API drum rack device object
+ * @returns {Array} Array of drum pad objects
+ */
+function extractDrumPads(drumRack) {
+  return drumRack
+    .getChildren("drum_pads")
+    .filter((pad) => pad.getChildIds("chains").length) // ignore empty pads with no device chains that can't produce sound
+    .map((pad) => ({
+      pitch: midiPitchToName(pad.getProperty("note")),
+      name: pad.getProperty("name"),
+    }));
+}
+
+/**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based)
@@ -56,16 +108,7 @@ export function readTrack({ trackIndex } = {}) {
       .map((clipId) => readClip({ clipId }))
       .filter((clip) => clip.id != null),
 
-    drumPads:
-      track
-        .getChildren("devices")
-        .find((device) => device.getProperty("can_have_drum_pads"))
-        ?.getChildren("drum_pads")
-        .filter((pad) => pad.getChildIds("chains").length) // ignore empty pads with no device chains that can't produce sound
-        .map((pad) => ({
-          pitch: midiPitchToName(pad.getProperty("note")),
-          name: pad.getProperty("name"),
-        })) ?? null,
+    drumPads: findDrumPads(track),
   };
 
   if (trackIndex === getHostTrackIndex()) {

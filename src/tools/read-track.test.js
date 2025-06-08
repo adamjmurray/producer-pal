@@ -439,5 +439,144 @@ describe("readTrack", () => {
         { pitch: "C3", name: "First Drum Rack Kick" },
       ]);
     });
+
+    it("finds drum pads in nested drum rack inside instrument rack", () => {
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Nested Drum Rack",
+          devices: children("instrumentRack"),
+        }),
+        instrumentRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
+          class_name: "InstrumentGroupDevice",
+          chains: children("chain1"),
+        },
+        chain1: {
+          devices: children("nestedDrumRack"),
+        },
+        nestedDrumRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad1", "pad2"),
+        },
+        pad1: {
+          note: 36,
+          name: "Kick Dub",
+          chains: children("chain1"),
+        },
+        pad2: {
+          note: 37,
+          name: "Snare Dub",
+          chains: children("chain2"),
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toEqual([
+        { pitch: "C1", name: "Kick Dub" },
+        { pitch: "Db1", name: "Snare Dub" },
+      ]);
+    });
+
+    it("returns null when instrument rack has no chains", () => {
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Empty Instrument Rack",
+          devices: children("instrumentRack"),
+        }),
+        instrumentRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
+          class_name: "InstrumentGroupDevice",
+          chains: [],
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toBeNull();
+    });
+
+    it("returns null when instrument rack first chain has no devices", () => {
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Instrument Rack Empty Chain",
+          devices: children("instrumentRack"),
+        }),
+        instrumentRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
+          class_name: "InstrumentGroupDevice",
+          chains: children("chain1"),
+        },
+        chain1: {
+          devices: [],
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toBeNull();
+    });
+
+    it("returns null when instrument rack first chain first device is not a drum rack", () => {
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Instrument Rack Non-Drum Device",
+          devices: children("instrumentRack"),
+        }),
+        instrumentRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
+          class_name: "InstrumentGroupDevice",
+          chains: children("chain1"),
+        },
+        chain1: {
+          devices: children("wavetable"),
+        },
+        wavetable: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toBeNull();
+    });
+
+    it("prefers direct drum rack over nested drum rack", () => {
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Track Direct and Nested Drum Racks",
+          devices: children("directDrumRack", "instrumentRack"),
+        }),
+        directDrumRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad1"),
+        },
+        pad1: {
+          note: 60,
+          name: "Direct Kick",
+          chains: children("chain1"),
+        },
+        instrumentRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 0,
+          class_name: "InstrumentGroupDevice",
+          chains: children("chain1"),
+        },
+        chain1: {
+          devices: children("nestedDrumRack"),
+        },
+        nestedDrumRack: {
+          type: DEVICE_TYPE_INSTRUMENT,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad2"),
+        },
+        pad2: {
+          note: 61,
+          name: "Nested Snare",
+          chains: children("chain2"),
+        },
+      });
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.drumPads).toEqual([{ pitch: "C3", name: "Direct Kick" }]);
+    });
   });
 });
