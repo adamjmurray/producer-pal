@@ -13,7 +13,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
     "express": "^5.1.0",
-    "zod": "^3.25.56"
+    "zod": "^3.25.63"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^28.0.3",
