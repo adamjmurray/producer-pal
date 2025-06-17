@@ -29,7 +29,7 @@
     "peggy": "^5.0.3",
     "prettier": "^3.5.3",
     "rollup": "^4.42.0",
-    "vitest": "^3.2.2"
+    "vitest": "^3.2.4"
   },
   "prettier": {
     "proseWrap": "always"
