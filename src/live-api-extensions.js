@@ -32,6 +32,10 @@ if (typeof LiveAPI !== "undefined") {
     switch (property) {
       case "scale_intervals":
       case "available_warp_modes":
+      case "available_input_routing_channels":
+      case "available_input_routing_types":
+      case "available_output_routing_channels":
+      case "available_output_routing_types":
         return this.get(property);
       default:
         return this.get(property)?.[0];

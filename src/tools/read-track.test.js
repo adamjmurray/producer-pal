@@ -579,4 +579,85 @@ describe("readTrack", () => {
       expect(result.drumPads).toEqual([{ pitch: "C3", name: "Direct Kick" }]);
     });
   });
+
+  describe("includeRoutings", () => {
+    it("excludes routing properties by default", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: ["In 1", "In 2"],
+          available_input_routing_types: ["Ext. In", "Resampling"],
+          available_output_routing_channels: ["Master", "A"],
+          available_output_routing_types: ["Track Out", "Send Only"],
+          input_routing_channel: "In 1",
+          input_routing_type: "Ext. In",
+          output_routing_channel: "Master",
+          output_routing_type: "Track Out",
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.availableInputRoutingChannels).toBeUndefined();
+      expect(result.availableInputRoutingTypes).toBeUndefined();
+      expect(result.availableOutputRoutingChannels).toBeUndefined();
+      expect(result.availableOutputRoutingTypes).toBeUndefined();
+      expect(result.inputRoutingChannel).toBeUndefined();
+      expect(result.inputRoutingType).toBeUndefined();
+      expect(result.outputRoutingChannel).toBeUndefined();
+      expect(result.outputRoutingType).toBeUndefined();
+    });
+
+    it("includes routing properties when includeRoutings is true", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: ["In 1", "In 2"],
+          available_input_routing_types: ["Ext. In", "Resampling"],
+          available_output_routing_channels: ["Master", "A"],
+          available_output_routing_types: ["Track Out", "Send Only"],
+          input_routing_channel: "In 1",
+          input_routing_type: "Ext. In",
+          output_routing_channel: "Master",
+          output_routing_type: "Track Out",
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      expect(result.availableInputRoutingChannels).toEqual(["In 1", "In 2"]);
+      expect(result.availableInputRoutingTypes).toEqual([
+        "Ext. In",
+        "Resampling",
+      ]);
+      expect(result.availableOutputRoutingChannels).toEqual(["Master", "A"]);
+      expect(result.availableOutputRoutingTypes).toEqual([
+        "Track Out",
+        "Send Only",
+      ]);
+      expect(result.inputRoutingChannel).toBe("In 1");
+      expect(result.inputRoutingType).toBe("Ext. In");
+      expect(result.outputRoutingChannel).toBe("Master");
+      expect(result.outputRoutingType).toBe("Track Out");
+    });
+
+    it("handles null routing properties gracefully", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: null,
+          available_input_routing_types: null,
+          input_routing_channel: null,
+          input_routing_type: null,
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      expect(result.availableInputRoutingChannels).toEqual([]);
+      expect(result.availableInputRoutingTypes).toEqual([]);
+      expect(result.inputRoutingChannel).toBeNull();
+      expect(result.inputRoutingType).toBeNull();
+    });
+  });
 });

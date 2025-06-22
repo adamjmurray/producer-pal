@@ -64,9 +64,10 @@ function extractDrumPads(drumRack) {
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based)
+ * @param {boolean} args.includeRoutings - Include input/output routing information (default: false)
  * @returns {Object} Result object with track information
  */
-export function readTrack({ trackIndex } = {}) {
+export function readTrack({ trackIndex, includeRoutings = false } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
@@ -110,6 +111,35 @@ export function readTrack({ trackIndex } = {}) {
 
     drumPads: findDrumPads(track),
   };
+
+  if (includeRoutings) {
+    const filterNullArrays = (arr) =>
+      Array.isArray(arr)
+        ? arr.filter((x) => x != null && x !== 0)
+        : (arr ?? []);
+    const handleNullScalar = (val) => (val === 0 ? null : val);
+
+    result.availableInputRoutingChannels = filterNullArrays(
+      track.getProperty("available_input_routing_channels"),
+    );
+    result.availableInputRoutingTypes = filterNullArrays(
+      track.getProperty("available_input_routing_types"),
+    );
+    result.availableOutputRoutingChannels = filterNullArrays(
+      track.getProperty("available_output_routing_channels"),
+    );
+    result.availableOutputRoutingTypes = filterNullArrays(
+      track.getProperty("available_output_routing_types"),
+    );
+    result.inputRoutingChannel = handleNullScalar(
+      track.getProperty("input_routing_channel"),
+    );
+    result.inputRoutingType = handleNullScalar(
+      track.getProperty("input_routing_type"),
+    );
+    result.outputRoutingChannel = track.getProperty("output_routing_channel");
+    result.outputRoutingType = track.getProperty("output_routing_type");
+  }
 
   if (trackIndex === getHostTrackIndex()) {
     result.isProducerPalHostTrack = true;
