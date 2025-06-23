@@ -1,5 +1,6 @@
 // src/tools/update-song.js
 import { parseTimeSignature, toLiveApiView } from "../utils.js";
+import { pitchClassNameToNumber } from "../notation/pitch-class-name-to-number.js";
 
 export const VALID_SCALE_NAMES = [
   "Major",
@@ -36,22 +37,40 @@ export const VALID_SCALE_NAMES = [
   "Messiaen 4",
   "Messiaen 5",
   "Messiaen 6",
-  "Messiaen 7"
+  "Messiaen 7",
 ];
 
 /**
- * Updates Live Set parameters like tempo, time signature, key, and playback state
+ * Updates Live Set parameters like tempo, time signature, scale, and playback state.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.
  * @param {Object} args - The parameters
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.view] - Switch between Session and Arrangement views
- * @param {number} [args.rootNote] - Root note (0-11, where 0=C, 1=C#, 2=D, etc.)
+ * @param {string} [args.scaleRoot] - Scale root note (e.g., "C", "F#", "Bb")
  * @param {string} [args.scale] - Scale name (must be one of the 35 valid scale names)
  * @param {boolean} [args.scaleEnabled] - Enable/disable scale highlighting
+ * @param {boolean} [args.deselectAllClips] - Clear all clip selections before setting scale properties
  * @returns {Object} Updated Live Set information
  */
-export function updateSong({ view, tempo, timeSignature, rootNote, scale, scaleEnabled } = {}) {
+export function updateSong({
+  view,
+  tempo,
+  timeSignature,
+  scaleRoot,
+  scale,
+  scaleEnabled,
+  deselectAllClips,
+} = {}) {
   const liveSet = new LiveAPI("live_set");
+
+  // Deselect all clips if requested (affects scale changes)
+  if (
+    deselectAllClips &&
+    (scaleRoot != null || scale != null || scaleEnabled != null)
+  ) {
+    const songView = new LiveAPI("live_set view");
+    songView.set("detail_clip", "id 0");
+  }
 
   if (tempo != null) {
     if (tempo < 20 || tempo > 999) {
@@ -66,16 +85,16 @@ export function updateSong({ view, tempo, timeSignature, rootNote, scale, scaleE
     liveSet.set("signature_denominator", parsed.denominator);
   }
 
-  if (rootNote != null) {
-    if (!Number.isInteger(rootNote) || rootNote < 0 || rootNote > 11) {
-      throw new Error("Root note must be an integer between 0 and 11 (0=C, 1=C#, 2=D, etc.)");
-    }
-    liveSet.set("root_note", rootNote);
+  if (scaleRoot != null) {
+    const scaleRootNumber = pitchClassNameToNumber(scaleRoot);
+    liveSet.set("root_note", scaleRootNumber);
   }
 
   if (scale != null) {
     if (!VALID_SCALE_NAMES.includes(scale)) {
-      throw new Error(`Scale name must be one of: ${VALID_SCALE_NAMES.join(", ")}`);
+      throw new Error(
+        `Scale name must be one of: ${VALID_SCALE_NAMES.join(", ")}`,
+      );
     }
     liveSet.set("scale_name", scale);
   }
@@ -97,10 +116,11 @@ export function updateSong({ view, tempo, timeSignature, rootNote, scale, scaleE
   // Only include properties that were actually set
   if (tempo != null) songResult.tempo = tempo;
   if (timeSignature != null) songResult.timeSignature = timeSignature;
-  if (rootNote != null) songResult.rootNote = rootNote;
+  if (scaleRoot != null) songResult.scaleRoot = scaleRoot;
   if (scale != null) songResult.scale = scale;
   if (scaleEnabled != null) songResult.scaleEnabled = scaleEnabled;
   if (view != null) songResult.view = view;
+  if (deselectAllClips != null) songResult.deselectAllClips = deselectAllClips;
 
   return songResult;
 }

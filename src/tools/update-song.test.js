@@ -1,5 +1,5 @@
 // src/tools/update-song.test.js
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import { liveApiCall, liveApiId, liveApiSet } from "../mock-live-api";
 import { updateSong } from "./update-song";
 
@@ -113,8 +113,8 @@ describe("updateSong", () => {
     });
   });
 
-  it("should update root note", () => {
-    const result = updateSong({ rootNote: 2 });
+  it("should update scale root", () => {
+    const result = updateSong({ scaleRoot: "D" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -122,15 +122,17 @@ describe("updateSong", () => {
     );
     expect(result).toEqual({
       id: "live_set_id",
-      rootNote: 2,
+      scaleRoot: "D",
     });
   });
 
-  it("should throw error for invalid root note", () => {
-    expect(() => updateSong({ rootNote: -1 })).toThrow("Root note must be an integer between 0 and 11");
-    expect(() => updateSong({ rootNote: 12 })).toThrow("Root note must be an integer between 0 and 11");
-    expect(() => updateSong({ rootNote: 5.5 })).toThrow("Root note must be an integer between 0 and 11");
-    expect(() => updateSong({ rootNote: "C" })).toThrow("Root note must be an integer between 0 and 11");
+  it("should throw error for invalid scale root", () => {
+    expect(() => updateSong({ scaleRoot: "invalid" })).toThrow(
+      "Invalid pitch class",
+    );
+    expect(() => updateSong({ scaleRoot: "H" })).toThrow("Invalid pitch class");
+    expect(() => updateSong({ scaleRoot: "c" })).toThrow("Invalid pitch class");
+    expect(() => updateSong({ scaleRoot: 123 })).toThrow("Invalid pitch class");
   });
 
   it("should update scale", () => {
@@ -147,10 +149,18 @@ describe("updateSong", () => {
   });
 
   it("should throw error for invalid scale name", () => {
-    expect(() => updateSong({ scale: "invalid" })).toThrow("Scale name must be one of:");
-    expect(() => updateSong({ scale: "major" })).toThrow("Scale name must be one of:");
-    expect(() => updateSong({ scale: "MINOR" })).toThrow("Scale name must be one of:");
-    expect(() => updateSong({ scale: "Major Foo" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scale: "invalid" })).toThrow(
+      "Scale name must be one of:",
+    );
+    expect(() => updateSong({ scale: "major" })).toThrow(
+      "Scale name must be one of:",
+    );
+    expect(() => updateSong({ scale: "MINOR" })).toThrow(
+      "Scale name must be one of:",
+    );
+    expect(() => updateSong({ scale: "Major Foo" })).toThrow(
+      "Scale name must be one of:",
+    );
   });
 
   it("should enable scale highlighting", () => {
@@ -179,8 +189,8 @@ describe("updateSong", () => {
     });
   });
 
-  it("should update key with both root note and scale name", () => {
-    const result = updateSong({ rootNote: 2, scale: "Dorian" });
+  it("should update key with both scale root and scale name", () => {
+    const result = updateSong({ scaleRoot: "D", scale: "Dorian" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -193,7 +203,7 @@ describe("updateSong", () => {
     );
     expect(result).toEqual({
       id: "live_set_id",
-      rootNote: 2,
+      scaleRoot: "D",
       scale: "Dorian",
     });
   });
@@ -202,7 +212,7 @@ describe("updateSong", () => {
     const result = updateSong({
       tempo: 125,
       timeSignature: "6/8",
-      rootNote: 7,
+      scaleRoot: "G",
       scale: "Mixolydian",
       scaleEnabled: true,
       view: "arrangement",
@@ -246,7 +256,7 @@ describe("updateSong", () => {
       id: "live_set_id",
       tempo: 125,
       timeSignature: "6/8",
-      rootNote: 7,
+      scaleRoot: "G",
       scale: "Mixolydian",
       scaleEnabled: true,
       view: "arrangement",
@@ -259,6 +269,45 @@ describe("updateSong", () => {
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result).toEqual({
       id: "live_set_id",
+    });
+  });
+
+  it("should deselect all clips when deselectAllClips is true and scale properties are being set", () => {
+    const result = updateSong({ scale: "Dorian", deselectAllClips: true });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 0",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_name",
+      "Dorian",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scale: "Dorian",
+      deselectAllClips: true,
+    });
+  });
+
+  it("should not deselect clips when deselectAllClips is true but no scale properties are set", () => {
+    const result = updateSong({ tempo: 120, deselectAllClips: true });
+    expect(liveApiSet).not.toHaveBeenCalledWith("detail_clip", "id 0");
+    expect(result).toEqual({
+      id: "live_set_id",
+      tempo: 120,
+      deselectAllClips: true,
+    });
+  });
+
+  it("should not deselect clips when deselectAllClips is false", () => {
+    const result = updateSong({ scale: "Minor", deselectAllClips: false });
+    expect(liveApiSet).not.toHaveBeenCalledWith("detail_clip", "id 0");
+    expect(result).toEqual({
+      id: "live_set_id",
+      scale: "Minor",
+      deselectAllClips: false,
     });
   });
 });

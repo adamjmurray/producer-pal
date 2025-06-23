@@ -21,6 +21,10 @@ export class LiveAPI {
       : path?.replaceAll(/\s+/g, "/");
   }
 
+  exists() {
+    return this.id !== "id 0" && this.id !== "0";
+  }
+
   get id() {
     return liveApiId.apply(this) ?? this._id;
   }
@@ -31,6 +35,21 @@ export class LiveAPI {
 
   get unquotedpath() {
     return this.path;
+  }
+
+  get trackIndex() {
+    const match = this.path.match(/live_set tracks (\d+)/);
+    return match ? Number(match[1]) : null;
+  }
+
+  get sceneIndex() {
+    // Try scene path first
+    let match = this.path.match(/live_set scenes (\d+)/);
+    if (match) return Number(match[1]);
+
+    // Also try clip_slots path (scene index is the clip slot index in session view)
+    match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
+    return match ? Number(match[1]) : null;
   }
 
   get type() {

@@ -1,11 +1,12 @@
 // src/mcp-server/add-tool-update-song.js
 import { z } from "zod";
 import { VALID_SCALE_NAMES } from "../tools/update-song.js";
+import { VALID_PITCH_CLASS_NAMES } from "../notation/pitch-class-name-to-number.js";
 
 export function addToolUpdateSong(server, callLiveApi) {
   server.tool(
     "update-song",
-    "Updates global song properties in the Live Set including view state, tempo, time signature, and key",
+    "Updates song properties in the Live Set including view state, tempo, time signature, and scale. Note: scale changes affect currently selected clips and set defaults for new clips.",
     {
       tempo: z
         .number()
@@ -21,21 +22,23 @@ export function addToolUpdateSong(server, callLiveApi) {
         .enum(["session", "arrangement"])
         .optional()
         .describe("Switch between Session and Arrangement views"),
-      rootNote: z
-        .number()
-        .int()
-        .min(0)
-        .max(11)
+      scaleRoot: z
+        .enum(VALID_PITCH_CLASS_NAMES)
         .optional()
-        .describe("Root note (0-11, where 0=C, 1=C#, 2=D, etc.)"),
-      scale: z
-        .enum(VALID_SCALE_NAMES)
-        .optional()
-        .describe("Scale name"),
+        .describe(
+          "Scale root note (C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#, Bb, B)",
+        ),
+      scale: z.enum(VALID_SCALE_NAMES).optional().describe("Scale name"),
       scaleEnabled: z
         .boolean()
         .optional()
         .describe("Enable/disable scale highlighting"),
+      deselectAllClips: z
+        .boolean()
+        .optional()
+        .describe(
+          "Clear all clip selections before setting scale properties (ensures predictable behavior)",
+        ),
     },
     async (args) => callLiveApi("update-song", args),
   );

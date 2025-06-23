@@ -5,6 +5,7 @@ import {
   expectedClip,
   expectedTrack,
   liveApiId,
+  liveApiPath,
   mockLiveApiGet,
 } from "../mock-live-api";
 import { readSong } from "./read-song";
@@ -31,10 +32,31 @@ describe("readSong", () => {
           return "clip2";
         case "live_set tracks 1 clip_slots 0 clip":
           return "clip3";
+        case "live_set view selected_track":
+          return "track1";
+        case "live_set view selected_scene":
+          return "scene1";
+        case "live_set view detail_clip":
+          return "clip1";
+        case "live_set view highlighted_clip_slot":
+          return "highlighted_slot";
         default:
           // normally we should return this._id but in this test we mocked out everything
           // and don't want any of the default mocks for clips or tracks to look like they exist:
           return "id 0";
+      }
+    });
+
+    liveApiPath.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set view selected_track":
+          return "live_set tracks 0"; // Return path of the selected track
+        case "live_set view selected_scene":
+          return "live_set scenes 0"; // Return path of the selected scene
+        case "live_set view highlighted_clip_slot":
+          return "live_set tracks 0 clip_slots 0"; // Return path of the highlighted slot
+        default:
+          return this._path;
       }
     });
 
@@ -114,8 +136,12 @@ describe("readSong", () => {
       timeSignature: "4/4",
       scaleEnabled: true,
       scale: "Major",
-      scaleRootNote: 0,
+      scaleRoot: "C",
       scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      selectedTrackIndex: 0,
+      selectedSceneIndex: 0,
+      selectedClipId: "clip1",
+      highlightedClipSlot: null, // TODO: Fix this test mock
       tracks: [
         {
           id: "track1",
@@ -188,6 +214,17 @@ describe("readSong", () => {
   });
 
   it("handles when no tracks or scenes exist", () => {
+    liveApiId.mockImplementation(function () {
+      if (this.path === "live_set") {
+        return "live_set";
+      }
+      return "id 0"; // All selection objects return non-existent IDs
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
     mockLiveApiGet({
       AppView: {
         focused_document_view: "Arranger",
@@ -222,7 +259,11 @@ describe("readSong", () => {
       scaleEnabled: false,
       scaleIntervals: [0, 2, 3, 5, 7, 8, 10],
       scale: "Minor",
-      scaleRootNote: 2,
+      scaleRoot: "D",
+      selectedTrackIndex: null,
+      selectedSceneIndex: null,
+      selectedClipId: null,
+      highlightedClipSlot: null,
       tracks: [],
       scenes: [],
     });
