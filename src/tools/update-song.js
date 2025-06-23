@@ -47,9 +47,10 @@ const VALID_SCALE_NAMES = [
  * @param {string} [args.view] - Switch between Session and Arrangement views
  * @param {number} [args.rootNote] - Root note (0-11, where 0=C, 1=C#, 2=D, etc.)
  * @param {string} [args.scaleName] - Scale name (must be one of the 35 valid scale names)
+ * @param {boolean} [args.scaleMode] - Enable/disable scale mode highlighting
  * @returns {Object} Updated Live Set information
  */
-export function updateSong({ view, tempo, timeSignature, rootNote, scaleName } = {}) {
+export function updateSong({ view, tempo, timeSignature, rootNote, scaleName, scaleMode } = {}) {
   const liveSet = new LiveAPI("live_set");
 
   if (tempo != null) {
@@ -79,6 +80,10 @@ export function updateSong({ view, tempo, timeSignature, rootNote, scaleName } =
     liveSet.set("scale_name", scaleName);
   }
 
+  if (scaleMode != null) {
+    liveSet.set("scale_mode", scaleMode ? 1 : 0);
+  }
+
   if (view != null) {
     const appView = new LiveAPI("live_app view");
     appView.call("show_view", toLiveApiView(view));
@@ -94,6 +99,7 @@ export function updateSong({ view, tempo, timeSignature, rootNote, scaleName } =
   if (timeSignature != null) songResult.timeSignature = timeSignature;
   if (rootNote != null) songResult.rootNote = rootNote;
   if (scaleName != null) songResult.scaleName = scaleName;
+  if (scaleMode != null) songResult.scaleMode = scaleMode;
   if (view != null) songResult.view = view;
 
   return songResult;

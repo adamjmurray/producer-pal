@@ -153,6 +153,32 @@ describe("updateSong", () => {
     expect(() => updateSong({ scaleName: "Major Foo" })).toThrow("Scale name must be one of:");
   });
 
+  it("should update scale mode", () => {
+    const result = updateSong({ scaleMode: true });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_mode",
+      1,
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scaleMode: true,
+    });
+  });
+
+  it("should disable scale mode", () => {
+    const result = updateSong({ scaleMode: false });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_mode",
+      0,
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scaleMode: false,
+    });
+  });
+
   it("should update key with both root note and scale name", () => {
     const result = updateSong({ rootNote: 2, scaleName: "Dorian" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -178,6 +204,7 @@ describe("updateSong", () => {
       timeSignature: "6/8",
       rootNote: 7,
       scaleName: "Mixolydian",
+      scaleMode: true,
       view: "arrangement",
     });
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -205,6 +232,11 @@ describe("updateSong", () => {
       "scale_name",
       "Mixolydian",
     );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_mode",
+      1,
+    );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_app view" }),
       "show_view",
@@ -216,6 +248,7 @@ describe("updateSong", () => {
       timeSignature: "6/8",
       rootNote: 7,
       scaleName: "Mixolydian",
+      scaleMode: true,
       view: "arrangement",
     });
   });

@@ -67,6 +67,10 @@ export function addToolUpdateSong(server, callLiveApi) {
         ])
         .optional()
         .describe("Scale name"),
+      scaleMode: z
+        .boolean()
+        .optional()
+        .describe("Enable/disable scale mode highlighting"),
     },
     async (args) => callLiveApi("update-song", args),
   );
