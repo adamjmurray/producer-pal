@@ -18,7 +18,7 @@ export function readSong() {
     followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: `${liveSet.getProperty("signature_numerator")}/${liveSet.getProperty("signature_denominator")}`,
-    isScaleModeEnabled: liveSet.getProperty("scale_mode") > 0,
+    scaleMode: liveSet.getProperty("scale_mode") > 0,
     scaleName: liveSet.getProperty("scale_name"),
     scaleRootNote: liveSet.getProperty("root_note"),
     scaleIntervals: liveSet.getProperty("scale_intervals"),
