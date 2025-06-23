@@ -28,14 +28,14 @@ export function addToolUpdateSong(server, callLiveApi) {
         .max(11)
         .optional()
         .describe("Root note (0-11, where 0=C, 1=C#, 2=D, etc.)"),
-      scaleName: z
+      scale: z
         .enum(VALID_SCALE_NAMES)
         .optional()
         .describe("Scale name"),
-      scaleMode: z
+      scaleEnabled: z
         .boolean()
         .optional()
-        .describe("Enable/disable scale mode highlighting"),
+        .describe("Enable/disable scale highlighting"),
     },
     async (args) => callLiveApi("update-song", args),
   );

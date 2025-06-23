@@ -46,11 +46,11 @@ export const VALID_SCALE_NAMES = [
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.view] - Switch between Session and Arrangement views
  * @param {number} [args.rootNote] - Root note (0-11, where 0=C, 1=C#, 2=D, etc.)
- * @param {string} [args.scaleName] - Scale name (must be one of the 35 valid scale names)
- * @param {boolean} [args.scaleMode] - Enable/disable scale mode highlighting
+ * @param {string} [args.scale] - Scale name (must be one of the 35 valid scale names)
+ * @param {boolean} [args.scaleEnabled] - Enable/disable scale highlighting
  * @returns {Object} Updated Live Set information
  */
-export function updateSong({ view, tempo, timeSignature, rootNote, scaleName, scaleMode } = {}) {
+export function updateSong({ view, tempo, timeSignature, rootNote, scale, scaleEnabled } = {}) {
   const liveSet = new LiveAPI("live_set");
 
   if (tempo != null) {
@@ -73,15 +73,15 @@ export function updateSong({ view, tempo, timeSignature, rootNote, scaleName, sc
     liveSet.set("root_note", rootNote);
   }
 
-  if (scaleName != null) {
-    if (!VALID_SCALE_NAMES.includes(scaleName)) {
+  if (scale != null) {
+    if (!VALID_SCALE_NAMES.includes(scale)) {
       throw new Error(`Scale name must be one of: ${VALID_SCALE_NAMES.join(", ")}`);
     }
-    liveSet.set("scale_name", scaleName);
+    liveSet.set("scale_name", scale);
   }
 
-  if (scaleMode != null) {
-    liveSet.set("scale_mode", scaleMode ? 1 : 0);
+  if (scaleEnabled != null) {
+    liveSet.set("scale_mode", scaleEnabled ? 1 : 0);
   }
 
   if (view != null) {
@@ -98,8 +98,8 @@ export function updateSong({ view, tempo, timeSignature, rootNote, scaleName, sc
   if (tempo != null) songResult.tempo = tempo;
   if (timeSignature != null) songResult.timeSignature = timeSignature;
   if (rootNote != null) songResult.rootNote = rootNote;
-  if (scaleName != null) songResult.scaleName = scaleName;
-  if (scaleMode != null) songResult.scaleMode = scaleMode;
+  if (scale != null) songResult.scale = scale;
+  if (scaleEnabled != null) songResult.scaleEnabled = scaleEnabled;
   if (view != null) songResult.view = view;
 
   return songResult;

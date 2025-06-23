@@ -133,8 +133,8 @@ describe("updateSong", () => {
     expect(() => updateSong({ rootNote: "C" })).toThrow("Root note must be an integer between 0 and 11");
   });
 
-  it("should update scale name", () => {
-    const result = updateSong({ scaleName: "Dorian" });
+  it("should update scale", () => {
+    const result = updateSong({ scale: "Dorian" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "scale_name",
@@ -142,19 +142,19 @@ describe("updateSong", () => {
     );
     expect(result).toEqual({
       id: "live_set_id",
-      scaleName: "Dorian",
+      scale: "Dorian",
     });
   });
 
   it("should throw error for invalid scale name", () => {
-    expect(() => updateSong({ scaleName: "invalid" })).toThrow("Scale name must be one of:");
-    expect(() => updateSong({ scaleName: "major" })).toThrow("Scale name must be one of:");
-    expect(() => updateSong({ scaleName: "MINOR" })).toThrow("Scale name must be one of:");
-    expect(() => updateSong({ scaleName: "Major Foo" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scale: "invalid" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scale: "major" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scale: "MINOR" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scale: "Major Foo" })).toThrow("Scale name must be one of:");
   });
 
-  it("should update scale mode", () => {
-    const result = updateSong({ scaleMode: true });
+  it("should enable scale highlighting", () => {
+    const result = updateSong({ scaleEnabled: true });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "scale_mode",
@@ -162,12 +162,12 @@ describe("updateSong", () => {
     );
     expect(result).toEqual({
       id: "live_set_id",
-      scaleMode: true,
+      scaleEnabled: true,
     });
   });
 
-  it("should disable scale mode", () => {
-    const result = updateSong({ scaleMode: false });
+  it("should disable scale highlighting", () => {
+    const result = updateSong({ scaleEnabled: false });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "scale_mode",
@@ -175,12 +175,12 @@ describe("updateSong", () => {
     );
     expect(result).toEqual({
       id: "live_set_id",
-      scaleMode: false,
+      scaleEnabled: false,
     });
   });
 
   it("should update key with both root note and scale name", () => {
-    const result = updateSong({ rootNote: 2, scaleName: "Dorian" });
+    const result = updateSong({ rootNote: 2, scale: "Dorian" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -194,7 +194,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       rootNote: 2,
-      scaleName: "Dorian",
+      scale: "Dorian",
     });
   });
 
@@ -203,8 +203,8 @@ describe("updateSong", () => {
       tempo: 125,
       timeSignature: "6/8",
       rootNote: 7,
-      scaleName: "Mixolydian",
-      scaleMode: true,
+      scale: "Mixolydian",
+      scaleEnabled: true,
       view: "arrangement",
     });
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -247,8 +247,8 @@ describe("updateSong", () => {
       tempo: 125,
       timeSignature: "6/8",
       rootNote: 7,
-      scaleName: "Mixolydian",
-      scaleMode: true,
+      scale: "Mixolydian",
+      scaleEnabled: true,
       view: "arrangement",
     });
   });
