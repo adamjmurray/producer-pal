@@ -113,6 +113,113 @@ describe("updateSong", () => {
     });
   });
 
+  it("should update root note", () => {
+    const result = updateSong({ rootNote: 2 });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "root_note",
+      2,
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      rootNote: 2,
+    });
+  });
+
+  it("should throw error for invalid root note", () => {
+    expect(() => updateSong({ rootNote: -1 })).toThrow("Root note must be an integer between 0 and 11");
+    expect(() => updateSong({ rootNote: 12 })).toThrow("Root note must be an integer between 0 and 11");
+    expect(() => updateSong({ rootNote: 5.5 })).toThrow("Root note must be an integer between 0 and 11");
+    expect(() => updateSong({ rootNote: "C" })).toThrow("Root note must be an integer between 0 and 11");
+  });
+
+  it("should update scale name", () => {
+    const result = updateSong({ scaleName: "Dorian" });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_name",
+      "Dorian",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scaleName: "Dorian",
+    });
+  });
+
+  it("should throw error for invalid scale name", () => {
+    expect(() => updateSong({ scaleName: "invalid" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scaleName: "major" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scaleName: "MINOR" })).toThrow("Scale name must be one of:");
+    expect(() => updateSong({ scaleName: "Major Foo" })).toThrow("Scale name must be one of:");
+  });
+
+  it("should update key with both root note and scale name", () => {
+    const result = updateSong({ rootNote: 2, scaleName: "Dorian" });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "root_note",
+      2,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_name",
+      "Dorian",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      rootNote: 2,
+      scaleName: "Dorian",
+    });
+  });
+
+  it("should update all properties simultaneously", () => {
+    const result = updateSong({
+      tempo: 125,
+      timeSignature: "6/8",
+      rootNote: 7,
+      scaleName: "Mixolydian",
+      view: "arrangement",
+    });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "tempo",
+      125,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_numerator",
+      6,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_denominator",
+      8,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "root_note",
+      7,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_name",
+      "Mixolydian",
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Arranger",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      tempo: 125,
+      timeSignature: "6/8",
+      rootNote: 7,
+      scaleName: "Mixolydian",
+      view: "arrangement",
+    });
+  });
+
   it("should return only song ID when no properties are updated", () => {
     const result = updateSong({});
     expect(liveApiSet).not.toHaveBeenCalled();
