@@ -1,7 +1,7 @@
 // src/tools/update-song.js
 import { parseTimeSignature, toLiveApiView } from "../utils.js";
 
-const VALID_SCALE_NAMES = [
+export const VALID_SCALE_NAMES = [
   "Major",
   "Minor",
   "Dorian",
