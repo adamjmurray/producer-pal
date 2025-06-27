@@ -41,7 +41,6 @@ Make music in Ableton Live with an AI assistant such as
    - Add the `device/Producer Pal.amxd` Max for Live device to your Ableton Live
      Set (drag the file to a MIDI track)
 2. Configure Claude Desktop to connect to the Producer Pal
-
    - Go to Claude Desktop → Settings → Developer → Edit Config → Open
      `claude_desktop_config.json` in a text editor
    - Copy the settings from the Producer Pal Max for Live device into
@@ -63,7 +62,6 @@ Make music in Ableton Live with an AI assistant such as
    ```
 
 3. Restart Claude Desktop
-
    - In the "Search and Tools" button below the chat input, you should see
      `Ableton Producer Pal` and if you click into it, there should be 15 tools
      such as `read-song` and `write-song` (16 tools if you built with the

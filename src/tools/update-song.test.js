@@ -272,8 +272,8 @@ describe("updateSong", () => {
     });
   });
 
-  it("should deselect all clips when deselectAllClips is true and scale properties are being set", () => {
-    const result = updateSong({ scale: "Dorian", deselectAllClips: true });
+  it("should deselect all clips when selectedClipId is null", () => {
+    const result = updateSong({ scale: "Dorian", selectedClipId: null });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set view" }),
       "detail_clip",
@@ -287,27 +287,86 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scale: "Dorian",
-      deselectAllClips: true,
+      selectedClipId: null,
     });
   });
 
-  it("should not deselect clips when deselectAllClips is true but no scale properties are set", () => {
-    const result = updateSong({ tempo: 120, deselectAllClips: true });
-    expect(liveApiSet).not.toHaveBeenCalledWith("detail_clip", "id 0");
+  it("should deselect clips when selectedClipId is null regardless of other properties", () => {
+    const result = updateSong({ tempo: 120, selectedClipId: null });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 0",
+    );
     expect(result).toEqual({
       id: "live_set_id",
       tempo: 120,
-      deselectAllClips: true,
+      selectedClipId: null,
     });
   });
 
-  it("should not deselect clips when deselectAllClips is false", () => {
-    const result = updateSong({ scale: "Minor", deselectAllClips: false });
+  it("should select specific clip when selectedClipId is provided", () => {
+    const result = updateSong({ selectedClipId: "123" });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 123",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      selectedClipId: "123",
+    });
+  });
+
+  it("should not affect clip selection when selectedClipId is not provided", () => {
+    const result = updateSong({ scale: "Minor" });
     expect(liveApiSet).not.toHaveBeenCalledWith("detail_clip", "id 0");
     expect(result).toEqual({
       id: "live_set_id",
       scale: "Minor",
-      deselectAllClips: false,
+    });
+  });
+
+  it("should perform clip selection before scale property changes", () => {
+    const result = updateSong({
+      selectedClipId: null,
+      scaleRoot: "F#",
+      scale: "Dorian",
+      scaleEnabled: true,
+    });
+
+    // Verify clip deselection happens first, then scale properties
+    expect(liveApiSet).toHaveBeenNthCalledWithThis(
+      1,
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 0",
+    );
+    expect(liveApiSet).toHaveBeenNthCalledWithThis(
+      2,
+      expect.objectContaining({ path: "live_set" }),
+      "root_note",
+      6,
+    );
+    expect(liveApiSet).toHaveBeenNthCalledWithThis(
+      3,
+      expect.objectContaining({ path: "live_set" }),
+      "scale_name",
+      "Dorian",
+    );
+    expect(liveApiSet).toHaveBeenNthCalledWithThis(
+      4,
+      expect.objectContaining({ path: "live_set" }),
+      "scale_mode",
+      1,
+    );
+
+    expect(result).toEqual({
+      id: "live_set_id",
+      selectedClipId: null,
+      scaleRoot: "F#",
+      scale: "Dorian",
+      scaleEnabled: true,
     });
   });
 });

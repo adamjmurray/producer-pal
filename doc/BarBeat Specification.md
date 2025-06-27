@@ -13,7 +13,6 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 ### Components:
 
 - **Start Time (`bar|beat`)** Absolute timestamp for event start.
-
   - `bar` – 1-based bar number (integer)
   - `beat` – 1-based beat number within bar (float for sub-beat precision)
   - Can be standalone to set default time for following notes
@@ -21,14 +20,12 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Requires whitespace separation from following elements
 
 - **Probability (`p<0.0–1.0>`)**
-
   - Sets note probability for following notes until changed
   - 1.0 = note always plays, 0.0 = note never plays
   - Default: 1.0
   - Requires whitespace separation from following elements
 
 - **Velocity (`v<0–127>` or `v<min>-<max>`)**
-
   - Sets velocity for following notes until changed
   - Single value: `v100` (fixed velocity)
   - Range: `v80-120` or `v120-80` (random velocity between min and max,
@@ -37,13 +34,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Requires whitespace separation from following elements
 
 - **Duration (`t<float>`)**
-
   - Sets duration in beats for following notes until changed
   - Default: 1.0
   - Requires whitespace separation from following elements
 
 - **Note (`C4`, `Eb2`, `F#3`, etc.)**
-
   - Note names follow standard pitch notation using:
     - A–G (with optional sharp `#` or flat `b`)
     - Valid pitch classes: C, C#, Db, D, D#, Eb, E, F, F#, Gb, G, G#, Ab, A, A#,
@@ -54,7 +49,6 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Result must be in valid MIDI range: 0–127
 
 - **Events**
-
   - Multiple notes at same time separated by whitespace
   - No commas between elements
   - All state (time, probability, velocity, duration) persists across events

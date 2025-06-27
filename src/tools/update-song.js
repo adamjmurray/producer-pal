@@ -49,7 +49,7 @@ export const VALID_SCALE_NAMES = [
  * @param {string} [args.scaleRoot] - Scale root note (e.g., "C", "F#", "Bb")
  * @param {string} [args.scale] - Scale name (must be one of the 35 valid scale names)
  * @param {boolean} [args.scaleEnabled] - Enable/disable scale highlighting
- * @param {boolean} [args.deselectAllClips] - Clear all clip selections before setting scale properties
+ * @param {string|null} [args.selectedClipId] - Select a specific clip by ID, or pass null to deselect all clips
  * @returns {Object} Updated Live Set information
  */
 export function updateSong({
@@ -59,17 +59,20 @@ export function updateSong({
   scaleRoot,
   scale,
   scaleEnabled,
-  deselectAllClips,
+  selectedClipId,
 } = {}) {
   const liveSet = new LiveAPI("live_set");
 
-  // Deselect all clips if requested (affects scale changes)
-  if (
-    deselectAllClips &&
-    (scaleRoot != null || scale != null || scaleEnabled != null)
-  ) {
+  // Handle clip selection/deselection (before scale changes)
+  if (selectedClipId !== undefined) {
     const songView = new LiveAPI("live_set view");
-    songView.set("detail_clip", "id 0");
+    if (selectedClipId === null) {
+      // Deselect all clips
+      songView.set("detail_clip", "id 0");
+    } else {
+      // Select specific clip
+      songView.set("detail_clip", "id " + selectedClipId);
+    }
   }
 
   if (tempo != null) {
@@ -120,7 +123,7 @@ export function updateSong({
   if (scale != null) songResult.scale = scale;
   if (scaleEnabled != null) songResult.scaleEnabled = scaleEnabled;
   if (view != null) songResult.view = view;
-  if (deselectAllClips != null) songResult.deselectAllClips = deselectAllClips;
+  if (selectedClipId !== undefined) songResult.selectedClipId = selectedClipId;
 
   return songResult;
 }

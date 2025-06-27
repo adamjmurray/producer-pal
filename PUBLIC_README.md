@@ -79,7 +79,6 @@ future.
 3. Add the `Producer Pal.amxd` file to an Ableton Live project. It should show
    that it is running: TODO screenshot
 4. Configure Claude Desktop to connect to the Producer Pal
-
    - Go to Claude Desktop → Settings → Developer → Edit Config → Open
      `claude_desktop_config.json` in a text editor
    - Copy the settings from the Producer Pal Max for Live device into
@@ -210,7 +209,6 @@ specific features.
 
   > Find the chords track and generate a 4-chord progression of whole notes in C
   > minor
-
   - Then, setup a bass track:
 
     > Find the bass track and generate a bassline to go along with that chord

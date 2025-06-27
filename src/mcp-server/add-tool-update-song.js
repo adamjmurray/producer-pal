@@ -41,11 +41,12 @@ export function addToolUpdateSong(server, callLiveApi) {
         .describe(
           "Enable/disable scale - applies to currently selected clips and sets the default for new clips",
         ),
-      deselectAllClips: z
-        .boolean()
+      selectedClipId: z
+        .string()
+        .nullable()
         .optional()
         .describe(
-          "Clear all clip selections before setting scale properties (ensures predictable behavior)",
+          "Select a specific clip by ID, or pass null to deselect all clips. Clip selection state will be updated before changing any scale settings (which affect the selected clip)",
         ),
     },
     async (args) => callLiveApi("update-song", args),

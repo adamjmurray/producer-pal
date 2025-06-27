@@ -51,6 +51,13 @@
 
 ## 📋 TODOs
 
+**Song tool improvements:**
+
+- [x] allow clips to be selected by setting the song_view detail_clip property
+- [ ] don't return scale properties in read-song or update-song if the scale is
+      disabled, this causes the LLM to follow the scale anyway
+- [ ] change to detail clip view in update-song
+
 **Versioning:**
 
 - [ ] Indicate when new versions are available and link to the download
@@ -77,7 +84,7 @@
 
 - [ ] Validation system for better error handling (start/end times, clip bounds,
       etc.)
-- [ ] Optional toggle to suppress Max console errors in device UI
+- [ ] Optional toggle in device UI to suppress Max console errors
 
 **MIDI Routing:**
 
