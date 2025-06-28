@@ -1,37 +1,85 @@
 {
-  "dxt_version": "0.1.0",
-  "name": "ableton-producer-pal",
+  "dxt_version": "0.1",
+  "name": "Producer Pal",
   "version": "0.9.0",
   "description": "AI music production assistant for Ableton Live. Control transport, create clips, manage tracks and scenes directly from Claude.",
+  "long_description": "TODO: supports basic markdown here",
   "author": {
-    "name": "Adam Murray"
+    "name": "Adam Murray",
+    "email": "adam@adammurray.link",
+    "url": "https://adammurray.link"
   },
-  "license": "Personal Use License",
+  "homepage": "https://adammurray.link/producer-pal",
+  "documentation": "https://adammurray.link/producer-pal/docs",
+  "support": "https://adammurray.link/producer-pal/faq",
+  "icon": "icon.png",
+  "screenshots": [
+    "screenshot.png",
+    "screenshot2.png"
+  ],
   "server": {
     "type": "node",
     "entry_point": "server/bridge.js",
     "mcp_config": {
-      "version": "2024-11-05",
       "command": "node",
-      "args": ["${__dirname}/server/bridge.js"]
+      "args": [
+        "${__dirname}/server/bridge.js"
+      ],
+      "env": {}
     }
   },
-  "config": [
+  "tools": [
     {
-      "name": "port",
-      "type": "number",
-      "label": "Server Port",
-      "description": "Port for the MCP server (must match your Max for Live device)",
-      "default": 3350,
-      "required": true
-    },
-    {
-      "name": "liveApiDebug",
-      "type": "boolean",
-      "label": "Enable Debug Logging",
-      "description": "Show detailed bridge communication logs (for troubleshooting)",
-      "default": false,
-      "required": false
+      "name": "read-song",
+      "description": "TODO: list the rest and make this all dynamic"
     }
-  ]
+  ],
+  "prompts": [
+    {
+      "name": "prompt",
+      "description": "TODO: this is just a placeholder example for now",
+      "arguments": [
+        "arg1",
+        "arg2"
+      ],
+      "text": "prompt text goes here: ${arguments.arg1}, ${arguments.arg2}"
+    }
+  ],
+  "compatibility": {
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "user_config": {
+    "port": {
+      "type": "number",
+      "title": "Communication Port",
+      "description": "Port number for the connection to the Producer Pal Max for Live Device",
+      "required": false,
+      "sensitive": false,
+      "default": 3350,
+      "min": 1024,
+      "max": 9999
+    }
+  },
+  "keywords": [
+    "music",
+    "ableton live",
+    "ableton",
+    "production",
+    "producer",
+    "composition",
+    "composer",
+    "assistant",
+    "pal"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamjmurray/producer-pal"
+  }
 }
