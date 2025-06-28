@@ -35,7 +35,9 @@ export function readSong() {
       }
     : null;
 
-  return {
+  const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
+
+  const result = {
     id: liveSet.id,
     abletonLiveVersion: liveApp.call("get_version_string"),
     name: liveSet.getProperty("name"),
@@ -43,10 +45,7 @@ export function readSong() {
     followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: `${liveSet.getProperty("signature_numerator")}/${liveSet.getProperty("signature_denominator")}`,
-    scaleEnabled: liveSet.getProperty("scale_mode") > 0,
-    scale: liveSet.getProperty("scale_name"),
-    scaleRoot: PITCH_CLASS_NAMES[liveSet.getProperty("root_note")],
-    scaleIntervals: liveSet.getProperty("scale_intervals"),
+    scaleEnabled,
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     selectedTrackIndex,
     selectedSceneIndex,
@@ -55,4 +54,13 @@ export function readSong() {
     tracks: trackIds.map((_trackId, trackIndex) => readTrack({ trackIndex })),
     scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
   };
+
+  // Only include scale properties when scale is enabled
+  if (scaleEnabled) {
+    result.scale = liveSet.getProperty("scale_name");
+    result.scaleRoot = PITCH_CLASS_NAMES[liveSet.getProperty("root_note")];
+    result.scaleIntervals = liveSet.getProperty("scale_intervals");
+  }
+
+  return result;
 }
