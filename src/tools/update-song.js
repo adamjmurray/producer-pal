@@ -50,6 +50,7 @@ export const VALID_SCALE_NAMES = [
  * @param {string} [args.scale] - Scale name (must be one of the 35 valid scale names)
  * @param {boolean} [args.scaleEnabled] - Enable/disable scale highlighting
  * @param {string|null} [args.selectedClipId] - Select a specific clip by ID, or pass null to deselect all clips
+ * @param {boolean} [args.showClip] - Show the clip detail view after selecting a clip
  * @returns {Object} Updated Live Set information
  */
 export function updateSong({
@@ -60,6 +61,7 @@ export function updateSong({
   scale,
   scaleEnabled,
   selectedClipId,
+  showClip,
 } = {}) {
   const liveSet = new LiveAPI("live_set");
 
@@ -111,6 +113,12 @@ export function updateSong({
     appView.call("show_view", toLiveApiView(view));
   }
 
+  // Show clip detail view if requested (after view switching and clip selection)
+  if (showClip && selectedClipId != null) {
+    const appView = new LiveAPI("live_app view");
+    appView.call("focus_view", "Detail/Clip");
+  }
+
   // Build optimistic result object
   const songResult = {
     id: liveSet.id,
@@ -124,6 +132,7 @@ export function updateSong({
   if (scaleEnabled != null) songResult.scaleEnabled = scaleEnabled;
   if (view != null) songResult.view = view;
   if (selectedClipId !== undefined) songResult.selectedClipId = selectedClipId;
+  if (showClip != null) songResult.showClip = showClip;
 
   return songResult;
 }

@@ -48,6 +48,12 @@ export function addToolUpdateSong(server, callLiveApi) {
         .describe(
           "Select a specific clip by ID, or pass null to deselect all clips. Clip selection state will be updated before changing any scale settings (which affect the selected clip)",
         ),
+      showClip: z
+        .boolean()
+        .optional()
+        .describe(
+          "Show the clip detail view after selecting a clip. Only works when selectedClipId is also provided.",
+        ),
     },
     async (args) => callLiveApi("update-song", args),
   );

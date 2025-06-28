@@ -369,4 +369,76 @@ describe("updateSong", () => {
       scaleEnabled: true,
     });
   });
+
+  it("should show clip detail view when showClip is true and clip is selected", () => {
+    const result = updateSong({ selectedClipId: "123", showClip: true });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 123",
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "focus_view",
+      "Detail/Clip",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      selectedClipId: "123",
+      showClip: true,
+    });
+  });
+
+  it("should not show clip detail view when showClip is true but no clip is selected", () => {
+    const result = updateSong({ showClip: true });
+    expect(liveApiCall).not.toHaveBeenCalledWith("focus_view", "Detail/Clip");
+    expect(result).toEqual({
+      id: "live_set_id",
+      showClip: true,
+    });
+  });
+
+  it("should not show clip detail view when showClip is true but selectedClipId is null", () => {
+    const result = updateSong({ selectedClipId: null, showClip: true });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 0",
+    );
+    expect(liveApiCall).not.toHaveBeenCalledWith("focus_view", "Detail/Clip");
+    expect(result).toEqual({
+      id: "live_set_id",
+      selectedClipId: null,
+      showClip: true,
+    });
+  });
+
+  it("should work with view switching and showClip together", () => {
+    const result = updateSong({
+      view: "session",
+      selectedClipId: "456",
+      showClip: true,
+    });
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "show_view",
+      "Session",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set view" }),
+      "detail_clip",
+      "id 456",
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_app view" }),
+      "focus_view",
+      "Detail/Clip",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      view: "session",
+      selectedClipId: "456",
+      showClip: true,
+    });
+  });
 });
