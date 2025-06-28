@@ -1,6 +1,6 @@
 {
   "name": "ableton-live-composition-assistant",
-  "version": "1.0.0",
+  "version": "0.9.0",
   "description": "AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "repository": {
     "type": "git",
@@ -50,7 +50,7 @@
     "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs",
     "dxt:prepare": "node desktop-extension/prepare-dxt.mjs",
     "dxt:clean": "rm -f desktop-extension/*.dxt",
-    "dxt:pack": "cd desktop-extension && npx @anthropic-ai/dxt pack",
+    "dxt:pack": "npx @anthropic-ai/dxt pack desktop-extension desktop-extension/Producer\\ Pal.dxt",
     "dxt:build": "npm run build && npm run dxt:clean && npm run dxt:prepare && npm run dxt:pack"
   }
 }
