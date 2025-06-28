@@ -134,5 +134,15 @@ export function updateSong({
   if (selectedClipId !== undefined) songResult.selectedClipId = selectedClipId;
   if (showClip != null) songResult.showClip = showClip;
 
+  // Include scaleIntervals when scale-related parameters are modified
+  // But never include when scaleEnabled is explicitly set to false
+  const shouldIncludeScaleIntervals =
+    scaleEnabled !== false &&
+    (scale != null || scaleRoot != null || scaleEnabled === true);
+
+  if (shouldIncludeScaleIntervals) {
+    songResult.scaleIntervals = liveSet.getProperty("scale_intervals");
+  }
+
   return songResult;
 }

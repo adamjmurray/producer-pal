@@ -1,11 +1,23 @@
 // src/tools/update-song.test.js
 import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiCall, liveApiId, liveApiSet } from "../mock-live-api";
+import {
+  liveApiCall,
+  liveApiGet,
+  liveApiId,
+  liveApiSet,
+} from "../mock-live-api";
 import { updateSong } from "./update-song";
 
 describe("updateSong", () => {
   beforeEach(() => {
     liveApiId.mockReturnValue("live_set_id");
+    // Mock scale_intervals for tests that need it
+    liveApiGet.mockImplementation(function (property) {
+      if (property === "scale_intervals") {
+        return [0, 2, 4, 5, 7, 9, 11]; // Major scale intervals
+      }
+      return this._id;
+    });
   });
 
   it("should update tempo", () => {
@@ -123,6 +135,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scaleRoot: "D",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -145,6 +158,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scale: "Dorian",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -173,6 +187,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scaleEnabled: true,
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -205,6 +220,7 @@ describe("updateSong", () => {
       id: "live_set_id",
       scaleRoot: "D",
       scale: "Dorian",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -260,6 +276,7 @@ describe("updateSong", () => {
       scale: "Mixolydian",
       scaleEnabled: true,
       view: "arrangement",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -288,6 +305,7 @@ describe("updateSong", () => {
       id: "live_set_id",
       scale: "Dorian",
       selectedClipId: null,
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -324,6 +342,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scale: "Minor",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -367,6 +386,7 @@ describe("updateSong", () => {
       scaleRoot: "F#",
       scale: "Dorian",
       scaleEnabled: true,
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
     });
   });
 
@@ -487,6 +507,122 @@ describe("updateSong", () => {
       view: "session",
       selectedClipId: "456",
       showClip: true,
+    });
+  });
+
+  it("should return scaleIntervals when scale is set", () => {
+    const result = updateSong({ scale: "Major" });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_name",
+      "Major",
+    );
+    expect(liveApiGet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_intervals",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scale: "Major",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+    });
+  });
+
+  it("should return scaleIntervals when scaleRoot is set", () => {
+    const result = updateSong({ scaleRoot: "D" });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "root_note",
+      2,
+    );
+    expect(liveApiGet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_intervals",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scaleRoot: "D",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+    });
+  });
+
+  it("should return scaleIntervals when scaleEnabled is set to true", () => {
+    const result = updateSong({ scaleEnabled: true });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_mode",
+      1,
+    );
+    expect(liveApiGet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_intervals",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scaleEnabled: true,
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+    });
+  });
+
+  it("should NOT return scaleIntervals when scaleEnabled is set to false", () => {
+    const result = updateSong({ scaleEnabled: false });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_mode",
+      0,
+    );
+    expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
+    expect(result).toEqual({
+      id: "live_set_id",
+      scaleEnabled: false,
+    });
+  });
+
+  it("should return scaleIntervals when both scale and scaleRoot are set", () => {
+    const result = updateSong({ scale: "Minor", scaleRoot: "A" });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_name",
+      "Minor",
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "root_note",
+      9,
+    );
+    expect(liveApiGet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "scale_intervals",
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      scale: "Minor",
+      scaleRoot: "A",
+      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+    });
+  });
+
+  it("should NOT return scaleIntervals when no scale-related parameters are set", () => {
+    const result = updateSong({ tempo: 140 });
+    expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
+    expect(result).toEqual({
+      id: "live_set_id",
+      tempo: 140,
+    });
+  });
+
+  it("should NOT return scaleIntervals when scaleEnabled is false, even with other scale params", () => {
+    const result = updateSong({
+      scale: "Minor",
+      scaleRoot: "F",
+      scaleEnabled: false,
+    });
+    expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
+    expect(result).toEqual({
+      id: "live_set_id",
+      scale: "Minor",
+      scaleRoot: "F",
+      scaleEnabled: false,
     });
   });
 });

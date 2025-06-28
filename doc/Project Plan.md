@@ -54,7 +54,7 @@
 **Song tool improvements:**
 
 - [x] allow clips to be selected by setting the song_view detail_clip property
-- [ ] don't return scale properties in read-song or update-song if the scale is
+- [x] don't return scale properties in read-song or update-song if the scale is
       disabled, as this causes the LLM to follow the scale anyway
 - [x] change to detail clip view in update-song
   - [ ] also add ability to hide detail clip view?
