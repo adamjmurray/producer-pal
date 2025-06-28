@@ -34,17 +34,6 @@
       "description": "TODO: list the rest and make this all dynamic"
     }
   ],
-  "prompts": [
-    {
-      "name": "prompt",
-      "description": "TODO: this is just a placeholder example for now",
-      "arguments": [
-        "arg1",
-        "arg2"
-      ],
-      "text": "prompt text goes here: ${arguments.arg1}, ${arguments.arg2}"
-    }
-  ],
   "compatibility": {
     "platforms": [
       "darwin",

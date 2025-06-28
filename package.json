@@ -48,9 +48,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs",
-    "dxt:prepare": "node desktop-extension/prepare-dxt.mjs",
     "dxt:clean": "rm -f desktop-extension/*.dxt",
-    "dxt:pack": "npx @anthropic-ai/dxt pack desktop-extension desktop-extension/Producer\\ Pal.dxt",
-    "dxt:build": "npm run dxt:prepare && npm run dxt:pack"
+    "dxt:build": "node desktop-extension/build.mjs"
   }
 }
