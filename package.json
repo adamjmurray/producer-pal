@@ -24,7 +24,7 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@types/express": "^5.0.3",
     "@types/max-api": "^2.0.3",
-    "@types/node": "^24.0.6",
+    "@types/node": "^24.0.7",
     "@vitest/coverage-v8": "^3.2.4",
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.4",
@@ -36,7 +36,7 @@
     "proseWrap": "always"
   },
   "scripts": {
-    "build": "npm run parser:build && rollup -c",
+    "build": "npm run parser:build && rollup -c && npm run dxt:build",
     "build:all": "ENABLE_RAW_LIVE_API=true npm run parser:build && ENABLE_RAW_LIVE_API=true rollup -c",
     "dev": "ENABLE_RAW_LIVE_API=true rollup -c -w",
     "test": "npm run test:setup && vitest run",
@@ -51,6 +51,6 @@
     "dxt:prepare": "node desktop-extension/prepare-dxt.mjs",
     "dxt:clean": "rm -f desktop-extension/*.dxt",
     "dxt:pack": "npx @anthropic-ai/dxt pack desktop-extension desktop-extension/Producer\\ Pal.dxt",
-    "dxt:build": "npm run build && npm run dxt:clean && npm run dxt:prepare && npm run dxt:pack"
+    "dxt:build": "npm run dxt:prepare && npm run dxt:pack"
   }
 }

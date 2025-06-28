@@ -13,7 +13,7 @@ console.log("Installing mcp-remote in DXT server directory...");
 import { execSync } from "child_process";
 
 // Install mcp-remote in the DXT server directory
-const serverDir = join(__dirname, "server");
+const serverDir = __dirname;
 try {
   execSync("npm install", { cwd: serverDir, stdio: "inherit" });
   console.log("mcp-remote installed successfully in DXT bundle");

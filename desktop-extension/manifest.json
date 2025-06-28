@@ -19,11 +19,11 @@
   ],
   "server": {
     "type": "node",
-    "entry_point": "server/bridge.js",
+    "entry_point": "server.js",
     "mcp_config": {
       "command": "node",
       "args": [
-        "${__dirname}/server/bridge.js"
+        "${__dirname}/server.js"
       ],
       "env": {}
     }

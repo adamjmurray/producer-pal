@@ -1,4 +1,4 @@
-// dxt/server/bridge.js
+// desktop-extension/server.js
 import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
