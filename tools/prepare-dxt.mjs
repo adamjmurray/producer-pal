@@ -42,6 +42,15 @@ const serverDir = join(dxtDir, "server");
 try {
   execSync("npm install", { cwd: serverDir, stdio: "inherit" });
   console.log("mcp-remote installed successfully in DXT bundle");
+
+  // Verify mcp-remote script exists where bridge.js expects it
+  const mcpRemoteScript = join(serverDir, "node_modules", "mcp-remote", "dist", "proxy.js");
+  if (existsSync(mcpRemoteScript)) {
+    console.log("mcp-remote script found at expected location");
+  } else {
+    console.error(`ERROR: mcp-remote script not found at ${mcpRemoteScript}`);
+    process.exit(1);
+  }
 } catch (error) {
   console.error("Failed to install mcp-remote:", error.message);
   process.exit(1);

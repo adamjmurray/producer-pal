@@ -13,9 +13,7 @@
     "mcp_config": {
       "version": "2024-11-05",
       "command": "node",
-      "args": [
-        "${__dirname}/server/bridge.js"
-      ]
+      "args": ["${__dirname}/server/bridge.js"]
     }
   },
   "config": [
