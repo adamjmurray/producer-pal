@@ -16,6 +16,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@anthropic-ai/dxt": "^0.1.0",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -46,6 +47,10 @@
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs"
+    "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs",
+    "dxt:prepare": "node tools/prepare-dxt.mjs",
+    "dxt:clean": "rm -f producer-pal/*.dxt",
+    "dxt:pack": "cd producer-pal && npx @anthropic-ai/dxt pack",
+    "dxt:build": "npm run build && npm run dxt:clean && npm run dxt:prepare && npm run dxt:pack"
   }
 }

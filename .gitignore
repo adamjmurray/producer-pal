@@ -4,5 +4,6 @@ coverage
 device/*.js
 device/*.mjs
 device/LICENSE.md
+producer-pal/producer-pal.dxt
 claude-project
 device/Ableton Folder Info/
