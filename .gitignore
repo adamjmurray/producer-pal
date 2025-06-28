@@ -1,9 +1,9 @@
 .DS_Store
 node_modules
+claude-project
 coverage
+desktop-extension/*.dxt
 device/*.js
 device/*.mjs
 device/LICENSE.md
-producer-pal/producer-pal.dxt
-claude-project
 device/Ableton Folder Info/

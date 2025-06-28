@@ -1,11 +1,9 @@
-// tools/prepare-dxt.mjs
+// desktop-extension/prepare-dxt.mjs
 import { existsSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const rootDir = join(__dirname, "..");
-const dxtDir = join(rootDir, "producer-pal");
 
 console.log("Preparing DXT bundle...");
 
@@ -15,7 +13,7 @@ console.log("Installing mcp-remote in DXT server directory...");
 import { execSync } from "child_process";
 
 // Install mcp-remote in the DXT server directory
-const serverDir = join(dxtDir, "server");
+const serverDir = join(__dirname, "server");
 try {
   execSync("npm install", { cwd: serverDir, stdio: "inherit" });
   console.log("mcp-remote installed successfully in DXT bundle");
