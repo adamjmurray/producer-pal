@@ -3,6 +3,7 @@ node_modules
 claude-project
 coverage
 desktop-extension/*.dxt
+desktop-extension/manifest.json
 device/*.js
 device/*.mjs
 device/LICENSE.md
