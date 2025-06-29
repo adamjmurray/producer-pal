@@ -1,6 +1,6 @@
 // desktop-extension/build.mjs
 import { execSync } from "child_process";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { basename, dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
@@ -86,21 +86,6 @@ console.log(
 console.log("Installing dependencies...");
 execSync("npm install", { cwd: __dirname, stdio: "inherit" });
 console.log("Dependencies installed successfully");
-
-// Verify mcp-remote script exists where server.js expects it
-const mcpRemoteScript = join(
-  __dirname,
-  "node_modules",
-  "mcp-remote",
-  "dist",
-  "proxy.js",
-);
-if (existsSync(mcpRemoteScript)) {
-  console.log("mcp-remote script found at expected location");
-} else {
-  console.error(`ERROR: mcp-remote script not found at ${mcpRemoteScript}`);
-  process.exit(1);
-}
 
 console.log("Packing DXT...");
 execSync(

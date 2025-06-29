@@ -3,9 +3,9 @@
   "version": "0.9.0",
   "description": "DXT bundle for Ableton Producer Pal",
   "type": "module",
-  "main": "bridge.js",
+  "main": "server.js",
   "dependencies": {
-    "mcp-remote": "^0.1.17"
+    "@modelcontextprotocol/sdk": "^1.0.0"
   },
   "engines": {
     "node": ">=18.0.0"

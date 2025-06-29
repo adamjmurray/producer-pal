@@ -190,10 +190,43 @@ node tools/cli.mjs tools/call read-song '{}'
 node tools/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 ```
 
-**IMPORTANT:** ALWAYS ask the user for permission before using the CLI tool. The
-user may be in the middle of their own tests and running commands could
-interfere with their work or produce unexpected results in their Ableton Live
-session.
+**IMPORTANT:** ALWAYS ask the user for permission before using the CLI tool to
+update state in Ableton Live.
+
+#### Testing the Desktop Extension
+
+For testing the desktop extension's stdio-HTTP bridge without requiring Claude
+Desktop installation, use the `tools/test-bridge.mjs` script:
+
+```bash
+# Basic bridge test (initialize + tools/list)
+node tools/test-bridge.mjs
+
+# Test specific tool without arguments
+node tools/test-bridge.mjs read-song
+
+# Test tool with arguments
+node tools/test-bridge.mjs read-track '{"trackIndex": 0}'
+
+# Test with custom HTTP URL
+node tools/test-bridge.mjs http://localhost:3350/mcp read-song
+
+# Show usage help
+node tools/test-bridge.mjs --help
+```
+
+This script simulates Claude Desktop's MCP protocol communication by:
+
+1. Starting the stdio-HTTP bridge process
+2. Sending MCP protocol messages (initialize, tools/list, tools/call)
+3. Parsing and validating responses
+4. Providing clean output with timing information
+
+The test provides fast feedback during development without requiring manual
+installation and testing through Claude Desktop.
+
+**IMPORTANT:** ALWAYS ask the user for permission before using the desktop
+extension testing tool to update state in Ableton Live.
 
 ### Raw Live API Tool
 
