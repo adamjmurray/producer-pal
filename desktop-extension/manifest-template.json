@@ -1,9 +1,9 @@
 {
   "dxt_version": "0.1",
   "name": "Producer Pal",
-  "version": "0.9.0",
+  "version": "{{version}}",
   "description": "AI music production assistant for Ableton Live. Create clips, control the transport, manage tracks and scenes directly from Claude.",
-  "long_description": "# Setup\n\nThe Producer Pal Max for Live device MUST be running in Ableton Live for this extension to work. See setup instructions at [adammurray.link](https://adammurray.link)\n\n_If you install the extension or start Claude Desktop before Ableton Live + the Producer Pal device, restart Claude Desktop or turn this extension off and back on to connect to Ableton Live._\n\n# Usage\n\n \n\n • Start a chat like:\n\n > Let's play with Ableton Live\n\n • Create a track called \"Drums\" with a drum rack and ask:\n\n > Generate a 4-bar drum loop\n\n • Create a track called \"Chords\" with an instrument and ask\n\n >Generate a 4-chord progression of whole notes\n\n • Then, with a \"Bass\" track, ask:\n\n > Generate a bassline to go along with the chords\n\n • Ask the AI what it can do:\n\n > What are all the things you can do with your Ableton Live tools?",
+  "long_description": "{{long_description}}",
   "author": {
     "name": "Adam Murray",
     "email": "adam@adammurray.link",
@@ -28,12 +28,7 @@
       "env": {}
     }
   },
-  "tools": [
-    {
-      "name": "read-song",
-      "description": "TODO: list the rest and make this all dynamic"
-    }
-  ],
+  "tools": "{{tools}}",
   "compatibility": {
     "platforms": [
       "darwin",
@@ -46,8 +41,8 @@
   "user_config": {
     "port": {
       "type": "number",
-      "title": "Communication Port",
-      "description": "Port number for the connection to the Producer Pal Max for Live Device",
+      "title": "Communication Port (advanced setting)",
+      "description": "Port number for the connection to the Producer Pal Max for Live Device. Must match the Max for Live device. Only change this if necessary.",
       "required": false,
       "sensitive": false,
       "default": 3350,
