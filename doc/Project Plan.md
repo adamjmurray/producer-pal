@@ -51,6 +51,16 @@
 
 ## 📋 TODOs
 
+**Desktop extension:**
+
+- [ ] Make it gracefully recover from the Max for Live device not being
+      reachable. Maybe always support listTools by building the
+      create-mcp-server code with rollup and packaging up in the extension, then
+      when callingTools, return an error with helpful info like a link to get
+      help installing the Max for Live device. Also let people know they need to
+      be using Ableton Live 12.2 or higher.
+- [ ] Add some screenshots
+
 **Song tool improvements:**
 
 - [x] allow clips to be selected by setting the song_view detail_clip property

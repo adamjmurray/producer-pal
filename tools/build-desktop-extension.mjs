@@ -4,7 +4,6 @@ import { readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
-import { toolDescriptions } from "./tool-descriptions.js";
 
 const DXT_FILENAME = "Producer Pal.dxt";
 
@@ -27,6 +26,31 @@ const version = rootPackageJson.version;
 // Generate tools from MCP server (excluding development-only raw-live-api)
 const tools = [];
 
+// User-facing descriptions for tools in the desktop extension manifest
+// These are crisp, concise descriptions for end users, unlike the detailed
+// LLM-facing descriptions in the MCP tool definitions
+const toolDescriptions = {
+  transport:
+    "Controls Arrangement and Session transport, playback, position, and loop settings",
+  "create-clip": "Creates MIDI clips in Session or Arrangement view",
+  "read-clip": "Reads information about clips including notes and properties",
+  "update-clip": "Updates clip properties, notes, and settings",
+  "create-track": "Creates new tracks in the Live Set",
+  "read-track": "Reads information about tracks including clips and settings",
+  "update-track": "Updates track properties like name, color, and settings",
+  "capture-scene":
+    "Captures existing clips from tracks into a new or existing scene",
+  "create-scene": "Creates new scenes in Session view",
+  "read-scene": "Reads information about scenes and their clips",
+  "update-scene": "Updates scene properties like name and color",
+  "read-song":
+    "Reads comprehensive information about the Live Set including global settings and all tracks",
+  "update-song":
+    "Updates global song settings like tempo, time signature, and scales",
+  duplicate: "Duplicates objects between Session and Arrangement views",
+  delete: "Deletes various objects (tracks, clips, scenes)",
+};
+
 for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
   if (name === "raw-live-api") continue; // Skip development-only tool
 
@@ -38,6 +62,8 @@ for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
 
 // Create readable long description
 const longDescription = `# Setup
+
+Requires Ableton Live 12.2 or higher with Max for Live.
 
 The Producer Pal Max for Live device MUST be running in Ableton Live for this extension to work. See setup instructions at [adammurray.link](https://adammurray.link)
 
