@@ -65,9 +65,10 @@ console.log(`HTTP URL: ${httpUrl}`);
 // Start the bridge
 const bridge = spawn(
   "node",
-  ["desktop-extension/stdio-http-bridge.js", httpUrl],
+  ["desktop-extension/claude-ableton-connector.js"],
   {
     stdio: ["pipe", "pipe", "pipe"], // Capture stderr so we can filter it
+    env: { ...process.env, DXT_CONFIG: JSON.stringify({ port: new URL(httpUrl).port }) },
   },
 );
 

@@ -16,10 +16,10 @@
   "screenshots": ["screenshot.png", "screenshot2.png"],
   "server": {
     "type": "node",
-    "entry_point": "server.js",
+    "entry_point": "claude-ableton-connector.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/server.js"],
+      "args": ["${__dirname}/claude-ableton-connector.js"],
       "env": {}
     }
   },

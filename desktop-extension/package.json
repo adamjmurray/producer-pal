@@ -3,7 +3,7 @@
   "version": "0.9.0",
   "description": "DXT bundle for Ableton Producer Pal",
   "type": "module",
-  "main": "server.js",
+  "main": "claude-ableton-connector.js",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"
   },
