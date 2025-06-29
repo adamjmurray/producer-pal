@@ -196,23 +196,23 @@ update state in Ableton Live.
 #### Testing the Desktop Extension
 
 For testing the desktop extension's stdio-HTTP bridge without requiring Claude
-Desktop installation, use the `tools/test-bridge.mjs` script:
+Desktop installation, use the `tools/test-desktop-extension.mjs` script:
 
 ```bash
 # Basic bridge test (initialize + tools/list)
-node tools/test-bridge.mjs
+node tools/test-desktop-extension.mjs
 
 # Test specific tool without arguments
-node tools/test-bridge.mjs read-song
+node tools/test-desktop-extension.mjs read-song
 
 # Test tool with arguments
-node tools/test-bridge.mjs read-track '{"trackIndex": 0}'
+node tools/test-desktop-extension.mjs read-track '{"trackIndex": 0}'
 
 # Test with custom HTTP URL
-node tools/test-bridge.mjs http://localhost:3350/mcp read-song
+node tools/test-desktop-extension.mjs http://localhost:3350/mcp read-song
 
 # Show usage help
-node tools/test-bridge.mjs --help
+node tools/test-desktop-extension.mjs --help
 ```
 
 This script simulates Claude Desktop's MCP protocol communication by:

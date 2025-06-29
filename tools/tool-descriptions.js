@@ -1,4 +1,4 @@
-// desktop-extension/tool-descriptions.js
+// tools/tool-descriptions.js
 
 // User-facing descriptions for tools in the desktop extension manifest
 // These are crisp, concise descriptions for end users, unlike the detailed

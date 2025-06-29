@@ -48,7 +48,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs",
-    "dxt:clean": "rm -f desktop-extension/*.dxt",
-    "dxt:build": "node desktop-extension/build.mjs"
+    "dxt:clean": "rm -f desktop-extension/*.dxt desktop-extension/manifest.json",
+    "dxt:build": "node tools/build-desktop-extension.mjs"
   }
 }

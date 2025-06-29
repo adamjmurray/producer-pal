@@ -1,16 +1,18 @@
-// desktop-extension/build.mjs
+// tools/build-desktop-extension.mjs
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
-import { basename, dirname, join } from "path";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 import { toolDescriptions } from "./tool-descriptions.js";
+
+const DXT_FILENAME = "Producer Pal.dxt";
 
 const server = createMcpServer();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
-const folderName = basename(__dirname);
+const desktopExtensionDir = join(rootDir, "desktop-extension");
 
 console.log("Building DXT bundle...");
 
@@ -66,7 +68,7 @@ _If you install the extension or start Claude Desktop before Ableton Live + the 
 
 // Read template and replace placeholders
 const template = readFileSync(
-  join(__dirname, "manifest-template.json"),
+  join(__dirname, "desktop-extension-manifest.template.json"),
   "utf8",
 );
 const manifest = template
@@ -78,20 +80,20 @@ const manifest = template
   .replace(/"\{\{long_description\}\}"/g, JSON.stringify(longDescription));
 
 // Write generated manifest
-writeFileSync(join(__dirname, "manifest.json"), manifest);
+writeFileSync(join(desktopExtensionDir, "manifest.json"), manifest);
 console.log(
   `Generated manifest.json with version ${version} and ${tools.length} tools`,
 );
 
 console.log("Installing dependencies...");
-execSync("npm install", { cwd: __dirname, stdio: "inherit" });
+execSync("npm install", { cwd: desktopExtensionDir, stdio: "inherit" });
 console.log("Dependencies installed successfully");
 
 console.log("Packing DXT...");
 execSync(
-  `npx @anthropic-ai/dxt pack ${folderName} ${folderName}/Producer\\ Pal.dxt`,
+  `npx @anthropic-ai/dxt pack desktop-extension desktop-extension/${DXT_FILENAME.replace(" ", "\\ ")}`,
   { cwd: rootDir, stdio: "inherit" },
 );
 console.log("DXT packed successfully!");
 
-console.log("DXT build complete!");
+console.log(`✓ Desktop extension built: desktop-extension/${DXT_FILENAME}`);

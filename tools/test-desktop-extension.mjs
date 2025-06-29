@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/test-bridge.mjs
+// tools/test-desktop-extension.mjs
 // Test script for the stdio-HTTP bridge without requiring Claude Desktop installation
 import { spawn } from "child_process";
 
@@ -7,7 +7,7 @@ const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
 
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log("Usage: test-bridge.mjs [url] [tool-name] [tool-args-json]");
+  console.log("Usage: test-desktop-extension.mjs [url] [tool-name] [tool-args-json]");
   console.log("");
   console.log(
     "Tests the stdio-HTTP bridge without requiring Claude Desktop installation",
@@ -26,16 +26,16 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("");
   console.log("Examples:");
   console.log(
-    "  test-bridge.mjs                                    # Basic bridge test",
+    "  test-desktop-extension.mjs                                    # Basic bridge test",
   );
   console.log(
-    "  test-bridge.mjs http://localhost:3350/mcp          # Custom URL",
+    "  test-desktop-extension.mjs http://localhost:3350/mcp          # Custom URL",
   );
   console.log(
-    "  test-bridge.mjs read-song                          # Test read-song tool",
+    "  test-desktop-extension.mjs read-song                          # Test read-song tool",
   );
   console.log(
-    "  test-bridge.mjs read-track '{\"trackIndex\": 0}'     # Test with arguments",
+    "  test-desktop-extension.mjs read-track '{\"trackIndex\": 0}'     # Test with arguments",
   );
   console.log("");
   process.exit(0);
