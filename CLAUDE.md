@@ -284,6 +284,13 @@ To update the version:
   - `tools/cli.mjs` → second line: `// tools/cli.mjs` (after
     `#!/usr/bin/env node`)
   - `src/tools/duplicate.js` → first line: `// src/tools/duplicate.js`
+- **Explicit file extensions in imports**: All import statements must include
+  explicit file extensions (typically `.js`). This is required by Node.js ES
+  module resolution when running scripts directly with `node`, even though
+  rollup doesn't require it. Examples:
+  - `import { createMcpServer } from "../src/mcp-server/create-mcp-server.js"`
+  - `import * as console from "./console.js"`
+  - `import { VERSION } from "./version.js"`
 - Keep code commenting to a minimum
 - The Max for Live device is in
   `/Users/adammurray/workspace/ableton-live-composition-assistant/device`. The

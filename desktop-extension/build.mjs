@@ -3,6 +3,9 @@ import { execSync } from "child_process";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { basename, dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
+
+const server = createMcpServer();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -18,67 +21,18 @@ const rootPackageJson = JSON.parse(
 );
 const version = rootPackageJson.version;
 
-// Define tools (excluding development-only raw-live-api)
-const tools = [
-  {
-    name: "transport",
-    description:
-      "Controls Arrangement and Session transport, playback, position, and loop settings",
-  },
-  {
-    name: "create-clip",
-    description: "Creates MIDI clips in Session or Arrangement view",
-  },
-  {
-    name: "read-clip",
-    description: "Reads information about clips including notes and properties",
-  },
-  {
-    name: "update-clip",
-    description: "Updates clip properties, notes, and settings",
-  },
-  { name: "create-track", description: "Creates new tracks in the Live Set" },
-  {
-    name: "read-track",
-    description: "Reads information about tracks including clips and settings",
-  },
-  {
-    name: "update-track",
-    description: "Updates track properties like name, color, and settings",
-  },
-  {
-    name: "capture-scene",
-    description:
-      "Captures existing clips from tracks into a new or existing scene",
-  },
-  { name: "create-scene", description: "Creates new scenes in Session view" },
-  {
-    name: "read-scene",
-    description: "Reads information about scenes and their clips",
-  },
-  {
-    name: "update-scene",
-    description: "Updates scene properties like name and color",
-  },
-  {
-    name: "read-song",
-    description:
-      "Reads comprehensive information about the Live Set including global settings and all tracks",
-  },
-  {
-    name: "update-song",
-    description:
-      "Updates global song settings like tempo, time signature, and scales",
-  },
-  {
-    name: "duplicate",
-    description: "Duplicates objects between Session and Arrangement views",
-  },
-  {
-    name: "delete",
-    description: "Deletes various objects (tracks, clips, scenes)",
-  },
-];
+// Generate tools from MCP server (excluding development-only raw-live-api)
+const tools = [];
+console.log({ server });
+
+for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
+  if (name === "raw-live-api") continue; // Skip development-only tool
+
+  tools.push({
+    name,
+    description: toolInfo.description,
+  });
+}
 
 // Create readable long description
 const longDescription = `# Setup

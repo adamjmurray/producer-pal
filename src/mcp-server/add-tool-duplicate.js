@@ -3,7 +3,7 @@ import { z } from "zod";
 import {
   MAX_AUTO_CREATED_SCENES,
   MAX_AUTO_CREATED_TRACKS,
-} from "../tools/constants";
+} from "../tools/constants.js";
 
 export function addToolDuplicate(server, callLiveApi) {
   server.tool(

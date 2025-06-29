@@ -3,4 +3,4 @@ export {
   formatNotation,
   notationDescription,
   parseNotation,
-} from "./barbeat/barbeat";
+} from "./barbeat/barbeat.js";

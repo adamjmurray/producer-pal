@@ -1,6 +1,6 @@
 // src/mcp-server/add-tool-create-track.js
 import { z } from "zod";
-import { MAX_AUTO_CREATED_TRACKS } from "../tools/constants";
+import { MAX_AUTO_CREATED_TRACKS } from "../tools/constants.js";
 
 export function addToolCreateTrack(server, callLiveApi) {
   server.tool(

@@ -1,7 +1,7 @@
 // src/mcp-server/add-tool-create-clip.js
 import { z } from "zod";
-import { notationDescription } from "../notation/notation";
-import { MAX_AUTO_CREATED_SCENES } from "../tools/constants";
+import { notationDescription } from "../notation/notation.js";
+import { MAX_AUTO_CREATED_SCENES } from "../tools/constants.js";
 
 export function addToolCreateClip(server, callLiveApi) {
   server.tool(

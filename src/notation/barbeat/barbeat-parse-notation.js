@@ -6,8 +6,8 @@ import {
   DEFAULT_TIME,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
-} from "./barbeat-config";
-import * as parser from "./barbeat-parser";
+} from "./barbeat-config.js";
+import * as parser from "./barbeat-parser.js";
 
 /**
  * Convert BarBeat notation to note events

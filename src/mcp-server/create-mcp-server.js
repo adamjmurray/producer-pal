@@ -1,22 +1,22 @@
 // src/mcp-server/create-mcp-server.js
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { VERSION } from "../version";
-import { addToolCaptureScene } from "./add-tool-capture-scene";
-import { addToolCreateClip } from "./add-tool-create-clip";
-import { addToolCreateScene } from "./add-tool-create-scene";
-import { addToolCreateTrack } from "./add-tool-create-track";
-import { addToolDelete } from "./add-tool-delete";
-import { addToolDuplicate } from "./add-tool-duplicate";
-import { addToolRawLiveApi } from "./add-tool-raw-live-api";
-import { addToolReadClip } from "./add-tool-read-clip";
-import { addToolReadScene } from "./add-tool-read-scene";
-import { addToolReadSong } from "./add-tool-read-song";
-import { addToolReadTrack } from "./add-tool-read-track";
-import { addToolTransport } from "./add-tool-transport";
-import { addToolUpdateClip } from "./add-tool-update-clip";
-import { addToolUpdateScene } from "./add-tool-update-scene";
-import { addToolUpdateSong } from "./add-tool-update-song";
-import { addToolUpdateTrack } from "./add-tool-update-track";
+import { VERSION } from "../version.js";
+import { addToolCaptureScene } from "./add-tool-capture-scene.js";
+import { addToolCreateClip } from "./add-tool-create-clip.js";
+import { addToolCreateScene } from "./add-tool-create-scene.js";
+import { addToolCreateTrack } from "./add-tool-create-track.js";
+import { addToolDelete } from "./add-tool-delete.js";
+import { addToolDuplicate } from "./add-tool-duplicate.js";
+import { addToolRawLiveApi } from "./add-tool-raw-live-api.js";
+import { addToolReadClip } from "./add-tool-read-clip.js";
+import { addToolReadScene } from "./add-tool-read-scene.js";
+import { addToolReadSong } from "./add-tool-read-song.js";
+import { addToolReadTrack } from "./add-tool-read-track.js";
+import { addToolTransport } from "./add-tool-transport.js";
+import { addToolUpdateClip } from "./add-tool-update-clip.js";
+import { addToolUpdateScene } from "./add-tool-update-scene.js";
+import { addToolUpdateSong } from "./add-tool-update-song.js";
+import { addToolUpdateTrack } from "./add-tool-update-track.js";
 
 export function createMcpServer(callLiveApi) {
   const server = new McpServer({

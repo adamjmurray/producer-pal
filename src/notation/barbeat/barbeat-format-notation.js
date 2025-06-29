@@ -1,12 +1,12 @@
 // src/notation/barbeat/barbeat-format-notation.js
-import { midiPitchToName } from "../midi-pitch-to-name";
+import { midiPitchToName } from "../midi-pitch-to-name.js";
 import {
   DEFAULT_BEATS_PER_BAR,
   DEFAULT_DURATION,
   DEFAULT_PROBABILITY,
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
-} from "./barbeat-config";
+} from "./barbeat-config.js";
 
 /**
  * Convert Live clip notes to BarBeat string
