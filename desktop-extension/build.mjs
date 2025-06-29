@@ -4,6 +4,7 @@ import { existsSync, readFileSync, writeFileSync } from "fs";
 import { basename, dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
+import { toolDescriptions } from "./tool-descriptions.js";
 
 const server = createMcpServer();
 
@@ -23,14 +24,13 @@ const version = rootPackageJson.version;
 
 // Generate tools from MCP server (excluding development-only raw-live-api)
 const tools = [];
-console.log({ server });
 
 for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
   if (name === "raw-live-api") continue; // Skip development-only tool
 
   tools.push({
     name,
-    description: toolInfo.description,
+    description: toolDescriptions[name] || toolInfo.description,
   });
 }
 
