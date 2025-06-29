@@ -128,8 +128,7 @@ class StdioHttpBridge {
 }
 
 // Main execution
-const config = JSON.parse(process.env.DXT_CONFIG || "{}");
-const port = config.port || 3350;
+const port = process.env.PRODUCER_PAL_PORT || 3350;
 const httpUrl = `http://localhost:${port}/mcp`;
 
 console.error(`[Bridge] Starting Producer Pal bridge (port ${port})`);

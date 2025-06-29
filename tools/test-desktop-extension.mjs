@@ -68,7 +68,7 @@ const bridge = spawn(
   ["desktop-extension/claude-ableton-connector.js"],
   {
     stdio: ["pipe", "pipe", "pipe"], // Capture stderr so we can filter it
-    env: { ...process.env, DXT_CONFIG: JSON.stringify({ port: new URL(httpUrl).port }) },
+    env: { ...process.env, PRODUCER_PAL_PORT: new URL(httpUrl).port },
   },
 );
 

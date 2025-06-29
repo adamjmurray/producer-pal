@@ -13,19 +13,29 @@
   "documentation": "https://adammurray.link/producer-pal/docs",
   "support": "https://adammurray.link/producer-pal/faq",
   "icon": "icon.png",
-  "screenshots": ["screenshot.png", "screenshot2.png"],
+  "screenshots": [
+    "screenshot.png",
+    "screenshot2.png"
+  ],
   "server": {
     "type": "node",
     "entry_point": "claude-ableton-connector.js",
     "mcp_config": {
       "command": "node",
-      "args": ["${__dirname}/claude-ableton-connector.js"],
-      "env": {}
+      "args": [
+        "${__dirname}/claude-ableton-connector.js"
+      ],
+      "env": {
+        "PRODUCER_PAL_PORT": "${user_config.port}"
+      }
     }
   },
   "tools": "{{tools}}",
   "compatibility": {
-    "platforms": ["darwin", "win32"],
+    "platforms": [
+      "darwin",
+      "win32"
+    ],
     "runtimes": {
       "node": ">=18.0.0"
     }
@@ -34,7 +44,7 @@
     "port": {
       "type": "number",
       "title": "Communication Port (advanced setting)",
-      "description": "Port number for the connection to the Producer Pal Max for Live Device. Must match the Max for Live device. Only change this if necessary.",
+      "description": "Port number for the connection to the Producer Pal Max for Live Device. Must match the Max for Live device. Only change this if necessary. Restart this extension after changing the port number.",
       "required": false,
       "sensitive": false,
       "default": 3350,
