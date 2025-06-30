@@ -64,11 +64,11 @@ for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
 // Create readable long description
 const longDescription = `# Setup
 
-Requires Ableton Live 12.2 or higher with Max for Live.
+Requires Ableton Live 12.2 or higher with Max for Live (Ableton Live Suite or another edition with the Max for Live add-on).
 
-The Producer Pal Max for Live device MUST be running in Ableton Live for this extension to work. See setup instructions at [adammurray.link](https://adammurray.link)
+The Producer Pal Max for Live device MUST be running in Ableton Live for this extension to work. See the [the Producer Pal setup instructions](https://adammurray.link/producer-pal/)
 
-_If you install the extension or start Claude Desktop before Ableton Live + the Producer Pal device, restart Claude Desktop or turn this extension off and back on to connect to Ableton Live._
+_If you install the extension or start Claude Desktop before Ableton Live + the Producer Pal device, restart Claude Desktop or turn this extension off and back on to connect to Ableton Live (this will be improved in upcoming versions)._
 
 # Usage
 
