@@ -1,4 +1,4 @@
-# BarBeat Specification
+# bar|beat Specification
 
 A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
@@ -119,7 +119,6 @@ t1.0 p1.0 F3
 ## AST Schema
 
 ```ts
-// BarBeatScript program
 NoteEvent[]
 
 // Types

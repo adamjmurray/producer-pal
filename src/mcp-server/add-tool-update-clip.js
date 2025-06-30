@@ -8,7 +8,7 @@ export function addToolUpdateClip(server, callLiveApi) {
       title: "Update Clip in Ableton Live",
       description:
         "Updates properties of existing clips by ID. Supports bulk operations when provided with comma-separated clip IDs. All properties except ids are optional. Use this tool to modify clips that already exist, including clips created by duplicating scenes or tracks. To create new clips in empty clip slots, use create-clip instead. " +
-        "IMPORTANT: All timing parameters (startMarker, length) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline.",
+        "IMPORTANT: All timing parameters (startMarker, length) and note positions in the bar|beat notation are relative to the clip's start time, not the global arrangement timeline.",
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -49,7 +49,7 @@ export function addToolUpdateClip(server, callLiveApi) {
           .string()
           .optional()
           .describe(
-            "Musical notation in BarBeat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. DELETION FEATURE: Use 'v0' (velocity 0) with clearExistingNotes: false to delete existing notes at exact bar|beat position and pitch (e.g., '2|1.5 v0 Gb1' deletes hi-hat at bar 2, beat 1.5). CRITICAL: Use read-clip first to identify exact positions - guessing will fail due to precise timing/pitch requirements. For complete BarBeat notation syntax reference, see the create-clip tool description.",
+            "Musical notation in bar|beat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. DELETION FEATURE: Use 'v0' (velocity 0) with clearExistingNotes: false to delete existing notes at exact bar|beat position and pitch (e.g., '2|1.5 v0 Gb1' deletes hi-hat at bar 2, beat 1.5). CRITICAL: Use read-clip first to identify exact positions - guessing will fail due to precise timing/pitch requirements. For complete bar|beat notation syntax reference, see the create-clip tool description.",
           ),
         clearExistingNotes: z
           .boolean()

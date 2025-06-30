@@ -9,13 +9,13 @@ import {
 } from "./barbeat-config.js";
 
 /**
- * Convert Live clip notes to BarBeat string
+ * Convert Live clip notes to bar|beat string
  * @param {Array} clipNotes - Array of note objects from the Live API
  * @param {Object} options - Formatting options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
  * @param {number} [options.timeSigDenominator] - Time signature denominator
- * @returns {string} BarBeat representation
+ * @returns {string} bar|beat representation
  */
 export function formatNotation(clipNotes, options = {}) {
   if (!clipNotes || clipNotes.length === 0) return "";

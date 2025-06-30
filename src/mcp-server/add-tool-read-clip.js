@@ -11,11 +11,11 @@ export function addToolReadClip(server, callLiveApi) {
         "Time-based properties (length, startMarker, loopStart, arrangementStartTime) are returned in bar|beat format (e.g. '2|3.5') using musical beats. " +
         "The 'length' field shows the effective playing duration: for looping clips, this is the loop length; for non-looping clips, this is the total playback duration. " +
         "arrangementStartTime respects the song's time signature, while other time-based properties depend on the clip's time signature (which may be different from the song). " +
-        "For MIDI clips, also returns noteCount and notes as a string in BarBeat notation format. " +
+        "For MIDI clips, also returns noteCount and notes as a string in bar|beat notation format. " +
         "For audio clips, notes and noteCount are null. Returns null values for all fields when the clip slot is empty. " +
         "Understanding clip state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline. " +
         "Can be used to read clips by trackIndex and clipSlotIndex (for Session clips) or directly by clipId. " +
-        "For complete BarBeat notation syntax reference, see the create-clip tool description.",
+        "For complete bar|beat notation syntax reference, see the create-clip tool description.",
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

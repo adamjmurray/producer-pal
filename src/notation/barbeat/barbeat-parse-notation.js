@@ -10,8 +10,8 @@ import {
 import * as parser from "./barbeat-parser.js";
 
 /**
- * Convert BarBeat notation to note events
- * @param {string} barBeatExpression - BarBeat notation string
+ * Convert bar|beat notation to note events
+ * @param {string} barBeatExpression - bar|beat notation string
  * @param {Object} options - Options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
@@ -118,7 +118,7 @@ export function parseNotation(barBeatExpression, options = {}) {
         ? `at position ${location.start.offset} (line ${location.start.line}, column ${location.start.column})`
         : "at unknown position";
 
-      throw new Error(`BarBeat syntax error ${position}: ${error.message}`);
+      throw new Error(`bar|beat syntax error ${position}: ${error.message}`);
     }
     throw error;
   }

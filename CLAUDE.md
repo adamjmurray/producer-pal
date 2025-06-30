@@ -30,7 +30,7 @@ npm run test:coverage   # Coverage report
 npm run format          # Format all files with Prettier
 npm run format:check    # Check if files are properly formatted
 
-# Parser commands (when modifying BarBeat grammar)
+# Parser commands (when modifying bar|beat grammar)
 npm run parser:build    # Rebuild parser from .peggy file
 npm run parser:watch    # Auto-rebuild parser
 ```
@@ -56,7 +56,7 @@ Claude Desktop → mcp-remote (proxy) → MCP Server (Node.js) → Max for Live 
 2. **Tool Implementations** (`src/tools/*.js`): Core logic for each operation
 3. **Live API Bridge** (`src/main.js`): V8 JavaScript that receives messages and
    calls Live API
-4. **BarBeat Notation** (`src/notation/barbeat/*`): Musical notation parser and
+4. **bar|beat Notation** (`src/notation/barbeat/*`): Musical notation parser and
    utilities
 
 ### Message Protocol
@@ -69,7 +69,7 @@ Communication between Node.js and V8 uses:
 // Error: ["mcp_response", JSON.stringify({requestId, error})]
 ```
 
-## BarBeat Notation
+## bar|beat Notation
 
 The project uses a custom notation for musical timing and notes:
 
@@ -167,7 +167,7 @@ export default function toolName(liveApi, args) {
 3. Test changes with `npm test`
 4. Debug using MCP Inspector at `http://localhost:6274`
 
-When modifying BarBeat notation grammar, remember to rebuild the parser with
+When modifying bar|beat notation grammar, remember to rebuild the parser with
 `npm run parser:build`.
 
 Note: You generally don't need to run `npm run build` to verify changes - the

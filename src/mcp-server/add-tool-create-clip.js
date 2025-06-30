@@ -15,7 +15,7 @@ export function addToolCreateClip(server, callLiveApi) {
         "For Arrangement view, provide trackIndex and arrangementStartTime. Existing arrangement clips will have overlapping areas overwritten. " +
         "When count > 1, Session clips are created in successive clip slots, and Arrangement clips are placed back-to-back. " +
         `Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of ${MAX_AUTO_CREATED_SCENES} scenes (sceneIndex == clipSlotIndex). ` +
-        "IMPORTANT: For Arrangement view clips, all timing parameters (startMarker, length) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline. A clip placed at arrangementStartTime '17|1' with notes starting at '1|1' will play those notes at global arrangement bar 17. " +
+        "IMPORTANT: For Arrangement view clips, all timing parameters (startMarker, length) and note positions in the bar|beat notation are relative to the clip's start time, not the global arrangement timeline. A clip placed at arrangementStartTime '17|1' with notes starting at '1|1' will play those notes at global arrangement bar 17. " +
         "Clip length defaults to fit the notes, or can be explicitly set with the length parameter.",
       annotations: {
         readOnlyHint: false,
@@ -83,7 +83,7 @@ export function addToolCreateClip(server, callLiveApi) {
           .string()
           .optional()
           .describe(
-            `Musical notation in the following BarBeat notation format. ${notationDescription}`,
+            `Musical notation in the following bar|beat notation format. ${notationDescription}`,
           ),
         auto: z
           .enum(["play-scene", "play-clip"])

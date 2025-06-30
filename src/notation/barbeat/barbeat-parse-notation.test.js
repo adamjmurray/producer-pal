@@ -2,7 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { parseNotation } from "./barbeat-parse-notation";
 
-describe("BarBeat parseNotation()", () => {
+describe("bar|beat parseNotation()", () => {
   it("returns empty array for empty input", () => {
     expect(parseNotation("")).toEqual([]);
     expect(parseNotation(null)).toEqual([]);
@@ -519,7 +519,7 @@ describe("BarBeat parseNotation()", () => {
 
   it("provides helpful error messages for syntax errors", () => {
     expect(() => parseNotation("invalid syntax")).toThrow(
-      /BarBeat syntax error.*at position/,
+      /bar|beat syntax error.*at position/,
     );
   });
 

@@ -14,7 +14,7 @@
 
 **Notation System:**
 
-- Custom BarBeat music notation format with notes, sequences, chords
+- Custom bar|beat music notation format with notes, sequences, chords
 - Velocity and duration control with probability support
 - Parser/formatter with PEG grammar
 - Time signature support beyond 4/4
@@ -113,7 +113,7 @@
 
 ## 🚀 Future Ideas
 
-**BarBeat Enhancements:**
+**bar|beat Enhancements:**
 
 - Percussion notation features (`X...x...` for 16th notes with accents)
 - Duration format consistency with bar:beat support for note durations

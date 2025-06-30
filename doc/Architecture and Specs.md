@@ -140,9 +140,9 @@ Messages sent from v8 back to Node for Max:
 })]
 ```
 
-## BarBeat: custom Music Notation Syntax
+## bar|beat: custom Music Notation Syntax
 
-See the dedicated BarBeat Specification. Implemented with a parser generator
+See the dedicated bar|beat Specification. Implemented with a parser generator
 library `peggy`.
 
 ## MCP tool interfaces

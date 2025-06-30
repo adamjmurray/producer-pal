@@ -272,7 +272,7 @@ describe("updateClip", () => {
     expect(result.timeSignature).toBe("6/8");
   });
 
-  it("should replace existing notes with real BarBeat parsing in 4/4 time", () => {
+  it("should replace existing notes with real bar|beat parsing in 4/4 time", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -331,7 +331,7 @@ describe("updateClip", () => {
     });
   });
 
-  it("should parse notes using provided time signature with real BarBeat parsing", () => {
+  it("should parse notes using provided time signature with real bar|beat parsing", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -428,7 +428,7 @@ describe("updateClip", () => {
     expect(result.notes).toBe("1|1 C3 2|1 D3");
   });
 
-  it("should handle complex drum pattern with real BarBeat parsing", () => {
+  it("should handle complex drum pattern with real bar|beat parsing", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,

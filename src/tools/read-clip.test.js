@@ -85,7 +85,7 @@ describe("readClip", () => {
       isPlaying: false,
       isTriggered: false,
       timeSignature: "4/4",
-      notes: "1|1 C3 1|2 D3 1|3 E3", // Real BarBeat output
+      notes: "1|1 C3 1|2 D3 1|3 E3", // Real bar|beat output
       noteCount: 3,
     });
   });
@@ -165,7 +165,7 @@ describe("readClip", () => {
       isPlaying: false,
       isTriggered: false,
       timeSignature: "6/8",
-      notes: "1|1 C3 1|3 D3 1|5 E3", // Real BarBeat output in 6/8
+      notes: "1|1 C3 1|3 D3 1|5 E3", // Real bar|beat output in 6/8
       noteCount: 3,
     });
   });
@@ -420,7 +420,7 @@ describe("readClip", () => {
     );
   });
 
-  // E2E test with real BarBeat notation
+  // E2E test with real bar|beat notation
   it("detects drum tracks and uses the drum-specific notation conversion (e2e)", () => {
     mockLiveApiGet({
       Track: { devices: children("drumRack") },

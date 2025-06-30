@@ -2,7 +2,7 @@
 import { formatNotation } from "./barbeat-format-notation";
 import { parseNotation } from "./barbeat-parse-notation";
 
-describe("BarBeat formatNotation()", () => {
+describe("bar|beat formatNotation()", () => {
   it("returns empty string for empty input", () => {
     expect(formatNotation([])).toBe("");
     expect(formatNotation(null)).toBe("");

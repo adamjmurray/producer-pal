@@ -1,6 +1,6 @@
 // src/notation/barbeat/barbeat-description.js
 export const BarBeatDescription = `<barbeat-notation>
-BarBeat is a precise, stateful music notation format for MIDI sequencing.
+bar|beat is a precise, stateful music notation format for MIDI sequencing.
 
 ## Core Syntax
 
