@@ -8,6 +8,10 @@ export function addToolDelete(server, callLiveApi) {
       title: "Delete Clip/Track/Scene in Ableton Live",
       description:
         "Deletes objects by ids and type. Supports bulk operations with comma-separated IDs of the same type.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         ids: z
           .string()

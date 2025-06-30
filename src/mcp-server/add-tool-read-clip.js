@@ -16,6 +16,10 @@ export function addToolReadClip(server, callLiveApi) {
         "Understanding clip state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline. " +
         "Can be used to read clips by trackIndex and clipSlotIndex (for Session clips) or directly by clipId. " +
         "For complete BarBeat notation syntax reference, see the create-clip tool description.",
+      annotations: {
+        readOnlyHint: true,
+        destructiveHint: false,
+      },
       inputSchema: {
         trackIndex: z
           .number()

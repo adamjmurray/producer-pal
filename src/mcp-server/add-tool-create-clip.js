@@ -17,6 +17,10 @@ export function addToolCreateClip(server, callLiveApi) {
         `Scenes will be auto-created if needed to insert clips at the given index, up to a maximum of ${MAX_AUTO_CREATED_SCENES} scenes (sceneIndex == clipSlotIndex). ` +
         "IMPORTANT: For Arrangement view clips, all timing parameters (startMarker, length) and note positions in the BarBeat notation are relative to the clip's start time, not the global arrangement timeline. A clip placed at arrangementStartTime '17|1' with notes starting at '1|1' will play those notes at global arrangement bar 17. " +
         "Clip length defaults to fit the notes, or can be explicitly set with the length parameter.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         view: z
           .enum(["session", "arrangement"])

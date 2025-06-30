@@ -10,6 +10,10 @@ export function addToolTransport(server, callLiveApi) {
         "Controls the Arrangement and Session transport, including playback, position, and loop settings. " +
         "IMPORTANT: Tracks can only play one clip at a time. Session clips take precedence over Arrangement clips. " +
         "When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         action: z
           .enum([

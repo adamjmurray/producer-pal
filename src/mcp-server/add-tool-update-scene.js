@@ -10,6 +10,10 @@ export function addToolUpdateScene(server, callLiveApi) {
         "Updates properties of existing scenes by ID. Supports bulk operations when provided with comma-separated scene IDs. " +
         "Note: This only modifies scene properties - does not affect playback or launch scenes. " +
         "All properties except ids are optional.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         ids: z
           .string()

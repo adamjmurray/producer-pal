@@ -10,6 +10,10 @@ export function addToolCreateScene(server, callLiveApi) {
         "Creates new scenes at the specified index. Scenes will be inserted at the given index and existing scenes will shift down. " +
         "Note: This only creates scene objects - use the transport tool's play-scene action to launch scenes and trigger their clips. " +
         "All properties are optional except sceneIndex.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         sceneIndex: z
           .number()

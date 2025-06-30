@@ -7,8 +7,11 @@ export function addToolCreateTrack(server, callLiveApi) {
     "create-track",
     {
       title: "Create Track in Ableton Live",
-      description:
-        `Creates new tracks at the specified index. Tracks will be inserted at the given index and existing tracks will shift right. All properties are optional except trackIndex. Maximum ${MAX_AUTO_CREATED_TRACKS} tracks can be created.`,
+      description: `Creates new tracks at the specified index. Tracks will be inserted at the given index and existing tracks will shift right. All properties are optional except trackIndex. Maximum ${MAX_AUTO_CREATED_TRACKS} tracks can be created.`,
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         trackIndex: z
           .number()

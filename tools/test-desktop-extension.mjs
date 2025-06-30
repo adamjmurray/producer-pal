@@ -7,7 +7,9 @@ const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
 
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
-  console.log("Usage: test-desktop-extension.mjs [url] [tool-name] [tool-args-json]");
+  console.log(
+    "Usage: test-desktop-extension.mjs [url] [tool-name] [tool-args-json]",
+  );
   console.log("");
   console.log(
     "Tests the stdio-HTTP bridge without requiring Claude Desktop installation",

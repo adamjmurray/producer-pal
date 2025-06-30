@@ -11,6 +11,10 @@ export function addToolUpdateSong(server, callLiveApi) {
       description:
         "Updates song properties in the Live Set including view state, tempo, time signature, and scale. " +
         "Note: changes to scale properties affect currently selected clips and set defaults for new clips.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         tempo: z
           .number()

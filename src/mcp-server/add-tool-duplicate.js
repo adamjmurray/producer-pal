@@ -14,6 +14,10 @@ export function addToolDuplicate(server, callLiveApi) {
         `Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes. When duplicating scenes or tracks, clips are duplicated by default but can be excluded with includeClips:false. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip. ` +
         "IMPORTANT: For Arrangement clips, all timing is relative to each clip's start time, not the global arrangement timeline. " +
         "IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arrangement clips will only play if their tracks are currently in arrangement-following state (see transport tool).",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         type: z
           .enum(["track", "scene", "clip"])

@@ -8,6 +8,10 @@ export function addToolUpdateTrack(server, callLiveApi) {
       title: "Update Track in Ableton Live",
       description:
         "Updates properties of existing tracks by ID. Supports bulk operations when provided with comma-separated track IDs. All properties except ids are optional.",
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+      },
       inputSchema: {
         ids: z
           .string()
