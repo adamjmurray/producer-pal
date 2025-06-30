@@ -1,4 +1,5 @@
 // tools/build-desktop-extension.mjs
+import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
@@ -55,8 +56,8 @@ for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
   if (name === "raw-live-api") continue; // Skip development-only tool
 
   tools.push({
-    name,
-    description: toolDescriptions[name] || toolInfo.description,
+    name: getDisplayName(toolInfo) || name,
+    description: toolDescriptions[name],
   });
 }
 

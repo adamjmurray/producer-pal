@@ -24,24 +24,23 @@ export function createMcpServer(callLiveApi) {
     version: VERSION,
   });
 
-  addToolTransport(server, callLiveApi);
+  addToolCreateClip(server, callLiveApi);
+  addToolReadClip(server, callLiveApi);
+  addToolUpdateClip(server, callLiveApi);
 
-  addToolReadSong(server, callLiveApi);
-  addToolUpdateSong(server, callLiveApi);
+  addToolCreateTrack(server, callLiveApi);
+  addToolReadTrack(server, callLiveApi);
+  addToolUpdateTrack(server, callLiveApi);
 
   addToolCaptureScene(server, callLiveApi);
   addToolCreateScene(server, callLiveApi);
   addToolReadScene(server, callLiveApi);
   addToolUpdateScene(server, callLiveApi);
 
-  addToolCreateTrack(server, callLiveApi);
-  addToolReadTrack(server, callLiveApi);
-  addToolUpdateTrack(server, callLiveApi);
+  addToolReadSong(server, callLiveApi);
+  addToolUpdateSong(server, callLiveApi);
 
-  addToolCreateClip(server, callLiveApi);
-  addToolReadClip(server, callLiveApi);
-  addToolUpdateClip(server, callLiveApi);
-
+  addToolTransport(server, callLiveApi);
   addToolDelete(server, callLiveApi);
   addToolDuplicate(server, callLiveApi);
 
