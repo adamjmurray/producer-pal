@@ -36,6 +36,7 @@ class StdioHttpBridge {
 
       tools.push({
         name: name,
+        title: toolInfo.title,
         description: toolInfo.description,
         inputSchema: toolInfo.inputSchema
           ? zodToJsonSchema(toolInfo.inputSchema)
