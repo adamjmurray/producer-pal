@@ -59,7 +59,7 @@
       when callingTools, return an error with helpful info like a link to get
       help installing the Max for Live device. Also let people know they need to
       be using Ableton Live 12.2 or higher.
-- [ ] Add some screenshots
+- [x] Add some screenshots
 
 **Song tool improvements:**
 

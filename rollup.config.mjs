@@ -1,10 +1,10 @@
 // rollup.config.mjs
-import { readFileSync, copyFileSync } from "fs";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
+import { copyFileSync, readFileSync } from "fs";
 
 const licenseText = readFileSync("LICENSE.md", "utf-8");
 const licenseHeader = `/*\n${licenseText}\n*/\n\n`;
@@ -30,6 +30,7 @@ const copyLicense = () => ({
   name: "copy-license",
   writeBundle() {
     copyFileSync("LICENSE.md", "device/LICENSE.md");
+    copyFileSync("LICENSE.md", "desktop-extension/LICENSE.md");
   },
 });
 
@@ -80,6 +81,31 @@ export default [
       json(),
       terser(terserOptions),
       addLicenseHeader(),
+    ],
+  },
+  {
+    input: "src/desktop-extension/claude-ableton-connector.js",
+    output: {
+      file: "desktop-extension/claude-ableton-connector.js",
+      format: "es",
+    },
+    plugins: [
+      replace({
+        "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
+          process.env.ENABLE_RAW_LIVE_API,
+        ),
+        delimiters: ["", ""],
+        'import pkceChallenge from "pkce-challenge";':
+          'const pkceChallenge = () => { throw new Error("Authorization not supported - Producer Pal uses local HTTP communication only"); };',
+        preventAssignment: true,
+      }),
+      resolve({
+        preferBuiltins: true,
+        browser: false,
+      }),
+      commonjs(),
+      json(),
+      terser(terserOptions),
     ],
   },
 ];

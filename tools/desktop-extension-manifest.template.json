@@ -13,17 +13,13 @@
   "documentation": "https://adammurray.link/producer-pal",
   "support": "https://adammurray.link/producer-pal",
   "icon": "icon.png",
-  "screenshots": [
-    "screenshot.png"
-  ],
+  "screenshots": ["screenshot.png"],
   "server": {
     "type": "node",
     "entry_point": "claude-ableton-connector.js",
     "mcp_config": {
       "command": "node",
-      "args": [
-        "${__dirname}/claude-ableton-connector.js"
-      ],
+      "args": ["${__dirname}/claude-ableton-connector.js"],
       "env": {
         "PRODUCER_PAL_PORT": "${user_config.port}"
       }
@@ -31,10 +27,7 @@
   },
   "tools": "{{tools}}",
   "compatibility": {
-    "platforms": [
-      "darwin",
-      "win32"
-    ],
+    "platforms": ["darwin", "win32"],
     "runtimes": {
       "node": ">=18.0.0"
     }

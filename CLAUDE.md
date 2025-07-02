@@ -46,18 +46,39 @@ dependencies and don't affect functionality.
 The system follows this communication flow:
 
 ```
-Claude Desktop → mcp-remote (proxy) → MCP Server (Node.js) → Max for Live Device → Live API
+Claude Desktop → Desktop Extension Bridge → MCP Server (Node.js) → Max for Live Device → Live API
 ```
 
 ### Key Components
 
-1. **MCP Server** (`src/mcp-server.js`): HTTP endpoint for MCP communication,
+1. **Desktop Extension Bridge** (`src/desktop-extension/main.js`): Stdio-to-HTTP
+   bridge with graceful fallback when Producer Pal is not running
+2. **MCP Server** (`src/mcp-server.js`): HTTP endpoint for MCP communication,
    runs in Node for Max
-2. **Tool Implementations** (`src/tools/*.js`): Core logic for each operation
-3. **Live API Bridge** (`src/main.js`): V8 JavaScript that receives messages and
+3. **Tool Implementations** (`src/tools/*.js`): Core logic for each operation
+4. **Live API Bridge** (`src/main.js`): V8 JavaScript that receives messages and
    calls Live API
-4. **bar|beat Notation** (`src/notation/barbeat/*`): Musical notation parser and
+5. **bar|beat Notation** (`src/notation/barbeat/*`): Musical notation parser and
    utilities
+
+### Desktop Extension Robustness
+
+The desktop extension bridge provides graceful fallback when Producer Pal is not
+accessible:
+
+- **Online mode**: Forwards all requests to HTTP MCP server in Ableton Live
+- **Offline mode**: Returns static tool definitions and helpful setup messages
+- **Tool listing**: Always works via fallback definitions from `create-mcp-server`
+- **Tool calls**: Return setup instructions pointing users to
+  https://adammurray.link/producer-pal
+
+**Critical implementation details**:
+
+- Tool names must match regex `^[a-zA-Z0-9_-]{1,64}$` (use original `name`, not
+  display name)
+- Fallback schemas must be JSON Schema, not Zod objects (use `zodToJsonSchema()`)
+- Zero runtime dependencies achieved by replacing OAuth imports with stub
+  functions
 
 ### Message Protocol
 
