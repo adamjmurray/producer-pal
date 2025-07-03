@@ -49,4 +49,4 @@ jobs:
         if: always()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          comment-on: "commit"
+          file-coverage-mode: "all"
