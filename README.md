@@ -1,172 +1,200 @@
-# Ableton Producer Pal
+# Producer Pal
 
 Make music in Ableton Live with an AI assistant such as
 [Anthropic Claude](https://www.anthropic.com/claude).
 
-## Goals and Use Cases
-
-- Supplement, complement, and enhance human creativity. Don't replace human
-  creativity!
-
-- Get unblocked when creatively blocked. Get started when you don't know where
-  to start.
-
-- Experiment with music in terms of high level ideas instead of the low level
-  piano roll events. Try things you never tried before.
-
-- Hands-on learning for music theory, composition, and arrangement. Go as deep
-  (or shallow) as you want.
-
-- Help people with disabilities produce music (assuming Claude Desktop or an
-  alternative chat client can be used in a hands-free voice mode, this should be
-  possible)
-
-## Dependencies
+## Requirements
 
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
   Suite edition)
-- [Claude Desktop](https://claude.ai/download) (or potentially any
-  [MCP-compatible](https://modelcontextprotocol.io/) AI chat client, but only
-  Claude Desktop has been tested so far)
-- [Node.js](https://nodejs.org/). Install the default version (LTS version, or
-  newer works too). You should add Node.js to your PATH if given the option.
+- [Claude Desktop](https://claude.ai/download) (and potentially other
+  [MCP-compatible](https://modelcontextprotocol.io/) AI chat clients, but only
+  Claude Desktop is supported at this time)
 
-## Setup
+## Installation
 
-1. Install this Max for Live device. Currently, this involves:
-   - clone this repository
-   - `npm install`
-   - `npm run build`
-   - Add the `device/Producer Pal.amxd` Max for Live device to your Ableton Live
-     Set (drag the file to a MIDI track)
-2. Configure Claude Desktop to connect to the Producer Pal
-   - Go to Claude Desktop → Settings → Developer → Edit Config → Open
-     `claude_desktop_config.json` in a text editor
-   - Copy the settings from the Producer Pal Max for Live device into
-     `claude_desktop_config.json`. It should look something like this:
+See https://adammurray.link/producer-pal
 
-   ```
-   {
-    "mcpServers": {
-      "Ableton Producer Pal": {
-        "command": "npx",
-        "args": [
-          "-y",
-          "mcp-remote@0.1.14",
-          "http://localhost:3350/mcp"
-        ]
-      }
-    }
-   }
-   ```
+## Support and Issues
 
-3. Restart Claude Desktop
-   - In the "Search and Tools" button below the chat input, you should see
-     `Ableton Producer Pal` and if you click into it, there should be 15 tools
-     such as `read-song` and `write-song` (16 tools if you built with the
-     development `raw-live-api` tool enabled). Make sure `Ableton Producer Pal`
-     and its tools are enabled (they should be enabled by default, unless you
-     disable them).
+- **Bug Reports**:
+  [GitHub Issues](https://github.com/adamjmurray/producer-pal/issues)
+- **Documentation**:
+  [GitHub Homepage](https://github.com/adamjmurray/producer-pal/) and
+  [the dedicated area of my website](https://adammurray.link/producer-pal/)
+- **Community**:
+  [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
 
-## Usage Examples
+## ⚠️ Important Notices
+
+**🧪 EXPERIMENTAL SOFTWARE**: Always save and backup your Live sets before use.
+The software may cause crashes, data loss, or unexpected behavior.
+
+**🔒 PRIVACY**: Your musical data (MIDI notes, track names, tempo, etc.) is
+transmitted to Anthropic's Claude AI service for processing. Review
+[Anthropic's privacy policy](https://www.anthropic.com/privacy). Do not use with
+confidential or commercially sensitive musical content.
+
+**💰 USAGE COSTS**: While the Producer Pal itself is free, it requires Claude
+AI. Claude's free and subscription accounts have usage limits (recommended:
+avoid Opus and "extended thinking" mode on free and Pro accounts). Using API
+keys instead of subscription access costs money for every interaction.
+
+## Usage
+
+### Basic Examples
 
 - Start a chat like:
 
-  > Let's play with Ableton Live
+  > let's play with Ableton Live
+
+  or simply:
+
+  > ableton
+
+- If Ableton Live or the Producer Pal Max for Live device aren't running, the AI
+  will let you know. Once it's running, say:
+
+  > try again
 
 - Setup a drum rack in a track called "Drums" and ask:
 
-  > Find the Drums track and generate a 4-bar drum loop
+  > find the drums track and generate a 4-bar drum loop
+
+  then:
+
+  > I like that, make some variations
+
+  or:
+
+  > great! can you expand that to 16 bars?
+
+  or:
+
+  > it's pretty repetitive, can you add some drum fills on the last few beats?
+
+  or:
+
+  > meh, that's not very good. do something more like ...
+
+  the better you can describe exactly what you want, the better the results
+  should be.
 
 - Setup some pads or keys in a track called "Chords" and ask:
 
-  > In the Chords track, generate a 4-chord progression of whole notes in C
+  > in the chords track, generate a 4-chord progression of whole notes in C
   > minor
 
-- Then:
+- Then (with a "Bass" track):
 
-  > In the Bass track, generate a bassline to go along with that chord progress
+  > in the bass track, generate a bassline to go along with that chord
+  > progression
 
 - Let the AI tell you what else it can do:
 
-  > What are all the things you can do with your Ableton Live tools?
+  > what are all the things you can do with your Ableton Live tools?
 
-## Development
+### Session and Arrangement views
 
-Use
+Producer Pal understands how to use both the Session view and the Arrangement
+view of Ableton Live. Use Session view for idea generation and jamming, and if
+you like the results, you can ask Producer Pal to help lay it out as a song in
+Arrangement view. Or open existing Session-based projects and get help turning
+them into full songs. Feel free to jump directly to Arrangement view if that's
+your preference for new projects.
 
-```sh
-npm run dev
-```
+### Limitations
 
-to watch and auto-build the code.
+Producer Pal is focused on generating and manipulating MIDI clips.
 
-To test/debug, you can use:
+It cannot (yet) manage devices (instruments or effects) in your tracks. You must
+add and adjust all devices yourself. Note that it can duplicate tracks,
+including all the track's devices.
 
-```sh
-npx @modelcontextprotocol/inspector
-```
+It cannot work with audio clips beyond some general features like deleting and
+duplicating clips (it cannot add new audio clips or create audio from scratch).
 
-and then open
-http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350/mcp
+Drum pad detection (so the AI knows which pitches to use for drums) works with
+Drum Racks directly, and with Drum Racks that are the first device in the first
+chain inside an Instrument Rack. Other nested configurations are currently not
+supported (like a Drum Rack inside an Instrument Rack inside an Instrument Rack)
 
-### End-to-End Testing
+### Known Issues
 
-For real-world testing and debugging, use the CLI tool at `tools/cli.mjs` to
-directly connect to the MCP server running in Ableton Live:
+- Using the Producer Pal in an Ableton Live template may cause Ableton to crash
+  when loading that template. You may need to
+  [reset your default Live template](https://help.ableton.com/hc/en-us/articles/209773265-Troubleshooting-a-crash#h_01HCFQ56MG8QVWC78FWANX5KWP)
+  if you save Producer Pal into it. I will try to work with Ableton to get this
+  crash solved eventually, but in the meantime it's recommended you do not save
+  Producer Pal into Ableton Live templates. (Saving and opening normal projects
+  seems fine.)
 
-```sh
-# Show server info (default)
-node tools/cli.mjs
+### Advanced Examples
 
-# List available tools
-node tools/cli.mjs tools/list
+Above are some basic ideas to get you started. For best results, be very
+specific and detailed about what you want. Instead of "generate a melody", try:
 
-# Call a tool with JSON arguments
-node tools/cli.mjs tools/call read-song '{}'
-node tools/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+> Generate an 8-bar EDM-style synthesizer melody in the key of C major with a
+> mix of whole notes, half notes, quarter notes, and eighth notes. Use some
+> dotted rhythms and syncopation too. Keep the center of the melody around the C
+> above middle C.
 
-# Use a different server URL
-node tools/cli.mjs http://localhost:6274/mcp tools/list
+If you don't know enough about music theory to ask for things like this, try
+asking the AI for help learning music theory. Or just describe it the best you
+can and chat back and forth as needed to clarify. Find your own way to interact
+with it based on your unique perspective. For example, if you aren't sure how to
+ask for specific aspects of a melody, you could ask things like "What makes a
+good melody in [some genre]?", chat about that topic, and then ask "Show me an
+example of a melody like that in the lead track in Ableton Live". It can be very
+powerful to ask the AI to perform web searches and do research during these
+types of conversations.
 
-# Show help
-node tools/cli.mjs --help
-```
+## Tips
 
-This CLI tool connects directly to your running Ableton Live session and can
-help debug real-world issues by exercising the full MCP stack with actual Live
-data.
+For a full feature reference see [FEATURES.md](./FEATURES.md).
 
-### Development Tools
+**Always keep backups and save often!** Don't let AI loose on a serious song you
+care about unless you've saved a backup copy. Producer Pal can overwrite and
+delete things. If you make good progress, save it before you lose it.
 
-#### Raw Live API Access
+Producer Pal can't read your mind, so if it doesn't do what you wanted, try to
+clearly tell it what it did wrong and what you wanted instead. Assuming it has
+the functionality, it can often correct itself with clear feedback. If it
+doesn't have the functionality, it should be able to explain its limitations and
+help set your expectations.
 
-For development and debugging, a `raw-live-api` tool is available when building
-with `npm run dev` or `npm run build:all`. This tool provides direct access to
-the Live API for research and advanced debugging:
+If Claude is making mistakes or you are asking for something particularly
+complex, try the "extended thinking" feature. This works with both the Sonnet
+and Opus models. Note this is probably overkill most of the time and will reach
+usage limits faster, so it's recommended to leave it off until you need it.
 
-```sh
-# Example: Get tempo using multiple operation types
-node tools/cli.mjs tools/call raw-live-api '{
-  "path": "live_set",
-  "operations": [
-    {"type": "get", "property": "tempo"},
-    {"type": "getProperty", "property": "tempo"}
-  ]
-}'
+Keep your context window small for best results. In practical terms, that means:
+If you have a very long conversation, consider starting a new conversation.
+Claude can easily re-read the state of Ableton Live in a new conversation (just
+say "Let's play with Ableton Live" again). If you want to maintain context from
+the old conversation, ask Claude to summarize the current conversation and copy
+and paste the summary into a new conversation.
 
-# Example: Navigate to a track and check if it exists
-node tools/cli.mjs tools/call raw-live-api '{
-  "operations": [
-    {"type": "goto", "value": "live_set tracks 0"},
-    {"type": "exists"},
-    {"type": "getProperty", "property": "name"}
-  ]
-}'
-```
+To help keep your context window small, it's recommended to use standalone
+conversations by default and not use a Claude Project. However, you may find
+value in setting up a focused Claude Project for specific musical goals, for
+example, by specifying some music theory rules in the Claude Project
+instructions or knowledge base.
 
-The `raw-live-api` tool supports 13 operation types including core operations
-(`get_property`, `set_property`, `call_method`), convenience shortcuts (`get`,
-`set`, `call`, `goto`, `info`), and extension methods (`getProperty`,
-`getChildIds`, `exists`, `getColor`, `setColor`).
+## Producer Pal's Mission
+
+- Supplement, complement, enhance, and amplify human creativity. Don't replace
+  human creativity!
+
+- Help people get unblocked when they're creatively blocked.
+
+- Make it easier to experiment with music in terms of high level ideas instead
+  of the low level piano roll events.
+
+- Facilitate life-long learning by teaching people things they didn't know about
+  music theory, composition, and arrangement.
+
+- Help people with disabilities produce music (assuming Claude Desktop or an
+  alternative chat client can be used in a hands-free voice mode, this should be
+  possible)
