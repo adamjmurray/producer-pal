@@ -26,11 +26,10 @@ const addLicenseHeader = () => ({
   },
 });
 
-const copyLicense = () => ({
+const copyLicense = (destination) => ({
   name: "copy-license",
   writeBundle() {
-    copyFileSync("LICENSE.md", "device/LICENSE.md");
-    copyFileSync("LICENSE.md", "desktop-extension/LICENSE.md");
+    copyFileSync("LICENSE.md", destination);
   },
 });
 
@@ -51,7 +50,7 @@ export default [
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
-      copyLicense(),
+      copyLicense("device/LICENSE.md"),
     ],
   },
   {
@@ -80,7 +79,6 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
-      addLicenseHeader(),
     ],
   },
   {
@@ -106,6 +104,7 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
+      copyLicense("desktop-extension/LICENSE.md"),
     ],
   },
 ];
