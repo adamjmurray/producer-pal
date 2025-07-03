@@ -14,15 +14,42 @@ Make music in Ableton Live with an AI assistant such as
 
 ## Installation
 
-See https://adammurray.link/producer-pal
+1. Download
+
+- [Producer Pal Max for Live device](./releases/0.9.0/Producer+Pal+0.9.0.amxd)
+- [Producer Pal Claude Desktop extension](./releases/0.9.0/Producer+Pal+0.9.0.dxt)
+
+2. Add the
+   [Producer Pal Max for Live device](./releases/0.9.0/Producer+Pal+0.9.0.amxd)
+   to an Ableton Live project
+
+   ![install in Ableton](./releases/0.9.0/install-in-ableton.png)
+
+3. Open Claude Desktop &rarr; Settings &rarr; Extensions and drag and drop the
+   [Producer Pal Claude Desktop extension](./releases/0.9.0/Producer+Pal+0.9.0.dxt)
+
+   ![install in Claude](./releases/0.9.0/install-in-claude.png)
+
+4. Don't forget to click "Install"
+
+   ![install in Claude, part 2](./releases/0.9.0/install-in-claude-2.png)
+
+5. You should see 15 Producer Pal tools in Claude's "Search and Tools" menu
+
+   ![Producer Pal tools in Claude](./releases/0.9.0/tools-in-claude.png)
+
+6. Start a conversation with "Let's play with Ableton Live" or "ableton"
+
+   ![Producer Pal demo](./releases/0.9.0/screenshot.png)
 
 ## Support and Issues
 
 - **Bug Reports**:
-  [GitHub Issues](https://github.com/adamjmurray/producer-pal/issues)
+  [GitHub Issues](https://github.com/adamjmurray/producer-pal/issues) (please do
+  not send pull requests)
 - **Documentation**:
-  [GitHub Homepage](https://github.com/adamjmurray/producer-pal/) and
-  [the dedicated area of my website](https://adammurray.link/producer-pal/)
+  [GitHub Homepage](https://github.com/adamjmurray/producer-pal/#producer-pal)
+  and [the dedicated area of my website](https://adammurray.link/producer-pal/)
 - **Community**:
   [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
 
