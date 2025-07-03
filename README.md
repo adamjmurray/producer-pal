@@ -23,10 +23,10 @@ Make music in Ableton Live with an AI assistant such as
    [Producer Pal Max for Live device](https://github.com/adamjmurray/producer-pal/raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.amxd)
    to an Ableton Live project
 
-   ![install in Ableton](https://github.com/adamjmurray/producer-pal/raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.dxt)
+   ![install in Ableton](./releases/0.9.0/install-in-ableton.png)
 
 3. Open Claude Desktop &rarr; Settings &rarr; Extensions and drag and drop the
-   [Producer Pal Claude Desktop extension](./releases/0.9.0/Producer+Pal+0.9.0.dxt)
+   [Producer Pal Claude Desktop extension](https://github.com/adamjmurray/producer-pal/raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.dxt)
 
    ![install in Claude](./releases/0.9.0/install-in-claude.png)
 
