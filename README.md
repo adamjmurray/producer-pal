@@ -14,10 +14,10 @@ Make music in Ableton Live with an AI assistant such as
 
 ## Installation
 
-1. Download
+1. Download (current version 0.9.0)
 
-- [Producer Pal Max for Live device](./releases/0.9.0/Producer+Pal+0.9.0.amxd)
-- [Producer Pal Claude Desktop extension](./releases/0.9.0/Producer+Pal+0.9.0.dxt)
+- [Producer Pal Max for Live device](./raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.amxd)
+- [Producer Pal Claude Desktop extension](./raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.dxt)
 
 2. Add the
    [Producer Pal Max for Live device](./releases/0.9.0/Producer+Pal+0.9.0.amxd)
