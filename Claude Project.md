@@ -1,4 +1,4 @@
-# Ableton Producer Pal: an AI music production assistant
+# Producer Pal: an AI music production assistant
 
 An AI music production assistant for Ableton Live implemented as a custom MCP
 (model context protocol) server that integrates with the Live API using Max for
@@ -32,14 +32,21 @@ copied over to Claude Code as appropriate.
 - All functionality within Live is provided by a single Max for Live device
 - We use the new StreamableHttp transport for MCP because the
   [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
-- Claude Desktop requires an adapter between its stdio transport and an HTTP MCP
-  server. We use the library `mcp-remote` for this.
+- Claude Desktop requires a Desktop Extension to connect to Ableton Live
+- The Claude Desktop Extension manifest is generated from
+  `tools/desktop-extension-manifest.template.json` during build
+- User configuration (like port) is handled by Claude Desktop, not manual JSON
+  editing
+- The extension bridge (`claude-ableton-connector.js`) provides graceful
+  fallback when Live isn't running
+- The built `.dxt` file includes the stdio-HTTP bridge bundled with all
+  dependencies
+- When building releases, both the `.dxt` file AND the frozen Max for Live
+  device are needed
 - We are using Live 12.2 and Max 9
 - We are using Node.js 20
-- The repository root is
-  `/Users/adammurray/workspace/ableton-live-composition-assistant`
-- The path to the source code is
-  `/Users/adammurray/workspace/ableton-live-composition-assistant/src`
+- The repository root is `/Users/adammurray/workspace/producer-pal`
+- The path to the source code is `/Users/adammurray/workspace/producer-pal/src`
 - We build two JavaScript bundles with rollup.js. One bundle is for the MCP
   server that runs on Node.js (via Node for Max). The other bundle is the
   JavaScript code that runs in the embedded V8 engine (via the Max v8 object).
@@ -55,8 +62,8 @@ copied over to Claude Code as appropriate.
   to project knowledge
 - Keep code commenting to a minimum
 - The Max for Live device is in
-  `/Users/adammurray/workspace/ableton-live-composition-assistant/device`. The
-  two JavaScript bundles build to this folder.
+  `/Users/adammurray/workspace/producer-pal/device`. The two JavaScript bundles
+  build to this folder.
 - When defining MCP tool interfaces with zod, avoid using features like
   `z.union()` and `z.array()`. Many features do not currently work correctly
   with the MCP SDK. Stick to primitive types like strings, numbers, and
@@ -106,4 +113,6 @@ copied over to Claude Code as appropriate.
   https://adammurray.link/max-for-live/v8-in-live/generating-midi-clips/
 - Ableton Live Manual: https://www.ableton.com/en/live-manual/12/
 - MCP Documentation: https://modelcontextprotocol.io/
+- MCP TypeScript SDK: https://github.com/modelcontextprotocol/typescript-sdk
+- Claude Desktop Extension: https://github.com/anthropics/dxt
 - Peggy Parser Generator Documentation: https://peggyjs.org/documentation.html

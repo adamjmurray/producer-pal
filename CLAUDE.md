@@ -5,9 +5,9 @@ code in this repository.
 
 ## Project Overview
 
-Ableton Producer Pal is an AI-powered music composition tool that integrates
-with Ableton Live through a Max for Live device. It uses the Model Context
-Protocol (MCP) to enable AI assistants to manipulate music in Ableton Live.
+Producer Pal is an AI-powered music composition tool that integrates with
+Ableton Live through a Max for Live device. It uses the Model Context Protocol
+(MCP) to enable AI assistants to manipulate music in Ableton Live.
 
 ## Essential Commands
 
@@ -68,7 +68,8 @@ accessible:
 
 - **Online mode**: Forwards all requests to HTTP MCP server in Ableton Live
 - **Offline mode**: Returns static tool definitions and helpful setup messages
-- **Tool listing**: Always works via fallback definitions from `create-mcp-server`
+- **Tool listing**: Always works via fallback definitions from
+  `create-mcp-server`
 - **Tool calls**: Return setup instructions pointing users to
   https://adammurray.link/producer-pal
 
@@ -76,7 +77,8 @@ accessible:
 
 - Tool names must match regex `^[a-zA-Z0-9_-]{1,64}$` (use original `name`, not
   display name)
-- Fallback schemas must be JSON Schema, not Zod objects (use `zodToJsonSchema()`)
+- Fallback schemas must be JSON Schema, not Zod objects (use
+  `zodToJsonSchema()`)
 - Zero runtime dependencies achieved by replacing OAuth imports with stub
   functions
 
@@ -315,7 +317,7 @@ To update the version:
 - We use the new StreamableHttp transport for MCP because the
   [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
 - Claude Desktop requires an adapter between its stdio transport and an HTTP MCP
-  server. We use the library `mcp-remote` for this.
+  server. We implement this with our own custom desktop extension bridge.
 - We are using Live 12.2 and Max 9
 - We are using Node.js 20
 - We build two JavaScript bundles with rollup.js. One bundle is for the MCP
@@ -414,3 +416,18 @@ To update the version:
   the user.** The user may be in the middle of their own testing or music
   production work, and running commands could interfere with their Ableton Live
   session or produce unexpected results.
+
+## Desktop Extension (DXT) Rules
+
+- The Desktop Extension manifest is generated from
+  `tools/desktop-extension-manifest.template.json` during build
+- User configuration (like port) is handled by Claude Desktop, not manual JSON
+  editing
+- The extension bridge (`claude-ableton-connector.js`) provides graceful
+  fallback when Live isn't running
+- Test the extension bridge with `node tools/test-desktop-extension.mjs` without
+  needing Claude Desktop
+- The built `.dxt` file includes the stdio-HTTP bridge bundled with all
+  dependencies
+- When building releases, both the `.dxt` file AND the frozen Max for Live
+  device are needed
