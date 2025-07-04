@@ -6,12 +6,12 @@ updates:
   - package-ecosystem: "npm"
     directories:
       - "/"
-    target-branch: "main"
+    target-branch: "dev"
     schedule:
       interval: "daily"
 
   - package-ecosystem: "github-actions"
     directory: "/"
-    target-branch: "main"
+    target-branch: "dev"
     schedule:
       interval: "daily"
