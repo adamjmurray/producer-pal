@@ -18,6 +18,7 @@ function flattenPath(pathStr) {
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
+    console.log(`Removed existing outputDir: ${outputDir}`);
   } catch (error) {
     // Directory doesn't exist, which is fine
   }
@@ -28,35 +29,10 @@ async function copyFile(sourcePath, targetPath) {
   await fs.copyFile(sourcePath, targetPath);
 }
 
-async function findSourceFiles(dir, baseDir, skipTests = true) {
-  const files = [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      // Recursively search subdirectories
-      files.push(...(await findSourceFiles(fullPath, baseDir, skipTests)));
-    } else if (entry.isFile()) {
-      const ext = path.extname(entry.name);
-      const isTestFile =
-        entry.name.includes(".test.") || entry.name.includes(".spec.");
-
-      // Include JavaScript and Peggy grammar files, but skip tests if requested
-      if ((ext === ".js" || ext === ".peggy") && (!skipTests || !isTestFile)) {
-        files.push(fullPath);
-      }
-    }
-  }
-
-  return files;
-}
-
 async function copyDirectoriesAndFiles() {
   const itemsToCopy = [
     // Directories (automatically get directory prefix)
-    { src: "src", isDir: true, skipTests: false },
+    { src: "src", isDir: true },
     { src: "doc", isDir: true },
     { src: "tools", isDir: true },
 
@@ -88,9 +64,7 @@ async function copyDirectoriesAndFiles() {
 
       if (item.isDir && stat.isDirectory()) {
         // Copy all files from directory with automatic prefix
-        const files = item.skipTests
-          ? await findSourceFiles(sourcePath, sourcePath, true)
-          : await findAllFiles(sourcePath);
+        const files = await findAllFiles(sourcePath);
 
         const dirName = path.basename(item.src);
 
@@ -100,7 +74,7 @@ async function copyDirectoriesAndFiles() {
           const targetPath = path.join(outputDir, flatName);
           await copyFile(filePath, targetPath);
           console.log(
-            `  ${path.relative(projectRoot, filePath)} → ${flatName}`,
+            `  ${path.relative(projectRoot, filePath)} → ${path.relative(projectRoot, targetPath)}`,
           );
         }
       } else if (stat.isFile()) {
