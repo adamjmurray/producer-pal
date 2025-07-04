@@ -9,6 +9,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 const outputDir = path.join(projectRoot, "claude-project");
 
+const FLAT_SEP = "--";
+
+function flattenPath(pathStr) {
+  return pathStr.replace(/[/\\]/g, FLAT_SEP);
+}
+
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
@@ -19,8 +25,7 @@ async function cleanAndCreateOutputDir() {
 }
 
 async function copyFile(sourcePath, targetPath) {
-  const content = await fs.readFile(sourcePath, "utf8");
-  await fs.writeFile(targetPath, content);
+  await fs.copyFile(sourcePath, targetPath);
 }
 
 async function findSourceFiles(dir, baseDir, skipTests = true) {
@@ -56,16 +61,21 @@ async function copyDirectoriesAndFiles() {
     { src: "tools", isDir: true },
 
     // Individual files (no prefix)
+    { src: "DEVELOPERS.md" },
+    { src: "FEATURES.md" },
     { src: "LICENSE.md" },
     { src: "package.json" },
     { src: "README.md" },
     { src: "rollup.config.mjs" },
-    { src: "vitest.config.ts" },
     { src: "test-setup.js" },
+    { src: "vitest.config.ts" },
     {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
+    { src: "desktop-extension/icon.png" },
+    { src: "desktop-extension/package.json" },
+    { src: "desktop-extension/screenshot.png" },
   ];
 
   console.log("Copying files...");
@@ -86,8 +96,7 @@ async function copyDirectoriesAndFiles() {
 
         for (const filePath of files) {
           const relativePath = path.relative(sourcePath, filePath);
-          const flatName =
-            dirName + "--" + relativePath.replace(/[/\\]/g, "--");
+          const flatName = dirName + FLAT_SEP + flattenPath(relativePath);
           const targetPath = path.join(outputDir, flatName);
           await copyFile(filePath, targetPath);
           console.log(
@@ -96,7 +105,7 @@ async function copyDirectoriesAndFiles() {
         }
       } else if (stat.isFile()) {
         // Copy single file
-        const targetName = item.flatName || path.basename(item.src);
+        const targetName = item.flatName || flattenPath(item.src);
         const targetPath = path.join(outputDir, targetName);
         await copyFile(sourcePath, targetPath);
         console.log(`  ${item.src} → ${targetName}`);
