@@ -49,7 +49,7 @@ export function addToolUpdateClip(server, callLiveApi) {
           .string()
           .optional()
           .describe(
-            "Musical notation in bar|beat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. DELETION FEATURE: Use 'v0' (velocity 0) with clearExistingNotes: false to delete existing notes at exact bar|beat position and pitch (e.g., '2|1.5 v0 Gb1' deletes hi-hat at bar 2, beat 1.5). CRITICAL: Use read-clip first to identify exact positions - guessing will fail due to precise timing/pitch requirements. For complete bar|beat notation syntax reference, see the create-clip tool description.",
+            "Musical notation in bar|beat notation format. Replaces existing notes when clearExistingNotes is true, adds to existing notes when clearExistingNotes is false. ARRANGEMENT TIP: Professional producers often improve tracks by removing notes rather than adding them. Consider whether additional density truly serves the music. DELETION FEATURE: Use 'v0' (velocity 0) with clearExistingNotes: false to delete existing notes at exact bar|beat position and pitch (e.g., '2|1.5 v0 Gb1' deletes hi-hat at bar 2, beat 1.5). CRITICAL: Use read-clip first to identify exact positions - guessing will fail due to precise timing/pitch requirements. For complete bar|beat notation syntax reference, see the create-clip tool description.",
           ),
         clearExistingNotes: z
           .boolean()
