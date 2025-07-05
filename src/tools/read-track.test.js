@@ -434,6 +434,400 @@ describe("readTrack", () => {
       expect(result.devices[0].canHaveChains).toBe(1);
       expect(result.devices[0].canHaveDrumPads).toBe(1);
     });
+
+    it("includes nested devices from instrument rack chains", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "rack1";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "nested_device1";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("rack1"),
+        }),
+        rack1: {
+          name: "Instrument Rack",
+          class_name: "InstrumentGroupDevice",
+          class_display_name: "Instrument Rack",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("chain1"),
+        },
+        chain1: {
+          devices: children("nested_device1"),
+        },
+        nested_device1: {
+          name: "Operator",
+          class_name: "Operator",
+          class_display_name: "Operator",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.devices).toHaveLength(2);
+      expect(result.devices[0]).toEqual({
+        id: "rack1",
+        name: "Instrument Rack",
+        className: "InstrumentGroupDevice",
+        displayName: "Instrument Rack",
+        type: DEVICE_TYPE_INSTRUMENT,
+        isInstrument: true,
+        isActive: 1,
+        canHaveChains: 1,
+        canHaveDrumPads: 0,
+      });
+      expect(result.devices[1]).toEqual({
+        id: "nested_device1",
+        name: "Operator",
+        className: "Operator",
+        displayName: "Operator",
+        type: DEVICE_TYPE_INSTRUMENT,
+        isInstrument: true,
+        isActive: 1,
+        canHaveChains: 0,
+        canHaveDrumPads: 0,
+        containingRackDeviceId: "rack1",
+      });
+    });
+
+    it("includes nested devices from audio effect rack chains", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "fx_rack1";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "nested_effect1";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("fx_rack1"),
+        }),
+        fx_rack1: {
+          name: "Audio Effect Rack",
+          class_name: "AudioEffectGroupDevice",
+          class_display_name: "Audio Effect Rack",
+          type: DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("chain1"),
+        },
+        chain1: {
+          devices: children("nested_effect1"),
+        },
+        nested_effect1: {
+          name: "Auto Filter",
+          class_name: "AutoFilter2",
+          class_display_name: "Auto Filter",
+          type: DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.devices).toHaveLength(2);
+      expect(result.devices[0]).toEqual({
+        id: "fx_rack1",
+        name: "Audio Effect Rack",
+        className: "AudioEffectGroupDevice",
+        displayName: "Audio Effect Rack",
+        type: DEVICE_TYPE_AUDIO_EFFECT,
+        isInstrument: false,
+        isActive: 1,
+        canHaveChains: 1,
+        canHaveDrumPads: 0,
+      });
+      expect(result.devices[1]).toEqual({
+        id: "nested_effect1",
+        name: "Auto Filter",
+        className: "AutoFilter2",
+        displayName: "Auto Filter",
+        type: DEVICE_TYPE_AUDIO_EFFECT,
+        isInstrument: false,
+        isActive: 1,
+        canHaveChains: 0,
+        canHaveDrumPads: 0,
+        containingRackDeviceId: "fx_rack1",
+      });
+    });
+
+    it("handles deeply nested racks", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "outer_rack";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "outer_chain";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "inner_rack";
+          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0":
+            return "inner_chain";
+          case "live_set tracks 0 devices 0 chains 0 devices 0 chains 0 devices 0":
+            return "deep_device";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("outer_rack"),
+        }),
+        outer_rack: {
+          name: "Outer Rack",
+          class_name: "InstrumentGroupDevice",
+          class_display_name: "Instrument Rack",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("outer_chain"),
+        },
+        outer_chain: {
+          devices: children("inner_rack"),
+        },
+        inner_rack: {
+          name: "Inner Rack",
+          class_name: "AudioEffectGroupDevice",
+          class_display_name: "Audio Effect Rack",
+          type: DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("inner_chain"),
+        },
+        inner_chain: {
+          devices: children("deep_device"),
+        },
+        deep_device: {
+          name: "Deep Device",
+          class_name: "Reverb",
+          class_display_name: "Reverb",
+          type: DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.devices).toHaveLength(3);
+      expect(result.devices[0]).toEqual({
+        id: "outer_rack",
+        name: "Outer Rack",
+        className: "InstrumentGroupDevice",
+        displayName: "Instrument Rack",
+        type: DEVICE_TYPE_INSTRUMENT,
+        isInstrument: true,
+        isActive: 1,
+        canHaveChains: 1,
+        canHaveDrumPads: 0,
+      });
+      expect(result.devices[1]).toEqual({
+        id: "inner_rack",
+        name: "Inner Rack",
+        className: "AudioEffectGroupDevice",
+        displayName: "Audio Effect Rack",
+        type: DEVICE_TYPE_AUDIO_EFFECT,
+        isInstrument: false,
+        isActive: 1,
+        canHaveChains: 1,
+        canHaveDrumPads: 0,
+        containingRackDeviceId: "outer_rack",
+      });
+      expect(result.devices[2]).toEqual({
+        id: "deep_device",
+        name: "Deep Device",
+        className: "Reverb",
+        displayName: "Reverb",
+        type: DEVICE_TYPE_AUDIO_EFFECT,
+        isInstrument: false,
+        isActive: 1,
+        canHaveChains: 0,
+        canHaveDrumPads: 0,
+        containingRackDeviceId: "inner_rack",
+      });
+    });
+
+    it("handles empty chains in racks", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "rack1";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "empty_chain";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("rack1"),
+        }),
+        rack1: {
+          name: "Empty Rack",
+          class_name: "InstrumentGroupDevice",
+          class_display_name: "Instrument Rack",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("empty_chain"),
+        },
+        empty_chain: {
+          devices: [], // empty chain
+        },
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.devices).toHaveLength(1);
+      expect(result.devices[0]).toEqual({
+        id: "rack1",
+        name: "Empty Rack",
+        className: "InstrumentGroupDevice",
+        displayName: "Instrument Rack",
+        type: DEVICE_TYPE_INSTRUMENT,
+        isInstrument: true,
+        isActive: 1,
+        canHaveChains: 1,
+        canHaveDrumPads: 0,
+      });
+    });
+
+    it("handles multiple chains in a rack", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "rack1";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 0 chains 1":
+            return "chain2";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "device1";
+          case "live_set tracks 0 devices 0 chains 1 devices 0":
+            return "device2";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("rack1"),
+        }),
+        rack1: {
+          name: "Multi Chain Rack",
+          class_name: "InstrumentGroupDevice",
+          class_display_name: "Instrument Rack",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("chain1", "chain2"),
+        },
+        chain1: {
+          devices: children("device1"),
+        },
+        chain2: {
+          devices: children("device2"),
+        },
+        device1: {
+          name: "Device 1",
+          class_name: "Operator",
+          class_display_name: "Operator",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        device2: {
+          name: "Device 2",
+          class_name: "Wavetable",
+          class_display_name: "Wavetable",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.devices).toHaveLength(3);
+      expect(result.devices[0]).toEqual({
+        id: "rack1",
+        name: "Multi Chain Rack",
+        className: "InstrumentGroupDevice",
+        displayName: "Instrument Rack",
+        type: DEVICE_TYPE_INSTRUMENT,
+        isInstrument: true,
+        isActive: 1,
+        canHaveChains: 1,
+        canHaveDrumPads: 0,
+      });
+      expect(result.devices[1]).toEqual({
+        id: "device1",
+        name: "Device 1",
+        className: "Operator",
+        displayName: "Operator",
+        type: DEVICE_TYPE_INSTRUMENT,
+        isInstrument: true,
+        isActive: 1,
+        canHaveChains: 0,
+        canHaveDrumPads: 0,
+        containingRackDeviceId: "rack1",
+      });
+      expect(result.devices[2]).toEqual({
+        id: "device2",
+        name: "Device 2",
+        className: "Wavetable",
+        displayName: "Wavetable",
+        type: DEVICE_TYPE_INSTRUMENT,
+        isInstrument: true,
+        isActive: 1,
+        canHaveChains: 0,
+        canHaveDrumPads: 0,
+        containingRackDeviceId: "rack1",
+      });
+    });
   });
 
   describe("drumPads", () => {

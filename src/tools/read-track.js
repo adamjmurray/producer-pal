@@ -61,6 +61,69 @@ function extractDrumPads(drumRack) {
 }
 
 /**
+ * Recursively collect all devices from a device list, including nested devices in racks
+ * @param {Array} devices - Array of Live API device objects
+ * @param {number} depth - Current recursion depth
+ * @param {number} maxDepth - Maximum recursion depth
+ * @param {string|null} containingRackDeviceId - ID of containing rack device (null for top-level)
+ * @returns {Array} Flattened array of all devices
+ */
+function getAllDevicesRecursive(
+  devices,
+  depth = 0,
+  maxDepth = 4,
+  containingRackDeviceId = null,
+) {
+  if (depth > maxDepth) {
+    console.error(
+      `Maximum recursion depth (${maxDepth}) exceeded for device traversal`,
+    );
+    return [];
+  }
+
+  const allDevices = [];
+
+  for (const device of devices) {
+    // Add the current device to the list
+    const deviceInfo = {
+      id: device.id,
+      name: device.getProperty("name"),
+      className: device.getProperty("class_name"),
+      displayName: device.getProperty("class_display_name"),
+      type: device.getProperty("type"),
+      isInstrument: device.getProperty("type") === DEVICE_TYPE_INSTRUMENT,
+      isActive: device.getProperty("is_active"),
+      canHaveChains: device.getProperty("can_have_chains"),
+      canHaveDrumPads: device.getProperty("can_have_drum_pads"),
+    };
+
+    // Only add containingRackDeviceId if the device is inside a rack
+    if (containingRackDeviceId != null) {
+      deviceInfo.containingRackDeviceId = containingRackDeviceId;
+    }
+
+    allDevices.push(deviceInfo);
+
+    // If this device can have chains, recursively traverse its chains
+    if (device.getProperty("can_have_chains")) {
+      const chains = device.getChildren("chains");
+      for (const chain of chains) {
+        const chainDevices = chain.getChildren("devices");
+        const nestedDevices = getAllDevicesRecursive(
+          chainDevices,
+          depth + 1,
+          maxDepth,
+          device.id,
+        );
+        allDevices.push(...nestedDevices);
+      }
+    }
+  }
+
+  return allDevices;
+}
+
+/**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based)
@@ -110,18 +173,8 @@ export function readTrack({ trackIndex } = {}) {
 
     drumPads: findDrumPads(track),
 
-    // List all devices on the track
-    devices: track.getChildren("devices").map((device) => ({
-      id: device.id,
-      name: device.getProperty("name"),
-      className: device.getProperty("class_name"),
-      displayName: device.getProperty("class_display_name"),
-      type: device.getProperty("type"),
-      isInstrument: device.getProperty("type") === DEVICE_TYPE_INSTRUMENT,
-      isActive: device.getProperty("is_active"),
-      canHaveChains: device.getProperty("can_have_chains"),
-      canHaveDrumPads: device.getProperty("can_have_drum_pads"),
-    })),
+    // List all devices on the track, including nested devices in racks
+    devices: getAllDevicesRecursive(track.getChildren("devices")),
   };
 
   if (trackIndex === getHostTrackIndex()) {
