@@ -331,11 +331,11 @@ describe("readSong", () => {
         devices: [
           expect.objectContaining({
             name: "Analog",
-            isInstrument: true,
+            type: "instrument",
           }),
           expect.objectContaining({
             name: "EQ Eight",
-            isInstrument: false,
+            type: "audio effect",
           }),
         ],
       }),
@@ -344,7 +344,7 @@ describe("readSong", () => {
         devices: [
           expect.objectContaining({
             name: "Reverb",
-            isInstrument: false,
+            type: "audio effect",
           }),
         ],
       }),

@@ -61,66 +61,89 @@ function extractDrumPads(drumRack) {
 }
 
 /**
- * Recursively collect all devices from a device list, including nested devices in racks
+ * Determine device type from Live API properties
+ * @param {Object} device - Live API device object
+ * @returns {string} Combined device type string
+ */
+function getDeviceType(device) {
+  const typeValue = device.getProperty("type");
+  const canHaveChains = device.getProperty("can_have_chains");
+  const canHaveDrumPads = device.getProperty("can_have_drum_pads");
+
+  if (typeValue === DEVICE_TYPE_INSTRUMENT) {
+    if (canHaveDrumPads) return "drum rack";
+    if (canHaveChains) return "instrument rack";
+    return "instrument";
+  } else if (typeValue === DEVICE_TYPE_AUDIO_EFFECT) {
+    if (canHaveChains) return "audio effect rack";
+    return "audio effect";
+  } else if (typeValue === DEVICE_TYPE_MIDI_EFFECT) {
+    if (canHaveChains) return "midi effect rack";
+    return "midi effect";
+  }
+
+  return "unknown";
+}
+
+/**
+ * Build nested device structure with chains for rack devices
  * @param {Array} devices - Array of Live API device objects
  * @param {number} depth - Current recursion depth
  * @param {number} maxDepth - Maximum recursion depth
- * @param {string|null} containingRackDeviceId - ID of containing rack device (null for top-level)
- * @returns {Array} Flattened array of all devices
+ * @returns {Array} Nested array of device objects with chains
  */
-function getAllDevicesRecursive(
-  devices,
-  depth = 0,
-  maxDepth = 4,
-  containingRackDeviceId = null,
-) {
+function getDevicesWithChains(devices, depth = 0, maxDepth = 4) {
   if (depth > maxDepth) {
-    console.error(
-      `Maximum recursion depth (${maxDepth}) exceeded for device traversal`,
-    );
+    console.error(`Maximum recursion depth (${maxDepth}) exceeded`);
     return [];
   }
 
-  const allDevices = [];
-
-  for (const device of devices) {
-    // Add the current device to the list
+  return devices.map((device) => {
+    const deviceType = getDeviceType(device);
     const deviceInfo = {
       id: device.id,
-      name: device.getProperty("name"),
-      className: device.getProperty("class_name"),
-      displayName: device.getProperty("class_display_name"),
-      type: device.getProperty("type"),
-      isInstrument: device.getProperty("type") === DEVICE_TYPE_INSTRUMENT,
-      isActive: device.getProperty("is_active"),
-      canHaveChains: device.getProperty("can_have_chains"),
-      canHaveDrumPads: device.getProperty("can_have_drum_pads"),
+      name: device.getProperty("class_display_name"), // Original device name
+      displayName: device.getProperty("name"), // User's custom name
+      type: deviceType,
+      isActive: device.getProperty("is_active") > 0,
     };
 
-    // Only add containingRackDeviceId if the device is inside a rack
-    if (containingRackDeviceId != null) {
-      deviceInfo.containingRackDeviceId = containingRackDeviceId;
-    }
-
-    allDevices.push(deviceInfo);
-
-    // If this device can have chains, recursively traverse its chains
-    if (device.getProperty("can_have_chains")) {
+    // Add chain information for rack devices
+    if (deviceType.includes("rack")) {
       const chains = device.getChildren("chains");
-      for (const chain of chains) {
-        const chainDevices = chain.getChildren("devices");
-        const nestedDevices = getAllDevicesRecursive(
-          chainDevices,
+      deviceInfo.chains = chains.map((chain) => ({
+        name: chain.getProperty("name"),
+        color: chain.getColor(),
+        isMuted: chain.getProperty("mute") > 0,
+        isMutedViaSolo: chain.getProperty("muted_via_solo") > 0,
+        isSoloed: chain.getProperty("solo") > 0,
+        devices: getDevicesWithChains(
+          chain.getChildren("devices"),
           depth + 1,
           maxDepth,
-          device.id,
-        );
-        allDevices.push(...nestedDevices);
+        ),
+      }));
+
+      // Check for return chains
+      const returnChains = device.getChildren("return_chains");
+      if (returnChains.length > 0) {
+        deviceInfo.returnChains = returnChains.map((chain) => ({
+          name: chain.getProperty("name"),
+          color: chain.getColor(),
+          isMuted: chain.getProperty("mute") > 0,
+          isMutedViaSolo: chain.getProperty("muted_via_solo") > 0,
+          isSoloed: chain.getProperty("solo") > 0,
+          devices: getDevicesWithChains(
+            chain.getChildren("devices"),
+            depth + 1,
+            maxDepth,
+          ),
+        }));
       }
     }
-  }
 
-  return allDevices;
+    return deviceInfo;
+  });
 }
 
 /**
@@ -173,8 +196,8 @@ export function readTrack({ trackIndex } = {}) {
 
     drumPads: findDrumPads(track),
 
-    // List all devices on the track, including nested devices in racks
-    devices: getAllDevicesRecursive(track.getChildren("devices")),
+    // List all devices on the track with nested chain structure
+    devices: getDevicesWithChains(track.getChildren("devices")),
   };
 
   if (trackIndex === getHostTrackIndex()) {

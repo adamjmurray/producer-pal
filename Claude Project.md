@@ -24,10 +24,10 @@ copied over to Claude Code as appropriate.
   possible combination of edge cases because too many tests are a maintenance
   burden. Strive for tight focused tests that exercise core logic at least once
   in an easy to understand way.
-- **Test assertions**: Prefer `expect.objectContaining()` and nested array/object
-  matchers over individual property assertions. Write assertions that match the
-  expected data structure as closely as possible to make tests more maintainable
-  and focused on what matters.
+- **Test assertions**: Prefer `expect.objectContaining()` and nested
+  array/object matchers over individual property assertions. Write assertions
+  that match the expected data structure as closely as possible to make tests
+  more maintainable and focused on what matters.
 - The only programming language we use is JavaScript because of constraints of
   running in an embedded environment. We are using the MCP TypeScript SDK, but
   our code must be JavaScript.

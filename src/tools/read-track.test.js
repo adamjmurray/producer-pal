@@ -341,7 +341,7 @@ describe("readTrack", () => {
           devices: children("device1", "device2", "device3"),
         }),
         device1: {
-          name: "Analog",
+          name: "Custom Analog",
           class_name: "InstrumentVector",
           class_display_name: "Analog",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -350,7 +350,7 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
         device2: {
-          name: "Reverb",
+          name: "Custom Reverb",
           class_name: "Reverb",
           class_display_name: "Reverb",
           type: DEVICE_TYPE_AUDIO_EFFECT,
@@ -359,7 +359,7 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
         device3: {
-          name: "Note Length",
+          name: "Custom Note Length",
           class_name: "MidiNoteLength",
           class_display_name: "Note Length",
           type: DEVICE_TYPE_MIDI_EFFECT,
@@ -374,40 +374,28 @@ describe("readTrack", () => {
         {
           id: "device1",
           name: "Analog",
-          className: "InstrumentVector",
-          displayName: "Analog",
-          type: DEVICE_TYPE_INSTRUMENT,
-          isInstrument: true,
-          isActive: 1,
-          canHaveChains: 0,
-          canHaveDrumPads: 0,
+          displayName: "Custom Analog",
+          type: "instrument",
+          isActive: true,
         },
         {
           id: "device2",
           name: "Reverb",
-          className: "Reverb",
-          displayName: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
-          isInstrument: false,
-          isActive: 1,
-          canHaveChains: 0,
-          canHaveDrumPads: 0,
+          displayName: "Custom Reverb",
+          type: "audio effect",
+          isActive: true,
         },
         {
           id: "device3",
           name: "Note Length",
-          className: "MidiNoteLength",
-          displayName: "Note Length",
-          type: DEVICE_TYPE_MIDI_EFFECT,
-          isInstrument: false,
-          isActive: 0,
-          canHaveChains: 0,
-          canHaveDrumPads: 0,
+          displayName: "Custom Note Length",
+          type: "midi effect",
+          isActive: false,
         },
       ]);
     });
 
-    it("correctly identifies instrument devices", () => {
+    it("correctly identifies drum rack devices", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") {
           return "track1";
@@ -419,20 +407,27 @@ describe("readTrack", () => {
           devices: children("device1"),
         }),
         device1: {
-          name: "Drum Rack",
+          name: "My Drums",
           class_name: "DrumGroupDevice",
           class_display_name: "Drum Rack",
           type: DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
+          chains: [],
+          return_chains: [],
         },
       });
 
       const result = readTrack({ trackIndex: 0 });
-      expect(result.devices[0].isInstrument).toBe(true);
-      expect(result.devices[0].canHaveChains).toBe(1);
-      expect(result.devices[0].canHaveDrumPads).toBe(1);
+      expect(result.devices[0]).toEqual({
+        id: "device1",
+        name: "Drum Rack",
+        displayName: "My Drums",
+        type: "drum rack",
+        isActive: true,
+        chains: [],
+      });
     });
 
     it("includes nested devices from instrument rack chains", () => {
@@ -456,7 +451,7 @@ describe("readTrack", () => {
           devices: children("rack1"),
         }),
         rack1: {
-          name: "Instrument Rack",
+          name: "My Custom Rack",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -464,12 +459,18 @@ describe("readTrack", () => {
           can_have_chains: 1,
           can_have_drum_pads: 0,
           chains: children("chain1"),
+          return_chains: [],
         },
         chain1: {
+          name: "Piano",
+          color: 16711680, // Red
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
           devices: children("nested_device1"),
         },
         nested_device1: {
-          name: "Operator",
+          name: "Lead Synth",
           class_name: "Operator",
           class_display_name: "Operator",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -481,29 +482,31 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(2);
+      expect(result.devices).toHaveLength(1);
       expect(result.devices[0]).toEqual({
         id: "rack1",
         name: "Instrument Rack",
-        className: "InstrumentGroupDevice",
-        displayName: "Instrument Rack",
-        type: DEVICE_TYPE_INSTRUMENT,
-        isInstrument: true,
-        isActive: 1,
-        canHaveChains: 1,
-        canHaveDrumPads: 0,
-      });
-      expect(result.devices[1]).toEqual({
-        id: "nested_device1",
-        name: "Operator",
-        className: "Operator",
-        displayName: "Operator",
-        type: DEVICE_TYPE_INSTRUMENT,
-        isInstrument: true,
-        isActive: 1,
-        canHaveChains: 0,
-        canHaveDrumPads: 0,
-        containingRackDeviceId: "rack1",
+        displayName: "My Custom Rack",
+        type: "instrument rack",
+        isActive: true,
+        chains: [
+          {
+            name: "Piano",
+            color: "#FF0000",
+            isMuted: false,
+            isMutedViaSolo: false,
+            isSoloed: false,
+            devices: [
+              {
+                id: "nested_device1",
+                name: "Operator",
+                displayName: "Lead Synth",
+                type: "instrument",
+                isActive: true,
+              },
+            ],
+          },
+        ],
       });
     });
 
@@ -528,7 +531,7 @@ describe("readTrack", () => {
           devices: children("fx_rack1"),
         }),
         fx_rack1: {
-          name: "Audio Effect Rack",
+          name: "Master FX",
           class_name: "AudioEffectGroupDevice",
           class_display_name: "Audio Effect Rack",
           type: DEVICE_TYPE_AUDIO_EFFECT,
@@ -536,12 +539,18 @@ describe("readTrack", () => {
           can_have_chains: 1,
           can_have_drum_pads: 0,
           chains: children("chain1"),
+          return_chains: [],
         },
         chain1: {
+          name: "Filter Chain",
+          color: 255, // Blue
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
           devices: children("nested_effect1"),
         },
         nested_effect1: {
-          name: "Auto Filter",
+          name: "Sweep Filter",
           class_name: "AutoFilter2",
           class_display_name: "Auto Filter",
           type: DEVICE_TYPE_AUDIO_EFFECT,
@@ -553,29 +562,31 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(2);
+      expect(result.devices).toHaveLength(1);
       expect(result.devices[0]).toEqual({
         id: "fx_rack1",
         name: "Audio Effect Rack",
-        className: "AudioEffectGroupDevice",
-        displayName: "Audio Effect Rack",
-        type: DEVICE_TYPE_AUDIO_EFFECT,
-        isInstrument: false,
-        isActive: 1,
-        canHaveChains: 1,
-        canHaveDrumPads: 0,
-      });
-      expect(result.devices[1]).toEqual({
-        id: "nested_effect1",
-        name: "Auto Filter",
-        className: "AutoFilter2",
-        displayName: "Auto Filter",
-        type: DEVICE_TYPE_AUDIO_EFFECT,
-        isInstrument: false,
-        isActive: 1,
-        canHaveChains: 0,
-        canHaveDrumPads: 0,
-        containingRackDeviceId: "fx_rack1",
+        displayName: "Master FX",
+        type: "audio effect rack",
+        isActive: true,
+        chains: [
+          {
+            name: "Filter Chain",
+            color: "#0000FF",
+            isMuted: false,
+            isMutedViaSolo: false,
+            isSoloed: false,
+            devices: [
+              {
+                id: "nested_effect1",
+                name: "Auto Filter",
+                displayName: "Sweep Filter",
+                type: "audio effect",
+                isActive: true,
+              },
+            ],
+          },
+        ],
       });
     });
 
@@ -604,7 +615,7 @@ describe("readTrack", () => {
           devices: children("outer_rack"),
         }),
         outer_rack: {
-          name: "Outer Rack",
+          name: "Master FX",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -612,12 +623,18 @@ describe("readTrack", () => {
           can_have_chains: 1,
           can_have_drum_pads: 0,
           chains: children("outer_chain"),
+          return_chains: [],
         },
         outer_chain: {
+          name: "Wet",
+          color: 255, // Blue
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
           devices: children("inner_rack"),
         },
         inner_rack: {
-          name: "Inner Rack",
+          name: "Reverb Chain",
           class_name: "AudioEffectGroupDevice",
           class_display_name: "Audio Effect Rack",
           type: DEVICE_TYPE_AUDIO_EFFECT,
@@ -625,12 +642,18 @@ describe("readTrack", () => {
           can_have_chains: 1,
           can_have_drum_pads: 0,
           chains: children("inner_chain"),
+          return_chains: [],
         },
         inner_chain: {
+          name: "Hall",
+          color: 65280, // Green
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 1,
           devices: children("deep_device"),
         },
         deep_device: {
-          name: "Deep Device",
+          name: "Big Hall",
           class_name: "Reverb",
           class_display_name: "Reverb",
           type: DEVICE_TYPE_AUDIO_EFFECT,
@@ -642,41 +665,49 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(3);
+      expect(result.devices).toHaveLength(1);
       expect(result.devices[0]).toEqual({
         id: "outer_rack",
-        name: "Outer Rack",
-        className: "InstrumentGroupDevice",
-        displayName: "Instrument Rack",
-        type: DEVICE_TYPE_INSTRUMENT,
-        isInstrument: true,
-        isActive: 1,
-        canHaveChains: 1,
-        canHaveDrumPads: 0,
-      });
-      expect(result.devices[1]).toEqual({
-        id: "inner_rack",
-        name: "Inner Rack",
-        className: "AudioEffectGroupDevice",
-        displayName: "Audio Effect Rack",
-        type: DEVICE_TYPE_AUDIO_EFFECT,
-        isInstrument: false,
-        isActive: 1,
-        canHaveChains: 1,
-        canHaveDrumPads: 0,
-        containingRackDeviceId: "outer_rack",
-      });
-      expect(result.devices[2]).toEqual({
-        id: "deep_device",
-        name: "Deep Device",
-        className: "Reverb",
-        displayName: "Reverb",
-        type: DEVICE_TYPE_AUDIO_EFFECT,
-        isInstrument: false,
-        isActive: 1,
-        canHaveChains: 0,
-        canHaveDrumPads: 0,
-        containingRackDeviceId: "inner_rack",
+        name: "Instrument Rack",
+        displayName: "Master FX",
+        type: "instrument rack",
+        isActive: true,
+        chains: [
+          {
+            name: "Wet",
+            color: "#0000FF",
+            isMuted: false,
+            isMutedViaSolo: false,
+            isSoloed: false,
+            devices: [
+              {
+                id: "inner_rack",
+                name: "Audio Effect Rack",
+                displayName: "Reverb Chain",
+                type: "audio effect rack",
+                isActive: true,
+                chains: [
+                  {
+                    name: "Hall",
+                    color: "#00FF00",
+                    isMuted: false,
+                    isMutedViaSolo: false,
+                    isSoloed: true,
+                    devices: [
+                      {
+                        id: "deep_device",
+                        name: "Reverb",
+                        displayName: "Big Hall",
+                        type: "audio effect",
+                        isActive: true,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
       });
     });
 
@@ -699,7 +730,7 @@ describe("readTrack", () => {
           devices: children("rack1"),
         }),
         rack1: {
-          name: "Empty Rack",
+          name: "My Empty Rack",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -707,8 +738,14 @@ describe("readTrack", () => {
           can_have_chains: 1,
           can_have_drum_pads: 0,
           chains: children("empty_chain"),
+          return_chains: [],
         },
         empty_chain: {
+          name: "Empty Chain",
+          color: 0, // Black
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
           devices: [], // empty chain
         },
       });
@@ -718,14 +755,20 @@ describe("readTrack", () => {
       expect(result.devices).toHaveLength(1);
       expect(result.devices[0]).toEqual({
         id: "rack1",
-        name: "Empty Rack",
-        className: "InstrumentGroupDevice",
-        displayName: "Instrument Rack",
-        type: DEVICE_TYPE_INSTRUMENT,
-        isInstrument: true,
-        isActive: 1,
-        canHaveChains: 1,
-        canHaveDrumPads: 0,
+        name: "Instrument Rack",
+        displayName: "My Empty Rack",
+        type: "instrument rack",
+        isActive: true,
+        chains: [
+          {
+            name: "Empty Chain",
+            color: "#000000",
+            isMuted: false,
+            isMutedViaSolo: false,
+            isSoloed: false,
+            devices: [],
+          },
+        ],
       });
     });
 
@@ -754,7 +797,7 @@ describe("readTrack", () => {
           devices: children("rack1"),
         }),
         rack1: {
-          name: "Multi Chain Rack",
+          name: "My Custom Rack",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -762,15 +805,26 @@ describe("readTrack", () => {
           can_have_chains: 1,
           can_have_drum_pads: 0,
           chains: children("chain1", "chain2"),
+          return_chains: [],
         },
         chain1: {
+          name: "Piano",
+          color: 16711680, // Red
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
           devices: children("device1"),
         },
         chain2: {
+          name: "Bass",
+          color: 65280, // Green
+          mute: 1,
+          muted_via_solo: 0,
+          solo: 0,
           devices: children("device2"),
         },
         device1: {
-          name: "Device 1",
+          name: "Lead Synth",
           class_name: "Operator",
           class_display_name: "Operator",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -779,7 +833,7 @@ describe("readTrack", () => {
           can_have_drum_pads: 0,
         },
         device2: {
-          name: "Device 2",
+          name: "Bass Synth",
           class_name: "Wavetable",
           class_display_name: "Wavetable",
           type: DEVICE_TYPE_INSTRUMENT,
@@ -791,41 +845,47 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(3);
+      expect(result.devices).toHaveLength(1);
       expect(result.devices[0]).toEqual({
         id: "rack1",
-        name: "Multi Chain Rack",
-        className: "InstrumentGroupDevice",
-        displayName: "Instrument Rack",
-        type: DEVICE_TYPE_INSTRUMENT,
-        isInstrument: true,
-        isActive: 1,
-        canHaveChains: 1,
-        canHaveDrumPads: 0,
-      });
-      expect(result.devices[1]).toEqual({
-        id: "device1",
-        name: "Device 1",
-        className: "Operator",
-        displayName: "Operator",
-        type: DEVICE_TYPE_INSTRUMENT,
-        isInstrument: true,
-        isActive: 1,
-        canHaveChains: 0,
-        canHaveDrumPads: 0,
-        containingRackDeviceId: "rack1",
-      });
-      expect(result.devices[2]).toEqual({
-        id: "device2",
-        name: "Device 2",
-        className: "Wavetable",
-        displayName: "Wavetable",
-        type: DEVICE_TYPE_INSTRUMENT,
-        isInstrument: true,
-        isActive: 1,
-        canHaveChains: 0,
-        canHaveDrumPads: 0,
-        containingRackDeviceId: "rack1",
+        name: "Instrument Rack",
+        displayName: "My Custom Rack",
+        type: "instrument rack",
+        isActive: true,
+        chains: [
+          {
+            name: "Piano",
+            color: "#FF0000",
+            isMuted: false,
+            isMutedViaSolo: false,
+            isSoloed: false,
+            devices: [
+              {
+                id: "device1",
+                name: "Operator",
+                displayName: "Lead Synth",
+                type: "instrument",
+                isActive: true,
+              },
+            ],
+          },
+          {
+            name: "Bass",
+            color: "#00FF00",
+            isMuted: true,
+            isMutedViaSolo: false,
+            isSoloed: false,
+            devices: [
+              {
+                id: "device2",
+                name: "Wavetable",
+                displayName: "Bass Synth",
+                type: "instrument",
+                isActive: true,
+              },
+            ],
+          },
+        ],
       });
     });
   });
