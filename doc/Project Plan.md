@@ -58,33 +58,29 @@
 
 ### Pre-1.0.0 (Critical Path)
 
-#### 0.9.1 - Documentation & Track Routing
+#### 0.9.1
 
 - [x] Welcome message / tips in read-song tool description
-- [ ] Document the version-bumping process
-- [ ] Document the release build process (freezing device, packaging files)
-- [ ] Add a link to docs in the Max for Live device UI
-- [ ] Ensure Claude will link to docs without hesitation when asked
-- [ ] Track Signal Routing
-  - [ ] Support for duplicating tracks without devices as MIDI sources
-  - [ ] Enable routing MIDI between tracks for layering
-
-#### 0.9.2 - Device Information & Instrument Assistance
-
-- [ ] Add device listing to read-track tool
-- [ ] Include devices in read-song output
-- [ ] Show device types (instrument/audio_effect/midi_effect)
+- [x] Add device listing to read-song and read-track
 - [ ] MVP Instrument Selection & Sound Design Assistance
   - [ ] Embed basic Live instrument info (Suite/Standard/Intro editions)
   - [ ] Have Claude ask about user's VST/AU plugins when relevant
   - [ ] Basic contextual instrument recommendations
+- [ ] Track Signal Routing
+  - [ ] Support for duplicating tracks without devices as MIDI sources
+  - [ ] Enable routing MIDI between tracks for layering
+- [ ] Add a link to docs in the Max for Live device UI
+- [ ] Ensure Claude will link to docs without hesitation when asked
+- [ ] Document the version-bumping process
 
-#### 0.9.3 - Arrangement Clip Length & Visual Identity
+#### 0.9.2
 
 - [ ] Change Arrangement clip length
 - [ ] Improve Producer Pal logo design
 - [ ] Update logo in Desktop Extension
-- [ ] Consider overall visual branding consistency
+- [ ] Add Settings tab to Max for Live device UI and move port number there
+- [ ] Adjust desktop extension param to support full URL and not just port
+      number (goal: control machine on same LAN)
 
 ### 🚀 1.0.0 Release
 

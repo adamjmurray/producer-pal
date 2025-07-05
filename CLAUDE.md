@@ -110,6 +110,7 @@ Grammar file: `src/notation/barbeat/barbeat-grammar.peggy`
 - Mock Live API available via `src/mock-live-api.js`
 - Tests are colocated with source files (`*.test.js`)
 - Run individual test: `npm test -- path/to/file.test.js`
+- **Test assertions**: Prefer `expect.objectContaining()` and nested array/object matchers over individual property assertions. Write assertions that match the expected data structure as closely as possible to make tests more maintainable and focused on what matters.
 
 ## Live API Extensions
 
@@ -437,3 +438,9 @@ To update the version:
   dependencies
 - When building releases, both the `.dxt` file AND the frozen Max for Live
   device are needed
+- When designing features that involve contextual help, adaptive messaging, or
+  user education, prefer adding instructions to tool descriptions over adding
+  code complexity. Let Claude's intelligence handle context-aware responses
+  rather than encoding rules in JavaScript. Example: The welcome message in
+  read-song and missing instrument detection both use tool instructions rather
+  than code flags. This pattern is documented in docs/Patterns.md.

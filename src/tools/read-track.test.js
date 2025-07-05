@@ -90,6 +90,7 @@ describe("readTrack", () => {
       drumPads: null,
       arrangementClips: [],
       sessionClips: [],
+      devices: [],
     });
   });
 
@@ -130,6 +131,7 @@ describe("readTrack", () => {
       drumPads: null,
       arrangementClips: [],
       sessionClips: [],
+      devices: [],
     });
   });
 
@@ -181,6 +183,7 @@ describe("readTrack", () => {
       drumPads: null,
       arrangementClips: [],
       sessionClips: [],
+      devices: [],
     });
   });
 
@@ -260,6 +263,7 @@ describe("readTrack", () => {
         expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
         expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
       ],
+      devices: [],
     });
   });
 
@@ -310,6 +314,126 @@ describe("readTrack", () => {
     expect(result.arrangementClips.length).toBe(2);
     expect(result.arrangementClips[0].id).toBe("arr_clip1");
     expect(result.arrangementClips[1].id).toBe("arr_clip2");
+  });
+
+  describe("devices", () => {
+    it("returns empty array when track has no devices", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: [],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.devices).toEqual([]);
+    });
+
+    it("returns device information for tracks with devices", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") {
+          return "track1";
+        }
+        return this._id;
+      });
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("device1", "device2", "device3"),
+        }),
+        device1: {
+          name: "Analog",
+          class_name: "InstrumentVector",
+          class_display_name: "Analog",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        device2: {
+          name: "Reverb",
+          class_name: "Reverb",
+          class_display_name: "Reverb",
+          type: DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        device3: {
+          name: "Note Length",
+          class_name: "MidiNoteLength",
+          class_display_name: "Note Length",
+          type: DEVICE_TYPE_MIDI_EFFECT,
+          is_active: 0,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.devices).toEqual([
+        {
+          id: "device1",
+          name: "Analog",
+          className: "InstrumentVector",
+          displayName: "Analog",
+          type: DEVICE_TYPE_INSTRUMENT,
+          isInstrument: true,
+          isActive: 1,
+          canHaveChains: 0,
+          canHaveDrumPads: 0,
+        },
+        {
+          id: "device2",
+          name: "Reverb",
+          className: "Reverb",
+          displayName: "Reverb",
+          type: DEVICE_TYPE_AUDIO_EFFECT,
+          isInstrument: false,
+          isActive: 1,
+          canHaveChains: 0,
+          canHaveDrumPads: 0,
+        },
+        {
+          id: "device3",
+          name: "Note Length",
+          className: "MidiNoteLength",
+          displayName: "Note Length",
+          type: DEVICE_TYPE_MIDI_EFFECT,
+          isInstrument: false,
+          isActive: 0,
+          canHaveChains: 0,
+          canHaveDrumPads: 0,
+        },
+      ]);
+    });
+
+    it("correctly identifies instrument devices", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") {
+          return "track1";
+        }
+        return this._id;
+      });
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("device1"),
+        }),
+        device1: {
+          name: "Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+        },
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+      expect(result.devices[0].isInstrument).toBe(true);
+      expect(result.devices[0].canHaveChains).toBe(1);
+      expect(result.devices[0].canHaveDrumPads).toBe(1);
+    });
   });
 
   describe("drumPads", () => {

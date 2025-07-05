@@ -109,6 +109,19 @@ export function readTrack({ trackIndex } = {}) {
       .filter((clip) => clip.id != null),
 
     drumPads: findDrumPads(track),
+
+    // List all devices on the track
+    devices: track.getChildren("devices").map((device) => ({
+      id: device.id,
+      name: device.getProperty("name"),
+      className: device.getProperty("class_name"),
+      displayName: device.getProperty("class_display_name"),
+      type: device.getProperty("type"),
+      isInstrument: device.getProperty("type") === DEVICE_TYPE_INSTRUMENT,
+      isActive: device.getProperty("is_active"),
+      canHaveChains: device.getProperty("can_have_chains"),
+      canHaveDrumPads: device.getProperty("can_have_drum_pads"),
+    })),
   };
 
   if (trackIndex === getHostTrackIndex()) {

@@ -8,6 +8,7 @@ import {
   liveApiPath,
   mockLiveApiGet,
 } from "../mock-live-api";
+import { DEVICE_TYPE_INSTRUMENT, DEVICE_TYPE_AUDIO_EFFECT } from "./read-track";
 import { readSong } from "./read-song";
 
 describe("readSong", () => {
@@ -164,6 +165,7 @@ describe("readSong", () => {
             expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
+          devices: [],
         },
         {
           id: "track2",
@@ -185,6 +187,7 @@ describe("readSong", () => {
           sessionClips: [
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
           ],
+          devices: [],
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
@@ -264,5 +267,87 @@ describe("readSong", () => {
       tracks: [],
       scenes: [],
     });
+  });
+
+  it("includes device information across multiple tracks", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set") return "live_set_id";
+      if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set tracks 1") return "track2";
+      return this._id;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Device Test Set",
+        tracks: children("track1", "track2"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Synth Track",
+        devices: children("synth1", "eq1"),
+      },
+      "live_set tracks 1": {
+        has_midi_input: 0,
+        name: "Audio Track",
+        devices: children("reverb1"),
+      },
+      synth1: {
+        name: "Analog",
+        class_name: "UltraAnalog",
+        class_display_name: "Analog",
+        type: DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+      eq1: {
+        name: "EQ Eight",
+        class_name: "Eq8",
+        class_display_name: "EQ Eight",
+        type: DEVICE_TYPE_AUDIO_EFFECT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+      reverb1: {
+        name: "Reverb",
+        class_name: "Reverb",
+        class_display_name: "Reverb",
+        type: DEVICE_TYPE_AUDIO_EFFECT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+    });
+
+    const result = readSong();
+
+    // Check that tracks have the expected device configurations
+    expect(result.tracks).toEqual([
+      expect.objectContaining({
+        name: "Synth Track",
+        devices: [
+          expect.objectContaining({
+            name: "Analog",
+            isInstrument: true,
+          }),
+          expect.objectContaining({
+            name: "EQ Eight",
+            isInstrument: false,
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        name: "Audio Track",
+        devices: [
+          expect.objectContaining({
+            name: "Reverb",
+            isInstrument: false,
+          }),
+        ],
+      }),
+    ]);
   });
 });
