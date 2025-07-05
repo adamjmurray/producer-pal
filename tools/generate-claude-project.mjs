@@ -37,6 +37,7 @@ async function copyDirectoriesAndFiles() {
     { src: "tools", isDir: true },
 
     // Individual files (no prefix)
+    { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
     { src: "DEVELOPERS.md" },
     { src: "FEATURES.md" },
     { src: "LICENSE.md" },
