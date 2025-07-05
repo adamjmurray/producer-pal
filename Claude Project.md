@@ -43,6 +43,9 @@ copied over to Claude Code as appropriate.
   dependencies
 - When building releases, both the `.dxt` file AND the frozen Max for Live
   device are needed
+- **Manual Testing Note**: After changing tool descriptions in the code, you
+  must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
+  cached tool definitions
 - We are using Live 12.2 and Max 9
 - We are using Node.js 20
 - The repository root is `/Users/adammurray/workspace/producer-pal`

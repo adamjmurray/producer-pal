@@ -193,6 +193,12 @@ export default function toolName(liveApi, args) {
 When modifying bar|beat notation grammar, remember to rebuild the parser with
 `npm run parser:build`.
 
+**Important for Manual Testing**: After changing tool descriptions (like in
+`src/mcp-server/add-tool-*.js`), you must toggle the Producer Pal extension
+off/on in Claude Desktop to refresh the cached tool definitions. Simply saving
+code, rebuilding, or restarting Claude Desktop is not sufficient - the extension
+must be disabled and re-enabled to see updated tool descriptions.
+
 Note: You generally don't need to run `npm run build` to verify changes - the
 test suite is sufficient to ensure correctness.
 
