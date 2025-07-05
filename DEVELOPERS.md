@@ -87,10 +87,32 @@ Releases consist of two files:
    like the JS code), "save as...", and save it to "release storage" with a
    version number suffix in the filename.
 
-## End-to-End Testing
+## Development Testing
 
-For real-world testing and debugging, use the CLI tool at `tools/cli.mjs` to
-directly connect to the MCP server running in Ableton Live:
+For development testing, there are two main approaches:
+
+### Direct MCP Connection (Preferred)
+
+Add the MCP server directly to Claude Code for the best development experience:
+
+```sh
+claude mcp add --transport http producer-pal http://localhost:3350/mcp
+```
+
+**Requirements:**
+
+- Producer Pal Max for Live device must be running in Ableton Live before
+  starting a Claude Code session
+- Run `npm run dev` for auto-rebuild on changes
+- Provides direct access to all producer-pal tools through Claude Code
+
+This approach is preferred for development testing as it provides seamless
+integration with Claude Code's MCP capabilities.
+
+### CLI Tool (Fallback)
+
+For situations where the direct MCP connection isn't available or working, use
+the CLI tool at `tools/cli.mjs` to directly connect to the MCP server:
 
 ```sh
 # Show server info (default)

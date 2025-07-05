@@ -110,7 +110,10 @@ Grammar file: `src/notation/barbeat/barbeat-grammar.peggy`
 - Mock Live API available via `src/mock-live-api.js`
 - Tests are colocated with source files (`*.test.js`)
 - Run individual test: `npm test -- path/to/file.test.js`
-- **Test assertions**: Prefer `expect.objectContaining()` and nested array/object matchers over individual property assertions. Write assertions that match the expected data structure as closely as possible to make tests more maintainable and focused on what matters.
+- **Test assertions**: Prefer `expect.objectContaining()` and nested
+  array/object matchers over individual property assertions. Write assertions
+  that match the expected data structure as closely as possible to make tests
+  more maintainable and focused on what matters.
 
 ## Live API Extensions
 
@@ -203,10 +206,32 @@ must be disabled and re-enabled to see updated tool descriptions.
 Note: You generally don't need to run `npm run build` to verify changes - the
 test suite is sufficient to ensure correctness.
 
-### End-to-End Testing
+### Development Testing
 
-For real-world testing and debugging, the `tools/cli.mjs` tool can connect
-directly to the MCP server running in Ableton Live:
+For development testing, there are two main approaches:
+
+#### Direct MCP Connection (Preferred)
+
+Add the MCP server directly to Claude Code for the best development experience:
+
+```bash
+claude mcp add --transport http producer-pal http://localhost:3350/mcp
+```
+
+**Requirements:**
+
+- Producer Pal Max for Live device must be running in Ableton Live before
+  starting a Claude Code session
+- Run `npm run dev` for auto-rebuild on changes
+- Provides direct access to all producer-pal tools through Claude Code
+
+This approach is preferred for development testing as it provides seamless
+integration with Claude Code's MCP capabilities.
+
+#### CLI Tool (Fallback)
+
+For situations where the direct MCP connection isn't available or working, the
+`tools/cli.mjs` tool can connect directly to the MCP server:
 
 ```bash
 # Show server info (default)
