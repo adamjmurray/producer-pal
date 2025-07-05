@@ -62,6 +62,8 @@
 
 - [x] Welcome message / tips in read-song tool description
 - [x] Add device listing to read-song and read-track
+- [ ] traverse into instrument and FX racks to see devices in chains (or save
+      for later and document as a limitation)
 - [ ] MVP Instrument Selection & Sound Design Assistance
   - [ ] Embed basic Live instrument info (Suite/Standard/Intro editions)
   - [ ] Have Claude ask about user's VST/AU plugins when relevant
