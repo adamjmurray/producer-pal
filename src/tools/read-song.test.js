@@ -166,6 +166,9 @@ describe("readSong", () => {
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
           devices: [],
+          hasAudioEffects: false,
+          hasInstrument: false,
+          hasMidiEffects: false,
         },
         {
           id: "track2",
@@ -188,6 +191,7 @@ describe("readSong", () => {
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
           ],
           devices: [],
+          hasAudioEffects: false,
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
@@ -269,7 +273,7 @@ describe("readSong", () => {
     });
   });
 
-  it("includes device information across multiple tracks", () => {
+  it("includes device information across multiple tracks with includeDrumRackDevices", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "live_set tracks 0") return "track1";
@@ -322,7 +326,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong();
+    const result = readSong({ includeDrumRackDevices: true });
 
     // Check that tracks have the expected device configurations
     expect(result.tracks).toEqual([
@@ -349,5 +353,65 @@ describe("readSong", () => {
         ],
       }),
     ]);
+  });
+
+  it("excludes drum rack devices by default", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set") return "live_set_id";
+      if (this._path === "live_set tracks 0") return "track1";
+      return this._id;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Drum Rack Test Set",
+        tracks: children("track1"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Drum Track",
+        devices: children("drum_rack1", "reverb1"),
+      },
+      drum_rack1: {
+        name: "My Drums",
+        class_name: "DrumGroupDevice",
+        class_display_name: "Drum Rack",
+        type: DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+      },
+      reverb1: {
+        name: "Reverb",
+        class_name: "Reverb",
+        class_display_name: "Reverb",
+        type: DEVICE_TYPE_AUDIO_EFFECT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+    });
+
+    const result = readSong(); // Default behavior
+
+    // Check that drum rack devices are included but without chains
+    expect(result.tracks[0].devices).toEqual([
+      expect.objectContaining({
+        name: "Drum Rack",
+        type: "drum rack",
+        // Should not have chains property when includeDrumRackDevices=false
+      }),
+      expect.objectContaining({
+        name: "Reverb",
+        type: "audio effect",
+      }),
+    ]);
+    // Drum rack device should be present but without chains
+    const drumRack = result.tracks[0].devices.find(
+      (d) => d.type === "drum rack",
+    );
+    expect(drumRack).toBeDefined();
+    expect(drumRack.chains).toBeUndefined();
   });
 });

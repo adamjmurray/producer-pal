@@ -61,6 +61,37 @@ function extractDrumPads(drumRack) {
 }
 
 /**
+ * Check if device is an instrument type (instrument, instrument rack, or drum rack)
+ * @param {string} deviceType - Device type string
+ * @returns {boolean} True if device is an instrument type
+ */
+function isInstrumentDevice(deviceType) {
+  return (
+    deviceType === "instrument" ||
+    deviceType === "instrument rack" ||
+    deviceType === "drum rack"
+  );
+}
+
+/**
+ * Check if device is an audio effect type (audio effect or audio effect rack)
+ * @param {string} deviceType - Device type string
+ * @returns {boolean} True if device is an audio effect type
+ */
+function isAudioEffectDevice(deviceType) {
+  return deviceType === "audio effect" || deviceType === "audio effect rack";
+}
+
+/**
+ * Check if device is a MIDI effect type (midi effect or midi effect rack)
+ * @param {string} deviceType - Device type string
+ * @returns {boolean} True if device is a MIDI effect type
+ */
+function isMidiEffectDevice(deviceType) {
+  return deviceType === "midi effect" || deviceType === "midi effect rack";
+}
+
+/**
  * Determine device type from Live API properties
  * @param {Object} device - Live API device object
  * @returns {string} Combined device type string
@@ -86,13 +117,111 @@ function getDeviceType(device) {
 }
 
 /**
+ * Compute track-level device properties by scanning all devices recursively
+ * @param {Array} devices - Array of Live API device objects
+ * @param {boolean} isMidiTrack - Whether this is a MIDI track
+ * @param {boolean} isProducerPalHost - Whether this is the Producer Pal host track
+ * @param {number} depth - Current recursion depth
+ * @param {number} maxDepth - Maximum recursion depth
+ * @returns {Object} Object with hasInstrument, hasAudioEffects, hasMidiEffects properties
+ */
+function computeTrackDeviceProperties(
+  devices,
+  isMidiTrack,
+  isProducerPalHost,
+  depth = 0,
+  maxDepth = 4,
+) {
+  if (depth > maxDepth) {
+    return {
+      hasInstrument: false,
+      hasAudioEffects: false,
+      hasMidiEffects: false,
+    };
+  }
+
+  let hasInstrument = false;
+  let hasAudioEffects = false;
+  let hasMidiEffects = false;
+
+  for (const device of devices) {
+    const deviceType = getDeviceType(device);
+
+    if (isInstrumentDevice(deviceType)) {
+      hasInstrument = true;
+    } else if (isAudioEffectDevice(deviceType)) {
+      hasAudioEffects = true;
+    } else if (isMidiEffectDevice(deviceType)) {
+      hasMidiEffects = true;
+    }
+
+    // Recursively check devices in chains for rack devices
+    if (deviceType.includes("rack")) {
+      const chains = device.getChildren("chains");
+      for (const chain of chains) {
+        const chainDevices = chain.getChildren("devices");
+        const chainProps = computeTrackDeviceProperties(
+          chainDevices,
+          isMidiTrack,
+          isProducerPalHost,
+          depth + 1,
+          maxDepth,
+        );
+        hasInstrument = hasInstrument || chainProps.hasInstrument;
+        hasAudioEffects = hasAudioEffects || chainProps.hasAudioEffects;
+        hasMidiEffects = hasMidiEffects || chainProps.hasMidiEffects;
+      }
+
+      // Also check return chains
+      const returnChains = device.getChildren("return_chains");
+      for (const chain of returnChains) {
+        const chainDevices = chain.getChildren("devices");
+        const chainProps = computeTrackDeviceProperties(
+          chainDevices,
+          isMidiTrack,
+          isProducerPalHost,
+          depth + 1,
+          maxDepth,
+        );
+        hasInstrument = hasInstrument || chainProps.hasInstrument;
+        hasAudioEffects = hasAudioEffects || chainProps.hasAudioEffects;
+        hasMidiEffects = hasMidiEffects || chainProps.hasMidiEffects;
+      }
+    }
+  }
+
+  const result = {};
+
+  // Only include hasInstrument for MIDI tracks, and omit from Producer Pal host track unless true
+  if (isMidiTrack && (!isProducerPalHost || hasInstrument)) {
+    result.hasInstrument = hasInstrument;
+  }
+
+  // Include hasAudioEffects for all track types
+  result.hasAudioEffects = hasAudioEffects;
+
+  // Only include hasMidiEffects for MIDI tracks, and omit from Producer Pal host track unless true
+  if (isMidiTrack && (!isProducerPalHost || hasMidiEffects)) {
+    result.hasMidiEffects = hasMidiEffects;
+  }
+
+  return result;
+}
+
+/**
  * Build nested device structure with chains for rack devices
  * @param {Array} devices - Array of Live API device objects
+ * @param {boolean} includeDrumRackDevices - Whether to include drum rack devices
  * @param {number} depth - Current recursion depth
  * @param {number} maxDepth - Maximum recursion depth
  * @returns {Array} Nested array of device objects with chains
  */
-function getDevicesWithChains(devices, depth = 0, maxDepth = 4) {
+function getDevicesWithChains(
+  devices,
+  includeDrumRackDevices = false,
+  depth = 0,
+  maxDepth = 4,
+) {
   if (depth > maxDepth) {
     console.error(`Maximum recursion depth (${maxDepth}) exceeded`);
     return [];
@@ -100,45 +229,71 @@ function getDevicesWithChains(devices, depth = 0, maxDepth = 4) {
 
   return devices.map((device) => {
     const deviceType = getDeviceType(device);
+    const className = device.getProperty("class_display_name");
+    const userDisplayName = device.getProperty("name");
+
     const deviceInfo = {
       id: device.id,
-      name: device.getProperty("class_display_name"), // Original device name
-      displayName: device.getProperty("name"), // User's custom name
+      name: className, // Original device name
       type: deviceType,
       isActive: device.getProperty("is_active") > 0,
     };
 
+    // Only include displayName when it differs from name
+    if (userDisplayName !== className) {
+      deviceInfo.displayName = userDisplayName;
+    }
+
     // Add chain information for rack devices
     if (deviceType.includes("rack")) {
-      const chains = device.getChildren("chains");
-      deviceInfo.chains = chains.map((chain) => ({
-        name: chain.getProperty("name"),
-        color: chain.getColor(),
-        isMuted: chain.getProperty("mute") > 0,
-        isMutedViaSolo: chain.getProperty("muted_via_solo") > 0,
-        isSoloed: chain.getProperty("solo") > 0,
-        devices: getDevicesWithChains(
-          chain.getChildren("devices"),
-          depth + 1,
-          maxDepth,
-        ),
-      }));
+      // For drum racks, conditionally include chains based on includeDrumRackDevices
+      const shouldIncludeChains =
+        deviceType !== "drum rack" || includeDrumRackDevices;
 
-      // Check for return chains
-      const returnChains = device.getChildren("return_chains");
-      if (returnChains.length > 0) {
-        deviceInfo.returnChains = returnChains.map((chain) => ({
+      if (shouldIncludeChains) {
+        const chains = device.getChildren("chains");
+
+        // Check if any chains are soloed to determine hasSoloedChain (for all rack types)
+        const hasSoloedChain = chains.some(
+          (chain) => chain.getProperty("solo") > 0,
+        );
+
+        deviceInfo.chains = chains.map((chain) => ({
           name: chain.getProperty("name"),
           color: chain.getColor(),
           isMuted: chain.getProperty("mute") > 0,
-          isMutedViaSolo: chain.getProperty("muted_via_solo") > 0,
           isSoloed: chain.getProperty("solo") > 0,
           devices: getDevicesWithChains(
             chain.getChildren("devices"),
+            includeDrumRackDevices,
             depth + 1,
             maxDepth,
           ),
+          // isMutedViaSolo removed from all rack types
         }));
+
+        // Only add hasSoloedChain property when it's true
+        if (hasSoloedChain) {
+          deviceInfo.hasSoloedChain = hasSoloedChain;
+        }
+
+        // Check for return chains
+        const returnChains = device.getChildren("return_chains");
+        if (returnChains.length > 0) {
+          deviceInfo.returnChains = returnChains.map((chain) => ({
+            name: chain.getProperty("name"),
+            color: chain.getColor(),
+            isMuted: chain.getProperty("mute") > 0,
+            isSoloed: chain.getProperty("solo") > 0,
+            devices: getDevicesWithChains(
+              chain.getChildren("devices"),
+              includeDrumRackDevices,
+              depth + 1,
+              maxDepth,
+            ),
+            // isMutedViaSolo removed from all rack types
+          }));
+        }
       }
     }
 
@@ -150,9 +305,10 @@ function getDevicesWithChains(devices, depth = 0, maxDepth = 4) {
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based)
+ * @param {boolean} args.includeDrumRackDevices - Whether to include drum rack devices (used internally by read-song)
  * @returns {Object} Result object with track information
  */
-export function readTrack({ trackIndex } = {}) {
+export function readTrack({ trackIndex, includeDrumRackDevices = true } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
@@ -165,10 +321,13 @@ export function readTrack({ trackIndex } = {}) {
   }
 
   const groupId = track.get("group_track")[1];
+  const isMidiTrack = track.getProperty("has_midi_input") > 0;
+  const isProducerPalHost = trackIndex === getHostTrackIndex();
+  const trackDevices = track.getChildren("devices");
 
   const result = {
     id: track.id,
-    type: track.getProperty("has_midi_input") ? "midi" : "audio",
+    type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
     trackIndex,
     color: track.getColor(),
@@ -197,11 +356,19 @@ export function readTrack({ trackIndex } = {}) {
     drumPads: findDrumPads(track),
 
     // List all devices on the track with nested chain structure
-    devices: getDevicesWithChains(track.getChildren("devices")),
+    devices: getDevicesWithChains(trackDevices, includeDrumRackDevices),
   };
 
-  if (trackIndex === getHostTrackIndex()) {
-    result.isProducerPalHostTrack = true;
+  // Add track-level device properties
+  const deviceProperties = computeTrackDeviceProperties(
+    trackDevices,
+    isMidiTrack,
+    isProducerPalHost,
+  );
+  Object.assign(result, deviceProperties);
+
+  if (isProducerPalHost) {
+    result.hasProducerPalDevice = true;
     result.producerPalVersion = VERSION;
   }
 
