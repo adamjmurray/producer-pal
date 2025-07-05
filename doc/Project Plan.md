@@ -58,60 +58,39 @@
 
 ### Pre-1.0.0 (Critical Path)
 
-#### 0.9.1 - Documentation, NUX & User Education
+#### 0.9.1 - Documentation & Track Routing
 
+- [x] Welcome message / tips in read-song tool description
 - [ ] Document the version-bumping process
 - [ ] Document the release build process (freezing device, packaging files)
-- [ ] Public documentation (README, usage examples)
-- [ ] Add link to docs in the Max for Live device UI
+- [ ] Add a link to docs in the Max for Live device UI
 - [ ] Ensure Claude will link to docs without hesitation when asked
-- [ ] **State Sync Phase 1**: Update tool descriptions with refresh guidance
-- [ ] **State Sync Phase 1**: Improve error messages for moved/deleted objects
-- [ ] **NUX Phase 1**: Add movement/sync tip to first read-song
-- [ ] **NUX Phase 2**: Welcome message with capabilities overview
-- [ ] **NUX Phase 2**: Save reminder for data safety
-- [ ] **NUX Phase 2**: Basic prompt suggestions
-- [ ] **NUX Phase 3**: Context-aware tips based on Live Set state
-- [ ] **NUX Phase 3**: Error-specific help messages
+- [ ] Track Signal Routing
+  - [ ] Support for duplicating tracks without devices as MIDI sources
+  - [ ] Enable routing MIDI between tracks for layering
 
 #### 0.9.2 - Device Information & Instrument Assistance
 
 - [ ] Add device listing to read-track tool
 - [ ] Include devices in read-song output
 - [ ] Show device types (instrument/audio_effect/midi_effect)
-- [ ] **Stretch Goal**: MVP Instrument Selection & Sound Design Assistance
+- [ ] MVP Instrument Selection & Sound Design Assistance
   - [ ] Embed basic Live instrument info (Suite/Standard/Intro editions)
   - [ ] Have Claude ask about user's VST/AU plugins when relevant
   - [ ] Basic contextual instrument recommendations
 
-#### 0.9.3 - Visual Identity & Track Routing
+#### 0.9.3 - Arrangement Clip Length & Visual Identity
 
+- [ ] Change Arrangement clip length
 - [ ] Improve Producer Pal logo design
 - [ ] Update logo in Desktop Extension
 - [ ] Consider overall visual branding consistency
-- [ ] Track Signal Routing (prototype exists)
-  - [ ] Support for duplicating tracks without devices as MIDI sources
-  - [ ] Enable routing MIDI between tracks for layering
-  - [ ] Support multiple clips with different lengths for phasing patterns
-  - [ ] Automatic routing setup for layered loops/patterns
-  - [ ] UI/UX for routing configuration
-- [ ] Arrangement clip length changes
 
 ### 🚀 1.0.0 Release
 
 _Stable, documented, user-friendly baseline with device awareness_
 
 ### Post-1.0.0
-
-#### 1.0.x - Post-Launch Cleanup
-
-- [ ] Implement version update notifications in the UI
-- [ ] Optional toggle in device UI to suppress Max console errors
-- [ ] Standardize exception formats across tools
-- [ ] Duplicate Tool response format improvements
-- [ ] Improved mocking system with unified interface for LiveAPI objects
-- [ ] State Sync Phase 2: ID-first operations, smart error recovery
-- [ ] Validation system for better error handling
 
 #### 1.1.0 - Customization Foundation
 
@@ -120,7 +99,17 @@ _Stable, documented, user-friendly baseline with device awareness_
 - [ ] Customization Phase 3: JSON override system
 - [ ] Full Instrument Selection & Sound Design Assistance (beyond MVP)
 
-#### 1.2.0 - Device Control
+#### 1.x - Miscellaneous Cleanup
+
+- [ ] Implement version update notifications in the UI
+- [ ] Optional toggle in device UI to suppress Max console errors
+- [ ] Standardize exception formats across tools
+- [ ] Duplicate Tool response format improvements
+- [ ] Improved mocking system with unified interface for LiveAPI objects
+- [ ] State Sync: ID-first operations, smart error recovery
+- [ ] Validation system for better error handling
+
+#### 1.5.0 - Device Control
 
 - [ ] R&D: Device & Effect Control (rack parameters, automation if the Live API
       allows it one day)
@@ -133,7 +122,7 @@ _Stable, documented, user-friendly baseline with device awareness_
 
 - [ ] Customization Phase 5: Persona system
 
-### 💡 Future Ideas (2.x)
+### 💡 Future Ideas (3.x)
 
 **bar|beat Enhancements:**
 
