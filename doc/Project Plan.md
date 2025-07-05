@@ -5,17 +5,15 @@
 **Core Infrastructure:**
 
 - MCP server with StreamableHttp transport integration
-- Max for Live device with Node for Max integration
-- Live API integration and extensions
-- Rollup-based build system with conditional compilation
-- Comprehensive test coverage (96.28% overall)
-- Device UI with port configuration, status indicators, Claude config display
-- Versioning system (needs documentation)
-- Desktop extension with graceful fallback when Live isn't running
+- Max for Live device with Node.js (MCP server) and Live API integration
+- Rollup-based build system
+- Comprehensive test coverage (~90% overall)
+- Device UI with port configuration and status indicators
+- Claude Desktop extension with graceful fallback when Live isn't running
 
 **Notation System:**
 
-- Custom bar|beat music notation format with notes, sequences, chords
+- Custom bar|beat music notation format for MIDI clips
 - Velocity and duration control with probability support
 - Parser/formatter with PEG grammar
 - Time signature support beyond 4/4
@@ -58,140 +56,84 @@
 
 ## 📋 Focus Areas & TODOs
 
-### 🏷️ Versioning & Release Process
+### Pre-1.0.0 (Critical Path)
+
+#### 0.9.1 - Documentation, NUX & User Education
 
 - [ ] Document the version-bumping process
 - [ ] Document the release build process (freezing device, packaging files)
-- [ ] Implement version update notifications in the UI
-- [ ] Note: Development now occurs in `dev` branch, merged to `main` for
-      releases
+- [ ] Public documentation (README, usage examples)
+- [ ] Add link to docs in the Max for Live device UI
+- [ ] Ensure Claude will link to docs without hesitation when asked
+- [ ] **State Sync Phase 1**: Update tool descriptions with refresh guidance
+- [ ] **State Sync Phase 1**: Improve error messages for moved/deleted objects
+- [ ] **NUX Phase 1**: Add movement/sync tip to first read-song
+- [ ] **NUX Phase 2**: Welcome message with capabilities overview
+- [ ] **NUX Phase 2**: Save reminder for data safety
+- [ ] **NUX Phase 2**: Basic prompt suggestions
+- [ ] **NUX Phase 3**: Context-aware tips based on Live Set state
+- [ ] **NUX Phase 3**: Error-specific help messages
 
-### 🎨 Branding & Visual Identity
-
-- [ ] Improve Producer Pal logo design
-- [ ] Update logo in Desktop Extension
-- [ ] Consider overall visual branding consistency
-
-### 🎯 Customization & Adaptive Learning
-
-**Phase 1: Per-Project Context**
-
-- [ ] Add Settings tab to Max device UI
-- [ ] Store project context as blob parameter in device
-- [ ] Toggle switch for project context
-- [ ] Factory Defaults button implementation
-
-**Phase 2: Global Context**
-
-- [ ] Persistent global preferences across projects
-- [ ] File system integration for settings storage
-- [ ] Popup editor for longer contexts
-
-**Phase 3: JSON Override System**
-
-- [ ] Extract tool descriptions to default-prompts.json
-- [ ] Power user customization via prompts.json
-- [ ] Version checking with mismatch alerts
-
-**Phase 4: Learning System**
-
-- [ ] Implement learn tool for Claude to update prompts
-- [ ] Backup system with automatic rotation
-- [ ] History tracking and summaries
-
-**Phase 5: Persona System**
-
-- [ ] Multiple AI personalities for different styles
-- [ ] Per-project persona selection
-
-### 🔀 Track Signal Routing
-
-- [ ] Track-to-track MIDI routing functionality
-- [ ] Support for duplicating tracks without devices as MIDI sources
-- [ ] Enable routing MIDI between tracks for layering
-- [ ] Support multiple clips with different lengths for phasing patterns
-- [ ] Automatic routing setup for layered loops/patterns
-- [ ] UI/UX for routing configuration
-- [ ] Note: Prototype already exists in branch
-
-### 🎹 Instrument Selection & Sound Design Assistance
-
-- [ ] Embed Live instrument info into read-song tool
-- [ ] Support for user's Live edition (Intro/Standard/Suite)
-- [ ] VST/AU plugin list support
-- [ ] Contextual instrument recommendations
-- [ ] Sound design guidance based on available instruments
-
-### 🧪 R&D: Device & Effect Control
-
-- [ ] Research controlling rack parameters
-- [ ] Instrument device parameter control
-- [ ] Audio effect parameter manipulation
-- [ ] Automation and modulation capabilities
-
-### 🔄 State Synchronization & Robustness
-
-**Phase 1: User Education (Immediate)**
-
-- [ ] Update tool descriptions to guide users about state sync
-- [ ] Add refresh instructions when objects move
-- [ ] Improve error messages for moved/deleted objects
-
-**Phase 2: Technical Improvements**
-
-- [ ] ID-first operations for all tools
-- [ ] Smart error recovery with fallback to IDs
-- [ ] Object validation tool
-- [ ] Automatic state synchronization (future)
-
-### 🎯 New User Experience (NUX)
-
-**Phase 1: Minimal (Ship Now)**
-
-- [ ] Add movement/sync tip to first read-song
-
-**Phase 2: Safety & Core Features**
-
-- [ ] Welcome message with capabilities overview
-- [ ] Save reminder for data safety
-- [ ] Basic prompt suggestions
-
-**Phase 3: Progressive Disclosure**
-
-- [ ] Context-aware tips based on Live Set state
-- [ ] Error-specific help messages
-- [ ] Integration with customization preferences
-
-### 🛠️ Enhanced Features & Quality
-
-**Device Information:**
+#### 0.9.2 - Device Information & Instrument Assistance
 
 - [ ] Add device listing to read-track tool
 - [ ] Include devices in read-song output
 - [ ] Show device types (instrument/audio_effect/midi_effect)
+- [ ] **Stretch Goal**: MVP Instrument Selection & Sound Design Assistance
+  - [ ] Embed basic Live instrument info (Suite/Standard/Intro editions)
+  - [ ] Have Claude ask about user's VST/AU plugins when relevant
+  - [ ] Basic contextual instrument recommendations
 
-**Arrangement Improvements:**
+#### 0.9.3 - Visual Identity & Track Routing
 
-- [ ] Allow changing clip length (currently requires read/delete/recreate)
+- [ ] Improve Producer Pal logo design
+- [ ] Update logo in Desktop Extension
+- [ ] Consider overall visual branding consistency
+- [ ] Track Signal Routing (prototype exists)
+  - [ ] Support for duplicating tracks without devices as MIDI sources
+  - [ ] Enable routing MIDI between tracks for layering
+  - [ ] Support multiple clips with different lengths for phasing patterns
+  - [ ] Automatic routing setup for layered loops/patterns
+  - [ ] UI/UX for routing configuration
+- [ ] Arrangement clip length changes
 
-**Duplicate Tool:**
+### 🚀 1.0.0 Release
 
-- [ ] Response format improvements (see Duplicate Tool Response Format
-      Improvement Plan)
-- [ ] ClipSlot.duplicate_clip_to with bulk destination support
-- [ ] Enhanced clip duplication safety with conflict detection
+_Stable, documented, user-friendly baseline with device awareness_
 
-**Error Handling:**
+### Post-1.0.0
 
-- [ ] Validation system for better error handling (start/end times, clip bounds)
+#### 1.0.x - Post-Launch Cleanup
+
+- [ ] Implement version update notifications in the UI
 - [ ] Optional toggle in device UI to suppress Max console errors
 - [ ] Standardize exception formats across tools
-
-**Testing:**
-
+- [ ] Duplicate Tool response format improvements
 - [ ] Improved mocking system with unified interface for LiveAPI objects
+- [ ] State Sync Phase 2: ID-first operations, smart error recovery
+- [ ] Validation system for better error handling
 
-### 💡 Future Ideas
+#### 1.1.0 - Customization Foundation
+
+- [ ] Customization Phase 1: Per-project context
+- [ ] Customization Phase 2: Global context
+- [ ] Customization Phase 3: JSON override system
+- [ ] Full Instrument Selection & Sound Design Assistance (beyond MVP)
+
+#### 1.2.0 - Device Control
+
+- [ ] R&D: Device & Effect Control (rack parameters, automation if the Live API
+      allows it one day)
+
+#### 2.0.0 - Learning & Personas
+
+- [ ] Customization Phase 4: Learning system with backups
+
+#### 2.1.0 - Personas
+
+- [ ] Customization Phase 5: Persona system
+
+### 💡 Future Ideas (2.x)
 
 **bar|beat Enhancements:**
 
