@@ -1009,12 +1009,12 @@ describe("readTrack", () => {
           {
             name: "Kick",
             note: 36, // C1
-            state: "mutedViaSolo",
+            state: "muted-via-solo",
             hasInstrument: true,
             chain: {
               name: "Kick",
               color: "#FF0000",
-              state: "mutedViaSolo",
+              state: "muted-via-solo",
               devices: [
                 expect.objectContaining({
                   name: "Simpler",

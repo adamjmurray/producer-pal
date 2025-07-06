@@ -10,7 +10,14 @@ export function addToolReadTrack(server, callLiveApi) {
       description:
         "Read comprehensive information about a track. Returns sessionClips and arrangementClips arrays containing clip objects with time-based properties in bar|beat format. " +
         "Understanding track state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline. " +
-        `DEVICE TYPES: Device objects have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}.`,
+        `DEVICE TYPES: Device objects have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}. ` +
+        "ENTITY STATES (for tracks, drum pads, and rack chains): " +
+        "When no 'state' property is present, the entity is active (normal state - playing or ready to play). " +
+        "When present, 'state' can be: " +
+        "'muted': Explicitly muted via UI button; " +
+        "'muted-via-solo': Muted as side-effect of another entity being soloed; " +
+        "'muted-also-via-solo': Both explicitly muted AND muted via solo (won't become active even if unmuted or other entity unsoloed); " +
+        "'soloed': Explicitly soloed, causing others to be muted-via-solo.",
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,

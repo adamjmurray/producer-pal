@@ -8,15 +8,24 @@ export const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
 export const LIVE_API_DEVICE_TYPE_AUDIO_EFFECT = 2;
 export const LIVE_API_DEVICE_TYPE_MIDI_EFFECT = 4;
 
+// State string constants (5 valid states)
+export const STATE = {
+  ACTIVE: "active",
+  MUTED: "muted",
+  MUTED_VIA_SOLO: "muted-via-solo",
+  MUTED_ALSO_VIA_SOLO: "muted-also-via-solo",
+  SOLOED: "soloed",
+};
+
 // Device type string constants (7 valid types)
 export const DEVICE_TYPE = {
   INSTRUMENT: "instrument",
-  INSTRUMENT_RACK: "instrument rack",
-  DRUM_RACK: "drum rack",
-  AUDIO_EFFECT: "audio effect",
-  AUDIO_EFFECT_RACK: "audio effect rack",
-  MIDI_EFFECT: "midi effect",
-  MIDI_EFFECT_RACK: "midi effect rack",
+  INSTRUMENT_RACK: "instrument-rack",
+  DRUM_RACK: "drum-rack",
+  AUDIO_EFFECT: "audio-effect",
+  AUDIO_EFFECT_RACK: "audio-effect-rack",
+  MIDI_EFFECT: "midi-effect",
+  MIDI_EFFECT_RACK: "midi-effect-rack",
 };
 
 // Array of all valid device types for documentation
@@ -25,7 +34,7 @@ export const DEVICE_TYPES = Object.values(DEVICE_TYPE);
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
  * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
- * @returns {string} State: "playing" | "muted" | "mutedViaSolo" | "mutedAlsoViaSolo" | "soloed"
+ * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
 function computeState(liveObject) {
   const isMuted = liveObject.getProperty("mute") > 0;
@@ -33,22 +42,22 @@ function computeState(liveObject) {
   const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
 
   if (isSoloed) {
-    return "soloed";
+    return STATE.SOLOED;
   }
 
   if (isMuted && isMutedViaSolo) {
-    return "mutedAlsoViaSolo";
+    return STATE.MUTED_ALSO_VIA_SOLO;
   }
 
   if (isMutedViaSolo) {
-    return "mutedViaSolo";
+    return STATE.MUTED_VIA_SOLO;
   }
 
   if (isMuted) {
-    return "muted";
+    return STATE.MUTED;
   }
 
-  return "playing";
+  return STATE.ACTIVE;
 }
 
 /**
@@ -331,11 +340,11 @@ function getDevicesWithChains(
             const isSoloed = pad.getProperty("solo") > 0;
 
             if (isSoloed) {
-              drumPadInfo.state = "soloed";
+              drumPadInfo.state = STATE.SOLOED;
             } else if (isMuted) {
-              drumPadInfo.state = "muted";
+              drumPadInfo.state = STATE.MUTED;
             }
-            // No state property means "playing" (will be post-processed if needed)
+            // No state property means "active" (will be post-processed if needed)
 
             // Only include chain when includeDrumChains is true
             if (includeDrumChains) {
@@ -350,9 +359,9 @@ function getDevicesWithChains(
                 ),
               };
 
-              // Add chain state property only if not default "playing" state
+              // Add chain state property only if not default "active" state
               const chainState = computeState(chain);
-              if (chainState !== "playing") {
+              if (chainState !== STATE.ACTIVE) {
                 drumPadInfo.chain.state = chainState;
               }
             }
@@ -362,21 +371,21 @@ function getDevicesWithChains(
 
         // Check if any drum pads are soloed
         const hasSoloedDrumPad = processedDrumPads.some(
-          (drumPadInfo) => drumPadInfo.state === "soloed",
+          (drumPadInfo) => drumPadInfo.state === STATE.SOLOED,
         );
 
         // Post-process drum pad states for solo behavior
         if (hasSoloedDrumPad) {
           processedDrumPads.forEach((drumPadInfo) => {
-            if (drumPadInfo.state === "soloed") {
+            if (drumPadInfo.state === STATE.SOLOED) {
               // Keep soloed state as-is
               return;
-            } else if (drumPadInfo.state === "muted") {
-              // Muted pad in solo context becomes mutedAlsoViaSolo
-              drumPadInfo.state = "mutedAlsoViaSolo";
+            } else if (drumPadInfo.state === STATE.MUTED) {
+              // Muted pad in solo context becomes muted-also-via-solo
+              drumPadInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
             } else if (!drumPadInfo.state) {
-              // Playing pad in solo context becomes mutedViaSolo
-              drumPadInfo.state = "mutedViaSolo";
+              // Playing pad in solo context becomes muted-via-solo
+              drumPadInfo.state = STATE.MUTED_VIA_SOLO;
             }
           });
         }
@@ -400,9 +409,9 @@ function getDevicesWithChains(
             color: chain.getColor(),
           };
 
-          // Add state property only if not default "playing" state
+          // Add state property only if not default "active" state
           const chainState = computeState(chain);
-          if (chainState !== "playing") {
+          if (chainState !== STATE.ACTIVE) {
             chainInfo.state = chainState;
           }
 
@@ -433,9 +442,9 @@ function getDevicesWithChains(
               color: chain.getColor(),
             };
 
-            // Add state property only if not default "playing" state
+            // Add state property only if not default "active" state
             const chainState = computeState(chain);
-            if (chainState !== "playing") {
+            if (chainState !== STATE.ACTIVE) {
               returnChainInfo.state = chainState;
             }
 
@@ -519,9 +528,9 @@ export function readTrack({ trackIndex, includeDrumChains = false } = {}) {
   // Extract drum map from the processed device structure
   result.drumMap = extractTrackDrumMap(result.devices);
 
-  // Add state property only if not default "playing" state
+  // Add state property only if not default "active" state
   const trackState = computeState(track);
-  if (trackState !== "playing") {
+  if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
   }
 

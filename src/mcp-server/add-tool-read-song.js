@@ -26,7 +26,14 @@ export function addToolReadSong(server, callLiveApi) {
         "Ask if this is intentional or if they'd like help selecting an instrument." +
         "Note: You cannot add instruments directly - you can only suggest which Live instruments " +
         "or VST/AU plugins might work well for their intended sound. " +
-        `DEVICE TYPES: Device objects have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}.`,
+        `DEVICE TYPES: Device objects have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}. ` +
+        "ENTITY STATES (for tracks, drum pads, and rack chains): " +
+        "When no 'state' property is present, the entity is active (normal state - playing or ready to play). " +
+        "When present, 'state' can be: " +
+        "'muted': Explicitly muted via UI button; " +
+        "'muted-via-solo': Muted as side-effect of another entity being soloed; " +
+        "'muted-also-via-solo': Both explicitly muted AND muted via solo (won't become active even if unmuted or other entity unsoloed); " +
+        "'soloed': Explicitly soloed, causing others to be muted-via-solo.",
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
