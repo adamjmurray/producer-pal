@@ -6,9 +6,14 @@ import { readClip } from "./read-clip";
  * @param {Object} args - The parameters
  * @param {number} args.sceneIndex - Scene index (0-based)
  * @param {boolean} [args.includeClips=false] - Whether to include clip information
+ * @param {boolean} [args.includeNotes=true] - Whether to include notes data in clips
  * @returns {Object} Result object with scene information
  */
-export function readScene({ sceneIndex, includeClips = false }) {
+export function readScene({
+  sceneIndex,
+  includeClips = false,
+  includeNotes = true,
+}) {
   const liveSet = new LiveAPI(`live_set`);
   const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
@@ -41,7 +46,7 @@ export function readScene({ sceneIndex, includeClips = false }) {
     result.clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
-        readClip({ trackIndex, clipSlotIndex: sceneIndex }),
+        readClip({ trackIndex, clipSlotIndex: sceneIndex, includeNotes }),
       )
       .filter((clip) => clip.id != null);
   }

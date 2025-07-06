@@ -4,7 +4,12 @@ import { PITCH_CLASS_NAMES } from "../notation/midi-pitch-to-name.js";
 import { readScene } from "./read-scene";
 import { readTrack } from "./read-track";
 
-export function readSong({ includeDrumChains = false } = {}) {
+export function readSong({
+  includeDrumChains = false,
+  includeNotes = true,
+  includeRackChains = true,
+  includeEmptyScenes = false,
+} = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const appView = new LiveAPI("live_app view");
@@ -52,9 +57,16 @@ export function readSong({ includeDrumChains = false } = {}) {
     selectedClipId,
     highlightedClipSlot: highlightedSlot,
     tracks: trackIds.map((_trackId, trackIndex) =>
-      readTrack({ trackIndex, includeDrumChains }),
+      readTrack({
+        trackIndex,
+        includeDrumChains,
+        includeNotes,
+        includeRackChains,
+      }),
     ),
-    scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
+    scenes: sceneIds
+      .map((_sceneId, sceneIndex) => readScene({ sceneIndex, includeNotes }))
+      .filter((scene) => includeEmptyScenes || !scene.isEmpty),
   };
 
   // Only include scale properties when scale is enabled

@@ -10,12 +10,14 @@ import { formatNotation } from "../notation/notation";
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based)
  * @param {string} [args.clipId] - Clip ID to directly access any clip
+ * @param {boolean} [args.includeNotes] - Whether to include notes data (default: true)
  * @returns {Object} Result object with clip information
  */
 export function readClip({
   trackIndex = null,
   clipSlotIndex = null,
   clipId = null,
+  includeNotes = true,
 }) {
   if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
     throw new Error(
@@ -104,10 +106,12 @@ export function readClip({
     );
     const notes = JSON.parse(notesDictionary).notes;
     result.noteCount = notes.length;
-    result.notes = formatNotation(notes, {
-      timeSigNumerator,
-      timeSigDenominator,
-    });
+    if (includeNotes) {
+      result.notes = formatNotation(notes, {
+        timeSigNumerator,
+        timeSigDenominator,
+      });
+    }
   }
 
   return result;

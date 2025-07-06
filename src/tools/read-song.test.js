@@ -128,7 +128,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong();
+    const result = readSong({ includeEmptyScenes: true });
 
     expect(result).toEqual({
       id: "live_set_id",
@@ -251,7 +251,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong();
+    const result = readSong({ includeEmptyScenes: true });
 
     expect(result).toEqual({
       id: "live_set",
@@ -423,7 +423,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong(); // Default behavior
+    const result = readSong({ includeEmptyScenes: true }); // Default behavior
 
     // Check that drum rack devices are included with drumPads but without devices in drumPad chains
     expect(result.tracks[0].devices).toEqual([

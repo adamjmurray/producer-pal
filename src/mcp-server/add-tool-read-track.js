@@ -30,6 +30,18 @@ export function addToolReadTrack(server, callLiveApi) {
           .describe(
             "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state, hasInstrument) without chain objects, and return chains are omitted from device output.",
           ),
+        includeNotes: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Whether to include notes data in clip objects (default: true). When false, clips return without notes property for lighter responses.",
+          ),
+        includeRackChains: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Whether to include chains in rack devices (default: true). When false, non-drum rack devices return without chains property for lighter responses. This is separate from includeDrumChains which controls drum pad chains.",
+          ),
       },
     },
     async (args) => callLiveApi("read-track", args),

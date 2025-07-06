@@ -45,6 +45,24 @@ export function addToolReadSong(server, callLiveApi) {
           .describe(
             "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state, hasInstrument) without chain objects and return chains are omitted from device output to reduce response size. Drum pads are still available via the drumMap property.",
           ),
+        includeNotes: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Whether to include notes data in clip objects (default: true). When false, clips return without notes property for lighter responses.",
+          ),
+        includeRackChains: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Whether to include chains in rack devices (default: true). When false, non-drum rack devices return without chains property for lighter responses. This is separate from includeDrumChains which controls drum pad chains.",
+          ),
+        includeEmptyScenes: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include scenes that contain no clips (default: false). When true, all scenes are returned regardless of clip content.",
+          ),
       },
     },
     async (args) => callLiveApi("read-song", args),

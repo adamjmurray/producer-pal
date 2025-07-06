@@ -285,6 +285,7 @@ function analyzeDrumPadChainDevices(chainDevices, depth = 0, maxDepth = 4) {
 function getDevicesWithChains(
   devices,
   includeDrumChains = false,
+  includeRackChains = true,
   depth = 0,
   maxDepth = 4,
 ) {
@@ -354,6 +355,7 @@ function getDevicesWithChains(
                 devices: getDevicesWithChains(
                   chainDevices,
                   includeDrumChains,
+                  includeRackChains,
                   depth + 1,
                   maxDepth,
                 ),
@@ -403,28 +405,32 @@ function getDevicesWithChains(
           (chain) => chain.getProperty("solo") > 0,
         );
 
-        deviceInfo.chains = chains.map((chain) => {
-          const chainInfo = {
-            name: chain.getProperty("name"),
-            color: chain.getColor(),
-          };
+        // Only include chains if includeRackChains is true
+        if (includeRackChains) {
+          deviceInfo.chains = chains.map((chain) => {
+            const chainInfo = {
+              name: chain.getProperty("name"),
+              color: chain.getColor(),
+            };
 
-          // Add state property only if not default "active" state
-          const chainState = computeState(chain);
-          if (chainState !== STATE.ACTIVE) {
-            chainInfo.state = chainState;
-          }
+            // Add state property only if not default "active" state
+            const chainState = computeState(chain);
+            if (chainState !== STATE.ACTIVE) {
+              chainInfo.state = chainState;
+            }
 
-          // Always include devices for non-drum racks
-          chainInfo.devices = getDevicesWithChains(
-            chain.getChildren("devices"),
-            includeDrumChains,
-            depth + 1,
-            maxDepth,
-          );
+            // Always include devices for non-drum racks
+            chainInfo.devices = getDevicesWithChains(
+              chain.getChildren("devices"),
+              includeDrumChains,
+              includeRackChains,
+              depth + 1,
+              maxDepth,
+            );
 
-          return chainInfo;
-        });
+            return chainInfo;
+          });
+        }
 
         // Only add hasSoloedChain property when it's true
         if (hasSoloedChain) {
@@ -456,6 +462,7 @@ function getDevicesWithChains(
               returnChainInfo.devices = getDevicesWithChains(
                 chain.getChildren("devices"),
                 includeDrumChains,
+                includeRackChains,
                 depth + 1,
                 maxDepth,
               );
@@ -475,10 +482,17 @@ function getDevicesWithChains(
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based)
- * @param {boolean} args.includeDrumChains - Whether to include drum pad chains and return chains (default: true)
+ * @param {boolean} args.includeDrumChains - Whether to include drum pad chains and return chains (default: false)
+ * @param {boolean} args.includeNotes - Whether to include notes data in clips (default: true)
+ * @param {boolean} args.includeRackChains - Whether to include chains in rack devices (default: true)
  * @returns {Object} Result object with track information
  */
-export function readTrack({ trackIndex, includeDrumChains = false } = {}) {
+export function readTrack({
+  trackIndex,
+  includeDrumChains = false,
+  includeNotes = true,
+  includeRackChains = true,
+} = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
@@ -512,17 +526,21 @@ export function readTrack({ trackIndex, includeDrumChains = false } = {}) {
     sessionClips: track
       .getChildIds("clip_slots")
       .map((_clipSlotId, clipSlotIndex) =>
-        readClip({ trackIndex, clipSlotIndex }),
+        readClip({ trackIndex, clipSlotIndex, includeNotes }),
       )
       .filter((clip) => clip.id != null),
 
     arrangementClips: track
       .getChildIds("arrangement_clips")
-      .map((clipId) => readClip({ clipId }))
+      .map((clipId) => readClip({ clipId, includeNotes }))
       .filter((clip) => clip.id != null),
 
     // List all devices on the track with nested chain structure
-    devices: getDevicesWithChains(trackDevices, includeDrumChains),
+    devices: getDevicesWithChains(
+      trackDevices,
+      includeDrumChains,
+      includeRackChains,
+    ),
   };
 
   // Extract drum map from the processed device structure
