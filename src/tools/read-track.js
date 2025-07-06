@@ -96,12 +96,15 @@ function extractTrackDrumMap(devices) {
   }
 
   // Extract drum pads from the first found drum rack (matching original behavior)
-  // Include all drum pads that exist (have chains)
+  // Include only drum pads that have instrument devices (exclude those with hasInstrument: false)
   const drumMap = {};
 
   drumRacks[0].drumPads.forEach((drumPad) => {
-    const pitchName = midiPitchToName(drumPad.note);
-    drumMap[pitchName] = drumPad.name;
+    // Only include drum pads that have instruments (exclude those with hasInstrument: false)
+    if (drumPad.hasInstrument !== false) {
+      const pitchName = midiPitchToName(drumPad.note);
+      drumMap[pitchName] = drumPad.name;
+    }
   });
 
   // Return empty object if drum rack exists but has no playable drum pads
@@ -120,6 +123,38 @@ function isInstrumentDevice(deviceType) {
     deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
     deviceType === DEVICE_TYPE.DRUM_RACK
   );
+}
+
+/**
+ * Recursively check if any device in the provided device list is an instrument
+ * @param {Array} devices - Array of processed device objects
+ * @returns {boolean} True if any instrument device is found (including nested in racks)
+ */
+function hasInstrumentInDevices(devices) {
+  if (!devices || devices.length === 0) {
+    return false;
+  }
+
+  for (const device of devices) {
+    // Check if this device is an instrument
+    if (isInstrumentDevice(device.type)) {
+      return true;
+    }
+
+    // Recursively check chains for rack devices
+    if (device.chains) {
+      for (const chain of device.chains) {
+        if (chain.devices && hasInstrumentInDevices(chain.devices)) {
+          return true;
+        }
+      }
+    }
+
+    // For drum racks, we don't need to check drumPads here since we're checking
+    // individual drum pad chains, not the entire drum rack structure
+  }
+
+  return false;
 }
 
 /**
@@ -223,22 +258,48 @@ function getDevicesWithChains(
 
             // Only include chain when includeDrumChains is true
             if (includeDrumChains) {
+              const processedChainDevices = getDevicesWithChains(
+                chainDevices,
+                includeDrumChains,
+                includeRackChains,
+                depth + 1,
+                maxDepth,
+              );
+
               drumPadInfo.chain = {
                 name: chain.getProperty("name"),
                 color: chain.getColor(),
-                devices: getDevicesWithChains(
-                  chainDevices,
-                  includeDrumChains,
-                  includeRackChains,
-                  depth + 1,
-                  maxDepth,
-                ),
+                devices: processedChainDevices,
               };
 
               // Add chain state property only if not default "active" state
               const chainState = computeState(chain);
               if (chainState !== STATE.ACTIVE) {
                 drumPadInfo.chain.state = chainState;
+              }
+
+              // Check if this drum pad has instrument devices and add hasInstrument property only when false
+              const hasInstrument = hasInstrumentInDevices(
+                processedChainDevices,
+              );
+              if (!hasInstrument) {
+                drumPadInfo.hasInstrument = false;
+              }
+            } else {
+              // When not including drum chains, we still need to check for instruments
+              // to determine hasInstrument property
+              const processedChainDevices = getDevicesWithChains(
+                chainDevices,
+                false, // Don't include drum chains in processing
+                includeRackChains,
+                depth + 1,
+                maxDepth,
+              );
+              const hasInstrument = hasInstrumentInDevices(
+                processedChainDevices,
+              );
+              if (!hasInstrument) {
+                drumPadInfo.hasInstrument = false;
               }
             }
 
