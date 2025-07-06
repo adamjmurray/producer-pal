@@ -7,6 +7,7 @@ export function addToolTransport(server, callLiveApi) {
     {
       title: "Control the Ableton Live Transport",
       description:
+        "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +
         "Controls the Arrangement and Session transport, including playback, position, and loop settings. " +
         "IMPORTANT: Tracks can only play one clip at a time. Session clips take precedence over Arrangement clips. " +
         "When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.",

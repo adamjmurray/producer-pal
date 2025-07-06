@@ -7,6 +7,7 @@ export function addToolUpdateClip(server, callLiveApi) {
     {
       title: "Update Clip in Ableton Live",
       description:
+        "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +
         "Updates properties of existing clips by ID. Supports bulk operations when provided with comma-separated clip IDs. All properties except ids are optional. Use this tool to modify clips that already exist, including clips created by duplicating scenes or tracks. To create new clips in empty clip slots, use create-clip instead. " +
         "IMPORTANT: All timing parameters (startMarker, length) and note positions in the bar|beat notation are relative to the clip's start time, not the global arrangement timeline.",
       annotations: {
