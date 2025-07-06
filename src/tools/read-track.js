@@ -485,7 +485,12 @@ export function readTrack({
     result.midiEffects = categorizedDevices.midiEffects;
   }
   if (includeInstrument) {
-    result.instrument = categorizedDevices.instrument;
+    // For Producer Pal host track, omit instrument property when it's null
+    if (isProducerPalHost && categorizedDevices.instrument === null) {
+      // Don't include instrument property at all
+    } else {
+      result.instrument = categorizedDevices.instrument;
+    }
   }
   if (includeAudioEffects) {
     result.audioEffects = categorizedDevices.audioEffects;

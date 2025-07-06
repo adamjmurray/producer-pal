@@ -202,6 +202,33 @@ describe("readTrack", () => {
     expect(result2.producerPalVersion).toBeUndefined();
   });
 
+  it("should omit instrument property when null for Producer Pal host track", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "this_device") {
+        return "live_set tracks 1 devices 0";
+      }
+      return this._path;
+    });
+
+    liveApiId.mockReturnValue("track1");
+    mockLiveApiGet({
+      Track: mockTrackProperties({
+        devices: [], // No devices means instrument will be null
+      }),
+    });
+
+    // Producer Pal host track with null instrument - should omit the property
+    const hostResult = readTrack({ trackIndex: 1 });
+    expect(hostResult.hasProducerPalDevice).toBe(true);
+    expect(hostResult).not.toHaveProperty("instrument");
+
+    // Regular track with null instrument - should include the property
+    const regularResult = readTrack({ trackIndex: 0 });
+    expect(regularResult.hasProducerPalDevice).toBeUndefined();
+    expect(regularResult).toHaveProperty("instrument");
+    expect(regularResult.instrument).toBe(null);
+  });
+
   it("returns sessionClips information when the track has clips in Session view", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {
