@@ -87,7 +87,6 @@ describe("readTrack", () => {
       groupId: null,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
-      drumMap: null,
       arrangementClips: [],
       sessionClips: [],
       instrument: null,
@@ -127,7 +126,6 @@ describe("readTrack", () => {
       groupId: null,
       playingSlotIndex: -1,
       firedSlotIndex: -1,
-      drumMap: null,
       arrangementClips: [],
       sessionClips: [],
       instrument: null,
@@ -178,7 +176,6 @@ describe("readTrack", () => {
       groupId: "456",
       playingSlotIndex: 2,
       firedSlotIndex: 3,
-      drumMap: null,
       arrangementClips: [],
       sessionClips: [],
       instrument: null,
@@ -253,7 +250,6 @@ describe("readTrack", () => {
       groupId: null,
       firedSlotIndex: -1,
       playingSlotIndex: 0,
-      drumMap: null,
       arrangementClips: [],
       sessionClips: [
         expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
@@ -1121,7 +1117,7 @@ describe("readTrack", () => {
         }),
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toBeNull();
+      expect(result.drumMap).toBeUndefined();
     });
 
     it("returns null when the track has devices but no instruments", () => {
@@ -1135,7 +1131,7 @@ describe("readTrack", () => {
         effect2: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toBeNull();
+      expect(result.drumMap).toBeUndefined();
     });
 
     it("returns null when the track has an instrument but it's not a drum rack", () => {
@@ -1150,7 +1146,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toBeNull();
+      expect(result.drumMap).toBeUndefined();
     });
 
     it("returns empty array when the drum rack has no pads", () => {
@@ -1517,7 +1513,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toBeNull();
+      expect(result.drumMap).toBeUndefined();
     });
 
     it("returns null when instrument rack first chain has no devices", () => {
@@ -1537,7 +1533,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toBeNull();
+      expect(result.drumMap).toBeUndefined();
     });
 
     it("returns null when instrument rack first chain first device is not a drum rack", () => {
@@ -1561,7 +1557,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumMap).toBeNull();
+      expect(result.drumMap).toBeUndefined();
     });
 
     it("prefers direct drum rack over nested drum rack", () => {

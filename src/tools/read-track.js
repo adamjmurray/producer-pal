@@ -496,7 +496,10 @@ export function readTrack({
     ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
     ...categorizedDevices.audioEffects,
   ];
-  result.drumMap = extractTrackDrumMap(allDevices);
+  const drumMap = extractTrackDrumMap(allDevices);
+  if (drumMap != null) {
+    result.drumMap = drumMap;
+  }
 
   // Add state property only if not default "active" state
   const trackState = computeState(track);

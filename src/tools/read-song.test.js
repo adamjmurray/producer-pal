@@ -162,8 +162,7 @@ describe("readSong", () => {
           groupId: null,
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          drumMap: null,
-          arrangementClips: [],
+            arrangementClips: [],
           sessionClips: [
             expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
@@ -184,8 +183,7 @@ describe("readSong", () => {
           groupId: "track1",
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          drumMap: null,
-          arrangementClips: [],
+            arrangementClips: [],
           sessionClips: [
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
           ],
