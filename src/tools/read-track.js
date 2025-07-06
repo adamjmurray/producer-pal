@@ -455,8 +455,6 @@ export function readTrack({
     trackIndex,
     color: track.getColor(),
     isArmed: track.getProperty("arm") > 0,
-    playingSlotIndex: track.getProperty("playing_slot_index"),
-    firedSlotIndex: track.getProperty("fired_slot_index"),
     followsArrangement: track.getProperty("back_to_arranger") === 0,
     isGroup: track.getProperty("is_foldable") > 0,
     isGroupMember: track.getProperty("is_grouped") > 0,
@@ -502,6 +500,18 @@ export function readTrack({
   const drumMap = extractTrackDrumMap(allDevices);
   if (drumMap != null) {
     result.drumMap = drumMap;
+  }
+
+  // Only include playingSlotIndex when >= 0
+  const playingSlotIndex = track.getProperty("playing_slot_index");
+  if (playingSlotIndex >= 0) {
+    result.playingSlotIndex = playingSlotIndex;
+  }
+
+  // Only include firedSlotIndex when >= 0
+  const firedSlotIndex = track.getProperty("fired_slot_index");
+  if (firedSlotIndex >= 0) {
+    result.firedSlotIndex = firedSlotIndex;
   }
 
   // Add state property only if not default "active" state

@@ -124,8 +124,6 @@ describe("readTrack", () => {
       isGroup: false,
       isGroupMember: false,
       groupId: null,
-      playingSlotIndex: -1,
-      firedSlotIndex: -1,
       arrangementClips: [],
       sessionClips: [],
       instrument: null,
@@ -248,7 +246,6 @@ describe("readTrack", () => {
       isGroup: false,
       isGroupMember: false,
       groupId: null,
-      firedSlotIndex: -1,
       playingSlotIndex: 0,
       arrangementClips: [],
       sessionClips: [
