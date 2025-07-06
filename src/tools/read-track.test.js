@@ -1005,7 +1005,6 @@ describe("readTrack", () => {
         displayName: "My Drums",
         type: DEVICE_TYPE.DRUM_RACK,
         isActive: true,
-        hasSoloedDrumPad: true, // Because snare pad is soloed
         drumPads: [
           {
             name: "Kick",

@@ -385,10 +385,6 @@ function getDevicesWithChains(
         deviceInfo.drumPads = processedDrumPads.map(
           ({ _originalPad, _originalChain, ...drumPadInfo }) => drumPadInfo,
         );
-
-        if (hasSoloedDrumPad) {
-          deviceInfo.hasSoloedDrumPad = hasSoloedDrumPad;
-        }
       } else {
         // Handle other rack devices (instrument racks, audio effect racks, etc.)
         const chains = device.getChildren("chains");
