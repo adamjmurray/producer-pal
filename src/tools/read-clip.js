@@ -76,9 +76,14 @@ export function readClip({
       timeSigDenominator,
     ),
     isPlaying: clip.getProperty("is_playing") > 0,
-    isTriggered: clip.getProperty("is_triggered") > 0,
     timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
   };
+
+  // Only include triggered when clip is triggered
+  const isTriggered = clip.getProperty("is_triggered") > 0;
+  if (isTriggered) {
+    result.triggered = true;
+  }
 
   if (isArrangementClip) {
     const liveSet = new LiveAPI("live_set");

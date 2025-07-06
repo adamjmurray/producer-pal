@@ -33,7 +33,6 @@ describe("readScene", () => {
       sceneIndex: 0,
       color: "#FF0000",
       isEmpty: false,
-      isTriggered: false,
       tempo: 120,
       timeSignature: "4/4",
     });
@@ -75,7 +74,7 @@ describe("readScene", () => {
       sceneIndex: 1,
       color: "#00FF00",
       isEmpty: true,
-      isTriggered: true,
+      triggered: true,
       tempo: "disabled",
       timeSignature: "disabled",
     });
@@ -122,7 +121,6 @@ describe("readScene", () => {
       sceneIndex: 0,
       color: "#FF0000",
       isEmpty: false,
-      isTriggered: false,
       tempo: 120,
       timeSignature: "4/4",
       clips: [

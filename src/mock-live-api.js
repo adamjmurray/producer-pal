@@ -233,7 +233,6 @@ export const expectedScene = (overrides = {}) => ({
   sceneIndex: 0,
   color: "#000000",
   isEmpty: false,
-  isTriggered: false,
   tempo: "disabled",
   timeSignature: "disabled",
   ...overrides,
@@ -253,7 +252,6 @@ export const expectedClip = (overrides = {}) => ({
   loop: false,
   loopStart: "1|2", // bar|beat format
   isPlaying: false,
-  isTriggered: false,
   timeSignature: "4/4",
   noteCount: 0,
   notes: "",

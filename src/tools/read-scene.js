@@ -35,12 +35,17 @@ export function readScene({
     sceneIndex,
     color: scene.getColor(),
     isEmpty: scene.getProperty("is_empty") > 0,
-    isTriggered: scene.getProperty("is_triggered") > 0,
     tempo: isTempoEnabled ? scene.getProperty("tempo") : "disabled",
     timeSignature: isTimeSignatureEnabled
       ? `${scene.getProperty("time_signature_numerator")}/${scene.getProperty("time_signature_denominator")}`
       : "disabled",
   };
+
+  // Only include triggered when scene is triggered
+  const isTriggered = scene.getProperty("is_triggered") > 0;
+  if (isTriggered) {
+    result.triggered = true;
+  }
 
   if (includeClips) {
     result.clips = liveSet
