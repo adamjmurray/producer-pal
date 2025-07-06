@@ -62,15 +62,11 @@
 
 - [x] Welcome message / tips in read-song tool description
 - [x] Add device listing to read-song and read-track
-- [ ] MVP Instrument Selection & Sound Design Assistance
-  - [ ] Embed basic Live instrument info (Suite/Standard/Intro editions)
-  - [ ] Have Claude ask about user's VST/AU plugins when relevant
-  - [ ] Basic contextual instrument recommendations
 - [ ] Track Signal Routing
   - [ ] Support for duplicating tracks without devices as MIDI sources
   - [ ] Enable routing MIDI between tracks for layering
 - [ ] Add a link to docs in the Max for Live device UI
-- [ ] Ensure Claude will link to docs without hesitation when asked
+  - [ ] Ensure Claude will link to docs without hesitation when asked
 - [ ] Document the version-bumping process
 
 #### 0.9.2
