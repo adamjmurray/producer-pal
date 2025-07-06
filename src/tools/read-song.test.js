@@ -163,7 +163,7 @@ describe("readSong", () => {
           groupId: null,
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          drumPads: null,
+          drumMap: null,
           arrangementClips: [],
           sessionClips: [
             expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
@@ -189,7 +189,7 @@ describe("readSong", () => {
           groupId: "track1",
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          drumPads: null,
+          drumMap: null,
           arrangementClips: [],
           sessionClips: [
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
@@ -363,6 +363,12 @@ describe("readSong", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set tracks 0 devices 0") return "drum_rack1";
+      if (this._path === "live_set tracks 0 devices 1") return "reverb1";
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36")
+        return "kick_pad";
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0")
+        return "kick_chain";
       return this._id;
     });
 
@@ -385,6 +391,14 @@ describe("readSong", () => {
         is_active: 1,
         can_have_chains: 1,
         can_have_drum_pads: 1,
+        drum_pads: children("kick_pad"),
+        return_chains: [],
+      },
+      kick_pad: {
+        name: "Kick",
+        note: 36, // C1
+        mute: 0,
+        solo: 0,
         chains: children("kick_chain"),
       },
       kick_chain: {
@@ -416,27 +430,27 @@ describe("readSong", () => {
 
     const result = readSong(); // Default behavior
 
-    // Check that drum rack devices are included with chains but without devices in chains
+    // Check that drum rack devices are included with drumPads but without devices in drumPad chains
     expect(result.tracks[0].devices).toEqual([
       expect.objectContaining({
         name: "Drum Rack",
         type: DEVICE_TYPE.DRUM_RACK,
-        chains: expect.any(Array), // Should have chains property
+        drumPads: expect.any(Array), // Should have drumPads property
       }),
       expect.objectContaining({
         name: "Reverb",
         type: DEVICE_TYPE.AUDIO_EFFECT,
       }),
     ]);
-    // Drum rack device should be present with chains but chains should not have devices
+    // Drum rack device should be present with drumPads but drumPad chains should not have devices
     const drumRack = result.tracks[0].devices.find(
       (d) => d.type === DEVICE_TYPE.DRUM_RACK,
     );
     expect(drumRack).toBeDefined();
-    expect(drumRack.chains).toBeDefined();
-    // If chains exist, they should not have devices property
-    if (drumRack.chains && drumRack.chains.length > 0) {
-      expect(drumRack.chains[0].devices).toBeUndefined();
+    expect(drumRack.drumPads).toBeDefined();
+    // If drumPads exist, their chains should not have devices property when includeDrumRackDevices=false
+    if (drumRack.drumPads && drumRack.drumPads.length > 0) {
+      expect(drumRack.drumPads[0].chain.devices).toBeUndefined();
     }
   });
 });

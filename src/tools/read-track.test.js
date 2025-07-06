@@ -88,7 +88,7 @@ describe("readTrack", () => {
       groupId: null,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
-      drumPads: null,
+      drumMap: null,
       arrangementClips: [],
       sessionClips: [],
       devices: [],
@@ -132,7 +132,7 @@ describe("readTrack", () => {
       groupId: null,
       playingSlotIndex: -1,
       firedSlotIndex: -1,
-      drumPads: null,
+      drumMap: null,
       arrangementClips: [],
       sessionClips: [],
       devices: [],
@@ -185,7 +185,7 @@ describe("readTrack", () => {
       groupId: "456",
       playingSlotIndex: 2,
       firedSlotIndex: 3,
-      drumPads: null,
+      drumMap: null,
       arrangementClips: [],
       sessionClips: [],
       devices: [],
@@ -265,7 +265,7 @@ describe("readTrack", () => {
       groupId: null,
       firedSlotIndex: -1,
       playingSlotIndex: 0,
-      drumPads: null,
+      drumMap: null,
       arrangementClips: [],
       sessionClips: [
         expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
@@ -425,7 +425,7 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          chains: [],
+          drum_pads: [],
           return_chains: [],
         },
       });
@@ -437,7 +437,7 @@ describe("readTrack", () => {
         displayName: "My Drums",
         type: DEVICE_TYPE.DRUM_RACK,
         isActive: true,
-        chains: [],
+        drumPads: [],
       });
     });
 
@@ -937,17 +937,21 @@ describe("readTrack", () => {
       });
     });
 
-    it("handles drum rack chains with hasSoloedChain property", () => {
+    it("handles drum rack drum pads with hasSoloedChain property", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
           case "live_set tracks 0 devices 0":
             return "drum_rack";
-          case "live_set tracks 0 devices 0 chains 0":
-            return "chain1";
-          case "live_set tracks 0 devices 0 chains 1":
-            return "chain2";
+          case "live_set tracks 0 devices 0 drum_pads 36":
+            return "kick_pad";
+          case "live_set tracks 0 devices 0 drum_pads 38":
+            return "snare_pad";
+          case "live_set tracks 0 devices 0 drum_pads 36 chains 0":
+            return "kick_chain";
+          case "live_set tracks 0 devices 0 drum_pads 38 chains 0":
+            return "snare_chain";
           default:
             return this._id;
         }
@@ -965,24 +969,54 @@ describe("readTrack", () => {
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
-          chains: children("chain1", "chain2"),
+          drum_pads: children("kick_pad", "snare_pad"),
           return_chains: [],
         },
-        chain1: {
+        kick_pad: {
+          name: "Kick",
+          note: 36, // C1
+          mute: 0,
+          solo: 0,
+          chains: children("kick_chain"),
+        },
+        snare_pad: {
+          name: "Snare",
+          note: 38, // D1
+          mute: 0,
+          solo: 1, // This pad is soloed
+          chains: children("snare_chain"),
+        },
+        kick_chain: {
           name: "Kick",
           color: 16711680, // Red
           mute: 0,
-          muted_via_solo: 0,
           solo: 0,
-          devices: [],
+          devices: children("kick_device"),
         },
-        chain2: {
+        snare_chain: {
           name: "Snare",
           color: 65280, // Green
           mute: 0,
-          muted_via_solo: 0,
-          solo: 1, // This chain is soloed
-          devices: [],
+          solo: 1,
+          devices: children("snare_device"),
+        },
+        kick_device: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        snare_device: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
         },
       });
 
@@ -993,23 +1027,49 @@ describe("readTrack", () => {
         displayName: "My Drums",
         type: DEVICE_TYPE.DRUM_RACK,
         isActive: true,
-        hasSoloedChain: true, // Because chain2 is soloed
-        chains: [
+        hasSoloedChain: true, // Because snare pad is soloed
+        drumPads: [
           {
             name: "Kick",
-            color: "#FF0000",
-            isMuted: false,
-            isSoloed: false,
-            devices: [],
-            // No isMutedViaSolo for drum rack chains
+            note: 36, // C1
+            mute: false,
+            solo: false,
+            hasInstrument: true,
+            hasMidiEffects: false,
+            hasAudioEffects: false,
+            chain: {
+              name: "Kick",
+              color: "#FF0000",
+              isMuted: false,
+              isSoloed: false,
+              devices: [
+                expect.objectContaining({
+                  name: "Simpler",
+                  type: DEVICE_TYPE.INSTRUMENT,
+                }),
+              ],
+            },
           },
           {
             name: "Snare",
-            color: "#00FF00",
-            isMuted: false,
-            isSoloed: true,
-            devices: [],
-            // No isMutedViaSolo for drum rack chains
+            note: 38, // D1
+            mute: false,
+            solo: true,
+            hasInstrument: true,
+            hasMidiEffects: false,
+            hasAudioEffects: false,
+            chain: {
+              name: "Snare",
+              color: "#00FF00",
+              isMuted: false,
+              isSoloed: true,
+              devices: [
+                expect.objectContaining({
+                  name: "Simpler",
+                  type: DEVICE_TYPE.INSTRUMENT,
+                }),
+              ],
+            },
           },
         ],
       });
@@ -1177,7 +1237,7 @@ describe("readTrack", () => {
         }),
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toBeNull();
+      expect(result.drumMap).toBeNull();
     });
 
     it("returns null when the track has devices but no instruments", () => {
@@ -1191,7 +1251,7 @@ describe("readTrack", () => {
         effect2: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toBeNull();
+      expect(result.drumMap).toBeNull();
     });
 
     it("returns null when the track has an instrument but it's not a drum rack", () => {
@@ -1206,60 +1266,157 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toBeNull();
+      expect(result.drumMap).toBeNull();
     });
 
     it("returns empty array when the drum rack has no pads", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0") return "track1";
+        if (this._path === "live_set tracks 0 devices 0") return "drumrack";
+        return this._id;
+      });
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Empty Drum Rack",
           devices: children("drumrack"),
         }),
         drumrack: {
+          name: "Empty Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
           can_have_drum_pads: 1,
           drum_pads: [],
+          return_chains: [],
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toEqual([]);
+      expect(result.drumMap).toEqual({});
     });
 
     it("only includes drum pads that have chains to play a sound", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "drumrack";
+          case "live_set tracks 0 devices 0 drum_pads 60":
+            return "pad1";
+          case "live_set tracks 0 devices 0 drum_pads 62":
+            return "pad2";
+          case "live_set tracks 0 devices 0 drum_pads 64":
+            return "pad3";
+          case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 0 drum_pads 64 chains 0":
+            return "chain2";
+          default:
+            return this._id;
+        }
+      });
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Drum Rack With Pads",
           devices: children("drumrack"),
         }),
         drumrack: {
+          name: "Drum Rack With Pads",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
           can_have_drum_pads: 1,
           drum_pads: children("pad1", "pad2", "pad3"),
+          return_chains: [],
         },
         pad1: {
-          note: 60,
+          note: 60, // C3
           name: "Kick",
+          mute: 0,
+          solo: 0,
           chains: children("chain1"),
         },
         pad2: {
-          note: 62,
+          note: 62, // D3
           name: "Snare",
-          chains: [],
+          mute: 0,
+          solo: 0,
+          chains: [], // No chains, should be excluded
         },
         pad3: {
-          note: 64,
+          note: 64, // E3
           name: "Hi-hat",
+          mute: 0,
+          solo: 0,
           chains: children("chain2"),
+        },
+        chain1: {
+          name: "Kick",
+          color: 16711680,
+          mute: 0,
+          solo: 0,
+          devices: children("kick_device"),
+        },
+        chain2: {
+          name: "Hi-hat",
+          color: 65280,
+          mute: 0,
+          solo: 0,
+          devices: children("hihat_device"),
+        },
+        kick_device: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        hihat_device: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toEqual([
-        { pitch: "C3", name: "Kick" },
-        { pitch: "E3", name: "Hi-hat" },
-      ]);
+      expect(result.drumMap).toEqual({
+        C3: "Kick",
+        E3: "Hi-hat",
+      });
     });
 
     it("stops at first drum rack found", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "midiEffect";
+          case "live_set tracks 0 devices 1":
+            return "drumrack1";
+          case "live_set tracks 0 devices 2":
+            return "drumrack2";
+          case "live_set tracks 0 devices 1 drum_pads 60":
+            return "pad1";
+          case "live_set tracks 0 devices 1 drum_pads 60 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 2 drum_pads 61":
+            return "pad2";
+          case "live_set tracks 0 devices 2 drum_pads 61 chains 0":
+            return "chain2";
+          default:
+            return this._id;
+        }
+      });
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Multiple Instruments",
@@ -1267,70 +1424,199 @@ describe("readTrack", () => {
           // this is not supported as a feature, but let's make sure something reasonable happens:
           devices: children("midiEffect", "drumrack1", "drumrack2"),
         }),
-        midiEffect: { type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT },
+        midiEffect: {
+          name: "MIDI Effect",
+          class_name: "MidiEffect",
+          class_display_name: "MIDI Effect",
+          type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
         drumrack1: {
+          name: "First Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
           can_have_drum_pads: 1,
           drum_pads: children("pad1"),
+          return_chains: [],
         },
         pad1: {
-          note: 60,
+          note: 60, // C3
           name: "First Drum Rack Kick",
+          mute: 0,
+          solo: 0,
           chains: children("chain1"),
         },
-        drumrack2: {
+        chain1: {
+          name: "First Drum Rack Kick",
+          color: 16711680,
+          mute: 0,
+          solo: 0,
+          devices: children("device1"),
+        },
+        device1: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        drumrack2: {
+          name: "Second Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
           can_have_drum_pads: 1,
           drum_pads: children("pad2"),
+          return_chains: [],
         },
         pad2: {
-          note: 61,
+          note: 61, // Db3
           name: "Second Drum Rack Snare",
+          mute: 0,
+          solo: 0,
           chains: children("chain2"),
+        },
+        chain2: {
+          name: "Second Drum Rack Snare",
+          color: 65280,
+          mute: 0,
+          solo: 0,
+          devices: children("device2"),
+        },
+        device2: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toEqual([
-        { pitch: "C3", name: "First Drum Rack Kick" },
-      ]);
+      expect(result.drumMap).toEqual({
+        C3: "First Drum Rack Kick",
+      });
     });
 
     it("finds drum pads in nested drum rack inside instrument rack", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "instrumentRack";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 0 chains 0 devices 0":
+            return "nestedDrumRack";
+          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 36":
+            return "pad1";
+          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 37":
+            return "pad2";
+          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 36 chains 0":
+            return "drumchain1";
+          case "live_set tracks 0 devices 0 chains 0 devices 0 drum_pads 37 chains 0":
+            return "drumchain2";
+          default:
+            return this._id;
+        }
+      });
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Track Nested Drum Rack",
           devices: children("instrumentRack"),
         }),
         instrumentRack: {
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          can_have_drum_pads: 0,
+          name: "Instrument Rack",
           class_name: "InstrumentGroupDevice",
+          class_display_name: "Instrument Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
           chains: children("chain1"),
+          return_chains: [],
         },
         chain1: {
+          name: "Chain 1",
+          color: 16711680,
+          mute: 0,
+          solo: 0,
           devices: children("nestedDrumRack"),
         },
         nestedDrumRack: {
+          name: "Nested Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
           type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
           can_have_drum_pads: 1,
           drum_pads: children("pad1", "pad2"),
+          return_chains: [],
         },
         pad1: {
-          note: 36,
+          note: 36, // C1
           name: "Kick Dub",
-          chains: children("chain1"),
+          mute: 0,
+          solo: 0,
+          chains: children("drumchain1"),
         },
         pad2: {
-          note: 37,
+          note: 37, // Db1
           name: "Snare Dub",
-          chains: children("chain2"),
+          mute: 0,
+          solo: 0,
+          chains: children("drumchain2"),
+        },
+        drumchain1: {
+          name: "Kick Dub",
+          color: 16711680,
+          mute: 0,
+          solo: 0,
+          devices: children("kickdevice"),
+        },
+        drumchain2: {
+          name: "Snare Dub",
+          color: 65280,
+          mute: 0,
+          solo: 0,
+          devices: children("snaredevice"),
+        },
+        kickdevice: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        snaredevice: {
+          name: "Simpler",
+          class_name: "Simpler",
+          class_display_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toEqual([
-        { pitch: "C1", name: "Kick Dub" },
-        { pitch: "Db1", name: "Snare Dub" },
-      ]);
+      expect(result.drumMap).toEqual({
+        C1: "Kick Dub",
+        Db1: "Snare Dub",
+      });
     });
 
     it("returns null when instrument rack has no chains", () => {
@@ -1347,7 +1633,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toBeNull();
+      expect(result.drumMap).toBeNull();
     });
 
     it("returns null when instrument rack first chain has no devices", () => {
@@ -1367,7 +1653,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toBeNull();
+      expect(result.drumMap).toBeNull();
     });
 
     it("returns null when instrument rack first chain first device is not a drum rack", () => {
@@ -1391,7 +1677,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toBeNull();
+      expect(result.drumMap).toBeNull();
     });
 
     it("prefers direct drum rack over nested drum rack", () => {
@@ -1431,7 +1717,7 @@ describe("readTrack", () => {
         },
       });
       const result = readTrack({ trackIndex: 0 });
-      expect(result.drumPads).toEqual([{ pitch: "C3", name: "Direct Kick" }]);
+      expect(result.drumMap).toEqual({ C3: "Direct Kick" });
     });
   });
 });

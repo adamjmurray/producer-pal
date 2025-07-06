@@ -222,7 +222,7 @@ export const expectedTrack = (overrides = {}) => ({
   groupId: null,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
-  drumPads: null,
+  drumMap: null,
   arrangementClips: [],
   sessionClips: [],
   devices: [],

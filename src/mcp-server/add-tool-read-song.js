@@ -36,7 +36,7 @@ export function addToolReadSong(server, callLiveApi) {
           .boolean()
           .default(false)
           .describe(
-            "Whether to include devices inside drum rack chains in track device lists (default: false). When false, drum rack devices are included with their chain details (name, color, mute/solo states) but without the nested devices within those chains to reduce response size. Drum pads are still available via the drumPads property.",
+            "Whether to include devices inside drum rack chains in track device lists (default: false). When false, drum rack devices are included with their chain details (name, color, mute/solo states) but without the nested devices within those chains to reduce response size. Drum pads are still available via the drumMap property.",
           ),
       },
     },
