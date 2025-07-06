@@ -79,8 +79,7 @@ describe("readTrack", () => {
       name: "Track 1",
       trackIndex: 0,
       color: "#FF0000",
-      isMuted: false,
-      isSoloed: true,
+      state: "soloed",
       isArmed: true,
       followsArrangement: true,
       isGroup: false,
@@ -121,8 +120,7 @@ describe("readTrack", () => {
       name: "Audio Track",
       trackIndex: 1,
       color: "#00FF00",
-      isMuted: true,
-      isSoloed: false,
+      state: "muted",
       isArmed: false,
       followsArrangement: true,
       isGroup: false,
@@ -173,8 +171,7 @@ describe("readTrack", () => {
       name: "Track 1",
       trackIndex: 0,
       color: "#FF0000",
-      isMuted: false,
-      isSoloed: true,
+      state: "soloed",
       isArmed: true,
       followsArrangement: true,
       isGroup: true,
@@ -252,8 +249,6 @@ describe("readTrack", () => {
       trackIndex: 2,
       color: "#0000FF",
       isArmed: false,
-      isMuted: false,
-      isSoloed: false,
       followsArrangement: false,
       isGroup: false,
       isGroupMember: false,
@@ -540,8 +535,6 @@ describe("readTrack", () => {
           {
             name: "Piano",
             color: "#FF0000",
-            isMuted: false,
-            isSoloed: false,
             devices: [
               {
                 id: "nested_device1",
@@ -619,8 +612,6 @@ describe("readTrack", () => {
           {
             name: "Filter Chain",
             color: "#0000FF",
-            isMuted: false,
-            isSoloed: false,
             devices: [
               {
                 id: "nested_effect1",
@@ -721,8 +712,6 @@ describe("readTrack", () => {
           {
             name: "Wet",
             color: "#0000FF",
-            isMuted: false,
-            isSoloed: false,
             devices: [
               {
                 id: "inner_rack",
@@ -734,8 +723,7 @@ describe("readTrack", () => {
                   {
                     name: "Hall",
                     color: "#00FF00",
-                    isMuted: false,
-                    isSoloed: true,
+                    state: "soloed",
                     devices: [
                       {
                         id: "deep_device",
@@ -807,8 +795,6 @@ describe("readTrack", () => {
           {
             name: "Empty Chain",
             color: "#000000",
-            isMuted: false,
-            isSoloed: false,
             devices: [],
           },
         ],
@@ -899,8 +885,6 @@ describe("readTrack", () => {
           {
             name: "Piano",
             color: "#FF0000",
-            isMuted: false,
-            isSoloed: false,
             devices: [
               {
                 id: "device1",
@@ -914,8 +898,7 @@ describe("readTrack", () => {
           {
             name: "Bass",
             color: "#00FF00",
-            isMuted: true,
-            isSoloed: false,
+            state: "muted",
             devices: [
               {
                 id: "device2",
@@ -983,6 +966,7 @@ describe("readTrack", () => {
           name: "Kick",
           color: 16711680, // Red
           mute: 0,
+          muted_via_solo: 1, // Muted because snare chain is soloed
           solo: 0,
           devices: children("kick_device"),
         },
@@ -990,6 +974,7 @@ describe("readTrack", () => {
           name: "Snare",
           color: 65280, // Green
           mute: 0,
+          muted_via_solo: 0, // Not muted via solo because this is the soloed one
           solo: 1,
           devices: children("snare_device"),
         },
@@ -1013,7 +998,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, includeDrumChains: true });
       expect(result.devices[0]).toEqual({
         id: "drum_rack",
         name: "Drum Rack",
@@ -1025,14 +1010,12 @@ describe("readTrack", () => {
           {
             name: "Kick",
             note: 36, // C1
-            mute: false,
-            solo: false,
+            state: "mutedViaSolo",
             hasInstrument: true,
             chain: {
               name: "Kick",
               color: "#FF0000",
-              isMuted: false,
-              isSoloed: false,
+              state: "mutedViaSolo",
               devices: [
                 expect.objectContaining({
                   name: "Simpler",
@@ -1044,14 +1027,12 @@ describe("readTrack", () => {
           {
             name: "Snare",
             note: 38, // D1
-            mute: false,
-            solo: true,
+            state: "soloed",
             hasInstrument: true,
             chain: {
               name: "Snare",
               color: "#00FF00",
-              isMuted: false,
-              isSoloed: true,
+              state: "soloed",
               devices: [
                 expect.objectContaining({
                   name: "Simpler",

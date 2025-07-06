@@ -4,7 +4,7 @@ import { PITCH_CLASS_NAMES } from "../notation/midi-pitch-to-name.js";
 import { readScene } from "./read-scene";
 import { readTrack } from "./read-track";
 
-export function readSong({ includeDrumRackDevices = false } = {}) {
+export function readSong({ includeDrumChains = false } = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const appView = new LiveAPI("live_app view");
@@ -52,7 +52,7 @@ export function readSong({ includeDrumRackDevices = false } = {}) {
     selectedClipId,
     highlightedClipSlot: highlightedSlot,
     tracks: trackIds.map((_trackId, trackIndex) =>
-      readTrack({ trackIndex, includeDrumRackDevices }),
+      readTrack({ trackIndex, includeDrumChains }),
     ),
     scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
   };

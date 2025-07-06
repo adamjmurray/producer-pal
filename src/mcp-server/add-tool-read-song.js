@@ -32,11 +32,11 @@ export function addToolReadSong(server, callLiveApi) {
         destructiveHint: false,
       },
       inputSchema: {
-        includeDrumRackDevices: z
+        includeDrumChains: z
           .boolean()
           .default(false)
           .describe(
-            "Whether to include devices inside drum rack chains in track device lists (default: false). When false, drum rack devices are included with their chain details (name, color, mute/solo states) but without the nested devices within those chains to reduce response size. Drum pads are still available via the drumMap property.",
+            "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state, hasInstrument) without chain objects and return chains are omitted from device output to reduce response size. Drum pads are still available via the drumMap property.",
           ),
       },
     },

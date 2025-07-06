@@ -154,8 +154,7 @@ describe("readSong", () => {
           name: "MIDI Track 1",
           trackIndex: 0,
           color: "#FF0000",
-          isMuted: false,
-          isSoloed: true,
+          state: "soloed",
           isArmed: true,
           followsArrangement: true,
           isGroup: true,
@@ -178,8 +177,7 @@ describe("readSong", () => {
           name: "Audio Track 2",
           trackIndex: 1,
           color: "#00FF00",
-          isMuted: true,
-          isSoloed: false,
+          state: "muted",
           isArmed: false,
           isGroup: false,
           followsArrangement: false,
@@ -274,7 +272,7 @@ describe("readSong", () => {
     });
   });
 
-  it("includes device information across multiple tracks with includeDrumRackDevices", () => {
+  it("includes device information across multiple tracks with includeDrumChains", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "live_set tracks 0") return "track1";
@@ -327,7 +325,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({ includeDrumRackDevices: true });
+    const result = readSong({ includeDrumChains: true });
 
     // Check that tracks have the expected device configurations
     expect(result.tracks).toEqual([
@@ -445,9 +443,9 @@ describe("readSong", () => {
     );
     expect(drumRack).toBeDefined();
     expect(drumRack.drumPads).toBeDefined();
-    // If drumPads exist, their chains should not have devices property when includeDrumRackDevices=false
+    // If drumPads exist, they should not have chain property when includeDrumChains=false
     if (drumRack.drumPads && drumRack.drumPads.length > 0) {
-      expect(drumRack.drumPads[0].chain.devices).toBeUndefined();
+      expect(drumRack.drumPads[0].chain).toBeUndefined();
     }
   });
 });

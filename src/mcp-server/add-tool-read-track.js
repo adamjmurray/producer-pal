@@ -17,6 +17,12 @@ export function addToolReadTrack(server, callLiveApi) {
       },
       inputSchema: {
         trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
+        includeDrumChains: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state, hasInstrument) without chain objects, and return chains are omitted from device output.",
+          ),
       },
     },
     async (args) => callLiveApi("read-track", args),

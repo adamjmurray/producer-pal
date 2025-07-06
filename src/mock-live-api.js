@@ -146,6 +146,7 @@ export function mockLiveApiGet(overrides = {}) {
             return [16711680];
           case "mute":
           case "solo":
+          case "muted_via_solo":
             return [0];
           case "arm":
             return [1];
@@ -213,8 +214,6 @@ export const expectedTrack = (overrides = {}) => ({
   name: "Test Track",
   trackIndex: 0,
   color: "#FF0000",
-  isMuted: false,
-  isSoloed: false,
   isArmed: true,
   followsArrangement: true,
   isGroup: false,
