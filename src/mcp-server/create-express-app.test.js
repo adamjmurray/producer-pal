@@ -247,7 +247,7 @@ describe("MCP Express App", () => {
       expect(Max.outlet).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
         expect.stringMatching(
-          /^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true}}$/,
+          /^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false}}$/,
         ),
       );
     });

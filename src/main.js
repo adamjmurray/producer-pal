@@ -21,7 +21,7 @@ import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
 
 const tools = {
-  "read-song": () => readSong(),
+  "read-song": (args) => readSong(args),
   "update-song": (args) => updateSong(args),
   "create-scene": (args) => createScene(args),
   "read-scene": (args) => readScene(args),

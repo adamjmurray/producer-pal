@@ -90,7 +90,7 @@ describe("readTrack", () => {
       drumMap: null,
       arrangementClips: [],
       sessionClips: [],
-      devices: [],
+      instrument: null,
       hasInstrument: false,
     });
   });
@@ -131,7 +131,7 @@ describe("readTrack", () => {
       drumMap: null,
       arrangementClips: [],
       sessionClips: [],
-      devices: [],
+      instrument: null,
     });
   });
 
@@ -182,7 +182,7 @@ describe("readTrack", () => {
       drumMap: null,
       arrangementClips: [],
       sessionClips: [],
-      devices: [],
+      instrument: null,
       hasInstrument: false,
     });
   });
@@ -261,7 +261,7 @@ describe("readTrack", () => {
         expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
         expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
       ],
-      devices: [],
+      instrument: null,
       hasInstrument: false,
     });
   });
@@ -316,7 +316,7 @@ describe("readTrack", () => {
   });
 
   describe("devices", () => {
-    it("returns empty array when track has no devices", () => {
+    it("returns null instrument when track has no devices", () => {
       liveApiId.mockReturnValue("track1");
       mockLiveApiGet({
         Track: mockTrackProperties({
@@ -325,10 +325,12 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
-      expect(result.devices).toEqual([]);
+      expect(result.instrument).toBeNull();
+      expect(result.midiEffects).toBeUndefined();
+      expect(result.audioEffects).toBeUndefined();
     });
 
-    it("returns device information for tracks with devices", () => {
+    it("categorizes devices correctly", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") {
           return "track1";
@@ -368,15 +370,21 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
-      expect(result.devices).toEqual([
-        {
-          id: "device1",
-          name: "Analog",
-          displayName: "Custom Analog",
-          type: DEVICE_TYPE.INSTRUMENT,
-          isActive: true,
-        },
+      const result = readTrack({
+        trackIndex: 0,
+        includeMidiEffects: true,
+        includeAudioEffects: true,
+      });
+
+      expect(result.instrument).toEqual({
+        id: "device1",
+        name: "Analog",
+        displayName: "Custom Analog",
+        type: DEVICE_TYPE.INSTRUMENT,
+        isActive: true,
+      });
+
+      expect(result.audioEffects).toEqual([
         {
           id: "device2",
           name: "Reverb",
@@ -384,6 +392,9 @@ describe("readTrack", () => {
           type: DEVICE_TYPE.AUDIO_EFFECT,
           isActive: true,
         },
+      ]);
+
+      expect(result.midiEffects).toEqual([
         {
           id: "device3",
           name: "Note Length",
@@ -419,7 +430,7 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
-      expect(result.devices[0]).toEqual({
+      expect(result.instrument).toEqual({
         id: "device1",
         name: "Drum Rack",
         displayName: "My Drums",
@@ -429,7 +440,7 @@ describe("readTrack", () => {
       });
     });
 
-    it("includes drum rack devices (read-track always includes them)", () => {
+    it("includes all device categories when explicitly requested", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") {
           return "track1";
@@ -462,14 +473,27 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
-      expect(result.devices).toHaveLength(2); // Both drum rack and reverb should be included
-      expect(
-        result.devices.find((d) => d.type === DEVICE_TYPE.DRUM_RACK),
-      ).toBeDefined();
-      expect(
-        result.devices.find((d) => d.type === DEVICE_TYPE.AUDIO_EFFECT),
-      ).toBeDefined();
+      const result = readTrack({
+        trackIndex: 0,
+        includeAudioEffects: true,
+      });
+
+      expect(result.instrument).toEqual({
+        id: "device1",
+        name: "Drum Rack",
+        displayName: "My Drums",
+        type: DEVICE_TYPE.DRUM_RACK,
+        isActive: true,
+        drumPads: [],
+      });
+
+      expect(result.audioEffects).toHaveLength(1);
+      expect(result.audioEffects[0]).toEqual({
+        id: "device2",
+        name: "Reverb",
+        type: DEVICE_TYPE.AUDIO_EFFECT,
+        isActive: true,
+      });
     });
 
     it("includes nested devices from instrument rack chains", () => {
@@ -524,8 +548,7 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(1);
-      expect(result.devices[0]).toEqual({
+      expect(result.instrument).toEqual({
         id: "rack1",
         name: "Instrument Rack",
         displayName: "My Custom Rack",
@@ -599,10 +622,10 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({ trackIndex: 0, includeAudioEffects: true });
 
-      expect(result.devices).toHaveLength(1);
-      expect(result.devices[0]).toEqual({
+      expect(result.audioEffects).toHaveLength(1);
+      expect(result.audioEffects[0]).toEqual({
         id: "fx_rack1",
         name: "Audio Effect Rack",
         displayName: "Master FX",
@@ -701,8 +724,7 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(1);
-      expect(result.devices[0]).toEqual({
+      expect(result.instrument).toEqual({
         id: "outer_rack",
         name: "Instrument Rack",
         displayName: "Master FX",
@@ -784,8 +806,7 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(1);
-      expect(result.devices[0]).toEqual({
+      expect(result.instrument).toEqual({
         id: "rack1",
         name: "Instrument Rack",
         displayName: "My Empty Rack",
@@ -874,8 +895,7 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
 
-      expect(result.devices).toHaveLength(1);
-      expect(result.devices[0]).toEqual({
+      expect(result.instrument).toEqual({
         id: "rack1",
         name: "Instrument Rack",
         displayName: "My Custom Rack",
@@ -999,7 +1019,7 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0, includeDrumChains: true });
-      expect(result.devices[0]).toEqual({
+      expect(result.instrument).toEqual({
         id: "drum_rack",
         name: "Drum Rack",
         displayName: "My Drums",
@@ -1075,8 +1095,8 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
-      expect(result.devices).toEqual([
+      const result = readTrack({ trackIndex: 0, includeAudioEffects: true });
+      expect(result.audioEffects).toEqual([
         {
           id: "device1",
           name: "Reverb",

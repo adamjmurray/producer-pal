@@ -42,6 +42,24 @@ export function addToolReadTrack(server, callLiveApi) {
           .describe(
             "Whether to include chains in rack devices (default: true). When false, non-drum rack devices return without chains property for lighter responses. This is separate from includeDrumChains which controls drum pad chains.",
           ),
+        includeMidiEffects: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include MIDI effects array (default: false). When true, returns midiEffects array containing MIDI effect devices with chain information if includeRackChains is true.",
+          ),
+        includeInstrument: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Whether to include instrument object (default: true). When true, returns instrument property containing the first instrument device found, or null if none. Multiple instruments log a console warning.",
+          ),
+        includeAudioEffects: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include audio effects array (default: false). When true, returns audioEffects array containing audio effect devices with chain information if includeRackChains is true.",
+          ),
       },
     },
     async (args) => callLiveApi("read-track", args),

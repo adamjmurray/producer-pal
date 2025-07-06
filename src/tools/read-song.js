@@ -1,14 +1,17 @@
 // src/tools/read-song.js
 import { fromLiveApiView } from "../utils.js";
 import { PITCH_CLASS_NAMES } from "../notation/midi-pitch-to-name.js";
-import { readScene } from "./read-scene";
-import { readTrack } from "./read-track";
+import { readScene } from "./read-scene.js";
+import { readTrack } from "./read-track.js";
 
 export function readSong({
   includeDrumChains = false,
   includeNotes = true,
   includeRackChains = true,
   includeEmptyScenes = false,
+  includeMidiEffects = false,
+  includeInstrument = true,
+  includeAudioEffects = false,
 } = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
@@ -62,6 +65,9 @@ export function readSong({
         includeDrumChains,
         includeNotes,
         includeRackChains,
+        includeMidiEffects,
+        includeInstrument,
+        includeAudioEffects,
       }),
     ),
     scenes: sceneIds

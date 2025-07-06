@@ -2,8 +2,8 @@
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
-} from "../notation/barbeat/barbeat-time";
-import { formatNotation } from "../notation/notation";
+} from "../notation/barbeat/barbeat-time.js";
+import { formatNotation } from "../notation/notation.js";
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
  * @param {Object} args - Arguments for the function

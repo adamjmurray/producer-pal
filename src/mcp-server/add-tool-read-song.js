@@ -63,6 +63,24 @@ export function addToolReadSong(server, callLiveApi) {
           .describe(
             "Whether to include scenes that contain no clips (default: false). When true, all scenes are returned regardless of clip content.",
           ),
+        includeMidiEffects: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include MIDI effects array in track objects (default: false). When true, each track returns midiEffects array containing MIDI effect devices with chain information if includeRackChains is true.",
+          ),
+        includeInstrument: z
+          .boolean()
+          .default(true)
+          .describe(
+            "Whether to include instrument object in track objects (default: true). When true, each track returns instrument property containing the first instrument device found, or null if none. Multiple instruments log a console warning.",
+          ),
+        includeAudioEffects: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include audio effects array in track objects (default: false). When true, each track returns audioEffects array containing audio effect devices with chain information if includeRackChains is true.",
+          ),
       },
     },
     async (args) => callLiveApi("read-song", args),

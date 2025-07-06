@@ -479,12 +479,74 @@ function getDevicesWithChains(
 }
 
 /**
+ * Categorize devices into MIDI effects, instruments, and audio effects
+ * @param {Array} devices - Array of Live API device objects
+ * @param {boolean} includeDrumChains - Whether to include drum pad chains and return chains
+ * @param {boolean} includeRackChains - Whether to include chains in rack devices
+ * @returns {Object} Object with midiEffects, instrument, and audioEffects arrays
+ */
+function categorizeDevices(
+  devices,
+  includeDrumChains = false,
+  includeRackChains = true,
+) {
+  const midiEffects = [];
+  const instruments = [];
+  const audioEffects = [];
+
+  for (const device of devices) {
+    const processedDevice = getDevicesWithChains(
+      [device],
+      includeDrumChains,
+      includeRackChains,
+    )[0];
+
+    // Use processed device type for proper rack categorization
+    const deviceType = processedDevice.type;
+
+    if (
+      deviceType === DEVICE_TYPE.MIDI_EFFECT ||
+      deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK
+    ) {
+      midiEffects.push(processedDevice);
+    } else if (
+      deviceType === DEVICE_TYPE.INSTRUMENT ||
+      deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
+      deviceType === DEVICE_TYPE.DRUM_RACK
+    ) {
+      instruments.push(processedDevice);
+    } else if (
+      deviceType === DEVICE_TYPE.AUDIO_EFFECT ||
+      deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK
+    ) {
+      audioEffects.push(processedDevice);
+    }
+  }
+
+  // Validate instrument count
+  if (instruments.length > 1) {
+    console.error(
+      `Track has ${instruments.length} instruments, which is unusual. Expected 0 or 1.`,
+    );
+  }
+
+  return {
+    midiEffects,
+    instrument: instruments.length > 0 ? instruments[0] : null,
+    audioEffects,
+  };
+}
+
+/**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {boolean} args.includeDrumChains - Whether to include drum pad chains and return chains (default: false)
  * @param {boolean} args.includeNotes - Whether to include notes data in clips (default: true)
  * @param {boolean} args.includeRackChains - Whether to include chains in rack devices (default: true)
+ * @param {boolean} args.includeMidiEffects - Whether to include MIDI effects array (default: false)
+ * @param {boolean} args.includeInstrument - Whether to include instrument object (default: true)
+ * @param {boolean} args.includeAudioEffects - Whether to include audio effects array (default: false)
  * @returns {Object} Result object with track information
  */
 export function readTrack({
@@ -492,6 +554,9 @@ export function readTrack({
   includeDrumChains = false,
   includeNotes = true,
   includeRackChains = true,
+  includeMidiEffects = false,
+  includeInstrument = true,
+  includeAudioEffects = false,
 } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
@@ -534,17 +599,33 @@ export function readTrack({
       .getChildIds("arrangement_clips")
       .map((clipId) => readClip({ clipId, includeNotes }))
       .filter((clip) => clip.id != null),
-
-    // List all devices on the track with nested chain structure
-    devices: getDevicesWithChains(
-      trackDevices,
-      includeDrumChains,
-      includeRackChains,
-    ),
   };
 
-  // Extract drum map from the processed device structure
-  result.drumMap = extractTrackDrumMap(result.devices);
+  // Categorize devices into separate arrays
+  const categorizedDevices = categorizeDevices(
+    trackDevices,
+    includeDrumChains,
+    includeRackChains,
+  );
+
+  // Add device categories based on inclusion flags
+  if (includeMidiEffects) {
+    result.midiEffects = categorizedDevices.midiEffects;
+  }
+  if (includeInstrument) {
+    result.instrument = categorizedDevices.instrument;
+  }
+  if (includeAudioEffects) {
+    result.audioEffects = categorizedDevices.audioEffects;
+  }
+
+  // Extract drum map from all categorized devices (critical for drumMap preservation)
+  const allDevices = [
+    ...categorizedDevices.midiEffects,
+    ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
+    ...categorizedDevices.audioEffects,
+  ];
+  result.drumMap = extractTrackDrumMap(allDevices);
 
   // Add state property only if not default "active" state
   const trackState = computeState(track);

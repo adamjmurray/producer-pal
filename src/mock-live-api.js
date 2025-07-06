@@ -224,7 +224,7 @@ export const expectedTrack = (overrides = {}) => ({
   drumMap: null,
   arrangementClips: [],
   sessionClips: [],
-  devices: [],
+  instrument: null,
   hasInstrument: false,
   ...overrides,
 });

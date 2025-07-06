@@ -168,7 +168,7 @@ describe("readSong", () => {
             expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
-          devices: [],
+          instrument: null,
           hasInstrument: false,
         },
         {
@@ -190,7 +190,7 @@ describe("readSong", () => {
           sessionClips: [
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
           ],
-          devices: [],
+          instrument: null,
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
@@ -325,17 +325,20 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({ includeDrumChains: true });
+    const result = readSong({
+      includeDrumChains: true,
+      includeAudioEffects: true,
+    });
 
     // Check that tracks have the expected device configurations
     expect(result.tracks).toEqual([
       expect.objectContaining({
         name: "Synth Track",
-        devices: [
-          expect.objectContaining({
-            name: "Analog",
-            type: DEVICE_TYPE.INSTRUMENT,
-          }),
+        instrument: expect.objectContaining({
+          name: "Analog",
+          type: DEVICE_TYPE.INSTRUMENT,
+        }),
+        audioEffects: [
           expect.objectContaining({
             name: "EQ Eight",
             type: DEVICE_TYPE.AUDIO_EFFECT,
@@ -344,7 +347,8 @@ describe("readSong", () => {
       }),
       expect.objectContaining({
         name: "Audio Track",
-        devices: [
+        instrument: null,
+        audioEffects: [
           expect.objectContaining({
             name: "Reverb",
             type: DEVICE_TYPE.AUDIO_EFFECT,
@@ -423,24 +427,27 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({ includeEmptyScenes: true }); // Default behavior
+    const result = readSong({
+      includeEmptyScenes: true,
+      includeAudioEffects: true,
+    }); // Default behavior
 
     // Check that drum rack devices are included with drumPads but without devices in drumPad chains
-    expect(result.tracks[0].devices).toEqual([
+    expect(result.tracks[0].instrument).toEqual(
       expect.objectContaining({
         name: "Drum Rack",
         type: DEVICE_TYPE.DRUM_RACK,
         drumPads: expect.any(Array), // Should have drumPads property
       }),
+    );
+    expect(result.tracks[0].audioEffects).toEqual([
       expect.objectContaining({
         name: "Reverb",
         type: DEVICE_TYPE.AUDIO_EFFECT,
       }),
     ]);
     // Drum rack device should be present with drumPads but drumPad chains should not have devices
-    const drumRack = result.tracks[0].devices.find(
-      (d) => d.type === DEVICE_TYPE.DRUM_RACK,
-    );
+    const drumRack = result.tracks[0].instrument;
     expect(drumRack).toBeDefined();
     expect(drumRack.drumPads).toBeDefined();
     // If drumPads exist, they should not have chain property when includeDrumChains=false
