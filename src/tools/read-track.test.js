@@ -91,7 +91,6 @@ describe("readTrack", () => {
       arrangementClips: [],
       sessionClips: [],
       instrument: null,
-      hasInstrument: false,
     });
   });
 
@@ -183,7 +182,6 @@ describe("readTrack", () => {
       arrangementClips: [],
       sessionClips: [],
       instrument: null,
-      hasInstrument: false,
     });
   });
 
@@ -262,7 +260,6 @@ describe("readTrack", () => {
         expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
       ],
       instrument: null,
-      hasInstrument: false,
     });
   });
 
@@ -1030,7 +1027,6 @@ describe("readTrack", () => {
             name: "Kick",
             note: 36, // C1
             state: "muted-via-solo",
-            hasInstrument: true,
             chain: {
               name: "Kick",
               color: "#FF0000",
@@ -1047,7 +1043,6 @@ describe("readTrack", () => {
             name: "Snare",
             note: 38, // D1
             state: "soloed",
-            hasInstrument: true,
             chain: {
               name: "Snare",
               color: "#00FF00",
@@ -1115,100 +1110,6 @@ describe("readTrack", () => {
     });
   });
 
-  describe("track device properties", () => {
-    it("adds hasInstrument property for MIDI tracks", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") {
-          return "track1";
-        }
-        return this._id;
-      });
-      mockLiveApiGet({
-        Track: mockTrackProperties({
-          has_midi_input: 1,
-          devices: children("device1", "device2", "device3"),
-        }),
-        device1: {
-          name: "Analog",
-          class_name: "UltraAnalog",
-          class_display_name: "Analog",
-          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        device2: {
-          name: "Reverb",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-        device3: {
-          name: "Note Length",
-          class_name: "MidiNoteLength",
-          class_display_name: "Note Length",
-          type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-      });
-
-      const result = readTrack({ trackIndex: 0 });
-      expect(result.hasInstrument).toBe(true);
-    });
-
-    it("does not include hasInstrument for audio tracks", () => {
-      liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") {
-          return "track1";
-        }
-        return this._id;
-      });
-      mockLiveApiGet({
-        Track: mockTrackProperties({
-          has_midi_input: 0, // Audio track
-          devices: children("device1"),
-        }),
-        device1: {
-          name: "Reverb",
-          class_name: "Reverb",
-          class_display_name: "Reverb",
-          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-          is_active: 1,
-          can_have_chains: 0,
-          can_have_drum_pads: 0,
-        },
-      });
-
-      const result = readTrack({ trackIndex: 0 });
-      expect(result.hasInstrument).toBeUndefined(); // Not included for audio tracks
-    });
-
-    it("excludes device properties from Producer Pal host track when false", () => {
-      liveApiPath.mockImplementation(function () {
-        if (this._path === "this_device") {
-          return "live_set tracks 1 devices 0";
-        }
-        return this._path;
-      });
-
-      liveApiId.mockReturnValue("track1");
-      mockLiveApiGet({
-        Track: mockTrackProperties({
-          has_midi_input: 1,
-          devices: [], // No devices
-        }),
-      });
-
-      const result = readTrack({ trackIndex: 1 }); // Producer Pal host track
-      expect(result.hasInstrument).toBeUndefined(); // Omitted because false
-      expect(result.hasProducerPalDevice).toBe(true);
-    });
-  });
 
   describe("drumPads", () => {
     it("returns null when the track has no devices", () => {

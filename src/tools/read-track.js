@@ -96,15 +96,13 @@ function extractTrackDrumMap(devices) {
   }
 
   // Extract drum pads from the first found drum rack (matching original behavior)
-  // Only include drum pads that have instruments (can produce sound)
+  // Include all drum pads that exist (have chains)
   const drumMap = {};
 
-  drumRacks[0].drumPads
-    .filter((drumPad) => drumPad.hasInstrument) // Only pads with instruments
-    .forEach((drumPad) => {
-      const pitchName = midiPitchToName(drumPad.note);
-      drumMap[pitchName] = drumPad.name;
-    });
+  drumRacks[0].drumPads.forEach((drumPad) => {
+    const pitchName = midiPitchToName(drumPad.note);
+    drumMap[pitchName] = drumPad.name;
+  });
 
   // Return empty object if drum rack exists but has no playable drum pads
   // Return null only if no drum rack devices found at all
@@ -149,130 +147,7 @@ function getDeviceType(device) {
   return "unknown";
 }
 
-/**
- * Compute track-level device properties by scanning all devices recursively
- * @param {Array} devices - Array of Live API device objects
- * @param {boolean} isMidiTrack - Whether this is a MIDI track
- * @param {boolean} isProducerPalHost - Whether this is the Producer Pal host track
- * @param {number} depth - Current recursion depth
- * @param {number} maxDepth - Maximum recursion depth
- * @returns {Object} Object with hasInstrument property
- */
-function computeTrackDeviceProperties(
-  devices,
-  isMidiTrack,
-  isProducerPalHost,
-  depth = 0,
-  maxDepth = 4,
-) {
-  if (depth > maxDepth) {
-    return {
-      hasInstrument: false,
-    };
-  }
 
-  let hasInstrument = false;
-
-  for (const device of devices) {
-    const deviceType = getDeviceType(device);
-
-    if (isInstrumentDevice(deviceType)) {
-      hasInstrument = true;
-    }
-
-    // Recursively check devices in chains for rack devices
-    if (deviceType.includes("rack")) {
-      const chains = device.getChildren("chains");
-      for (const chain of chains) {
-        const chainDevices = chain.getChildren("devices");
-        const chainProps = computeTrackDeviceProperties(
-          chainDevices,
-          isMidiTrack,
-          isProducerPalHost,
-          depth + 1,
-          maxDepth,
-        );
-        hasInstrument = hasInstrument || chainProps.hasInstrument;
-      }
-
-      // Also check return chains
-      const returnChains = device.getChildren("return_chains");
-      for (const chain of returnChains) {
-        const chainDevices = chain.getChildren("devices");
-        const chainProps = computeTrackDeviceProperties(
-          chainDevices,
-          isMidiTrack,
-          isProducerPalHost,
-          depth + 1,
-          maxDepth,
-        );
-        hasInstrument = hasInstrument || chainProps.hasInstrument;
-      }
-    }
-  }
-
-  const result = {};
-
-  // Only include hasInstrument for MIDI tracks, and omit from Producer Pal host track unless true
-  if (isMidiTrack && (!isProducerPalHost || hasInstrument)) {
-    result.hasInstrument = hasInstrument;
-  }
-
-  return result;
-}
-
-/**
- * Analyze devices in a drum pad chain to determine if it has instruments
- * @param {Array} chainDevices - Array of devices in a drum pad chain
- * @param {number} depth - Current recursion depth
- * @param {number} maxDepth - Maximum recursion depth
- * @returns {Object} Object with hasInstrument property
- */
-function analyzeDrumPadChainDevices(chainDevices, depth = 0, maxDepth = 4) {
-  if (depth > maxDepth) {
-    return {
-      hasInstrument: false,
-    };
-  }
-
-  let hasInstrument = false;
-
-  for (const device of chainDevices) {
-    const deviceType = getDeviceType(device);
-
-    if (isInstrumentDevice(deviceType)) {
-      hasInstrument = true;
-    }
-
-    // Recursively check devices in chains for rack devices
-    if (deviceType.includes("rack")) {
-      const chains = device.getChildren("chains");
-      for (const chain of chains) {
-        const nestedChainDevices = chain.getChildren("devices");
-        const chainProps = analyzeDrumPadChainDevices(
-          nestedChainDevices,
-          depth + 1,
-          maxDepth,
-        );
-        hasInstrument = hasInstrument || chainProps.hasInstrument;
-      }
-
-      // Also check return chains
-      const returnChains = device.getChildren("return_chains");
-      for (const chain of returnChains) {
-        const nestedChainDevices = chain.getChildren("devices");
-        const chainProps = analyzeDrumPadChainDevices(
-          nestedChainDevices,
-          depth + 1,
-          maxDepth,
-        );
-        hasInstrument = hasInstrument || chainProps.hasInstrument;
-      }
-    }
-  }
-
-  return { hasInstrument };
-}
 
 /**
  * Build nested device structure with chains for rack devices
@@ -325,13 +200,9 @@ function getDevicesWithChains(
             const chain = chains[0]; // Each drum pad has exactly one chain
             const chainDevices = chain.getChildren("devices");
 
-            // Analyze chain devices to determine if it has instruments
-            const deviceTypes = analyzeDrumPadChainDevices(chainDevices);
-
             const drumPadInfo = {
               name: pad.getProperty("name"),
               note: pad.getProperty("note"), // Always include raw MIDI note integer
-              hasInstrument: deviceTypes.hasInstrument,
               _originalPad: pad, // Keep reference for solo detection
               _originalChain: chain, // Keep reference for chain state
             };
@@ -633,13 +504,6 @@ export function readTrack({
     result.state = trackState;
   }
 
-  // Add track-level device properties
-  const deviceProperties = computeTrackDeviceProperties(
-    trackDevices,
-    isMidiTrack,
-    isProducerPalHost,
-  );
-  Object.assign(result, deviceProperties);
 
   if (isProducerPalHost) {
     result.hasProducerPalDevice = true;

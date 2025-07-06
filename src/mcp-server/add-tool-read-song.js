@@ -43,7 +43,7 @@ export function addToolReadSong(server, callLiveApi) {
           .boolean()
           .default(false)
           .describe(
-            "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state, hasInstrument) without chain objects and return chains are omitted from device output to reduce response size. Drum pads are still available via the drumMap property.",
+            "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state) without chain objects and return chains are omitted from device output to reduce response size. Drum pads are still available via the drumMap property.",
           ),
         includeNotes: z
           .boolean()

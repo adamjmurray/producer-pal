@@ -169,7 +169,6 @@ describe("readSong", () => {
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
           instrument: null,
-          hasInstrument: false,
         },
         {
           id: "track2",
