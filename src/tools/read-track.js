@@ -268,7 +268,6 @@ function getDevicesWithChains(
 
               drumPadInfo.chain = {
                 name: chain.getProperty("name"),
-                color: chain.getColor(),
                 devices: processedChainDevices,
               };
 
@@ -345,7 +344,6 @@ function getDevicesWithChains(
           deviceInfo.chains = chains.map((chain) => {
             const chainInfo = {
               name: chain.getProperty("name"),
-              color: chain.getColor(),
             };
 
             // Add state property only if not default "active" state
@@ -380,7 +378,6 @@ function getDevicesWithChains(
           deviceInfo.returnChains = returnChains.map((chain) => {
             const returnChainInfo = {
               name: chain.getProperty("name"),
-              color: chain.getColor(),
             };
 
             // Add state property only if not default "active" state

@@ -568,7 +568,6 @@ describe("readTrack", () => {
         chains: [
           {
             name: "Piano",
-            color: "#FF0000",
             devices: [
               {
                 id: "nested_device1",
@@ -643,7 +642,6 @@ describe("readTrack", () => {
         chains: [
           {
             name: "Filter Chain",
-            color: "#0000FF",
             devices: [
               {
                 id: "nested_effect1",
@@ -740,7 +738,6 @@ describe("readTrack", () => {
         chains: [
           {
             name: "Wet",
-            color: "#0000FF",
             devices: [
               {
                 id: "inner_rack",
@@ -750,7 +747,6 @@ describe("readTrack", () => {
                 chains: [
                   {
                     name: "Hall",
-                    color: "#00FF00",
                     state: "soloed",
                     devices: [
                       {
@@ -819,7 +815,6 @@ describe("readTrack", () => {
         chains: [
           {
             name: "Empty Chain",
-            color: "#000000",
             devices: [],
           },
         ],
@@ -907,7 +902,6 @@ describe("readTrack", () => {
         chains: [
           {
             name: "Piano",
-            color: "#FF0000",
             devices: [
               {
                 id: "device1",
@@ -919,7 +913,6 @@ describe("readTrack", () => {
           },
           {
             name: "Bass",
-            color: "#00FF00",
             state: "muted",
             devices: [
               {
@@ -1032,7 +1025,6 @@ describe("readTrack", () => {
             state: "muted-via-solo",
             chain: {
               name: "Kick",
-              color: "#FF0000",
               state: "muted-via-solo",
               devices: [
                 expect.objectContaining({
@@ -1048,7 +1040,6 @@ describe("readTrack", () => {
             state: "soloed",
             chain: {
               name: "Snare",
-              color: "#00FF00",
               state: "soloed",
               devices: [
                 expect.objectContaining({
