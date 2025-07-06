@@ -1,46 +1,45 @@
 # Ableton Live 12 Built-in Instruments Reference
 
-1. **Analog** - Virtual analog synthesizer with physical modeling **(Suite
-   only)**
-2. **Collision** - Mallet percussion physical modeling synthesizer **(Suite
-   only)**
-3. **Drift** - Subtractive synthesizer with MPE capability **(All editions)**
-4. **Drum Sampler** - Instrument for playing back one-shot samples
-   **(Standard)**
-5. **Electric** - Software electric piano based on classic 70s instruments
-   **(Suite only)**
-6. **External Instrument** - Routing utility for external hardware synthesizers
-   **(Standard)**
-7. **Impulse** - 8-slot drum sampler with complex modulation **(Standard)**
-8. **Meld** - Dual-layer synthesizer with two macro oscillator engines **(Suite
-   only)**
-9. **Operator** - Advanced FM synthesis and subtractive synthesizer **(Suite
-   only)**
-10. **Sampler** - Advanced multisampling instrument with extensive modulation
-    **(Suite only)**
-11. **Simpler** - Basic sampler with classic synthesizer parameters
-    **(Standard)**
-12. **Tension** - String instrument physical modeling synthesizer **(Suite
-    only)**
-13. **Wavetable** - Wavetable synthesizer with two oscillators **(Suite only)**
+- Drift (All Editions) - A characterful MPE-capable synth capable of a wide
+  variety of sounds from every era of modern music.
+- Analog (Standard+) - Emulates the unique character of vintage analog
+  synthesizers.
+- Collision (Standard+) - Physical modeling instrument for authentic mallet
+  percussion sounds and creative percussion.
+- Electric (Standard+) - The sounds of classic electric pianos.
+- Tension (Standard+) - Physical modeling string synthesizer.
+- Operator (Suite) - A versatile synthesizer combining frequency modulation and
+  subtractive synthesis.
+- Wavetable (Suite) - A wavetable synthesizer for stretching, morphing, and
+  shaping waveforms.
+- Meld (Suite) - A bi-timbral, MPE-capable Instrument designed for deep
+  sound-shaping capabilities.
+- Simpler (All Editions) - An easy-to-use but powerful sampler with classic
+  synthesis parameters.
+- Sampler (Suite) - Sampling instrument with multisample playback and import as
+  well as profound sound design options.
+- Granulator III (Suite) - Uses granular synthesis to transform a sample into
+  textures, pads, and atmospheres.
+- External Instrument (All Editions) - A tool for integrating your external
+  hardware synthesizers into your Live Sets with the ease and flexibility of
+  plug-ins. (See also "CV Instrument" and "CV Triggers" to sequence and play
+  your modular.)
+- Drums:
+  - Drum Rack (All Editions) - An instrument for layering samples, synths, and
+    effects in a classic 16-pad grid.
+  - Drum Sampler (All Editions) - A flexible device tailored to playing back
+    one-shot samples, bringing together basic sample controls and playful
+    effects.
+  - Drum Synths (Standard+) - 8 devices to create unique drum and percussion
+    sounds using synthesis (the "DS \*" Max for Live devices).
+  - Impulse (All Editions) - A drum sampler with complex modulation
+    capabilities.
+- Max for Live Essentials Pack:
+  - Bass (Suite) - A monophonic virtual analog synthesizer that provides the
+    entire palette of bass sounds in one device.
+  - Poli (Suite) - A virtual analog synth designed for classic polyphonic chords
+    and phrases.
+- Use Instrument Racks (All Editions) to layer multiple instruments and use
+  customized Macro controls with randomization and preset features.
 
-_Based on official Ableton Live 12 documentation. Instrument containers (Drum
-Rack, Instrument Rack) not included._
-
-# Ideas
-
-- Maybe this info should be embedded into Producer Pal (e.g. the read-song tool
-  instructions)
-- If the user is prompted to share their edition of Ableton Live, actionable
-  suggestions for instrument choices can be given, and assistance programming
-  Live's older, well-known instruments can be given.
-- Once we build out the @Customization and Adaptive Learning Roadmap.md plan,
-  the user could indicate their edition of Live in the user context (because it
-  seems it cannot be programmatically determined via the Live API and anyway,
-  they might have purchased individual instruments from Ableton, so they could
-  list out that info in the user context too)
-- The user could also share their list of instrument plugins (VST, AU) to aid
-  with sound selection and synth programming. AI probably can give lots of
-  guidance on programming Serum v1 for example, and a lot of that might
-  translate well to Serum v2 (and they'll know more about Serum v2 over time as
-  new models are released)
+See https://www.ableton.com/en/live/compare-editions/ for more info
