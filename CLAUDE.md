@@ -330,9 +330,10 @@ To update the version:
 ## Project Rules
 
 - **ALWAYS pass args to tool functions in main.js**: All tool entries in the
-  `tools` object in `src/main.js` must use the pattern `(args) => toolFunction(args)`,
-  even if the tool currently has no parameters. This prevents bugs when parameters
-  are added later. Never use `() => toolFunction()` without args.
+  `tools` object in `src/main.js` must use the pattern
+  `(args) => toolFunction(args)`, even if the tool currently has no parameters.
+  This prevents bugs when parameters are added later. Never use
+  `() => toolFunction()` without args.
 - At the end of a block of work (e.g. the end of a TODO list), the code should
   be formatted with `npm run format`
 - At the end of a block of work (e.g. the end of a TODO list), the full test

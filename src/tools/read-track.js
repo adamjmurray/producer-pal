@@ -147,8 +147,6 @@ function getDeviceType(device) {
   return "unknown";
 }
 
-
-
 /**
  * Build nested device structure with chains for rack devices
  * @param {Array} devices - Array of Live API device objects
@@ -178,8 +176,13 @@ function getDevicesWithChains(
       id: device.id,
       name: className, // Original device name
       type: deviceType,
-      isActive: device.getProperty("is_active") > 0,
     };
+
+    // Only include deactivated when device is inactive
+    const isActive = device.getProperty("is_active") > 0;
+    if (!isActive) {
+      deviceInfo.deactivated = true;
+    }
 
     // Only include displayName when it differs from name
     if (userDisplayName !== className) {
@@ -506,7 +509,6 @@ export function readTrack({
   if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
   }
-
 
   if (isProducerPalHost) {
     result.hasProducerPalDevice = true;

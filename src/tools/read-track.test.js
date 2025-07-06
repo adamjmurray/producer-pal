@@ -374,7 +374,6 @@ describe("readTrack", () => {
         name: "Analog",
         displayName: "Custom Analog",
         type: DEVICE_TYPE.INSTRUMENT,
-        isActive: true,
       });
 
       expect(result.audioEffects).toEqual([
@@ -383,7 +382,6 @@ describe("readTrack", () => {
           name: "Reverb",
           displayName: "Custom Reverb",
           type: DEVICE_TYPE.AUDIO_EFFECT,
-          isActive: true,
         },
       ]);
 
@@ -393,7 +391,7 @@ describe("readTrack", () => {
           name: "Note Length",
           displayName: "Custom Note Length",
           type: DEVICE_TYPE.MIDI_EFFECT,
-          isActive: false,
+          deactivated: true,
         },
       ]);
     });
@@ -428,7 +426,6 @@ describe("readTrack", () => {
         name: "Drum Rack",
         displayName: "My Drums",
         type: DEVICE_TYPE.DRUM_RACK,
-        isActive: true,
         drumPads: [],
       });
     });
@@ -476,7 +473,6 @@ describe("readTrack", () => {
         name: "Drum Rack",
         displayName: "My Drums",
         type: DEVICE_TYPE.DRUM_RACK,
-        isActive: true,
         drumPads: [],
       });
 
@@ -485,7 +481,6 @@ describe("readTrack", () => {
         id: "device2",
         name: "Reverb",
         type: DEVICE_TYPE.AUDIO_EFFECT,
-        isActive: true,
       });
     });
 
@@ -546,7 +541,6 @@ describe("readTrack", () => {
         name: "Instrument Rack",
         displayName: "My Custom Rack",
         type: DEVICE_TYPE.INSTRUMENT_RACK,
-        isActive: true,
         chains: [
           {
             name: "Piano",
@@ -557,7 +551,6 @@ describe("readTrack", () => {
                 name: "Operator",
                 displayName: "Lead Synth",
                 type: DEVICE_TYPE.INSTRUMENT,
-                isActive: true,
               },
             ],
           },
@@ -623,7 +616,6 @@ describe("readTrack", () => {
         name: "Audio Effect Rack",
         displayName: "Master FX",
         type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
-        isActive: true,
         chains: [
           {
             name: "Filter Chain",
@@ -634,7 +626,6 @@ describe("readTrack", () => {
                 name: "Auto Filter",
                 displayName: "Sweep Filter",
                 type: DEVICE_TYPE.AUDIO_EFFECT,
-                isActive: true,
               },
             ],
           },
@@ -722,7 +713,6 @@ describe("readTrack", () => {
         name: "Instrument Rack",
         displayName: "Master FX",
         type: DEVICE_TYPE.INSTRUMENT_RACK,
-        isActive: true,
         chains: [
           {
             name: "Wet",
@@ -733,7 +723,6 @@ describe("readTrack", () => {
                 name: "Audio Effect Rack",
                 displayName: "Reverb Chain",
                 type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
-                isActive: true,
                 chains: [
                   {
                     name: "Hall",
@@ -745,7 +734,6 @@ describe("readTrack", () => {
                         name: "Reverb",
                         displayName: "Big Hall",
                         type: DEVICE_TYPE.AUDIO_EFFECT,
-                        isActive: true,
                       },
                     ],
                   },
@@ -804,7 +792,6 @@ describe("readTrack", () => {
         name: "Instrument Rack",
         displayName: "My Empty Rack",
         type: DEVICE_TYPE.INSTRUMENT_RACK,
-        isActive: true,
         chains: [
           {
             name: "Empty Chain",
@@ -893,7 +880,6 @@ describe("readTrack", () => {
         name: "Instrument Rack",
         displayName: "My Custom Rack",
         type: DEVICE_TYPE.INSTRUMENT_RACK,
-        isActive: true,
         chains: [
           {
             name: "Piano",
@@ -904,7 +890,6 @@ describe("readTrack", () => {
                 name: "Operator",
                 displayName: "Lead Synth",
                 type: DEVICE_TYPE.INSTRUMENT,
-                isActive: true,
               },
             ],
           },
@@ -918,7 +903,6 @@ describe("readTrack", () => {
                 name: "Wavetable",
                 displayName: "Bass Synth",
                 type: DEVICE_TYPE.INSTRUMENT,
-                isActive: true,
               },
             ],
           },
@@ -1017,7 +1001,6 @@ describe("readTrack", () => {
         name: "Drum Rack",
         displayName: "My Drums",
         type: DEVICE_TYPE.DRUM_RACK,
-        isActive: true,
         drumPads: [
           {
             name: "Kick",
@@ -1092,7 +1075,6 @@ describe("readTrack", () => {
           id: "device1",
           name: "Reverb",
           type: DEVICE_TYPE.AUDIO_EFFECT,
-          isActive: true,
           // No displayName since it's the same as name
         },
         {
@@ -1100,12 +1082,10 @@ describe("readTrack", () => {
           name: "Reverb",
           displayName: "My Custom Reverb", // Included since it differs from name
           type: DEVICE_TYPE.AUDIO_EFFECT,
-          isActive: true,
         },
       ]);
     });
   });
-
 
   describe("drumPads", () => {
     it("returns null when the track has no devices", () => {
