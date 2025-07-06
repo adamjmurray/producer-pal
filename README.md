@@ -142,10 +142,13 @@ including all the track's devices.
 It cannot work with audio clips beyond some general features like deleting and
 duplicating clips (it cannot add new audio clips or create audio from scratch).
 
-Drum pad detection (so the AI knows which pitches to use for drums) works with
-Drum Racks directly, and with Drum Racks that are the first device in the first
-chain inside an Instrument Rack. Other nested configurations are currently not
-supported (like a Drum Rack inside an Instrument Rack inside an Instrument Rack)
+Although Drum Racks are supported in arbitrary instrument rack structures
+(nested at any depth, in any chain position), tracks with multiple Drum Racks
+have a limitation: only the first Drum Rack found during device traversal will
+populate the drum map (which tells the AI which pitches correspond to which drum
+sounds). Subsequent Drum Racks on the same track are ignored. To ensure
+predictable drum programming, avoid using multiple Drum Racks within a single
+track when working with Producer Pal.
 
 ### Known Issues
 
