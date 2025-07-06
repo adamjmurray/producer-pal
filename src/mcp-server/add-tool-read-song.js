@@ -1,5 +1,6 @@
 // src/mcp-server/add-tool-read-song.js
 import { z } from "zod";
+import { DEVICE_TYPES } from "../tools/read-track.js";
 
 export function addToolReadSong(server, callLiveApi) {
   server.registerTool(
@@ -25,11 +26,7 @@ export function addToolReadSong(server, callLiveApi) {
         "Ask if this is intentional or if they'd like help selecting an instrument." +
         "Note: You cannot add instruments directly - you can only suggest which Live instruments " +
         "or VST/AU plugins might work well for their intended sound. " +
-        "DEVICE TYPES: Device objects have a 'type' property with these possible values: " +
-        "'instrument' (standard instrument device), 'instrument rack' (instrument rack device with chains), " +
-        "'drum rack' (drum rack device with drum pads), 'audio effect' (standard audio effect device), " +
-        "'audio effect rack' (audio effect rack device with chains), 'midi effect' (standard MIDI effect device), " +
-        "'midi effect rack' (MIDI effect rack device with chains).",
+        `DEVICE TYPES: Device objects have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}.`,
       annotations: {
         readOnlyHint: true,
         destructiveHint: false,
@@ -39,7 +36,7 @@ export function addToolReadSong(server, callLiveApi) {
           .boolean()
           .default(false)
           .describe(
-            "Whether to include the chains/devices inside drum racks in track device lists (default: false). When false, drum rack devices are included but without their internal chains to reduce response size, but drum pads are still available via the drumPads property.",
+            "Whether to include devices inside drum rack chains in track device lists (default: false). When false, drum rack devices are included with their chain details (name, color, mute/solo states) but without the nested devices within those chains to reduce response size. Drum pads are still available via the drumPads property.",
           ),
       },
     },

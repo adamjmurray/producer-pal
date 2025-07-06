@@ -8,9 +8,10 @@ import {
   mockLiveApiGet,
 } from "../mock-live-api";
 import {
-  DEVICE_TYPE_AUDIO_EFFECT,
-  DEVICE_TYPE_INSTRUMENT,
-  DEVICE_TYPE_MIDI_EFFECT,
+  DEVICE_TYPE,
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
   readTrack,
 } from "./read-track";
 
@@ -354,7 +355,7 @@ describe("readTrack", () => {
           name: "Custom Analog",
           class_name: "InstrumentVector",
           class_display_name: "Analog",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -363,7 +364,7 @@ describe("readTrack", () => {
           name: "Custom Reverb",
           class_name: "Reverb",
           class_display_name: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -372,7 +373,7 @@ describe("readTrack", () => {
           name: "Custom Note Length",
           class_name: "MidiNoteLength",
           class_display_name: "Note Length",
-          type: DEVICE_TYPE_MIDI_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
           is_active: 0,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -385,21 +386,21 @@ describe("readTrack", () => {
           id: "device1",
           name: "Analog",
           displayName: "Custom Analog",
-          type: "instrument",
+          type: DEVICE_TYPE.INSTRUMENT,
           isActive: true,
         },
         {
           id: "device2",
           name: "Reverb",
           displayName: "Custom Reverb",
-          type: "audio effect",
+          type: DEVICE_TYPE.AUDIO_EFFECT,
           isActive: true,
         },
         {
           id: "device3",
           name: "Note Length",
           displayName: "Custom Note Length",
-          type: "midi effect",
+          type: DEVICE_TYPE.MIDI_EFFECT,
           isActive: false,
         },
       ]);
@@ -420,7 +421,7 @@ describe("readTrack", () => {
           name: "My Drums",
           class_name: "DrumGroupDevice",
           class_display_name: "Drum Rack",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
@@ -434,7 +435,7 @@ describe("readTrack", () => {
         id: "device1",
         name: "Drum Rack",
         displayName: "My Drums",
-        type: "drum rack",
+        type: DEVICE_TYPE.DRUM_RACK,
         isActive: true,
         chains: [],
       });
@@ -455,7 +456,7 @@ describe("readTrack", () => {
           name: "My Drums",
           class_name: "DrumGroupDevice",
           class_display_name: "Drum Rack",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
@@ -466,7 +467,7 @@ describe("readTrack", () => {
           name: "Reverb",
           class_name: "Reverb",
           class_display_name: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -475,9 +476,11 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
       expect(result.devices).toHaveLength(2); // Both drum rack and reverb should be included
-      expect(result.devices.find((d) => d.type === "drum rack")).toBeDefined();
       expect(
-        result.devices.find((d) => d.type === "audio effect"),
+        result.devices.find((d) => d.type === DEVICE_TYPE.DRUM_RACK),
+      ).toBeDefined();
+      expect(
+        result.devices.find((d) => d.type === DEVICE_TYPE.AUDIO_EFFECT),
       ).toBeDefined();
     });
 
@@ -505,7 +508,7 @@ describe("readTrack", () => {
           name: "My Custom Rack",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 0,
@@ -524,7 +527,7 @@ describe("readTrack", () => {
           name: "Lead Synth",
           class_name: "Operator",
           class_display_name: "Operator",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -538,7 +541,7 @@ describe("readTrack", () => {
         id: "rack1",
         name: "Instrument Rack",
         displayName: "My Custom Rack",
-        type: "instrument rack",
+        type: DEVICE_TYPE.INSTRUMENT_RACK,
         isActive: true,
         chains: [
           {
@@ -551,7 +554,7 @@ describe("readTrack", () => {
                 id: "nested_device1",
                 name: "Operator",
                 displayName: "Lead Synth",
-                type: "instrument",
+                type: DEVICE_TYPE.INSTRUMENT,
                 isActive: true,
               },
             ],
@@ -584,7 +587,7 @@ describe("readTrack", () => {
           name: "Master FX",
           class_name: "AudioEffectGroupDevice",
           class_display_name: "Audio Effect Rack",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 0,
@@ -603,7 +606,7 @@ describe("readTrack", () => {
           name: "Sweep Filter",
           class_name: "AutoFilter2",
           class_display_name: "Auto Filter",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -617,7 +620,7 @@ describe("readTrack", () => {
         id: "fx_rack1",
         name: "Audio Effect Rack",
         displayName: "Master FX",
-        type: "audio effect rack",
+        type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
         isActive: true,
         chains: [
           {
@@ -630,7 +633,7 @@ describe("readTrack", () => {
                 id: "nested_effect1",
                 name: "Auto Filter",
                 displayName: "Sweep Filter",
-                type: "audio effect",
+                type: DEVICE_TYPE.AUDIO_EFFECT,
                 isActive: true,
               },
             ],
@@ -667,7 +670,7 @@ describe("readTrack", () => {
           name: "Master FX",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 0,
@@ -686,7 +689,7 @@ describe("readTrack", () => {
           name: "Reverb Chain",
           class_name: "AudioEffectGroupDevice",
           class_display_name: "Audio Effect Rack",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 0,
@@ -705,7 +708,7 @@ describe("readTrack", () => {
           name: "Big Hall",
           class_name: "Reverb",
           class_display_name: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -719,7 +722,7 @@ describe("readTrack", () => {
         id: "outer_rack",
         name: "Instrument Rack",
         displayName: "Master FX",
-        type: "instrument rack",
+        type: DEVICE_TYPE.INSTRUMENT_RACK,
         isActive: true,
         chains: [
           {
@@ -732,7 +735,7 @@ describe("readTrack", () => {
                 id: "inner_rack",
                 name: "Audio Effect Rack",
                 displayName: "Reverb Chain",
-                type: "audio effect rack",
+                type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
                 isActive: true,
                 chains: [
                   {
@@ -745,7 +748,7 @@ describe("readTrack", () => {
                         id: "deep_device",
                         name: "Reverb",
                         displayName: "Big Hall",
-                        type: "audio effect",
+                        type: DEVICE_TYPE.AUDIO_EFFECT,
                         isActive: true,
                       },
                     ],
@@ -781,7 +784,7 @@ describe("readTrack", () => {
           name: "My Empty Rack",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 0,
@@ -805,7 +808,7 @@ describe("readTrack", () => {
         id: "rack1",
         name: "Instrument Rack",
         displayName: "My Empty Rack",
-        type: "instrument rack",
+        type: DEVICE_TYPE.INSTRUMENT_RACK,
         isActive: true,
         chains: [
           {
@@ -847,7 +850,7 @@ describe("readTrack", () => {
           name: "My Custom Rack",
           class_name: "InstrumentGroupDevice",
           class_display_name: "Instrument Rack",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 0,
@@ -874,7 +877,7 @@ describe("readTrack", () => {
           name: "Lead Synth",
           class_name: "Operator",
           class_display_name: "Operator",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -883,7 +886,7 @@ describe("readTrack", () => {
           name: "Bass Synth",
           class_name: "Wavetable",
           class_display_name: "Wavetable",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -897,7 +900,7 @@ describe("readTrack", () => {
         id: "rack1",
         name: "Instrument Rack",
         displayName: "My Custom Rack",
-        type: "instrument rack",
+        type: DEVICE_TYPE.INSTRUMENT_RACK,
         isActive: true,
         chains: [
           {
@@ -910,7 +913,7 @@ describe("readTrack", () => {
                 id: "device1",
                 name: "Operator",
                 displayName: "Lead Synth",
-                type: "instrument",
+                type: DEVICE_TYPE.INSTRUMENT,
                 isActive: true,
               },
             ],
@@ -925,7 +928,7 @@ describe("readTrack", () => {
                 id: "device2",
                 name: "Wavetable",
                 displayName: "Bass Synth",
-                type: "instrument",
+                type: DEVICE_TYPE.INSTRUMENT,
                 isActive: true,
               },
             ],
@@ -958,7 +961,7 @@ describe("readTrack", () => {
           name: "My Drums",
           class_name: "DrumGroupDevice",
           class_display_name: "Drum Rack",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 1,
           can_have_drum_pads: 1,
@@ -988,7 +991,7 @@ describe("readTrack", () => {
         id: "drum_rack",
         name: "Drum Rack",
         displayName: "My Drums",
-        type: "drum rack",
+        type: DEVICE_TYPE.DRUM_RACK,
         isActive: true,
         hasSoloedChain: true, // Because chain2 is soloed
         chains: [
@@ -1027,7 +1030,7 @@ describe("readTrack", () => {
           name: "Reverb", // Same as class_display_name
           class_name: "Reverb",
           class_display_name: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -1036,7 +1039,7 @@ describe("readTrack", () => {
           name: "My Custom Reverb", // Different from class_display_name
           class_name: "Reverb",
           class_display_name: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -1048,7 +1051,7 @@ describe("readTrack", () => {
         {
           id: "device1",
           name: "Reverb",
-          type: "audio effect",
+          type: DEVICE_TYPE.AUDIO_EFFECT,
           isActive: true,
           // No displayName since it's the same as name
         },
@@ -1056,7 +1059,7 @@ describe("readTrack", () => {
           id: "device2",
           name: "Reverb",
           displayName: "My Custom Reverb", // Included since it differs from name
-          type: "audio effect",
+          type: DEVICE_TYPE.AUDIO_EFFECT,
           isActive: true,
         },
       ]);
@@ -1080,7 +1083,7 @@ describe("readTrack", () => {
           name: "Analog",
           class_name: "UltraAnalog",
           class_display_name: "Analog",
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -1089,7 +1092,7 @@ describe("readTrack", () => {
           name: "Reverb",
           class_name: "Reverb",
           class_display_name: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -1098,7 +1101,7 @@ describe("readTrack", () => {
           name: "Note Length",
           class_name: "MidiNoteLength",
           class_display_name: "Note Length",
-          type: DEVICE_TYPE_MIDI_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -1127,7 +1130,7 @@ describe("readTrack", () => {
           name: "Reverb",
           class_name: "Reverb",
           class_display_name: "Reverb",
-          type: DEVICE_TYPE_AUDIO_EFFECT,
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
           is_active: 1,
           can_have_chains: 0,
           can_have_drum_pads: 0,
@@ -1184,8 +1187,8 @@ describe("readTrack", () => {
           name: "Track No Instruments",
           devices: children("effect1", "effect2"),
         }),
-        effect1: { type: DEVICE_TYPE_AUDIO_EFFECT },
-        effect2: { type: DEVICE_TYPE_AUDIO_EFFECT },
+        effect1: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
+        effect2: { type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT },
       });
       const result = readTrack({ trackIndex: 0 });
       expect(result.drumPads).toBeNull();
@@ -1198,7 +1201,7 @@ describe("readTrack", () => {
           devices: children("wavetable1"),
         }),
         wavetable1: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
         },
       });
@@ -1213,7 +1216,7 @@ describe("readTrack", () => {
           devices: children("drumrack"),
         }),
         drumrack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
           drum_pads: [],
         },
@@ -1229,7 +1232,7 @@ describe("readTrack", () => {
           devices: children("drumrack"),
         }),
         drumrack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
           drum_pads: children("pad1", "pad2", "pad3"),
         },
@@ -1264,9 +1267,9 @@ describe("readTrack", () => {
           // this is not supported as a feature, but let's make sure something reasonable happens:
           devices: children("midiEffect", "drumrack1", "drumrack2"),
         }),
-        midiEffect: { type: DEVICE_TYPE_MIDI_EFFECT },
+        midiEffect: { type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT },
         drumrack1: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
           drum_pads: children("pad1"),
         },
@@ -1276,7 +1279,7 @@ describe("readTrack", () => {
           chains: children("chain1"),
         },
         drumrack2: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
           drum_pads: children("pad2"),
         },
@@ -1299,7 +1302,7 @@ describe("readTrack", () => {
           devices: children("instrumentRack"),
         }),
         instrumentRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
           class_name: "InstrumentGroupDevice",
           chains: children("chain1"),
@@ -1308,7 +1311,7 @@ describe("readTrack", () => {
           devices: children("nestedDrumRack"),
         },
         nestedDrumRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
           drum_pads: children("pad1", "pad2"),
         },
@@ -1337,7 +1340,7 @@ describe("readTrack", () => {
           devices: children("instrumentRack"),
         }),
         instrumentRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
           class_name: "InstrumentGroupDevice",
           chains: [],
@@ -1354,7 +1357,7 @@ describe("readTrack", () => {
           devices: children("instrumentRack"),
         }),
         instrumentRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
           class_name: "InstrumentGroupDevice",
           chains: children("chain1"),
@@ -1374,7 +1377,7 @@ describe("readTrack", () => {
           devices: children("instrumentRack"),
         }),
         instrumentRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
           class_name: "InstrumentGroupDevice",
           chains: children("chain1"),
@@ -1383,7 +1386,7 @@ describe("readTrack", () => {
           devices: children("wavetable"),
         },
         wavetable: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
         },
       });
@@ -1398,7 +1401,7 @@ describe("readTrack", () => {
           devices: children("directDrumRack", "instrumentRack"),
         }),
         directDrumRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
           drum_pads: children("pad1"),
         },
@@ -1408,7 +1411,7 @@ describe("readTrack", () => {
           chains: children("chain1"),
         },
         instrumentRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 0,
           class_name: "InstrumentGroupDevice",
           chains: children("chain1"),
@@ -1417,7 +1420,7 @@ describe("readTrack", () => {
           devices: children("nestedDrumRack"),
         },
         nestedDrumRack: {
-          type: DEVICE_TYPE_INSTRUMENT,
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
           can_have_drum_pads: 1,
           drum_pads: children("pad2"),
         },

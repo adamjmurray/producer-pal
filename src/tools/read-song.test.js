@@ -8,8 +8,12 @@ import {
   liveApiPath,
   mockLiveApiGet,
 } from "../mock-live-api";
-import { DEVICE_TYPE_INSTRUMENT, DEVICE_TYPE_AUDIO_EFFECT } from "./read-track";
 import { readSong } from "./read-song";
+import {
+  DEVICE_TYPE,
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "./read-track";
 
 describe("readSong", () => {
   it("returns live set information including tracks and scenes", () => {
@@ -301,7 +305,7 @@ describe("readSong", () => {
         name: "Analog",
         class_name: "UltraAnalog",
         class_display_name: "Analog",
-        type: DEVICE_TYPE_INSTRUMENT,
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
         is_active: 1,
         can_have_chains: 0,
         can_have_drum_pads: 0,
@@ -310,7 +314,7 @@ describe("readSong", () => {
         name: "EQ Eight",
         class_name: "Eq8",
         class_display_name: "EQ Eight",
-        type: DEVICE_TYPE_AUDIO_EFFECT,
+        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
         is_active: 1,
         can_have_chains: 0,
         can_have_drum_pads: 0,
@@ -319,7 +323,7 @@ describe("readSong", () => {
         name: "Reverb",
         class_name: "Reverb",
         class_display_name: "Reverb",
-        type: DEVICE_TYPE_AUDIO_EFFECT,
+        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
         is_active: 1,
         can_have_chains: 0,
         can_have_drum_pads: 0,
@@ -335,11 +339,11 @@ describe("readSong", () => {
         devices: [
           expect.objectContaining({
             name: "Analog",
-            type: "instrument",
+            type: DEVICE_TYPE.INSTRUMENT,
           }),
           expect.objectContaining({
             name: "EQ Eight",
-            type: "audio effect",
+            type: DEVICE_TYPE.AUDIO_EFFECT,
           }),
         ],
       }),
@@ -348,7 +352,7 @@ describe("readSong", () => {
         devices: [
           expect.objectContaining({
             name: "Reverb",
-            type: "audio effect",
+            type: DEVICE_TYPE.AUDIO_EFFECT,
           }),
         ],
       }),
@@ -377,16 +381,33 @@ describe("readSong", () => {
         name: "My Drums",
         class_name: "DrumGroupDevice",
         class_display_name: "Drum Rack",
-        type: DEVICE_TYPE_INSTRUMENT,
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
         is_active: 1,
         can_have_chains: 1,
         can_have_drum_pads: 1,
+        chains: children("kick_chain"),
+      },
+      kick_chain: {
+        name: "Kick",
+        color: 16711680, // Red
+        mute: 0,
+        solo: 0,
+        devices: children("kick_device"),
+      },
+      kick_device: {
+        name: "Simpler",
+        class_name: "Simpler",
+        class_display_name: "Simpler",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
       },
       reverb1: {
         name: "Reverb",
         class_name: "Reverb",
         class_display_name: "Reverb",
-        type: DEVICE_TYPE_AUDIO_EFFECT,
+        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
         is_active: 1,
         can_have_chains: 0,
         can_have_drum_pads: 0,
@@ -395,23 +416,27 @@ describe("readSong", () => {
 
     const result = readSong(); // Default behavior
 
-    // Check that drum rack devices are included but without chains
+    // Check that drum rack devices are included with chains but without devices in chains
     expect(result.tracks[0].devices).toEqual([
       expect.objectContaining({
         name: "Drum Rack",
-        type: "drum rack",
-        // Should not have chains property when includeDrumRackDevices=false
+        type: DEVICE_TYPE.DRUM_RACK,
+        chains: expect.any(Array), // Should have chains property
       }),
       expect.objectContaining({
         name: "Reverb",
-        type: "audio effect",
+        type: DEVICE_TYPE.AUDIO_EFFECT,
       }),
     ]);
-    // Drum rack device should be present but without chains
+    // Drum rack device should be present with chains but chains should not have devices
     const drumRack = result.tracks[0].devices.find(
-      (d) => d.type === "drum rack",
+      (d) => d.type === DEVICE_TYPE.DRUM_RACK,
     );
     expect(drumRack).toBeDefined();
-    expect(drumRack.chains).toBeUndefined();
+    expect(drumRack.chains).toBeDefined();
+    // If chains exist, they should not have devices property
+    if (drumRack.chains && drumRack.chains.length > 0) {
+      expect(drumRack.chains[0].devices).toBeUndefined();
+    }
   });
 });

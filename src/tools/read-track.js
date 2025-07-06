@@ -4,9 +4,23 @@ import { midiPitchToName } from "../notation/midi-pitch-to-name";
 import { VERSION } from "../version";
 import { readClip } from "./read-clip";
 
-export const DEVICE_TYPE_INSTRUMENT = 1;
-export const DEVICE_TYPE_AUDIO_EFFECT = 2;
-export const DEVICE_TYPE_MIDI_EFFECT = 4;
+export const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
+export const LIVE_API_DEVICE_TYPE_AUDIO_EFFECT = 2;
+export const LIVE_API_DEVICE_TYPE_MIDI_EFFECT = 4;
+
+// Device type string constants (7 valid types)
+export const DEVICE_TYPE = {
+  INSTRUMENT: "instrument",
+  INSTRUMENT_RACK: "instrument rack",
+  DRUM_RACK: "drum rack",
+  AUDIO_EFFECT: "audio effect",
+  AUDIO_EFFECT_RACK: "audio effect rack",
+  MIDI_EFFECT: "midi effect",
+  MIDI_EFFECT_RACK: "midi effect rack",
+};
+
+// Array of all valid device types for documentation
+export const DEVICE_TYPES = Object.values(DEVICE_TYPE);
 
 /**
  * Find drum pads on a track, including those nested in instrument racks
@@ -67,9 +81,9 @@ function extractDrumPads(drumRack) {
  */
 function isInstrumentDevice(deviceType) {
   return (
-    deviceType === "instrument" ||
-    deviceType === "instrument rack" ||
-    deviceType === "drum rack"
+    deviceType === DEVICE_TYPE.INSTRUMENT ||
+    deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
+    deviceType === DEVICE_TYPE.DRUM_RACK
   );
 }
 
@@ -79,7 +93,10 @@ function isInstrumentDevice(deviceType) {
  * @returns {boolean} True if device is an audio effect type
  */
 function isAudioEffectDevice(deviceType) {
-  return deviceType === "audio effect" || deviceType === "audio effect rack";
+  return (
+    deviceType === DEVICE_TYPE.AUDIO_EFFECT ||
+    deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK
+  );
 }
 
 /**
@@ -88,7 +105,10 @@ function isAudioEffectDevice(deviceType) {
  * @returns {boolean} True if device is a MIDI effect type
  */
 function isMidiEffectDevice(deviceType) {
-  return deviceType === "midi effect" || deviceType === "midi effect rack";
+  return (
+    deviceType === DEVICE_TYPE.MIDI_EFFECT ||
+    deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK
+  );
 }
 
 /**
@@ -101,16 +121,16 @@ function getDeviceType(device) {
   const canHaveChains = device.getProperty("can_have_chains");
   const canHaveDrumPads = device.getProperty("can_have_drum_pads");
 
-  if (typeValue === DEVICE_TYPE_INSTRUMENT) {
-    if (canHaveDrumPads) return "drum rack";
-    if (canHaveChains) return "instrument rack";
-    return "instrument";
-  } else if (typeValue === DEVICE_TYPE_AUDIO_EFFECT) {
-    if (canHaveChains) return "audio effect rack";
-    return "audio effect";
-  } else if (typeValue === DEVICE_TYPE_MIDI_EFFECT) {
-    if (canHaveChains) return "midi effect rack";
-    return "midi effect";
+  if (typeValue === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
+    if (canHaveDrumPads) return DEVICE_TYPE.DRUM_RACK;
+    if (canHaveChains) return DEVICE_TYPE.INSTRUMENT_RACK;
+    return DEVICE_TYPE.INSTRUMENT;
+  } else if (typeValue === LIVE_API_DEVICE_TYPE_AUDIO_EFFECT) {
+    if (canHaveChains) return DEVICE_TYPE.AUDIO_EFFECT_RACK;
+    return DEVICE_TYPE.AUDIO_EFFECT;
+  } else if (typeValue === LIVE_API_DEVICE_TYPE_MIDI_EFFECT) {
+    if (canHaveChains) return DEVICE_TYPE.MIDI_EFFECT_RACK;
+    return DEVICE_TYPE.MIDI_EFFECT;
   }
 
   return "unknown";
@@ -218,7 +238,7 @@ function computeTrackDeviceProperties(
  */
 function getDevicesWithChains(
   devices,
-  includeDrumRackDevices = false,
+  includeDrumRackDevices = true,
   depth = 0,
   maxDepth = 4,
 ) {
@@ -246,54 +266,66 @@ function getDevicesWithChains(
 
     // Add chain information for rack devices
     if (deviceType.includes("rack")) {
-      // For drum racks, conditionally include chains based on includeDrumRackDevices
-      const shouldIncludeChains =
-        deviceType !== "drum rack" || includeDrumRackDevices;
+      const chains = device.getChildren("chains");
 
-      if (shouldIncludeChains) {
-        const chains = device.getChildren("chains");
+      // Check if any chains are soloed to determine hasSoloedChain (for all rack types)
+      const hasSoloedChain = chains.some(
+        (chain) => chain.getProperty("solo") > 0,
+      );
 
-        // Check if any chains are soloed to determine hasSoloedChain (for all rack types)
-        const hasSoloedChain = chains.some(
-          (chain) => chain.getProperty("solo") > 0,
-        );
+      // For drum racks when includeDrumRackDevices=false, include chains but omit devices within chains
+      const shouldIncludeDevicesInChains =
+        deviceType !== DEVICE_TYPE.DRUM_RACK || includeDrumRackDevices;
 
-        deviceInfo.chains = chains.map((chain) => ({
+      deviceInfo.chains = chains.map((chain) => {
+        const chainInfo = {
           name: chain.getProperty("name"),
           color: chain.getColor(),
           isMuted: chain.getProperty("mute") > 0,
           isSoloed: chain.getProperty("solo") > 0,
-          devices: getDevicesWithChains(
+        };
+
+        // Only include devices array when appropriate
+        if (shouldIncludeDevicesInChains) {
+          chainInfo.devices = getDevicesWithChains(
             chain.getChildren("devices"),
             includeDrumRackDevices,
             depth + 1,
             maxDepth,
-          ),
-          // isMutedViaSolo removed from all rack types
-        }));
-
-        // Only add hasSoloedChain property when it's true
-        if (hasSoloedChain) {
-          deviceInfo.hasSoloedChain = hasSoloedChain;
+          );
         }
 
-        // Check for return chains
-        const returnChains = device.getChildren("return_chains");
-        if (returnChains.length > 0) {
-          deviceInfo.returnChains = returnChains.map((chain) => ({
+        return chainInfo;
+      });
+
+      // Only add hasSoloedChain property when it's true
+      if (hasSoloedChain) {
+        deviceInfo.hasSoloedChain = hasSoloedChain;
+      }
+
+      // Check for return chains
+      const returnChains = device.getChildren("return_chains");
+      if (returnChains.length > 0) {
+        deviceInfo.returnChains = returnChains.map((chain) => {
+          const returnChainInfo = {
             name: chain.getProperty("name"),
             color: chain.getColor(),
             isMuted: chain.getProperty("mute") > 0,
             isSoloed: chain.getProperty("solo") > 0,
-            devices: getDevicesWithChains(
+          };
+
+          // Only include devices array when appropriate
+          if (shouldIncludeDevicesInChains) {
+            returnChainInfo.devices = getDevicesWithChains(
               chain.getChildren("devices"),
               includeDrumRackDevices,
               depth + 1,
               maxDepth,
-            ),
-            // isMutedViaSolo removed from all rack types
-          }));
-        }
+            );
+          }
+
+          return returnChainInfo;
+        });
       }
     }
 
