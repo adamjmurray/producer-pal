@@ -87,30 +87,6 @@ function isInstrumentDevice(deviceType) {
 }
 
 /**
- * Check if device is an audio effect type (audio effect or audio effect rack)
- * @param {string} deviceType - Device type string
- * @returns {boolean} True if device is an audio effect type
- */
-function isAudioEffectDevice(deviceType) {
-  return (
-    deviceType === DEVICE_TYPE.AUDIO_EFFECT ||
-    deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK
-  );
-}
-
-/**
- * Check if device is a MIDI effect type (midi effect or midi effect rack)
- * @param {string} deviceType - Device type string
- * @returns {boolean} True if device is a MIDI effect type
- */
-function isMidiEffectDevice(deviceType) {
-  return (
-    deviceType === DEVICE_TYPE.MIDI_EFFECT ||
-    deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK
-  );
-}
-
-/**
  * Determine device type from Live API properties
  * @param {Object} device - Live API device object
  * @returns {string} Combined device type string
@@ -142,7 +118,7 @@ function getDeviceType(device) {
  * @param {boolean} isProducerPalHost - Whether this is the Producer Pal host track
  * @param {number} depth - Current recursion depth
  * @param {number} maxDepth - Maximum recursion depth
- * @returns {Object} Object with hasInstrument, hasAudioEffects, hasMidiEffects properties
+ * @returns {Object} Object with hasInstrument property
  */
 function computeTrackDeviceProperties(
   devices,
@@ -154,24 +130,16 @@ function computeTrackDeviceProperties(
   if (depth > maxDepth) {
     return {
       hasInstrument: false,
-      hasAudioEffects: false,
-      hasMidiEffects: false,
     };
   }
 
   let hasInstrument = false;
-  let hasAudioEffects = false;
-  let hasMidiEffects = false;
 
   for (const device of devices) {
     const deviceType = getDeviceType(device);
 
     if (isInstrumentDevice(deviceType)) {
       hasInstrument = true;
-    } else if (isAudioEffectDevice(deviceType)) {
-      hasAudioEffects = true;
-    } else if (isMidiEffectDevice(deviceType)) {
-      hasMidiEffects = true;
     }
 
     // Recursively check devices in chains for rack devices
@@ -187,8 +155,6 @@ function computeTrackDeviceProperties(
           maxDepth,
         );
         hasInstrument = hasInstrument || chainProps.hasInstrument;
-        hasAudioEffects = hasAudioEffects || chainProps.hasAudioEffects;
-        hasMidiEffects = hasMidiEffects || chainProps.hasMidiEffects;
       }
 
       // Also check return chains
@@ -203,8 +169,6 @@ function computeTrackDeviceProperties(
           maxDepth,
         );
         hasInstrument = hasInstrument || chainProps.hasInstrument;
-        hasAudioEffects = hasAudioEffects || chainProps.hasAudioEffects;
-        hasMidiEffects = hasMidiEffects || chainProps.hasMidiEffects;
       }
     }
   }
@@ -216,46 +180,30 @@ function computeTrackDeviceProperties(
     result.hasInstrument = hasInstrument;
   }
 
-  // Include hasAudioEffects for all track types
-  result.hasAudioEffects = hasAudioEffects;
-
-  // Only include hasMidiEffects for MIDI tracks, and omit from Producer Pal host track unless true
-  if (isMidiTrack && (!isProducerPalHost || hasMidiEffects)) {
-    result.hasMidiEffects = hasMidiEffects;
-  }
-
   return result;
 }
 
 /**
- * Analyze devices in a drum pad chain to determine device types
+ * Analyze devices in a drum pad chain to determine if it has instruments
  * @param {Array} chainDevices - Array of devices in a drum pad chain
  * @param {number} depth - Current recursion depth
  * @param {number} maxDepth - Maximum recursion depth
- * @returns {Object} Object with hasInstrument, hasAudioEffects, hasMidiEffects properties
+ * @returns {Object} Object with hasInstrument property
  */
 function analyzeDrumPadChainDevices(chainDevices, depth = 0, maxDepth = 4) {
   if (depth > maxDepth) {
     return {
       hasInstrument: false,
-      hasAudioEffects: false,
-      hasMidiEffects: false,
     };
   }
 
   let hasInstrument = false;
-  let hasAudioEffects = false;
-  let hasMidiEffects = false;
 
   for (const device of chainDevices) {
     const deviceType = getDeviceType(device);
 
     if (isInstrumentDevice(deviceType)) {
       hasInstrument = true;
-    } else if (isAudioEffectDevice(deviceType)) {
-      hasAudioEffects = true;
-    } else if (isMidiEffectDevice(deviceType)) {
-      hasMidiEffects = true;
     }
 
     // Recursively check devices in chains for rack devices
@@ -269,8 +217,6 @@ function analyzeDrumPadChainDevices(chainDevices, depth = 0, maxDepth = 4) {
           maxDepth,
         );
         hasInstrument = hasInstrument || chainProps.hasInstrument;
-        hasAudioEffects = hasAudioEffects || chainProps.hasAudioEffects;
-        hasMidiEffects = hasMidiEffects || chainProps.hasMidiEffects;
       }
 
       // Also check return chains
@@ -283,13 +229,11 @@ function analyzeDrumPadChainDevices(chainDevices, depth = 0, maxDepth = 4) {
           maxDepth,
         );
         hasInstrument = hasInstrument || chainProps.hasInstrument;
-        hasAudioEffects = hasAudioEffects || chainProps.hasAudioEffects;
-        hasMidiEffects = hasMidiEffects || chainProps.hasMidiEffects;
       }
     }
   }
 
-  return { hasInstrument, hasAudioEffects, hasMidiEffects };
+  return { hasInstrument };
 }
 
 /**
@@ -341,7 +285,7 @@ function getDevicesWithChains(
             const chain = chains[0]; // Each drum pad has exactly one chain
             const chainDevices = chain.getChildren("devices");
 
-            // Analyze chain devices to determine device types
+            // Analyze chain devices to determine if it has instruments
             const deviceTypes = analyzeDrumPadChainDevices(chainDevices);
 
             const drumPadInfo = {
@@ -350,8 +294,6 @@ function getDevicesWithChains(
               mute: pad.getProperty("mute") > 0,
               solo: pad.getProperty("solo") > 0,
               hasInstrument: deviceTypes.hasInstrument,
-              hasMidiEffects: deviceTypes.hasMidiEffects,
-              hasAudioEffects: deviceTypes.hasAudioEffects,
               chain: {
                 name: chain.getProperty("name"),
                 color: chain.getColor(),

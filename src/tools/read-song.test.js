@@ -170,9 +170,7 @@ describe("readSong", () => {
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
           devices: [],
-          hasAudioEffects: false,
           hasInstrument: false,
-          hasMidiEffects: false,
         },
         {
           id: "track2",
@@ -195,7 +193,6 @@ describe("readSong", () => {
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
           ],
           devices: [],
-          hasAudioEffects: false,
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],

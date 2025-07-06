@@ -92,9 +92,7 @@ describe("readTrack", () => {
       arrangementClips: [],
       sessionClips: [],
       devices: [],
-      hasAudioEffects: false,
       hasInstrument: false,
-      hasMidiEffects: false,
     });
   });
 
@@ -136,7 +134,6 @@ describe("readTrack", () => {
       arrangementClips: [],
       sessionClips: [],
       devices: [],
-      hasAudioEffects: false,
     });
   });
 
@@ -189,9 +186,7 @@ describe("readTrack", () => {
       arrangementClips: [],
       sessionClips: [],
       devices: [],
-      hasAudioEffects: false,
       hasInstrument: false,
-      hasMidiEffects: false,
     });
   });
 
@@ -272,9 +267,7 @@ describe("readTrack", () => {
         expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
       ],
       devices: [],
-      hasAudioEffects: false,
       hasInstrument: false,
-      hasMidiEffects: false,
     });
   });
 
@@ -1027,7 +1020,7 @@ describe("readTrack", () => {
         displayName: "My Drums",
         type: DEVICE_TYPE.DRUM_RACK,
         isActive: true,
-        hasSoloedChain: true, // Because snare pad is soloed
+        hasSoloedDrumPad: true, // Because snare pad is soloed
         drumPads: [
           {
             name: "Kick",
@@ -1035,8 +1028,6 @@ describe("readTrack", () => {
             mute: false,
             solo: false,
             hasInstrument: true,
-            hasMidiEffects: false,
-            hasAudioEffects: false,
             chain: {
               name: "Kick",
               color: "#FF0000",
@@ -1056,8 +1047,6 @@ describe("readTrack", () => {
             mute: false,
             solo: true,
             hasInstrument: true,
-            hasMidiEffects: false,
-            hasAudioEffects: false,
             chain: {
               name: "Snare",
               color: "#00FF00",
@@ -1127,7 +1116,7 @@ describe("readTrack", () => {
   });
 
   describe("track device properties", () => {
-    it("adds hasInstrument, hasAudioEffects, hasMidiEffects properties for MIDI tracks", () => {
+    it("adds hasInstrument property for MIDI tracks", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") {
           return "track1";
@@ -1170,11 +1159,9 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
       expect(result.hasInstrument).toBe(true);
-      expect(result.hasAudioEffects).toBe(true);
-      expect(result.hasMidiEffects).toBe(true);
     });
 
-    it("only includes hasAudioEffects for audio tracks", () => {
+    it("does not include hasInstrument for audio tracks", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") {
           return "track1";
@@ -1199,8 +1186,6 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
       expect(result.hasInstrument).toBeUndefined(); // Not included for audio tracks
-      expect(result.hasAudioEffects).toBe(true);
-      expect(result.hasMidiEffects).toBeUndefined(); // Not included for audio tracks
     });
 
     it("excludes device properties from Producer Pal host track when false", () => {
@@ -1221,8 +1206,6 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 1 }); // Producer Pal host track
       expect(result.hasInstrument).toBeUndefined(); // Omitted because false
-      expect(result.hasAudioEffects).toBe(false); // Always included
-      expect(result.hasMidiEffects).toBeUndefined(); // Omitted because false
       expect(result.hasProducerPalDevice).toBe(true);
     });
   });

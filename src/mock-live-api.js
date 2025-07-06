@@ -226,9 +226,7 @@ export const expectedTrack = (overrides = {}) => ({
   arrangementClips: [],
   sessionClips: [],
   devices: [],
-  hasAudioEffects: false,
   hasInstrument: false,
-  hasMidiEffects: false,
   ...overrides,
 });
 
