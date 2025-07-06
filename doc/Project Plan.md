@@ -62,21 +62,24 @@
 
 - [x] Welcome message / tips in read-song tool description
 - [x] Add device listing to read-song and read-track
-- [ ] Track Signal Routing
-  - [ ] Support for duplicating tracks without devices as MIDI sources
-  - [ ] Enable routing MIDI between tracks for layering
-- [ ] Add a link to docs in the Max for Live device UI
-  - [ ] Ensure Claude will link to docs without hesitation when asked
 - [ ] Document the version-bumping process
 
 #### 0.9.2
 
-- [ ] Change Arrangement clip length
-- [ ] Improve Producer Pal logo design
-- [ ] Update logo in Desktop Extension
+- [ ] Track Signal Routing
+  - [ ] Support for duplicating tracks without devices as MIDI sources
+  - [ ] Enable routing MIDI between tracks for layering
+- [ ] Add a link to docs in the Max for Live device UI
+- [ ] Nudge Claude to link to docs (add instructions to read-song)
 - [ ] Add Settings tab to Max for Live device UI and move port number there
 - [ ] Adjust desktop extension param to support full URL and not just port
       number (goal: control machine on same LAN)
+
+#### 0.9.3
+
+- [ ] Randomize instrument rack macros
+- [ ] Change Arrangement clip length
+- [ ] Improve Producer Pal logo design and update logo in Desktop Extension
 
 ### 🚀 1.0.0 Release
 

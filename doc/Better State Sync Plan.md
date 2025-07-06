@@ -1,4 +1,10 @@
-# Automated State Synchronization Long-term Technical Plan (Tentative Proposal)
+# Better State Sync: Technical Roadmap
+
+## Current State
+
+User education approach (tool description instructions) is implemented and
+working well. This document outlines future technical improvements for more
+robust state synchronization.
 
 ## Problem Statement
 
