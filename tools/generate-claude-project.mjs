@@ -32,9 +32,11 @@ async function copyFile(sourcePath, targetPath) {
 async function copyDirectoriesAndFiles() {
   const itemsToCopy = [
     // Directories (automatically get directory prefix)
+    // Use targetDirName to override the directory name in output
     { src: "src", isDir: true },
     { src: "doc", isDir: true },
     { src: "tools", isDir: true },
+    { src: ".github", isDir: true, targetDirName: "_github" },
 
     // Individual files (no prefix)
     { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
@@ -67,7 +69,7 @@ async function copyDirectoriesAndFiles() {
         // Copy all files from directory with automatic prefix
         const files = await findAllFiles(sourcePath);
 
-        const dirName = path.basename(item.src);
+        const dirName = item.targetDirName || path.basename(item.src);
 
         for (const filePath of files) {
           const relativePath = path.relative(sourcePath, filePath);
