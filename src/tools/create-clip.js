@@ -324,7 +324,7 @@ export function createClip({
         scene.call("fire");
         // Mark all created clips as triggered in optimistic results
         for (let i = 0; i < count; i++) {
-          createdClips[i].isTriggered = true;
+          createdClips[i].triggered = true;
         }
         break;
 
@@ -337,7 +337,7 @@ export function createClip({
           );
           clipSlot.call("fire");
           // Mark as triggered in optimistic results
-          createdClips[i].isTriggered = true;
+          createdClips[i].triggered = true;
         }
         break;
 

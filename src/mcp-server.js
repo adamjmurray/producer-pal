@@ -34,21 +34,6 @@ appServer
     const url = `http://localhost:${port}/mcp`;
     Max.post(`[${now()}] MCP Server running at ${url}`);
     Max.outlet("version", VERSION);
-    Max.outlet(
-      "claude_config",
-      `{
-  "mcpServers": {
-    "Ableton Producer Pal": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-remote@0.1.14",
-        "${url}"
-      ]
-    }
-  }
-}`,
-    );
   })
   .on("error", (error) => {
     throw new Error(

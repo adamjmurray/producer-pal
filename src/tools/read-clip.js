@@ -2,20 +2,22 @@
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
-} from "../notation/barbeat/barbeat-time";
-import { formatNotation } from "../notation/notation";
+} from "../notation/barbeat/barbeat-time.js";
+import { formatNotation } from "../notation/notation.js";
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
  * @param {Object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based)
  * @param {string} [args.clipId] - Clip ID to directly access any clip
+ * @param {boolean} [args.includeNotes] - Whether to include notes data (default: true)
  * @returns {Object} Result object with clip information
  */
 export function readClip({
   trackIndex = null,
   clipSlotIndex = null,
   clipId = null,
+  includeNotes = true,
 }) {
   if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
     throw new Error(
@@ -74,9 +76,14 @@ export function readClip({
       timeSigDenominator,
     ),
     isPlaying: clip.getProperty("is_playing") > 0,
-    isTriggered: clip.getProperty("is_triggered") > 0,
     timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
   };
+
+  // Only include triggered when clip is triggered
+  const isTriggered = clip.getProperty("is_triggered") > 0;
+  if (isTriggered) {
+    result.triggered = true;
+  }
 
   if (isArrangementClip) {
     const liveSet = new LiveAPI("live_set");
@@ -104,10 +111,12 @@ export function readClip({
     );
     const notes = JSON.parse(notesDictionary).notes;
     result.noteCount = notes.length;
-    result.notes = formatNotation(notes, {
-      timeSigNumerator,
-      timeSigDenominator,
-    });
+    if (includeNotes) {
+      result.notes = formatNotation(notes, {
+        timeSigNumerator,
+        timeSigDenominator,
+      });
+    }
   }
 
   return result;

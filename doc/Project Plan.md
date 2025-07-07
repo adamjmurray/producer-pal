@@ -5,16 +5,15 @@
 **Core Infrastructure:**
 
 - MCP server with StreamableHttp transport integration
-- Max for Live device with Node for Max integration
-- Live API integration and extensions
-- Rollup-based build system with conditional compilation
-- Comprehensive test coverage (96.28% overall)
-- Device UI with port configuration, status indicators, Claude config display
-- Versioning system
+- Max for Live device with Node.js (MCP server) and Live API integration
+- Rollup-based build system
+- Comprehensive test coverage (~90% overall)
+- Device UI with port configuration and status indicators
+- Claude Desktop extension with graceful fallback when Live isn't running
 
 **Notation System:**
 
-- Custom bar|beat music notation format with notes, sequences, chords
+- Custom bar|beat music notation format for MIDI clips
 - Velocity and duration control with probability support
 - Parser/formatter with PEG grammar
 - Time signature support beyond 4/4
@@ -22,26 +21,32 @@
 
 **Complete CRUD Operations:**
 
-- **Clips**: create, read, update, delete with note manipulation, playback
-  control, incremental editing support
-- **Tracks**: create, read, update with properties, drum pad detection, grouped
-  track support
-- **Scenes**: create, read, update, capture functionality
-- **Live Set**: transport control, tempo/time signature, view switching
+- **Clips**: Full CRUD with note manipulation, playback control, incremental
+  editing
+- **Tracks**: Full CRUD with properties, drum pad detection, grouped track
+  support
+- **Scenes**: Full CRUD with capture functionality
+- **Live Set**: Transport control, tempo/time signature, view switching
 
 **Advanced Features:**
 
 - Session and Arrangement view support with comprehensive duplication
-  capabilities
 - Bulk operations (create/update/delete/play/stop multiple objects)
 - Duplicate operations for tracks, scenes, and clips with arrangement
   integration
-- Scene-to-arrangement and clip-to-arrangement duplication with configurable
-  length control
+- Scene-to-arrangement and clip-to-arrangement duplication with length control
 - Track hosting detection and protection
 - Timeout handling and optimistic result strategies
 - Comprehensive error handling, validation, and Max console error capture
 - Refactored codebase with utility functions for common patterns
+
+**Recent Improvements:**
+
+- Clip selection via song_view detail_clip property
+- Scale properties excluded when scale is disabled
+- Detail clip view switching in update-song
+- Support for `v0` velocity to delete notes with incremental updates
+- Desktop extension screenshots added
 
 **Documentation:**
 
@@ -49,69 +54,69 @@
 - Complete tool descriptions and MCP integration guides
 - Architecture specifications and refactoring documentation
 
-## 📋 TODOs
+## 📋 Focus Areas & TODOs
 
-**Desktop extension:**
+### Pre-1.0.0 (Critical Path)
 
-- [ ] Make it gracefully recover from the Max for Live device not being
-      reachable. Maybe always support listTools by building the
-      create-mcp-server code with rollup and packaging up in the extension, then
-      when callingTools, return an error with helpful info like a link to get
-      help installing the Max for Live device. Also let people know they need to
-      be using Ableton Live 12.2 or higher.
-- [x] Add some screenshots
+#### 0.9.1
 
-**Song tool improvements:**
+- [x] Welcome message / tips in read-song tool description
+- [x] Add device listing to read-song and read-track
 
-- [x] allow clips to be selected by setting the song_view detail_clip property
-- [x] don't return scale properties in read-song or update-song if the scale is
-      disabled, as this causes the LLM to follow the scale anyway
-- [x] change to detail clip view in update-song
-  - [ ] also add ability to hide detail clip view?
+#### 0.9.2
 
-**Versioning:**
+- [ ] Track Signal Routing
+  - [ ] Support for duplicating tracks without devices as MIDI sources
+  - [ ] Enable routing MIDI between tracks for layering
+- [ ] Add a link to docs in the Max for Live device UI
+- [ ] Nudge Claude to link to docs (add instructions to read-song)
+- [ ] Add Settings tab to Max for Live device UI and move port number there
+- [ ] Adjust desktop extension param to support full URL and not just port
+      number (goal: control machine on same LAN)
 
-- [ ] Indicate when new versions are available and link to the download
+#### 0.9.3
 
-**Clip editing:**
+- [ ] Randomize instrument rack macros
+- [ ] Change Arrangement clip length
+- [ ] Improve Producer Pal logo design and update logo in Desktop Extension
 
-- [x] Support `v0` velocity to delete existing notes when updating with
-      `clearExistingNotes: false`
+### 🚀 1.0.0 Release
 
-**Arrangement Improvements:**
+_Stable, documented, user-friendly baseline with device awareness_
 
-- [ ] Allow changing clip length (currently requires read/delete/recreate
-      workflow)
+### Post-1.0.0
 
-**Duplicate Tool:**
+#### 1.1.0 - Customization Foundation
 
-- [ ] Response format improvements (see Duplicate Tool Response Format
-      Improvement Plan)
-- [ ] ClipSlot.duplicate_clip_to with bulk destination support
-- [ ] Enhanced clip duplication safety with conflict detection and resolution
-      strategies
+- [ ] Customization Phase 1: Per-project context
+- [ ] Customization Phase 2: Global context
+- [ ] Customization Phase 3: JSON override system
+- [ ] Full Instrument Selection & Sound Design Assistance (beyond MVP)
 
-**Robustness:**
+#### 1.x - Miscellaneous Cleanup
 
-- [ ] Validation system for better error handling (start/end times, clip bounds,
-      etc.)
+- [ ] Implement version update notifications in the UI
 - [ ] Optional toggle in device UI to suppress Max console errors
-
-**MIDI Routing:**
-
-- [ ] Track-to-track MIDI routing functionality
-- [ ] Automatic routing setup for layered loops/patterns
-
-**Error Handling:**
-
-- [ ] Standardize exception formats across tools and let exception handler add
-      tool names
-
-**Testing Infrastructure:**
-
+- [ ] Standardize exception formats across tools
+- [ ] Duplicate Tool response format improvements
 - [ ] Improved mocking system with unified interface for LiveAPI objects
+- [ ] State Sync: ID-first operations, smart error recovery
+- [ ] Validation system for better error handling
 
-## 🚀 Future Ideas
+#### 1.5.0 - Device Control
+
+- [ ] R&D: Device & Effect Control (rack parameters, automation if the Live API
+      allows it one day)
+
+#### 2.0.0 - Learning & Personas
+
+- [ ] Customization Phase 4: Learning system with backups
+
+#### 2.1.0 - Personas
+
+- [ ] Customization Phase 5: Persona system
+
+### 💡 Future Ideas (3.x)
 
 **bar|beat Enhancements:**
 
@@ -128,9 +133,19 @@
 - Multi-track composition templates
 - Groove and swing enhancements
 
-**Beyond Composition Features:**
+**Beyond Composition:**
 
-- Device and plugin parameter control
-- Advanced automation and modulation
 - Sample manipulation and warping
-- Audio effect integration
+- Advanced automation curves
+- MIDI effects integration
+
+## 📚 Related Documents
+
+- Customization and Adaptive Learning Roadmap
+- Better State Sync - Phase 1 (User education approach)
+- Better State Sync - Phase 2 (Technical automation plan)
+- Duplicate Tool Response Format Improvement Plan
+- Manual Testing Scenarios
+- Live Instruments (instrument info & sound design ideas)
+- Architecture documentation
+- bar|beat notation specification

@@ -67,7 +67,30 @@ class StdioHttpBridge {
     };
   }
 
-  async _tryConnectToHttp() {
+  async _ensureHttpConnection() {
+    // If we have a client and think we're connected, try to reuse it
+    if (this.httpClient && this.isConnected) {
+      try {
+        // Test if the connection is still valid by attempting a lightweight operation
+        // If this succeeds, we can reuse the existing connection
+        return;
+      } catch (error) {
+        console.error("[Bridge] Existing connection is stale:", error.message);
+        // Fall through to create new connection
+      }
+    }
+
+    // Clean up old client if it exists
+    if (this.httpClient) {
+      try {
+        await this.httpClient.close();
+      } catch (error) {
+        console.error("[Bridge] Error closing old client:", error.message);
+      }
+      this.httpClient = null;
+    }
+
+    // Create new connection
     try {
       const httpTransport = new StreamableHTTPClientTransport(
         new URL(this.httpUrl),
@@ -80,20 +103,29 @@ class StdioHttpBridge {
       await this.httpClient.connect(httpTransport);
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
-      return true;
     } catch (error) {
       console.error("[Bridge] HTTP connection failed:", error.message);
       this.isConnected = false;
-      return false;
+      if (this.httpClient) {
+        try {
+          this.httpClient.close();
+        } catch (closeError) {
+          console.error(
+            "[Bridge] Error closing failed client:",
+            closeError.message,
+          );
+        }
+        this.httpClient = null;
+      }
+      throw new Error(
+        `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${error.message}`,
+      );
     }
   }
 
   async start() {
     console.error(`[Bridge] Starting enhanced stdio-to-HTTP bridge`);
     console.error(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
-
-    // Try to connect to HTTP server, but don't fail if it's not available
-    await this._tryConnectToHttp();
 
     // Create MCP server that will handle stdio connections
     this.mcpServer = new Server(
@@ -112,18 +144,18 @@ class StdioHttpBridge {
     this.mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
       console.error(`[Bridge] Handling tools/list request`);
 
-      if (this.isConnected) {
-        try {
-          const result = await this.httpClient.listTools();
-          console.error(`[Bridge] tools/list successful via HTTP`);
-          return result;
-        } catch (error) {
-          console.error(
-            `[Bridge] HTTP tools/list failed, using fallback:`,
-            error.message,
-          );
-          this.isConnected = false;
-        }
+      // Always try to connect to HTTP server first
+      try {
+        await this._ensureHttpConnection();
+        const result = await this.httpClient.listTools();
+        console.error(`[Bridge] tools/list successful via HTTP`);
+        return result;
+      } catch (error) {
+        console.error(
+          `[Bridge] HTTP tools/list failed, using fallback:`,
+          error.message,
+        );
+        this.isConnected = false;
       }
 
       // Return fallback tools when HTTP is not available
@@ -137,30 +169,25 @@ class StdioHttpBridge {
         request.params.arguments,
       );
 
-      // Try to reconnect if not connected
-      if (!this.isConnected) {
-        await this._tryConnectToHttp();
-      }
+      // Always try to connect to HTTP server first
+      try {
+        await this._ensureHttpConnection();
+        const toolRequest = {
+          name: request.params.name,
+          arguments: request.params.arguments || {},
+        };
 
-      if (this.isConnected) {
-        try {
-          const toolRequest = {
-            name: request.params.name,
-            arguments: request.params.arguments || {},
-          };
-
-          const result = await this.httpClient.callTool(toolRequest);
-          console.error(
-            `[Bridge] Tool call successful for ${request.params.name}`,
-          );
-          return result;
-        } catch (error) {
-          console.error(
-            `[Bridge] HTTP tool call failed for ${request.params.name}:`,
-            error.message,
-          );
-          this.isConnected = false;
-        }
+        const result = await this.httpClient.callTool(toolRequest);
+        console.error(
+          `[Bridge] Tool call successful for ${request.params.name}`,
+        );
+        return result;
+      } catch (error) {
+        console.error(
+          `[Bridge] HTTP tool call failed for ${request.params.name}:`,
+          error.message,
+        );
+        this.isConnected = false;
       }
 
       // Return setup error when Producer Pal is not available
@@ -180,10 +207,20 @@ class StdioHttpBridge {
 
   async stop() {
     if (this.httpClient) {
-      this.httpClient.close();
+      try {
+        this.httpClient.close();
+      } catch (error) {
+        console.error("[Bridge] Error closing HTTP client:", error.message);
+      }
+      this.httpClient = null;
     }
     if (this.mcpServer) {
-      this.mcpServer.close();
+      try {
+        this.mcpServer.close();
+      } catch (error) {
+        console.error("[Bridge] Error closing MCP server:", error.message);
+      }
+      this.mcpServer = null;
     }
     this.isConnected = false;
     console.error(`[Bridge] Enhanced stdio-to-HTTP bridge stopped`);

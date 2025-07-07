@@ -1,18 +1,17 @@
 # Producer Pal Development Info
 
-⚠️ This project does _not_ accept pull requests or contributions! ⚠️
+This is a personal project with a focused roadmap. While the code is open source
+for learning and forking, I'm not accepting contributions to keep the project
+aligned with my specific workflow needs.
 
-Here's the deal: I built this project for myself. The project roadmap and future
-features are things I want, and that's what I'm going to spend my limited time
-building.
+Feel free to:
 
-I open-sourced this because I want people to realize there's no "magic" here,
-and they can make tools like this for themselves too. If you really want to take
-this project in a different direction, you can fork this project and change it
-however you want.
-
-Don't send pull requests for bugs either. I'd much rather get a clear bug report
-and then decide how I want to fix it (if I want to fix it).
+- File bug reports in
+  [the issues](https://github.com/adamjmurray/producer-pal/issues)
+- Ask questions, give feedback, and share your experiences in
+  [the discussions](https://github.com/adamjmurray/producer-pal/discussions)
+- Learn from the implementation
+- Fork and modify for your own needs
 
 ## Building from source
 
@@ -21,9 +20,9 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
 1. Clone this repository
 2. `npm install`
 3. `npm run build`
-4. Add the `device/Producer Pal.amxd` Max for Live device to a MIDI track in
+4. Add the `device/Producer-Pal.amxd` Max for Live device to a MIDI track in
    Ableton Live
-5. Drag and drop `desktop-extension/Producer Pal.dxt` to Claude Desktop →
+5. Drag and drop `desktop-extension/Producer-Pal.dxt` to Claude Desktop →
    Settings → Extension
 
 ## Core Development Scripts
@@ -49,6 +48,15 @@ npx @modelcontextprotocol/inspector
 and then open
 http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350/mcp
 
+## Manual Testing Notes
+
+**Important**: After changing tool descriptions in the Producer Pal code (like
+in `src/mcp-server/add-tool-*.js`), you must toggle the Producer Pal extension
+off/on in Claude Desktop to refresh the cached tool definitions. Simply
+rebuilding the code or restarting Claude Desktop is not sufficient - the
+extension must be disabled and re-enabled in Claude Desktop → Settings →
+Extensions to see updated tool descriptions.
+
 ## Coding Agents
 
 Claude Code assists with the development of this project. A `CLAUDE.md` is
@@ -62,26 +70,32 @@ prefer) for complex brainstorming and planning sessions. Then, those results can
 then be fed back into Claude Code (for example by generating a new file for the
 `docs` folder).
 
-## Releasing
+## Development Testing
 
-The version should be bumped for new releases. TODO: Document the
-version-bumping process.
+For development testing, there are two main approaches:
 
-Releases consist of two files:
+### Direct MCP Connection (Preferred)
 
-1. `npm build` will produce the `desktop-extension/Producer Pal.dxt` file. Grab
-   this file, and save it to "release storage" with a version number suffix in
-   the filename.
+Add the MCP server directly to Claude Code for the best development experience:
 
-2. After `npm build` generates the latest code for the Max for Live device, edit
-   the device in Max, click the "freeze" button (to pack up all dependencies
-   like the JS code), "save as...", and save it to "release storage" with a
-   version number suffix in the filename.
+```sh
+claude mcp add --transport http producer-pal http://localhost:3350/mcp
+```
 
-## End-to-End Testing
+**Requirements:**
 
-For real-world testing and debugging, use the CLI tool at `tools/cli.mjs` to
-directly connect to the MCP server running in Ableton Live:
+- Producer Pal Max for Live device must be running in Ableton Live before
+  starting a Claude Code session
+- Run `npm run dev` for auto-rebuild on changes
+- Provides direct access to all producer-pal tools through Claude Code
+
+This approach is preferred for development testing as it provides seamless
+integration with Claude Code's MCP capabilities.
+
+### CLI Tool (Fallback)
+
+For situations where the direct MCP connection isn't available or working, use
+the CLI tool at `tools/cli.mjs` to directly connect to the MCP server:
 
 ```sh
 # Show server info (default)
@@ -137,3 +151,171 @@ The `raw-live-api` tool supports 13 operation types including core operations
 (`get_property`, `set_property`, `call_method`), convenience shortcuts (`get`,
 `set`, `call`, `goto`, `info`), and extension methods (`getProperty`,
 `getChildIds`, `exists`, `getColor`, `setColor`).
+
+## Releasing
+
+### Version Numbers
+
+Version numbers appear in these locations:
+
+1. `package.json` (root) - Source of truth
+2. `desktop-extension/package.json`
+3. `src/version.js`
+4. `device/Producer-Pal.amxd` - In the Max UI (manual update required)
+
+### Release Process
+
+#### Step 1: Version Bump (on dev branch)
+
+```sh
+# Automated version bump script
+npm run version:bump        # patch: 0.9.0 → 0.9.1
+npm run version:bump:minor  # minor: 0.9.1 → 0.10.0
+npm run version:bump:major  # major: 0.9.1 → 1.0.0
+```
+
+This script updates:
+
+- ✅ package.json files
+- ✅ src/version.js
+- ❌ Max device UI (must be done manually - see Step 2)
+
+#### Step 2: Update Max Device UI
+
+1. Open `device/Producer-Pal.amxd` in Max
+2. Update version number in the UI to match
+3. Save the device (do NOT freeze yet)
+
+#### Step 3: Test and Commit
+
+```sh
+npm test
+git add -A
+git commit -m "Bump version to X.Y.Z"
+```
+
+#### Step 4: Tag the Release (BEFORE building)
+
+```sh
+# Tag the exact commit we're about to build from
+git tag vX.Y.Z
+git push origin dev vX.Y.Z
+```
+
+This ensures the tag matches the exact code used to build the release.
+
+#### Step 5: Build Release Files
+
+```sh
+# Build from the tagged commit
+npm run release:prepare
+```
+
+This script:
+
+- Cleans the `releases/` directory
+- Builds the `.dxt` file
+- Copies it to `releases/Producer-Pal.dxt`
+
+#### Step 6: Freeze Max Device
+
+1. Open `device/Producer-Pal.amxd` in Max
+2. Click the freeze button
+3. Save as: `releases/Producer-Pal.amxd`
+
+#### Step 7: Create GitHub Pre-Release
+
+1. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
+2. Click "Draft a new release"
+3. Choose tag: `vX.Y.Z`
+4. Release title: `X.Y.Z`
+5. Upload files from `releases/`:
+   - `Producer-Pal.amxd`
+   - `Producer-Pal.dxt`
+6. ✅ Check "Set as a pre-release"
+7. Write release notes
+8. Publish pre-release
+
+#### Step 8: Create Pull Request
+
+Create PR via GitHub UI: `dev → main`
+
+The PR will include the tag and all release commits.
+
+#### Step 9: Test Pre-Release
+
+Test the pre-release thoroughly, especially on different platforms (Windows,
+macOS). Download directly from GitHub to ensure the files work correctly.
+
+If issues are found, see "Fixing Issues During Pre-Release" section below.
+
+#### Step 10: Merge and Promote
+
+After testing succeeds:
+
+1. Review and merge the PR via GitHub UI
+2. Go to the pre-release on GitHub
+3. Click "Edit"
+4. Uncheck "Set as a pre-release"
+5. Update release (no need to re-upload files)
+
+#### Step 11: Post-Release
+
+```sh
+# Fetch and merge the updated main branch
+git fetch origin main
+git merge origin/main
+```
+
+This ensures dev has the merge commit created by GitHub when merging the PR.
+
+### Fixing Issues During Pre-Release
+
+If problems are found during pre-release testing:
+
+1. **Fix the issues** (on dev branch)
+
+   ```sh
+   # Make necessary fixes
+   git add -A
+   git commit -m "Fix: description of fix"
+   ```
+
+2. **Delete and recreate the tag**
+
+   ```sh
+   # Delete remote tag
+   git push origin --delete vX.Y.Z
+   # Delete local tag
+   git tag -d vX.Y.Z
+   # Recreate tag at current commit
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+3. **Rebuild**
+
+   ```sh
+   npm run release:prepare
+   # Freeze Max device again
+   ```
+
+4. **Update the pre-release**
+   - Go to the existing pre-release on GitHub
+   - Delete the old files
+   - Upload the new files
+   - No need to recreate the release
+
+5. **Retest** and repeat if necessary
+
+This is acceptable for pre-releases since they're explicitly marked as not
+production-ready.
+
+### Stable Download URLs
+
+After release, these URLs will always point to the latest version:
+
+- [Producer-Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.amxd)
+- [Producer-Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.dxt)
+
+No README updates needed for new releases!

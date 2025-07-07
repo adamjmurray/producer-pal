@@ -5,9 +5,9 @@ code in this repository.
 
 ## Project Overview
 
-Ableton Producer Pal is an AI-powered music composition tool that integrates
-with Ableton Live through a Max for Live device. It uses the Model Context
-Protocol (MCP) to enable AI assistants to manipulate music in Ableton Live.
+Producer Pal is an AI-powered music composition tool that integrates with
+Ableton Live through a Max for Live device. It uses the Model Context Protocol
+(MCP) to enable AI assistants to manipulate music in Ableton Live.
 
 ## Essential Commands
 
@@ -68,7 +68,8 @@ accessible:
 
 - **Online mode**: Forwards all requests to HTTP MCP server in Ableton Live
 - **Offline mode**: Returns static tool definitions and helpful setup messages
-- **Tool listing**: Always works via fallback definitions from `create-mcp-server`
+- **Tool listing**: Always works via fallback definitions from
+  `create-mcp-server`
 - **Tool calls**: Return setup instructions pointing users to
   https://adammurray.link/producer-pal
 
@@ -76,7 +77,8 @@ accessible:
 
 - Tool names must match regex `^[a-zA-Z0-9_-]{1,64}$` (use original `name`, not
   display name)
-- Fallback schemas must be JSON Schema, not Zod objects (use `zodToJsonSchema()`)
+- Fallback schemas must be JSON Schema, not Zod objects (use
+  `zodToJsonSchema()`)
 - Zero runtime dependencies achieved by replacing OAuth imports with stub
   functions
 
@@ -108,6 +110,10 @@ Grammar file: `src/notation/barbeat/barbeat-grammar.peggy`
 - Mock Live API available via `src/mock-live-api.js`
 - Tests are colocated with source files (`*.test.js`)
 - Run individual test: `npm test -- path/to/file.test.js`
+- **Test assertions**: Prefer `expect.objectContaining()` and nested
+  array/object matchers over individual property assertions. Write assertions
+  that match the expected data structure as closely as possible to make tests
+  more maintainable and focused on what matters.
 
 ## Live API Extensions
 
@@ -191,13 +197,41 @@ export default function toolName(liveApi, args) {
 When modifying bar|beat notation grammar, remember to rebuild the parser with
 `npm run parser:build`.
 
+**Important for Manual Testing**: After changing tool descriptions (like in
+`src/mcp-server/add-tool-*.js`), you must toggle the Producer Pal extension
+off/on in Claude Desktop to refresh the cached tool definitions. Simply saving
+code, rebuilding, or restarting Claude Desktop is not sufficient - the extension
+must be disabled and re-enabled to see updated tool descriptions.
+
 Note: You generally don't need to run `npm run build` to verify changes - the
 test suite is sufficient to ensure correctness.
 
-### End-to-End Testing
+### Development Testing
 
-For real-world testing and debugging, the `tools/cli.mjs` tool can connect
-directly to the MCP server running in Ableton Live:
+For development testing, there are two main approaches:
+
+#### Direct MCP Connection (Preferred)
+
+Add the MCP server directly to Claude Code for the best development experience:
+
+```bash
+claude mcp add --transport http producer-pal http://localhost:3350/mcp
+```
+
+**Requirements:**
+
+- Producer Pal Max for Live device must be running in Ableton Live before
+  starting a Claude Code session
+- Run `npm run dev` for auto-rebuild on changes
+- Provides direct access to all producer-pal tools through Claude Code
+
+This approach is preferred for development testing as it provides seamless
+integration with Claude Code's MCP capabilities.
+
+#### CLI Tool (Fallback)
+
+For situations where the direct MCP connection isn't available or working, the
+`tools/cli.mjs` tool can connect directly to the MCP server:
 
 ```bash
 # Show server info (default)
@@ -295,6 +329,11 @@ To update the version:
 
 ## Project Rules
 
+- **ALWAYS pass args to tool functions in main.js**: All tool entries in the
+  `tools` object in `src/main.js` must use the pattern
+  `(args) => toolFunction(args)`, even if the tool currently has no parameters.
+  This prevents bugs when parameters are added later. Never use
+  `() => toolFunction()` without args.
 - At the end of a block of work (e.g. the end of a TODO list), the code should
   be formatted with `npm run format`
 - At the end of a block of work (e.g. the end of a TODO list), the full test
@@ -315,7 +354,7 @@ To update the version:
 - We use the new StreamableHttp transport for MCP because the
   [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
 - Claude Desktop requires an adapter between its stdio transport and an HTTP MCP
-  server. We use the library `mcp-remote` for this.
+  server. We implement this with our own custom desktop extension bridge.
 - We are using Live 12.2 and Max 9
 - We are using Node.js 20
 - We build two JavaScript bundles with rollup.js. One bundle is for the MCP
@@ -414,3 +453,30 @@ To update the version:
   the user.** The user may be in the middle of their own testing or music
   production work, and running commands could interfere with their Ableton Live
   session or produce unexpected results.
+- **drumMap preservation**: The `drumMap` property in track objects is a
+  critical user-facing feature that enables drum programming workflows. Any
+  changes to device structure or organization must preserve drumMap
+  functionality by ensuring the extraction logic can locate drum rack devices
+  across all device categories. This is a key API feature that users depend on
+  and must never be broken by refactoring.
+
+## Desktop Extension (DXT) Rules
+
+- The Desktop Extension manifest is generated from
+  `tools/desktop-extension-manifest.template.json` during build
+- User configuration (like port) is handled by Claude Desktop, not manual JSON
+  editing
+- The extension bridge (`claude-ableton-connector.js`) provides graceful
+  fallback when Live isn't running
+- Test the extension bridge with `node tools/test-desktop-extension.mjs` without
+  needing Claude Desktop
+- The built `.dxt` file includes the stdio-HTTP bridge bundled with all
+  dependencies
+- When building releases, both the `.dxt` file AND the frozen Max for Live
+  device are needed
+- When designing features that involve contextual help, adaptive messaging, or
+  user education, prefer adding instructions to tool descriptions over adding
+  code complexity. Let Claude's intelligence handle context-aware responses
+  rather than encoding rules in JavaScript. Example: The welcome message in
+  read-song and missing instrument detection both use tool instructions rather
+  than code flags. This pattern is documented in docs/Patterns.md.

@@ -74,6 +74,20 @@ Drum pattern with probability and velocity variation
 v100 p0.9 Gb1
 \`\`\`
 
+## Musical Density Guidelines
+
+Professional arrangements prioritize clarity and impact:
+- **Space is musical**: Silence between notes often matters more than the notes themselves
+- **Context matters**: A "sparse" drum pattern might have 50+ notes, while a "dense" bass line might have only 20
+- **Build through dynamics**: Use velocity (v50 to v120) to create intensity rather than adding more notes
+- **Rhythmic evolution**: Progress from long notes to shorter subdivisions (whole to half to quarter to eighth)
+
+"Epic" or "dramatic" typically achieves impact through:
+- Wide dynamic range rather than continuous fortissimo
+- Rhythmic contrast between sections
+- Strategic moments of space and silence
+- Each instrument having room to breathe
+
 ## Tool-Specific Behavior
 
 ### v0 Note Deletion (update-clip only)

@@ -1,13 +1,15 @@
-# Ableton Live Composition Assistant Architecture and Technical Specifications
+# Producer Pal Architecture and Technical Specifications
 
 ## Architecture Overview
 
 The main parts of the system are:
 
-- Claude Desktop connects to `mcp-remote`, a proxy that adapts the stdio
-  transport to the streamable HTTP transport
-- `mcp-remote` connects to an MCP server in a Node.js process using the
-  streamable HTTP transport
+- Claude Desktop connects to Producer Pal via a Desktop Extension (.dxt file)
+- The extension includes a stdio-to-HTTP bridge
+  (`src/desktop-extension/claude-ableton-connector.js`) that converts Claude's
+  stdio transport to HTTP
+- The bridge connects to an MCP server running in Node for Max (streamable HTTP
+  transport, on port 3350 by default)
 - the Node.js process is running in a Node for Max object in a Max for Live
   device in Ableton Live
 - the Node.js process doesn't have direct access to the Live API, so it sends
@@ -30,11 +32,12 @@ The main parts of the system are:
      | Claude Desktop |
      +---------------+
              ↑
-             | MCP stdio transport
+             | MCP stdio transport (via DXT)
              ↓
-     +---------------+
-     |   mcp-remote  |
-     +---------------+
+ +---------------------------+
+ | Producer Pal Extension     |
+ | (claude-ableton-connector) |
+ +---------------------------+
              ↑
              | MCP streamable HTTP transport
              ↓

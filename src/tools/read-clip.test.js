@@ -83,7 +83,6 @@ describe("readClip", () => {
       startMarker: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
       loopStart: "1|2",
       isPlaying: false,
-      isTriggered: false,
       timeSignature: "4/4",
       notes: "1|1 C3 1|2 D3 1|3 E3", // Real bar|beat output
       noteCount: 3,
@@ -163,7 +162,6 @@ describe("readClip", () => {
       startMarker: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       loopStart: "1|3",
       isPlaying: false,
-      isTriggered: false,
       timeSignature: "6/8",
       notes: "1|1 C3 1|3 D3 1|5 E3", // Real bar|beat output in 6/8
       noteCount: 3,
@@ -334,7 +332,6 @@ describe("readClip", () => {
       startMarker: "1|2",
       loopStart: "1|2",
       isPlaying: true,
-      isTriggered: false,
       timeSignature: "4/4",
     });
   });
@@ -508,7 +505,7 @@ describe("readClip", () => {
       loop: false,
       loopStart: "1|2",
       isPlaying: false,
-      isTriggered: true,
+      triggered: true,
       timeSignature: "4/4",
       noteCount: 4,
       notes: "1|1 t0.25 C1 1|2 v90 D1 1|3 v100 C1 1|4 v90 D1",

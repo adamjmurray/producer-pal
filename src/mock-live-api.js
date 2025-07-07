@@ -146,6 +146,7 @@ export function mockLiveApiGet(overrides = {}) {
             return [16711680];
           case "mute":
           case "solo":
+          case "muted_via_solo":
             return [0];
           case "arm":
             return [1];
@@ -213,8 +214,6 @@ export const expectedTrack = (overrides = {}) => ({
   name: "Test Track",
   trackIndex: 0,
   color: "#FF0000",
-  isMuted: false,
-  isSoloed: false,
   isArmed: true,
   followsArrangement: true,
   isGroup: false,
@@ -222,9 +221,9 @@ export const expectedTrack = (overrides = {}) => ({
   groupId: null,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
-  drumPads: null,
   arrangementClips: [],
   sessionClips: [],
+  instrument: null,
   ...overrides,
 });
 
@@ -234,7 +233,6 @@ export const expectedScene = (overrides = {}) => ({
   sceneIndex: 0,
   color: "#000000",
   isEmpty: false,
-  isTriggered: false,
   tempo: "disabled",
   timeSignature: "disabled",
   ...overrides,
@@ -254,7 +252,6 @@ export const expectedClip = (overrides = {}) => ({
   loop: false,
   loopStart: "1|2", // bar|beat format
   isPlaying: false,
-  isTriggered: false,
   timeSignature: "4/4",
   noteCount: 0,
   notes: "",

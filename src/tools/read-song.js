@@ -1,10 +1,18 @@
 // src/tools/read-song.js
 import { fromLiveApiView } from "../utils.js";
 import { PITCH_CLASS_NAMES } from "../notation/midi-pitch-to-name.js";
-import { readScene } from "./read-scene";
-import { readTrack } from "./read-track";
+import { readScene } from "./read-scene.js";
+import { readTrack } from "./read-track.js";
 
-export function readSong() {
+export function readSong({
+  includeDrumChains = false,
+  includeNotes = true,
+  includeRackChains = true,
+  includeEmptyScenes = false,
+  includeMidiEffects = false,
+  includeInstrument = true,
+  includeAudioEffects = false,
+} = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const appView = new LiveAPI("live_app view");
@@ -51,8 +59,20 @@ export function readSong() {
     selectedSceneIndex,
     selectedClipId,
     highlightedClipSlot: highlightedSlot,
-    tracks: trackIds.map((_trackId, trackIndex) => readTrack({ trackIndex })),
-    scenes: sceneIds.map((_sceneId, sceneIndex) => readScene({ sceneIndex })),
+    tracks: trackIds.map((_trackId, trackIndex) =>
+      readTrack({
+        trackIndex,
+        includeDrumChains,
+        includeNotes,
+        includeRackChains,
+        includeMidiEffects,
+        includeInstrument,
+        includeAudioEffects,
+      }),
+    ),
+    scenes: sceneIds
+      .map((_sceneId, sceneIndex) => readScene({ sceneIndex, includeNotes }))
+      .filter((scene) => includeEmptyScenes || !scene.isEmpty),
   };
 
   // Only include scale properties when scale is enabled

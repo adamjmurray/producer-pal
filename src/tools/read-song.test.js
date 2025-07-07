@@ -9,6 +9,11 @@ import {
   mockLiveApiGet,
 } from "../mock-live-api";
 import { readSong } from "./read-song";
+import {
+  DEVICE_TYPE,
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+} from "./read-track";
 
 describe("readSong", () => {
   it("returns live set information including tracks and scenes", () => {
@@ -123,7 +128,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong();
+    const result = readSong({ includeEmptyScenes: true });
 
     expect(result).toEqual({
       id: "live_set_id",
@@ -149,8 +154,7 @@ describe("readSong", () => {
           name: "MIDI Track 1",
           trackIndex: 0,
           color: "#FF0000",
-          isMuted: false,
-          isSoloed: true,
+          state: "soloed",
           isArmed: true,
           followsArrangement: true,
           isGroup: true,
@@ -158,12 +162,12 @@ describe("readSong", () => {
           groupId: null,
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          drumPads: null,
           arrangementClips: [],
           sessionClips: [
             expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
+          instrument: null,
         },
         {
           id: "track2",
@@ -171,8 +175,7 @@ describe("readSong", () => {
           name: "Audio Track 2",
           trackIndex: 1,
           color: "#00FF00",
-          isMuted: true,
-          isSoloed: false,
+          state: "muted",
           isArmed: false,
           isGroup: false,
           followsArrangement: false,
@@ -180,11 +183,11 @@ describe("readSong", () => {
           groupId: "track1",
           playingSlotIndex: 2,
           firedSlotIndex: 3,
-          drumPads: null,
           arrangementClips: [],
           sessionClips: [
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
           ],
+          instrument: null,
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
@@ -195,7 +198,6 @@ describe("readSong", () => {
           sceneIndex: 0,
           color: "#FF0000",
           isEmpty: false,
-          isTriggered: false,
           tempo: 120,
           timeSignature: "4/4",
         },
@@ -205,7 +207,7 @@ describe("readSong", () => {
           sceneIndex: 1,
           color: "#00FF00",
           isEmpty: true,
-          isTriggered: true,
+          triggered: true,
           tempo: "disabled",
           timeSignature: "disabled",
         },
@@ -245,7 +247,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong();
+    const result = readSong({ includeEmptyScenes: true });
 
     expect(result).toEqual({
       id: "live_set",
@@ -264,5 +266,189 @@ describe("readSong", () => {
       tracks: [],
       scenes: [],
     });
+  });
+
+  it("includes device information across multiple tracks with includeDrumChains", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set") return "live_set_id";
+      if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set tracks 1") return "track2";
+      return this._id;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Device Test Set",
+        tracks: children("track1", "track2"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Synth Track",
+        devices: children("synth1", "eq1"),
+      },
+      "live_set tracks 1": {
+        has_midi_input: 0,
+        name: "Audio Track",
+        devices: children("reverb1"),
+      },
+      synth1: {
+        name: "Analog",
+        class_name: "UltraAnalog",
+        class_display_name: "Analog",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+      eq1: {
+        name: "EQ Eight",
+        class_name: "Eq8",
+        class_display_name: "EQ Eight",
+        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+      reverb1: {
+        name: "Reverb",
+        class_name: "Reverb",
+        class_display_name: "Reverb",
+        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+    });
+
+    const result = readSong({
+      includeDrumChains: true,
+      includeAudioEffects: true,
+    });
+
+    // Check that tracks have the expected device configurations
+    expect(result.tracks).toEqual([
+      expect.objectContaining({
+        name: "Synth Track",
+        instrument: expect.objectContaining({
+          name: "Analog",
+          type: DEVICE_TYPE.INSTRUMENT,
+        }),
+        audioEffects: [
+          expect.objectContaining({
+            name: "EQ Eight",
+            type: DEVICE_TYPE.AUDIO_EFFECT,
+          }),
+        ],
+      }),
+      expect.objectContaining({
+        name: "Audio Track",
+        instrument: null,
+        audioEffects: [
+          expect.objectContaining({
+            name: "Reverb",
+            type: DEVICE_TYPE.AUDIO_EFFECT,
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it("excludes drum rack devices by default", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set") return "live_set_id";
+      if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set tracks 0 devices 0") return "drum_rack1";
+      if (this._path === "live_set tracks 0 devices 1") return "reverb1";
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36")
+        return "kick_pad";
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0")
+        return "kick_chain";
+      return this._id;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Drum Rack Test Set",
+        tracks: children("track1"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Drum Track",
+        devices: children("drum_rack1", "reverb1"),
+      },
+      drum_rack1: {
+        name: "My Drums",
+        class_name: "DrumGroupDevice",
+        class_display_name: "Drum Rack",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        drum_pads: children("kick_pad"),
+        return_chains: [],
+      },
+      kick_pad: {
+        name: "Kick",
+        note: 36, // C1
+        mute: 0,
+        solo: 0,
+        chains: children("kick_chain"),
+      },
+      kick_chain: {
+        name: "Kick",
+        color: 16711680, // Red
+        mute: 0,
+        solo: 0,
+        devices: children("kick_device"),
+      },
+      kick_device: {
+        name: "Simpler",
+        class_name: "Simpler",
+        class_display_name: "Simpler",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+      reverb1: {
+        name: "Reverb",
+        class_name: "Reverb",
+        class_display_name: "Reverb",
+        type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+    });
+
+    const result = readSong({
+      includeEmptyScenes: true,
+      includeAudioEffects: true,
+    }); // Default behavior
+
+    // Check that drum rack devices are included with drumPads but without devices in drumPad chains
+    expect(result.tracks[0].instrument).toEqual(
+      expect.objectContaining({
+        name: "Drum Rack",
+        type: DEVICE_TYPE.DRUM_RACK,
+        drumPads: expect.any(Array), // Should have drumPads property
+      }),
+    );
+    expect(result.tracks[0].audioEffects).toEqual([
+      expect.objectContaining({
+        name: "Reverb",
+        type: DEVICE_TYPE.AUDIO_EFFECT,
+      }),
+    ]);
+    // Drum rack device should be present with drumPads but drumPad chains should not have devices
+    const drumRack = result.tracks[0].instrument;
+    expect(drumRack).toBeDefined();
+    expect(drumRack.drumPads).toBeDefined();
+    // If drumPads exist, they should not have chain property when includeDrumChains=false
+    if (drumRack.drumPads && drumRack.drumPads.length > 0) {
+      expect(drumRack.drumPads[0].chain).toBeUndefined();
+    }
   });
 });

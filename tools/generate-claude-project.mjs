@@ -9,9 +9,16 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 const outputDir = path.join(projectRoot, "claude-project");
 
+const FLAT_SEP = "--";
+
+function flattenPath(pathStr) {
+  return pathStr.replace(/[/\\]/g, FLAT_SEP);
+}
+
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
+    console.log(`Removed existing outputDir: ${outputDir}`);
   } catch (error) {
     // Directory doesn't exist, which is fine
   }
@@ -19,53 +26,35 @@ async function cleanAndCreateOutputDir() {
 }
 
 async function copyFile(sourcePath, targetPath) {
-  const content = await fs.readFile(sourcePath, "utf8");
-  await fs.writeFile(targetPath, content);
-}
-
-async function findSourceFiles(dir, baseDir, skipTests = true) {
-  const files = [];
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      // Recursively search subdirectories
-      files.push(...(await findSourceFiles(fullPath, baseDir, skipTests)));
-    } else if (entry.isFile()) {
-      const ext = path.extname(entry.name);
-      const isTestFile =
-        entry.name.includes(".test.") || entry.name.includes(".spec.");
-
-      // Include JavaScript and Peggy grammar files, but skip tests if requested
-      if ((ext === ".js" || ext === ".peggy") && (!skipTests || !isTestFile)) {
-        files.push(fullPath);
-      }
-    }
-  }
-
-  return files;
+  await fs.copyFile(sourcePath, targetPath);
 }
 
 async function copyDirectoriesAndFiles() {
   const itemsToCopy = [
     // Directories (automatically get directory prefix)
-    { src: "src", isDir: true, skipTests: false },
+    // Use targetDirName to override the directory name in output
+    { src: "src", isDir: true },
     { src: "doc", isDir: true },
     { src: "tools", isDir: true },
+    { src: ".github", isDir: true, targetDirName: "_github" },
 
     // Individual files (no prefix)
+    { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
+    { src: "DEVELOPERS.md" },
+    { src: "FEATURES.md" },
     { src: "LICENSE.md" },
     { src: "package.json" },
     { src: "README.md" },
     { src: "rollup.config.mjs" },
-    { src: "vitest.config.ts" },
     { src: "test-setup.js" },
+    { src: "vitest.config.ts" },
     {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
+    { src: "desktop-extension/icon.png" },
+    { src: "desktop-extension/package.json" },
+    { src: "desktop-extension/screenshot.png" },
   ];
 
   console.log("Copying files...");
@@ -78,25 +67,22 @@ async function copyDirectoriesAndFiles() {
 
       if (item.isDir && stat.isDirectory()) {
         // Copy all files from directory with automatic prefix
-        const files = item.skipTests
-          ? await findSourceFiles(sourcePath, sourcePath, true)
-          : await findAllFiles(sourcePath);
+        const files = await findAllFiles(sourcePath);
 
-        const dirName = path.basename(item.src);
+        const dirName = item.targetDirName || path.basename(item.src);
 
         for (const filePath of files) {
           const relativePath = path.relative(sourcePath, filePath);
-          const flatName =
-            dirName + "--" + relativePath.replace(/[/\\]/g, "--");
+          const flatName = dirName + FLAT_SEP + flattenPath(relativePath);
           const targetPath = path.join(outputDir, flatName);
           await copyFile(filePath, targetPath);
           console.log(
-            `  ${path.relative(projectRoot, filePath)} → ${flatName}`,
+            `  ${path.relative(projectRoot, filePath)} → ${path.relative(projectRoot, targetPath)}`,
           );
         }
       } else if (stat.isFile()) {
         // Copy single file
-        const targetName = item.flatName || path.basename(item.src);
+        const targetName = item.flatName || flattenPath(item.src);
         const targetPath = path.join(outputDir, targetName);
         await copyFile(sourcePath, targetPath);
         console.log(`  ${item.src} → ${targetName}`);

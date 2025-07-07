@@ -1,19 +1,19 @@
 {
-  "name": "ableton-live-composition-assistant",
-  "version": "0.9.0",
-  "description": "AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
+  "name": "producer-pal",
+  "version": "0.9.1",
+  "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/adamjmurray/ableton-live-composition-assistant.git"
+    "url": "git+https://github.com/adamjmurray/producer-pal.git"
   },
-  "homepage": "https://github.com/adamjmurray/ableton-live-composition-assistant#readme",
+  "homepage": "https://github.com/adamjmurray/producer-pal#readme",
   "keywords": [],
   "author": "Adam Murray",
   "license": "Personal Use License",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.13.2",
+    "@modelcontextprotocol/sdk": "^1.15.0",
     "express": "^5.1.0",
-    "zod": "^3.25.67"
+    "zod": "^3.25.74"
   },
   "devDependencies": {
     "@anthropic-ai/dxt": "^0.2.0",
@@ -24,12 +24,12 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@types/express": "^5.0.3",
     "@types/max-api": "^2.0.3",
-    "@types/node": "^24.0.7",
+    "@types/node": "^24.0.10",
     "@vitest/coverage-v8": "^3.2.4",
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.4",
     "prettier": "^3.6.2",
-    "rollup": "^4.44.1",
+    "rollup": "^4.44.2",
     "vitest": "^3.2.4"
   },
   "prettier": {
@@ -49,6 +49,10 @@
     "format:check": "prettier --check .",
     "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs",
     "dxt:clean": "rm -f desktop-extension/*.dxt desktop-extension/manifest.json",
-    "dxt:build": "node tools/build-desktop-extension.mjs"
+    "dxt:build": "node tools/build-desktop-extension.mjs",
+    "version:bump": "node tools/bump-version.mjs",
+    "version:bump:minor": "node tools/bump-version.mjs minor",
+    "version:bump:major": "node tools/bump-version.mjs major",
+    "release:prepare": "node tools/prepare-release.mjs"
   }
 }

@@ -439,7 +439,7 @@ describe("createClip", () => {
         loop: true,
         notes: "1|1 C3 D3 E3",
         timeSignature: "4/4",
-        isTriggered: true,
+        triggered: true,
       });
     });
 
@@ -468,7 +468,7 @@ describe("createClip", () => {
         expect.objectContaining({ path: "live_set scenes 0" }),
         "fire",
       );
-      expect(result.isTriggered).toBe(true);
+      expect(result.triggered).toBe(true);
     });
 
     it("should throw error for invalid auto value", () => {
