@@ -186,7 +186,6 @@ This script updates:
 1. Open `device/Producer-Pal.amxd` in Max
 2. Update version number in the UI to match
 3. Save the device (do NOT freeze yet)
-4. The unfrozen device will be automatically committed
 
 #### Step 3: Test and Commit
 
@@ -196,43 +195,36 @@ git add -A
 git commit -m "Bump version to X.Y.Z"
 ```
 
-#### Step 4: Build Release Files
+#### Step 4: Tag the Release (BEFORE building)
 
 ```sh
-# Prepare release files
+# Tag the exact commit we're about to build from
+git tag vX.Y.Z
+git push origin dev vX.Y.Z
+```
+
+This ensures the tag matches the exact code used to build the release.
+
+#### Step 5: Build Release Files
+
+```sh
+# Build from the tagged commit
 npm run release:prepare
 ```
 
 This script:
 
 - Cleans the `releases/` directory
-- Builds the .dxt file
-- Copies it to releases/Producer-Pal.dxt
+- Builds the `.dxt` file
+- Copies it to `releases/Producer-Pal.dxt`
 
-#### Step 5: Freeze Max Device
+#### Step 6: Freeze Max Device
 
 1. Open `device/Producer-Pal.amxd` in Max
 2. Click the freeze button
 3. Save as: `releases/Producer-Pal.amxd`
-4. Test that both files work correctly
 
-#### Step 6: Merge and Tag
-
-```sh
-# Merge to main
-# Use GitHub PRs in the web UI, then checkout & pull main, or:
-git checkout main
-git pull origin main
-git merge dev
-
-# Create version tag
-git tag vX.Y.Z
-
-# Push everything
-git push origin main --tags
-```
-
-#### Step 7: Create GitHub Release
+#### Step 7: Create GitHub Pre-Release
 
 1. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
 2. Click "Draft a new release"
@@ -241,16 +233,84 @@ git push origin main --tags
 5. Upload files from `releases/`:
    - `Producer-Pal.amxd`
    - `Producer-Pal.dxt`
-6. Write release notes
-7. Publish release
+6. ✅ Check "Set as a pre-release"
+7. Write release notes
+8. Publish pre-release
 
-#### Step 8: Post-Release
+#### Step 8: Create Pull Request
+
+Create PR via GitHub UI: `dev → main`
+
+The PR will include the tag and all release commits.
+
+#### Step 9: Test Pre-Release
+
+Test the pre-release thoroughly, especially on different platforms (Windows,
+macOS). Download directly from GitHub to ensure the files work correctly.
+
+If issues are found, see "Fixing Issues During Pre-Release" section below.
+
+#### Step 10: Merge and Promote
+
+After testing succeeds:
+
+1. Review and merge the PR via GitHub UI
+2. Go to the pre-release on GitHub
+3. Click "Edit"
+4. Uncheck "Set as a pre-release"
+5. Update release (no need to re-upload files)
+
+#### Step 11: Post-Release
 
 ```sh
-# Switch back to dev for next iteration
-git checkout dev
-git merge main
+# Fetch and merge the updated main branch
+git fetch origin main
+git merge origin/main
 ```
+
+This ensures dev has the merge commit created by GitHub when merging the PR.
+
+### Fixing Issues During Pre-Release
+
+If problems are found during pre-release testing:
+
+1. **Fix the issues** (on dev branch)
+
+   ```sh
+   # Make necessary fixes
+   git add -A
+   git commit -m "Fix: description of fix"
+   ```
+
+2. **Delete and recreate the tag**
+
+   ```sh
+   # Delete remote tag
+   git push origin --delete vX.Y.Z
+   # Delete local tag
+   git tag -d vX.Y.Z
+   # Recreate tag at current commit
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+3. **Rebuild**
+
+   ```sh
+   npm run release:prepare
+   # Freeze Max device again
+   ```
+
+4. **Update the pre-release**
+   - Go to the existing pre-release on GitHub
+   - Delete the old files
+   - Upload the new files
+   - No need to recreate the release
+
+5. **Retest** and repeat if necessary
+
+This is acceptable for pre-releases since they're explicitly marked as not
+production-ready.
 
 ### Stable Download URLs
 

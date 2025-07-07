@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // tools/prepare-release.mjs
 import { execSync } from "child_process";
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -9,6 +9,26 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
 console.log("Preparing release...\n");
+
+// Check if we're on a tagged commit
+try {
+  const currentTag = execSync(
+    "git describe --exact-match --tags HEAD 2>/dev/null",
+    {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "ignore"],
+    },
+  ).trim();
+  console.log(`✓ Building from tag: ${currentTag}\n`);
+} catch {
+  console.log("⚠️  WARNING: Not on a tagged commit!");
+  console.log("   Releases should be built from tagged commits.");
+  console.log("   Run: git tag vX.Y.Z\n");
+}
+
+// Get version from package.json
+const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
+console.log(`Building version: ${pkg.version}\n`);
 
 // Clean releases directory
 const releasesDir = join(rootDir, "releases");

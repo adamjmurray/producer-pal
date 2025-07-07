@@ -52,3 +52,5 @@ console.log("Then run:");
 console.log("  npm test");
 console.log("  git add -A");
 console.log(`  git commit -m "Bump version to ${newVersion}"`);
+console.log(`  git tag v${newVersion}`);
+console.log(`  git push origin dev v${newVersion}`);

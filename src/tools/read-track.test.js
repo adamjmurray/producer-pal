@@ -7,6 +7,7 @@ import {
   liveApiPath,
   mockLiveApiGet,
 } from "../mock-live-api";
+import { VERSION } from "../version";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -195,7 +196,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 1 });
     expect(result.hasProducerPalDevice).toBe(true);
-    expect(result.producerPalVersion).toBe("0.9.1");
+    expect(result.producerPalVersion).toBe(VERSION);
 
     const result2 = readTrack({ trackIndex: 0 });
     expect(result2.hasProducerPalDevice).toBeUndefined();
