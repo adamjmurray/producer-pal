@@ -60,6 +60,12 @@ export function addToolDuplicate(server, callLiveApi) {
           .describe(
             "Whether to include clips when duplicating tracks or scenes (default: true)",
           ),
+        includeDevices: z
+          .boolean()
+          .optional()
+          .describe(
+            "Whether to include devices when duplicating tracks (default: true)",
+          ),
       },
     },
     async (args) => callLiveApi("duplicate", args),

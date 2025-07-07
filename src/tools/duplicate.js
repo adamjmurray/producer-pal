@@ -167,6 +167,7 @@ function copyClipProperties(sourceClip, destClip, name) {
  * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.includeClips] - Whether to include clips when duplicating tracks or scenes
+ * @param {boolean} [args.includeDevices] - Whether to include devices when duplicating tracks
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
 export function duplicate({
@@ -178,6 +179,7 @@ export function duplicate({
   arrangementLength,
   name,
   includeClips,
+  includeDevices,
 } = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -307,6 +309,7 @@ export function duplicate({
           actualTrackIndex,
           objectName,
           includeClips,
+          includeDevices,
         );
       } else if (type === "scene") {
         const sceneIndex = object.sceneIndex;
@@ -359,6 +362,7 @@ export function duplicate({
   if (arrangementLength != null) result.arrangementLength = arrangementLength;
   if (name != null) result.name = name;
   if (includeClips != null) result.includeClips = includeClips;
+  if (includeDevices != null) result.includeDevices = includeDevices;
 
   // Return appropriate format based on count
   if (count === 1) {
@@ -423,7 +427,7 @@ function getMinimalClipInfo(clip) {
   }
 }
 
-function duplicateTrack(trackIndex, name, includeClips) {
+function duplicateTrack(trackIndex, name, includeClips, includeDevices) {
   const liveSet = new LiveAPI("live_set");
   liveSet.call("duplicate_track", trackIndex);
 
@@ -432,6 +436,16 @@ function duplicateTrack(trackIndex, name, includeClips) {
 
   if (name != null) {
     newTrack.set("name", name);
+  }
+
+  // Delete devices if includeDevices is false
+  if (includeDevices === false) {
+    const deviceIds = newTrack.getChildIds("devices");
+    const deviceCount = deviceIds.length;
+    // Delete from the end backwards to avoid index shifting
+    for (let i = deviceCount - 1; i >= 0; i--) {
+      newTrack.call("delete_device", i);
+    }
   }
 
   // Get all duplicated clips

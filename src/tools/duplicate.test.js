@@ -219,6 +219,151 @@ describe("duplicate", () => {
         "id arrangementClip1",
       );
     });
+
+    it("should duplicate a track without devices when includeDevices is false", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1", "device2"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        includeDevices: false,
+      });
+
+      expect(result).toStrictEqual({
+        type: "track",
+        id: "track1",
+        count: 1,
+        includeDevices: false,
+        duplicated: true,
+        newTrackId: "live_set/tracks/1",
+        newTrackIndex: 1,
+        duplicatedClips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was called for each device (backwards)
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        2,
+      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        1,
+      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        0,
+      );
+    });
+
+    it("should duplicate a track with devices by default (includeDevices not specified)", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+      });
+
+      expect(result).toStrictEqual({
+        type: "track",
+        id: "track1",
+        count: 1,
+        duplicated: true,
+        newTrackId: "live_set/tracks/1",
+        newTrackIndex: 1,
+        duplicatedClips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was NOT called
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "delete_device",
+        expect.anything(),
+      );
+    });
+
+    it("should duplicate a track with devices when includeDevices is true", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        includeDevices: true,
+      });
+
+      expect(result).toStrictEqual({
+        type: "track",
+        id: "track1",
+        count: 1,
+        includeDevices: true,
+        duplicated: true,
+        newTrackId: "live_set/tracks/1",
+        newTrackIndex: 1,
+        duplicatedClips: [],
+      });
+      // includeDevices should not appear in result when true (default)
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was NOT called
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "delete_device",
+        expect.anything(),
+      );
+    });
   });
 
   describe("scene duplication", () => {
