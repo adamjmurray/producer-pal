@@ -1903,4 +1903,143 @@ describe("readTrack", () => {
       });
     });
   });
+
+  describe("includeRoutings", () => {
+    it("excludes routing properties by default", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: [
+            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',
+          ],
+          available_input_routing_types: [
+            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}, {"display_name": "Resampling", "identifier": 18}]}',
+          ],
+          available_output_routing_channels: [
+            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
+          ],
+          available_output_routing_types: [
+            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
+          ],
+          input_routing_channel: [
+            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
+          ],
+          input_routing_type: [
+            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
+          ],
+          output_routing_channel: [
+            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+          ],
+          output_routing_type: [
+            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+          ],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.availableInputRoutingChannels).toBeUndefined();
+      expect(result.availableInputRoutingTypes).toBeUndefined();
+      expect(result.availableOutputRoutingChannels).toBeUndefined();
+      expect(result.availableOutputRoutingTypes).toBeUndefined();
+      expect(result.inputRoutingChannel).toBeUndefined();
+      expect(result.inputRoutingType).toBeUndefined();
+      expect(result.outputRoutingChannel).toBeUndefined();
+      expect(result.outputRoutingType).toBeUndefined();
+    });
+
+    it("includes routing properties when includeRoutings is true", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: [
+            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',
+          ],
+          available_input_routing_types: [
+            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}, {"display_name": "Resampling", "identifier": 18}]}',
+          ],
+          available_output_routing_channels: [
+            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
+          ],
+          available_output_routing_types: [
+            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
+          ],
+          input_routing_channel: [
+            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
+          ],
+          input_routing_type: [
+            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
+          ],
+          output_routing_channel: [
+            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+          ],
+          output_routing_type: [
+            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+          ],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      expect(result.availableInputRoutingChannels).toEqual([
+        { display_name: "In 1", identifier: 1 },
+        { display_name: "In 2", identifier: 2 },
+      ]);
+      expect(result.availableInputRoutingTypes).toEqual([
+        { display_name: "Ext. In", identifier: 17 },
+        { display_name: "Resampling", identifier: 18 },
+      ]);
+      expect(result.availableOutputRoutingChannels).toEqual([
+        { display_name: "Master", identifier: 26 },
+        { display_name: "A", identifier: 27 },
+      ]);
+      expect(result.availableOutputRoutingTypes).toEqual([
+        { display_name: "Track Out", identifier: 25 },
+        { display_name: "Send Only", identifier: 28 },
+      ]);
+      expect(result.inputRoutingChannel).toEqual({
+        display_name: "In 1",
+        identifier: 1,
+      });
+      expect(result.inputRoutingType).toEqual({
+        display_name: "Ext. In",
+        identifier: 17,
+      });
+      expect(result.outputRoutingChannel).toEqual({
+        display_name: "Master",
+        identifier: 26,
+      });
+      expect(result.outputRoutingType).toEqual({
+        display_name: "Track Out",
+        identifier: 25,
+      });
+    });
+
+    it("handles null routing properties gracefully", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: null,
+          available_input_routing_types: null,
+          available_output_routing_channels: null,
+          available_output_routing_types: null,
+          input_routing_channel: null,
+          input_routing_type: null,
+          output_routing_channel: null,
+          output_routing_type: null,
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      expect(result.availableInputRoutingChannels).toEqual([]);
+      expect(result.availableInputRoutingTypes).toEqual([]);
+      expect(result.availableOutputRoutingChannels).toEqual([]);
+      expect(result.availableOutputRoutingTypes).toEqual([]);
+      expect(result.inputRoutingChannel).toBeNull();
+      expect(result.inputRoutingType).toBeNull();
+      expect(result.outputRoutingChannel).toBeNull();
+      expect(result.outputRoutingType).toBeNull();
+    });
+  });
 });

@@ -33,6 +33,24 @@ if (typeof LiveAPI !== "undefined") {
       case "scale_intervals":
       case "available_warp_modes":
         return this.get(property);
+      case "available_input_routing_channels":
+      case "available_input_routing_types":
+      case "available_output_routing_channels":
+      case "available_output_routing_types":
+      case "input_routing_channel":
+      case "input_routing_type":
+      case "output_routing_channel":
+      case "output_routing_type":
+        const rawValue = this.get(property);
+        if (rawValue && rawValue[0]) {
+          try {
+            const parsed = JSON.parse(rawValue[0]);
+            return parsed[property];
+          } catch (e) {
+            return null;
+          }
+        }
+        return null;
       default:
         return this.get(property)?.[0];
     }

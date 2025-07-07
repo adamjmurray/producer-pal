@@ -479,6 +479,7 @@ function categorizeDevices(
  * @param {boolean} args.includeMidiEffects - Whether to include MIDI effects array (default: false)
  * @param {boolean} args.includeInstrument - Whether to include instrument object (default: true)
  * @param {boolean} args.includeAudioEffects - Whether to include audio effects array (default: false)
+ * @param {boolean} args.includeRoutings - Whether to include input/output routing information (default: false)
  * @returns {Object} Result object with track information
  */
 export function readTrack({
@@ -489,6 +490,7 @@ export function readTrack({
   includeMidiEffects = false,
   includeInstrument = true,
   includeAudioEffects = false,
+  includeRoutings = false,
 } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
@@ -581,6 +583,23 @@ export function readTrack({
   const trackState = computeState(track);
   if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
+  }
+
+  if (includeRoutings) {
+    result.availableInputRoutingChannels =
+      track.getProperty("available_input_routing_channels") || [];
+    result.availableInputRoutingTypes =
+      track.getProperty("available_input_routing_types") || [];
+    result.availableOutputRoutingChannels =
+      track.getProperty("available_output_routing_channels") || [];
+    result.availableOutputRoutingTypes =
+      track.getProperty("available_output_routing_types") || [];
+    result.inputRoutingChannel =
+      track.getProperty("input_routing_channel") || null;
+    result.inputRoutingType = track.getProperty("input_routing_type") || null;
+    result.outputRoutingChannel =
+      track.getProperty("output_routing_channel") || null;
+    result.outputRoutingType = track.getProperty("output_routing_type") || null;
   }
 
   if (isProducerPalHost) {
