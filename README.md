@@ -8,18 +8,17 @@ Make music in Ableton Live with an AI assistant such as
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
   Suite edition)
-- [Claude Desktop](https://claude.ai/download) (and potentially other
-  [MCP-compatible](https://modelcontextprotocol.io/) AI chat clients, but only
-  Claude Desktop is supported at this time)
+- [Claude Desktop](https://claude.ai/download) (or another
+  [MCP-compatible](https://modelcontextprotocol.io/) AI chat client like Claude
+  Code or VS Code)
 
-## Installation
+## Installing
 
-1. Download
-
-- Producer Pal Max for Live device:
-  [Producer-Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.amxd)
-- Producer Pal Claude Desktop extension
-  [Producer-Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.dxt)
+1. Download the latest version:
+   - [Producer-Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.amxd) -
+     the Max for Live device
+   - [Producer-Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.dxt) -
+     the Claude Desktop extension
 
 2. Add
    [Producer-Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.amxd)
@@ -27,7 +26,7 @@ Make music in Ableton Live with an AI assistant such as
 
    ![install in Ableton](./img/install-in-ableton.png)
 
-3. Open Claude Desktop &rarr; Settings &rarr; Extensions and drag and drop
+3. Open Claude Desktop &rarr; Settings &rarr; Extensions. Drag and drop
    [Producer-Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.dxt)
    into it:
 
@@ -45,13 +44,17 @@ Make music in Ableton Live with an AI assistant such as
 
    ![Producer Pal demo](./img/screenshot.png)
 
+See
+[the latest release](https://github.com/adamjmurray/producer-pal/releases/latest/)
+for more info on this version.
+
 ## Support and Issues
 
 - **Bug Reports**:
   [GitHub Issues](https://github.com/adamjmurray/producer-pal/issues) (please do
   not send pull requests)
 - **Documentation**:
-  [GitHub Homepage](https://github.com/adamjmurray/producer-pal/#producer-pal)
+  [GitHub Homepage (this page)](https://github.com/adamjmurray/producer-pal/#producer-pal)
   and [the dedicated area of my website](https://adammurray.link/producer-pal/)
 - **Community**:
   [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
