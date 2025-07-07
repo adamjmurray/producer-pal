@@ -21,9 +21,9 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
 1. Clone this repository
 2. `npm install`
 3. `npm run build`
-4. Add the `device/Producer Pal.amxd` Max for Live device to a MIDI track in
+4. Add the `device/Producer-Pal.amxd` Max for Live device to a MIDI track in
    Ableton Live
-5. Drag and drop `desktop-extension/Producer Pal.dxt` to Claude Desktop →
+5. Drag and drop `desktop-extension/Producer-Pal.dxt` to Claude Desktop →
    Settings → Extension
 
 ## Core Development Scripts
@@ -70,22 +70,6 @@ entirety into a Claude Project (or ChatGPT or Gemini projects or whatever you
 prefer) for complex brainstorming and planning sessions. Then, those results can
 then be fed back into Claude Code (for example by generating a new file for the
 `docs` folder).
-
-## Releasing
-
-The version should be bumped for new releases. TODO: Document the
-version-bumping process.
-
-Releases consist of two files:
-
-1. `npm build` will produce the `desktop-extension/Producer Pal.dxt` file. Grab
-   this file, and save it to "release storage" with a version number suffix in
-   the filename.
-
-2. After `npm build` generates the latest code for the Max for Live device, edit
-   the device in Max, click the "freeze" button (to pack up all dependencies
-   like the JS code), "save as...", and save it to "release storage" with a
-   version number suffix in the filename.
 
 ## Development Testing
 
@@ -168,3 +152,111 @@ The `raw-live-api` tool supports 13 operation types including core operations
 (`get_property`, `set_property`, `call_method`), convenience shortcuts (`get`,
 `set`, `call`, `goto`, `info`), and extension methods (`getProperty`,
 `getChildIds`, `exists`, `getColor`, `setColor`).
+
+## Releasing
+
+### Version Numbers
+
+Version numbers appear in these locations:
+
+1. `package.json` (root) - Source of truth
+2. `desktop-extension/package.json`
+3. `src/version.js`
+4. `device/Producer-Pal.amxd` - In the Max UI (manual update required)
+
+### Release Process
+
+#### Step 1: Version Bump (on dev branch)
+
+```sh
+# Automated version bump script
+npm run version:bump        # patch: 0.9.0 → 0.9.1
+npm run version:bump:minor  # minor: 0.9.1 → 0.10.0
+npm run version:bump:major  # major: 0.9.1 → 1.0.0
+```
+
+This script updates:
+
+- ✅ package.json files
+- ✅ src/version.js
+- ❌ Max device UI (must be done manually - see Step 2)
+
+#### Step 2: Update Max Device UI
+
+1. Open `device/Producer-Pal.amxd` in Max
+2. Update version number in the UI to match
+3. Save the device (do NOT freeze yet)
+4. The unfrozen device will be automatically committed
+
+#### Step 3: Test and Commit
+
+```sh
+npm test
+git add -A
+git commit -m "Bump version to X.Y.Z"
+```
+
+#### Step 4: Build Release Files
+
+```sh
+# Prepare release files
+npm run release:prepare
+```
+
+This script:
+
+- Cleans the `releases/` directory
+- Builds the .dxt file
+- Copies it to releases/Producer-Pal.dxt
+
+#### Step 5: Freeze Max Device
+
+1. Open `device/Producer-Pal.amxd` in Max
+2. Click the freeze button
+3. Save as: `releases/Producer-Pal.amxd`
+4. Test that both files work correctly
+
+#### Step 6: Merge and Tag
+
+```sh
+# Merge to main
+# Use GitHub PRs in the web UI, then checkout & pull main, or:
+git checkout main
+git pull origin main
+git merge dev
+
+# Create version tag
+git tag vX.Y.Z
+
+# Push everything
+git push origin main --tags
+```
+
+#### Step 7: Create GitHub Release
+
+1. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
+2. Click "Draft a new release"
+3. Choose tag: `vX.Y.Z`
+4. Release title: `X.Y.Z`
+5. Upload files from `releases/`:
+   - `Producer-Pal.amxd`
+   - `Producer-Pal.dxt`
+6. Write release notes
+7. Publish release
+
+#### Step 8: Post-Release
+
+```sh
+# Switch back to dev for next iteration
+git checkout dev
+git merge main
+```
+
+### Stable Download URLs
+
+After release, these URLs will always point to the latest version:
+
+- [Producer-Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.amxd)
+- [Producer-Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.dxt)
+
+No README updates needed for new releases!

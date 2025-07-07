@@ -6,7 +6,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 
-const DXT_FILENAME = "Producer Pal.dxt";
+const DXT_FILENAME = "Producer-Pal.dxt";
 
 const server = createMcpServer();
 
