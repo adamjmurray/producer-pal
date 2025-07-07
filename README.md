@@ -16,31 +16,31 @@ Make music in Ableton Live with an AI assistant such as
 
 1. Download (current version 0.9.0)
 
-- [Producer Pal Max for Live device](https://github.com/adamjmurray/producer-pal/raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.amxd)
-- [Producer Pal Claude Desktop extension](https://github.com/adamjmurray/producer-pal/raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.dxt)
+- [Producer Pal Max for Live device](https://github.com/adamjmurray/producer-pal/releases/download/v0.9.0/Producer-Pal.amxd)
+- [Producer Pal Claude Desktop extension](https://github.com/adamjmurray/producer-pal/releases/download/v0.9.0/Producer-Pal.dxt)
 
 2. Add the
-   [Producer Pal Max for Live device](https://github.com/adamjmurray/producer-pal/raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.amxd)
+   [Producer Pal Max for Live device](https://github.com/adamjmurray/producer-pal/releases/download/v0.9.0/Producer-Pal.amxd)
    to an Ableton Live project
 
-   ![install in Ableton](./releases/0.9.0/install-in-ableton.png)
+   ![install in Ableton](./img/install-in-ableton.png)
 
 3. Open Claude Desktop &rarr; Settings &rarr; Extensions and drag and drop the
-   [Producer Pal Claude Desktop extension](https://github.com/adamjmurray/producer-pal/raw/refs/heads/main/releases/0.9.0/Producer%20Pal%200.9.0.dxt)
+   [Producer Pal Claude Desktop extension](https://github.com/adamjmurray/producer-pal/releases/download/v0.9.0/Producer-Pal.dxt)
 
-   ![install in Claude](./releases/0.9.0/install-in-claude.png)
+   ![install in Claude](./img/install-in-claude.png)
 
 4. Don't forget to click "Install"
 
-   ![install in Claude, part 2](./releases/0.9.0/install-in-claude-2.png)
+   ![install in Claude, part 2](./img/install-in-claude-2.png)
 
 5. You should see 15 Producer Pal tools in Claude's "Search and Tools" menu
 
-   ![Producer Pal tools in Claude](./releases/0.9.0/tools-in-claude.png)
+   ![Producer Pal tools in Claude](./img/tools-in-claude.png)
 
 6. Start a conversation with "Let's play with Ableton Live" or "ableton"
 
-   ![Producer Pal demo](./releases/0.9.0/screenshot.png)
+   ![Producer Pal demo](./img/screenshot.png)
 
 ## Support and Issues
 

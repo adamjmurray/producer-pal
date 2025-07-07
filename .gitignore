@@ -10,4 +10,5 @@ device/*.js
 device/*.mjs
 device/LICENSE.md
 device/Ableton Folder Info/
+releases
 scratchpad
