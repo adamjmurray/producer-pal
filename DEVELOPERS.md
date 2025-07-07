@@ -1,18 +1,17 @@
 # Producer Pal Development Info
 
-⚠️ This project does _not_ accept pull requests or contributions! ⚠️
+This is a personal project with a focused roadmap. While the code is open source
+for learning and forking, I'm not accepting contributions to keep the project
+aligned with my specific workflow needs.
 
-Here's the deal: I built this project for myself. The project roadmap and future
-features are things I want, and that's what I'm going to spend my limited time
-building.
+Feel free to:
 
-I open-sourced this because I want people to realize there's no "magic" here,
-and they can make tools like this for themselves too. If you really want to take
-this project in a different direction, you can fork this project and change it
-however you want.
-
-Don't send pull requests for bugs either. I'd much rather get a clear bug report
-and then decide how I want to fix it (if I want to fix it).
+- File bug reports in
+  [the issues](https://github.com/adamjmurray/producer-pal/issues)
+- Ask questions, give feedback, and share your experiences in
+  [the discussions](https://github.com/adamjmurray/producer-pal/discussions)
+- Learn from the implementation
+- Fork and modify for your own needs
 
 ## Building from source
 
