@@ -62,7 +62,6 @@
 
 - [x] Welcome message / tips in read-song tool description
 - [x] Add device listing to read-song and read-track
-- [ ] Document the version-bumping process
 
 #### 0.9.2
 

@@ -195,7 +195,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 1 });
     expect(result.hasProducerPalDevice).toBe(true);
-    expect(result.producerPalVersion).toBe("0.9.0");
+    expect(result.producerPalVersion).toBe("0.9.1");
 
     const result2 = readTrack({ trackIndex: 0 });
     expect(result2.hasProducerPalDevice).toBeUndefined();
@@ -1689,7 +1689,10 @@ describe("readTrack", () => {
       // The kick pad should not have hasInstrument property
       expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
       // The empty pad should have hasInstrument: false
-      expect(result.instrument.drumPads[1]).toHaveProperty("hasInstrument", false);
+      expect(result.instrument.drumPads[1]).toHaveProperty(
+        "hasInstrument",
+        false,
+      );
     });
 
     it("excludes drum pads without instruments from drumMap", () => {
@@ -1740,7 +1743,7 @@ describe("readTrack", () => {
         },
         empty_pad: {
           name: "Empty",
-          note: 37, // Db1  
+          note: 37, // Db1
           mute: 0,
           solo: 0,
           chains: children("empty_chain"),
@@ -1800,8 +1803,8 @@ describe("readTrack", () => {
 
       // drumMap should only include pads with instruments (kick and snare), not empty pad
       expect(result.drumMap).toEqual({
-        C1: "Kick",   // Has instrument, included
-        D1: "Snare",  // Has instrument, included
+        C1: "Kick", // Has instrument, included
+        D1: "Snare", // Has instrument, included
         // Db1 "Empty" should be excluded because it has no instruments
       });
     });
