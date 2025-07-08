@@ -9,7 +9,10 @@ export function addToolUpdateTrack(server, callLiveApi) {
       title: "Update Track in Ableton Live",
       description:
         "Updates properties of existing tracks by ID. Supports bulk operations when provided with comma-separated track IDs. " +
-        "All properties except ids are optional. Routing properties accept identifier strings that can be obtained from read-track or read-song with includeRoutings: true.",
+        "All properties except ids are optional. " +
+        "Routing properties accept identifier strings that can be obtained from read-track or read-song with includeRoutings: true. " +
+        "IMPORTANT: When changing routing, always set the routing type BEFORE setting the channel, " +
+        "as available channels depend on the selected type.",
       annotations: {
         readOnlyHint: false,
         destructiveHint: true,
@@ -18,7 +21,14 @@ export function addToolUpdateTrack(server, callLiveApi) {
         ids: z
           .string()
           .describe("Track ID or comma-separated list of track IDs to update"),
-        name: z.string().optional().describe("Name for the track"),
+        name: z
+          .string()
+          .optional()
+          .describe(
+            "Name for the track. " +
+              "TIP: Use descriptive, unique names to avoid routing ambiguity. " +
+              "Duplicate track names can cause issues with routing operations.",
+          ),
         color: z.string().optional().describe("Color in #RRGGBB hex format"),
         mute: z.boolean().optional().describe("Set mute state for the track"),
         solo: z.boolean().optional().describe("Set solo state for the track"),

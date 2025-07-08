@@ -70,7 +70,7 @@ export function addToolDuplicate(server, callLiveApi) {
           .boolean()
           .optional()
           .describe(
-            "Create a routing setup where the new track controls the source track's instrument. Effects: 1) New track has no clips or devices, 2) New track output routes to source track, 3) Source track is armed for input, 4) Source track input set to 'No Input' to prevent unwanted external input. WARNING: This changes the source track's input routing settings and arms the source track.",
+            "Create a routing setup where the new track controls the source track's instrument. Effects: 1) New track has no clips or devices, 2) New track output routes to source track, 3) Source track is armed for input, 4) Source track input set to 'No Input' to prevent unwanted external input. WARNING: This changes the source track's input routing settings and arms the source track. IMPORTANT: If there are duplicate track names in your set, routeToSource may route to the wrong track. Maintain unique track names to avoid this issue.",
           ),
       },
     },
