@@ -166,6 +166,13 @@ track when working with Producer Pal.
   Producer Pal into Ableton Live templates. (Saving and opening normal projects
   seems fine.)
 
+- When using the `routeToSource` feature to duplicate tracks, Producer Pal may
+  route to the wrong track if there are duplicate track names in your Live Set.
+  The feature routes to the first track with a matching name, which may not be
+  the intended source track. To avoid this issue, maintain unique track names
+  when using `routeToSource` (the AI is guided by the Producer Pal tools'
+  interface to try to do this).
+
 ### Advanced Examples
 
 Above are some basic ideas to get you started. For best results, be very
