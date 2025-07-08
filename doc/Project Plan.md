@@ -1,4 +1,4 @@
-# Ableton Live Composition Assistant - Project Plan
+# Producer Pal Project Plan
 
 ## ✅ Completed Work
 
