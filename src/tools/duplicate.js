@@ -5,11 +5,7 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../notation/barbeat/barbeat-time";
-import {
-  LIVE_API_MONITORING_STATE_AUTO,
-  LIVE_API_MONITORING_STATE_IN,
-  MAX_CLIP_BEATS,
-} from "./constants";
+import { MAX_CLIP_BEATS } from "./constants";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -536,18 +532,11 @@ function duplicateTrack(
     const sourceTrack = new LiveAPI(`live_set tracks ${sourceTrackIndex}`);
     const sourceTrackName = sourceTrack.getProperty("name");
 
-    const currentMonitoring = sourceTrack.getProperty(
-      "current_monitoring_state",
-    );
-
-    if (currentMonitoring !== LIVE_API_MONITORING_STATE_IN) {
-      // Set source track monitoring to "In" so it receives MIDI from the new tracks
-      sourceTrack.set("current_monitoring_state", LIVE_API_MONITORING_STATE_IN);
-      const previousState =
-        currentMonitoring === LIVE_API_MONITORING_STATE_AUTO ? "Auto" : "Off";
-      console.error(
-        `Warning: Changed track "${sourceTrackName}" monitoring from ${previousState} to In`,
-      );
+    // Arm the source track for input
+    const currentArm = sourceTrack.getProperty("arm");
+    sourceTrack.set("arm", 1);
+    if (currentArm !== 1) {
+      console.error(`routeToSource: Armed the source track`);
     }
 
     const currentInputType = sourceTrack.getProperty("input_routing_type");

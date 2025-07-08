@@ -532,6 +532,96 @@ describe("duplicate", () => {
         expect(result.withoutDevices).toBe(true);
         expect(result.routeToSource).toBe(true);
       });
+
+      it("should arm the source track when routeToSource is true", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        // Mock track properties for routing configuration
+        mockLiveApiGet({
+          "live_set tracks 0": {
+            name: "Source Track",
+            input_routing_type: { display_name: "Audio In" },
+            available_input_routing_types: [
+              { display_name: "No Input", identifier: "no_input_id" },
+              { display_name: "Audio In", identifier: "audio_in_id" },
+            ],
+          },
+          "live_set tracks 1": {
+            available_output_routing_types: [
+              { display_name: "Master", identifier: "master_id" },
+              { display_name: "Source Track", identifier: "source_track_id" },
+            ],
+          },
+        });
+
+        duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+        });
+
+        // Verify the source track was armed
+        expect(liveApiSet).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "arm",
+          1,
+        );
+      });
+
+      it("should not emit arm warning when source track is already armed", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        // Mock track properties with track already armed
+        mockLiveApiGet({
+          "live_set tracks 0": {
+            name: "Source Track",
+            arm: 1, // Already armed
+            input_routing_type: { display_name: "Audio In" },
+            available_input_routing_types: [
+              { display_name: "No Input", identifier: "no_input_id" },
+              { display_name: "Audio In", identifier: "audio_in_id" },
+            ],
+          },
+          "live_set tracks 1": {
+            available_output_routing_types: [
+              { display_name: "Master", identifier: "master_id" },
+              { display_name: "Source Track", identifier: "source_track_id" },
+            ],
+          },
+        });
+
+        const consoleSpy = vi.spyOn(console, "error");
+
+        duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+        });
+
+        // Verify the source track was still set to armed (even though it already was)
+        expect(liveApiSet).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "arm",
+          1,
+        );
+
+        // Verify the arm warning was NOT emitted since it was already armed
+        expect(consoleSpy).not.toHaveBeenCalledWith(
+          "routeToSource: Armed the source track",
+        );
+
+        consoleSpy.mockRestore();
+      });
     });
   });
 
