@@ -575,21 +575,21 @@ export function readTrack({
       track.getProperty("available_input_routing_types") || [];
     result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
       name: type.display_name,
-      id: String(type.identifier),
+      inputId: String(type.identifier),
     }));
 
     const availableInputChannels =
       track.getProperty("available_input_routing_channels") || [];
     result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
       name: ch.display_name,
-      id: String(ch.identifier),
+      inputId: String(ch.identifier),
     }));
 
     const availableOutputTypes =
       track.getProperty("available_output_routing_types") || [];
     result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
       name: type.display_name,
-      id: String(type.identifier),
+      outputId: String(type.identifier),
     }));
 
     const availableOutputChannels =
@@ -597,7 +597,7 @@ export function readTrack({
     result.availableOutputRoutingChannels = availableOutputChannels.map(
       (ch) => ({
         name: ch.display_name,
-        id: String(ch.identifier),
+        outputId: String(ch.identifier),
       }),
     );
 
@@ -606,7 +606,7 @@ export function readTrack({
     result.inputRoutingType = inputType
       ? {
           name: inputType.display_name,
-          id: String(inputType.identifier),
+          inputId: String(inputType.identifier),
         }
       : null;
 
@@ -614,7 +614,7 @@ export function readTrack({
     result.inputRoutingChannel = inputChannel
       ? {
           name: inputChannel.display_name,
-          id: String(inputChannel.identifier),
+          inputId: String(inputChannel.identifier),
         }
       : null;
 
@@ -622,7 +622,7 @@ export function readTrack({
     result.outputRoutingType = outputType
       ? {
           name: outputType.display_name,
-          id: String(outputType.identifier),
+          outputId: String(outputType.identifier),
         }
       : null;
 
@@ -630,7 +630,7 @@ export function readTrack({
     result.outputRoutingChannel = outputChannel
       ? {
           name: outputChannel.display_name,
-          id: String(outputChannel.identifier),
+          outputId: String(outputChannel.identifier),
         }
       : null;
 

@@ -1983,36 +1983,36 @@ describe("readTrack", () => {
       const result = readTrack({ trackIndex: 0, includeRoutings: true });
 
       expect(result.availableInputRoutingChannels).toEqual([
-        { name: "In 1", id: "1" },
-        { name: "In 2", id: "2" },
+        { name: "In 1", inputId: "1" },
+        { name: "In 2", inputId: "2" },
       ]);
       expect(result.availableInputRoutingTypes).toEqual([
-        { name: "Ext. In", id: "17" },
-        { name: "Resampling", id: "18" },
+        { name: "Ext. In", inputId: "17" },
+        { name: "Resampling", inputId: "18" },
       ]);
       expect(result.availableOutputRoutingChannels).toEqual([
-        { name: "Master", id: "26" },
-        { name: "A", id: "27" },
+        { name: "Master", outputId: "26" },
+        { name: "A", outputId: "27" },
       ]);
       expect(result.availableOutputRoutingTypes).toEqual([
-        { name: "Track Out", id: "25" },
-        { name: "Send Only", id: "28" },
+        { name: "Track Out", outputId: "25" },
+        { name: "Send Only", outputId: "28" },
       ]);
       expect(result.inputRoutingChannel).toEqual({
         name: "In 1",
-        id: "1",
+        inputId: "1",
       });
       expect(result.inputRoutingType).toEqual({
         name: "Ext. In",
-        id: "17",
+        inputId: "17",
       });
       expect(result.outputRoutingChannel).toEqual({
         name: "Master",
-        id: "26",
+        outputId: "26",
       });
       expect(result.outputRoutingType).toEqual({
         name: "Track Out",
-        id: "25",
+        outputId: "25",
       });
       expect(result.monitoringState).toBe("auto");
     });

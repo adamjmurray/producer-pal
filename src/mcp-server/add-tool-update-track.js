@@ -26,19 +26,27 @@ export function addToolUpdateTrack(server, callLiveApi) {
         inputRoutingTypeId: z
           .string()
           .optional()
-          .describe("Input routing type identifier"),
+          .describe(
+            "Input routing type identifier (use inputId from availableInputRoutingTypes)",
+          ),
         inputRoutingChannelId: z
           .string()
           .optional()
-          .describe("Input routing channel identifier"),
+          .describe(
+            "Input routing channel identifier (use inputId from availableInputRoutingChannels)",
+          ),
         outputRoutingTypeId: z
           .string()
           .optional()
-          .describe("Output routing type identifier"),
+          .describe(
+            "Output routing type identifier (use outputId from availableOutputRoutingTypes)",
+          ),
         outputRoutingChannelId: z
           .string()
           .optional()
-          .describe("Output routing channel identifier"),
+          .describe(
+            "Output routing channel identifier (use outputId from availableOutputRoutingChannels)",
+          ),
         monitoringState: z
           .enum(Object.values(MONITORING_STATE))
           .optional()

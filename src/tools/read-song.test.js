@@ -501,14 +501,14 @@ describe("readSong", () => {
     expect(result.tracks[0]).toEqual(
       expect.objectContaining({
         name: "Test Track",
-        availableInputRoutingChannels: [{ name: "In 1", id: "1" }],
-        availableInputRoutingTypes: [{ name: "Ext. In", id: "17" }],
-        availableOutputRoutingChannels: [{ name: "Master", id: "26" }],
-        availableOutputRoutingTypes: [{ name: "Track Out", id: "25" }],
-        inputRoutingChannel: { name: "In 1", id: "1" },
-        inputRoutingType: { name: "Ext. In", id: "17" },
-        outputRoutingChannel: { name: "Master", id: "26" },
-        outputRoutingType: { name: "Track Out", id: "25" },
+        availableInputRoutingChannels: [{ name: "In 1", inputId: "1" }],
+        availableInputRoutingTypes: [{ name: "Ext. In", inputId: "17" }],
+        availableOutputRoutingChannels: [{ name: "Master", outputId: "26" }],
+        availableOutputRoutingTypes: [{ name: "Track Out", outputId: "25" }],
+        inputRoutingChannel: { name: "In 1", inputId: "1" },
+        inputRoutingType: { name: "Ext. In", inputId: "17" },
+        outputRoutingChannel: { name: "Master", outputId: "26" },
+        outputRoutingType: { name: "Track Out", outputId: "25" },
         monitoringState: "auto",
       }),
     );
