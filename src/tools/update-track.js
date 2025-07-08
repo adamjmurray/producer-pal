@@ -1,5 +1,11 @@
 // src/tools/update-track.js
 import { withoutNulls, parseCommaSeparatedIds } from "../utils.js";
+import {
+  MONITORING_STATE,
+  LIVE_API_MONITORING_STATE_IN,
+  LIVE_API_MONITORING_STATE_AUTO,
+  LIVE_API_MONITORING_STATE_OFF,
+} from "./constants.js";
 
 /**
  * Updates properties of existing tracks
@@ -10,9 +16,26 @@ import { withoutNulls, parseCommaSeparatedIds } from "../utils.js";
  * @param {boolean} [args.mute] - Optional mute state
  * @param {boolean} [args.solo] - Optional solo state
  * @param {boolean} [args.arm] - Optional arm state
+ * @param {string} [args.inputRoutingTypeId] - Optional input routing type identifier
+ * @param {string} [args.inputRoutingChannelId] - Optional input routing channel identifier
+ * @param {string} [args.outputRoutingTypeId] - Optional output routing type identifier
+ * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
+ * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
  * @returns {Object|Array<Object>} Single track object or array of track objects
  */
-export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
+export function updateTrack({
+  ids,
+  name,
+  color,
+  mute,
+  solo,
+  arm,
+  inputRoutingTypeId,
+  inputRoutingChannelId,
+  outputRoutingTypeId,
+  outputRoutingChannelId,
+  monitoringState,
+} = {}) {
   if (!ids) {
     throw new Error("updateTrack failed: ids is required");
   }
@@ -40,6 +63,48 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
       arm,
     });
 
+    // Handle routing properties
+    if (inputRoutingTypeId != null) {
+      track.setProperty("input_routing_type", {
+        identifier: Number(inputRoutingTypeId),
+      });
+    }
+
+    if (inputRoutingChannelId != null) {
+      track.setProperty("input_routing_channel", {
+        identifier: Number(inputRoutingChannelId),
+      });
+    }
+
+    if (outputRoutingTypeId != null) {
+      track.setProperty("output_routing_type", {
+        identifier: Number(outputRoutingTypeId),
+      });
+    }
+
+    if (outputRoutingChannelId != null) {
+      track.setProperty("output_routing_channel", {
+        identifier: Number(outputRoutingChannelId),
+      });
+    }
+
+    // Handle monitoring state
+    if (monitoringState != null) {
+      const monitoringValue = {
+        [MONITORING_STATE.IN]: LIVE_API_MONITORING_STATE_IN,
+        [MONITORING_STATE.AUTO]: LIVE_API_MONITORING_STATE_AUTO,
+        [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
+      }[monitoringState];
+
+      if (monitoringValue === undefined) {
+        throw new Error(
+          `updateTrack failed: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
+        );
+      }
+
+      track.set("current_monitoring_state", monitoringValue);
+    }
+
     // Find trackIndex for consistency with readTrack format
     const trackIndex = Number(track.path.match(/live_set tracks (\d+)/)?.[1]);
     if (Number.isNaN(trackIndex)) {
@@ -58,6 +123,11 @@ export function updateTrack({ ids, name, color, mute, solo, arm } = {}) {
         mute,
         solo,
         arm,
+        inputRoutingTypeId,
+        inputRoutingChannelId,
+        outputRoutingTypeId,
+        outputRoutingChannelId,
+        monitoringState,
       }),
     );
   }

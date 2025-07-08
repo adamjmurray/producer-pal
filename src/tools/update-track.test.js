@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vitest";
 import { liveApiId, liveApiPath, liveApiSet } from "../mock-live-api";
 import { updateTrack } from "./update-track";
+import { MONITORING_STATE } from "./constants";
 
 describe("updateTrack", () => {
   beforeEach(() => {
@@ -299,5 +300,218 @@ describe("updateTrack", () => {
         name: "Filtered",
       },
     ]);
+  });
+
+  describe("routing properties", () => {
+    it("should update routing properties when provided", () => {
+      const result = updateTrack({
+        ids: "123",
+        inputRoutingTypeId: "17",
+        inputRoutingChannelId: "1",
+        outputRoutingTypeId: "25",
+        outputRoutingChannelId: "26",
+      });
+
+      // Verify setProperty calls with proper JSON format
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "input_routing_type",
+        '{"input_routing_type":{"identifier":17}}',
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "input_routing_channel",
+        '{"input_routing_channel":{"identifier":1}}',
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "output_routing_type",
+        '{"output_routing_type":{"identifier":25}}',
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "output_routing_channel",
+        '{"output_routing_channel":{"identifier":26}}',
+      );
+
+      expect(result).toEqual({
+        id: "123",
+        trackIndex: 0,
+        inputRoutingTypeId: "17",
+        inputRoutingChannelId: "1",
+        outputRoutingTypeId: "25",
+        outputRoutingChannelId: "26",
+      });
+    });
+
+    it("should update monitoring state when provided", () => {
+      const result = updateTrack({
+        ids: "123",
+        monitoringState: MONITORING_STATE.AUTO,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "current_monitoring_state",
+        1, // LIVE_API_MONITORING_STATE_AUTO
+      );
+
+      expect(result).toEqual({
+        id: "123",
+        trackIndex: 0,
+        monitoringState: "auto",
+      });
+    });
+
+    it("should update monitoring state for all valid values", () => {
+      // Test IN state
+      updateTrack({
+        ids: "123",
+        monitoringState: MONITORING_STATE.IN,
+      });
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "current_monitoring_state",
+        0, // LIVE_API_MONITORING_STATE_IN
+      );
+
+      // Test OFF state
+      updateTrack({
+        ids: "456",
+        monitoringState: MONITORING_STATE.OFF,
+      });
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "456" }),
+        "current_monitoring_state",
+        2, // LIVE_API_MONITORING_STATE_OFF
+      );
+    });
+
+    it("should throw error for invalid monitoring state", () => {
+      expect(() =>
+        updateTrack({
+          ids: "123",
+          monitoringState: "invalid",
+        }),
+      ).toThrow(
+        'updateTrack failed: invalid monitoring state "invalid". Must be one of: in, auto, off',
+      );
+    });
+
+    it("should handle mixed routing and basic properties", () => {
+      const result = updateTrack({
+        ids: "123",
+        name: "Test Track",
+        color: "#FF0000",
+        mute: true,
+        inputRoutingTypeId: "17",
+        monitoringState: MONITORING_STATE.IN,
+      });
+
+      // Verify basic properties
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "name",
+        "Test Track",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "color",
+        16711680,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "mute",
+        true,
+      );
+
+      // Verify routing properties
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "input_routing_type",
+        '{"input_routing_type":{"identifier":17}}',
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "current_monitoring_state",
+        0,
+      );
+
+      expect(result).toEqual({
+        id: "123",
+        trackIndex: 0,
+        name: "Test Track",
+        color: "#FF0000",
+        mute: true,
+        inputRoutingTypeId: "17",
+        monitoringState: "in",
+      });
+    });
+
+    it("should handle routing properties in bulk operations", () => {
+      const result = updateTrack({
+        ids: "123, 456",
+        outputRoutingTypeId: "25",
+        monitoringState: MONITORING_STATE.AUTO,
+      });
+
+      // Verify both tracks get updated
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "output_routing_type",
+        '{"output_routing_type":{"identifier":25}}',
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "456" }),
+        "output_routing_type",
+        '{"output_routing_type":{"identifier":25}}',
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "current_monitoring_state",
+        1,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "456" }),
+        "current_monitoring_state",
+        1,
+      );
+
+      expect(result).toEqual([
+        {
+          id: "123",
+          trackIndex: 0,
+          outputRoutingTypeId: "25",
+          monitoringState: "auto",
+        },
+        {
+          id: "456",
+          trackIndex: 1,
+          outputRoutingTypeId: "25",
+          monitoringState: "auto",
+        },
+      ]);
+    });
+
+    it("should not update routing properties when not provided", () => {
+      const result = updateTrack({
+        ids: "123",
+        name: "Only Name Update",
+      });
+
+      // Should only have the name call, no routing calls
+      expect(liveApiSet).toHaveBeenCalledTimes(1);
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "name",
+        "Only Name Update",
+      );
+
+      expect(result).toEqual({
+        id: "123",
+        trackIndex: 0,
+        name: "Only Name Update",
+      });
+    });
   });
 });

@@ -56,6 +56,21 @@ if (typeof LiveAPI !== "undefined") {
     }
   };
 
+  LiveAPI.prototype.setProperty = function (property, value) {
+    switch (property) {
+      case "input_routing_type":
+      case "input_routing_channel":
+      case "output_routing_type":
+      case "output_routing_channel":
+        // Convert value to JSON format expected by Live API
+        const jsonValue = JSON.stringify({ [property]: value });
+        return this.set(property, jsonValue);
+      default:
+        // For all other properties, use regular set
+        return this.set(property, value);
+    }
+  };
+
   LiveAPI.prototype.getChildIds = function (name) {
     const idArray = this.get(name);
 
