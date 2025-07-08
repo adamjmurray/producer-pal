@@ -111,6 +111,8 @@ _Stable, documented, user-friendly baseline with device awareness_
 - [ ] Duplicate Tool response format improvements
 - [ ] Improved mocking system with unified interface for LiveAPI objects
 - [ ] State Sync: ID-first operations, smart error recovery
+- [ ] Address the duplicate track name issues in duplicate.routeToSource (see
+      dedicated md file in docs explaining the issue and potential solutions)
 - [ ] Validation system for better error handling
 
 #### 1.5.0 - Device Control
@@ -152,9 +154,9 @@ _Stable, documented, user-friendly baseline with device awareness_
 ## 📚 Related Documents
 
 - Customization and Adaptive Learning Roadmap
-- Better State Sync - Phase 1 (User education approach)
-- Better State Sync - Phase 2 (Technical automation plan)
+- Better State Sync Plan
 - Duplicate Tool Response Format Improvement Plan
+- Duplicate Track Name Issues in routeToSource
 - Manual Testing Scenarios
 - Live Instruments (instrument info & sound design ideas)
 - Architecture documentation
