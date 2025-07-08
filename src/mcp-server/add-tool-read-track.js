@@ -1,6 +1,6 @@
 // src/mcp-server/add-tool-read-track.js
 import { z } from "zod";
-import { DEVICE_TYPES } from "../tools/read-track.js";
+import { DEVICE_TYPES } from "../tools/constants.js";
 
 export function addToolReadTrack(server, callLiveApi) {
   server.registerTool(

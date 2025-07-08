@@ -2,40 +2,18 @@
 import { getHostTrackIndex } from "../get-host-track-index.js";
 import { midiPitchToName } from "../notation/midi-pitch-to-name.js";
 import { VERSION } from "../version.js";
-import { readClip } from "./read-clip.js";
 import {
-  MONITORING_STATE,
-  LIVE_API_MONITORING_STATE_IN,
+  DEVICE_TYPE,
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
   LIVE_API_MONITORING_STATE_AUTO,
+  LIVE_API_MONITORING_STATE_IN,
   LIVE_API_MONITORING_STATE_OFF,
+  MONITORING_STATE,
+  STATE,
 } from "./constants.js";
-
-export const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
-export const LIVE_API_DEVICE_TYPE_AUDIO_EFFECT = 2;
-export const LIVE_API_DEVICE_TYPE_MIDI_EFFECT = 4;
-
-// State string constants (5 valid states)
-export const STATE = {
-  ACTIVE: "active",
-  MUTED: "muted",
-  MUTED_VIA_SOLO: "muted-via-solo",
-  MUTED_ALSO_VIA_SOLO: "muted-also-via-solo",
-  SOLOED: "soloed",
-};
-
-// Device type string constants (7 valid types)
-export const DEVICE_TYPE = {
-  INSTRUMENT: "instrument",
-  INSTRUMENT_RACK: "instrument-rack",
-  DRUM_RACK: "drum-rack",
-  AUDIO_EFFECT: "audio-effect",
-  AUDIO_EFFECT_RACK: "audio-effect-rack",
-  MIDI_EFFECT: "midi-effect",
-  MIDI_EFFECT_RACK: "midi-effect-rack",
-};
-
-// Array of all valid device types for documentation
-export const DEVICE_TYPES = Object.values(DEVICE_TYPE);
+import { readClip } from "./read-clip.js";
 
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties

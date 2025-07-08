@@ -1,6 +1,6 @@
 // src/mcp-server/add-tool-read-song.js
 import { z } from "zod";
-import { DEVICE_TYPES } from "../tools/read-track.js";
+import { DEVICE_TYPES } from "../tools/constants.js";
 
 export function addToolReadSong(server, callLiveApi) {
   server.registerTool(

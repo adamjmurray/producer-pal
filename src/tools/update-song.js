@@ -1,44 +1,7 @@
 // src/tools/update-song.js
-import { parseTimeSignature, toLiveApiView } from "../utils.js";
 import { pitchClassNameToNumber } from "../notation/pitch-class-name-to-number.js";
-
-export const VALID_SCALE_NAMES = [
-  "Major",
-  "Minor",
-  "Dorian",
-  "Mixolydian",
-  "Lydian",
-  "Phrygian",
-  "Locrian",
-  "Whole Tone",
-  "Half-whole Dim.",
-  "Whole-half Dim.",
-  "Minor Blues",
-  "Minor Pentatonic",
-  "Major Pentatonic",
-  "Harmonic Minor",
-  "Harmonic Major",
-  "Dorian #4",
-  "Phrygian Dominant",
-  "Melodic Minor",
-  "Lydian Augmented",
-  "Lydian Dominant",
-  "Super Locrian",
-  "8-Tone Spanish",
-  "Bhairav",
-  "Hungarian Minor",
-  "Hirajoshi",
-  "In-Sen",
-  "Iwato",
-  "Kumoi",
-  "Pelog Selisir",
-  "Pelog Tembung",
-  "Messiaen 3",
-  "Messiaen 4",
-  "Messiaen 5",
-  "Messiaen 6",
-  "Messiaen 7",
-];
+import { parseTimeSignature, toLiveApiView } from "../utils.js";
+import { VALID_SCALE_NAMES } from "./constants.js";
 
 /**
  * Updates Live Set parameters like tempo, time signature, scale, and playback state.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.

@@ -7,13 +7,13 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../mock-live-api";
-import { readSong } from "./read-song";
+} from "../mock-live-api.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "./read-track";
+} from "./constants.js";
+import { readSong } from "./read-song.js";
 
 describe("readSong", () => {
   it("returns live set information including tracks and scenes", () => {

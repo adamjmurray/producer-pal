@@ -6,15 +6,15 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../mock-live-api";
-import { VERSION } from "../version";
+} from "../mock-live-api.js";
+import { VERSION } from "../version.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-  readTrack,
-} from "./read-track";
+} from "./constants.js";
+import { readTrack } from "./read-track.js";
 
 const mockTrackProperties = (overrides = {}) => ({
   name: "Test Track",
