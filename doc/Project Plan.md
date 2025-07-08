@@ -77,18 +77,18 @@
      armed to hear the new tracks)
   4. set the source track input routing type to "No input" (to prevent unwanted
      external input after switching to "In" monitoring)
-- [ ] Fix no MIDI passthrough in the Max for Live device
-- [ ] Add a link to docs in the Max for Live device UI
-- [ ] Nudge Claude to link to docs (add instructions to read-song)
-- [ ] Add Settings tab to Max for Live device UI and move port number there
-- [ ] Adjust desktop extension param to support full URL and not just port
-      number (goal: control machine on same LAN)
+- [x] Allow MIDI passthrough in the Max for Live device
 
 #### 0.9.3
 
 - [ ] Randomize instrument rack macros
 - [ ] Change Arrangement clip length
+- [ ] Add Settings tab to Max for Live device UI and move port number there
 - [ ] Improve Producer Pal logo design and update logo in Desktop Extension
+- [ ] Add a link to docs in the Max for Live device UI
+- [ ] Nudge Claude to link to docs (add instructions to read-song)
+- [ ] Adjust desktop extension param to support full URL and not just port
+      number (goal: control machine on same LAN)
 
 ### 🚀 1.0.0 Release
 
