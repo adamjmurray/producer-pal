@@ -8,7 +8,7 @@ const mockBridge = {
 };
 
 vi.mock(import("./stdio-http-bridge.js"), () => ({
-  StdioHttpBridge: vi.fn(() => console.log("HERE") || mockBridge),
+  StdioHttpBridge: vi.fn(() => mockBridge),
 }));
 
 // Import after mocking
