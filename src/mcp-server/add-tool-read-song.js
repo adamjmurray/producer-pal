@@ -82,6 +82,12 @@ export function addToolReadSong(server, callLiveApi) {
           .describe(
             "Whether to include audio effects array in track objects (default: false). When true, each track returns audioEffects array containing audio effect devices with chain information if includeRackChains is true.",
           ),
+        includeRoutings: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include input/output routing information in track objects (default: false). When true, each track returns available routing channels/types, current routing settings, and track monitoring state.",
+          ),
       },
     },
     async (args) => callLiveApi("read-song", args),

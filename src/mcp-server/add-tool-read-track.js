@@ -65,7 +65,7 @@ export function addToolReadTrack(server, callLiveApi) {
           .boolean()
           .default(false)
           .describe(
-            "Whether to include input/output routing information (default: false). When true, returns available routing channels/types and current routing settings.",
+            "Whether to include input/output routing information (default: false). When true, returns available routing channels/types, current routing settings, and track monitoring state.",
           ),
       },
     },

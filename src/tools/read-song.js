@@ -12,6 +12,7 @@ export function readSong({
   includeMidiEffects = false,
   includeInstrument = true,
   includeAudioEffects = false,
+  includeRoutings = false,
 } = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
@@ -68,6 +69,7 @@ export function readSong({
         includeMidiEffects,
         includeInstrument,
         includeAudioEffects,
+        includeRoutings,
       }),
     ),
     scenes: sceneIds
