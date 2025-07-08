@@ -1976,43 +1976,45 @@ describe("readTrack", () => {
           output_routing_type: [
             '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
           ],
+          current_monitoring_state: [1],
         }),
       });
 
       const result = readTrack({ trackIndex: 0, includeRoutings: true });
 
       expect(result.availableInputRoutingChannels).toEqual([
-        { display_name: "In 1", identifier: 1 },
-        { display_name: "In 2", identifier: 2 },
+        { name: "In 1", id: "1" },
+        { name: "In 2", id: "2" },
       ]);
       expect(result.availableInputRoutingTypes).toEqual([
-        { display_name: "Ext. In", identifier: 17 },
-        { display_name: "Resampling", identifier: 18 },
+        { name: "Ext. In", id: "17" },
+        { name: "Resampling", id: "18" },
       ]);
       expect(result.availableOutputRoutingChannels).toEqual([
-        { display_name: "Master", identifier: 26 },
-        { display_name: "A", identifier: 27 },
+        { name: "Master", id: "26" },
+        { name: "A", id: "27" },
       ]);
       expect(result.availableOutputRoutingTypes).toEqual([
-        { display_name: "Track Out", identifier: 25 },
-        { display_name: "Send Only", identifier: 28 },
+        { name: "Track Out", id: "25" },
+        { name: "Send Only", id: "28" },
       ]);
       expect(result.inputRoutingChannel).toEqual({
-        display_name: "In 1",
-        identifier: 1,
+        name: "In 1",
+        id: "1",
       });
       expect(result.inputRoutingType).toEqual({
-        display_name: "Ext. In",
-        identifier: 17,
+        name: "Ext. In",
+        id: "17",
       });
       expect(result.outputRoutingChannel).toEqual({
-        display_name: "Master",
-        identifier: 26,
+        name: "Master",
+        id: "26",
       });
       expect(result.outputRoutingType).toEqual({
-        display_name: "Track Out",
-        identifier: 25,
+        name: "Track Out",
+        id: "25",
       });
+      expect(result.monitoringState).toBe("auto");
     });
 
     it("handles null routing properties gracefully", () => {
@@ -2027,6 +2029,7 @@ describe("readTrack", () => {
           input_routing_type: null,
           output_routing_channel: null,
           output_routing_type: null,
+          current_monitoring_state: [999],
         }),
       });
 
@@ -2040,6 +2043,7 @@ describe("readTrack", () => {
       expect(result.inputRoutingType).toBeNull();
       expect(result.outputRoutingChannel).toBeNull();
       expect(result.outputRoutingType).toBeNull();
+      expect(result.monitoringState).toBe("unknown");
     });
   });
 });
