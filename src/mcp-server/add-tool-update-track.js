@@ -42,7 +42,9 @@ export function addToolUpdateTrack(server, callLiveApi) {
         monitoringState: z
           .enum(Object.values(MONITORING_STATE))
           .optional()
-          .describe(`Track monitoring state (${Object.values(MONITORING_STATE).join(", ")})`),
+          .describe(
+            `Track monitoring state (${Object.values(MONITORING_STATE).join(", ")})`,
+          ),
       },
     },
     async (args) => callLiveApi("update-track", args),

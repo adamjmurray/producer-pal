@@ -65,8 +65,18 @@
 
 #### 0.9.2
 
-- [ ] Track Signal Routing - duplicate tracks without devices and route MIDI
-      back into the source track, for layering clips of different lengths
+- [x] Ability to read and write track I/O routings and monitoring state in the
+      `read-song`, `read-track`, and `update-track` tools
+- [x] "Route to source" feature for tracks in the `duplicate` tool, for layering
+      multiple tracks of MIDI clips routing to the same instrument. It's a
+      shortcut for:
+  1. duplicate a track with no clips or devices (no devices is required to route
+     MIDI output from MIDI tracks)
+  2. route the new track's output to the source track
+  3. set the source track monitoring to "In" (so the track doesn't have to be
+     armed to hear the new tracks)
+  4. set the source track input routing type to "No input" (to prevent unwanted
+     external input after switching to "In" monitoring)
 - [ ] Fix no MIDI passthrough in the Max for Live device
 - [ ] Add a link to docs in the Max for Live device UI
 - [ ] Nudge Claude to link to docs (add instructions to read-song)

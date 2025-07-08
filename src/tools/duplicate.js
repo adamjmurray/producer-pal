@@ -1,10 +1,15 @@
 // src/tools/duplicate.js
+import * as console from "../console";
 import {
   abletonBeatsToBarBeat,
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../notation/barbeat/barbeat-time";
-import { MAX_CLIP_BEATS } from "./constants";
+import {
+  LIVE_API_MONITORING_STATE_AUTO,
+  LIVE_API_MONITORING_STATE_IN,
+  MAX_CLIP_BEATS,
+} from "./constants";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -180,6 +185,7 @@ export function duplicate({
   name,
   withoutClips,
   withoutDevices,
+  routeToSource,
 } = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -198,6 +204,30 @@ export function duplicate({
 
   if (count < 1) {
     throw new Error("duplicate failed: count must be at least 1");
+  }
+
+  // Auto-configure for routing back to source
+  if (routeToSource) {
+    if (type !== "track") {
+      throw new Error(
+        "duplicate failed: routeToSource is only supported for type 'track'",
+      );
+    }
+
+    // Emit warnings if user provided conflicting parameters
+    if (withoutClips === false) {
+      console.error(
+        "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
+      );
+    }
+    if (withoutDevices === false) {
+      console.error(
+        "Warning: routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
+      );
+    }
+
+    withoutClips = true;
+    withoutDevices = true;
   }
 
   // Convert string ID to LiveAPI path if needed
@@ -310,6 +340,8 @@ export function duplicate({
           objectName,
           withoutClips,
           withoutDevices,
+          routeToSource,
+          trackIndex, // Pass original source track index for routing
         );
       } else if (type === "scene") {
         const sceneIndex = object.sceneIndex;
@@ -363,6 +395,7 @@ export function duplicate({
   if (name != null) result.name = name;
   if (withoutClips != null) result.withoutClips = withoutClips;
   if (withoutDevices != null) result.withoutDevices = withoutDevices;
+  if (routeToSource != null) result.routeToSource = routeToSource;
 
   // Return appropriate format based on count
   if (count === 1) {
@@ -427,7 +460,14 @@ function getMinimalClipInfo(clip) {
   }
 }
 
-function duplicateTrack(trackIndex, name, withoutClips, withoutDevices) {
+function duplicateTrack(
+  trackIndex,
+  name,
+  withoutClips,
+  withoutDevices,
+  routeToSource,
+  sourceTrackIndex,
+) {
   const liveSet = new LiveAPI("live_set");
   liveSet.call("duplicate_track", trackIndex);
 
@@ -488,6 +528,68 @@ function duplicateTrack(trackIndex, name, withoutClips, withoutDevices) {
       if (clip.exists()) {
         duplicatedClips.push(getMinimalClipInfo(clip));
       }
+    }
+  }
+
+  // Configure routing if requested
+  if (routeToSource) {
+    const sourceTrack = new LiveAPI(`live_set tracks ${sourceTrackIndex}`);
+    const sourceTrackName = sourceTrack.getProperty("name");
+
+    const currentMonitoring = sourceTrack.getProperty(
+      "current_monitoring_state",
+    );
+
+    if (currentMonitoring !== LIVE_API_MONITORING_STATE_IN) {
+      // Set source track monitoring to "In" so it receives MIDI from the new tracks
+      sourceTrack.set("current_monitoring_state", LIVE_API_MONITORING_STATE_IN);
+      const previousState =
+        currentMonitoring === LIVE_API_MONITORING_STATE_AUTO ? "Auto" : "Off";
+      console.error(
+        `Warning: Changed track "${sourceTrackName}" monitoring from ${previousState} to In`,
+      );
+    }
+
+    const currentInputType = sourceTrack.getProperty("input_routing_type");
+    const currentInputName = currentInputType?.display_name;
+
+    if (currentInputName !== "No Input") {
+      // Set source track input to "No Input" to prevent unwanted external input
+      const sourceInputTypes = sourceTrack.getProperty(
+        "available_input_routing_types",
+      );
+      const noInput = sourceInputTypes?.find(
+        (type) => type.display_name === "No Input",
+      );
+
+      if (noInput) {
+        sourceTrack.setProperty("input_routing_type", {
+          identifier: noInput.identifier,
+        });
+        // Warn that input routing changed
+        console.error(
+          `Warning: Changed track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input"`,
+        );
+      } else {
+        console.error(
+          `Warning: Tried to change track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
+        );
+      }
+    }
+
+    // Find source track in new track's available OUTPUT routing types
+    const availableTypes = newTrack.getProperty(
+      "available_output_routing_types",
+    );
+    const sourceRouting = availableTypes?.find(
+      (type) => type.display_name === sourceTrackName,
+    );
+
+    if (sourceRouting) {
+      newTrack.setProperty("output_routing_type", {
+        identifier: sourceRouting.identifier,
+      });
+      // Let Live set the default channel for this routing type
     }
   }
 

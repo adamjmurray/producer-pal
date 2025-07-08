@@ -66,6 +66,12 @@ export function addToolDuplicate(server, callLiveApi) {
           .describe(
             "Whether to exclude devices when duplicating tracks (default: false)",
           ),
+        routeToSource: z
+          .boolean()
+          .optional()
+          .describe(
+            "Create a routing setup where the new track controls the source track's instrument. Effects: 1) New track has no clips or devices, 2) New track output routes to source track, 3) Source track monitoring set to 'In', 4) Source track input set to 'No Input' to prevent unwanted external input. WARNING: This changes the source track's monitoring and input settings.",
+          ),
       },
     },
     async (args) => callLiveApi("duplicate", args),
