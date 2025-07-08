@@ -13,7 +13,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.0",
     "express": "^5.1.0",
-    "zod": "^3.25.75"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@anthropic-ai/dxt": "^0.2.0",
