@@ -147,7 +147,7 @@ describe("duplicate", () => {
       );
     });
 
-    it("should duplicate a track without clips when includeClips is false", () => {
+    it("should duplicate a track without clips when withoutClips is true", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "track1") {
           return "live_set tracks 0";
@@ -169,14 +169,14 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "track",
         id: "track1",
-        includeClips: false,
+        withoutClips: true,
       });
 
       expect(result).toStrictEqual({
         type: "track",
         id: "track1",
         count: 1,
-        includeClips: false,
+        withoutClips: true,
         duplicated: true,
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
@@ -220,7 +220,7 @@ describe("duplicate", () => {
       );
     });
 
-    it("should duplicate a track without devices when includeDevices is false", () => {
+    it("should duplicate a track without devices when withoutDevices is true", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "track1") {
           return "live_set tracks 0";
@@ -238,14 +238,14 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "track",
         id: "track1",
-        includeDevices: false,
+        withoutDevices: true,
       });
 
       expect(result).toStrictEqual({
         type: "track",
         id: "track1",
         count: 1,
-        includeDevices: false,
+        withoutDevices: true,
         duplicated: true,
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
@@ -276,7 +276,7 @@ describe("duplicate", () => {
       );
     });
 
-    it("should duplicate a track with devices by default (includeDevices not specified)", () => {
+    it("should duplicate a track with devices by default (withoutDevices not specified)", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "track1") {
           return "live_set tracks 0";
@@ -319,7 +319,7 @@ describe("duplicate", () => {
       );
     });
 
-    it("should duplicate a track with devices when includeDevices is true", () => {
+    it("should duplicate a track with devices when withoutDevices is false", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "track1") {
           return "live_set tracks 0";
@@ -337,20 +337,20 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "track",
         id: "track1",
-        includeDevices: true,
+        withoutDevices: false,
       });
 
       expect(result).toStrictEqual({
         type: "track",
         id: "track1",
         count: 1,
-        includeDevices: true,
+        withoutDevices: false,
         duplicated: true,
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
         duplicatedClips: [],
       });
-      // includeDevices should not appear in result when true (default)
+      // withoutDevices should not appear in result when false (default)
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set" }),
@@ -513,7 +513,7 @@ describe("duplicate", () => {
       );
     });
 
-    it("should duplicate a scene without clips when includeClips is false", () => {
+    it("should duplicate a scene without clips when withoutClips is true", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") {
           return "live_set scenes 0";
@@ -534,14 +534,14 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        includeClips: false,
+        withoutClips: true,
       });
 
       expect(result).toStrictEqual({
         type: "scene",
         id: "scene1",
         count: 1,
-        includeClips: false,
+        withoutClips: true,
         duplicated: true,
         newSceneId: "live_set/scenes/1",
         newSceneIndex: 1,
@@ -963,7 +963,7 @@ describe("duplicate", () => {
         });
       });
 
-      it("should duplicate a scene to arrangement without clips when includeClips is false", () => {
+      it("should duplicate a scene to arrangement without clips when withoutClips is true", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "scene1") {
             return "live_set scenes 0";
@@ -988,7 +988,7 @@ describe("duplicate", () => {
           id: "scene1",
           destination: "arrangement",
           arrangementStartTime: "5|1",
-          includeClips: false,
+          withoutClips: true,
         });
 
         // Verify that duplicate_clip_to_arrangement was NOT called
@@ -1011,7 +1011,7 @@ describe("duplicate", () => {
           count: 1,
           destination: "arrangement",
           arrangementStartTime: "5|1",
-          includeClips: false,
+          withoutClips: true,
           duplicated: true,
           arrangementStartTime: "5|1",
           duplicatedClips: [],

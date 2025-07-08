@@ -12,7 +12,7 @@ export function addToolDuplicate(server, callLiveApi) {
       title: "Duplicate Clip/Track/Scene in Ableton Live",
       description:
         "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +
-        `Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes. When duplicating scenes or tracks, clips are duplicated by default but can be excluded with includeClips:false. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip. ` +
+        `Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes. When duplicating scenes or tracks, clips are duplicated by default but can be excluded with withoutClips:true. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip. ` +
         "IMPORTANT: For Arrangement clips, all timing is relative to each clip's start time, not the global arrangement timeline. " +
         "IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arrangement clips will only play if their tracks are currently in arrangement-following state (see transport tool).",
       annotations: {
@@ -54,17 +54,17 @@ export function addToolDuplicate(server, callLiveApi) {
           .describe(
             "Optional name for the duplicated object(s) (auto-increments for count > 1)",
           ),
-        includeClips: z
+        withoutClips: z
           .boolean()
-          .optional()
+          .default(false)
           .describe(
-            "Whether to include clips when duplicating tracks or scenes (default: true)",
+            "Whether to exclude clips when duplicating tracks or scenes (default: false)",
           ),
-        includeDevices: z
+        withoutDevices: z
           .boolean()
-          .optional()
+          .default(false)
           .describe(
-            "Whether to include devices when duplicating tracks (default: true)",
+            "Whether to exclude devices when duplicating tracks (default: false)",
           ),
       },
     },

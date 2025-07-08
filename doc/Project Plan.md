@@ -65,9 +65,9 @@
 
 #### 0.9.2
 
-- [ ] Track Signal Routing
-  - [ ] Support for duplicating tracks without devices as MIDI sources
-  - [ ] Enable routing MIDI between tracks for layering
+- [ ] Track Signal Routing - duplicate tracks without devices and route MIDI
+      back into the source track, for layering clips of different lengths
+- [ ] Fix no MIDI passthrough in the Max for Live device
 - [ ] Add a link to docs in the Max for Live device UI
 - [ ] Nudge Claude to link to docs (add instructions to read-song)
 - [ ] Add Settings tab to Max for Live device UI and move port number there
