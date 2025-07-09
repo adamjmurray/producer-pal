@@ -15,12 +15,24 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-5",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 17.0, 68.0, 83.0, 22.0 ],
+					"text" : "set version $1"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-3",
 					"maxclass" : "newobj",
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 28.0, 23.5, 67.0, 22.0 ],
+					"patching_rect" : [ 17.0, 31.0, 67.0, 22.0 ],
 					"text" : "r ---version"
 				}
 
@@ -33,7 +45,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 185.0, 240.0, 229.0, 62.0 ],
+					"patching_rect" : [ 115.0, 188.0, 229.0, 62.0 ],
 					"text" : ";\rmax launchbrowser https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal"
 				}
 
@@ -46,7 +58,7 @@
 					"numoutlets" : 3,
 					"outlettype" : [ "", "", "int" ],
 					"parameter_enable" : 0,
-					"patching_rect" : [ 185.0, 201.0, 138.0, 20.0 ],
+					"patching_rect" : [ 115.0, 149.0, 138.0, 20.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 55.5, 86.0, 138.0, 20.0 ],
 					"text" : "📚  Documentation 📖"
@@ -91,7 +103,7 @@
 					"patching_rect" : [ 158.0, 60.0, 51.0, 51.0 ],
 					"pic" : "/Users/adammurray/workspace/producer-pal/device/icon.png",
 					"presentation" : 1,
-					"presentation_rect" : [ 23.0, 7.0, 46.0, 46.0 ]
+					"presentation_rect" : [ 23.0, 8.5, 46.0, 46.0 ]
 				}
 
 			}
@@ -106,7 +118,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 120.0, 15.0, 163.0, 35.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 36.5, 12.5, 177.0, 35.0 ],
+					"presentation_rect" : [ 36.5, 14.0, 177.0, 35.0 ],
 					"text" : "Producer Pal",
 					"textjustification" : 1
 				}
@@ -130,24 +142,12 @@
 			}
 , 			{
 				"box" : 				{
-					"id" : "obj-31",
-					"maxclass" : "newobj",
-					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 28.0, 114.0, 72.0, 22.0 ],
-					"text" : "prepend set"
-				}
-
-			}
-, 			{
-				"box" : 				{
 					"fontname" : "Ableton Sans Medium",
 					"id" : "obj-23",
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 28.0, 162.0, 147.0, 21.0 ],
+					"patching_rect" : [ 17.0, 106.0, 105.0, 21.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 77.5, 50.0, 95.0, 21.0 ],
 					"text" : "version X.Y.Z",
@@ -157,39 +157,24 @@
 			}
 , 			{
 				"box" : 				{
-					"id" : "obj-15",
-					"maxclass" : "newobj",
-					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 28.0, 65.0, 95.0, 22.0 ],
-					"text" : "prepend version"
-				}
-
-			}
-, 			{
-				"box" : 				{
+					"angle" : 270.0,
 					"background" : 1,
+					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
 					"id" : "obj-1",
 					"maxclass" : "panel",
+					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 228.0, 68.5, 55.0, 34.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 0.0, 0.0, 250.0, 150.0 ],
+					"proportion" : 0.39,
 					"rounded" : 0
 				}
 
 			}
  ],
 		"lines" : [ 			{
-				"patchline" : 				{
-					"destination" : [ "obj-31", 0 ],
-					"source" : [ "obj-15", 0 ]
-				}
-
-			}
-, 			{
 				"patchline" : 				{
 					"destination" : [ "obj-14", 0 ],
 					"source" : [ "obj-17", 0 ]
@@ -205,7 +190,7 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-15", 0 ],
+					"destination" : [ "obj-5", 0 ],
 					"source" : [ "obj-3", 0 ]
 				}
 
@@ -213,7 +198,7 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-23", 0 ],
-					"source" : [ "obj-31", 0 ]
+					"source" : [ "obj-5", 0 ]
 				}
 
 			}
