@@ -27,7 +27,11 @@ export function addToolCreateTrack(server, callLiveApi) {
         name: z
           .string()
           .optional()
-          .describe("Base name for the tracks (auto-increments for count > 1)"),
+          .describe(
+            "Base name for the tracks (auto-increments for count > 1). " +
+              "TIP: Use descriptive, unique names to avoid routing ambiguity. " +
+              "Duplicate track names can cause issues with routing operations.",
+          ),
         color: z.string().optional().describe("Color in #RRGGBB hex format"),
         type: z
           .enum(["midi", "audio"])

@@ -1,6 +1,6 @@
 // src/mcp-server/add-tool-read-song.js
 import { z } from "zod";
-import { DEVICE_TYPES } from "../tools/read-track.js";
+import { DEVICE_TYPES } from "../tools/constants.js";
 
 export function addToolReadSong(server, callLiveApi) {
   server.registerTool(
@@ -81,6 +81,12 @@ export function addToolReadSong(server, callLiveApi) {
           .default(false)
           .describe(
             "Whether to include audio effects array in track objects (default: false). When true, each track returns audioEffects array containing audio effect devices with chain information if includeRackChains is true.",
+          ),
+        includeRoutings: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include input/output routing information in track objects (default: false). When true, each track returns available routing channels/types, current routing settings, and track monitoring state.",
           ),
       },
     },

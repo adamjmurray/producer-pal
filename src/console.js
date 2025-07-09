@@ -16,7 +16,7 @@ const str = (any) => {
     case Map.prototype:
       return `Map(${[...any.entries()].map(([k, v]) => `${str(k)} → ${str(v)}`).join(", ")})`;
 
-    case Dict.prototype:
+    case typeof Dict !== "undefined" ? Dict.prototype : null:
       return `Dict("${any.name}") ${any.stringify().replaceAll("\n", " ")}`;
   }
   const s = String(any);
@@ -25,6 +25,20 @@ const str = (any) => {
     : s;
 };
 
-export const log = (...any) => post(...any.map(str), "\n");
+export const log = (...any) => {
+  if (typeof post === "function") {
+    post(...any.map(str), "\n");
+  } else {
+    // Fallback for test environment
+    console.log(...any.map(str));
+  }
+};
 
-export const error = (...any) => globalThis.error(...any.map(str), "\n");
+export const error = (...any) => {
+  if (typeof globalThis.error === "function") {
+    globalThis.error(...any.map(str), "\n");
+  } else {
+    // Fallback for test environment
+    console.error(...any.map(str));
+  }
+};

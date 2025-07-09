@@ -2,34 +2,18 @@
 import { getHostTrackIndex } from "../get-host-track-index.js";
 import { midiPitchToName } from "../notation/midi-pitch-to-name.js";
 import { VERSION } from "../version.js";
+import {
+  DEVICE_TYPE,
+  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+  LIVE_API_DEVICE_TYPE_INSTRUMENT,
+  LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
+  LIVE_API_MONITORING_STATE_AUTO,
+  LIVE_API_MONITORING_STATE_IN,
+  LIVE_API_MONITORING_STATE_OFF,
+  MONITORING_STATE,
+  STATE,
+} from "./constants.js";
 import { readClip } from "./read-clip.js";
-
-export const LIVE_API_DEVICE_TYPE_INSTRUMENT = 1;
-export const LIVE_API_DEVICE_TYPE_AUDIO_EFFECT = 2;
-export const LIVE_API_DEVICE_TYPE_MIDI_EFFECT = 4;
-
-// State string constants (5 valid states)
-export const STATE = {
-  ACTIVE: "active",
-  MUTED: "muted",
-  MUTED_VIA_SOLO: "muted-via-solo",
-  MUTED_ALSO_VIA_SOLO: "muted-also-via-solo",
-  SOLOED: "soloed",
-};
-
-// Device type string constants (7 valid types)
-export const DEVICE_TYPE = {
-  INSTRUMENT: "instrument",
-  INSTRUMENT_RACK: "instrument-rack",
-  DRUM_RACK: "drum-rack",
-  AUDIO_EFFECT: "audio-effect",
-  AUDIO_EFFECT_RACK: "audio-effect-rack",
-  MIDI_EFFECT: "midi-effect",
-  MIDI_EFFECT_RACK: "midi-effect-rack",
-};
-
-// Array of all valid device types for documentation
-export const DEVICE_TYPES = Object.values(DEVICE_TYPE);
 
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
@@ -479,6 +463,7 @@ function categorizeDevices(
  * @param {boolean} args.includeMidiEffects - Whether to include MIDI effects array (default: false)
  * @param {boolean} args.includeInstrument - Whether to include instrument object (default: true)
  * @param {boolean} args.includeAudioEffects - Whether to include audio effects array (default: false)
+ * @param {boolean} args.includeRoutings - Whether to include input/output routing information (default: false)
  * @returns {Object} Result object with track information
  */
 export function readTrack({
@@ -489,6 +474,7 @@ export function readTrack({
   includeMidiEffects = false,
   includeInstrument = true,
   includeAudioEffects = false,
+  includeRoutings = false,
 } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
@@ -581,6 +567,81 @@ export function readTrack({
   const trackState = computeState(track);
   if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
+  }
+
+  if (includeRoutings) {
+    // Transform available routing types
+    const availableInputTypes =
+      track.getProperty("available_input_routing_types") || [];
+    result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
+      name: type.display_name,
+      inputId: String(type.identifier),
+    }));
+
+    const availableInputChannels =
+      track.getProperty("available_input_routing_channels") || [];
+    result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
+      name: ch.display_name,
+      inputId: String(ch.identifier),
+    }));
+
+    const availableOutputTypes =
+      track.getProperty("available_output_routing_types") || [];
+    result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
+      name: type.display_name,
+      outputId: String(type.identifier),
+    }));
+
+    const availableOutputChannels =
+      track.getProperty("available_output_routing_channels") || [];
+    result.availableOutputRoutingChannels = availableOutputChannels.map(
+      (ch) => ({
+        name: ch.display_name,
+        outputId: String(ch.identifier),
+      }),
+    );
+
+    // Transform current routing settings
+    const inputType = track.getProperty("input_routing_type");
+    result.inputRoutingType = inputType
+      ? {
+          name: inputType.display_name,
+          inputId: String(inputType.identifier),
+        }
+      : null;
+
+    const inputChannel = track.getProperty("input_routing_channel");
+    result.inputRoutingChannel = inputChannel
+      ? {
+          name: inputChannel.display_name,
+          inputId: String(inputChannel.identifier),
+        }
+      : null;
+
+    const outputType = track.getProperty("output_routing_type");
+    result.outputRoutingType = outputType
+      ? {
+          name: outputType.display_name,
+          outputId: String(outputType.identifier),
+        }
+      : null;
+
+    const outputChannel = track.getProperty("output_routing_channel");
+    result.outputRoutingChannel = outputChannel
+      ? {
+          name: outputChannel.display_name,
+          outputId: String(outputChannel.identifier),
+        }
+      : null;
+
+    // Add monitoring state
+    const monitoringStateValue = track.getProperty("current_monitoring_state");
+    result.monitoringState =
+      {
+        [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
+        [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
+        [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
+      }[monitoringStateValue] ?? "unknown";
   }
 
   if (isProducerPalHost) {

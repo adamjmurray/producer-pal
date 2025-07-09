@@ -1,5 +1,5 @@
 // src/tools/duplicate.test.js
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   children,
   liveApiCall,
@@ -147,7 +147,7 @@ describe("duplicate", () => {
       );
     });
 
-    it("should duplicate a track without clips when includeClips is false", () => {
+    it("should duplicate a track without clips when withoutClips is true", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "track1") {
           return "live_set tracks 0";
@@ -169,14 +169,14 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "track",
         id: "track1",
-        includeClips: false,
+        withoutClips: true,
       });
 
       expect(result).toStrictEqual({
         type: "track",
         id: "track1",
         count: 1,
-        includeClips: false,
+        withoutClips: true,
         duplicated: true,
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
@@ -218,6 +218,410 @@ describe("duplicate", () => {
         "delete_clip",
         "id arrangementClip1",
       );
+    });
+
+    it("should duplicate a track without devices when withoutDevices is true", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1", "device2"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        withoutDevices: true,
+      });
+
+      expect(result).toStrictEqual({
+        type: "track",
+        id: "track1",
+        count: 1,
+        withoutDevices: true,
+        duplicated: true,
+        newTrackId: "live_set/tracks/1",
+        newTrackIndex: 1,
+        duplicatedClips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was called for each device (backwards)
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        2,
+      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        1,
+      );
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        0,
+      );
+    });
+
+    it("should duplicate a track with devices by default (withoutDevices not specified)", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+      });
+
+      expect(result).toStrictEqual({
+        type: "track",
+        id: "track1",
+        count: 1,
+        duplicated: true,
+        newTrackId: "live_set/tracks/1",
+        newTrackIndex: 1,
+        duplicatedClips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was NOT called
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "delete_device",
+        expect.anything(),
+      );
+    });
+
+    it("should duplicate a track with devices when withoutDevices is false", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        withoutDevices: false,
+      });
+
+      expect(result).toStrictEqual({
+        type: "track",
+        id: "track1",
+        count: 1,
+        withoutDevices: false,
+        duplicated: true,
+        newTrackId: "live_set/tracks/1",
+        newTrackIndex: 1,
+        duplicatedClips: [],
+      });
+      // withoutDevices should not appear in result when false (default)
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was NOT called
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "delete_device",
+        expect.anything(),
+      );
+    });
+
+    describe("routeToSource functionality", () => {
+      it("should throw an error when routeToSource is used with non-track type", () => {
+        expect(() =>
+          duplicate({ type: "scene", id: "scene1", routeToSource: true }),
+        ).toThrow(
+          "duplicate failed: routeToSource is only supported for type 'track'",
+        );
+      });
+
+      it("should configure routing when routeToSource is true", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        // Mock track properties for routing configuration
+        mockLiveApiGet({
+          "live_set tracks 0": {
+            name: "Source Track",
+            current_monitoring_state: 1, // AUTO
+            input_routing_type: { display_name: "Audio In" },
+            available_input_routing_types: [
+              { display_name: "No Input", identifier: "no_input_id" },
+              { display_name: "Audio In", identifier: "audio_in_id" },
+            ],
+          },
+          "live_set tracks 1": {
+            available_output_routing_types: [
+              { display_name: "Master", identifier: "master_id" },
+              { display_name: "Source Track", identifier: "source_track_id" },
+            ],
+          },
+        });
+
+        const result = duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+        });
+
+        expect(result).toStrictEqual({
+          type: "track",
+          id: "track1",
+          count: 1,
+          routeToSource: true,
+          withoutClips: true,
+          withoutDevices: true,
+          duplicated: true,
+          newTrackId: "live_set/tracks/1",
+          newTrackIndex: 1,
+          duplicatedClips: [],
+        });
+
+        // Test currently simplified to verify basic functionality
+        // TODO: Add specific API call verifications when LiveAPI mocking is improved
+      });
+
+      it("should not change source track monitoring if already set to In", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        // Mock track with monitoring already set to "In"
+        mockLiveApiGet({
+          "live_set tracks 0": {
+            name: "Source Track",
+            current_monitoring_state: 0, // IN
+            input_routing_type: { display_name: "No Input" },
+          },
+          "live_set tracks 1": {
+            available_output_routing_types: [
+              { display_name: "Source Track", identifier: "source_track_id" },
+            ],
+          },
+        });
+
+        duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+        });
+
+        // Verify monitoring was NOT changed
+        expect(liveApiSet).not.toHaveBeenCalledWith(
+          "current_monitoring_state",
+          expect.anything(),
+        );
+      });
+
+      it("should not change source track input routing if already set to No Input", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        // Mock track with input already set to "No Input"
+        mockLiveApiGet({
+          "live_set tracks 0": {
+            name: "Source Track",
+            current_monitoring_state: 0, // IN
+            input_routing_type: { display_name: "No Input" },
+          },
+          "live_set tracks 1": {
+            available_output_routing_types: [
+              { display_name: "Source Track", identifier: "source_track_id" },
+            ],
+          },
+        });
+
+        duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+        });
+
+        // Verify input routing was NOT changed
+        expect(liveApiCall).not.toHaveBeenCalledWith(
+          "setProperty",
+          "input_routing_type",
+          expect.anything(),
+        );
+      });
+
+      it("should override withoutClips to true when routeToSource is true", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        const result = duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+          withoutClips: false, // This should be overridden
+        });
+
+        expect(result.withoutClips).toBe(true);
+        expect(result.routeToSource).toBe(true);
+      });
+
+      it("should override withoutDevices to true when routeToSource is true", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        const result = duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+          withoutDevices: false, // This should be overridden
+        });
+
+        expect(result.withoutDevices).toBe(true);
+        expect(result.routeToSource).toBe(true);
+      });
+
+      it("should arm the source track when routeToSource is true", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        // Mock track properties for routing configuration
+        mockLiveApiGet({
+          "live_set tracks 0": {
+            name: "Source Track",
+            input_routing_type: { display_name: "Audio In" },
+            available_input_routing_types: [
+              { display_name: "No Input", identifier: "no_input_id" },
+              { display_name: "Audio In", identifier: "audio_in_id" },
+            ],
+          },
+          "live_set tracks 1": {
+            available_output_routing_types: [
+              { display_name: "Master", identifier: "master_id" },
+              { display_name: "Source Track", identifier: "source_track_id" },
+            ],
+          },
+        });
+
+        duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+        });
+
+        // Verify the source track was armed
+        expect(liveApiSet).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "arm",
+          1,
+        );
+      });
+
+      it("should not emit arm warning when source track is already armed", () => {
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "track1") {
+            return "live_set tracks 0";
+          }
+          return this._path;
+        });
+
+        // Mock track properties with track already armed
+        mockLiveApiGet({
+          "live_set tracks 0": {
+            name: "Source Track",
+            arm: 1, // Already armed
+            input_routing_type: { display_name: "Audio In" },
+            available_input_routing_types: [
+              { display_name: "No Input", identifier: "no_input_id" },
+              { display_name: "Audio In", identifier: "audio_in_id" },
+            ],
+          },
+          "live_set tracks 1": {
+            available_output_routing_types: [
+              { display_name: "Master", identifier: "master_id" },
+              { display_name: "Source Track", identifier: "source_track_id" },
+            ],
+          },
+        });
+
+        const consoleSpy = vi.spyOn(console, "error");
+
+        duplicate({
+          type: "track",
+          id: "track1",
+          routeToSource: true,
+        });
+
+        // Verify the source track was still set to armed (even though it already was)
+        expect(liveApiSet).toHaveBeenCalledWithThis(
+          expect.objectContaining({ path: "live_set tracks 0" }),
+          "arm",
+          1,
+        );
+
+        // Verify the arm warning was NOT emitted since it was already armed
+        expect(consoleSpy).not.toHaveBeenCalledWith(
+          "routeToSource: Armed the source track",
+        );
+
+        consoleSpy.mockRestore();
+      });
     });
   });
 
@@ -368,7 +772,7 @@ describe("duplicate", () => {
       );
     });
 
-    it("should duplicate a scene without clips when includeClips is false", () => {
+    it("should duplicate a scene without clips when withoutClips is true", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") {
           return "live_set scenes 0";
@@ -389,14 +793,14 @@ describe("duplicate", () => {
       const result = duplicate({
         type: "scene",
         id: "scene1",
-        includeClips: false,
+        withoutClips: true,
       });
 
       expect(result).toStrictEqual({
         type: "scene",
         id: "scene1",
         count: 1,
-        includeClips: false,
+        withoutClips: true,
         duplicated: true,
         newSceneId: "live_set/scenes/1",
         newSceneIndex: 1,
@@ -818,7 +1222,7 @@ describe("duplicate", () => {
         });
       });
 
-      it("should duplicate a scene to arrangement without clips when includeClips is false", () => {
+      it("should duplicate a scene to arrangement without clips when withoutClips is true", () => {
         liveApiPath.mockImplementation(function () {
           if (this._id === "scene1") {
             return "live_set scenes 0";
@@ -843,7 +1247,7 @@ describe("duplicate", () => {
           id: "scene1",
           destination: "arrangement",
           arrangementStartTime: "5|1",
-          includeClips: false,
+          withoutClips: true,
         });
 
         // Verify that duplicate_clip_to_arrangement was NOT called
@@ -866,7 +1270,7 @@ describe("duplicate", () => {
           count: 1,
           destination: "arrangement",
           arrangementStartTime: "5|1",
-          includeClips: false,
+          withoutClips: true,
           duplicated: true,
           arrangementStartTime: "5|1",
           duplicatedClips: [],

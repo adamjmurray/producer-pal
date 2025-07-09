@@ -178,15 +178,9 @@ This script updates:
 
 - ✅ package.json files
 - ✅ src/version.js
-- ❌ Max device UI (must be done manually - see Step 2)
+- ✅ Max device UI (it uses the value in src/version.js)
 
-#### Step 2: Update Max Device UI
-
-1. Open `device/Producer-Pal.amxd` in Max
-2. Update version number in the UI to match
-3. Save the device (do NOT freeze yet)
-
-#### Step 3: Test and Commit
+#### Step 2: Test and Commit
 
 ```sh
 npm test
@@ -194,7 +188,7 @@ git add -A
 git commit -m "Bump version to X.Y.Z"
 ```
 
-#### Step 4: Tag the Release (BEFORE building)
+#### Step 3: Tag the Release (BEFORE building)
 
 ```sh
 # Tag the exact commit we're about to build from
@@ -204,7 +198,7 @@ git push origin dev vX.Y.Z
 
 This ensures the tag matches the exact code used to build the release.
 
-#### Step 5: Build Release Files
+#### Step 4: Build Release Files
 
 ```sh
 # Build from the tagged commit
@@ -217,13 +211,13 @@ This script:
 - Builds the `.dxt` file
 - Copies it to `releases/Producer-Pal.dxt`
 
-#### Step 6: Freeze Max Device
+#### Step 5: Freeze Max Device
 
 1. Open `device/Producer-Pal.amxd` in Max
 2. Click the freeze button
 3. Save as: `releases/Producer-Pal.amxd`
 
-#### Step 7: Create GitHub Pre-Release
+#### Step 6: Create GitHub Pre-Release
 
 1. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
 2. Click "Draft a new release"
@@ -236,20 +230,20 @@ This script:
 7. Write release notes
 8. Publish pre-release
 
-#### Step 8: Create Pull Request
+#### Step 7: Create Pull Request
 
 Create PR via GitHub UI: `dev → main`
 
 The PR will include the tag and all release commits.
 
-#### Step 9: Test Pre-Release
+#### Step 8: Test Pre-Release
 
 Test the pre-release thoroughly, especially on different platforms (Windows,
 macOS). Download directly from GitHub to ensure the files work correctly.
 
 If issues are found, see "Fixing Issues During Pre-Release" section below.
 
-#### Step 10: Merge and Promote
+#### Step 9: Merge and Promote
 
 After testing succeeds:
 
@@ -259,7 +253,7 @@ After testing succeeds:
 4. Uncheck "Set as a pre-release"
 5. Update release (no need to re-upload files)
 
-#### Step 11: Post-Release
+#### Step 10: Post-Release
 
 ```sh
 # Fetch and merge the updated main branch

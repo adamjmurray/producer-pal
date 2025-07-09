@@ -1,6 +1,6 @@
 // src/mcp-server/add-tool-read-track.js
 import { z } from "zod";
-import { DEVICE_TYPES } from "../tools/read-track.js";
+import { DEVICE_TYPES } from "../tools/constants.js";
 
 export function addToolReadTrack(server, callLiveApi) {
   server.registerTool(
@@ -10,6 +10,7 @@ export function addToolReadTrack(server, callLiveApi) {
       description:
         "Read comprehensive information about a track. Returns sessionClips and arrangementClips arrays containing clip objects with time-based properties in bar|beat format. " +
         "Understanding track state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline. " +
+        "Use includeRoutings to get input/output routing information including available channels and types. " +
         `DEVICE TYPES: Device objects have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}. ` +
         "ENTITY STATES (for tracks, drum pads, and rack chains): " +
         "When no 'state' property is present, the entity is active (normal state - playing or ready to play). " +
@@ -59,6 +60,12 @@ export function addToolReadTrack(server, callLiveApi) {
           .default(false)
           .describe(
             "Whether to include audio effects array (default: false). When true, returns audioEffects array containing audio effect devices with chain information if includeRackChains is true.",
+          ),
+        includeRoutings: z
+          .boolean()
+          .default(false)
+          .describe(
+            "Whether to include input/output routing information (default: false). When true, returns available routing channels/types, current routing settings, and track monitoring state.",
           ),
       },
     },

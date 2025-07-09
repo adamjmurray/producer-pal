@@ -1,4 +1,5 @@
 // src/tools/duplicate.js
+import * as console from "../console";
 import {
   abletonBeatsToBarBeat,
   barBeatDurationToAbletonBeats,
@@ -166,7 +167,8 @@ function copyClipProperties(sourceClip, destClip, name) {
  * @param {string} [args.arrangementStartTime] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
- * @param {boolean} [args.includeClips] - Whether to include clips when duplicating tracks or scenes
+ * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
+ * @param {boolean} [args.withoutDevices] - Whether to exclude devices when duplicating tracks
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
 export function duplicate({
@@ -177,7 +179,9 @@ export function duplicate({
   arrangementStartTime,
   arrangementLength,
   name,
-  includeClips,
+  withoutClips,
+  withoutDevices,
+  routeToSource,
 } = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -196,6 +200,30 @@ export function duplicate({
 
   if (count < 1) {
     throw new Error("duplicate failed: count must be at least 1");
+  }
+
+  // Auto-configure for routing back to source
+  if (routeToSource) {
+    if (type !== "track") {
+      throw new Error(
+        "duplicate failed: routeToSource is only supported for type 'track'",
+      );
+    }
+
+    // Emit warnings if user provided conflicting parameters
+    if (withoutClips === false) {
+      console.error(
+        "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
+      );
+    }
+    if (withoutDevices === false) {
+      console.error(
+        "Warning: routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
+      );
+    }
+
+    withoutClips = true;
+    withoutDevices = true;
   }
 
   // Convert string ID to LiveAPI path if needed
@@ -273,7 +301,7 @@ export function duplicate({
           id,
           actualArrangementStartBeats,
           objectName,
-          includeClips,
+          withoutClips,
           arrangementLength,
           songTimeSigNumerator,
           songTimeSigDenominator,
@@ -306,7 +334,10 @@ export function duplicate({
         newObjectMetadata = duplicateTrack(
           actualTrackIndex,
           objectName,
-          includeClips,
+          withoutClips,
+          withoutDevices,
+          routeToSource,
+          trackIndex, // Pass original source track index for routing
         );
       } else if (type === "scene") {
         const sceneIndex = object.sceneIndex;
@@ -319,7 +350,7 @@ export function duplicate({
         newObjectMetadata = duplicateScene(
           actualSceneIndex,
           objectName,
-          includeClips,
+          withoutClips,
         );
       } else if (type === "clip") {
         const trackIndex = object.trackIndex;
@@ -358,7 +389,9 @@ export function duplicate({
     result.arrangementStartTime = arrangementStartTime;
   if (arrangementLength != null) result.arrangementLength = arrangementLength;
   if (name != null) result.name = name;
-  if (includeClips != null) result.includeClips = includeClips;
+  if (withoutClips != null) result.withoutClips = withoutClips;
+  if (withoutDevices != null) result.withoutDevices = withoutDevices;
+  if (routeToSource != null) result.routeToSource = routeToSource;
 
   // Return appropriate format based on count
   if (count === 1) {
@@ -423,7 +456,14 @@ function getMinimalClipInfo(clip) {
   }
 }
 
-function duplicateTrack(trackIndex, name, includeClips) {
+function duplicateTrack(
+  trackIndex,
+  name,
+  withoutClips,
+  withoutDevices,
+  routeToSource,
+  sourceTrackIndex,
+) {
   const liveSet = new LiveAPI("live_set");
   liveSet.call("duplicate_track", trackIndex);
 
@@ -434,10 +474,20 @@ function duplicateTrack(trackIndex, name, includeClips) {
     newTrack.set("name", name);
   }
 
+  // Delete devices if withoutDevices is true
+  if (withoutDevices === true) {
+    const deviceIds = newTrack.getChildIds("devices");
+    const deviceCount = deviceIds.length;
+    // Delete from the end backwards to avoid index shifting
+    for (let i = deviceCount - 1; i >= 0; i--) {
+      newTrack.call("delete_device", i);
+    }
+  }
+
   // Get all duplicated clips
   const duplicatedClips = [];
 
-  if (includeClips === false) {
+  if (withoutClips === true) {
     // Delete all clips that were duplicated
     // Session clips
     const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
@@ -477,6 +527,61 @@ function duplicateTrack(trackIndex, name, includeClips) {
     }
   }
 
+  // Configure routing if requested
+  if (routeToSource) {
+    const sourceTrack = new LiveAPI(`live_set tracks ${sourceTrackIndex}`);
+    const sourceTrackName = sourceTrack.getProperty("name");
+
+    // Arm the source track for input
+    const currentArm = sourceTrack.getProperty("arm");
+    sourceTrack.set("arm", 1);
+    if (currentArm !== 1) {
+      console.error(`routeToSource: Armed the source track`);
+    }
+
+    const currentInputType = sourceTrack.getProperty("input_routing_type");
+    const currentInputName = currentInputType?.display_name;
+
+    if (currentInputName !== "No Input") {
+      // Set source track input to "No Input" to prevent unwanted external input
+      const sourceInputTypes = sourceTrack.getProperty(
+        "available_input_routing_types",
+      );
+      const noInput = sourceInputTypes?.find(
+        (type) => type.display_name === "No Input",
+      );
+
+      if (noInput) {
+        sourceTrack.setProperty("input_routing_type", {
+          identifier: noInput.identifier,
+        });
+        // Warn that input routing changed
+        console.error(
+          `Warning: Changed track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input"`,
+        );
+      } else {
+        console.error(
+          `Warning: Tried to change track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
+        );
+      }
+    }
+
+    // Find source track in new track's available OUTPUT routing types
+    const availableTypes = newTrack.getProperty(
+      "available_output_routing_types",
+    );
+    const sourceRouting = availableTypes?.find(
+      (type) => type.display_name === sourceTrackName,
+    );
+
+    if (sourceRouting) {
+      newTrack.setProperty("output_routing_type", {
+        identifier: sourceRouting.identifier,
+      });
+      // Let Live set the default channel for this routing type
+    }
+  }
+
   // Return optimistic metadata
   const result = {
     newTrackId: newTrack.id,
@@ -488,7 +593,7 @@ function duplicateTrack(trackIndex, name, includeClips) {
   return result;
 }
 
-function duplicateScene(sceneIndex, name, includeClips) {
+function duplicateScene(sceneIndex, name, withoutClips) {
   const liveSet = new LiveAPI("live_set");
   liveSet.call("duplicate_scene", sceneIndex);
 
@@ -503,7 +608,7 @@ function duplicateScene(sceneIndex, name, includeClips) {
   const duplicatedClips = [];
   const trackIds = liveSet.getChildIds("tracks");
 
-  if (includeClips === false) {
+  if (withoutClips === true) {
     // Delete all clips in the duplicated scene
     for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
       const clipSlot = new LiveAPI(
@@ -564,7 +669,7 @@ function duplicateSceneToArrangement(
   sceneId,
   arrangementStartTimeBeats,
   name,
-  includeClips,
+  withoutClips,
   arrangementLength,
   songTimeSigNumerator,
   songTimeSigDenominator,
@@ -589,7 +694,7 @@ function duplicateSceneToArrangement(
 
   const duplicatedClips = [];
 
-  if (includeClips !== false) {
+  if (withoutClips !== true) {
     // Determine the length to use for all clips
     let arrangementLengthBeats;
     if (arrangementLength != null) {
@@ -603,7 +708,7 @@ function duplicateSceneToArrangement(
       arrangementLengthBeats = calculateSceneLength(sceneIndex);
     }
 
-    // Only duplicate clips if includeClips is not explicitly false
+    // Only duplicate clips if withoutClips is not explicitly true
     // Find all clips in this scene and duplicate them to arrangement
     for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
       const clipSlot = new LiveAPI(

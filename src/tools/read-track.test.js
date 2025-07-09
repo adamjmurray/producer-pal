@@ -6,15 +6,15 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../mock-live-api";
-import { VERSION } from "../version";
+} from "../mock-live-api.js";
+import { VERSION } from "../version.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-  readTrack,
-} from "./read-track";
+} from "./constants.js";
+import { readTrack } from "./read-track.js";
 
 const mockTrackProperties = (overrides = {}) => ({
   name: "Test Track",
@@ -1901,6 +1901,149 @@ describe("readTrack", () => {
       expect(result.drumMap).toEqual({
         C1: "Kick",
       });
+    });
+  });
+
+  describe("includeRoutings", () => {
+    it("excludes routing properties by default", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: [
+            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',
+          ],
+          available_input_routing_types: [
+            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}, {"display_name": "Resampling", "identifier": 18}]}',
+          ],
+          available_output_routing_channels: [
+            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
+          ],
+          available_output_routing_types: [
+            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
+          ],
+          input_routing_channel: [
+            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
+          ],
+          input_routing_type: [
+            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
+          ],
+          output_routing_channel: [
+            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+          ],
+          output_routing_type: [
+            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+          ],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0 });
+
+      expect(result.availableInputRoutingChannels).toBeUndefined();
+      expect(result.availableInputRoutingTypes).toBeUndefined();
+      expect(result.availableOutputRoutingChannels).toBeUndefined();
+      expect(result.availableOutputRoutingTypes).toBeUndefined();
+      expect(result.inputRoutingChannel).toBeUndefined();
+      expect(result.inputRoutingType).toBeUndefined();
+      expect(result.outputRoutingChannel).toBeUndefined();
+      expect(result.outputRoutingType).toBeUndefined();
+    });
+
+    it("includes routing properties when includeRoutings is true", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: [
+            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}, {"display_name": "In 2", "identifier": 2}]}',
+          ],
+          available_input_routing_types: [
+            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}, {"display_name": "Resampling", "identifier": 18}]}',
+          ],
+          available_output_routing_channels: [
+            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
+          ],
+          available_output_routing_types: [
+            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
+          ],
+          input_routing_channel: [
+            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
+          ],
+          input_routing_type: [
+            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
+          ],
+          output_routing_channel: [
+            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+          ],
+          output_routing_type: [
+            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+          ],
+          current_monitoring_state: [1],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      expect(result.availableInputRoutingChannels).toEqual([
+        { name: "In 1", inputId: "1" },
+        { name: "In 2", inputId: "2" },
+      ]);
+      expect(result.availableInputRoutingTypes).toEqual([
+        { name: "Ext. In", inputId: "17" },
+        { name: "Resampling", inputId: "18" },
+      ]);
+      expect(result.availableOutputRoutingChannels).toEqual([
+        { name: "Master", outputId: "26" },
+        { name: "A", outputId: "27" },
+      ]);
+      expect(result.availableOutputRoutingTypes).toEqual([
+        { name: "Track Out", outputId: "25" },
+        { name: "Send Only", outputId: "28" },
+      ]);
+      expect(result.inputRoutingChannel).toEqual({
+        name: "In 1",
+        inputId: "1",
+      });
+      expect(result.inputRoutingType).toEqual({
+        name: "Ext. In",
+        inputId: "17",
+      });
+      expect(result.outputRoutingChannel).toEqual({
+        name: "Master",
+        outputId: "26",
+      });
+      expect(result.outputRoutingType).toEqual({
+        name: "Track Out",
+        outputId: "25",
+      });
+      expect(result.monitoringState).toBe("auto");
+    });
+
+    it("handles null routing properties gracefully", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          available_input_routing_channels: null,
+          available_input_routing_types: null,
+          available_output_routing_channels: null,
+          available_output_routing_types: null,
+          input_routing_channel: null,
+          input_routing_type: null,
+          output_routing_channel: null,
+          output_routing_type: null,
+          current_monitoring_state: [999],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      expect(result.availableInputRoutingChannels).toEqual([]);
+      expect(result.availableInputRoutingTypes).toEqual([]);
+      expect(result.availableOutputRoutingChannels).toEqual([]);
+      expect(result.availableOutputRoutingTypes).toEqual([]);
+      expect(result.inputRoutingChannel).toBeNull();
+      expect(result.inputRoutingType).toBeNull();
+      expect(result.outputRoutingChannel).toBeNull();
+      expect(result.outputRoutingType).toBeNull();
+      expect(result.monitoringState).toBe("unknown");
     });
   });
 });

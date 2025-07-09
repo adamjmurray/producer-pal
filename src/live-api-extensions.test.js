@@ -58,6 +58,130 @@ describe("LiveAPI extensions", () => {
       expect(api.getProperty("available_warp_modes")).toEqual(modes);
       expect(api.get).toHaveBeenCalledWith("available_warp_modes");
     });
+
+    describe("routing properties", () => {
+      it("parses JSON for available_input_routing_channels", () => {
+        const jsonString =
+          '{"available_input_routing_channels": [{"display_name": "All Channels", "identifier": 0}, {"display_name": "Ch. 1", "identifier": 1}]}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("available_input_routing_channels");
+
+        expect(result).toEqual([
+          { display_name: "All Channels", identifier: 0 },
+          { display_name: "Ch. 1", identifier: 1 },
+        ]);
+        expect(api.get).toHaveBeenCalledWith(
+          "available_input_routing_channels",
+        );
+      });
+
+      it("parses JSON for available_input_routing_types", () => {
+        const jsonString =
+          '{"available_input_routing_types": [{"display_name": "All Ins", "identifier": 17}, {"display_name": "Computer Keyboard", "identifier": 18}]}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("available_input_routing_types");
+
+        expect(result).toEqual([
+          { display_name: "All Ins", identifier: 17 },
+          { display_name: "Computer Keyboard", identifier: 18 },
+        ]);
+      });
+
+      it("parses JSON for available_output_routing_channels", () => {
+        const jsonString =
+          '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("available_output_routing_channels");
+
+        expect(result).toEqual([{ display_name: "Master", identifier: 26 }]);
+      });
+
+      it("parses JSON for available_output_routing_types", () => {
+        const jsonString =
+          '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 27}]}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("available_output_routing_types");
+
+        expect(result).toEqual([
+          { display_name: "Track Out", identifier: 25 },
+          { display_name: "Send Only", identifier: 27 },
+        ]);
+      });
+
+      it("parses JSON for input_routing_channel", () => {
+        const jsonString =
+          '{"input_routing_channel": {"display_name": "All Channels", "identifier": 0}}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("input_routing_channel");
+
+        expect(result).toEqual({ display_name: "All Channels", identifier: 0 });
+      });
+
+      it("parses JSON for input_routing_type", () => {
+        const jsonString =
+          '{"input_routing_type": {"display_name": "All Ins", "identifier": 17}}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("input_routing_type");
+
+        expect(result).toEqual({ display_name: "All Ins", identifier: 17 });
+      });
+
+      it("parses JSON for output_routing_channel", () => {
+        const jsonString =
+          '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("output_routing_channel");
+
+        expect(result).toEqual({ display_name: "Master", identifier: 26 });
+      });
+
+      it("parses JSON for output_routing_type", () => {
+        const jsonString =
+          '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}';
+        api.get = vi.fn().mockReturnValue([jsonString]);
+
+        const result = api.getProperty("output_routing_type");
+
+        expect(result).toEqual({ display_name: "Track Out", identifier: 25 });
+      });
+
+      it("returns null when routing property has no data", () => {
+        api.get = vi.fn().mockReturnValue([]);
+        expect(api.getProperty("input_routing_channel")).toBeNull();
+      });
+
+      it("returns null when routing property returns null array", () => {
+        api.get = vi.fn().mockReturnValue(null);
+        expect(api.getProperty("input_routing_type")).toBeNull();
+      });
+
+      it("returns null when routing property returns undefined", () => {
+        api.get = vi.fn().mockReturnValue(undefined);
+        expect(api.getProperty("output_routing_channel")).toBeNull();
+      });
+
+      it("returns null when routing property has empty first element", () => {
+        api.get = vi.fn().mockReturnValue([null]);
+        expect(api.getProperty("output_routing_type")).toBeNull();
+      });
+
+      it("handles malformed JSON gracefully for routing properties", () => {
+        api.get = vi.fn().mockReturnValue(["invalid json"]);
+        expect(api.getProperty("input_routing_channel")).toBeNull();
+      });
+
+      it("handles empty JSON object for routing properties", () => {
+        api.get = vi.fn().mockReturnValue(["{}"]);
+        expect(api.getProperty("input_routing_channel")).toBeUndefined();
+      });
+    });
   });
 
   describe("getChildIds", () => {

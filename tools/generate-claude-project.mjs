@@ -52,9 +52,9 @@ async function copyDirectoriesAndFiles() {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
-    { src: "desktop-extension/icon.png" },
+    // { src: "desktop-extension/icon.png" },
     { src: "desktop-extension/package.json" },
-    { src: "desktop-extension/screenshot.png" },
+    // { src: "desktop-extension/screenshot.png" },
   ];
 
   console.log("Copying files...");

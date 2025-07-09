@@ -1,7 +1,7 @@
 // src/mcp-server/add-tool-update-song.js
 import { z } from "zod";
 import { VALID_PITCH_CLASS_NAMES } from "../notation/pitch-class-name-to-number.js";
-import { VALID_SCALE_NAMES } from "../tools/update-song.js";
+import { VALID_SCALE_NAMES } from "../tools/constants.js";
 
 export function addToolUpdateSong(server, callLiveApi) {
   server.registerTool(
