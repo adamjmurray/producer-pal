@@ -69,6 +69,12 @@ function formatErrorResponse(errorMessage) {
   };
 }
 
+var projectContextEnabled = 0;
+declareattribute("projectContextEnabled", { style: "onoff", default: 0 });
+
+var projectContext = "";
+declareattribute("projectContext", { type: "symbol" });
+
 // Handle messages from Node for Max
 export async function mcp_request(serializedJSON) {
   try {
@@ -79,7 +85,13 @@ export async function mcp_request(serializedJSON) {
     let result;
 
     try {
-      result = formatSuccessResponse(await callTool(tool, args));
+      // TODO: Get projectContext behaviors under test coverage
+      result = formatSuccessResponse({
+        ...(await callTool(tool, args)),
+        ...(projectContextEnabled && tool === "read-song"
+          ? { userContext: { projectContext } }
+          : {}),
+      });
     } catch (toolError) {
       result = formatErrorResponse(`Error in ${tool}: ${toolError.message}`);
     }
@@ -111,3 +123,7 @@ export async function mcp_request(serializedJSON) {
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
 console.log(`[${now()}] main.js loaded successfully`);
+
+// send a "started" signal so UI controls can resync their values
+// while changing the code repeatedly during development:
+outlet(0, "started");
