@@ -6,9 +6,9 @@
 
 - MCP server with StreamableHttp transport integration
 - Max for Live device with Node.js (MCP server) and Live API integration
-- Rollup-based build system
 - Device UI with port configuration and status indicators
 - Claude Desktop extension with graceful fallback when Live isn't running
+- Rollup-based build system
 - Comprehensive test coverage (~90% overall)
 
 **Complete CRUD Operations:**
@@ -34,8 +34,12 @@
 - Duplicate operations for tracks, scenes, and clips with arrangement
   integration
 - Session-to-arrangement duplication with length control
-- Optimistic response strategy
-- Comprehensive error handling, validation, and Max console error capture
+
+**Robustness Features:**
+
+- Optimistic response strategy to avoid LLM fix-it loops
+- Comprehensive error handling
+- Max console error capture used to transmit warnings
 - Timeouts for overly-long-running operations
 - Track Producer Pal host detection and protection
 
@@ -70,24 +74,24 @@
 
 #### 0.9.3
 
-- [ ] Change Arrangement clip length
-- [ ] Add Settings tab to Max for Live device UI and move port number setting
-      into it
+See `doc/Per Project Context and Tabbed UI Spec.md`
+
+- [ ] Per-Live-Project Context (Customization Phase 1)
+- [ ] Tabbed UI for the Max for Live device
 - [ ] Adjust desktop extension param to support full URL and not just port
       number (goal: control machine on same LAN)
+
+#### 0.9.4
+
+Misc stuff & polish before 1.0.0
+
+- [ ] Change Arrangement clip length
 - [ ] Improve Producer Pal logo design
-  - [ ] update logo in Desktop Extension
-  - [ ] add logo to README and web site
-- [ ] docs / learning
-  - [ ] Make demo video and add to README and web site
-  - [ ] Decide if home for docs is github or personal website
-  - [ ] Add a link to docs in the Max for Live device UI
-  - [ ] Nudge Claude to link to docs (add instructions to read-song)
+- [ ] Make demo video and add to README and web site
 
 ### 🚀 1.0.0 Release
 
-_Stable, documented, user-friendly baseline with device awareness and track
-routing capabilities_
+\_Stable, documented, user-friendly baseline
 
 ### Post-1.0.0
 
@@ -117,9 +121,9 @@ bigger product features in the 1.x line (see below)_
 - [ ] Standardized validation system and consistent handling of errors (thrown
       exceptions) and warning ( console.error messages)
 
-#### 1.1.0 - Customization Foundation
+#### 1.1.0 - Customization
 
-- [ ] Customization Phase 1: Per-project context
+- [ ] Customization Phase 1: Per-project context (NOTE: now planned for pre-1.0)
 - [ ] Customization Phase 2: Global context
 - [ ] Customization Phase 3: JSON override system
 
@@ -137,7 +141,7 @@ bigger product features in the 1.x line (see below)_
 
 - [ ] Customization Phase 5: Persona system
 
-### 💡 Future Ideas
+## 💡 Future Ideas
 
 For 3.x or to pull into one of the above releases when ideas become more fully
 baked.
