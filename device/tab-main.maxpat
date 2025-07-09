@@ -15,6 +15,51 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-19",
+					"linecount" : 4,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 46.0, 239.0, 229.0, 62.0 ],
+					"text" : ";\rmax launchbrowser https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Open the Producer Pal documentation website",
+					"id" : "obj-18",
+					"maxclass" : "textbutton",
+					"numinlets" : 1,
+					"numoutlets" : 3,
+					"outlettype" : [ "", "", "int" ],
+					"parameter_enable" : 0,
+					"patching_rect" : [ 46.0, 200.0, 138.0, 20.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 56.0, 124.0, 138.0, 20.0 ],
+					"text" : "📚  Documentation 📖"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"fontname" : "Ableton Sans Medium",
+					"fontsize" : 10.0,
+					"id" : "obj-29",
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 48.0, 91.0, 129.0, 18.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 57.0, 70.0, 137.0, 18.0 ],
+					"text" : "© 2025 Adam Murray",
+					"textjustification" : 1
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-5",
 					"maxclass" : "message",
 					"numinlets" : 2,
@@ -46,7 +91,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 243.0, 202.0, 105.0, 21.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 77.5, 50.0, 95.0, 21.0 ],
+					"presentation_rect" : [ 78.0, 44.0, 95.0, 21.0 ],
 					"text" : "version X.Y.Z",
 					"textjustification" : 1
 				}
@@ -86,7 +131,7 @@
 					"patching_rect" : [ 259.0, 40.0, 51.0, 51.0 ],
 					"pic" : "/Users/adammurray/workspace/producer-pal/device/icon.png",
 					"presentation" : 1,
-					"presentation_rect" : [ 23.0, 8.5, 46.0, 46.0 ]
+					"presentation_rect" : [ 34.0, 5.0, 46.0, 46.0 ]
 				}
 
 			}
@@ -101,7 +146,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 31.0, 37.0, 163.0, 35.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 36.5, 14.0, 177.0, 35.0 ],
+					"presentation_rect" : [ 47.0, 10.0, 177.0, 35.0 ],
 					"text" : "Producer Pal",
 					"textjustification" : 1
 				}
@@ -127,6 +172,13 @@
 			}
  ],
 		"lines" : [ 			{
+				"patchline" : 				{
+					"destination" : [ "obj-19", 0 ],
+					"source" : [ "obj-18", 0 ]
+				}
+
+			}
+, 			{
 				"patchline" : 				{
 					"destination" : [ "obj-23", 0 ],
 					"source" : [ "obj-5", 0 ]

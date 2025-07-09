@@ -10,10 +10,25 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 490.0, 365.0, 390.0, 488.0 ],
+		"rect" : [ 490.0, 332.0, 579.0, 521.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-5",
+					"linecount" : 3,
+					"maxclass" : "live.comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 24.0, 128.0, 96.0, 41.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 1.910828053951263, 134.394906461238861, 246.0, 18.0 ],
+					"text" : "Optional info to help AI understand your project goals",
+					"textjustification" : 1
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-19",
 					"linecount" : 2,
@@ -98,6 +113,8 @@
 			}
 , 			{
 				"box" : 				{
+					"annotation" : "Share the project context text with the AI to help it understand your project goals.",
+					"annotation_name" : "Enable Project Context",
 					"id" : "obj-4",
 					"maxclass" : "live.toggle",
 					"numinlets" : 1,
@@ -106,10 +123,12 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 181.0, 216.0, 15.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 69.0, 7.0, 15.0, 15.0 ],
+					"presentation_rect" : [ 67.426752626895905, 0.318471342325211, 15.286624431610107, 17.363057315349579 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
+							"parameter_annotation_name" : "Enable Project Context",
 							"parameter_enum" : [ "off", "on" ],
+							"parameter_info" : "Share the project context text with the AI to help it understand your project goals.",
 							"parameter_invisible" : 1,
 							"parameter_longname" : "projectContextEnabled",
 							"parameter_mmax" : 1,
@@ -126,6 +145,8 @@
 			}
 , 			{
 				"box" : 				{
+					"annotation" : "Optional info to help AI understand your project goals",
+					"annotation_name" : "Project Context",
 					"id" : "obj-2",
 					"maxclass" : "textedit",
 					"numinlets" : 1,
@@ -136,9 +157,11 @@
 					"parameter_mappable" : 0,
 					"patching_rect" : [ 24.0, 29.0, 146.0, 50.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 0.0, 23.0, 250.0, 127.0 ],
+					"presentation_rect" : [ 0.0, 16.56050980091095, 249.681532382965088, 121.656052768230438 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
+							"parameter_annotation_name" : "Project Context",
+							"parameter_info" : "Optional info to help AI understand your project goals",
 							"parameter_invisible" : 1,
 							"parameter_longname" : "projectContext",
 							"parameter_modmode" : 0,
@@ -154,14 +177,13 @@
 			}
 , 			{
 				"box" : 				{
-					"fontsize" : 12.0,
 					"id" : "obj-3",
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 271.0, 41.0, 103.0, 21.0 ],
+					"patching_rect" : [ 271.0, 41.0, 84.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 84.0, 4.0, 103.0, 21.0 ],
+					"presentation_rect" : [ 84.713377058506012, 0.0, 84.0, 18.0 ],
 					"text" : "Project Context",
 					"textjustification" : 0
 				}
