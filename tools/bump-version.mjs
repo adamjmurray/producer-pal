@@ -32,6 +32,14 @@ dxtPkg.version = newVersion;
 writeFileSync(dxtPkgPath, JSON.stringify(dxtPkg, null, 2) + "\n");
 console.log("✓ Updated desktop-extension/package.json");
 
+// Update desktop-extension/package-lock.json
+console.log("Updating desktop-extension/package-lock.json...");
+execSync("npm install", {
+  cwd: join(rootDir, "desktop-extension"),
+  stdio: "inherit",
+});
+console.log("✓ Updated desktop-extension/package-lock.json");
+
 // Update src/version.js
 const versionPath = join(rootDir, "src/version.js");
 const versionContent = `// src/version.js

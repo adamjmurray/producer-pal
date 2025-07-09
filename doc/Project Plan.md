@@ -76,12 +76,12 @@
 
 See `doc/Per Project Context and Tabbed UI Spec.md`
 
-- [ ] Fix flaw in release process where extension package lock is updated after
+- [x] Tabbed UI for the Max for Live device
+- [x] Fix flaw in release process where extension package lock is updated after
       commit for version bump
-- [ ] Per-Live-Project Context (Customization Phase 1)
-- [ ] Tabbed UI for the Max for Live device
 - [ ] Adjust desktop extension param to support full URL and not just port
       number (goal: control machine on same LAN)
+- [ ] Per-Live-Project Context (Customization Phase 1)
 
 #### 0.9.4
 
