@@ -29,9 +29,10 @@ export function readScene({
   const isTimeSignatureEnabled =
     scene.getProperty("time_signature_enabled") > 0;
 
+  const sceneName = scene.getProperty("name");
   const result = {
     id: scene.id,
-    name: scene.getProperty("name"),
+    name: sceneName ? `${sceneName} (${sceneIndex + 1})` : `${sceneIndex + 1}`,
     sceneIndex,
     color: scene.getColor(),
     isEmpty: scene.getProperty("is_empty") > 0,

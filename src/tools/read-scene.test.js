@@ -29,7 +29,7 @@ describe("readScene", () => {
 
     expect(result).toEqual({
       id: "scene1",
-      name: "Test Scene",
+      name: "Test Scene (1)",
       sceneIndex: 0,
       color: "#FF0000",
       isEmpty: false,
@@ -70,13 +70,42 @@ describe("readScene", () => {
 
     expect(result).toEqual({
       id: "scene2",
-      name: "Scene with Disabled Properties",
+      name: "Scene with Disabled Properties (2)",
       sceneIndex: 1,
       color: "#00FF00",
       isEmpty: true,
       triggered: true,
       tempo: "disabled",
       timeSignature: "disabled",
+    });
+  });
+
+  it("handles unnamed scenes by showing just the scene number", () => {
+    liveApiId.mockReturnValue("scene3");
+    mockLiveApiGet({
+      Scene: {
+        name: "",
+        color: 0,
+        is_empty: 0,
+        is_triggered: 0,
+        tempo: 120,
+        tempo_enabled: 1,
+        time_signature_numerator: 4,
+        time_signature_denominator: 4,
+        time_signature_enabled: 1,
+      },
+    });
+
+    const result = readScene({ sceneIndex: 2 });
+
+    expect(result).toEqual({
+      id: "scene3",
+      name: "3",
+      sceneIndex: 2,
+      color: "#000000",
+      isEmpty: false,
+      tempo: 120,
+      timeSignature: "4/4",
     });
   });
 
@@ -117,7 +146,7 @@ describe("readScene", () => {
 
     expect(result).toEqual({
       id: "scene_0",
-      name: "Scene with Clips",
+      name: "Scene with Clips (1)",
       sceneIndex: 0,
       color: "#FF0000",
       isEmpty: false,

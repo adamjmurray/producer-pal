@@ -194,7 +194,7 @@ describe("readSong", () => {
       scenes: [
         {
           id: "scene1",
-          name: "Scene 1",
+          name: "Scene 1 (1)",
           sceneIndex: 0,
           color: "#FF0000",
           isEmpty: false,
@@ -203,7 +203,7 @@ describe("readSong", () => {
         },
         {
           id: "scene2",
-          name: "Scene 2",
+          name: "Scene 2 (2)",
           sceneIndex: 1,
           color: "#00FF00",
           isEmpty: true,
