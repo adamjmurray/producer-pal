@@ -79,7 +79,7 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Tabbed UI for the Max for Live device
 - [x] Fix flaw in release process where extension package lock is updated after
       commit for version bump
-- [ ] Adjust desktop extension param to support full URL and not just port
+- [x] Adjust desktop extension param to support full URL and not just port
       number (goal: control machine on same LAN)
 - [ ] Per-Live-Project Context (Customization Phase 1)
 
