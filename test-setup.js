@@ -1,13 +1,14 @@
 // test-setup.js
-import { beforeEach } from "vitest";
+import { beforeEach, vi } from "vitest";
 import "./src/expect-extensions";
 import { LiveAPI, liveApiCall, mockLiveApiGet } from "./src/mock-live-api";
 import { Task } from "./src/mock-task";
 
 globalThis.LiveAPI = LiveAPI;
-require("./src/live-api-extensions");
+await import("./src/live-api-extensions");
 
 globalThis.Task = Task;
+globalThis.outlet = vi.fn();
 
 beforeEach(() => {
   // default mocking behaviors:

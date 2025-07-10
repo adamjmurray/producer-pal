@@ -9,6 +9,7 @@ import { createScene } from "./tools/create-scene";
 import { createTrack } from "./tools/create-track";
 import { deleteObject } from "./tools/delete";
 import { duplicate } from "./tools/duplicate";
+import { memory } from "./tools/memory";
 import { rawLiveApi } from "./tools/raw-live-api";
 import { readClip } from "./tools/read-clip";
 import { readScene } from "./tools/read-scene";
@@ -24,7 +25,7 @@ const context = {
   projectContext: {
     enabled: false,
     writable: false,
-    contents: "",
+    content: "",
   },
 };
 
@@ -44,6 +45,7 @@ const tools = {
   duplicate: (args) => duplicate(args),
   "capture-scene": (args) => captureScene(args),
   transport: (args) => transport(args),
+  memory: (args) => memory(args, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
@@ -85,8 +87,8 @@ export function projectContextWritable(writable) {
   context.projectContext.writable = !!writable;
 }
 
-export function projectContext(_text, contents) {
-  context.projectContext.contents = contents ?? "";
+export function projectContext(_text, content) {
+  context.projectContext.content = content ?? "";
 }
 
 // Handle messages from Node for Max

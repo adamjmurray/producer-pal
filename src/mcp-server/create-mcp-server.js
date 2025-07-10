@@ -7,6 +7,7 @@ import { addToolCreateScene } from "./add-tool-create-scene.js";
 import { addToolCreateTrack } from "./add-tool-create-track.js";
 import { addToolDelete } from "./add-tool-delete.js";
 import { addToolDuplicate } from "./add-tool-duplicate.js";
+import { addToolMemory } from "./add-tool-memory.js";
 import { addToolRawLiveApi } from "./add-tool-raw-live-api.js";
 import { addToolReadClip } from "./add-tool-read-clip.js";
 import { addToolReadScene } from "./add-tool-read-scene.js";
@@ -43,6 +44,7 @@ export function createMcpServer(callLiveApi) {
   addToolTransport(server, callLiveApi);
   addToolDelete(server, callLiveApi);
   addToolDuplicate(server, callLiveApi);
+  addToolMemory(server, callLiveApi);
 
   if (process.env.ENABLE_RAW_LIVE_API === "true") {
     addToolRawLiveApi(server, callLiveApi);

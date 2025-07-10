@@ -36,7 +36,7 @@ Make music in Ableton Live with an AI assistant such as
 
    ![install in Claude, part 2](./img/install-in-claude-2.png)
 
-5. You should see 15 Producer Pal tools in Claude's "Search and Tools" menu
+5. You should see 16 Producer Pal tools in Claude's "Search and Tools" menu
 
    ![Producer Pal tools in Claude](./img/tools-in-claude.png)
 

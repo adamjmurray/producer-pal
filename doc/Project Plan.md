@@ -82,7 +82,7 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Adjust desktop extension param to support full URL and not just port
       number (goal: control machine on same LAN)
 - [x] Per-Live-Project Context (Customization Phase 1)
-- [ ] AI-writable Project Context (Learning Phase 1)
+- [x] AI-writable Project Context (Learning Phase 1)
 
 #### 0.9.4
 
