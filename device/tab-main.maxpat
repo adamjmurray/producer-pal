@@ -131,7 +131,7 @@
 					"patching_rect" : [ 259.0, 40.0, 51.0, 51.0 ],
 					"pic" : "/Users/adammurray/workspace/producer-pal/device/icon.png",
 					"presentation" : 1,
-					"presentation_rect" : [ 34.0, 5.0, 46.0, 46.0 ]
+					"presentation_rect" : [ 2.0, 3.0, 46.0, 46.0 ]
 				}
 
 			}
@@ -146,7 +146,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 31.0, 37.0, 163.0, 35.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 47.0, 10.0, 177.0, 35.0 ],
+					"presentation_rect" : [ 37.0, 8.0, 177.0, 35.0 ],
 					"text" : "Producer Pal",
 					"textjustification" : 1
 				}
