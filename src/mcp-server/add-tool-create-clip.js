@@ -21,6 +21,7 @@ export function addToolCreateClip(server, callLiveApi) {
         "Think: pipe | = position marker, colon : = duration timer " +
         "IMPORTANT: For Arrangement view clips, all timing parameters (startMarker, length) and note positions in the bar|beat notation are relative to the clip's start time, not the global arrangement timeline. A clip placed at arrangementStartTime '17|1' with notes starting at '1|1' will play those notes at global arrangement bar 17. " +
         "Clip length defaults to fit the notes, or can be explicitly set with the length parameter. " +
+        "SCALE TIP: If the song has a scale enabled (see read-song), using notes from that scale helps create harmonically cohesive clips. The scale provides a solid foundation while still allowing chromatic notes for tension and expression. " +
         "MUSICAL GUIDE: Effective arrangements prioritize clarity over density. 'Epic' or 'dramatic' impact comes from dynamics (v50-v120), rhythmic variety, and strategic space, not from multiplying the number of notes.",
       annotations: {
         readOnlyHint: false,
