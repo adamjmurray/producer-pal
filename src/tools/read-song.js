@@ -1,6 +1,9 @@
 // src/tools/read-song.js
 import { fromLiveApiView } from "../utils.js";
-import { PITCH_CLASS_NAMES } from "../notation/midi-pitch-to-name.js";
+import {
+  PITCH_CLASS_NAMES,
+  intervalsToPitchClasses,
+} from "../notation/midi-pitch-to-name.js";
 import { readScene } from "./read-scene.js";
 import { readTrack } from "./read-track.js";
 
@@ -80,8 +83,10 @@ export function readSong({
   // Only include scale properties when scale is enabled
   if (scaleEnabled) {
     result.scale = liveSet.getProperty("scale_name");
-    result.scaleRoot = PITCH_CLASS_NAMES[liveSet.getProperty("root_note")];
-    result.scaleIntervals = liveSet.getProperty("scale_intervals");
+    const rootNote = liveSet.getProperty("root_note");
+    result.scaleRoot = PITCH_CLASS_NAMES[rootNote];
+    const scaleIntervals = liveSet.getProperty("scale_intervals");
+    result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
 
   return result;

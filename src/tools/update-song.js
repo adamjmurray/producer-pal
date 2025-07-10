@@ -1,5 +1,6 @@
 // src/tools/update-song.js
 import { pitchClassNameToNumber } from "../notation/pitch-class-name-to-number.js";
+import { intervalsToPitchClasses } from "../notation/midi-pitch-to-name.js";
 import { parseTimeSignature, toLiveApiView } from "../utils.js";
 import { VALID_SCALE_NAMES } from "./constants.js";
 
@@ -97,14 +98,16 @@ export function updateSong({
   if (selectedClipId !== undefined) songResult.selectedClipId = selectedClipId;
   if (showClip != null) songResult.showClip = showClip;
 
-  // Include scaleIntervals when scale-related parameters are modified
+  // Include scalePitches when scale-related parameters are modified
   // But never include when scaleEnabled is explicitly set to false
-  const shouldIncludeScaleIntervals =
+  const shouldIncludeScalePitches =
     scaleEnabled !== false &&
     (scale != null || scaleRoot != null || scaleEnabled === true);
 
-  if (shouldIncludeScaleIntervals) {
-    songResult.scaleIntervals = liveSet.getProperty("scale_intervals");
+  if (shouldIncludeScalePitches) {
+    const rootNote = liveSet.getProperty("root_note");
+    const scaleIntervals = liveSet.getProperty("scale_intervals");
+    songResult.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
 
   return songResult;

@@ -142,7 +142,7 @@ describe("readSong", () => {
       scaleEnabled: true,
       scale: "Major",
       scaleRoot: "C",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
       selectedTrackIndex: 0,
       selectedSceneIndex: 0,
       selectedClipId: "clip1",
