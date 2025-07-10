@@ -15,12 +15,70 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-11",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 376.0, 245.0, 177.0, 22.0 ],
+					"text" : "prepend projectContextWritable"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-9",
+					"maxclass" : "live.comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 399.0, 214.5, 84.0, 18.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 139.0, 3.0, 84.0, 18.0 ],
+					"text" : "Allow AI Updates",
+					"textjustification" : 0
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Let the AI update the project context based on your conversations to remember important details about your project.",
+					"annotation_name" : "Allow AI Updates ",
+					"id" : "obj-7",
+					"maxclass" : "live.toggle",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"parameter_enable" : 1,
+					"patching_rect" : [ 376.5, 216.0, 15.0, 15.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 124.0, 3.0, 15.286624431610107, 17.363057315349579 ],
+					"saved_attribute_attributes" : 					{
+						"valueof" : 						{
+							"parameter_annotation_name" : "Allow AI Updates ",
+							"parameter_enum" : [ "off", "on" ],
+							"parameter_info" : "Let the AI update the project context based on your conversations to remember important details about your project.",
+							"parameter_invisible" : 1,
+							"parameter_longname" : "projectContextWritable",
+							"parameter_mmax" : 1,
+							"parameter_modmode" : 0,
+							"parameter_shortname" : "projectContextWritable",
+							"parameter_type" : 2
+						}
+
+					}
+,
+					"varname" : "projectContextWritable"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-5",
 					"linecount" : 3,
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 24.0, 128.0, 96.0, 41.0 ],
+					"patching_rect" : [ 180.5, 33.5, 96.0, 41.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 1.910828053951263, 134.394906461238861, 246.0, 18.0 ],
 					"text" : "Optional info to help AI understand your project goals",
@@ -95,8 +153,8 @@
 					"numinlets" : 2,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 24.0, 96.0, 59.0, 22.0 ],
-					"text" : "route text"
+					"patching_rect" : [ 24.0, 96.0, 84.0, 22.0 ],
+					"text" : "routepass text"
 				}
 
 			}
@@ -123,7 +181,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 181.0, 216.0, 15.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 67.426752626895905, 0.318471342325211, 15.286624431610107, 17.363057315349579 ],
+					"presentation_rect" : [ 1.0, 2.0, 15.286624, 17.363057000000001 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Enable Project Context",
@@ -157,7 +215,7 @@
 					"parameter_mappable" : 0,
 					"patching_rect" : [ 24.0, 29.0, 146.0, 50.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 0.0, 16.56050980091095, 249.681532382965088, 121.656052768230438 ],
+					"presentation_rect" : [ 0.0, 20.0, 249.704148411750793, 117.869826018810272 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Project Context",
@@ -181,9 +239,9 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 271.0, 41.0, 84.0, 18.0 ],
+					"patching_rect" : [ 207.0, 214.5, 84.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 84.713377058506012, 0.0, 84.0, 18.0 ],
+					"presentation_rect" : [ 15.0, 2.0, 84.0, 18.0 ],
 					"text" : "Project Context",
 					"textjustification" : 0
 				}
@@ -199,7 +257,7 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 196.0, 36.0, 45.0, 35.0 ],
+					"patching_rect" : [ 304.5, 36.5, 45.0, 35.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 0.0, 0.0, 250.0, 150.0 ],
 					"proportion" : 0.39,
@@ -212,6 +270,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-6", 0 ],
 					"source" : [ "obj-10", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-6", 0 ],
+					"source" : [ "obj-11", 0 ]
 				}
 
 			}
@@ -239,6 +304,15 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-4", 0 ],
+					"order" : 1,
+					"source" : [ "obj-17", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-7", 0 ],
+					"order" : 0,
 					"source" : [ "obj-17", 0 ]
 				}
 
@@ -259,6 +333,13 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-11", 0 ],
+					"source" : [ "obj-7", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-10", 0 ],
 					"source" : [ "obj-8", 0 ]
 				}
@@ -268,6 +349,7 @@
 		"parameters" : 		{
 			"obj-2" : [ "projectContext", "projectContext", 0 ],
 			"obj-4" : [ "projectContextEnabled", "projectContextEnabled", 0 ],
+			"obj-7" : [ "projectContextWritable", "projectContextWritable", 0 ],
 			"parameterbanks" : 			{
 				"0" : 				{
 					"index" : 0,

@@ -20,6 +20,14 @@ import { updateScene } from "./tools/update-scene";
 import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
 
+const context = {
+  projectContext: {
+    enabled: false,
+    writable: false,
+    contents: "",
+  },
+};
+
 const tools = {
   "read-song": (args) => readSong(args),
   "update-song": (args) => updateSong(args),
@@ -69,11 +77,17 @@ function formatErrorResponse(errorMessage) {
   };
 }
 
-var projectContextEnabled = 0;
-declareattribute("projectContextEnabled", { style: "onoff", default: 0 });
+export function projectContextEnabled(enabled) {
+  context.projectContext.enabled = !!enabled;
+}
 
-var projectContext = "";
-declareattribute("projectContext", { type: "symbol" });
+export function projectContextWritable(writable) {
+  context.projectContext.writable = !!writable;
+}
+
+export function projectContext(_text, contents) {
+  context.projectContext.contents = contents ?? "";
+}
 
 // Handle messages from Node for Max
 export async function mcp_request(serializedJSON) {
@@ -88,8 +102,8 @@ export async function mcp_request(serializedJSON) {
       // TODO: Get projectContext behaviors under test coverage
       result = formatSuccessResponse({
         ...(await callTool(tool, args)),
-        ...(projectContextEnabled && tool === "read-song"
-          ? { userContext: { projectContext } }
+        ...(context.projectContext.enabled && tool === "read-song"
+          ? { userContext: { projectContext: context.projectContext } }
           : {}),
       });
     } catch (toolError) {
