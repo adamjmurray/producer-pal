@@ -20,9 +20,9 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
 1. Clone this repository
 2. `npm install`
 3. `npm run build`
-4. Add the `device/Producer-Pal.amxd` Max for Live device to a MIDI track in
+4. Add the `device/Producer_Pal.amxd` Max for Live device to a MIDI track in
    Ableton Live
-5. Drag and drop `desktop-extension/Producer-Pal.dxt` to Claude Desktop →
+5. Drag and drop `desktop-extension/Producer_Pal.dxt` to Claude Desktop →
    Settings → Extension
 
 ## Core Development Scripts
@@ -161,7 +161,7 @@ Version numbers appear in these locations:
 1. `package.json` (root) - Source of truth
 2. `desktop-extension/package.json`
 3. `src/version.js`
-4. `device/Producer-Pal.amxd` - In the Max UI (manual update required)
+4. `device/Producer_Pal.amxd` - In the Max UI (manual update required)
 
 ### Release Process
 
@@ -209,13 +209,21 @@ This script:
 
 - Cleans the `releases/` directory
 - Builds the `.dxt` file
-- Copies it to `releases/Producer-Pal.dxt`
+- Copies it to `releases/Producer_Pal.dxt`
 
 #### Step 5: Freeze Max Device
 
-1. Open `device/Producer-Pal.amxd` in Max
+1. Open `device/Producer_Pal.amxd` in Max
 2. Click the freeze button
-3. Save as: `releases/Producer-Pal.amxd`
+3. Save as: `releases/Producer_Pal.amxd`
+
+**⚠️ TEMPORARY DUAL-FILE RELEASE PROCESS**
+
+For the next release only, create both filename formats to support transition:
+
+3a. Also save as: `releases/Producer-Pal.amxd` (old filename)
+
+*Note: This dual-file step can be removed once external links are updated*
 
 #### Step 6: Create GitHub Pre-Release
 
@@ -224,8 +232,10 @@ This script:
 3. Choose tag: `vX.Y.Z`
 4. Release title: `X.Y.Z`
 5. Upload files from `releases/`:
-   - `Producer-Pal.amxd`
-   - `Producer-Pal.dxt`
+   - `Producer_Pal.amxd`
+   - `Producer_Pal.dxt`
+   - `Producer-Pal.amxd` (temporary - old filename)
+   - `Producer-Pal.dxt` (temporary - old filename)
 6. ✅ Check "Set as a pre-release"
 7. Write release notes
 8. Publish pre-release
@@ -309,7 +319,7 @@ production-ready.
 
 After release, these URLs will always point to the latest version:
 
-- [Producer-Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.amxd)
-- [Producer-Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer-Pal.dxt)
+- [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
+- [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
 
 No README updates needed for new releases!
