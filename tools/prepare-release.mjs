@@ -42,21 +42,25 @@ mkdirSync(releasesDir);
 console.log("Building desktop extension...");
 execSync("npm run build", { cwd: rootDir, stdio: "inherit" });
 
-// Copy .dxt
-const dxtSource = join(rootDir, "desktop-extension/Producer-Pal.dxt");
-const dxtDest = join(releasesDir, "Producer-Pal.dxt");
+// Copy .dxt files (both new and old filenames for transition)
+const dxtSource = join(rootDir, "desktop-extension/Producer_Pal.dxt");
+const dxtDestNew = join(releasesDir, "Producer_Pal.dxt");
+const dxtDestOld = join(releasesDir, "Producer-Pal.dxt");
 
 if (!existsSync(dxtSource)) {
-  console.error("❌ Error: Producer-Pal.dxt not found. Build may have failed.");
+  console.error("❌ Error: Producer_Pal.dxt not found. Build may have failed.");
   process.exit(1);
 }
 
-copyFileSync(dxtSource, dxtDest);
-console.log("\n✅ Copied Producer-Pal.dxt to releases/");
+copyFileSync(dxtSource, dxtDestNew);
+copyFileSync(dxtSource, dxtDestOld);
+console.log("\n✅ Copied Producer_Pal.dxt to releases/ (both new and old filenames)");
 
 console.log("\n📋 Next steps:");
-console.log("1. Open device/Producer-Pal.amxd in Max");
+console.log("1. Open device/Producer_Pal.amxd in Max");
 console.log("2. Click the freeze button");
-console.log("3. Save as: releases/Producer-Pal.amxd");
-console.log("4. Test both files work correctly");
-console.log("5. Continue with git merge and tag steps (see DEVELOPERS.md)");
+console.log("3. Save as: releases/Producer_Pal.amxd");
+console.log("4. ALSO save as: releases/Producer-Pal.amxd (temporary - old filename)");
+console.log("5. Test both files work correctly");
+console.log("6. Continue with git merge and tag steps (see DEVELOPERS.md)");
+console.log("\n⚠️  Note: Step 4 (dual filename) is temporary for the transition period");

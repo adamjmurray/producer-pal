@@ -132,6 +132,7 @@ describe("MCP Express App", () => {
         "transport",
         "delete",
         "duplicate",
+        "memory",
         "raw-live-api",
       ]);
     });

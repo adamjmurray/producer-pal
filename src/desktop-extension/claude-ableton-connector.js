@@ -2,12 +2,13 @@
 import { StdioHttpBridge } from "./stdio-http-bridge.js";
 
 // Main execution function
-const port = process.env.PRODUCER_PAL_PORT || 3350;
-const httpUrl = `http://localhost:${port}/mcp`;
+const mcpServerOrigin =
+  process.env.MCP_SERVER_ORIGIN || "http://localhost:3350";
+const mcpUrl = `${mcpServerOrigin}/mcp`;
 
-console.error(`[Bridge] Starting Producer Pal bridge (port ${port})`);
+console.error(`[Bridge] Starting Producer Pal bridge (mcpUrl ${mcpUrl})`);
 
-const bridge = new StdioHttpBridge(httpUrl);
+const bridge = new StdioHttpBridge(mcpUrl);
 
 // Handle graceful shutdown
 process.on("SIGINT", async () => {

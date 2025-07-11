@@ -19,8 +19,9 @@ export function addToolReadSong(server, callLiveApi) {
         "2. 'Important tip: Always save your work - I can modify and delete things in your project.'\n" +
         "3. 'If you move or rearrange tracks/clips/scenes, just let me know so I can stay in sync. (Sorry for the inconvenience, maybe in a future version I can do this automatically)'\n" +
         "4. 'Try asking me to create a drum beat, bassline, melody, or chord progression to get started!'\n" +
-        "Keep this user welcome concise and conversational. Adjust tip (4) 'Try asking...' based on what you see in the song. " +
-        "In subsequent calls, skip the full user welcome but still mention tip (3) about staying in sync.\n" +
+        "Keep this user welcome concise and conversational. Adjust tip (4) 'Try asking...' based on what you see in the song.\n" +
+        "PROJECT CONTEXT: When userContext.projectContext is present, acknowledge it naturally in your response (e.g., 'I see you're working on [brief summary]') and let it inform your suggestions throughout the conversation.\n" +
+        "In subsequent calls, skip the full user welcome but still mention tip (3) about staying in sync." +
         "INSTRUCTION: If you notice MIDI tracks without instrument devices (except the track hosting Producer Pal), " +
         "remind the user that instruments are needed to produce sound and ask if they'd like help selecting an instrument. " +
         "Note: You cannot add instruments directly - you can only suggest which Live instruments " +

@@ -9,13 +9,29 @@ import {
 import { updateSong } from "./update-song";
 
 describe("updateSong", () => {
+  let mockRootNote = 0; // Track the root note state across tests
+
   beforeEach(() => {
     liveApiId.mockReturnValue("live_set_id");
-    // Mock scale_intervals for tests that need it
+    mockRootNote = 0; // Reset to C for each test
+
+    // Mock scale_intervals and root_note for tests that need it
     liveApiGet.mockImplementation(function (property) {
       if (property === "scale_intervals") {
         return [0, 2, 4, 5, 7, 9, 11]; // Major scale intervals
       }
+      if (property === "root_note") {
+        return [mockRootNote]; // Return array with the current mock root note
+      }
+      return this._id;
+    });
+
+    // Mock the set method to update our mock root note
+    liveApiSet.mockImplementation(function (property, value) {
+      if (property === "root_note") {
+        mockRootNote = value;
+      }
+      // Return the id to keep the mock consistent
       return this._id;
     });
   });
@@ -135,7 +151,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scaleRoot: "D",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
     });
   });
 
@@ -158,7 +174,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scale: "Dorian",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
     });
   });
 
@@ -187,7 +203,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scaleEnabled: true,
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
     });
   });
 
@@ -220,7 +236,7 @@ describe("updateSong", () => {
       id: "live_set_id",
       scaleRoot: "D",
       scale: "Dorian",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
     });
   });
 
@@ -276,7 +292,7 @@ describe("updateSong", () => {
       scale: "Mixolydian",
       scaleEnabled: true,
       view: "arrangement",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["G", "A", "B", "C", "D", "E", "Gb"],
     });
   });
 
@@ -305,7 +321,7 @@ describe("updateSong", () => {
       id: "live_set_id",
       scale: "Dorian",
       selectedClipId: null,
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
     });
   });
 
@@ -342,7 +358,7 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scale: "Minor",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
     });
   });
 
@@ -386,7 +402,7 @@ describe("updateSong", () => {
       scaleRoot: "F#",
       scale: "Dorian",
       scaleEnabled: true,
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["Gb", "Ab", "Bb", "B", "Db", "Eb", "F"],
     });
   });
 
@@ -510,7 +526,7 @@ describe("updateSong", () => {
     });
   });
 
-  it("should return scaleIntervals when scale is set", () => {
+  it("should return scalePitches when scale is set", () => {
     const result = updateSong({ scale: "Major" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -524,11 +540,11 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scale: "Major",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
     });
   });
 
-  it("should return scaleIntervals when scaleRoot is set", () => {
+  it("should return scalePitches when scaleRoot is set", () => {
     const result = updateSong({ scaleRoot: "D" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -542,11 +558,11 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scaleRoot: "D",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["D", "E", "Gb", "G", "A", "B", "Db"],
     });
   });
 
-  it("should return scaleIntervals when scaleEnabled is set to true", () => {
+  it("should return scalePitches when scaleEnabled is set to true", () => {
     const result = updateSong({ scaleEnabled: true });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -560,11 +576,11 @@ describe("updateSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       scaleEnabled: true,
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
     });
   });
 
-  it("should NOT return scaleIntervals when scaleEnabled is set to false", () => {
+  it("should NOT return scalePitches when scaleEnabled is set to false", () => {
     const result = updateSong({ scaleEnabled: false });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -578,7 +594,7 @@ describe("updateSong", () => {
     });
   });
 
-  it("should return scaleIntervals when both scale and scaleRoot are set", () => {
+  it("should return scalePitches when both scale and scaleRoot are set", () => {
     const result = updateSong({ scale: "Minor", scaleRoot: "A" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -598,11 +614,11 @@ describe("updateSong", () => {
       id: "live_set_id",
       scale: "Minor",
       scaleRoot: "A",
-      scaleIntervals: [0, 2, 4, 5, 7, 9, 11],
+      scalePitches: ["A", "B", "Db", "D", "E", "Gb", "Ab"],
     });
   });
 
-  it("should NOT return scaleIntervals when no scale-related parameters are set", () => {
+  it("should NOT return scalePitches when no scale-related parameters are set", () => {
     const result = updateSong({ tempo: 140 });
     expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
     expect(result).toEqual({
@@ -611,7 +627,7 @@ describe("updateSong", () => {
     });
   });
 
-  it("should NOT return scaleIntervals when scaleEnabled is false, even with other scale params", () => {
+  it("should NOT return scalePitches when scaleEnabled is false, even with other scale params", () => {
     const result = updateSong({
       scale: "Minor",
       scaleRoot: "F",

@@ -9,6 +9,7 @@ import { createScene } from "./tools/create-scene";
 import { createTrack } from "./tools/create-track";
 import { deleteObject } from "./tools/delete";
 import { duplicate } from "./tools/duplicate";
+import { memory } from "./tools/memory";
 import { rawLiveApi } from "./tools/raw-live-api";
 import { readClip } from "./tools/read-clip";
 import { readScene } from "./tools/read-scene";
@@ -19,6 +20,14 @@ import { updateClip } from "./tools/update-clip";
 import { updateScene } from "./tools/update-scene";
 import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
+
+const context = {
+  projectContext: {
+    enabled: false,
+    writable: false,
+    content: "",
+  },
+};
 
 const tools = {
   "read-song": (args) => readSong(args),
@@ -36,6 +45,7 @@ const tools = {
   duplicate: (args) => duplicate(args),
   "capture-scene": (args) => captureScene(args),
   transport: (args) => transport(args),
+  memory: (args) => memory(args, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
@@ -69,6 +79,18 @@ function formatErrorResponse(errorMessage) {
   };
 }
 
+export function projectContextEnabled(enabled) {
+  context.projectContext.enabled = !!enabled;
+}
+
+export function projectContextWritable(writable) {
+  context.projectContext.writable = !!writable;
+}
+
+export function projectContext(_text, content) {
+  context.projectContext.content = content ?? "";
+}
+
 // Handle messages from Node for Max
 export async function mcp_request(serializedJSON) {
   try {
@@ -79,7 +101,13 @@ export async function mcp_request(serializedJSON) {
     let result;
 
     try {
-      result = formatSuccessResponse(await callTool(tool, args));
+      // TODO: Get projectContext behaviors under test coverage
+      result = formatSuccessResponse({
+        ...(await callTool(tool, args)),
+        ...(context.projectContext.enabled && tool === "read-song"
+          ? { userContext: { projectContext: context.projectContext } }
+          : {}),
+      });
     } catch (toolError) {
       result = formatErrorResponse(`Error in ${tool}: ${toolError.message}`);
     }
@@ -111,3 +139,7 @@ export async function mcp_request(serializedJSON) {
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
 console.log(`[${now()}] main.js loaded successfully`);
+
+// send a "started" signal so UI controls can resync their values
+// while changing the code repeatedly during development:
+outlet(0, "started");

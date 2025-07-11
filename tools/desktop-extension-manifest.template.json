@@ -21,7 +21,7 @@
       "command": "node",
       "args": ["${__dirname}/claude-ableton-connector.js"],
       "env": {
-        "PRODUCER_PAL_PORT": "${user_config.port}"
+        "MCP_SERVER_ORIGIN": "${user_config.mcp_server_origin}"
       }
     }
   },
@@ -33,15 +33,14 @@
     }
   },
   "user_config": {
-    "port": {
-      "type": "number",
-      "title": "Communication Port (advanced setting)",
-      "description": "Port number for the connection to the Producer Pal Max for Live Device. Must match the Max for Live device. Only change this if necessary. Restart this extension after changing the port number.",
+    "mcp_server_origin": {
+      "type": "string",
+      "title": "Advanced Setting: Producer Pal Max for Live device URL",
+      "description": "URL for connecting to the Producer Pal Max for Live device (protocol://host:port). Use http://localhost:3350 for local connections or http://[IP]:3350 for network connections. The port number must match the port in the Max for Live device's advanced settings (defaults to 3350). Restart this extension after changing the URL.",
       "required": false,
       "sensitive": false,
-      "default": 3350,
-      "min": 1024,
-      "max": 9999
+      "default": "http://localhost:3350",
+      "pattern": "^https?://[^/]+$"
     }
   },
   "keywords": [
