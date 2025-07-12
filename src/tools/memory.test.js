@@ -117,11 +117,7 @@ describe("memory", () => {
         writable: true,
         content: "new content",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        0,
-        "update_project_context",
-        "new content",
-      );
+      expect(outlet).toHaveBeenCalledWith(0, "updatenotes", "new content");
     });
 
     it("should overwrite existing content", () => {
@@ -140,11 +136,7 @@ describe("memory", () => {
         writable: true,
         content: "new content",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        0,
-        "update_project_context",
-        "new content",
-      );
+      expect(outlet).toHaveBeenCalledWith(0, "updatenotes", "new content");
     });
   });
 });
