@@ -68,16 +68,9 @@ export class StdioHttpBridge {
   }
 
   async _ensureHttpConnection() {
-    // If we have a client and think we're connected, try to reuse it
+    // If we have a client and think we're connected, reuse it
     if (this.httpClient && this.isConnected) {
-      try {
-        // Test if the connection is still valid by attempting a lightweight operation
-        // If this succeeds, we can reuse the existing connection
-        return;
-      } catch (error) {
-        console.error("[Bridge] Existing connection is stale:", error.message);
-        // Fall through to create new connection
-      }
+      return;
     }
 
     // Clean up old client if it exists
@@ -187,12 +180,39 @@ export class StdioHttpBridge {
           `[Bridge] HTTP tool call failed for ${request.params.name}:`,
           error.message,
         );
+
+        // Check if this is an MCP protocol error (has numeric code) vs connectivity error
+        // Any numeric code means we connected and got a structured JSON-RPC response
+        if (error.code && typeof error.code === "number") {
+          console.error(
+            `[Bridge] MCP protocol error detected (code ${error.code}), returning the error to the client`,
+          );
+          // Extract the actual error message, removing any "MCP error {code}:" prefix
+          let errorMessage = error.message || `Unknown MCP error ${error.code}`;
+          // Strip redundant "MCP error {code}:" prefix if present
+          const mcpErrorPrefix = `MCP error ${error.code}: `;
+          if (errorMessage.startsWith(mcpErrorPrefix)) {
+            errorMessage = errorMessage.slice(mcpErrorPrefix.length);
+          }
+          return {
+            content: [
+              {
+                type: "text",
+                text: errorMessage,
+              },
+            ],
+            isError: true,
+          };
+        }
+
+        // This is a real connectivity/network error
         this.isConnected = false;
-        // TODO: handle bad validation results, it's not necessarily disconnected
       }
 
       // Return setup error when Producer Pal is not available
-      console.error(`[Bridge] Returning setup error response`);
+      console.error(
+        `[Bridge] Connectivity problem detected. Returning setup error response`,
+      );
       return this._createSetupErrorResponse();
     });
 

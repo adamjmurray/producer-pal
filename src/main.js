@@ -109,7 +109,9 @@ export async function mcp_request(serializedJSON) {
         ...(includeUserContext ? { userContext } : {}),
       });
     } catch (toolError) {
-      result = formatErrorResponse(`Error in ${tool}: ${toolError.message}`);
+      result = formatErrorResponse(
+        `Producer Pal internal error calling tool '${tool}': ${toolError.message} - Ableton Live is connected but the tool encountered an error.`,
+      );
     }
 
     // Send response back to Node for Max

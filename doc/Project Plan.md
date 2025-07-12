@@ -90,12 +90,13 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 Misc stuff & polish before 1.0.0
 
 - [x] Enforce input schema constraints when calling tools
-- [x] Place limits on project context size
-- [ ] Fix issues with recoverable errors making it look like Producer Pal is
+- [x] Place limits on project notes size
+- [x] Strictly validate all tool inputs
+- [x] Fix issues with recoverable errors making it look like Producer Pal is
       disconnected from Live
 - [ ] Change Arrangement clip length
-- [ ] Disable default verbose debug logging. Maybe add an option for verbose
-      logging?
+- [ ] Disable default verbose debug logging. Add an option to enable verbose
+      logging to the device UI and Claude Desktop extension
 - [ ] Improve Producer Pal logo design
 - [ ] Make demo video and add to README and web site
 
