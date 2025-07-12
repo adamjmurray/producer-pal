@@ -1,23 +1,23 @@
 // src/mcp-server/create-mcp-server.js
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "../version.js";
-import { addToolCaptureScene } from "./add-tool-capture-scene.js";
-import { addToolCreateClip } from "./add-tool-create-clip.js";
-import { addToolCreateScene } from "./add-tool-create-scene.js";
-import { addToolCreateTrack } from "./add-tool-create-track.js";
-import { addToolDelete } from "./add-tool-delete.js";
-import { addToolDuplicate } from "./add-tool-duplicate.js";
-import { addToolMemory } from "./add-tool-memory.js";
-import { addToolRawLiveApi } from "./add-tool-raw-live-api.js";
-import { addToolReadClip } from "./add-tool-read-clip.js";
-import { addToolReadScene } from "./add-tool-read-scene.js";
-import { addToolReadSong } from "./add-tool-read-song.js";
-import { addToolReadTrack } from "./add-tool-read-track.js";
-import { addToolTransport } from "./add-tool-transport.js";
-import { addToolUpdateClip } from "./add-tool-update-clip.js";
-import { addToolUpdateScene } from "./add-tool-update-scene.js";
-import { addToolUpdateSong } from "./add-tool-update-song.js";
-import { addToolUpdateTrack } from "./add-tool-update-track.js";
+import { toolDefCaptureScene } from "./tool-def-capture-scene.js";
+import { toolDefCreateClip } from "./tool-def-create-clip.js";
+import { toolDefCreateScene } from "./tool-def-create-scene.js";
+import { toolDefCreateTrack } from "./tool-def-create-track.js";
+import { toolDefDelete } from "./tool-def-delete.js";
+import { toolDefDuplicate } from "./tool-def-duplicate.js";
+import { toolDefMemory } from "./tool-def-memory.js";
+import { toolDefRawLiveApi } from "./tool-def-raw-live-api.js";
+import { toolDefReadClip } from "./tool-def-read-clip.js";
+import { toolDefReadScene } from "./tool-def-read-scene.js";
+import { toolDefReadSong } from "./tool-def-read-song.js";
+import { toolDefReadTrack } from "./tool-def-read-track.js";
+import { toolDefTransport } from "./tool-def-transport.js";
+import { toolDefUpdateClip } from "./tool-def-update-clip.js";
+import { toolDefUpdateScene } from "./tool-def-update-scene.js";
+import { toolDefUpdateSong } from "./tool-def-update-song.js";
+import { toolDefUpdateTrack } from "./tool-def-update-track.js";
 
 export function createMcpServer(callLiveApi) {
   const server = new McpServer({
@@ -25,29 +25,31 @@ export function createMcpServer(callLiveApi) {
     version: VERSION,
   });
 
-  addToolCreateClip(server, callLiveApi);
-  addToolReadClip(server, callLiveApi);
-  addToolUpdateClip(server, callLiveApi);
+  const addTool = (toolDef) => toolDef(server, callLiveApi);
 
-  addToolCreateTrack(server, callLiveApi);
-  addToolReadTrack(server, callLiveApi);
-  addToolUpdateTrack(server, callLiveApi);
+  addTool(toolDefCreateClip);
+  addTool(toolDefReadClip);
+  addTool(toolDefUpdateClip);
 
-  addToolCaptureScene(server, callLiveApi);
-  addToolCreateScene(server, callLiveApi);
-  addToolReadScene(server, callLiveApi);
-  addToolUpdateScene(server, callLiveApi);
+  addTool(toolDefCreateTrack);
+  addTool(toolDefReadTrack);
+  addTool(toolDefUpdateTrack);
 
-  addToolReadSong(server, callLiveApi);
-  addToolUpdateSong(server, callLiveApi);
+  addTool(toolDefCaptureScene);
+  addTool(toolDefCreateScene);
+  addTool(toolDefReadScene);
+  addTool(toolDefUpdateScene);
 
-  addToolTransport(server, callLiveApi);
-  addToolDelete(server, callLiveApi);
-  addToolDuplicate(server, callLiveApi);
-  addToolMemory(server, callLiveApi);
+  addTool(toolDefReadSong);
+  addTool(toolDefUpdateSong);
+
+  addTool(toolDefTransport);
+  addTool(toolDefDelete);
+  addTool(toolDefDuplicate);
+  addTool(toolDefMemory);
 
   if (process.env.ENABLE_RAW_LIVE_API === "true") {
-    addToolRawLiveApi(server, callLiveApi);
+    addTool(toolDefRawLiveApi);
   }
 
   return server;
