@@ -34,7 +34,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 308.0, 390.0, 152.0, 49.0 ],
-					"presentation_linecount" : 3,
 					"text" : "script sendbox projectNotesWritableLabel hidden $1"
 				}
 
@@ -274,6 +273,7 @@
 					"annotation_name" : "Project notes",
 					"id" : "obj-2",
 					"maxclass" : "textedit",
+					"nosymquotes" : 1,
 					"numinlets" : 1,
 					"numoutlets" : 4,
 					"outlettype" : [ "", "int", "", "" ],
