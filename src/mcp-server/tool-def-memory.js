@@ -3,11 +3,11 @@ import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
 export const toolDefMemory = defineTool("memory", {
-  title: "Memory Tool for Project Context",
+  title: "Memory Tool for Project Notes",
   description:
-    "Manages user-defined project context that helps Producer Pal understand project-specific goals and preferences. " +
-    "The project context is stored in the Live project and can be enabled and made writable through the Producer Pal device UI. " +
-    "Use this tool to read current project context or update it when allowed.",
+    "Manages user-defined project notes that help Producer Pal understand project-specific goals and preferences. " +
+    "The project notes are stored in the Live project and can be enabled and made writable through the Producer Pal device UI. " +
+    "Use this tool to read current project notes or update them when allowed.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -16,7 +16,7 @@ export const toolDefMemory = defineTool("memory", {
     action: z
       .enum(["read", "write"])
       .describe(
-        "Action to perform: read current project context or write new content",
+        "Action to perform: read current project notes or write new content",
       ),
     content: z
       .string()
