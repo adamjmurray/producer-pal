@@ -20,6 +20,7 @@ export const toolDefMemory = defineTool("memory", {
       ),
     content: z
       .string()
+      .max(100) // 8K
       .optional()
       .describe("Content to write (required when action is 'write')"),
   },

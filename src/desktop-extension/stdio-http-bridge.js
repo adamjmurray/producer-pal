@@ -188,6 +188,7 @@ export class StdioHttpBridge {
           error.message,
         );
         this.isConnected = false;
+        // TODO: handle bad validation results, it's not necessarily disconnected
       }
 
       // Return setup error when Producer Pal is not available
