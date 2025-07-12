@@ -15,13 +15,65 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-20",
+					"maxclass" : "newobj",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "int" ],
+					"patching_rect" : [ 247.0, 345.0, 33.0, 22.0 ],
+					"text" : "== 0"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-18",
+					"linecount" : 3,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 308.0, 390.0, 152.0, 49.0 ],
+					"presentation_linecount" : 3,
+					"text" : "script sendbox projectNotesWritableLabel hidden $1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-53",
+					"linecount" : 3,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 172.0, 390.0, 123.0, 49.0 ],
+					"text" : "script sendbox projectNotesWritable hidden $1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-14",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"patching_rect" : [ 251.0, 476.0, 67.0, 22.0 ],
+					"save" : [ "#N", "thispatcher", ";", "#Q", "end", ";" ],
+					"text" : "thispatcher"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-44",
 					"maxclass" : "newobj",
 					"numinlets" : 0,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 372.5, 22.0, 141.0, 22.0 ],
-					"text" : "r ---project-context-editor"
+					"patching_rect" : [ 372.5, 22.0, 131.0, 22.0 ],
+					"text" : "r ---project-notes-editor"
 				}
 
 			}
@@ -32,13 +84,14 @@
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 376.0, 245.0, 177.0, 22.0 ],
-					"text" : "prepend projectContextWritable"
+					"patching_rect" : [ 376.0, 245.0, 167.0, 22.0 ],
+					"text" : "prepend projectNotesWritable"
 				}
 
 			}
 , 			{
 				"box" : 				{
+					"hidden" : 1,
 					"id" : "obj-9",
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
@@ -46,15 +99,17 @@
 					"patching_rect" : [ 399.0, 214.5, 84.0, 18.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 139.0, 3.0, 84.0, 18.0 ],
-					"text" : "Allow AI Updates",
-					"textjustification" : 0
+					"text" : "AI can edit notes",
+					"textjustification" : 0,
+					"varname" : "projectNotesWritableLabel"
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Let the AI update the project context based on your conversations to remember important details about your project.",
-					"annotation_name" : "Allow AI Updates ",
+					"annotation" : "Allow AI to update the project notes and remember important details about your project.",
+					"annotation_name" : "AI can edit notes",
+					"hidden" : 1,
 					"id" : "obj-7",
 					"maxclass" : "live.toggle",
 					"numinlets" : 1,
@@ -66,20 +121,20 @@
 					"presentation_rect" : [ 124.0, 3.0, 15.286624431610107, 17.363057315349579 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Allow AI Updates ",
+							"parameter_annotation_name" : "AI can edit notes",
 							"parameter_enum" : [ "off", "on" ],
-							"parameter_info" : "Let the AI update the project context based on your conversations to remember important details about your project.",
+							"parameter_info" : "Allow AI to update the project notes and remember important details about your project.",
 							"parameter_invisible" : 1,
-							"parameter_longname" : "projectContextWritable",
+							"parameter_longname" : "projectNotesWritable",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "projectContextWritable",
+							"parameter_shortname" : "projectNotesWritable",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "projectContextWritable"
+					"varname" : "projectNotesWritable"
 				}
 
 			}
@@ -142,7 +197,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 180.0, 245.0, 177.0, 22.0 ],
-					"text" : "prepend projectContextEnabled"
+					"text" : "prepend projectNotesEnabled"
 				}
 
 			}
@@ -154,7 +209,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 24.0, 245.0, 133.0, 22.0 ],
-					"text" : "prepend projectContext"
+					"text" : "prepend projectNotes"
 				}
 
 			}
@@ -176,15 +231,15 @@
 					"maxclass" : "newobj",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 115.0, 360.0, 42.0, 22.0 ],
+					"patching_rect" : [ 95.0, 345.0, 42.0, 22.0 ],
 					"text" : "s ---v8"
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Share the project context text with the AI to help it understand your project goals.",
-					"annotation_name" : "Enable Project Context",
+					"annotation" : "Share the project notes with AI to help it understand your project goals.",
+					"annotation_name" : "Use project notes",
 					"id" : "obj-4",
 					"maxclass" : "live.toggle",
 					"numinlets" : 1,
@@ -196,27 +251,27 @@
 					"presentation_rect" : [ 1.0, 2.0, 15.286624, 17.363057000000001 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Enable Project Context",
+							"parameter_annotation_name" : "Use project notes",
 							"parameter_enum" : [ "off", "on" ],
-							"parameter_info" : "Share the project context text with the AI to help it understand your project goals.",
+							"parameter_info" : "Share the project notes with AI to help it understand your project goals.",
 							"parameter_invisible" : 1,
-							"parameter_longname" : "projectContextEnabled",
+							"parameter_longname" : "projectNotesEnabled",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "projectContextEnabled",
+							"parameter_shortname" : "projectNotesEnabled",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "projectContextEnabled"
+					"varname" : "projectNotesEnabled"
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Optional info to help AI understand your project goals",
-					"annotation_name" : "Project Context",
+					"annotation" : "Write anything that helps describe your project - song structure, creative direction, or todos. 'Use project notes' must be enabled to share with AI. Enable 'AI can edit notes' to let AI remember important details from your conversations.",
+					"annotation_name" : "Project notes",
 					"id" : "obj-2",
 					"maxclass" : "textedit",
 					"numinlets" : 1,
@@ -230,18 +285,18 @@
 					"presentation_rect" : [ 0.0, 20.0, 249.704148411750793, 117.869826018810272 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Project Context",
-							"parameter_info" : "Optional info to help AI understand your project goals",
+							"parameter_annotation_name" : "Project notes",
+							"parameter_info" : "Write anything that helps describe your project - song structure, creative direction, or todos. 'Use project notes' must be enabled to share with AI. Enable 'AI can edit notes' to let AI remember important details from your conversations.",
 							"parameter_invisible" : 1,
-							"parameter_longname" : "projectContext",
+							"parameter_longname" : "projectNotes",
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "projectContext",
+							"parameter_shortname" : "projectNotes",
 							"parameter_type" : 3
 						}
 
 					}
 ,
-					"varname" : "projectContext"
+					"varname" : "projectNotes"
 				}
 
 			}
@@ -251,10 +306,10 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 207.0, 214.5, 84.0, 18.0 ],
+					"patching_rect" : [ 203.0, 214.5, 84.0, 18.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 15.0, 2.0, 84.0, 18.0 ],
-					"text" : "Project Context",
+					"text" : "Use project notes",
 					"textjustification" : 0
 				}
 
@@ -271,7 +326,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 304.5, 36.5, 45.0, 35.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 0.0, 0.0, 250.0, 150.0 ],
+					"presentation_rect" : [ 15.0, 2.0, 250.0, 150.0 ],
 					"proportion" : 0.39,
 					"rounded" : 0
 				}
@@ -350,6 +405,13 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-18", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-8", 0 ],
 					"source" : [ "obj-2", 0 ]
 				}
@@ -357,7 +419,32 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-18", 0 ],
+					"order" : 0,
+					"source" : [ "obj-20", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-53", 0 ],
+					"order" : 1,
+					"source" : [ "obj-20", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-12", 0 ],
+					"order" : 1,
+					"source" : [ "obj-4", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-20", 0 ],
+					"order" : 0,
 					"source" : [ "obj-4", 0 ]
 				}
 
@@ -366,6 +453,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-13", 0 ],
 					"source" : [ "obj-44", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-53", 0 ]
 				}
 
 			}
@@ -385,9 +479,9 @@
 			}
  ],
 		"parameters" : 		{
-			"obj-2" : [ "projectContext", "projectContext", 0 ],
-			"obj-4" : [ "projectContextEnabled", "projectContextEnabled", 0 ],
-			"obj-7" : [ "projectContextWritable", "projectContextWritable", 0 ],
+			"obj-2" : [ "projectNotes", "projectNotes", 0 ],
+			"obj-4" : [ "projectNotesEnabled", "projectNotesEnabled", 0 ],
+			"obj-7" : [ "projectNotesWritable", "projectNotesWritable", 0 ],
 			"parameterbanks" : 			{
 				"0" : 				{
 					"index" : 0,

@@ -21,8 +21,8 @@ import { updateScene } from "./tools/update-scene";
 import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
 
-const context = {
-  projectContext: {
+const userContext = {
+  projectNotes: {
     enabled: false,
     writable: false,
     content: "",
@@ -45,7 +45,7 @@ const tools = {
   duplicate: (args) => duplicate(args),
   "capture-scene": (args) => captureScene(args),
   transport: (args) => transport(args),
-  memory: (args) => memory(args, context),
+  memory: (args) => memory(args, userContext),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
@@ -79,16 +79,16 @@ function formatErrorResponse(errorMessage) {
   };
 }
 
-export function projectContextEnabled(enabled) {
-  context.projectContext.enabled = !!enabled;
+export function projectNotesEnabled(enabled) {
+  userContext.projectNotes.enabled = !!enabled;
 }
 
-export function projectContextWritable(writable) {
-  context.projectContext.writable = !!writable;
+export function projectNotesWritable(writable) {
+  userContext.projectNotes.writable = !!writable;
 }
 
-export function projectContext(_text, content) {
-  context.projectContext.content = content ?? "";
+export function projectNotes(_text, content) {
+  userContext.projectNotes.content = content ?? "";
 }
 
 // Handle messages from Node for Max
@@ -98,15 +98,15 @@ export async function mcp_request(serializedJSON) {
     const request = JSON.parse(serializedJSON);
     const { requestId, tool, args } = request;
 
-    let result;
+    const includeUserContext =
+      userContext.projectNotes.enabled && tool === "read-song";
 
+    let result;
     try {
-      // TODO: Get projectContext behaviors under test coverage
+      // TODO: Get projectNotes behaviors under test coverage
       result = formatSuccessResponse({
         ...(await callTool(tool, args)),
-        ...(context.projectContext.enabled && tool === "read-song"
-          ? { userContext: { projectContext: context.projectContext } }
-          : {}),
+        ...(includeUserContext ? { userContext } : {}),
       });
     } catch (toolError) {
       result = formatErrorResponse(`Error in ${tool}: ${toolError.message}`);

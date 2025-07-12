@@ -106,6 +106,8 @@
 			}
 , 			{
 				"box" : 				{
+					"annotation" : "Maximum time to wait for AI tool operations to complete. Default is 15 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
+					"annotation_name" : "Timeout",
 					"id" : "obj-68",
 					"maxclass" : "live.numbox",
 					"numinlets" : 1,
@@ -117,6 +119,8 @@
 					"presentation_rect" : [ 124.0, 63.0, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
+							"parameter_annotation_name" : "Timeout",
+							"parameter_info" : "Maximum time to wait for AI tool operations to complete. Default is 15 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
 							"parameter_initial" : [ 15 ],
 							"parameter_initial_enable" : 1,
 							"parameter_invisible" : 1,
@@ -153,19 +157,22 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-66",
+					"linecount" : 2,
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 28.0, 102.0, 43.0, 18.0 ],
+					"patching_rect" : [ 28.0, 102.0, 43.0, 29.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 69.0, 46.0, 50.0, 18.0 ],
-					"text" : "Port",
+					"presentation_rect" : [ 58.0, 46.0, 61.0, 18.0 ],
+					"text" : " Server port",
 					"textjustification" : 2
 				}
 
 			}
 , 			{
 				"box" : 				{
+					"annotation" : "Network port for Producer Pal's connection to AI such as Claude Desktop. Default is 3350. Only change if you have port conflicts with other software. If changed, the Max for Live device URL must be updated to match in the Claude Desktop extension settings.",
+					"annotation_name" : "Server port",
 					"id" : "obj-64",
 					"maxclass" : "live.numbox",
 					"numinlets" : 1,
@@ -177,6 +184,8 @@
 					"presentation_rect" : [ 124.0, 47.0, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
+							"parameter_annotation_name" : "Server port",
+							"parameter_info" : "Network port for Producer Pal's connection to AI such as Claude Desktop. Default is 3350. Only change if you have port conflicts with other software. If changed, the Max for Live device URL must be updated to match in the Claude Desktop extension settings.",
 							"parameter_initial" : [ 3350 ],
 							"parameter_initial_enable" : 1,
 							"parameter_invisible" : 1,
@@ -219,6 +228,8 @@
 			}
 , 			{
 				"box" : 				{
+					"annotation" : "Stop Producer Pal's server for AI connectivity. Use this to troubleshoot connection issues or for freeing up the port to connect to the device in the Max patch editor.",
+					"annotation_name" : "Stop server",
 					"id" : "obj-70",
 					"maxclass" : "live.text",
 					"mode" : 0,
@@ -231,7 +242,9 @@
 					"presentation_rect" : [ 142.0, 126.0, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
+							"parameter_annotation_name" : "Stop server",
 							"parameter_enum" : [ "val1", "val2" ],
+							"parameter_info" : "Stop Producer Pal's server for AI connectivity. Use this to troubleshoot connection issues or for freeing up the port to connect to the device in the Max patch editor.",
 							"parameter_invisible" : 2,
 							"parameter_longname" : "live.text[1]",
 							"parameter_mmax" : 1,
@@ -249,6 +262,8 @@
 			}
 , 			{
 				"box" : 				{
+					"annotation" : "Manually start Producer Pal's server for AI connectivity. This normally happens automatically when the device loads. It needs to be restarted after changing advanced settings.",
+					"annotation_name" : "Start server",
 					"id" : "obj-69",
 					"maxclass" : "live.text",
 					"mode" : 0,
@@ -261,7 +276,9 @@
 					"presentation_rect" : [ 63.0, 126.0, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
+							"parameter_annotation_name" : "Start server",
 							"parameter_enum" : [ "val1", "val2" ],
+							"parameter_info" : "Manually start Producer Pal's server for AI connectivity. This normally happens automatically when the device loads. It needs to be restarted after changing advanced settings.",
 							"parameter_invisible" : 2,
 							"parameter_longname" : "live.text",
 							"parameter_mmax" : 1,
