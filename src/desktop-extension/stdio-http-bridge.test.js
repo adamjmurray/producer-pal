@@ -76,7 +76,9 @@ describe("StdioHttpBridge", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    bridge = new StdioHttpBridge("http://localhost:3350/mcp");
+    bridge = new StdioHttpBridge("http://localhost:3350/mcp", {
+      verbose: true,
+    });
   });
 
   afterEach(() => {
@@ -86,7 +88,8 @@ describe("StdioHttpBridge", () => {
   describe("constructor", () => {
     it("initializes with correct default values", () => {
       expect(bridge.httpUrl).toBe("http://localhost:3350/mcp");
-      expect(bridge.options).toEqual({});
+      expect(bridge.options).toEqual({ verbose: true });
+      expect(bridge.verbose).toBe(true);
       expect(bridge.mcpServer).toBeNull();
       expect(bridge.httpClient).toBeNull();
       expect(bridge.isConnected).toBe(false);
@@ -94,7 +97,7 @@ describe("StdioHttpBridge", () => {
     });
 
     it("accepts custom options", () => {
-      const options = { timeout: 5000 };
+      const options = { timeout: 5000, verbose: true };
       const customBridge = new StdioHttpBridge(
         "http://localhost:8080/mcp",
         options,
@@ -102,6 +105,12 @@ describe("StdioHttpBridge", () => {
 
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
       expect(customBridge.options).toEqual(options);
+      expect(customBridge.verbose).toBe(true);
+    });
+
+    it("defaults verbose to false when not specified", () => {
+      const quietBridge = new StdioHttpBridge("http://localhost:3350/mcp");
+      expect(quietBridge.verbose).toBe(false);
     });
 
     it("generates fallback tools excluding raw-live-api", () => {

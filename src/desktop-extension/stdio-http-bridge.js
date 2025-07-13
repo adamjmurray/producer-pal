@@ -20,10 +20,17 @@ export class StdioHttpBridge {
   constructor(httpUrl, options = {}) {
     this.httpUrl = httpUrl;
     this.options = options;
+    this.verbose = options.verbose || false;
     this.mcpServer = null;
     this.httpClient = null;
     this.isConnected = false;
     this.fallbackTools = this._generateFallbackTools();
+  }
+
+  _log(message, ...args) {
+    if (this.verbose) {
+      console.error(message, ...args);
+    }
   }
 
   _generateFallbackTools() {
@@ -78,7 +85,7 @@ export class StdioHttpBridge {
       try {
         await this.httpClient.close();
       } catch (error) {
-        console.error("[Bridge] Error closing old client:", error.message);
+        this._log("[Bridge] Error closing old client:", error.message);
       }
       this.httpClient = null;
     }
@@ -103,7 +110,7 @@ export class StdioHttpBridge {
         try {
           this.httpClient.close();
         } catch (closeError) {
-          console.error(
+          this._log(
             "[Bridge] Error closing failed client:",
             closeError.message,
           );
@@ -118,7 +125,7 @@ export class StdioHttpBridge {
 
   async start() {
     console.error(`[Bridge] Starting enhanced stdio-to-HTTP bridge`);
-    console.error(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
+    this._log(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
 
     // Create MCP server that will handle stdio connections
     this.mcpServer = new Server(
@@ -135,16 +142,16 @@ export class StdioHttpBridge {
 
     // Set up request handlers
     this.mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
-      console.error(`[Bridge] Handling tools/list request`);
+      this._log(`[Bridge] Handling tools/list request`);
 
       // Always try to connect to HTTP server first
       try {
         await this._ensureHttpConnection();
         const result = await this.httpClient.listTools();
-        console.error(`[Bridge] tools/list successful via HTTP`);
+        this._log(`[Bridge] tools/list successful via HTTP`);
         return result;
       } catch (error) {
-        console.error(
+        this._log(
           `[Bridge] HTTP tools/list failed, using fallback:`,
           error.message,
         );
@@ -152,12 +159,12 @@ export class StdioHttpBridge {
       }
 
       // Return fallback tools when HTTP is not available
-      console.error(`[Bridge] Returning fallback tools list`);
+      this._log(`[Bridge] Returning fallback tools list`);
       return this.fallbackTools;
     });
 
     this.mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-      console.error(
+      this._log(
         `[Bridge] Tool call: ${request.params.name}`,
         request.params.arguments,
       );
@@ -171,9 +178,7 @@ export class StdioHttpBridge {
         };
 
         const result = await this.httpClient.callTool(toolRequest);
-        console.error(
-          `[Bridge] Tool call successful for ${request.params.name}`,
-        );
+        this._log(`[Bridge] Tool call successful for ${request.params.name}`);
         return result;
       } catch (error) {
         console.error(
@@ -184,7 +189,7 @@ export class StdioHttpBridge {
         // Check if this is an MCP protocol error (has numeric code) vs connectivity error
         // Any numeric code means we connected and got a structured JSON-RPC response
         if (error.code && typeof error.code === "number") {
-          console.error(
+          this._log(
             `[Bridge] MCP protocol error detected (code ${error.code}), returning the error to the client`,
           );
           // Extract the actual error message, removing any "MCP error {code}:" prefix
@@ -210,7 +215,7 @@ export class StdioHttpBridge {
       }
 
       // Return setup error when Producer Pal is not available
-      console.error(
+      this._log(
         `[Bridge] Connectivity problem detected. Returning setup error response`,
       );
       return this._createSetupErrorResponse();
@@ -223,7 +228,7 @@ export class StdioHttpBridge {
     console.error(
       `[Bridge] Enhanced stdio-to-HTTP bridge started successfully`,
     );
-    console.error(`[Bridge] HTTP connected: ${this.isConnected}`);
+    this._log(`[Bridge] HTTP connected: ${this.isConnected}`);
   }
 
   async stop() {
@@ -231,7 +236,7 @@ export class StdioHttpBridge {
       try {
         this.httpClient.close();
       } catch (error) {
-        console.error("[Bridge] Error closing HTTP client:", error.message);
+        this._log("[Bridge] Error closing HTTP client:", error.message);
       }
       this.httpClient = null;
     }
@@ -239,7 +244,7 @@ export class StdioHttpBridge {
       try {
         this.mcpServer.close();
       } catch (error) {
-        console.error("[Bridge] Error closing MCP server:", error.message);
+        this._log("[Bridge] Error closing MCP server:", error.message);
       }
       this.mcpServer = null;
     }
