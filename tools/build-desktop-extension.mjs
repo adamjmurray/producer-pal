@@ -64,9 +64,13 @@ for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
 // Create readable long description
 const longDescription = `# Setup
 
-Requires Ableton Live 12.2 or higher with Max for Live (Ableton Live Suite or another edition with the Max for Live add-on).
+Requires Ableton Live 12.2 or higher with Max for Live (Ableton Live Suite, or another edition of Live + the Max for Live add-on).
 
-# Usage
+Add the Producer Pal Max for Live device (the Producer_Pal.amxd file) to an Ableton Live project. It must be added to a MIDI track and it's recommended you add it to a dedicated track (rather than a track with an instrument you want to play). Then ask Claude Desktop (with this extension enabled): "Let's play with Ableton Live".
+
+This software is not affiliated with Ableton, Cycling '74, or Anthropic.
+
+# Usage examples
 
  • Start a chat like:
 

@@ -18,23 +18,23 @@ export function memory({ action, content } = {}, context) {
   }
 
   if (action === "read") {
-    if (!context.projectContext.enabled) {
+    if (!context.projectNotes.enabled) {
       return { enabled: false };
     }
 
     return {
       enabled: true,
-      writable: context.projectContext.writable,
-      content: context.projectContext.content,
+      writable: context.projectNotes.writable,
+      content: context.projectNotes.content,
     };
   }
 
   if (action === "write") {
-    if (!context.projectContext.enabled) {
+    if (!context.projectNotes.enabled) {
       throw new Error("Project context is disabled");
     }
 
-    if (!context.projectContext.writable) {
+    if (!context.projectNotes.writable) {
       throw new Error(
         "AI updates are disabled - enable 'Allow AI updates' in settings to let AI modify project context",
       );
@@ -44,16 +44,16 @@ export function memory({ action, content } = {}, context) {
       throw new Error("Content required for write action");
     }
 
-    context.projectContext.content = content;
+    context.projectNotes.content = content;
 
     // Send update to Max patch via outlet
     // Assuming outlet 0 is for communication back to Max
-    outlet(0, "update_project_context", content);
+    outlet(0, "updatenotes", content);
 
     return {
       enabled: true,
-      writable: context.projectContext.writable,
-      content: context.projectContext.content,
+      writable: context.projectNotes.writable,
+      content: context.projectNotes.content,
     };
   }
 }

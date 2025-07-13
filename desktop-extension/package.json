@@ -1,6 +1,6 @@
 {
   "name": "ableton-producer-pal-dxt",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "DXT bundle for Ableton Producer Pal",
   "type": "module",
   "main": "claude-ableton-connector.js",

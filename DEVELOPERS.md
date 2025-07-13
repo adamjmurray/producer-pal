@@ -217,14 +217,6 @@ This script:
 2. Click the freeze button
 3. Save as: `releases/Producer_Pal.amxd`
 
-**⚠️ TEMPORARY DUAL-FILE RELEASE PROCESS**
-
-For the next release only, create both filename formats to support transition:
-
-3a. Also save as: `releases/Producer-Pal.amxd` (old filename)
-
-*Note: This dual-file step can be removed once external links are updated*
-
 #### Step 6: Create GitHub Pre-Release
 
 1. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
@@ -234,8 +226,6 @@ For the next release only, create both filename formats to support transition:
 5. Upload files from `releases/`:
    - `Producer_Pal.amxd`
    - `Producer_Pal.dxt`
-   - `Producer-Pal.amxd` (temporary - old filename)
-   - `Producer-Pal.dxt` (temporary - old filename)
 6. ✅ Check "Set as a pre-release"
 7. Write release notes
 8. Publish pre-release

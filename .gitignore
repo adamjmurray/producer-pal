@@ -10,5 +10,6 @@ device/*.js
 device/*.mjs
 device/LICENSE.md
 device/Ableton Folder Info/
+*.afdesign~lock~
 releases
 scratchpad

@@ -5,10 +5,11 @@ import { StdioHttpBridge } from "./stdio-http-bridge.js";
 const mcpServerOrigin =
   process.env.MCP_SERVER_ORIGIN || "http://localhost:3350";
 const mcpUrl = `${mcpServerOrigin}/mcp`;
+const verboseLogging = process.env.VERBOSE_LOGGING === "true";
 
 console.error(`[Bridge] Starting Producer Pal bridge (mcpUrl ${mcpUrl})`);
 
-const bridge = new StdioHttpBridge(mcpUrl);
+const bridge = new StdioHttpBridge(mcpUrl, { verbose: verboseLogging });
 
 // Handle graceful shutdown
 process.on("SIGINT", async () => {
