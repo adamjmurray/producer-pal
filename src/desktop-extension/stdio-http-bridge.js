@@ -10,7 +10,8 @@ import {
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { createMcpServer } from "../mcp-server/create-mcp-server.js";
 
-const SETUP_URL = "https://adammurray.link/producer-pal";
+const SETUP_URL =
+  "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal";
 
 /**
  * Enhanced stdio-to-HTTP bridge for MCP communication
@@ -62,12 +63,15 @@ export class StdioHttpBridge {
       content: [
         {
           type: "text",
-          text:
-            `❌ Producer Pal is not accessible. Please ensure:\\n\\n` +
-            `1. Ableton Live is running\\n` +
-            `2. The Producer Pal Max for Live device is loaded in your set\\n` +
-            `3. The device shows \"Producer Pal Running\"\\n\\n` +
-            `For setup instructions, visit: ${SETUP_URL}`,
+          text: `❌ Cannot connect to Producer Pal in Ableton Live.
+Remind the user that this Claude Desktop extension is for controlling the music production software Ableton Live. It can't work without Ableton Live. It requires Live version 12.2 or higher with Max for Live (e.g. Ableton Live Suite 12.2+).
+
+For Producer Pal to work, the user must ensure:
+1. Ableton Live is running (version 12.2+ with Max for Live)
+2. The Producer Pal Max for Live device has been added to the Ableton Live Set
+3. The device has successfully loaded and shows "Producer Pal Running"
+
+Provide the [detailed setup instructions](https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal) for guidance.`,
         },
       ],
       isError: true,

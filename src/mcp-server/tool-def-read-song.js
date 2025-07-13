@@ -1,6 +1,7 @@
 // src/mcp-server/tool-def-read-song.js
 import { z } from "zod";
 import { DEVICE_TYPES } from "../tools/constants.js";
+import { VERSION } from "../version.js";
 import { defineTool } from "./define-tool.js";
 
 export const toolDefReadSong = defineTool("read-song", {
@@ -12,12 +13,12 @@ export const toolDefReadSong = defineTool("read-song", {
     "IMPORTANT: If the user asks to play with Ableton Live or starts a conversation with 'ableton', start here and call this automatically.\n" +
     "IMPORTANT: The returned state represents Live at this moment in time. If the user mentions moving, deleting, or rearranging objects, " +
     "immediately call read-song again before any other operations.\n" +
-    "INSTRUCTION: After the first read-song call in a NEW conversation, provide a brief welcome to the user that includes:\n" +
-    "1. 'I can see your Live Set! I can help you create and edit MIDI clips, manage tracks and scenes, and build musical ideas.'\n" +
-    "2. 'Important tip: Always save your work - I can modify and delete things in your project.'\n" +
-    "3. 'If you move or rearrange tracks/clips/scenes, just let me know so I can stay in sync. (Sorry for the inconvenience, maybe in a future version I can do this automatically)'\n" +
-    "4. 'Try asking me to create a drum beat, bassline, melody, or chord progression to get started!'\n" +
-    "Keep this user welcome concise and conversational. Adjust tip (4) 'Try asking...' based on what you see in the song.\n" +
+    "INSTRUCTION: After the first `read-song` call in a NEW conversation, provide a welcome message:\n" +
+    `- Producer Pal ${VERSION} connected to Ableton Live.\n` +
+    "- Important tips:\n" +
+    "    - **Save often!** I can modify and delete things in your project, and I make mistakes.'\n" +
+    "    - If you rearrange tracks/clips/scenes, tell me so I stay in sync.'\n" +
+    "- Try asking me to create a drum beat, bassline, melody, or chord progression to get started. [Note: Adjust this part of the welcome message based on the contents of the Ableton Live Set]" +
     "PROJECT NOTES: When userContext.projectNotes is present, acknowledge it naturally in your response (e.g., 'I see you're working on [brief summary]') and let it inform your suggestions throughout the conversation.\n" +
     "In subsequent calls, skip the full user welcome but still mention tip (3) about staying in sync." +
     "INSTRUCTION: If you notice MIDI tracks without instrument devices (except the track hosting Producer Pal), " +
