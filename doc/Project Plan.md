@@ -94,10 +94,10 @@ Misc stuff & polish before 1.0.0
 - [x] Strictly validate all tool inputs
 - [x] Fix issues with recoverable errors making it look like Producer Pal is
       disconnected from Live
+- [x] Improve Producer Pal logo design
 - [ ] Change Arrangement clip length
 - [ ] Disable default verbose debug logging. Add an option to enable verbose
       logging to the device UI and Claude Desktop extension
-- [ ] Improve Producer Pal logo design
 - [ ] Make demo video and add to README and web site
 
 ### 🚀 1.0.0 Release
