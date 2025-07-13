@@ -141,7 +141,9 @@ describe("StdioHttpBridge", () => {
         content: [
           {
             type: "text",
-            text: expect.stringContaining("❌ Producer Pal is not accessible"),
+            text: expect.stringContaining(
+              "Cannot connect to Producer Pal in Ableton Live.",
+            ),
           },
         ],
         isError: true,
@@ -149,7 +151,7 @@ describe("StdioHttpBridge", () => {
 
       expect(response.content[0].text).toContain("Ableton Live is running");
       expect(response.content[0].text).toContain(
-        "https://adammurray.link/producer-pal",
+        "https://github.com/adamjmurray/producer-pal",
       );
     });
   });
