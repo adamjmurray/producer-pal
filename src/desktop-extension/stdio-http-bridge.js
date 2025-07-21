@@ -78,6 +78,21 @@ Provide the [detailed setup instructions](https://github.com/adamjmurray/produce
     };
   }
 
+  _createMisconfiguredUrlResponse() {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `❌ Invalid URL for the Producer Pal Desktop Extension.
+We cannot even attempt to connect to Producer Pal inside Ableton Live because the configured URL "${this.httpUrl.replace(/\/mcp$/, "")}" is not a valid URL.
+The user must provide a valid URL in the configuration settings for the Claude Desktop Extension for Producer Pal.
+The default URL value is http://localhost:3350`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
   async _ensureHttpConnection() {
     // If we have a client and think we're connected, reuse it
     if (this.httpClient && this.isConnected) {
@@ -95,10 +110,9 @@ Provide the [detailed setup instructions](https://github.com/adamjmurray/produce
     }
 
     // Create new connection
+    const url = new URL(this.httpUrl); // let this throw if the URL is invalid, see handling for ERR_INVALID_URL
     try {
-      const httpTransport = new StreamableHTTPClientTransport(
-        new URL(this.httpUrl),
-      );
+      const httpTransport = new StreamableHTTPClientTransport(url);
       this.httpClient = new Client({
         name: "claude-ableton-connector",
         version: "1.0.0",
@@ -216,6 +230,13 @@ Provide the [detailed setup instructions](https://github.com/adamjmurray/produce
 
         // This is a real connectivity/network error
         this.isConnected = false;
+
+        if (error.code === "ERR_INVALID_URL") {
+          this._log(
+            `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
+          );
+          return this._createMisconfiguredUrlResponse();
+        }
       }
 
       // Return setup error when Producer Pal is not available
