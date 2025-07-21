@@ -10,10 +10,79 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 187.0, 458.0, 811.0, 526.0 ],
+		"rect" : [ 187.0, 458.0, 515.0, 447.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-14",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 274.766353011131287, 290.551402151584625, 68.0, 22.0 ],
+					"text" : "verbose $1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-9",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 274.766353011131287, 327.0, 89.0, 22.0 ],
+					"text" : "s ---node-script"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Log details of every incoming request from and response to the AI. Generally only useful when debugging recurring failures.",
+					"annotation_name" : "Verbose logging",
+					"id" : "obj-8",
+					"maxclass" : "live.toggle",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"parameter_enable" : 1,
+					"patching_rect" : [ 274.766353011131287, 262.514019191265106, 15.0, 15.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 124.0, 37.481310427188873, 15.0, 15.0 ],
+					"saved_attribute_attributes" : 					{
+						"valueof" : 						{
+							"parameter_annotation_name" : "Verbose logging",
+							"parameter_enum" : [ "off", "on" ],
+							"parameter_info" : "Log details of every incoming request from and response to the AI. Generally only useful when debugging recurring failures.",
+							"parameter_longname" : "live.toggle",
+							"parameter_mmax" : 1,
+							"parameter_modmode" : 0,
+							"parameter_shortname" : "live.toggle",
+							"parameter_type" : 2
+						}
+
+					}
+,
+					"varname" : "verbose-logging"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-6",
+					"linecount" : 2,
+					"maxclass" : "live.comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 299.766353011131287, 242.056072890758514, 45.0, 29.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 42.523366868495941, 35.981310427188873, 76.0, 18.0 ],
+					"text" : "Verbose logging",
+					"textjustification" : 2
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"bgmode" : 0,
 					"border" : 0,
@@ -116,7 +185,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 119.5, 134.0, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 124.0, 63.0, 44.0, 15.0 ],
+					"presentation_rect" : [ 124.0, 71.593461871147156, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Timeout",
@@ -148,7 +217,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 114.5, 104.0, 54.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 69.0, 62.0, 50.0, 18.0 ],
+					"presentation_rect" : [ 69.15888237953186, 70.093461871147156, 50.0, 18.0 ],
 					"text" : "Timeout",
 					"textjustification" : 2
 				}
@@ -163,7 +232,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 28.0, 102.0, 43.0, 29.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 58.0, 46.0, 61.0, 18.0 ],
+					"presentation_rect" : [ 58.0, 53.0, 61.0, 18.0 ],
 					"text" : " Server port",
 					"textjustification" : 2
 				}
@@ -181,7 +250,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 27.0, 124.0, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 124.0, 47.0, 44.0, 15.0 ],
+					"presentation_rect" : [ 124.0, 54.5, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Server port",
@@ -331,6 +400,13 @@
  ],
 		"lines" : [ 			{
 				"patchline" : 				{
+					"destination" : [ "obj-9", 0 ],
+					"source" : [ "obj-14", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-12", 0 ],
 					"source" : [ "obj-25", 1 ]
 				}
@@ -392,12 +468,20 @@
 				}
 
 			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-8", 0 ]
+				}
+
+			}
  ],
 		"parameters" : 		{
 			"obj-64" : [ "port", "port", 0 ],
 			"obj-68" : [ "timeout", "timeout", 0 ],
 			"obj-69" : [ "live.text", "live.text", 0 ],
 			"obj-70" : [ "live.text[1]", "live.text", 0 ],
+			"obj-8" : [ "live.toggle", "live.toggle", 0 ],
 			"parameterbanks" : 			{
 				"0" : 				{
 					"index" : 0,

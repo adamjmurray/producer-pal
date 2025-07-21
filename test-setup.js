@@ -10,6 +10,42 @@ await import("./src/live-api-extensions");
 globalThis.Task = Task;
 globalThis.outlet = vi.fn();
 
+class Max {
+  static post = vi.fn();
+
+  static POST_LEVELS = {
+    INFO: "info",
+    WARN: "warn",
+    ERROR: "error",
+  };
+
+  static mcpResponseHandler = null;
+
+  static addHandler = vi.fn((message, handler) => {
+    if (message === "mcp_response") {
+      Max.mcpResponseHandler = handler;
+    }
+  });
+
+  static outlet = vi.fn((message, jsonString) => {
+    if (message === "mcp_request" && Max.mcpResponseHandler) {
+      const data = JSON.parse(jsonString);
+      // Defer calling the handler, otherwise the code inside the Promise returned by callLiveApi() hasn't executed yet
+      // and the pendingRequests map won't be in the correct state for the handler to work properly.
+      setTimeout(() => {
+        // TODO: Make a way for these mock responses from v8 to be customized on a per-test basis
+        Max.mcpResponseHandler(
+          JSON.stringify({
+            requestId: data.requestId,
+            result: { content: [{ type: "text", text: "{}" }] },
+          }),
+        );
+      }, 1);
+    }
+  });
+}
+vi.mock(import("max-api"), () => ({ default: Max }));
+
 beforeEach(() => {
   // default mocking behaviors:
   mockLiveApiGet();

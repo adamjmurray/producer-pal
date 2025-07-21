@@ -5,9 +5,8 @@ import {
   createExpressApp,
   DEFAULT_LIVE_API_CALL_TIMEOUT_MS,
 } from "./mcp-server/create-express-app";
+import * as console from "./mcp-server/node-for-max-logger";
 import { VERSION } from "./version";
-
-const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
 let port = 3355;
 let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
@@ -23,8 +22,8 @@ args.forEach((arg, index) => {
   }
 });
 
-Max.post(
-  `[${now()}] MCP Server v${VERSION} starting with port=${port}, Live API timeout=${timeoutMs}ms`,
+console.log(
+  `MCP Server v${VERSION} starting with port=${port}, Live API timeout=${timeoutMs}ms`,
 );
 
 const appServer = createExpressApp({ timeoutMs });
@@ -32,7 +31,7 @@ const appServer = createExpressApp({ timeoutMs });
 appServer
   .listen(port, () => {
     const url = `http://localhost:${port}/mcp`;
-    Max.post(`[${now()}] MCP Server running at ${url}`);
+    console.log(`MCP Server running at ${url}`);
     Max.outlet("version", VERSION);
   })
   .on("error", (error) => {

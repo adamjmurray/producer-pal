@@ -5,6 +5,7 @@ import express from "express";
 import Max from "max-api";
 import crypto from "node:crypto";
 import { createMcpServer } from "./create-mcp-server";
+import * as console from "./node-for-max-logger";
 
 export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 15_000;
 
@@ -17,7 +18,7 @@ function callLiveApi(
   args,
   timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS,
 ) {
-  Max.post(`Handling tool call: ${toolName}(${JSON.stringify(args)})`);
+  console.info(`Handling tool call: ${toolName}(${JSON.stringify(args)})`);
 
   // Create a request with a unique ID
   const requestId = crypto.randomUUID();
@@ -48,7 +49,7 @@ function callLiveApi(
 }
 
 function handleLiveApiResult(responseJson, ...maxErrors) {
-  Max.post(
+  console.info(
     `mcp_response(${responseJson}, maxErrors=[${maxErrors.join(", ")}])`,
   );
   try {
@@ -66,10 +67,10 @@ function handleLiveApiResult(responseJson, ...maxErrors) {
       }
       resolve(result);
     } else {
-      Max.post(`Received response for unknown request ID: ${requestId}`);
+      console.info(`Received response for unknown request ID: ${requestId}`);
     }
   } catch (error) {
-    Max.post(`Error handling response from Max: ${error}`);
+    console.error(`Error handling response from Max: ${error}`);
   }
 }
 
@@ -99,7 +100,7 @@ export function createExpressApp(options = {}) {
 
   app.post("/mcp", async (req, res) => {
     try {
-      Max.post("New MCP connection: " + JSON.stringify(req.body));
+      console.info("New MCP connection: " + JSON.stringify(req.body));
 
       const callLiveApiWithTimeout = (toolName, args) =>
         callLiveApi(toolName, args, timeoutMs);
@@ -116,7 +117,7 @@ export function createExpressApp(options = {}) {
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
     } catch (error) {
-      Max.post(`Error handling MCP request: ${error}`, Max.POST_LEVELS.ERROR);
+      console.error(`Error handling MCP request: ${error}`);
       res.status(500).json(internalError(error.message));
     }
   });
