@@ -20,10 +20,15 @@ class Max {
   };
 
   static mcpResponseHandler = null;
+  static defaultMcpResponseHandler = null; // Store the default handler
 
   static addHandler = vi.fn((message, handler) => {
     if (message === "mcp_response") {
       Max.mcpResponseHandler = handler;
+      // Save the first handler registered (from createExpressApp) as the default
+      if (!Max.defaultMcpResponseHandler && handler) {
+        Max.defaultMcpResponseHandler = handler;
+      }
     }
   });
 
@@ -46,7 +51,15 @@ class Max {
 }
 vi.mock(import("max-api"), () => ({ default: Max }));
 
+// Export Max so tests can access Max.defaultMcpResponseHandler if needed
+globalThis.Max = Max;
+
 beforeEach(() => {
+  // Restore the default handler if it was saved
+  if (Max.defaultMcpResponseHandler) {
+    Max.mcpResponseHandler = Max.defaultMcpResponseHandler;
+  }
+
   // default mocking behaviors:
   mockLiveApiGet();
   // TODO: this should move into mockLiveApiCall (and maybe introduce mockLiveApiId and mockLiveApiPath and eventually wrap the whole thing in mockLiveApi)

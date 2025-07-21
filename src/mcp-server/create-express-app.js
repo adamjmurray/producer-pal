@@ -28,20 +28,39 @@ function callLiveApi(
     args,
   };
 
-  // Send the request to Max as JSON
-  Max.outlet("mcp_request", JSON.stringify(request));
-
   // Return a promise that will be resolved when Max responds or timeout
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
+    try {
+      // Send the request to Max as JSON
+      Max.outlet("mcp_request", JSON.stringify(request));
+    } catch (error) {
+      // If sending fails, immediately resolve with error
+      return resolve({
+        content: [
+          {
+            type: "text",
+            text:
+              error.message || `Error sending message to ${toolName}: ${error}`,
+          },
+        ],
+        isError: true,
+      });
+    }
     pendingRequests.set(requestId, {
       resolve,
-      reject,
       timeout: setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          reject(
-            new Error(`Tool call '${toolName}' timed out after ${timeoutMs}ms`),
-          );
+          // Always resolve with a consistent format
+          resolve({
+            content: [
+              {
+                type: "text",
+                text: `Tool call '${toolName}' timed out after ${timeoutMs}ms`,
+              },
+            ],
+            isError: true,
+          });
         }
       }, timeoutMs),
     });

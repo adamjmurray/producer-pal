@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 describe("MCP Express App", () => {
   let server;
   let serverUrl;
-  let defaultMaxHandler;
 
   beforeAll(async () => {
     // Enable raw-live-api tool for testing
@@ -30,16 +29,6 @@ describe("MCP Express App", () => {
       "mcp_response",
       expect.any(Function),
     );
-    // The real handleLiveApiResult handler is registered by createExpressApp
-    // We need to save it so we can restore it in tests that override the handler
-    defaultMaxHandler = Max.mcpResponseHandler;
-  });
-
-  beforeEach(() => {
-    // Clear mock call history
-    vi.clearAllMocks();
-    // Restore the handler - it might have been overridden by tests
-    Max.mcpResponseHandler = defaultMaxHandler;
   });
 
   afterAll(async () => {
@@ -212,7 +201,7 @@ describe("MCP Express App", () => {
           // Simulate the response from Max after a short delay
           setTimeout(() => {
             // Call the real handleLiveApiResult with mock data
-            defaultMaxHandler(
+            Max.defaultMcpResponseHandler(
               JSON.stringify({
                 requestId: data.requestId,
                 result: { content: [{ type: "text", text: "{}" }] },
@@ -263,26 +252,13 @@ describe("MCP Express App", () => {
       });
 
       // The MCP SDK returns a structured error response instead of throwing
-      // Check if it's an error by looking at the content
+      expect(result).toBeDefined();
+      expect(result.isError).toBe(true);
       expect(result.content).toBeDefined();
+      expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain(
         "Tool call 'read-song' timed out after 100ms",
       );
-      
-      // TODO: BUG - timeout errors should have isError: true
-      // Currently result.isError is undefined for timeout responses
-      // The issue is in src/mcp-server/define-tool.js line 36:
-      // When callLiveApi rejects (e.g., timeout), the error is not caught
-      // and transformed into { content: [...], isError: true } format.
-      // Fix would be to wrap callLiveApi in try-catch and return proper error response.
-      if (result.isError === undefined) {
-        console.warn("CONFIRMED BUG: Timeout response missing isError property");
-      }
-      
-      // The response should indicate it's an error
-      expect(
-        result.isError || result.content[0].text.includes("timed out"),
-      ).toBe(true);
     });
 
     it("should handle tool with missing required arguments", async () => {
@@ -301,6 +277,36 @@ describe("MCP Express App", () => {
           arguments: {},
         }),
       ).rejects.toThrow();
+    });
+
+    it("should return isError: true when Max.outlet throws", async () => {
+      // This test verifies that errors thrown when sending to Max are properly
+      // caught and returned as MCP error responses with isError: true
+      const errorMessage = "Simulated tool error";
+
+      // Save the original mock to restore it after
+      const originalOutlet = Max.outlet;
+
+      // Replace Max.outlet to throw an error instead of responding
+      Max.outlet = vi.fn(() => {
+        throw new Error(errorMessage);
+      });
+
+      try {
+        const result = await client.callTool({
+          name: "read-track",
+          arguments: { trackIndex: 0 },
+        });
+
+        expect(result).toBeDefined();
+        expect(result.isError).toBe(true);
+        expect(result.content).toBeDefined();
+        expect(result.content[0].type).toBe("text");
+        expect(result.content[0].text).toContain(errorMessage);
+      } finally {
+        // Always restore the original mock
+        Max.outlet = originalOutlet;
+      }
     });
   });
 
@@ -385,11 +391,8 @@ describe("Exported Functions", () => {
   describe("callLiveApi", () => {
     beforeEach(() => {
       vi.clearAllMocks();
-      // Clear any pending requests between tests
+      // Clear the handler to test raw callLiveApi behavior
       Max.mcpResponseHandler = null;
-
-      // Remove the callback function for handling Live API call response
-      Max.addHandler("mcp_response", null);
     });
 
     it("should create a request with unique ID and call Max.outlet", async () => {
@@ -432,11 +435,18 @@ describe("Exported Functions", () => {
       Max.outlet = vi.fn();
 
       // Use a very short timeout for testing
-      const promise = callLiveApi("test-tool", {}, 50);
+      const result = await callLiveApi("test-tool", {}, 50);
 
-      await expect(promise).rejects.toThrow(
-        "Tool call 'test-tool' timed out after 50ms",
-      );
+      // Should resolve with isError: true instead of rejecting
+      expect(result).toEqual({
+        content: [
+          {
+            type: "text",
+            text: "Tool call 'test-tool' timed out after 50ms",
+          },
+        ],
+        isError: true,
+      });
 
       expect(Max.outlet).toHaveBeenCalled();
     });
