@@ -4,6 +4,7 @@ import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import Max from "max-api";
 import crypto from "node:crypto";
+import { formatErrorResponse } from "../mcp-response-utils.js";
 import { createMcpServer } from "./create-mcp-server";
 import * as console from "./node-for-max-logger";
 
@@ -34,33 +35,24 @@ function callLiveApi(
       // Send the request to Max as JSON
       Max.outlet("mcp_request", JSON.stringify(request));
     } catch (error) {
-      // If sending fails, immediately resolve with error
-      return resolve({
-        content: [
-          {
-            type: "text",
-            text:
-              error.message || `Error sending message to ${toolName}: ${error}`,
-          },
-        ],
-        isError: true,
-      });
+      // Always resolve (not reject) with the standard error format
+      return resolve(
+        formatErrorResponse(
+          error.message || `Error sending message to ${toolName}: ${error}`,
+        ),
+      );
     }
     pendingRequests.set(requestId, {
       resolve,
       timeout: setTimeout(() => {
         if (pendingRequests.has(requestId)) {
           pendingRequests.delete(requestId);
-          // Always resolve with a consistent format
-          resolve({
-            content: [
-              {
-                type: "text",
-                text: `Tool call '${toolName}' timed out after ${timeoutMs}ms`,
-              },
-            ],
-            isError: true,
-          });
+          // Always resolve (not reject) with the standard error format
+          resolve(
+            formatErrorResponse(
+              `Tool call '${toolName}' timed out after ${timeoutMs}ms`,
+            ),
+          );
         }
       }, timeoutMs),
     });

@@ -3,6 +3,10 @@
 
 import * as console from "./console";
 import "./live-api-extensions";
+import {
+  formatErrorResponse,
+  formatSuccessResponse,
+} from "./mcp-response-utils";
 import { captureScene } from "./tools/capture-scene";
 import { createClip } from "./tools/create-clip";
 import { createScene } from "./tools/create-scene";
@@ -56,27 +60,6 @@ function callTool(toolName, args) {
   const tool = tools[toolName];
   if (!tool) throw new Error(`Unknown tool: ${tool}`);
   return tool(args);
-}
-
-// Format a successful response with the standard MCP content structure
-// non-string results will be JSON-stringified
-function formatSuccessResponse(result) {
-  return {
-    content: [
-      {
-        type: "text",
-        text: typeof result === "string" ? result : JSON.stringify(result),
-      },
-    ],
-  };
-}
-
-// Format an error response with the standard MCP error structure
-function formatErrorResponse(errorMessage) {
-  return {
-    content: [{ type: "text", text: errorMessage }],
-    isError: true,
-  };
 }
 
 export function projectNotesEnabled(enabled) {

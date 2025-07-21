@@ -1,5 +1,6 @@
 // src/mcp-server/define-tool.js
 import { z } from "zod";
+import { formatErrorResponse } from "../mcp-response-utils.js";
 
 export function defineTool(name, options) {
   return (server, callLiveApi) => {
@@ -22,15 +23,9 @@ export function defineTool(name, options) {
             return `${path}${issue.message}`;
           });
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Validation error in ${name}:\n${errorMessages.join("\n")}`,
-              },
-            ],
-            isError: true,
-          };
+          return formatErrorResponse(
+            `Validation error in ${name}:\n${errorMessages.join("\n")}`,
+          );
         }
 
         return await callLiveApi(name, validation.data);

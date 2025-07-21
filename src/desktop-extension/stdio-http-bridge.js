@@ -8,6 +8,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { formatErrorResponse } from "../mcp-response-utils.js";
 import { createMcpServer } from "../mcp-server/create-mcp-server.js";
 
 const SETUP_URL =
@@ -59,11 +60,7 @@ export class StdioHttpBridge {
   }
 
   _createSetupErrorResponse() {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `❌ Cannot connect to Producer Pal in Ableton Live.
+    return formatErrorResponse(`❌ Cannot connect to Producer Pal in Ableton Live.
 Remind the user that this Claude Desktop extension is for controlling the music production software Ableton Live. It can't work without Ableton Live. It requires Live version 12.2 or higher with Max for Live (e.g. Ableton Live Suite 12.2+).
 
 For Producer Pal to work, the user must ensure:
@@ -71,26 +68,14 @@ For Producer Pal to work, the user must ensure:
 2. The Producer Pal Max for Live device has been added to the Ableton Live Set
 3. The device has successfully loaded and shows "Producer Pal Running"
 
-Provide the [detailed setup instructions](https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal) for guidance.`,
-        },
-      ],
-      isError: true,
-    };
+Provide the [detailed setup instructions](https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal) for guidance.`);
   }
 
   _createMisconfiguredUrlResponse() {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `❌ Invalid URL for the Producer Pal Desktop Extension.
+    return formatErrorResponse(`❌ Invalid URL for the Producer Pal Desktop Extension.
 We cannot even attempt to connect to Producer Pal inside Ableton Live because the configured URL "${this.httpUrl.replace(/\/mcp$/, "")}" is not a valid URL.
 The user must provide a valid URL in the configuration settings for the Claude Desktop Extension for Producer Pal.
-The default URL value is http://localhost:3350`,
-        },
-      ],
-      isError: true,
-    };
+The default URL value is http://localhost:3350`);
   }
 
   async _ensureHttpConnection() {
@@ -217,15 +202,7 @@ The default URL value is http://localhost:3350`,
           if (errorMessage.startsWith(mcpErrorPrefix)) {
             errorMessage = errorMessage.slice(mcpErrorPrefix.length);
           }
-          return {
-            content: [
-              {
-                type: "text",
-                text: errorMessage,
-              },
-            ],
-            isError: true,
-          };
+          return formatErrorResponse(errorMessage);
         }
 
         // This is a real connectivity/network error
