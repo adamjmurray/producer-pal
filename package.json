@@ -43,6 +43,7 @@
     "test:watch": "npm run test:setup && vitest",
     "test:coverage": "npm run test:setup && vitest run --coverage",
     "test:setup": "npm run parser:build",
+    "coverage": "npm run test:coverage",
     "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --write .",
