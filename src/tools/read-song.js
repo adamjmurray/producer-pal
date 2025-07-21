@@ -16,6 +16,8 @@ export function readSong({
   includeInstrument = true,
   includeAudioEffects = false,
   includeRoutings = false,
+  includeSessionClips = true,
+  includeArrangementClips = true,
 } = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
@@ -73,6 +75,8 @@ export function readSong({
         includeInstrument,
         includeAudioEffects,
         includeRoutings,
+        includeSessionClips,
+        includeArrangementClips,
       }),
     ),
     scenes: sceneIds

@@ -232,7 +232,7 @@ describe("MCP Express App", () => {
       expect(mockHandler).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
         expect.stringMatching(
-          /^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false}}$/,
+          /^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false,"includeSessionClips":true,"includeArrangementClips":true}}$/,
         ),
       );
     });

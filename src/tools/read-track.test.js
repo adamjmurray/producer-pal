@@ -333,6 +333,74 @@ describe("readTrack", () => {
     expect(result.arrangementClips[1].id).toBe("arr_clip2");
   });
 
+  it("returns minimal session clip data when includeSessionClips is false", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set tracks 2":
+          return "track3";
+        case "id slot1 clip": // Direct access to slot1's clip
+          return "clip1";
+        case "id slot3 clip": // Direct access to slot3's clip
+          return "clip2";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Track with Clips",
+        color: 255,
+        mute: 0,
+        solo: 0,
+        arm: 0,
+        playing_slot_index: 0,
+        fired_slot_index: -1,
+        back_to_arranger: 1,
+        clip_slots: children("slot1", "slot2", "slot3"),
+        devices: [],
+      },
+    });
+
+    const result = readTrack({ trackIndex: 2, includeSessionClips: false });
+
+    // Since clips exist at slots 0 and 2, we should get minimal data for those slots
+    expect(result.sessionClips).toEqual([
+      { clipId: "clip1", clipSlotIndex: 0 },
+      { clipId: "clip2", clipSlotIndex: 2 },
+    ]);
+  });
+
+  it("returns minimal arrangement clip data when includeArrangementClips is false", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set tracks 2":
+          return "track3";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Track with Arrangement Clips",
+        color: 255,
+        clip_slots: [],
+        arrangement_clips: children("arr_clip1", "arr_clip2"),
+        devices: [],
+      },
+    });
+
+    const result = readTrack({ trackIndex: 2, includeArrangementClips: false });
+
+    expect(result.arrangementClips).toEqual([
+      { clipId: "id arr_clip1" },
+      { clipId: "id arr_clip2" },
+    ]);
+  });
+
   describe("devices", () => {
     it("returns null instrument when track has no devices", () => {
       liveApiId.mockReturnValue("track1");

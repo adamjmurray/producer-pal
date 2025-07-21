@@ -464,6 +464,8 @@ function categorizeDevices(
  * @param {boolean} args.includeInstrument - Whether to include instrument object (default: true)
  * @param {boolean} args.includeAudioEffects - Whether to include audio effects array (default: false)
  * @param {boolean} args.includeRoutings - Whether to include input/output routing information (default: false)
+ * @param {boolean} args.includeSessionClips - Whether to include full session clip data (default: true)
+ * @param {boolean} args.includeArrangementClips - Whether to include full arrangement clip data (default: true)
  * @returns {Object} Result object with track information
  */
 export function readTrack({
@@ -475,6 +477,8 @@ export function readTrack({
   includeInstrument = true,
   includeAudioEffects = false,
   includeRoutings = false,
+  includeSessionClips = true,
+  includeArrangementClips = true,
 } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
@@ -504,17 +508,27 @@ export function readTrack({
     isGroupMember: track.getProperty("is_grouped") > 0,
     groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
 
-    sessionClips: track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, clipSlotIndex) =>
-        readClip({ trackIndex, clipSlotIndex, includeNotes }),
-      )
-      .filter((clip) => clip.id != null),
+    sessionClips: includeSessionClips
+      ? track
+          .getChildIds("clip_slots")
+          .map((_clipSlotId, clipSlotIndex) =>
+            readClip({ trackIndex, clipSlotIndex, includeNotes }),
+          )
+          .filter((clip) => clip.id != null)
+      : track
+          .getChildIds("clip_slots")
+          .map((slotId, clipSlotIndex) => {
+            const clip = new LiveAPI(`${slotId} clip`);
+            return clip.exists() ? { clipId: clip.id, clipSlotIndex } : null;
+          })
+          .filter(Boolean),
 
-    arrangementClips: track
-      .getChildIds("arrangement_clips")
-      .map((clipId) => readClip({ clipId, includeNotes }))
-      .filter((clip) => clip.id != null),
+    arrangementClips: includeArrangementClips
+      ? track
+          .getChildIds("arrangement_clips")
+          .map((clipId) => readClip({ clipId, includeNotes }))
+          .filter((clip) => clip.id != null)
+      : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId })),
   };
 
   // Categorize devices into separate arrays

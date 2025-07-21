@@ -65,5 +65,17 @@ export const toolDefReadTrack = defineTool("read-track", {
       .describe(
         "Whether to include input/output routing information (default: false). When true, returns available routing channels/types, current routing settings, and track monitoring state.",
       ),
+    includeSessionClips: z
+      .boolean()
+      .default(true)
+      .describe(
+        "Whether to include full session clip data (default: true). When false, session clips return minimal data with only clipId and clipSlotIndex for faster responses when detailed clip information is not needed.",
+      ),
+    includeArrangementClips: z
+      .boolean()
+      .default(true)
+      .describe(
+        "Whether to include full arrangement clip data (default: true). When false, arrangement clips return minimal data with only clipId for faster responses when detailed clip information is not needed.",
+      ),
   },
 });
