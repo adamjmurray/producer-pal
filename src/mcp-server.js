@@ -6,7 +6,7 @@ import { DEFAULT_LIVE_API_CALL_TIMEOUT_MS } from "./mcp-server/max-api-adapter";
 import * as console from "./mcp-server/node-for-max-logger";
 import { VERSION } from "./version";
 
-let port = 3355;
+let port = 3350;
 let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
 const args = process.argv;
 

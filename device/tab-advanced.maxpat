@@ -10,10 +10,34 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 187.0, 458.0, 515.0, 447.0 ],
+		"rect" : [ 187.0, 458.0, 538.0, 447.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-15",
+					"linecount" : 5,
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 351.0, 225.551402151584625, 170.0, 74.0 ],
+					"text" : "Attempt to avoid a \"Node script not ready can't handle message verbose\" error.\nTODO: Needs a robust sotluion"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-11",
+					"maxclass" : "newobj",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 275.0, 253.0, 61.0, 22.0 ],
+					"text" : "pipe 1000"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-14",
 					"maxclass" : "message",
@@ -46,7 +70,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 274.766353011131287, 262.514019191265106, 15.0, 15.0 ],
+					"patching_rect" : [ 275.0, 213.0, 15.0, 15.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 124.0, 37.481310427188873, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
@@ -54,6 +78,9 @@
 							"parameter_annotation_name" : "Verbose logging",
 							"parameter_enum" : [ "off", "on" ],
 							"parameter_info" : "Log details of every incoming request from and response to the AI. Generally only useful when debugging recurring failures.",
+							"parameter_initial" : [ 0.0 ],
+							"parameter_initial_enable" : 1,
+							"parameter_invisible" : 1,
 							"parameter_longname" : "live.toggle",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
@@ -74,7 +101,7 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 299.766353011131287, 242.056072890758514, 45.0, 29.0 ],
+					"patching_rect" : [ 296.766353011131287, 188.0, 45.0, 29.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 42.523366868495941, 35.981310427188873, 76.0, 18.0 ],
 					"text" : "Verbose logging",
@@ -97,7 +124,7 @@
 					"numinlets" : 0,
 					"numoutlets" : 0,
 					"offset" : [ 0.0, 0.0 ],
-					"patching_rect" : [ 50.0, 127.0, 165.0, 23.0 ],
+					"patching_rect" : [ 52.25, 63.0, 165.0, 23.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 42.5, 95.0, 165.0, 23.0 ],
 					"viewvisibility" : 1
@@ -190,7 +217,7 @@
 						"valueof" : 						{
 							"parameter_annotation_name" : "Timeout",
 							"parameter_info" : "Maximum time to wait for AI tool operations to complete. Default is 15 seconds. A single operation may involve multiple Live API calls. Increase if experiencing timeout errors on complex operations or slower systems.",
-							"parameter_initial" : [ 15 ],
+							"parameter_initial" : [ 30.0 ],
 							"parameter_initial_enable" : 1,
 							"parameter_invisible" : 1,
 							"parameter_longname" : "timeout",
@@ -248,7 +275,7 @@
 					"numoutlets" : 2,
 					"outlettype" : [ "", "float" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 27.0, 124.0, 44.0, 15.0 ],
+					"patching_rect" : [ 27.0, 137.5, 44.0, 15.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 124.0, 54.5, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
@@ -400,6 +427,13 @@
  ],
 		"lines" : [ 			{
 				"patchline" : 				{
+					"destination" : [ "obj-14", 0 ],
+					"source" : [ "obj-11", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-9", 0 ],
 					"source" : [ "obj-14", 0 ]
 				}
@@ -470,7 +504,7 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-14", 0 ],
+					"destination" : [ "obj-11", 0 ],
 					"source" : [ "obj-8", 0 ]
 				}
 

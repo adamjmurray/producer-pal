@@ -2,10 +2,9 @@
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
-  createMaxApiAdapter,
   callLiveApi,
+  createMaxApiAdapter,
   handleLiveApiResult,
-  DEFAULT_LIVE_API_CALL_TIMEOUT_MS,
 } from "./max-api-adapter.js";
 
 describe("Max API Adapter", () => {
@@ -266,12 +265,6 @@ describe("Max API Adapter", () => {
       expect(clearTimeoutSpy).toHaveBeenCalled();
 
       clearTimeoutSpy.mockRestore();
-    });
-  });
-
-  describe("Constants", () => {
-    it("should export DEFAULT_LIVE_API_CALL_TIMEOUT_MS", () => {
-      expect(DEFAULT_LIVE_API_CALL_TIMEOUT_MS).toBe(15_000);
     });
   });
 

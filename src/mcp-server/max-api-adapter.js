@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { formatErrorResponse } from "../mcp-response-utils.js";
 import * as console from "./node-for-max-logger.js";
 
-export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 15_000;
+export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
 
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();
