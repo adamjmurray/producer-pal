@@ -9,15 +9,15 @@ import { readTrack } from "./read-track.js";
 
 export function readSong({
   includeDrumChains = false,
-  includeNotes = true,
+  includeNotes = false,
   includeRackChains = true,
   includeEmptyScenes = false,
   includeMidiEffects = false,
   includeInstrument = true,
   includeAudioEffects = false,
   includeRoutings = false,
-  includeSessionClips = true,
-  includeArrangementClips = true,
+  includeSessionClips = false,
+  includeArrangementClips = false,
 } = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");

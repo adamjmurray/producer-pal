@@ -48,9 +48,9 @@ export const toolDefReadSong = defineTool("read-song", {
       ),
     includeNotes: z
       .boolean()
-      .default(true)
+      .default(false)
       .describe(
-        "Whether to include notes data in clip objects (default: true). When false, clips return without notes property for lighter responses.",
+        "Whether to include notes data in clip objects (default: false). When false, clips return without notes property for lighter responses.",
       ),
     includeRackChains: z
       .boolean()
@@ -90,15 +90,15 @@ export const toolDefReadSong = defineTool("read-song", {
       ),
     includeSessionClips: z
       .boolean()
-      .default(true)
+      .default(false)
       .describe(
-        "Whether to include full session clip data in track objects (default: true). When false, session clips return minimal data with only clipId and clipSlotIndex for faster responses when detailed clip information is not needed.",
+        "Whether to include full session clip data in track objects (default: false). When false, session clips return minimal data with only clipId and clipSlotIndex for faster responses when detailed clip information is not needed.",
       ),
     includeArrangementClips: z
       .boolean()
-      .default(true)
+      .default(false)
       .describe(
-        "Whether to include full arrangement clip data in track objects (default: true). When false, arrangement clips return minimal data with only clipId for faster responses when detailed clip information is not needed.",
+        "Whether to include full arrangement clip data in track objects (default: false). When false, arrangement clips return minimal data with only clipId for faster responses when detailed clip information is not needed.",
       ),
   },
 });
