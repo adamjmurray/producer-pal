@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefCreateScene = defineTool("create-scene", {
+export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
   description:
     "Creates new scenes at the specified index. Scenes will be inserted at the given index and existing scenes will shift down. " +

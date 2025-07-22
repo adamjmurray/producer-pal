@@ -6,7 +6,7 @@ import {
   MAX_AUTO_CREATED_TRACKS,
 } from "../tools/constants.js";
 
-export const toolDefDuplicate = defineTool("duplicate", {
+export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate Clip/Track/Scene",
   description:
     "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +

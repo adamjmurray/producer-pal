@@ -15,10 +15,10 @@ Ableton Live through a Max for Live device. It uses the Model Context Protocol
 # Build the project (required after changes)
 npm run build
 
-# Development mode with auto-rebuild (includes raw-live-api tool)
+# Development mode with auto-rebuild (includes ppal-raw-live-api tool)
 npm run dev
 
-# Build with all tools including raw-live-api
+# Build with all tools including ppal-raw-live-api
 npm run build:all
 
 # Run tests
@@ -241,8 +241,8 @@ node tools/cli.mjs
 node tools/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node tools/cli.mjs tools/call read-song '{}'
-node tools/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+node tools/cli.mjs tools/call ppal-read-song '{}'
+node tools/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 ```
 
 **IMPORTANT:** ALWAYS ask the user for permission before using the CLI tool to
@@ -258,13 +258,13 @@ Desktop installation, use the `tools/test-desktop-extension.mjs` script:
 node tools/test-desktop-extension.mjs
 
 # Test specific tool without arguments
-node tools/test-desktop-extension.mjs read-song
+node tools/test-desktop-extension.mjs ppal-read-song
 
 # Test tool with arguments
-node tools/test-desktop-extension.mjs read-track '{"trackIndex": 0}'
+node tools/test-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
 
 # Test with custom HTTP URL
-node tools/test-desktop-extension.mjs http://localhost:3350/mcp read-song
+node tools/test-desktop-extension.mjs http://localhost:3350/mcp ppal-read-song
 
 # Show usage help
 node tools/test-desktop-extension.mjs --help
@@ -285,13 +285,13 @@ extension testing tool to update state in Ableton Live.
 
 ### Raw Live API Tool
 
-For development and debugging, a `raw-live-api` tool is available when building
-with `npm run dev` or `npm run build:all`. This tool provides direct access to
-the Live API for research and debugging purposes:
+For development and debugging, a `ppal-raw-live-api` tool is available when
+building with `npm run dev` or `npm run build:all`. This tool provides direct
+access to the Live API for research and debugging purposes:
 
 ```bash
 # Example: Multiple operation types on live_set tempo
-node tools/cli.mjs tools/call raw-live-api '{
+node tools/cli.mjs tools/call ppal-raw-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -478,5 +478,5 @@ To update the version:
   user education, prefer adding instructions to tool descriptions over adding
   code complexity. Let Claude's intelligence handle context-aware responses
   rather than encoding rules in JavaScript. Example: The welcome message in
-  read-song and missing instrument detection both use tool instructions rather
-  than code flags. This pattern is documented in docs/Patterns.md.
+  ppal-read-song and missing instrument detection both use tool instructions
+  rather than code flags. This pattern is documented in docs/Patterns.md.

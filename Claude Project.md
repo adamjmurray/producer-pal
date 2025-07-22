@@ -127,5 +127,5 @@ copied over to Claude Code as appropriate.
   user education, prefer adding instructions to tool descriptions over adding
   code complexity. Let Claude's intelligence handle context-aware responses
   rather than encoding rules in JavaScript. Example: The welcome message in
-  read-song and missing instrument detection both use tool instructions rather
-  than code flags. This pattern is documented in docs/Patterns.md.
+  ppal-read-song and missing instrument detection both use tool instructions
+  rather than code flags. This pattern is documented in docs/Patterns.md.

@@ -9,7 +9,7 @@ describe("MCP Express App", () => {
   let serverUrl;
 
   beforeAll(async () => {
-    // Enable raw-live-api tool for testing
+    // Enable ppal-raw-live-api tool for testing
     process.env.ENABLE_RAW_LIVE_API = "true";
 
     // Import and start the server first
@@ -79,23 +79,23 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
-        "create-clip",
-        "read-clip",
-        "update-clip",
-        "create-track",
-        "read-track",
-        "update-track",
-        "capture-scene",
-        "create-scene",
-        "read-scene",
-        "update-scene",
-        "read-song",
-        "update-song",
-        "transport",
-        "delete",
-        "duplicate",
-        "memory",
-        "raw-live-api",
+        "ppal-create-clip",
+        "ppal-read-clip",
+        "ppal-update-clip",
+        "ppal-create-track",
+        "ppal-read-track",
+        "ppal-update-track",
+        "ppal-capture-scene",
+        "ppal-create-scene",
+        "ppal-read-scene",
+        "ppal-update-scene",
+        "ppal-read-song",
+        "ppal-update-song",
+        "ppal-transport",
+        "ppal-delete",
+        "ppal-duplicate",
+        "ppal-memory",
+        "ppal-raw-live-api",
       ]);
     });
 
@@ -103,7 +103,7 @@ describe("MCP Express App", () => {
       const result = await client.listTools();
 
       const readSongTool = result.tools.find(
-        (tool) => tool.name === "read-song",
+        (tool) => tool.name === "ppal-read-song",
       );
       expect(readSongTool).toBeDefined();
       expect(readSongTool.description).toContain("the Live Set");
@@ -111,7 +111,7 @@ describe("MCP Express App", () => {
       expect(readSongTool.description).toContain("all tracks");
 
       const updateClipTool = result.tools.find(
-        (tool) => tool.name === "update-clip",
+        (tool) => tool.name === "ppal-update-clip",
       );
       expect(updateClipTool).toBeDefined();
       expect(updateClipTool.inputSchema).toBeDefined();
@@ -119,7 +119,7 @@ describe("MCP Express App", () => {
       expect(updateClipTool.inputSchema.properties.ids).toBeDefined();
 
       const createTrackTool = result.tools.find(
-        (tool) => tool.name === "create-track",
+        (tool) => tool.name === "ppal-create-track",
       );
       expect(createTrackTool).toBeDefined();
       expect(createTrackTool.description).toContain("Creates new tracks");
@@ -127,7 +127,7 @@ describe("MCP Express App", () => {
       expect(createTrackTool.inputSchema.properties.count).toBeDefined();
 
       const updateTrackTool = result.tools.find(
-        (tool) => tool.name === "update-track",
+        (tool) => tool.name === "ppal-update-track",
       );
       expect(updateTrackTool).toBeDefined();
       expect(updateTrackTool.description).toContain("Updates properties");
@@ -162,7 +162,7 @@ describe("MCP Express App", () => {
 
       // Check create-clip specifically since it had the issue
       const createClipTool = result.tools.find(
-        (tool) => tool.name === "create-clip",
+        (tool) => tool.name === "ppal-create-clip",
       );
       expect(createClipTool).toBeDefined();
       expect(createClipTool.description).toContain("Creates MIDI clips");
@@ -191,7 +191,7 @@ describe("MCP Express App", () => {
       }
     });
 
-    it("should call read-track tool", async () => {
+    it("should call ppal-read-track tool", async () => {
       // For this test, we need the mock response handler from test-setup.js
       // The real handleLiveApiResult would try to actually handle the response
       // but we want the mock to provide a fake response
@@ -215,7 +215,7 @@ describe("MCP Express App", () => {
       Max.outlet = mockHandler;
 
       const result = await client.callTool({
-        name: "read-track",
+        name: "ppal-read-track",
         arguments: { trackIndex: 1 },
       });
 
@@ -232,7 +232,7 @@ describe("MCP Express App", () => {
       expect(mockHandler).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
         expect.stringMatching(
-          /^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false,"includeSessionClips":true,"includeArrangementClips":true}}$/,
+          /^{"requestId":"[a-f0-9\-]+","tool":"ppal-read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false,"includeSessionClips":true,"includeArrangementClips":true}}$/,
         ),
       );
     });
@@ -247,7 +247,7 @@ describe("MCP Express App", () => {
       Max.outlet = vi.fn();
 
       const result = await client.callTool({
-        name: "read-song",
+        name: "ppal-read-song",
         arguments: {},
       });
 
@@ -257,7 +257,7 @@ describe("MCP Express App", () => {
       expect(result.content).toBeDefined();
       expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain(
-        "Tool call 'read-song' timed out after 100ms",
+        "Tool call 'ppal-read-song' timed out after 100ms",
       );
     });
 
@@ -294,7 +294,7 @@ describe("MCP Express App", () => {
 
       try {
         const result = await client.callTool({
-          name: "read-track",
+          name: "ppal-read-track",
           arguments: { trackIndex: 0 },
         });
 

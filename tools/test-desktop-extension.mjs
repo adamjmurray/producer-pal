@@ -34,10 +34,10 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
     "  test-desktop-extension.mjs http://localhost:3350/mcp          # Custom URL",
   );
   console.log(
-    "  test-desktop-extension.mjs read-song                          # Test read-song tool",
+    "  test-desktop-extension.mjs ppal-read-song                     # Test ppal-read-song tool",
   );
   console.log(
-    "  test-desktop-extension.mjs read-track '{\"trackIndex\": 0}'     # Test with arguments",
+    "  test-desktop-extension.mjs ppal-read-track '{\"trackIndex\": 0}' # Test with arguments",
   );
   console.log("");
   process.exit(0);

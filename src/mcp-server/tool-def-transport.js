@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefTransport = defineTool("transport", {
+export const toolDefTransport = defineTool("ppal-transport", {
   title: "Control Transport",
   description:
     "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +

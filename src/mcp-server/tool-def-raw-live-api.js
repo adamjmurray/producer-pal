@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefRawLiveApi = defineTool("raw-live-api", {
+export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
   title: "Raw Live API",
   description:
     "Provides direct, low-level access to the Live API for research, development, and debugging purposes. " +

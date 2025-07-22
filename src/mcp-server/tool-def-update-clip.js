@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefUpdateClip = defineTool("update-clip", {
+export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
   description:
     "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +

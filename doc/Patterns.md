@@ -5,8 +5,8 @@
 New user experiences are implemented via tool description instructions that
 Claude can interpret contextually, not via dynamic response data.
 
-Example: The read-song tool includes welcome instructions that Claude adapts
-based on conversation context. No session state needed.
+Example: The ppal-read-song tool includes welcome instructions that Claude
+adapts based on conversation context. No session state needed.
 
 Benefits:
 
@@ -41,7 +41,7 @@ Good candidates:
 ### Examples
 
 1. **Welcome Message** (already implemented): Instead of session state tracking,
-   the read-song tool includes instructions for first-time greetings
+   the ppal-read-song tool includes instructions for first-time greetings
 2. **Missing Instruments**: Instead of adding `missingInstrument` flags,
    instructions tell Claude to notice and mention tracks without instruments
 3. **Future**: Customization will let users override these instructions without

@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefReadClip = defineTool("read-clip", {
+export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
   description:
     "Retrieves clip information including notes. Returns type ('midi' or 'audio'), name, and time-based properties for all clips. " +

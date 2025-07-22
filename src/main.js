@@ -34,26 +34,26 @@ const userContext = {
 };
 
 const tools = {
-  "read-song": (args) => readSong(args),
-  "update-song": (args) => updateSong(args),
-  "create-scene": (args) => createScene(args),
-  "read-scene": (args) => readScene(args),
-  "update-scene": (args) => updateScene(args),
-  "create-track": (args) => createTrack(args),
-  "read-track": (args) => readTrack(args),
-  "update-track": (args) => updateTrack(args),
-  "create-clip": (args) => createClip(args),
-  "read-clip": (args) => readClip(args),
-  "update-clip": (args) => updateClip(args),
-  delete: (args) => deleteObject(args),
-  duplicate: (args) => duplicate(args),
-  "capture-scene": (args) => captureScene(args),
-  transport: (args) => transport(args),
-  memory: (args) => memory(args, userContext),
+  "ppal-read-song": (args) => readSong(args),
+  "ppal-update-song": (args) => updateSong(args),
+  "ppal-create-scene": (args) => createScene(args),
+  "ppal-read-scene": (args) => readScene(args),
+  "ppal-update-scene": (args) => updateScene(args),
+  "ppal-create-track": (args) => createTrack(args),
+  "ppal-read-track": (args) => readTrack(args),
+  "ppal-update-track": (args) => updateTrack(args),
+  "ppal-create-clip": (args) => createClip(args),
+  "ppal-read-clip": (args) => readClip(args),
+  "ppal-update-clip": (args) => updateClip(args),
+  "ppal-delete": (args) => deleteObject(args),
+  "ppal-duplicate": (args) => duplicate(args),
+  "ppal-capture-scene": (args) => captureScene(args),
+  "ppal-transport": (args) => transport(args),
+  "ppal-memory": (args) => memory(args, userContext),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  tools["raw-live-api"] = (args) => rawLiveApi(args);
+  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args);
 }
 
 function callTool(toolName, args) {
@@ -82,7 +82,7 @@ export async function mcp_request(serializedJSON) {
     const { requestId, tool, args } = request;
 
     const includeUserContext =
-      userContext.projectNotes.enabled && tool === "read-song";
+      userContext.projectNotes.enabled && tool === "ppal-read-song";
 
     let result;
     try {

@@ -2,8 +2,8 @@
 
 ## Overview
 
-The `raw-live-api` tool provides direct, low-level access to the Live API for
-research, development, and debugging purposes. This tool exposes the full
+The `ppal-raw-live-api` tool provides direct, low-level access to the Live API
+for research, development, and debugging purposes. This tool exposes the full
 capabilities of the LiveAPI class, allowing developers to experiment with new
 features and troubleshoot issues without the abstractions of our higher-level
 tools.

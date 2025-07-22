@@ -40,17 +40,17 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
 
 const mockMcpServer = {
   _registeredTools: {
-    "read-song": {
+    "ppal-read-song": {
       title: "Read Song",
       description: "Read comprehensive information about the Live Set",
       inputSchema: { type: "object", properties: {} },
     },
-    "create-clip": {
+    "ppal-create-clip": {
       title: "Create Clip",
       description: "Creates MIDI clips in Session or Arrangement",
       inputSchema: { type: "object", properties: {} },
     },
-    "raw-live-api": {
+    "ppal-raw-live-api": {
       title: "Raw Live API",
       description: "Development only tool",
       inputSchema: { type: "object", properties: {} },
@@ -113,19 +113,19 @@ describe("StdioHttpBridge", () => {
       expect(quietBridge.verbose).toBe(false);
     });
 
-    it("generates fallback tools excluding raw-live-api", () => {
+    it("generates fallback tools excluding ppal-raw-live-api", () => {
       const tools = bridge.fallbackTools.tools;
-      expect(tools.length).toBe(2); // Based on our mock that has 3 tools minus raw-live-api
-      expect(tools.map((t) => t.name)).not.toContain("raw-live-api");
+      expect(tools.length).toBe(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
+      expect(tools.map((t) => t.name)).not.toContain("ppal-raw-live-api");
 
       // Check expected tools are present
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("read-song");
-      expect(toolNames).toContain("create-clip");
+      expect(toolNames).toContain("ppal-read-song");
+      expect(toolNames).toContain("ppal-create-clip");
 
       // Verify tool structure
       expect(tools[0]).toEqual({
-        name: "read-song",
+        name: "ppal-read-song",
         title: "Read Song",
         description: "Read comprehensive information about the Live Set",
         inputSchema: { type: "object", properties: {} },
@@ -409,7 +409,7 @@ describe("StdioHttpBridge", () => {
 
       const request = {
         params: {
-          name: "read-song",
+          name: "ppal-read-song",
           arguments: { trackIndex: 0 },
         },
       };
@@ -417,7 +417,7 @@ describe("StdioHttpBridge", () => {
       await callToolHandler(request);
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Tool call: read-song",
+        "[Bridge] Tool call: ppal-read-song",
         { trackIndex: 0 },
       );
     });

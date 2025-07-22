@@ -1,14 +1,14 @@
 // src/mcp-server/tool-def-update-track.js
 import { z } from "zod";
-import { defineTool } from "./define-tool.js";
 import { MONITORING_STATE } from "../tools/constants.js";
+import { defineTool } from "./define-tool.js";
 
-export const toolDefUpdateTrack = defineTool("update-track", {
+export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
   description:
     "Updates properties of existing tracks by ID. Supports bulk operations when provided with comma-separated track IDs. " +
     "All properties except ids are optional. " +
-    "Routing properties accept identifier strings that can be obtained from read-track or read-song with includeRoutings: true. " +
+    "Routing properties accept identifier strings that can be obtained from ppal-read-track or ppal-read-song with includeRoutings: true. " +
     "IMPORTANT: When changing routing, always set the routing type BEFORE setting the channel, " +
     "as available channels depend on the selected type.",
   annotations: {

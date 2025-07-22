@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefReadScene = defineTool("read-scene", {
+export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
   description:
     "Read comprehensive information about a scene. When includeClips is true, returns clip objects with time-based properties in bar|beat format. " +

@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefCaptureScene = defineTool("capture-scene", {
+export const toolDefCaptureScene = defineTool("ppal-capture-scene", {
   title: "Capture Scene",
   description:
     "Captures currently playing Session clips from all tracks and inserts them as a new scene below the selected scene. " +

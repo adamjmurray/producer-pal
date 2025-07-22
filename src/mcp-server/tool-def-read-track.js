@@ -3,7 +3,7 @@ import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 import { DEVICE_TYPES } from "../tools/constants.js";
 
-export const toolDefReadTrack = defineTool("read-track", {
+export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
   description:
     "Read comprehensive information about a track. Returns sessionClips and arrangementClips arrays containing clip objects with time-based properties in bar|beat format. " +

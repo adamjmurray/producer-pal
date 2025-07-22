@@ -4,7 +4,7 @@ import { defineTool } from "./define-tool.js";
 import { VALID_PITCH_CLASS_NAMES } from "../notation/pitch-class-name-to-number.js";
 import { VALID_SCALE_NAMES } from "../tools/constants.js";
 
-export const toolDefUpdateSong = defineTool("update-song", {
+export const toolDefUpdateSong = defineTool("ppal-update-song", {
   title: "Update Song",
   description:
     "Updates song properties in the Live Set including view state, tempo, time signature, and scale. " +

@@ -87,7 +87,7 @@ Messages sent from Node for Max to the v8 object:
   ("mcp_request",
   JSON.stringify({
     requestId: 42,
-    tool: "create-clip",
+    tool: "ppal-create-clip",
     args: {
       track: 0,
       clipSlot: 1,

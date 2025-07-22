@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefMemory = defineTool("memory", {
+export const toolDefMemory = defineTool("ppal-memory", {
   title: "Memory Tool for Project Notes",
   description:
     "Manages user-defined project notes that help Producer Pal understand project-specific goals and preferences. " +

@@ -4,16 +4,16 @@ import { DEVICE_TYPES } from "../tools/constants.js";
 import { VERSION } from "../version.js";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefReadSong = defineTool("read-song", {
+export const toolDefReadSong = defineTool("ppal-read-song", {
   title: "Read Song",
   description:
     "Read comprehensive information about the Live Set (via Producer Pal) including global settings and all tracks. " +
     "Track objects include clip arrays with time-based properties in bar|beat format. " +
     "Understanding track arrangement-following states and clip playing states helps determine which clips are currently audible and whether tracks will respond to Arrangement playback.\n" +
-    "IMPORTANT: If the user asks to play with Ableton Live or starts a conversation with 'ableton', start here and call this automatically. Do not include additional information the first time you call read-song as this can cause timeouts in complex Live Sets. The default args have been tuned to help ensure success, so use them! You can call again and collect more details for Sets without dozens of tracks or clips. Use read-track to extract more detailed information from individual tracks in Live Sets with lots of tracks.\n" +
+    "IMPORTANT: If the user asks to play with Ableton Live or starts a conversation with 'ableton', start here and call this automatically. Do not include additional information the first time you call ppal-read-song as this can cause timeouts in complex Live Sets. The default args have been tuned to help ensure success, so use them! You can call again and collect more details for Sets without dozens of tracks or clips. Use ppal-read-track to extract more detailed information from individual tracks in Live Sets with lots of tracks.\n" +
     "IMPORTANT: The returned state represents Live at this moment in time. If the user mentions moving, deleting, or rearranging objects, " +
-    "immediately call read-song again before any other operations.\n" +
-    "INSTRUCTION: After the first `read-song` call in a NEW conversation, provide a welcome message:\n" +
+    "immediately call ppal-read-song again before any other operations.\n" +
+    "INSTRUCTION: After the first `ppal-read-song` call in a NEW conversation, provide a welcome message:\n" +
     `- Producer Pal ${VERSION} connected to Ableton Live.\n` +
     "- Important tips:\n" +
     "    - **Save often!** I can modify and delete things in your project, and I make mistakes.'\n" +

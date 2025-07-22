@@ -2,7 +2,7 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
-export const toolDefUpdateScene = defineTool("update-scene", {
+export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
   description:
     "Updates properties of existing scenes by ID. Supports bulk operations when provided with comma-separated scene IDs. " +

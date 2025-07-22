@@ -24,36 +24,40 @@ const rootPackageJson = JSON.parse(
 );
 const version = rootPackageJson.version;
 
-// Generate tools from MCP server (excluding development-only raw-live-api)
+// Generate tools from MCP server (excluding development-only ppal-raw-live-api)
 const tools = [];
 
 // User-facing descriptions for tools in the desktop extension manifest
 // These are crisp, concise descriptions for end users, unlike the detailed
 // LLM-facing descriptions in the MCP tool definitions
 const toolDescriptions = {
-  transport:
+  "ppal-transport":
     "Controls Arrangement and Session transport, playback, position, and loop settings",
-  "create-clip": "Creates MIDI clips in Session or Arrangement view",
-  "read-clip": "Reads information about clips including notes and properties",
-  "update-clip": "Updates clip properties, notes, and settings",
-  "create-track": "Creates new tracks in the Live Set",
-  "read-track": "Reads information about tracks including clips and settings",
-  "update-track": "Updates track properties like name, color, and settings",
-  "capture-scene":
+  "ppal-create-clip": "Creates MIDI clips in Session or Arrangement view",
+  "ppal-read-clip":
+    "Reads information about clips including notes and properties",
+  "ppal-update-clip": "Updates clip properties, notes, and settings",
+  "ppal-create-track": "Creates new tracks in the Live Set",
+  "ppal-read-track":
+    "Reads information about tracks including clips and settings",
+  "ppal-update-track":
+    "Updates track properties like name, color, and settings",
+  "ppal-capture-scene":
     "Captures existing clips from tracks into a new or existing scene",
-  "create-scene": "Creates new scenes in Session view",
-  "read-scene": "Reads information about scenes and their clips",
-  "update-scene": "Updates scene properties like name and color",
-  "read-song":
+  "ppal-create-scene": "Creates new scenes in Session view",
+  "ppal-read-scene": "Reads information about scenes and their clips",
+  "ppal-update-scene": "Updates scene properties like name and color",
+  "ppal-read-song":
     "Reads comprehensive information about the Live Set including global settings and all tracks",
-  "update-song":
+  "ppal-update-song":
     "Updates global song settings like tempo, time signature, and scales",
-  duplicate: "Duplicates objects between Session and Arrangement views",
-  delete: "Deletes various objects (tracks, clips, scenes)",
+  "ppal-duplicate": "Duplicates objects between Session and Arrangement views",
+  "ppal-delete": "Deletes various objects (tracks, clips, scenes)",
+  "ppal-memory": "Manages user-defined project notes for Producer Pal",
 };
 
 for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
-  if (name === "raw-live-api") continue; // Skip development-only tool
+  if (name === "ppal-raw-live-api") continue; // Skip development-only tool
 
   tools.push({
     name: getDisplayName(toolInfo) || name,

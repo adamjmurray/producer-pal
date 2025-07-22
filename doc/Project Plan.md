@@ -87,16 +87,34 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 
 #### 0.9.4
 
-Misc stuff & polish before 1.0.0
-
-- [x] Enforce input schema constraints when calling tools
+- [x] Reframe project context as "Project notes"
 - [x] Place limits on project notes size
 - [x] Strictly validate all tool inputs
 - [x] Fix issues with recoverable errors making it look like Producer Pal is
       disconnected from Live
 - [x] Improve Producer Pal logo design
-- [ ] Disable default verbose debug logging. Add an option to enable verbose
+- [x] Disable default verbose debug logging. Add an option to enable verbose
       logging to the device UI and Claude Desktop extension
+- [x] Fix timeout issues in larger Live Sets (testing with the Demo Song from
+      the Chop and Swing pack that comes with Live 12)
+  - [x] Omit clips by default in read-song with new args to optionally load clip
+        data in the read-song and the read-track tool
+  - [x] Increase default timeout to 30s
+    - [ ] And let this timeout be changed in the UI without restarting the
+          server
+- [x] Prefix all tool names with "ppal-" to disambiguate from other MCP tools
+- [ ] Fix "node.script: Error handling response from Max: SyntaxError:
+      Unterminated string in JSON at position 32767" when loading arrangement
+      clips in the Chop and Swing demo song
+
+#### 0.9.5
+
+- [ ] Add new ppal-init tool to handle the NUX instead of read-song
+- [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
+- [ ] Combine the include* args for read-song and read-track (and any other
+      read-* tools?) to be a single include arg that takes an array of what
+      detailed info to include
+- [ ] Make verbose logging in Claude Desktop actually work
 - [ ] Make demo video and add to README and web site
 
 ### 🚀 1.0.0 Release
@@ -122,6 +140,8 @@ bigger product features in the 1.x line (see below)_
       As a desktop extension parameter or on-the-fly in the AI chat?
 - [ ] Implement version update notifications in the UI
 - [ ] Improve response format for `duplicate` tool
+- [ ] Automatically load detailed data (in read-song, etc) based on complexity
+      of the Live Set i.e. the number of Live API calls needed
 - [ ] Improved mocking system with unified interface for LiveAPI objects
 - [ ] State Sync: ID-first operations, smart error recovery (see doc/Better
       State Sync Plan.md)
