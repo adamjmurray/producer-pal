@@ -496,15 +496,19 @@ export function readTrack({
   const isProducerPalHost = trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
 
+  // Check track capabilities to avoid warnings
+  const canBeArmed = track.getProperty("can_be_armed") > 0;
+  const isGroup = track.getProperty("is_foldable") > 0;
+
   const result = {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
     trackIndex,
     color: track.getColor(),
-    isArmed: track.getProperty("arm") > 0,
+    isArmed: canBeArmed ? track.getProperty("arm") > 0 : false,
     followsArrangement: track.getProperty("back_to_arranger") === 0,
-    isGroup: track.getProperty("is_foldable") > 0,
+    isGroup,
     isGroupMember: track.getProperty("is_grouped") > 0,
     groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
 
@@ -523,12 +527,14 @@ export function readTrack({
           })
           .filter(Boolean),
 
-    arrangementClips: includeArrangementClips
-      ? track
-          .getChildIds("arrangement_clips")
-          .map((clipId) => readClip({ clipId, includeNotes }))
-          .filter((clip) => clip.id != null)
-      : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId })),
+    arrangementClips: isGroup
+      ? [] // Group tracks have no arrangement clips
+      : includeArrangementClips
+        ? track
+            .getChildIds("arrangement_clips")
+            .map((clipId) => readClip({ clipId, includeNotes }))
+            .filter((clip) => clip.id != null)
+        : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId })),
   };
 
   // Categorize devices into separate arrays

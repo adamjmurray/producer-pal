@@ -87,6 +87,7 @@ describe("readSong", () => {
         mute: 0,
         solo: 1,
         arm: 1,
+        can_be_armed: 0, // Group track
         is_foldable: 1,
         is_grouped: 0,
         group_track: ["id", 0],
@@ -161,7 +162,7 @@ describe("readSong", () => {
           trackIndex: 0,
           color: "#FF0000",
           state: "soloed",
-          isArmed: true,
+          isArmed: false,
           followsArrangement: true,
           isGroup: true,
           isGroupMember: false,
