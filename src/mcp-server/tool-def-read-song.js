@@ -10,7 +10,7 @@ export const toolDefReadSong = defineTool("read-song", {
     "Read comprehensive information about the Live Set (via Producer Pal) including global settings and all tracks. " +
     "Track objects include clip arrays with time-based properties in bar|beat format. " +
     "Understanding track arrangement-following states and clip playing states helps determine which clips are currently audible and whether tracks will respond to Arrangement playback.\n" +
-    "IMPORTANT: If the user asks to play with Ableton Live or starts a conversation with 'ableton', start here and call this automatically.\n" +
+    "IMPORTANT: If the user asks to play with Ableton Live or starts a conversation with 'ableton', start here and call this automatically. Do not include additional information the first time you call read-song as this can cause timeouts in complex Live Sets. The default args have been tuned to help ensure success, so use them! You can call again and collect more details for Sets without dozens of tracks or clips. Use read-track to extract more detailed information from individual tracks in Live Sets with lots of tracks.\n" +
     "IMPORTANT: The returned state represents Live at this moment in time. If the user mentions moving, deleting, or rearranging objects, " +
     "immediately call read-song again before any other operations.\n" +
     "INSTRUCTION: After the first `read-song` call in a NEW conversation, provide a welcome message:\n" +
