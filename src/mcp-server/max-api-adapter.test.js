@@ -7,6 +7,9 @@ import {
   setTimeoutForTesting,
 } from "./max-api-adapter.js";
 
+// Make sure the module's handler is registered
+import "./max-api-adapter.js";
+
 describe("Max API Adapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -22,24 +25,22 @@ describe("Max API Adapter", () => {
 
       expect(Max.outlet).toHaveBeenCalledWith(
         "mcp_request",
-        expect.stringMatching(/^\{.*\}$/),
+        expect.any(String), // requestId
+        "test-tool", // tool
+        '{"arg1":"value1"}', // argsJSON
       );
 
-      // Parse the JSON to verify structure
+      // Get the requestId from the outlet call
       const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      expect(requestData).toMatchObject({
-        requestId: expect.any(String),
-        tool: "test-tool",
-        args: { arg1: "value1" },
-      });
+      const requestId = callArgs[1];
+      expect(typeof requestId).toBe("string");
+      expect(callArgs[2]).toBe("test-tool");
+      expect(callArgs[3]).toBe('{"arg1":"value1"}');
 
       // Manually trigger the response using handleLiveApiResult
       handleLiveApiResult(
-        JSON.stringify({
-          requestId: requestData.requestId,
-          result: { content: [{ type: "text", text: "test response" }] },
-        }),
+        requestId,
+        JSON.stringify({ content: [{ type: "text", text: "test response" }] }),
       );
 
       const result = await promise;
@@ -77,12 +78,10 @@ describe("Max API Adapter", () => {
 
       // Manually trigger response
       const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
+      const requestId = callArgs[1];
       handleLiveApiResult(
-        JSON.stringify({
-          requestId: requestData.requestId,
-          result: { content: [{ type: "text", text: "test response" }] },
-        }),
+        requestId,
+        JSON.stringify({ content: [{ type: "text", text: "test response" }] }),
       );
 
       await promise;
@@ -140,12 +139,11 @@ describe("Max API Adapter", () => {
 
       // Get the request ID from the outlet call
       const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      const requestId = requestData.requestId;
+      const requestId = callArgs[1];
 
       // Simulate the response
       const mockResult = { content: [{ type: "text", text: "success" }] };
-      handleLiveApiResult(JSON.stringify({ requestId, result: mockResult }));
+      handleLiveApiResult(requestId, JSON.stringify(mockResult));
 
       const result = await promise;
       expect(result).toEqual(mockResult);
@@ -160,13 +158,13 @@ describe("Max API Adapter", () => {
 
       // Get request ID
       const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      const requestId = requestData.requestId;
+      const requestId = callArgs[1];
 
       // Simulate response with errors
       const mockResult = { content: [{ type: "text", text: "success" }] };
       handleLiveApiResult(
-        JSON.stringify({ requestId, result: mockResult }),
+        requestId,
+        JSON.stringify(mockResult),
         "Error 1",
         "Error 2",
       );
@@ -186,12 +184,7 @@ describe("Max API Adapter", () => {
 
     it("should handle unknown request ID", async () => {
       // Call with unknown request ID
-      handleLiveApiResult(
-        JSON.stringify({
-          requestId: "unknown-id",
-          result: { content: [] },
-        }),
-      );
+      handleLiveApiResult("unknown-id", JSON.stringify({ content: [] }));
 
       // The logger uses console.info() which only logs when verbose mode is enabled
       // Since verbose is off by default in tests, Max.post is never called
@@ -200,16 +193,25 @@ describe("Max API Adapter", () => {
     });
 
     it("should handle malformed JSON response", async () => {
-      // Call with malformed JSON
-      handleLiveApiResult("{ malformed json");
+      // Ensure Max.outlet is mocked properly and doesn't throw
+      Max.outlet = vi.fn();
 
-      // Should log error but not throw
-      // The new logger format includes timestamp and log level parameter
-      expect(Max.post).toHaveBeenCalledWith(
-        expect.stringMatching(
-          /^\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] Error handling response from Max:/,
-        ),
-        "error",
+      // Start a request to create a pending request
+      const promise = callLiveApi("test-tool", {});
+
+      // Get the request ID from the outlet call
+      const callArgs = Max.outlet.mock.calls[0];
+      const requestId = callArgs[1];
+
+      // Call with malformed JSON - this should resolve with an error response
+      handleLiveApiResult(requestId, "{ malformed json");
+
+      const result = await promise;
+
+      // Should resolve with an error response instead of throwing or logging
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain(
+        "Error parsing tool cool result from Max",
       );
     });
 
@@ -224,12 +226,11 @@ describe("Max API Adapter", () => {
 
       // Get request ID
       const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      const requestId = requestData.requestId;
+      const requestId = callArgs[1];
 
       // Simulate response
       const mockResult = { content: [{ type: "text", text: "success" }] };
-      handleLiveApiResult(JSON.stringify({ requestId, result: mockResult }));
+      handleLiveApiResult(requestId, JSON.stringify(mockResult));
 
       await promise;
 

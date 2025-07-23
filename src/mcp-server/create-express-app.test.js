@@ -196,17 +196,14 @@ describe("MCP Express App", () => {
       // For this test, we need the mock response handler from test-setup.js
       // The real handleLiveApiResult would try to actually handle the response
       // but we want the mock to provide a fake response
-      const mockHandler = vi.fn((message, jsonString) => {
+      const mockHandler = vi.fn((message, requestId, tool, argsJSON) => {
         if (message === "mcp_request") {
-          const data = JSON.parse(jsonString);
           // Simulate the response from Max after a short delay
           setTimeout(() => {
             // Call the real handleLiveApiResult with mock data
             Max.defaultMcpResponseHandler(
-              JSON.stringify({
-                requestId: data.requestId,
-                result: { content: [{ type: "text", text: "{}" }] },
-              }),
+              requestId,
+              JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
             );
           }, 1);
         }
@@ -232,9 +229,9 @@ describe("MCP Express App", () => {
 
       expect(mockHandler).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
-        expect.stringMatching(
-          /^{"requestId":"[a-f0-9\-]+","tool":"ppal-read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false,"includeSessionClips":true,"includeArrangementClips":true}}$/,
-        ),
+        expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
+        "ppal-read-track", // tool name
+        '{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false,"includeSessionClips":true,"includeArrangementClips":true}', // argsJSON
       );
     });
 

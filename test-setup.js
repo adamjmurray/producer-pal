@@ -32,18 +32,15 @@ class Max {
     }
   });
 
-  static outlet = vi.fn((message, jsonString) => {
+  static outlet = vi.fn((message, requestId, tool, argsJSON) => {
     if (message === "mcp_request" && Max.mcpResponseHandler) {
-      const data = JSON.parse(jsonString);
       // Defer calling the handler, otherwise the code inside the Promise returned by callLiveApi() hasn't executed yet
       // and the pendingRequests map won't be in the correct state for the handler to work properly.
       setTimeout(() => {
         // TODO: Make a way for these mock responses from v8 to be customized on a per-test basis
         Max.mcpResponseHandler(
-          JSON.stringify({
-            requestId: data.requestId,
-            result: { content: [{ type: "text", text: "{}" }] },
-          }),
+          requestId,
+          JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
         );
       }, 1);
     }

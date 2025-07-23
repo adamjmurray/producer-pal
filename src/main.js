@@ -75,16 +75,14 @@ export function projectNotes(_text, content) {
 }
 
 // Handle messages from Node for Max
-export async function mcp_request(serializedJSON) {
+export async function mcp_request(requestId, tool, argsJSON) {
+  let result;
   try {
-    // Parse incoming request
-    const request = JSON.parse(serializedJSON);
-    const { requestId, tool, args } = request;
+    const args = JSON.parse(argsJSON);
 
     const includeUserContext =
       userContext.projectNotes.enabled && tool === "ppal-read-song";
 
-    let result;
     try {
       // TODO: Get projectNotes behaviors under test coverage
       result = formatSuccessResponse({
@@ -93,32 +91,16 @@ export async function mcp_request(serializedJSON) {
       });
     } catch (toolError) {
       result = formatErrorResponse(
-        `Producer Pal internal error calling tool '${tool}': ${toolError.message} - Ableton Live is connected but the tool encountered an error.`,
+        `Internal error calling tool '${tool}': ${toolError.message} - Ableton Live is connected but the tool encountered an error.`,
       );
     }
-
-    // Send response back to Node for Max
-    outlet(
-      0,
-      "mcp_response",
-      JSON.stringify({
-        requestId,
-        result,
-      }),
-    );
   } catch (error) {
-    // Handle JSON parsing errors or other top-level errors
-    outlet(
-      0,
-      "mcp_response",
-      JSON.stringify({
-        requestId: -1, // Use -1 when we don't know the original requestId
-        result: formatErrorResponse(
-          `Error processing request: ${error.message}`,
-        ),
-      }),
+    result = formatErrorResponse(
+      `Error parsing tool call request: ${error.message}`,
     );
   }
+  // Send response back to Node for Max
+  outlet(0, "mcp_response", requestId, JSON.stringify(result));
 }
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss

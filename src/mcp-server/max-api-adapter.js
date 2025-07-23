@@ -22,27 +22,24 @@ Max.addHandler("timeoutMs", (input) => {
 });
 
 // Function to send a tool call to the Max v8 environment
-function callLiveApi(toolName, args) {
-  console.info(`Handling tool call: ${toolName}(${JSON.stringify(args)})`);
-
-  // Create a request with a unique ID
+function callLiveApi(tool, args) {
+  const argsJSON = JSON.stringify(args);
   const requestId = crypto.randomUUID();
-  const request = {
-    requestId,
-    tool: toolName,
-    args,
-  };
+
+  console.info(
+    `Handling tool call: ${tool}(${argsJSON}) [requestId=${requestId}]`,
+  );
 
   // Return a promise that will be resolved when Max responds or timeout
   return new Promise((resolve) => {
     try {
       // Send the request to Max as JSON
-      Max.outlet("mcp_request", JSON.stringify(request));
+      Max.outlet("mcp_request", requestId, tool, argsJSON);
     } catch (error) {
       // Always resolve (not reject) with the standard error format
       return resolve(
         formatErrorResponse(
-          error.message || `Error sending message to ${toolName}: ${error}`,
+          error.message || `Error sending message to ${tool}: ${error}`,
         ),
       );
     }
@@ -54,7 +51,7 @@ function callLiveApi(toolName, args) {
           // Always resolve (not reject) with the standard error format
           resolve(
             formatErrorResponse(
-              `Tool call '${toolName}' timed out after ${timeoutMs}ms`,
+              `Tool call '${tool}' timed out after ${timeoutMs}ms`,
             ),
           );
         }
@@ -63,29 +60,33 @@ function callLiveApi(toolName, args) {
   });
 }
 
-function handleLiveApiResult(responseJson, ...maxErrors) {
+function handleLiveApiResult(requestId, resultJSON, ...maxErrors) {
   console.info(
-    `mcp_response(${responseJson}, maxErrors=[${maxErrors.join(", ")}])`,
+    `mcp_response(requestId=${requestId}, result=${resultJSON}, maxErrors=[${maxErrors.join(", ")}])`,
   );
-  try {
-    const response = JSON.parse(responseJson);
-    const { requestId, result } = response;
 
-    if (pendingRequests.has(requestId)) {
-      const { resolve, timeout } = pendingRequests.get(requestId);
-      pendingRequests.delete(requestId);
-      if (timeout) {
-        clearTimeout(timeout);
-      }
+  if (pendingRequests.has(requestId)) {
+    const { resolve, timeout } = pendingRequests.get(requestId);
+    pendingRequests.delete(requestId);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+
+    try {
+      const result = JSON.parse(resultJSON);
       for (const error of maxErrors) {
         result.content.push({ type: "text", text: `WARNING: ${error}` });
       }
       resolve(result);
-    } else {
-      console.info(`Received response for unknown request ID: ${requestId}`);
+    } catch (error) {
+      resolve(
+        formatErrorResponse(
+          `Error parsing tool cool result from Max: ${error}`,
+        ),
+      );
     }
-  } catch (error) {
-    console.error(`Error handling response from Max: ${error}`);
+  } else {
+    console.info(`Received response for unknown request ID: ${requestId}`);
   }
 }
 
