@@ -2167,7 +2167,7 @@ describe("readTrack", () => {
       // Group track specific properties
       expect(result.isGroup).toBe(true);
       expect(result.isArmed).toBe(false);
-      expect(result.monitoringState).toBe("auto");
+      expect(result.monitoringState).toBeUndefined(); // Group tracks cannot be armed, so monitoring state is omitted
     });
 
     it("returns unknown monitoring state for unsupported values", () => {
@@ -2188,6 +2188,22 @@ describe("readTrack", () => {
       expect(result.availableInputRoutingTypes).toEqual([]);
       expect(result.availableOutputRoutingChannels).toEqual([]);
       expect(result.availableOutputRoutingTypes).toEqual([]);
+    });
+
+    it("omits monitoring state for tracks that cannot be armed", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          can_be_armed: [0], // Track cannot be armed (group/master/return tracks)
+          current_monitoring_state: [1], // This should not be accessed
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      // Should omit monitoringState property without accessing current_monitoring_state
+      expect(result.monitoringState).toBeUndefined();
+      expect(result.isArmed).toBe(false);
     });
   });
 });

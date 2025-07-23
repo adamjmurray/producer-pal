@@ -666,14 +666,18 @@ export function readTrack({
         }
       : null;
 
-    // Add monitoring state
-    const monitoringStateValue = track.getProperty("current_monitoring_state");
-    result.monitoringState =
-      {
-        [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
-        [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
-        [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
-      }[monitoringStateValue] ?? "unknown";
+    // Add monitoring state - only for tracks that can be armed (excludes group/master/return tracks)
+    if (canBeArmed) {
+      const monitoringStateValue = track.getProperty(
+        "current_monitoring_state",
+      );
+      result.monitoringState =
+        {
+          [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
+          [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
+          [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
+        }[monitoringStateValue] ?? "unknown";
+    }
   }
 
   if (isProducerPalHost) {
