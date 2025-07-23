@@ -6,6 +6,9 @@ import "./live-api-extensions";
 import {
   formatErrorResponse,
   formatSuccessResponse,
+  MAX_ERROR_DELIMITER,
+  MAX_CHUNK_SIZE,
+  MAX_CHUNKS,
 } from "./mcp-response-utils";
 import { captureScene } from "./tools/capture-scene";
 import { createClip } from "./tools/create-clip";
@@ -74,6 +77,37 @@ export function projectNotes(_text, content) {
   userContext.projectNotes.content = content ?? "";
 }
 
+function sendResponse(requestId, result) {
+  const jsonString = JSON.stringify(result);
+
+  // Calculate required chunks
+  const totalChunks = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
+
+  if (totalChunks > MAX_CHUNKS) {
+    // Response too large - send error instead
+    const errorResult = formatErrorResponse(
+      `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
+    );
+    outlet(
+      0,
+      "mcp_response",
+      requestId,
+      JSON.stringify(errorResult),
+      MAX_ERROR_DELIMITER,
+    );
+    return;
+  }
+
+  // Chunk the JSON string
+  const chunks = [];
+  for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
+    chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
+  }
+
+  // Send as: ["mcp_response", requestId, chunk1, chunk2, ..., delimiter]
+  outlet(0, "mcp_response", requestId, ...chunks, MAX_ERROR_DELIMITER);
+}
+
 // Handle messages from Node for Max
 export async function mcp_request(requestId, tool, argsJSON) {
   let result;
@@ -100,7 +134,7 @@ export async function mcp_request(requestId, tool, argsJSON) {
     );
   }
   // Send response back to Node for Max
-  outlet(0, "mcp_response", requestId, JSON.stringify(result));
+  sendResponse(requestId, result);
 }
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss

@@ -3,7 +3,10 @@
 
 import Max from "max-api";
 import crypto from "node:crypto";
-import { formatErrorResponse } from "../mcp-response-utils.js";
+import {
+  formatErrorResponse,
+  MAX_ERROR_DELIMITER,
+} from "../mcp-response-utils.js";
 import * as console from "./node-for-max-logger.js";
 
 export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
@@ -60,10 +63,8 @@ function callLiveApi(tool, args) {
   });
 }
 
-function handleLiveApiResult(requestId, resultJSON, ...maxErrors) {
-  console.info(
-    `mcp_response(requestId=${requestId}, result=${resultJSON}, maxErrors=[${maxErrors.join(", ")}])`,
-  );
+function handleLiveApiResult(requestId, ...params) {
+  console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
 
   if (pendingRequests.has(requestId)) {
     const { resolve, timeout } = pendingRequests.get(requestId);
@@ -73,16 +74,29 @@ function handleLiveApiResult(requestId, resultJSON, ...maxErrors) {
     }
 
     try {
+      // Find the delimiter
+      const delimiterIndex = params.indexOf(MAX_ERROR_DELIMITER);
+      if (delimiterIndex === -1) {
+        throw new Error("Missing MAX_ERROR_DELIMITER in response");
+      }
+
+      // Split chunks and errors
+      const chunks = params.slice(0, delimiterIndex);
+      const maxErrors = params.slice(delimiterIndex + 1);
+
+      // Reassemble chunks
+      const resultJSON = chunks.join("");
       const result = JSON.parse(resultJSON);
+
+      // Add any Max errors as warnings
       for (const error of maxErrors) {
         result.content.push({ type: "text", text: `WARNING: ${error}` });
       }
+
       resolve(result);
     } catch (error) {
       resolve(
-        formatErrorResponse(
-          `Error parsing tool cool result from Max: ${error}`,
-        ),
+        formatErrorResponse(`Error parsing tool result from Max: ${error}`),
       );
     }
   } else {

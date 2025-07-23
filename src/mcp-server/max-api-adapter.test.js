@@ -1,6 +1,7 @@
 // src/mcp-server/max-api-adapter.test.js
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_ERROR_DELIMITER } from "../mcp-response-utils.js";
 import {
   callLiveApi,
   handleLiveApiResult,
@@ -37,10 +38,11 @@ describe("Max API Adapter", () => {
       expect(callArgs[2]).toBe("test-tool");
       expect(callArgs[3]).toBe('{"arg1":"value1"}');
 
-      // Manually trigger the response using handleLiveApiResult
+      // Manually trigger the response using handleLiveApiResult with chunked format
       handleLiveApiResult(
         requestId,
         JSON.stringify({ content: [{ type: "text", text: "test response" }] }),
+        MAX_ERROR_DELIMITER,
       );
 
       const result = await promise;
@@ -82,6 +84,7 @@ describe("Max API Adapter", () => {
       handleLiveApiResult(
         requestId,
         JSON.stringify({ content: [{ type: "text", text: "test response" }] }),
+        MAX_ERROR_DELIMITER,
       );
 
       await promise;
@@ -143,7 +146,11 @@ describe("Max API Adapter", () => {
 
       // Simulate the response
       const mockResult = { content: [{ type: "text", text: "success" }] };
-      handleLiveApiResult(requestId, JSON.stringify(mockResult));
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
+      );
 
       const result = await promise;
       expect(result).toEqual(mockResult);
@@ -165,6 +172,7 @@ describe("Max API Adapter", () => {
       handleLiveApiResult(
         requestId,
         JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
         "Error 1",
         "Error 2",
       );
@@ -184,7 +192,11 @@ describe("Max API Adapter", () => {
 
     it("should handle unknown request ID", async () => {
       // Call with unknown request ID
-      handleLiveApiResult("unknown-id", JSON.stringify({ content: [] }));
+      handleLiveApiResult(
+        "unknown-id",
+        JSON.stringify({ content: [] }),
+        MAX_ERROR_DELIMITER,
+      );
 
       // The logger uses console.info() which only logs when verbose mode is enabled
       // Since verbose is off by default in tests, Max.post is never called
@@ -204,14 +216,14 @@ describe("Max API Adapter", () => {
       const requestId = callArgs[1];
 
       // Call with malformed JSON - this should resolve with an error response
-      handleLiveApiResult(requestId, "{ malformed json");
+      handleLiveApiResult(requestId, "{ malformed json", MAX_ERROR_DELIMITER);
 
       const result = await promise;
 
       // Should resolve with an error response instead of throwing or logging
       expect(result.isError).toBe(true);
       expect(result.content[0].text).toContain(
-        "Error parsing tool cool result from Max",
+        "Error parsing tool result from Max",
       );
     });
 
@@ -230,7 +242,11 @@ describe("Max API Adapter", () => {
 
       // Simulate response
       const mockResult = { content: [{ type: "text", text: "success" }] };
-      handleLiveApiResult(requestId, JSON.stringify(mockResult));
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
+      );
 
       await promise;
 
@@ -238,6 +254,59 @@ describe("Max API Adapter", () => {
       expect(clearTimeoutSpy).toHaveBeenCalled();
 
       clearTimeoutSpy.mockRestore();
+    });
+
+    it("should handle chunked responses", async () => {
+      // Ensure Max.outlet is mocked properly and doesn't throw
+      Max.outlet = vi.fn();
+
+      // Start a request
+      const promise = callLiveApi("test-tool", {});
+
+      // Get request ID
+      const callArgs = Max.outlet.mock.calls[0];
+      const requestId = callArgs[1];
+
+      // Simulate chunked response
+      const mockResult = { content: [{ type: "text", text: "success" }] };
+      const jsonString = JSON.stringify(mockResult);
+      const chunk1 = jsonString.slice(0, 10);
+      const chunk2 = jsonString.slice(10);
+
+      handleLiveApiResult(
+        requestId,
+        chunk1,
+        chunk2,
+        MAX_ERROR_DELIMITER,
+        "Error 1",
+      );
+
+      const result = await promise;
+      expect(result.content).toHaveLength(2);
+      expect(result.content[0]).toEqual({ type: "text", text: "success" });
+      expect(result.content[1]).toEqual({
+        type: "text",
+        text: "WARNING: Error 1",
+      });
+    });
+
+    it("should handle missing delimiter error", async () => {
+      // Ensure Max.outlet is mocked properly and doesn't throw
+      Max.outlet = vi.fn();
+
+      // Start a request
+      const promise = callLiveApi("test-tool", {});
+
+      // Get request ID
+      const callArgs = Max.outlet.mock.calls[0];
+      const requestId = callArgs[1];
+
+      // Simulate response without delimiter (should cause error)
+      handleLiveApiResult(requestId, "chunk1", "chunk2");
+
+      const result = await promise;
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Missing MAX_ERROR_DELIMITER");
     });
   });
 });

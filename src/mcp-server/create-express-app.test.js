@@ -3,6 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { MAX_ERROR_DELIMITER } from "../mcp-response-utils.js";
 import { setTimeoutForTesting } from "./max-api-adapter.js";
 
 describe("MCP Express App", () => {
@@ -200,10 +201,11 @@ describe("MCP Express App", () => {
         if (message === "mcp_request") {
           // Simulate the response from Max after a short delay
           setTimeout(() => {
-            // Call the real handleLiveApiResult with mock data
+            // Call the real handleLiveApiResult with mock data in chunked format
             Max.defaultMcpResponseHandler(
               requestId,
               JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
+              MAX_ERROR_DELIMITER,
             );
           }, 1);
         }

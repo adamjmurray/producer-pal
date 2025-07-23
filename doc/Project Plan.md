@@ -103,7 +103,7 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
     - [x] And let this timeout be changed in the UI without restarting the
           server
 - [x] Prefix all tool names with "ppal-" to disambiguate from other MCP tools
-- [ ] Fix "node.script: Error handling response from Max: SyntaxError:
+- [x] Fix "node.script: Error handling response from Max: SyntaxError:
       Unterminated string in JSON at position 32767" when loading arrangement
       clips in the Chop and Swing demo song
 - [ ] Fix warnings with read-song and includeRoutings:
