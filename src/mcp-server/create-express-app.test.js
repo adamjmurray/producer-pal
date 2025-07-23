@@ -3,6 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { setTimeoutForTesting } from "./max-api-adapter.js";
 
 describe("MCP Express App", () => {
   let server;
@@ -241,6 +242,9 @@ describe("MCP Express App", () => {
       // This test verifies the MCP server is working but will timeout quickly
       // since we can't mock the full Live API response chain easily
 
+      // Set a short timeout for fast testing
+      setTimeoutForTesting(2);
+
       // Remove the mcp_response handler to cause a timeout on the request calling side of the flow:
       Max.mcpResponseHandler = null;
       // Also replace Max.outlet with a simple mock that doesn't auto-respond
@@ -257,7 +261,7 @@ describe("MCP Express App", () => {
       expect(result.content).toBeDefined();
       expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain(
-        "Tool call 'ppal-read-song' timed out after 100ms",
+        "Tool call 'ppal-read-song' timed out after 2ms",
       );
     });
 
@@ -377,12 +381,12 @@ describe("MCP Express App", () => {
   });
 
   describe("Configuration Options", () => {
-    it("should accept custom timeout options", async () => {
+    it("should create app successfully without configuration options", async () => {
       const { createExpressApp } = await import("./create-express-app");
-      const customApp = createExpressApp({ timeoutMs: 5000 });
+      const app = createExpressApp();
 
-      expect(customApp).toBeDefined();
-      // The timeout is used internally, so we just verify the app was created successfully
+      expect(app).toBeDefined();
+      // The app should be created successfully without any configuration
     });
   });
 });

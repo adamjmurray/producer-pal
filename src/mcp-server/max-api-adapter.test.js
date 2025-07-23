@@ -3,43 +3,13 @@ import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   callLiveApi,
-  createMaxApiAdapter,
   handleLiveApiResult,
+  setTimeoutForTesting,
 } from "./max-api-adapter.js";
 
 describe("Max API Adapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  describe("createMaxApiAdapter", () => {
-    it("should create adapter with default timeout", () => {
-      const adapter = createMaxApiAdapter();
-
-      expect(adapter).toBeDefined();
-      expect(typeof adapter.callLiveApi).toBe("function");
-      expect(Max.addHandler).toHaveBeenCalledWith(
-        "mcp_response",
-        expect.any(Function),
-      );
-    });
-
-    it("should create adapter with custom timeout", () => {
-      const customTimeout = 5000;
-      const adapter = createMaxApiAdapter({ timeoutMs: customTimeout });
-
-      expect(adapter).toBeDefined();
-      expect(typeof adapter.callLiveApi).toBe("function");
-    });
-
-    it("should register handler for mcp_response", () => {
-      createMaxApiAdapter();
-
-      expect(Max.addHandler).toHaveBeenCalledWith(
-        "mcp_response",
-        handleLiveApiResult,
-      );
-    });
   });
 
   describe("callLiveApi", () => {
@@ -77,18 +47,20 @@ describe("Max API Adapter", () => {
     });
 
     it("should timeout after specified timeout period", async () => {
+      // Set a short timeout for fast testing
+      setTimeoutForTesting(2);
+
       // Replace Max.outlet with a simple mock that doesn't auto-respond
       Max.outlet = vi.fn();
 
-      // Use a very short timeout for testing
-      const result = await callLiveApi("test-tool", {}, 50);
+      const result = await callLiveApi("test-tool", {});
 
       // Should resolve with isError: true instead of rejecting
       expect(result).toEqual({
         content: [
           {
             type: "text",
-            text: "Tool call 'test-tool' timed out after 50ms",
+            text: "Tool call 'test-tool' timed out after 2ms",
           },
         ],
         isError: true,
@@ -265,50 +237,6 @@ describe("Max API Adapter", () => {
       expect(clearTimeoutSpy).toHaveBeenCalled();
 
       clearTimeoutSpy.mockRestore();
-    });
-  });
-
-  describe("Integration with adapter factory", () => {
-    let adapter;
-
-    beforeEach(() => {
-      adapter = createMaxApiAdapter({ timeoutMs: 100 });
-    });
-
-    it("should use custom timeout in adapter callLiveApi", async () => {
-      // Replace Max.outlet with a mock that doesn't respond
-      Max.outlet = vi.fn();
-
-      const result = await adapter.callLiveApi("test-tool", {});
-
-      expect(result).toEqual({
-        content: [
-          {
-            type: "text",
-            text: "Tool call 'test-tool' timed out after 100ms",
-          },
-        ],
-        isError: true,
-      });
-    });
-
-    it("should work end-to-end with adapter interface", async () => {
-      const promise = adapter.callLiveApi("test-tool", { data: "test" });
-
-      // Get request from outlet call
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-
-      // Respond
-      handleLiveApiResult(
-        JSON.stringify({
-          requestId: requestData.requestId,
-          result: { content: [{ type: "text", text: "adapter response" }] },
-        }),
-      );
-
-      const result = await promise;
-      expect(result.content[0].text).toBe("adapter response");
     });
   });
 });

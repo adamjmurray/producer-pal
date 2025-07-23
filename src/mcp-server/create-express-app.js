@@ -3,7 +3,7 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import { createMcpServer } from "./create-mcp-server";
-import { createMaxApiAdapter } from "./max-api-adapter.js";
+import { callLiveApi } from "./max-api-adapter.js";
 import * as console from "./node-for-max-logger";
 
 const methodNotAllowed = {
@@ -24,9 +24,7 @@ const internalError = (message) => ({
   id: null,
 });
 
-export function createExpressApp(options = {}) {
-  const maxApiAdapter = createMaxApiAdapter(options);
-
+export function createExpressApp() {
   const app = express();
   app.use(express.json());
 
@@ -34,7 +32,7 @@ export function createExpressApp(options = {}) {
     try {
       console.info("New MCP connection: " + JSON.stringify(req.body));
 
-      const server = createMcpServer(maxApiAdapter.callLiveApi);
+      const server = createMcpServer(callLiveApi);
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
       });

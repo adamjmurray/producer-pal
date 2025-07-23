@@ -11,12 +11,18 @@ export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
 // Map to store pending requests and their resolve functions
 const pendingRequests = new Map();
 
+let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
+Max.addHandler("timeoutMs", (input) => {
+  const n = Number(input);
+  if (n > 0 && n <= 60_000) {
+    timeoutMs = n;
+  } else {
+    console.error(`Invalid Live API timeoutMs: ${input}`);
+  }
+});
+
 // Function to send a tool call to the Max v8 environment
-function callLiveApi(
-  toolName,
-  args,
-  timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS,
-) {
+function callLiveApi(toolName, args) {
   console.info(`Handling tool call: ${toolName}(${JSON.stringify(args)})`);
 
   // Create a request with a unique ID
@@ -83,21 +89,11 @@ function handleLiveApiResult(responseJson, ...maxErrors) {
   }
 }
 
-/**
- * Creates a Max API adapter for MCP server communication
- * @param {Object} options - Configuration options
- * @param {number} options.timeoutMs - Default timeout for Live API calls
- * @returns {Object} Adapter interface with callLiveApi function
- */
-export function createMaxApiAdapter(options = {}) {
-  const { timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS } = options;
+Max.addHandler("mcp_response", handleLiveApiResult);
 
-  // Register the handler for responses from Max
-  Max.addHandler("mcp_response", handleLiveApiResult);
-
-  return {
-    callLiveApi: (toolName, args) => callLiveApi(toolName, args, timeoutMs),
-  };
+// Test helper function to control timeout in tests
+export function setTimeoutForTesting(ms) {
+  timeoutMs = ms;
 }
 
 // Export individual functions for testing

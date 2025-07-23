@@ -117,7 +117,7 @@
 				"box" : 				{
 					"bgmode" : 0,
 					"border" : 0,
-					"clickthrough" : 0,
+					"clickthrough" : 1,
 					"enablehscroll" : 0,
 					"enablevscroll" : 0,
 					"id" : "obj-4",
@@ -130,7 +130,7 @@
 					"offset" : [ 0.0, 0.0 ],
 					"patching_rect" : [ 50.0, 127.0, 165.0, 23.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 42.5, 95.0, 165.0, 23.0 ],
+					"presentation_rect" : [ 30.0, 50.0, 207.0, 78.0 ],
 					"viewvisibility" : 1
 				}
 
