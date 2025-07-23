@@ -106,13 +106,7 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Fix "node.script: Error handling response from Max: SyntaxError:
       Unterminated string in JSON at position 32767" when loading arrangement
       clips in the Chop and Swing demo song
-- [ ] Fix warnings with read-song and includeRoutings:
-
-      v8liveapi: 'available_input_routing_types' not available on group tracks
-      v8liveapi: 'available_input_routing_channels' not available on group tracks
-      v8liveapi: 'input_routing_type' not available on group tracks
-      v8liveapi: 'input_routing_channel' not available on group tracks
-      v8liveapi: Main and Return Tracks have no monitoring state!
+- [x] Fix warnings with read-song and includeRoutings:
 
 #### 0.9.5
 
@@ -121,9 +115,8 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [ ] Combine the include* args for read-song and read-track (and any other
       read-* tools?) to be a single include arg that takes an array of what
       detailed info to include
-- [ ] Split off separate include for available routings and consider not even
-      supporting it in read-song (it's way too big and repetitive in larger
-      sets)
+- [ ] Split off separate read-track include for available routings and don't
+      support it in read-song (it's way too big and repetitive in larger sets)
 - [ ] Support trackId arg for read-track so the return tracks and master track
       can be read
 - [ ] Make verbose logging in Claude Desktop actually work
