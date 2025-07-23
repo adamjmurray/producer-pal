@@ -2140,11 +2140,11 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0, includeRoutings: true });
 
-      // Group tracks should have empty arrays for input routing properties
-      expect(result.availableInputRoutingChannels).toEqual([]);
-      expect(result.availableInputRoutingTypes).toEqual([]);
-      expect(result.inputRoutingChannel).toBeNull();
-      expect(result.inputRoutingType).toBeNull();
+      // Group tracks should omit input routing properties entirely
+      expect(result.availableInputRoutingChannels).toBeUndefined();
+      expect(result.availableInputRoutingTypes).toBeUndefined();
+      expect(result.inputRoutingChannel).toBeUndefined();
+      expect(result.inputRoutingType).toBeUndefined();
 
       // But should still have output routing properties
       expect(result.availableOutputRoutingChannels).toEqual([

@@ -590,11 +590,8 @@ export function readTrack({
   }
 
   if (includeRoutings) {
-    // Transform available routing types - group tracks don't support input routing
-    if (isGroup) {
-      result.availableInputRoutingTypes = [];
-      result.availableInputRoutingChannels = [];
-    } else {
+    // Transform available input routing types - only for tracks that support input routing
+    if (!isGroup) {
       const availableInputTypes =
         track.getProperty("available_input_routing_types") || [];
       result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
@@ -628,11 +625,8 @@ export function readTrack({
       }),
     );
 
-    // Transform current routing settings - group tracks don't support input routing
-    if (isGroup) {
-      result.inputRoutingType = null;
-      result.inputRoutingChannel = null;
-    } else {
+    // Transform current input routing settings - only for tracks that support input routing
+    if (!isGroup) {
       const inputType = track.getProperty("input_routing_type");
       result.inputRoutingType = inputType
         ? {
