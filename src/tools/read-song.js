@@ -1,9 +1,9 @@
 // src/tools/read-song.js
-import { fromLiveApiView } from "../utils.js";
 import {
   PITCH_CLASS_NAMES,
   intervalsToPitchClasses,
 } from "../notation/midi-pitch-to-name.js";
+import { fromLiveApiView } from "../utils.js";
 import { readScene } from "./read-scene.js";
 import { readTrack } from "./read-track.js";
 
@@ -22,7 +22,6 @@ export function readSong({
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const appView = new LiveAPI("live_app view");
-  const songView = new LiveAPI("live_set view");
   const trackIds = liveSet.getChildIds("tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
