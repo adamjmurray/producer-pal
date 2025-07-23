@@ -2115,5 +2115,79 @@ describe("readTrack", () => {
       expect(result.outputRoutingType).toBeNull();
       expect(result.monitoringState).toBe("unknown");
     });
+
+    it("excludes input routing properties for group tracks when includeRoutings is true", () => {
+      liveApiId.mockReturnValue("group1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          is_foldable: 1, // This makes it a group track
+          can_be_armed: 0, // Group tracks can't be armed
+          available_output_routing_channels: [
+            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
+          ],
+          available_output_routing_types: [
+            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
+          ],
+          output_routing_channel: [
+            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+          ],
+          output_routing_type: [
+            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+          ],
+          current_monitoring_state: [1],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      // Group tracks should have empty arrays for input routing properties
+      expect(result.availableInputRoutingChannels).toEqual([]);
+      expect(result.availableInputRoutingTypes).toEqual([]);
+      expect(result.inputRoutingChannel).toBeNull();
+      expect(result.inputRoutingType).toBeNull();
+
+      // But should still have output routing properties
+      expect(result.availableOutputRoutingChannels).toEqual([
+        { name: "Master", outputId: "26" },
+        { name: "A", outputId: "27" },
+      ]);
+      expect(result.availableOutputRoutingTypes).toEqual([
+        { name: "Track Out", outputId: "25" },
+        { name: "Send Only", outputId: "28" },
+      ]);
+      expect(result.outputRoutingChannel).toEqual({
+        name: "Master",
+        outputId: "26",
+      });
+      expect(result.outputRoutingType).toEqual({
+        name: "Track Out",
+        outputId: "25",
+      });
+
+      // Group track specific properties
+      expect(result.isGroup).toBe(true);
+      expect(result.isArmed).toBe(false);
+      expect(result.monitoringState).toBe("auto");
+    });
+
+    it("returns unknown monitoring state for unsupported values", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          current_monitoring_state: [999], // Invalid monitoring state value
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      // Should return "unknown" for unsupported monitoring state values
+      expect(result.monitoringState).toBe("unknown");
+
+      // Other routing properties should still work
+      expect(result.availableInputRoutingChannels).toEqual([]);
+      expect(result.availableInputRoutingTypes).toEqual([]);
+      expect(result.availableOutputRoutingChannels).toEqual([]);
+      expect(result.availableOutputRoutingTypes).toEqual([]);
+    });
   });
 });

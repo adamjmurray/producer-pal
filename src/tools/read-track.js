@@ -590,20 +590,27 @@ export function readTrack({
   }
 
   if (includeRoutings) {
-    // Transform available routing types
-    const availableInputTypes =
-      track.getProperty("available_input_routing_types") || [];
-    result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
-      name: type.display_name,
-      inputId: String(type.identifier),
-    }));
+    // Transform available routing types - group tracks don't support input routing
+    if (isGroup) {
+      result.availableInputRoutingTypes = [];
+      result.availableInputRoutingChannels = [];
+    } else {
+      const availableInputTypes =
+        track.getProperty("available_input_routing_types") || [];
+      result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
+        name: type.display_name,
+        inputId: String(type.identifier),
+      }));
 
-    const availableInputChannels =
-      track.getProperty("available_input_routing_channels") || [];
-    result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
-      name: ch.display_name,
-      inputId: String(ch.identifier),
-    }));
+      const availableInputChannels =
+        track.getProperty("available_input_routing_channels") || [];
+      result.availableInputRoutingChannels = availableInputChannels.map(
+        (ch) => ({
+          name: ch.display_name,
+          inputId: String(ch.identifier),
+        }),
+      );
+    }
 
     const availableOutputTypes =
       track.getProperty("available_output_routing_types") || [];
@@ -621,22 +628,27 @@ export function readTrack({
       }),
     );
 
-    // Transform current routing settings
-    const inputType = track.getProperty("input_routing_type");
-    result.inputRoutingType = inputType
-      ? {
-          name: inputType.display_name,
-          inputId: String(inputType.identifier),
-        }
-      : null;
+    // Transform current routing settings - group tracks don't support input routing
+    if (isGroup) {
+      result.inputRoutingType = null;
+      result.inputRoutingChannel = null;
+    } else {
+      const inputType = track.getProperty("input_routing_type");
+      result.inputRoutingType = inputType
+        ? {
+            name: inputType.display_name,
+            inputId: String(inputType.identifier),
+          }
+        : null;
 
-    const inputChannel = track.getProperty("input_routing_channel");
-    result.inputRoutingChannel = inputChannel
-      ? {
-          name: inputChannel.display_name,
-          inputId: String(inputChannel.identifier),
-        }
-      : null;
+      const inputChannel = track.getProperty("input_routing_channel");
+      result.inputRoutingChannel = inputChannel
+        ? {
+            name: inputChannel.display_name,
+            inputId: String(inputChannel.identifier),
+          }
+        : null;
+    }
 
     const outputType = track.getProperty("output_routing_type");
     result.outputRoutingType = outputType
