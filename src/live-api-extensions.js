@@ -175,4 +175,42 @@ if (typeof LiveAPI !== "undefined") {
       },
     });
   }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "timeSignature")
+  ) {
+    Object.defineProperty(LiveAPI.prototype, "timeSignature", {
+      get: function () {
+        // Different Live API object types use different property names for time signature
+        const objectType = this.type;
+        let numeratorProp, denominatorProp;
+
+        switch (objectType) {
+          case "LiveSet":
+          case "Clip":
+            numeratorProp = "signature_numerator";
+            denominatorProp = "signature_denominator";
+            break;
+          case "Scene":
+            numeratorProp = "time_signature_numerator";
+            denominatorProp = "time_signature_denominator";
+            break;
+          default:
+            // For unknown types, try the more common LiveSet/Clip pattern first
+            numeratorProp = "signature_numerator";
+            denominatorProp = "signature_denominator";
+            break;
+        }
+
+        const numerator = this.getProperty(numeratorProp);
+        const denominator = this.getProperty(denominatorProp);
+
+        if (numerator != null && denominator != null) {
+          return `${numerator}/${denominator}`;
+        }
+
+        return null;
+      },
+    });
+  }
 }

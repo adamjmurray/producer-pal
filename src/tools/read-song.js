@@ -57,7 +57,7 @@ export function readSong({
     isPlaying: liveSet.getProperty("is_playing") > 0,
     followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
-    timeSignature: `${liveSet.getProperty("signature_numerator")}/${liveSet.getProperty("signature_denominator")}`,
+    timeSignature: liveSet.timeSignature,
     scaleEnabled,
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     selectedTrackIndex,

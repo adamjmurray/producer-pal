@@ -37,9 +37,7 @@ export function readScene({
     color: scene.getColor(),
     isEmpty: scene.getProperty("is_empty") > 0,
     tempo: isTempoEnabled ? scene.getProperty("tempo") : "disabled",
-    timeSignature: isTimeSignatureEnabled
-      ? `${scene.getProperty("time_signature_numerator")}/${scene.getProperty("time_signature_denominator")}`
-      : "disabled",
+    timeSignature: isTimeSignatureEnabled ? scene.timeSignature : "disabled",
   };
 
   // Only include triggered when scene is triggered

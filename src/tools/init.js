@@ -26,7 +26,7 @@ export function init({} = {}, context) {
     songName: liveSet.getProperty("name") || "Untitled",
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     tempo: liveSet.getProperty("tempo"),
-    timeSignature: `${liveSet.getProperty("signature_numerator")}/${liveSet.getProperty("signature_denominator")}`,
+    timeSignature: liveSet.timeSignature,
     isPlaying: liveSet.getProperty("is_playing") > 0,
 
     // Just counts, no detailed data

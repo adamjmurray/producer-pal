@@ -76,7 +76,7 @@ export function readClip({
       timeSigDenominator,
     ),
     isPlaying: clip.getProperty("is_playing") > 0,
-    timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
+    timeSignature: clip.timeSignature,
   };
 
   // Only include triggered when clip is triggered
