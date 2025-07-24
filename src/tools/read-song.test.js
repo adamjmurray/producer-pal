@@ -4,6 +4,7 @@ import {
   children,
   expectedClip,
   expectedTrack,
+  liveApiCall,
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
@@ -86,6 +87,7 @@ describe("readSong", () => {
         mute: 0,
         solo: 1,
         arm: 1,
+        can_be_armed: 0, // Group track
         is_foldable: 1,
         is_grouped: 0,
         group_track: ["id", 0],
@@ -128,7 +130,12 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({ includeEmptyScenes: true });
+    const result = readSong({
+      includeEmptyScenes: true,
+      includeSessionClips: true,
+      includeArrangementClips: true,
+      includeNotes: true,
+    });
 
     expect(result).toEqual({
       id: "live_set_id",
@@ -155,7 +162,7 @@ describe("readSong", () => {
           trackIndex: 0,
           color: "#FF0000",
           state: "soloed",
-          isArmed: true,
+          isArmed: false,
           followsArrangement: true,
           isGroup: true,
           isGroupMember: false,
@@ -213,6 +220,15 @@ describe("readSong", () => {
         },
       ],
     });
+
+    // Verify expensive Live API calls WERE made due to includeNotes: true
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "get_notes_extended",
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it("handles when no tracks or scenes exist", () => {
@@ -247,7 +263,12 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({ includeEmptyScenes: true });
+    const result = readSong({
+      includeEmptyScenes: true,
+      includeSessionClips: true,
+      includeArrangementClips: true,
+      includeNotes: true,
+    });
 
     expect(result).toEqual({
       id: "live_set",
@@ -426,7 +447,10 @@ describe("readSong", () => {
     const result = readSong({
       includeEmptyScenes: true,
       includeAudioEffects: true,
-    }); // Default behavior
+      includeSessionClips: true,
+      includeArrangementClips: true,
+      includeNotes: true,
+    });
 
     // Check that drum rack devices are included with drumPads but without devices in drumPad chains
     expect(result.tracks[0].instrument).toEqual(
@@ -550,5 +574,96 @@ describe("readSong", () => {
     expect(result.tracks[0].outputRoutingChannel).toBeUndefined();
     expect(result.tracks[0].outputRoutingType).toBeUndefined();
     expect(result.tracks[0].monitoringState).toBeUndefined();
+  });
+
+  it("passes clip loading parameters to readTrack", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "id slot1 clip": // Direct access to slot1's clip
+          return "clip1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Clip Test Set",
+        tracks: children("track1"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: children("slot1"),
+        arrangement_clips: children("arr_clip1"),
+        devices: [],
+      },
+    });
+
+    // Test with minimal clip loading
+    const result = readSong({
+      includeSessionClips: false,
+      includeArrangementClips: false,
+    });
+
+    expect(result.tracks[0].sessionClips).toEqual([
+      { clipId: "clip1", clipSlotIndex: 0 },
+    ]);
+    expect(result.tracks[0].arrangementClips).toEqual([
+      { clipId: "id arr_clip1" },
+    ]);
+  });
+
+  it("uses default parameter values when no arguments provided", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "id slot1 clip":
+          return "clip1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Default Test Set",
+        tracks: children("track1"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: children("slot1"),
+        arrangement_clips: children("arr_clip1"),
+        devices: [],
+      },
+    });
+
+    // Call readSong with no arguments to test defaults
+    const result = readSong();
+
+    // Verify default behavior: minimal clip data, no notes
+    expect(result.tracks[0].sessionClips).toEqual([
+      { clipId: "clip1", clipSlotIndex: 0 },
+    ]);
+    expect(result.tracks[0].arrangementClips).toEqual([
+      { clipId: "id arr_clip1" },
+    ]);
+
+    // Verify that notes are not included (since includeNotes defaults to false)
+    expect(result.tracks[0].sessionClips[0].notes).toBeUndefined();
+    expect(result.tracks[0].arrangementClips[0].notes).toBeUndefined();
+
+    // Verify expensive Live API calls were not made due to default minimal behavior
+    expect(liveApiCall).not.toHaveBeenCalledWith("get_notes_extended");
   });
 });

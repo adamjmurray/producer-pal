@@ -9,10 +9,10 @@
     "email": "adam@adammurray.link",
     "url": "https://adammurray.link"
   },
-  "homepage": "https://adammurray.link/producer-pal",
-  "documentation": "https://adammurray.link/producer-pal",
-  "support": "https://github.com/adamjmurray/producer-pal/issues",
-  "icon": "icon.png",
+  "homepage": "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal",
+  "documentation": "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal",
+  "support": "https://github.com/adamjmurray/producer-pal/discussions",
+  "icon": "producer-pal-logo.png",
   "screenshots": ["screenshot.png"],
   "server": {
     "type": "node",
@@ -21,7 +21,8 @@
       "command": "node",
       "args": ["${__dirname}/claude-ableton-connector.js"],
       "env": {
-        "MCP_SERVER_ORIGIN": "${user_config.mcp_server_origin}"
+        "MCP_SERVER_ORIGIN": "${user_config.mcp_server_origin}",
+        "VERBOSE_LOGGING": "${user_config.verbose_logging}"
       }
     }
   },
@@ -35,12 +36,19 @@
   "user_config": {
     "mcp_server_origin": {
       "type": "string",
-      "title": "Advanced Setting: Producer Pal Max for Live device URL",
-      "description": "URL for connecting to the Producer Pal Max for Live device (protocol://host:port). Use http://localhost:3350 for local connections or http://[IP]:3350 for network connections. The port number must match the port in the Max for Live device's advanced settings (defaults to 3350). Restart this extension after changing the URL.",
+      "title": "Ableton device URL",
+      "description": "URL for connecting to the Producer Pal Max for Live device (protocol://host:port). Use http://localhost:[port] for local connections or http://[IP]:[port] for network connections. The port number must match the port in the Max for Live device's advanced settings (default port is 3350). Restart this extension after changing the URL. Default: http://localhost:3350",
       "required": false,
       "sensitive": false,
-      "default": "http://localhost:3350",
-      "pattern": "^https?://[^/]+$"
+      "default": "http://localhost:3350"
+    },
+    "verbose_logging": {
+      "type": "boolean",
+      "title": "Enable verbose logging",
+      "description": "Enable detailed debug logging for troubleshooting. Shows request details, tool call arguments, and internal operations. Keep disabled for normal use.",
+      "required": false,
+      "sensitive": false,
+      "default": false
     }
   },
   "keywords": [

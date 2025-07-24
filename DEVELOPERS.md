@@ -105,8 +105,8 @@ node tools/cli.mjs
 node tools/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node tools/cli.mjs tools/call read-song '{}'
-node tools/cli.mjs tools/call duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+node tools/cli.mjs tools/call ppal-read-song '{}'
+node tools/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 
 # Use a different server URL
 node tools/cli.mjs http://localhost:6274/mcp tools/list
@@ -123,13 +123,13 @@ data.
 
 ### Raw Live API Access
 
-For development and debugging, a `raw-live-api` tool is available when building
-with `npm run dev` or `npm run build:all`. This tool provides direct access to
-the Live API for research and advanced debugging:
+For development and debugging, a `ppal-raw-live-api` tool is available when
+building with `npm run dev` or `npm run build:all`. This tool provides direct
+access to the Live API for research and advanced debugging:
 
 ```sh
 # Example: Get tempo using multiple operation types
-node tools/cli.mjs tools/call raw-live-api '{
+node tools/cli.mjs tools/call ppal-raw-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -138,7 +138,7 @@ node tools/cli.mjs tools/call raw-live-api '{
 }'
 
 # Example: Navigate to a track and check if it exists
-node tools/cli.mjs tools/call raw-live-api '{
+node tools/cli.mjs tools/call ppal-raw-live-api '{
   "operations": [
     {"type": "goto", "value": "live_set tracks 0"},
     {"type": "exists"},
@@ -147,10 +147,10 @@ node tools/cli.mjs tools/call raw-live-api '{
 }'
 ```
 
-The `raw-live-api` tool supports 13 operation types including core operations
-(`get_property`, `set_property`, `call_method`), convenience shortcuts (`get`,
-`set`, `call`, `goto`, `info`), and extension methods (`getProperty`,
-`getChildIds`, `exists`, `getColor`, `setColor`).
+The `ppal-raw-live-api` tool supports 13 operation types including core
+operations (`get_property`, `set_property`, `call_method`), convenience
+shortcuts (`get`, `set`, `call`, `goto`, `info`), and extension methods
+(`getProperty`, `getChildIds`, `exists`, `getColor`, `setColor`).
 
 ## Releasing
 
@@ -217,14 +217,6 @@ This script:
 2. Click the freeze button
 3. Save as: `releases/Producer_Pal.amxd`
 
-**⚠️ TEMPORARY DUAL-FILE RELEASE PROCESS**
-
-For the next release only, create both filename formats to support transition:
-
-3a. Also save as: `releases/Producer-Pal.amxd` (old filename)
-
-*Note: This dual-file step can be removed once external links are updated*
-
 #### Step 6: Create GitHub Pre-Release
 
 1. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
@@ -234,8 +226,6 @@ For the next release only, create both filename formats to support transition:
 5. Upload files from `releases/`:
    - `Producer_Pal.amxd`
    - `Producer_Pal.dxt`
-   - `Producer-Pal.amxd` (temporary - old filename)
-   - `Producer-Pal.dxt` (temporary - old filename)
 6. ✅ Check "Set as a pre-release"
 7. Write release notes
 8. Publish pre-release

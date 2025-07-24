@@ -7,7 +7,7 @@ describe("memory", () => {
 
   beforeEach(() => {
     context = {
-      projectContext: {
+      projectNotes: {
         enabled: false,
         writable: false,
         content: "",
@@ -29,16 +29,16 @@ describe("memory", () => {
 
   describe("read action", () => {
     it("should return only enabled: false when project context is disabled", () => {
-      context.projectContext.enabled = false;
+      context.projectNotes.enabled = false;
       const result = memory({ action: "read" }, context);
       expect(result).toEqual({ enabled: false });
       expect(outlet).not.toHaveBeenCalled();
     });
 
     it("should return full context when project context is enabled", () => {
-      context.projectContext.enabled = true;
-      context.projectContext.writable = true;
-      context.projectContext.content = "test content";
+      context.projectNotes.enabled = true;
+      context.projectNotes.writable = true;
+      context.projectNotes.content = "test content";
 
       const result = memory({ action: "read" }, context);
       expect(result).toEqual({
@@ -50,9 +50,9 @@ describe("memory", () => {
     });
 
     it("should return full context with writable false when not writable", () => {
-      context.projectContext.enabled = true;
-      context.projectContext.writable = false;
-      context.projectContext.content = "test content";
+      context.projectNotes.enabled = true;
+      context.projectNotes.writable = false;
+      context.projectNotes.content = "test content";
 
       const result = memory({ action: "read" }, context);
       expect(result).toEqual({
@@ -66,7 +66,7 @@ describe("memory", () => {
 
   describe("write action", () => {
     it("should throw error when project context is disabled", () => {
-      context.projectContext.enabled = false;
+      context.projectNotes.enabled = false;
       expect(() =>
         memory({ action: "write", content: "test" }, context),
       ).toThrow("Project context is disabled");
@@ -74,8 +74,8 @@ describe("memory", () => {
     });
 
     it("should throw error when project context is not writable", () => {
-      context.projectContext.enabled = true;
-      context.projectContext.writable = false;
+      context.projectNotes.enabled = true;
+      context.projectNotes.writable = false;
       expect(() =>
         memory({ action: "write", content: "test" }, context),
       ).toThrow(
@@ -85,8 +85,8 @@ describe("memory", () => {
     });
 
     it("should throw error when content is missing", () => {
-      context.projectContext.enabled = true;
-      context.projectContext.writable = true;
+      context.projectNotes.enabled = true;
+      context.projectNotes.writable = true;
       expect(() => memory({ action: "write" }, context)).toThrow(
         "Content required for write action",
       );
@@ -94,8 +94,8 @@ describe("memory", () => {
     });
 
     it("should throw error when content is empty string", () => {
-      context.projectContext.enabled = true;
-      context.projectContext.writable = true;
+      context.projectNotes.enabled = true;
+      context.projectNotes.writable = true;
       expect(() => memory({ action: "write", content: "" }, context)).toThrow(
         "Content required for write action",
       );
@@ -103,48 +103,40 @@ describe("memory", () => {
     });
 
     it("should update content when all conditions are met", () => {
-      context.projectContext.enabled = true;
-      context.projectContext.writable = true;
+      context.projectNotes.enabled = true;
+      context.projectNotes.writable = true;
 
       const result = memory(
         { action: "write", content: "new content" },
         context,
       );
 
-      expect(context.projectContext.content).toBe("new content");
+      expect(context.projectNotes.content).toBe("new content");
       expect(result).toEqual({
         enabled: true,
         writable: true,
         content: "new content",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        0,
-        "update_project_context",
-        "new content",
-      );
+      expect(outlet).toHaveBeenCalledWith(0, "updatenotes", "new content");
     });
 
     it("should overwrite existing content", () => {
-      context.projectContext.enabled = true;
-      context.projectContext.writable = true;
-      context.projectContext.content = "old content";
+      context.projectNotes.enabled = true;
+      context.projectNotes.writable = true;
+      context.projectNotes.content = "old content";
 
       const result = memory(
         { action: "write", content: "new content" },
         context,
       );
 
-      expect(context.projectContext.content).toBe("new content");
+      expect(context.projectNotes.content).toBe("new content");
       expect(result).toEqual({
         enabled: true,
         writable: true,
         content: "new content",
       });
-      expect(outlet).toHaveBeenCalledWith(
-        0,
-        "update_project_context",
-        "new content",
-      );
+      expect(outlet).toHaveBeenCalledWith(0, "updatenotes", "new content");
     });
   });
 });

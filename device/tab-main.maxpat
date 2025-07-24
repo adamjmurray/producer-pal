@@ -15,6 +15,22 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"autofit" : 1,
+					"forceaspect" : 1,
+					"id" : "obj-54",
+					"maxclass" : "fpic",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "jit_matrix" ],
+					"patching_rect" : [ 196.0, 321.0, 100.0, 70.0 ],
+					"pic" : "producer-pal-logo.svg",
+					"presentation" : 1,
+					"presentation_rect" : [ 42.0, 8.0, 49.999999344348907, 34.999999541044232 ]
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-19",
 					"linecount" : 4,
 					"maxclass" : "message",
@@ -52,7 +68,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 48.0, 91.0, 129.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 57.0, 70.0, 137.0, 18.0 ],
+					"presentation_rect" : [ 57.0, 74.0, 137.0, 18.0 ],
 					"text" : "© 2025 Adam Murray",
 					"textjustification" : 1
 				}
@@ -91,7 +107,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 243.0, 202.0, 105.0, 21.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 78.0, 44.0, 95.0, 21.0 ],
+					"presentation_rect" : [ 78.0, 53.0, 95.0, 21.0 ],
 					"text" : "version X.Y.Z",
 					"textjustification" : 1
 				}
@@ -101,7 +117,7 @@
 				"box" : 				{
 					"bgmode" : 0,
 					"border" : 0,
-					"clickthrough" : 0,
+					"clickthrough" : 1,
 					"enablehscroll" : 0,
 					"enablevscroll" : 0,
 					"id" : "obj-4",
@@ -114,24 +130,8 @@
 					"offset" : [ 0.0, 0.0 ],
 					"patching_rect" : [ 50.0, 127.0, 165.0, 23.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 42.5, 95.0, 165.0, 23.0 ],
+					"presentation_rect" : [ 30.0, 50.0, 207.0, 78.0 ],
 					"viewvisibility" : 1
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"autofit" : 1,
-					"forceaspect" : 1,
-					"id" : "obj-2",
-					"maxclass" : "fpic",
-					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "jit_matrix" ],
-					"patching_rect" : [ 259.0, 40.0, 51.0, 51.0 ],
-					"pic" : "/Users/adammurray/workspace/producer-pal/device/icon.png",
-					"presentation" : 1,
-					"presentation_rect" : [ 2.0, 3.0, 46.0, 46.0 ]
 				}
 
 			}
@@ -146,8 +146,8 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 31.0, 37.0, 163.0, 35.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 37.0, 8.0, 177.0, 35.0 ],
-					"text" : "Producer Pal",
+					"presentation_rect" : [ 54.0, 19.0, 177.0, 35.0 ],
+					"text" : "roducer Pal",
 					"textjustification" : 1
 				}
 
@@ -194,10 +194,10 @@
 			}
  ],
 		"dependency_cache" : [ 			{
-				"name" : "icon.png",
+				"name" : "producer-pal-logo.svg",
 				"bootpath" : "~/workspace/producer-pal/device",
 				"patcherrelativepath" : ".",
-				"type" : "PNG",
+				"type" : "svg",
 				"implicit" : 1
 			}
 , 			{

@@ -1,46 +1,17 @@
 // src/mcp-server/create-express-app.test.js
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-
-class Max {
-  static post = vi.fn();
-
-  static mcpResponseHandler = null;
-
-  static addHandler = vi.fn((message, handler) => {
-    if (message === "mcp_response") {
-      Max.mcpResponseHandler = handler;
-    }
-  });
-
-  static outlet = vi.fn((message, jsonString) => {
-    if (message === "mcp_request" && Max.mcpResponseHandler) {
-      const data = JSON.parse(jsonString);
-      // Defer calling the handler, otherwise the code inside the Promise returned by callLiveApi() hasn't executed yet
-      // and the pendingRequests map won't be in the correct state for the handler to work properly.
-      setTimeout(() => {
-        // TODO: Make a way for these mock responses from v8 to be customized on a per-test basis
-        Max.mcpResponseHandler(
-          JSON.stringify({
-            requestId: data.requestId,
-            result: { content: [{ type: "text", text: "{}" }] },
-          }),
-        );
-      }, 1);
-    }
-  });
-}
-
-vi.mock("max-api", () => ({ default: Max }));
+import { MAX_ERROR_DELIMITER } from "../mcp-response-utils.js";
+import { setTimeoutForTesting } from "./max-api-adapter.js";
 
 describe("MCP Express App", () => {
   let server;
   let serverUrl;
-  let defaultMaxHandler;
 
   beforeAll(async () => {
-    // Enable raw-live-api tool for testing
+    // Enable ppal-raw-live-api tool for testing
     process.env.ENABLE_RAW_LIVE_API = "true";
 
     // Import and start the server first
@@ -60,13 +31,6 @@ describe("MCP Express App", () => {
       "mcp_response",
       expect.any(Function),
     );
-    expect(Max.mcpResponseHandler).toBeDefined();
-    defaultMaxHandler = Max.addHandler.mock.calls[0][1];
-  });
-
-  beforeEach(() => {
-    // ensure this is reset to the normal behavior for each test because some overwrite it to trigger error scenarios
-    Max.addHandler("mcp_response", defaultMaxHandler);
   });
 
   afterAll(async () => {
@@ -117,23 +81,23 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
-        "create-clip",
-        "read-clip",
-        "update-clip",
-        "create-track",
-        "read-track",
-        "update-track",
-        "capture-scene",
-        "create-scene",
-        "read-scene",
-        "update-scene",
-        "read-song",
-        "update-song",
-        "transport",
-        "delete",
-        "duplicate",
-        "memory",
-        "raw-live-api",
+        "ppal-create-clip",
+        "ppal-read-clip",
+        "ppal-update-clip",
+        "ppal-create-track",
+        "ppal-read-track",
+        "ppal-update-track",
+        "ppal-capture-scene",
+        "ppal-create-scene",
+        "ppal-read-scene",
+        "ppal-update-scene",
+        "ppal-read-song",
+        "ppal-update-song",
+        "ppal-transport",
+        "ppal-delete",
+        "ppal-duplicate",
+        "ppal-memory",
+        "ppal-raw-live-api",
       ]);
     });
 
@@ -141,7 +105,7 @@ describe("MCP Express App", () => {
       const result = await client.listTools();
 
       const readSongTool = result.tools.find(
-        (tool) => tool.name === "read-song",
+        (tool) => tool.name === "ppal-read-song",
       );
       expect(readSongTool).toBeDefined();
       expect(readSongTool.description).toContain("the Live Set");
@@ -149,7 +113,7 @@ describe("MCP Express App", () => {
       expect(readSongTool.description).toContain("all tracks");
 
       const updateClipTool = result.tools.find(
-        (tool) => tool.name === "update-clip",
+        (tool) => tool.name === "ppal-update-clip",
       );
       expect(updateClipTool).toBeDefined();
       expect(updateClipTool.inputSchema).toBeDefined();
@@ -157,7 +121,7 @@ describe("MCP Express App", () => {
       expect(updateClipTool.inputSchema.properties.ids).toBeDefined();
 
       const createTrackTool = result.tools.find(
-        (tool) => tool.name === "create-track",
+        (tool) => tool.name === "ppal-create-track",
       );
       expect(createTrackTool).toBeDefined();
       expect(createTrackTool.description).toContain("Creates new tracks");
@@ -165,7 +129,7 @@ describe("MCP Express App", () => {
       expect(createTrackTool.inputSchema.properties.count).toBeDefined();
 
       const updateTrackTool = result.tools.find(
-        (tool) => tool.name === "update-track",
+        (tool) => tool.name === "ppal-update-track",
       );
       expect(updateTrackTool).toBeDefined();
       expect(updateTrackTool.description).toContain("Updates properties");
@@ -200,7 +164,7 @@ describe("MCP Express App", () => {
 
       // Check create-clip specifically since it had the issue
       const createClipTool = result.tools.find(
-        (tool) => tool.name === "create-clip",
+        (tool) => tool.name === "ppal-create-clip",
       );
       expect(createClipTool).toBeDefined();
       expect(createClipTool.description).toContain("Creates MIDI clips");
@@ -229,9 +193,29 @@ describe("MCP Express App", () => {
       }
     });
 
-    it("should call read-track tool", async () => {
+    it("should call ppal-read-track tool", async () => {
+      // For this test, we need the mock response handler from test-setup.js
+      // The real handleLiveApiResult would try to actually handle the response
+      // but we want the mock to provide a fake response
+      const mockHandler = vi.fn((message, requestId, tool, argsJSON) => {
+        if (message === "mcp_request") {
+          // Simulate the response from Max after a short delay
+          setTimeout(() => {
+            // Call the real handleLiveApiResult with mock data in chunked format
+            Max.defaultMcpResponseHandler(
+              requestId,
+              JSON.stringify({ content: [{ type: "text", text: "{}" }] }),
+              MAX_ERROR_DELIMITER,
+            );
+          }, 1);
+        }
+      });
+
+      // Replace Max.outlet with our mock for this test
+      Max.outlet = mockHandler;
+
       const result = await client.callTool({
-        name: "read-track",
+        name: "ppal-read-track",
         arguments: { trackIndex: 1 },
       });
 
@@ -242,14 +226,14 @@ describe("MCP Express App", () => {
 
       // Parse the JSON response
       const mockReturnValue = JSON.parse(result.content[0].text);
-      // this is hard-coded in our mock Max class above:
+      // this is hard-coded in our mock response above:
       expect(mockReturnValue).toEqual({});
 
-      expect(Max.outlet).toHaveBeenCalledExactlyOnceWith(
+      expect(mockHandler).toHaveBeenCalledExactlyOnceWith(
         "mcp_request",
-        expect.stringMatching(
-          /^{"requestId":"[a-f0-9\-]+","tool":"read-track","args":{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false}}$/,
-        ),
+        expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
+        "ppal-read-track", // tool name
+        '{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false,"includeSessionClips":true,"includeArrangementClips":true}', // argsJSON
       );
     });
 
@@ -257,19 +241,26 @@ describe("MCP Express App", () => {
       // This test verifies the MCP server is working but will timeout quickly
       // since we can't mock the full Live API response chain easily
 
+      // Set a short timeout for fast testing
+      setTimeoutForTesting(2);
+
       // Remove the mcp_response handler to cause a timeout on the request calling side of the flow:
-      Max.addHandler("mcp_response", null);
+      Max.mcpResponseHandler = null;
+      // Also replace Max.outlet with a simple mock that doesn't auto-respond
+      Max.outlet = vi.fn();
 
       const result = await client.callTool({
-        name: "read-song",
+        name: "ppal-read-song",
         arguments: {},
       });
 
       // The MCP SDK returns a structured error response instead of throwing
+      expect(result).toBeDefined();
       expect(result.isError).toBe(true);
       expect(result.content).toBeDefined();
+      expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain(
-        "Tool call 'read-song' timed out after 100ms",
+        "Tool call 'ppal-read-song' timed out after 2ms",
       );
     });
 
@@ -289,6 +280,36 @@ describe("MCP Express App", () => {
           arguments: {},
         }),
       ).rejects.toThrow();
+    });
+
+    it("should return isError: true when Max.outlet throws", async () => {
+      // This test verifies that errors thrown when sending to Max are properly
+      // caught and returned as MCP error responses with isError: true
+      const errorMessage = "Simulated tool error";
+
+      // Save the original mock to restore it after
+      const originalOutlet = Max.outlet;
+
+      // Replace Max.outlet to throw an error instead of responding
+      Max.outlet = vi.fn(() => {
+        throw new Error(errorMessage);
+      });
+
+      try {
+        const result = await client.callTool({
+          name: "ppal-read-track",
+          arguments: { trackIndex: 0 },
+        });
+
+        expect(result).toBeDefined();
+        expect(result.isError).toBe(true);
+        expect(result.content).toBeDefined();
+        expect(result.content[0].type).toBe("text");
+        expect(result.content[0].text).toContain(errorMessage);
+      } finally {
+        // Always restore the original mock
+        Max.outlet = originalOutlet;
+      }
     });
   });
 
@@ -359,187 +380,12 @@ describe("MCP Express App", () => {
   });
 
   describe("Configuration Options", () => {
-    it("should accept custom timeout options", async () => {
+    it("should create app successfully without configuration options", async () => {
       const { createExpressApp } = await import("./create-express-app");
-      const customApp = createExpressApp({ timeoutMs: 5000 });
+      const app = createExpressApp();
 
-      expect(customApp).toBeDefined();
-      // The timeout is used internally, so we just verify the app was created successfully
-    });
-  });
-});
-
-describe("Exported Functions", () => {
-  describe("callLiveApi", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-      // Clear any pending requests between tests
-      Max.mcpResponseHandler = null;
-
-      // Remove the callback function for handling Live API call response
-      Max.addHandler("mcp_response", null);
-    });
-
-    it("should create a request with unique ID and call Max.outlet", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import(
-        "./create-express-app"
-      );
-
-      const promise = callLiveApi("test-tool", { arg1: "value1" });
-
-      expect(Max.outlet).toHaveBeenCalledWith(
-        "mcp_request",
-        expect.stringMatching(/^\{.*\}$/),
-      );
-
-      // Parse the JSON to verify structure
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      expect(requestData).toMatchObject({
-        requestId: expect.any(String),
-        tool: "test-tool",
-        args: { arg1: "value1" },
-      });
-
-      // Manually trigger the response using handleLiveApiResult
-      handleLiveApiResult(
-        JSON.stringify({
-          requestId: requestData.requestId,
-          result: { content: [{ type: "text", text: "test response" }] },
-        }),
-      );
-
-      const result = await promise;
-      expect(result.content[0].text).toBe("test response");
-    });
-
-    it("should timeout after specified timeout period", async () => {
-      const { callLiveApi } = await import("./create-express-app");
-
-      // Use a very short timeout for testing
-      const promise = callLiveApi("test-tool", {}, 50);
-
-      await expect(promise).rejects.toThrow(
-        "Tool call 'test-tool' timed out after 50ms",
-      );
-
-      expect(Max.outlet).toHaveBeenCalled();
-    });
-
-    it("should use default timeout when not specified", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import(
-        "./create-express-app"
-      );
-
-      const promise = callLiveApi("test-tool", {});
-
-      // We can't easily test the exact timeout, but we can verify the call was made
-      expect(Max.outlet).toHaveBeenCalled();
-
-      // Manually trigger response
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      handleLiveApiResult(
-        JSON.stringify({
-          requestId: requestData.requestId,
-          result: { content: [{ type: "text", text: "test response" }] },
-        }),
-      );
-
-      await promise;
-    });
-  });
-
-  describe("handleLiveApiResult", () => {
-    beforeEach(() => {
-      vi.clearAllMocks();
-
-      // Remove the callback function for handling Live API call response
-      Max.addHandler("mcp_response", null);
-    });
-
-    it("should handle valid response with matching request ID", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import(
-        "./create-express-app"
-      );
-
-      // Start a request to create a pending request
-      const promise = callLiveApi("test-tool", {});
-
-      // Get the request ID from the outlet call
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      const requestId = requestData.requestId;
-
-      // Simulate the response
-      const mockResult = { content: [{ type: "text", text: "success" }] };
-      handleLiveApiResult(JSON.stringify({ requestId, result: mockResult }));
-
-      const result = await promise;
-      expect(result).toEqual(mockResult);
-    });
-
-    it("should add maxErrors to result content", async () => {
-      const { callLiveApi, handleLiveApiResult } = await import(
-        "./create-express-app"
-      );
-
-      // Start a request
-      const promise = callLiveApi("test-tool", {});
-
-      // Get request ID
-      const callArgs = Max.outlet.mock.calls[0];
-      const requestData = JSON.parse(callArgs[1]);
-      const requestId = requestData.requestId;
-
-      // Simulate response with errors
-      const mockResult = { content: [{ type: "text", text: "success" }] };
-      handleLiveApiResult(
-        JSON.stringify({ requestId, result: mockResult }),
-        "Error 1",
-        "Error 2",
-      );
-
-      const result = await promise;
-      expect(result.content).toHaveLength(3);
-      expect(result.content[0]).toEqual({ type: "text", text: "success" });
-      expect(result.content[1]).toEqual({
-        type: "text",
-        text: "WARNING: Error 1",
-      });
-      expect(result.content[2]).toEqual({
-        type: "text",
-        text: "WARNING: Error 2",
-      });
-    });
-
-    it("should handle unknown request ID", async () => {
-      const { handleLiveApiResult } = await import("./create-express-app");
-
-      // Call with unknown request ID
-      handleLiveApiResult(
-        JSON.stringify({
-          requestId: "unknown-id",
-          result: { content: [] },
-        }),
-      );
-
-      // Should log but not throw
-      expect(Max.post).toHaveBeenCalledWith(
-        "Received response for unknown request ID: unknown-id",
-      );
-    });
-
-    it("should handle malformed JSON response", async () => {
-      const { handleLiveApiResult } = await import("./create-express-app");
-
-      // Call with malformed JSON
-      handleLiveApiResult("{ malformed json");
-
-      // Should log error but not throw
-      expect(Max.post).toHaveBeenCalledWith(
-        expect.stringContaining("Error handling response from Max:"),
-      );
+      expect(app).toBeDefined();
+      // The app should be created successfully without any configuration
     });
   });
 });

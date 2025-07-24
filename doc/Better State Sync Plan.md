@@ -11,7 +11,7 @@ robust state synchronization.
 - Object IDs remain stable when tracks/clips move in Ableton Live
 - Object paths and indices (trackIndex, clipSlotIndex, sceneIndex) change when
   moved
-- Current tools rely heavily on indices from the initial `read-song` state
+- Current tools rely heavily on indices from the initial `ppal-read-song` state
 - No automatic re-sync mechanism exists, leading to operations on wrong objects
 
 ## Solution 1: ID-First Operations (High Priority)
@@ -142,7 +142,7 @@ if (validation.moved.length > 0) {
   return {
     error: "Objects have moved",
     details: validation,
-    suggestion: "Call read-song to refresh state",
+    suggestion: "Call ppal-read-song to refresh state",
   };
 }
 ```
@@ -173,7 +173,7 @@ export function updateClip({ trackIndex, clipSlotIndex, clipId, ...params }) {
         throw new Error(
           `Clip "${clipId}" has moved from track ${trackIndex}, slot ${clipSlotIndex}. ` +
             `It's now at track ${clipById.trackIndex}, slot ${clipById.clipSlotIndex}. ` +
-            `Use clipId directly or call read-song to refresh the state.`,
+            `Use clipId directly or call ppal-read-song to refresh the state.`,
         );
       }
     }

@@ -3,6 +3,13 @@
 
 import * as console from "./console";
 import "./live-api-extensions";
+import {
+  formatErrorResponse,
+  formatSuccessResponse,
+  MAX_ERROR_DELIMITER,
+  MAX_CHUNK_SIZE,
+  MAX_CHUNKS,
+} from "./mcp-response-utils";
 import { captureScene } from "./tools/capture-scene";
 import { createClip } from "./tools/create-clip";
 import { createScene } from "./tools/create-scene";
@@ -21,8 +28,8 @@ import { updateScene } from "./tools/update-scene";
 import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
 
-const context = {
-  projectContext: {
+const userContext = {
+  projectNotes: {
     enabled: false,
     writable: false,
     content: "",
@@ -30,26 +37,26 @@ const context = {
 };
 
 const tools = {
-  "read-song": (args) => readSong(args),
-  "update-song": (args) => updateSong(args),
-  "create-scene": (args) => createScene(args),
-  "read-scene": (args) => readScene(args),
-  "update-scene": (args) => updateScene(args),
-  "create-track": (args) => createTrack(args),
-  "read-track": (args) => readTrack(args),
-  "update-track": (args) => updateTrack(args),
-  "create-clip": (args) => createClip(args),
-  "read-clip": (args) => readClip(args),
-  "update-clip": (args) => updateClip(args),
-  delete: (args) => deleteObject(args),
-  duplicate: (args) => duplicate(args),
-  "capture-scene": (args) => captureScene(args),
-  transport: (args) => transport(args),
-  memory: (args) => memory(args, context),
+  "ppal-read-song": (args) => readSong(args),
+  "ppal-update-song": (args) => updateSong(args),
+  "ppal-create-scene": (args) => createScene(args),
+  "ppal-read-scene": (args) => readScene(args),
+  "ppal-update-scene": (args) => updateScene(args),
+  "ppal-create-track": (args) => createTrack(args),
+  "ppal-read-track": (args) => readTrack(args),
+  "ppal-update-track": (args) => updateTrack(args),
+  "ppal-create-clip": (args) => createClip(args),
+  "ppal-read-clip": (args) => readClip(args),
+  "ppal-update-clip": (args) => updateClip(args),
+  "ppal-delete": (args) => deleteObject(args),
+  "ppal-duplicate": (args) => duplicate(args),
+  "ppal-capture-scene": (args) => captureScene(args),
+  "ppal-transport": (args) => transport(args),
+  "ppal-memory": (args) => memory(args, userContext),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  tools["raw-live-api"] = (args) => rawLiveApi(args);
+  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args);
 }
 
 function callTool(toolName, args) {
@@ -58,82 +65,76 @@ function callTool(toolName, args) {
   return tool(args);
 }
 
-// Format a successful response with the standard MCP content structure
-// non-string results will be JSON-stringified
-function formatSuccessResponse(result) {
-  return {
-    content: [
-      {
-        type: "text",
-        text: typeof result === "string" ? result : JSON.stringify(result),
-      },
-    ],
-  };
+export function projectNotesEnabled(enabled) {
+  userContext.projectNotes.enabled = !!enabled;
 }
 
-// Format an error response with the standard MCP error structure
-function formatErrorResponse(errorMessage) {
-  return {
-    content: [{ type: "text", text: errorMessage }],
-    isError: true,
-  };
+export function projectNotesWritable(writable) {
+  userContext.projectNotes.writable = !!writable;
 }
 
-export function projectContextEnabled(enabled) {
-  context.projectContext.enabled = !!enabled;
+export function projectNotes(_text, content) {
+  userContext.projectNotes.content = content ?? "";
 }
 
-export function projectContextWritable(writable) {
-  context.projectContext.writable = !!writable;
-}
+function sendResponse(requestId, result) {
+  const jsonString = JSON.stringify(result);
 
-export function projectContext(_text, content) {
-  context.projectContext.content = content ?? "";
+  // Calculate required chunks
+  const totalChunks = Math.ceil(jsonString.length / MAX_CHUNK_SIZE);
+
+  if (totalChunks > MAX_CHUNKS) {
+    // Response too large - send error instead
+    const errorResult = formatErrorResponse(
+      `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
+    );
+    outlet(
+      0,
+      "mcp_response",
+      requestId,
+      JSON.stringify(errorResult),
+      MAX_ERROR_DELIMITER,
+    );
+    return;
+  }
+
+  // Chunk the JSON string
+  const chunks = [];
+  for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
+    chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
+  }
+
+  // Send as: ["mcp_response", requestId, chunk1, chunk2, ..., delimiter]
+  outlet(0, "mcp_response", requestId, ...chunks, MAX_ERROR_DELIMITER);
 }
 
 // Handle messages from Node for Max
-export async function mcp_request(serializedJSON) {
+export async function mcp_request(requestId, tool, argsJSON) {
+  let result;
   try {
-    // Parse incoming request
-    const request = JSON.parse(serializedJSON);
-    const { requestId, tool, args } = request;
+    const args = JSON.parse(argsJSON);
 
-    let result;
+    const includeUserContext =
+      userContext.projectNotes.enabled && tool === "ppal-read-song";
 
     try {
-      // TODO: Get projectContext behaviors under test coverage
+      // TODO: Get projectNotes behaviors under test coverage
       result = formatSuccessResponse({
         ...(await callTool(tool, args)),
-        ...(context.projectContext.enabled && tool === "read-song"
-          ? { userContext: { projectContext: context.projectContext } }
-          : {}),
+        ...(includeUserContext ? { userContext } : {}),
       });
     } catch (toolError) {
-      result = formatErrorResponse(`Error in ${tool}: ${toolError.message}`);
+      result = formatErrorResponse(
+        `Internal error calling tool '${tool}': ${toolError.message} - Ableton Live is connected but the tool encountered an error.`,
+      );
     }
-
-    // Send response back to Node for Max
-    outlet(
-      0,
-      "mcp_response",
-      JSON.stringify({
-        requestId,
-        result,
-      }),
-    );
   } catch (error) {
-    // Handle JSON parsing errors or other top-level errors
-    outlet(
-      0,
-      "mcp_response",
-      JSON.stringify({
-        requestId: -1, // Use -1 when we don't know the original requestId
-        result: formatErrorResponse(
-          `Error processing request: ${error.message}`,
-        ),
-      }),
+    result = formatErrorResponse(
+      `Error parsing tool call request: ${error.message}`,
     );
   }
+  // Send response back to Node for Max
+  sendResponse(requestId, result);
 }
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss

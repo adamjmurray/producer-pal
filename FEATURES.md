@@ -3,7 +3,7 @@
 You can simply ask the AI what it can do with Producer Pal / its Ableton Live
 tools. For reference, here is a list of all the tools and their features:
 
-### `transport` tool
+### `ppal-transport` tool
 
 Controls playback in both Arrangement and Session views via various actions:
 
@@ -16,7 +16,7 @@ Controls playback in both Arrangement and Session views via various actions:
 - `stop-all-session-clips` - Stop all Session view clips
 - `stop` - Stop all playback
 
-### `read-song` tool
+### `ppal-read-song` tool
 
 Returns comprehensive Live Set information including:
 
@@ -29,7 +29,7 @@ Returns comprehensive Live Set information including:
 - All tracks with their clips
 - All scenes
 
-### `update-song` tool
+### `ppal-update-song` tool
 
 Updates global song properties:
 
@@ -37,14 +37,14 @@ Updates global song properties:
 - Time signature (e.g., "4/4")
 - View switching (Session/Arranger)
 
-### `create-scene` tool
+### `ppal-create-scene` tool
 
 Creates scenes at specified index with the given:
 
 - name, color, tempo, and time signature (or follow the song's tempo/time
   signature)
 
-### `read-scene` tool
+### `ppal-read-scene` tool
 
 Retrieves scene information:
 
@@ -52,7 +52,7 @@ Retrieves scene information:
 - Playing/triggered state
 - Clip details for all tracks in the scene
 
-### `update-scene` tool
+### `ppal-update-scene` tool
 
 Updates existing scenes:
 
@@ -60,18 +60,18 @@ Updates existing scenes:
 - Disable scene tempo/time signature to follow the song's tempo/time signature
 - Bulk operations with comma-separated IDs
 
-### `capture-scene` tool
+### `ppal-capture-scene` tool
 
 Captures currently playing clips as a new scene below the selected scene.
 
-### `create-track` tool
+### `ppal-create-track` tool
 
 Creates MIDI or audio tracks:
 
 - Insert at specified index
 - Set initial mute/solo/arm states
 
-### `read-track` tool
+### `ppal-read-track` tool
 
 Returns comprehensive track information:
 
@@ -82,14 +82,14 @@ Returns comprehensive track information:
 - Drum pad information in tracks containing drum racks (so it's known that e.g.
   pitch C1 triggers the 808 kick)
 
-### `update-track` tool
+### `ppal-update-track` tool
 
 Updates existing tracks by ID:
 
 - Modify name, color, mute/solo/arm states
 - Bulk operations with comma-separated IDs
 
-### `create-clip` tool
+### `ppal-create-clip` tool
 
 Creates MIDI clips in Session or Arrangement view:
 
@@ -102,7 +102,7 @@ Creates MIDI clips in Session or Arrangement view:
 - Auto-creates scenes if needed (Session view)
 - Sequential placement for multiple clips
 
-### `read-clip` tool
+### `ppal-read-clip` tool
 
 Retrieves clip information:
 
@@ -111,7 +111,7 @@ Retrieves clip information:
 - Loop settings
 - Works with Session and Arranger clips
 
-### `update-clip` tool
+### `ppal-update-clip` tool
 
 Updates existing clips by ID:
 
@@ -125,14 +125,14 @@ Updates existing clips by ID:
 - Works with Session and Arranger clips
 - Bulk operations with comma-separated IDs
 
-### `delete` tool
+### `ppal-delete` tool
 
 Deletes objects by ID and type:
 
 - Delete tracks, scenes, or clips
 - Bulk deletion with comma-separated IDs
 
-### `duplicate` tool
+### `ppal-duplicate` tool
 
 Duplicates objects with advanced options:
 

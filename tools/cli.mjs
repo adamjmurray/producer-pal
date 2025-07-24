@@ -165,7 +165,7 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("Examples:");
   console.log("  cli.mjs");
   console.log("  cli.mjs tools/list");
-  console.log("  cli.mjs tools/call read-song '{}'");
+  console.log("  cli.mjs tools/call ppal-read-song '{}'");
   console.log("  cli.mjs http://localhost:6274/mcp tools/list");
   console.log(
     '  cli.mjs tools/call create-track \'{"trackIndex": 0, "name": "Test"}\'',

@@ -464,6 +464,8 @@ function categorizeDevices(
  * @param {boolean} args.includeInstrument - Whether to include instrument object (default: true)
  * @param {boolean} args.includeAudioEffects - Whether to include audio effects array (default: false)
  * @param {boolean} args.includeRoutings - Whether to include input/output routing information (default: false)
+ * @param {boolean} args.includeSessionClips - Whether to include full session clip data (default: true)
+ * @param {boolean} args.includeArrangementClips - Whether to include full arrangement clip data (default: true)
  * @returns {Object} Result object with track information
  */
 export function readTrack({
@@ -475,6 +477,8 @@ export function readTrack({
   includeInstrument = true,
   includeAudioEffects = false,
   includeRoutings = false,
+  includeSessionClips = true,
+  includeArrangementClips = true,
 } = {}) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
@@ -492,29 +496,45 @@ export function readTrack({
   const isProducerPalHost = trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
 
+  // Check track capabilities to avoid warnings
+  const canBeArmed = track.getProperty("can_be_armed") > 0;
+  const isGroup = track.getProperty("is_foldable") > 0;
+
   const result = {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
     trackIndex,
     color: track.getColor(),
-    isArmed: track.getProperty("arm") > 0,
+    isArmed: canBeArmed ? track.getProperty("arm") > 0 : false,
     followsArrangement: track.getProperty("back_to_arranger") === 0,
-    isGroup: track.getProperty("is_foldable") > 0,
+    isGroup,
     isGroupMember: track.getProperty("is_grouped") > 0,
     groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
 
-    sessionClips: track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, clipSlotIndex) =>
-        readClip({ trackIndex, clipSlotIndex, includeNotes }),
-      )
-      .filter((clip) => clip.id != null),
+    sessionClips: includeSessionClips
+      ? track
+          .getChildIds("clip_slots")
+          .map((_clipSlotId, clipSlotIndex) =>
+            readClip({ trackIndex, clipSlotIndex, includeNotes }),
+          )
+          .filter((clip) => clip.id != null)
+      : track
+          .getChildIds("clip_slots")
+          .map((slotId, clipSlotIndex) => {
+            const clip = new LiveAPI(`${slotId} clip`);
+            return clip.exists() ? { clipId: clip.id, clipSlotIndex } : null;
+          })
+          .filter(Boolean),
 
-    arrangementClips: track
-      .getChildIds("arrangement_clips")
-      .map((clipId) => readClip({ clipId, includeNotes }))
-      .filter((clip) => clip.id != null),
+    arrangementClips: isGroup
+      ? [] // Group tracks have no arrangement clips
+      : includeArrangementClips
+        ? track
+            .getChildIds("arrangement_clips")
+            .map((clipId) => readClip({ clipId, includeNotes }))
+            .filter((clip) => clip.id != null)
+        : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId })),
   };
 
   // Categorize devices into separate arrays
@@ -570,20 +590,24 @@ export function readTrack({
   }
 
   if (includeRoutings) {
-    // Transform available routing types
-    const availableInputTypes =
-      track.getProperty("available_input_routing_types") || [];
-    result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
-      name: type.display_name,
-      inputId: String(type.identifier),
-    }));
+    // Transform available input routing types - only for tracks that support input routing
+    if (!isGroup) {
+      const availableInputTypes =
+        track.getProperty("available_input_routing_types") || [];
+      result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
+        name: type.display_name,
+        inputId: String(type.identifier),
+      }));
 
-    const availableInputChannels =
-      track.getProperty("available_input_routing_channels") || [];
-    result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
-      name: ch.display_name,
-      inputId: String(ch.identifier),
-    }));
+      const availableInputChannels =
+        track.getProperty("available_input_routing_channels") || [];
+      result.availableInputRoutingChannels = availableInputChannels.map(
+        (ch) => ({
+          name: ch.display_name,
+          inputId: String(ch.identifier),
+        }),
+      );
+    }
 
     const availableOutputTypes =
       track.getProperty("available_output_routing_types") || [];
@@ -601,22 +625,24 @@ export function readTrack({
       }),
     );
 
-    // Transform current routing settings
-    const inputType = track.getProperty("input_routing_type");
-    result.inputRoutingType = inputType
-      ? {
-          name: inputType.display_name,
-          inputId: String(inputType.identifier),
-        }
-      : null;
+    // Transform current input routing settings - only for tracks that support input routing
+    if (!isGroup) {
+      const inputType = track.getProperty("input_routing_type");
+      result.inputRoutingType = inputType
+        ? {
+            name: inputType.display_name,
+            inputId: String(inputType.identifier),
+          }
+        : null;
 
-    const inputChannel = track.getProperty("input_routing_channel");
-    result.inputRoutingChannel = inputChannel
-      ? {
-          name: inputChannel.display_name,
-          inputId: String(inputChannel.identifier),
-        }
-      : null;
+      const inputChannel = track.getProperty("input_routing_channel");
+      result.inputRoutingChannel = inputChannel
+        ? {
+            name: inputChannel.display_name,
+            inputId: String(inputChannel.identifier),
+          }
+        : null;
+    }
 
     const outputType = track.getProperty("output_routing_type");
     result.outputRoutingType = outputType
@@ -634,14 +660,18 @@ export function readTrack({
         }
       : null;
 
-    // Add monitoring state
-    const monitoringStateValue = track.getProperty("current_monitoring_state");
-    result.monitoringState =
-      {
-        [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
-        [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
-        [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
-      }[monitoringStateValue] ?? "unknown";
+    // Add monitoring state - only for tracks that can be armed (excludes group/master/return tracks)
+    if (canBeArmed) {
+      const monitoringStateValue = track.getProperty(
+        "current_monitoring_state",
+      );
+      result.monitoringState =
+        {
+          [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
+          [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
+          [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
+        }[monitoringStateValue] ?? "unknown";
+    }
   }
 
   if (isProducerPalHost) {

@@ -65,6 +65,7 @@ describe("readTrack", () => {
         mute: 0,
         solo: 1,
         arm: 1,
+        can_be_armed: 1,
         playing_slot_index: 2,
         fired_slot_index: 3,
         clip_slots: children("slot1", "slot2"),
@@ -149,6 +150,7 @@ describe("readTrack", () => {
         mute: 0,
         solo: 1,
         arm: 1,
+        can_be_armed: 0, // Group tracks can't be armed
         is_foldable: 1,
         is_grouped: 1,
         group_track: ["id", 456],
@@ -168,7 +170,7 @@ describe("readTrack", () => {
       trackIndex: 0,
       color: "#FF0000",
       state: "soloed",
-      isArmed: true,
+      isArmed: false,
       followsArrangement: true,
       isGroup: true,
       isGroupMember: true,
@@ -331,6 +333,74 @@ describe("readTrack", () => {
     expect(result.arrangementClips.length).toBe(2);
     expect(result.arrangementClips[0].id).toBe("arr_clip1");
     expect(result.arrangementClips[1].id).toBe("arr_clip2");
+  });
+
+  it("returns minimal session clip data when includeSessionClips is false", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set tracks 2":
+          return "track3";
+        case "id slot1 clip": // Direct access to slot1's clip
+          return "clip1";
+        case "id slot3 clip": // Direct access to slot3's clip
+          return "clip2";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Track with Clips",
+        color: 255,
+        mute: 0,
+        solo: 0,
+        arm: 0,
+        playing_slot_index: 0,
+        fired_slot_index: -1,
+        back_to_arranger: 1,
+        clip_slots: children("slot1", "slot2", "slot3"),
+        devices: [],
+      },
+    });
+
+    const result = readTrack({ trackIndex: 2, includeSessionClips: false });
+
+    // Since clips exist at slots 0 and 2, we should get minimal data for those slots
+    expect(result.sessionClips).toEqual([
+      { clipId: "clip1", clipSlotIndex: 0 },
+      { clipId: "clip2", clipSlotIndex: 2 },
+    ]);
+  });
+
+  it("returns minimal arrangement clip data when includeArrangementClips is false", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set tracks 2":
+          return "track3";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Track with Arrangement Clips",
+        color: 255,
+        clip_slots: [],
+        arrangement_clips: children("arr_clip1", "arr_clip2"),
+        devices: [],
+      },
+    });
+
+    const result = readTrack({ trackIndex: 2, includeArrangementClips: false });
+
+    expect(result.arrangementClips).toEqual([
+      { clipId: "id arr_clip1" },
+      { clipId: "id arr_clip2" },
+    ]);
   });
 
   describe("devices", () => {
@@ -2044,6 +2114,96 @@ describe("readTrack", () => {
       expect(result.outputRoutingChannel).toBeNull();
       expect(result.outputRoutingType).toBeNull();
       expect(result.monitoringState).toBe("unknown");
+    });
+
+    it("excludes input routing properties for group tracks when includeRoutings is true", () => {
+      liveApiId.mockReturnValue("group1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          is_foldable: 1, // This makes it a group track
+          can_be_armed: 0, // Group tracks can't be armed
+          available_output_routing_channels: [
+            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}, {"display_name": "A", "identifier": 27}]}',
+          ],
+          available_output_routing_types: [
+            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}, {"display_name": "Send Only", "identifier": 28}]}',
+          ],
+          output_routing_channel: [
+            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+          ],
+          output_routing_type: [
+            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+          ],
+          current_monitoring_state: [1],
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      // Group tracks should omit input routing properties entirely
+      expect(result.availableInputRoutingChannels).toBeUndefined();
+      expect(result.availableInputRoutingTypes).toBeUndefined();
+      expect(result.inputRoutingChannel).toBeUndefined();
+      expect(result.inputRoutingType).toBeUndefined();
+
+      // But should still have output routing properties
+      expect(result.availableOutputRoutingChannels).toEqual([
+        { name: "Master", outputId: "26" },
+        { name: "A", outputId: "27" },
+      ]);
+      expect(result.availableOutputRoutingTypes).toEqual([
+        { name: "Track Out", outputId: "25" },
+        { name: "Send Only", outputId: "28" },
+      ]);
+      expect(result.outputRoutingChannel).toEqual({
+        name: "Master",
+        outputId: "26",
+      });
+      expect(result.outputRoutingType).toEqual({
+        name: "Track Out",
+        outputId: "25",
+      });
+
+      // Group track specific properties
+      expect(result.isGroup).toBe(true);
+      expect(result.isArmed).toBe(false);
+      expect(result.monitoringState).toBeUndefined(); // Group tracks cannot be armed, so monitoring state is omitted
+    });
+
+    it("returns unknown monitoring state for unsupported values", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          current_monitoring_state: [999], // Invalid monitoring state value
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      // Should return "unknown" for unsupported monitoring state values
+      expect(result.monitoringState).toBe("unknown");
+
+      // Other routing properties should still work
+      expect(result.availableInputRoutingChannels).toEqual([]);
+      expect(result.availableInputRoutingTypes).toEqual([]);
+      expect(result.availableOutputRoutingChannels).toEqual([]);
+      expect(result.availableOutputRoutingTypes).toEqual([]);
+    });
+
+    it("omits monitoring state for tracks that cannot be armed", () => {
+      liveApiId.mockReturnValue("track1");
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          can_be_armed: [0], // Track cannot be armed (group/master/return tracks)
+          current_monitoring_state: [1], // This should not be accessed
+        }),
+      });
+
+      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+
+      // Should omit monitoringState property without accessing current_monitoring_state
+      expect(result.monitoringState).toBeUndefined();
+      expect(result.isArmed).toBe(false);
     });
   });
 });

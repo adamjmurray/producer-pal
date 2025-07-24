@@ -87,16 +87,44 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 
 #### 0.9.4
 
-Misc stuff & polish before 1.0.0
+- [x] Reframe project context as "Project notes"
+- [x] Place limits on project notes size
+- [x] Strictly validate all tool inputs
+- [x] Fix issues with recoverable errors making it look like Producer Pal is
+      disconnected from Live
+- [x] Improve Producer Pal logo design
+- [x] Disable default verbose debug logging. Add an option to enable verbose
+      logging to the device UI and Claude Desktop extension
+- [x] Fix timeout issues in larger Live Sets (testing with the Demo Song from
+      the Chop and Swing pack that comes with Live 12)
+  - [x] Omit clips by default in read-song with new args to optionally load clip
+        data in the read-song and the read-track tool
+  - [x] Increase default timeout to 30s
+    - [x] And let this timeout be changed in the UI without restarting the
+          server
+- [x] Prefix all tool names with "ppal-" to disambiguate from other MCP tools
+- [x] Fix "node.script: Error handling response from Max: SyntaxError:
+      Unterminated string in JSON at position 32767" when loading arrangement
+      clips in the Chop and Swing demo song
+- [x] Fix warnings with read-song and includeRoutings:
 
-- [ ] Place limits on project context size
-- [ ] Change Arrangement clip length
-- [ ] Improve Producer Pal logo design
+#### 0.9.5
+
+- [ ] Add new ppal-init tool to handle the NUX instead of read-song
+- [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
+- [ ] Combine the include* args for read-song and read-track (and any other
+      read-* tools?) to be a single include arg that takes an array of what
+      detailed info to include
+- [ ] Split off separate read-track include for available routings and don't
+      support it in read-song (it's way too big and repetitive in larger sets)
+- [ ] Support trackId arg for read-track so the return tracks and master track
+      can be read
+- [ ] Make verbose logging in Claude Desktop actually work
 - [ ] Make demo video and add to README and web site
 
 ### 🚀 1.0.0 Release
 
-\_Stable, documented, user-friendly baseline
+Stable, documented, user-friendly baseline
 
 ### Post-1.0.0
 
@@ -105,6 +133,9 @@ Misc stuff & polish before 1.0.0
 _TODO: Split this apart into separate minor or patch releases intermixed with
 bigger product features in the 1.x line (see below)_
 
+- [ ] Ability to change arrangement clip length
+- [ ] Popup window editor for project notes (probably jweb, with a rich
+      text/markdown library)
 - [ ] Streamline installation process: Install Claude Desktop extension and have
       the extension install/update the Max for Live device to a standard Live
       User Library location on demand. The MCP proxy in the extension could
@@ -113,30 +144,26 @@ bigger product features in the 1.x line (see below)_
       use it. Open questions: how best to handle custom Live Library Locations?
       As a desktop extension parameter or on-the-fly in the AI chat?
 - [ ] Implement version update notifications in the UI
-- [ ] Optional toggle in device UI to suppress Max console errors (maybe this is
-      a bad idea for robustness, but it could be an advanced setting hidden in a
-      settings tab though. basically, it's an "escape hatch" if this mechanism
-      is causing unwanted behaviors)
-- [ ] Duplicate Tool response format improvements
+- [ ] Improve response format for `duplicate` tool
+- [ ] Automatically load detailed data (in read-song, etc) based on complexity
+      of the Live Set i.e. the number of Live API calls needed
 - [ ] Improved mocking system with unified interface for LiveAPI objects
 - [ ] State Sync: ID-first operations, smart error recovery (see doc/Better
       State Sync Plan.md)
-- [ ] Address the duplicate track name issues in duplicate.routeToSource (see
+- [ ] Fix the duplicate track name issues in duplicate.routeToSource (see
       dedicated md file in docs explaining the issue and potential solutions)
-- [ ] Standardized validation system and consistent handling of errors (thrown
-      exceptions) and warning ( console.error messages)
 
 #### 1.1.0 - Customization
 
-- [ ] Customization Phase 1: Per-project context (NOTE: now planned for pre-1.0)
 - [ ] Customization Phase 2: Global context
 - [ ] Customization Phase 3: JSON override system
 
 #### 1.5.0 - Device Control
 
 - [ ] Randomize instrument rack macros
-- [ ] R&D: additional Device & Effect Control possibilities (rack parameters,
-      plugin params, one day: automation if the Live API eventually supports it)
+- [ ] Rack variation control (store, load, delete)
+- [ ] List device parameters
+- [ ] Change device parameters
 
 #### 2.0.0 - Learning & Personas
 

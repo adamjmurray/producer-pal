@@ -8,9 +8,11 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { formatErrorResponse } from "../mcp-response-utils.js";
 import { createMcpServer } from "../mcp-server/create-mcp-server.js";
 
-const SETUP_URL = "https://adammurray.link/producer-pal";
+const SETUP_URL =
+  "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal";
 
 /**
  * Enhanced stdio-to-HTTP bridge for MCP communication
@@ -20,10 +22,17 @@ export class StdioHttpBridge {
   constructor(httpUrl, options = {}) {
     this.httpUrl = httpUrl;
     this.options = options;
+    this.verbose = options.verbose || false;
     this.mcpServer = null;
     this.httpClient = null;
     this.isConnected = false;
     this.fallbackTools = this._generateFallbackTools();
+  }
+
+  _log(message, ...args) {
+    if (this.verbose) {
+      console.error(message, ...args);
+    }
   }
 
   _generateFallbackTools() {
@@ -32,7 +41,7 @@ export class StdioHttpBridge {
     const tools = [];
 
     for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
-      if (name === "raw-live-api") continue; // Skip development-only tool
+      if (name === "ppal-raw-live-api") continue; // Skip development-only tool
 
       tools.push({
         name: name,
@@ -51,33 +60,28 @@ export class StdioHttpBridge {
   }
 
   _createSetupErrorResponse() {
-    return {
-      content: [
-        {
-          type: "text",
-          text:
-            `❌ Producer Pal is not accessible. Please ensure:\\n\\n` +
-            `1. Ableton Live is running\\n` +
-            `2. The Producer Pal Max for Live device is loaded in your set\\n` +
-            `3. The device shows \"Producer Pal Running\"\\n\\n` +
-            `For setup instructions, visit: ${SETUP_URL}`,
-        },
-      ],
-      isError: true,
-    };
+    return formatErrorResponse(`❌ Cannot connect to Producer Pal in Ableton Live.
+Remind the user that this Claude Desktop extension is for controlling the music production software Ableton Live. It can't work without Ableton Live. It requires Live version 12.2 or higher with Max for Live (e.g. Ableton Live Suite 12.2+).
+
+For Producer Pal to work, the user must ensure:
+1. Ableton Live is running (version 12.2+ with Max for Live)
+2. The Producer Pal Max for Live device has been added to the Ableton Live Set
+3. The device has successfully loaded and shows "Producer Pal Running"
+
+Provide the [detailed setup instructions](https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal) for guidance.`);
+  }
+
+  _createMisconfiguredUrlResponse() {
+    return formatErrorResponse(`❌ Invalid URL for the Producer Pal Desktop Extension.
+We cannot even attempt to connect to Producer Pal inside Ableton Live because the configured URL "${this.httpUrl.replace(/\/mcp$/, "")}" is not a valid URL.
+The user must provide a valid URL in the configuration settings for the Claude Desktop Extension for Producer Pal.
+The default URL value is http://localhost:3350`);
   }
 
   async _ensureHttpConnection() {
-    // If we have a client and think we're connected, try to reuse it
+    // If we have a client and think we're connected, reuse it
     if (this.httpClient && this.isConnected) {
-      try {
-        // Test if the connection is still valid by attempting a lightweight operation
-        // If this succeeds, we can reuse the existing connection
-        return;
-      } catch (error) {
-        console.error("[Bridge] Existing connection is stale:", error.message);
-        // Fall through to create new connection
-      }
+      return;
     }
 
     // Clean up old client if it exists
@@ -85,16 +89,15 @@ export class StdioHttpBridge {
       try {
         await this.httpClient.close();
       } catch (error) {
-        console.error("[Bridge] Error closing old client:", error.message);
+        this._log("[Bridge] Error closing old client:", error.message);
       }
       this.httpClient = null;
     }
 
     // Create new connection
+    const url = new URL(this.httpUrl); // let this throw if the URL is invalid, see handling for ERR_INVALID_URL
     try {
-      const httpTransport = new StreamableHTTPClientTransport(
-        new URL(this.httpUrl),
-      );
+      const httpTransport = new StreamableHTTPClientTransport(url);
       this.httpClient = new Client({
         name: "claude-ableton-connector",
         version: "1.0.0",
@@ -110,7 +113,7 @@ export class StdioHttpBridge {
         try {
           this.httpClient.close();
         } catch (closeError) {
-          console.error(
+          this._log(
             "[Bridge] Error closing failed client:",
             closeError.message,
           );
@@ -125,7 +128,7 @@ export class StdioHttpBridge {
 
   async start() {
     console.error(`[Bridge] Starting enhanced stdio-to-HTTP bridge`);
-    console.error(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
+    this._log(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
 
     // Create MCP server that will handle stdio connections
     this.mcpServer = new Server(
@@ -142,16 +145,16 @@ export class StdioHttpBridge {
 
     // Set up request handlers
     this.mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
-      console.error(`[Bridge] Handling tools/list request`);
+      this._log(`[Bridge] Handling tools/list request`);
 
       // Always try to connect to HTTP server first
       try {
         await this._ensureHttpConnection();
         const result = await this.httpClient.listTools();
-        console.error(`[Bridge] tools/list successful via HTTP`);
+        this._log(`[Bridge] tools/list successful via HTTP`);
         return result;
       } catch (error) {
-        console.error(
+        this._log(
           `[Bridge] HTTP tools/list failed, using fallback:`,
           error.message,
         );
@@ -159,12 +162,12 @@ export class StdioHttpBridge {
       }
 
       // Return fallback tools when HTTP is not available
-      console.error(`[Bridge] Returning fallback tools list`);
+      this._log(`[Bridge] Returning fallback tools list`);
       return this.fallbackTools;
     });
 
     this.mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-      console.error(
+      this._log(
         `[Bridge] Tool call: ${request.params.name}`,
         request.params.arguments,
       );
@@ -178,20 +181,45 @@ export class StdioHttpBridge {
         };
 
         const result = await this.httpClient.callTool(toolRequest);
-        console.error(
-          `[Bridge] Tool call successful for ${request.params.name}`,
-        );
+        this._log(`[Bridge] Tool call successful for ${request.params.name}`);
         return result;
       } catch (error) {
         console.error(
           `[Bridge] HTTP tool call failed for ${request.params.name}:`,
           error.message,
         );
+
+        // Check if this is an MCP protocol error (has numeric code) vs connectivity error
+        // Any numeric code means we connected and got a structured JSON-RPC response
+        if (error.code && typeof error.code === "number") {
+          this._log(
+            `[Bridge] MCP protocol error detected (code ${error.code}), returning the error to the client`,
+          );
+          // Extract the actual error message, removing any "MCP error {code}:" prefix
+          let errorMessage = error.message || `Unknown MCP error ${error.code}`;
+          // Strip redundant "MCP error {code}:" prefix if present
+          const mcpErrorPrefix = `MCP error ${error.code}: `;
+          if (errorMessage.startsWith(mcpErrorPrefix)) {
+            errorMessage = errorMessage.slice(mcpErrorPrefix.length);
+          }
+          return formatErrorResponse(errorMessage);
+        }
+
+        // This is a real connectivity/network error
         this.isConnected = false;
+
+        if (error.code === "ERR_INVALID_URL") {
+          this._log(
+            `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
+          );
+          return this._createMisconfiguredUrlResponse();
+        }
       }
 
       // Return setup error when Producer Pal is not available
-      console.error(`[Bridge] Returning setup error response`);
+      this._log(
+        `[Bridge] Connectivity problem detected. Returning setup error response`,
+      );
       return this._createSetupErrorResponse();
     });
 
@@ -202,7 +230,7 @@ export class StdioHttpBridge {
     console.error(
       `[Bridge] Enhanced stdio-to-HTTP bridge started successfully`,
     );
-    console.error(`[Bridge] HTTP connected: ${this.isConnected}`);
+    this._log(`[Bridge] HTTP connected: ${this.isConnected}`);
   }
 
   async stop() {
@@ -210,7 +238,7 @@ export class StdioHttpBridge {
       try {
         this.httpClient.close();
       } catch (error) {
-        console.error("[Bridge] Error closing HTTP client:", error.message);
+        this._log("[Bridge] Error closing HTTP client:", error.message);
       }
       this.httpClient = null;
     }
@@ -218,7 +246,7 @@ export class StdioHttpBridge {
       try {
         this.mcpServer.close();
       } catch (error) {
-        console.error("[Bridge] Error closing MCP server:", error.message);
+        this._log("[Bridge] Error closing MCP server:", error.message);
       }
       this.mcpServer = null;
     }

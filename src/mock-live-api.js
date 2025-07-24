@@ -150,6 +150,8 @@ export function mockLiveApiGet(overrides = {}) {
             return [0];
           case "arm":
             return [1];
+          case "can_be_armed":
+            return [1];
           case "is_foldable":
           case "is_grouped":
             return [0];
