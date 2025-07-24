@@ -6,9 +6,9 @@ import "./live-api-extensions";
 import {
   formatErrorResponse,
   formatSuccessResponse,
-  MAX_ERROR_DELIMITER,
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
+  MAX_ERROR_DELIMITER,
 } from "./mcp-response-utils";
 import { captureScene } from "./tools/capture-scene";
 import { createClip } from "./tools/create-clip";
@@ -16,6 +16,7 @@ import { createScene } from "./tools/create-scene";
 import { createTrack } from "./tools/create-track";
 import { deleteObject } from "./tools/delete";
 import { duplicate } from "./tools/duplicate";
+import { init } from "./tools/init";
 import { memory } from "./tools/memory";
 import { rawLiveApi } from "./tools/raw-live-api";
 import { readClip } from "./tools/read-clip";
@@ -27,6 +28,7 @@ import { updateClip } from "./tools/update-clip";
 import { updateScene } from "./tools/update-scene";
 import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
+import { VERSION } from "./version";
 
 const userContext = {
   projectNotes: {
@@ -37,6 +39,7 @@ const userContext = {
 };
 
 const tools = {
+  "ppal-init": (args) => init(args, userContext),
   "ppal-read-song": (args) => readSong(args),
   "ppal-update-song": (args) => updateSong(args),
   "ppal-create-scene": (args) => createScene(args),
@@ -139,7 +142,7 @@ export async function mcp_request(requestId, tool, argsJSON) {
 
 const now = () => new Date().toLocaleString("sv-SE"); // YYYY-MM-DD HH:mm:ss
 
-console.log(`[${now()}] main.js loaded successfully`);
+console.log(`[${now()}] Producer Pal ${VERSION} Live API adapter ready`);
 
 // send a "started" signal so UI controls can resync their values
 // while changing the code repeatedly during development:

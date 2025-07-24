@@ -31,6 +31,8 @@ const tools = [];
 // These are crisp, concise descriptions for end users, unlike the detailed
 // LLM-facing descriptions in the MCP tool definitions
 const toolDescriptions = {
+  "ppal-init":
+    "Initialize connection to Ableton Live and get basic Live Set information",
   "ppal-transport":
     "Controls Arrangement and Session transport, playback, position, and loop settings",
   "ppal-create-clip": "Creates MIDI clips in Session or Arrangement view",

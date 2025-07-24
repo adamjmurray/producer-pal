@@ -7,6 +7,7 @@ import { toolDefCreateScene } from "./tool-def-create-scene.js";
 import { toolDefCreateTrack } from "./tool-def-create-track.js";
 import { toolDefDelete } from "./tool-def-delete.js";
 import { toolDefDuplicate } from "./tool-def-duplicate.js";
+import { toolDefInit } from "./tool-def-init.js";
 import { toolDefMemory } from "./tool-def-memory.js";
 import { toolDefRawLiveApi } from "./tool-def-raw-live-api.js";
 import { toolDefReadClip } from "./tool-def-read-clip.js";
@@ -27,9 +28,10 @@ export function createMcpServer(callLiveApi) {
 
   const addTool = (toolDef) => toolDef(server, callLiveApi);
 
-  addTool(toolDefCreateClip);
-  addTool(toolDefReadClip);
-  addTool(toolDefUpdateClip);
+  addTool(toolDefInit);
+
+  addTool(toolDefReadSong);
+  addTool(toolDefUpdateSong);
 
   addTool(toolDefCreateTrack);
   addTool(toolDefReadTrack);
@@ -40,8 +42,9 @@ export function createMcpServer(callLiveApi) {
   addTool(toolDefReadScene);
   addTool(toolDefUpdateScene);
 
-  addTool(toolDefReadSong);
-  addTool(toolDefUpdateSong);
+  addTool(toolDefCreateClip);
+  addTool(toolDefReadClip);
+  addTool(toolDefUpdateClip);
 
   addTool(toolDefTransport);
   addTool(toolDefDelete);

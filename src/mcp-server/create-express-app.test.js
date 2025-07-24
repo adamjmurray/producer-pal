@@ -81,9 +81,9 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
-        "ppal-create-clip",
-        "ppal-read-clip",
-        "ppal-update-clip",
+        "ppal-init",
+        "ppal-read-song",
+        "ppal-update-song",
         "ppal-create-track",
         "ppal-read-track",
         "ppal-update-track",
@@ -91,8 +91,9 @@ describe("MCP Express App", () => {
         "ppal-create-scene",
         "ppal-read-scene",
         "ppal-update-scene",
-        "ppal-read-song",
-        "ppal-update-song",
+        "ppal-create-clip",
+        "ppal-read-clip",
+        "ppal-update-clip",
         "ppal-transport",
         "ppal-delete",
         "ppal-duplicate",
