@@ -30,8 +30,7 @@ export function updateView({
   selectInstrument,
 
   // Highlighted clip slot
-  highlightedClipSlotId,
-  highlightedClipSlot,
+  selectedClipSlot,
 
   // Detail view
   showDetail,
@@ -49,8 +48,7 @@ export function updateView({
     selectedSceneIndex,
     selectedDeviceId,
     selectInstrument,
-    highlightedClipSlotId,
-    highlightedClipSlot,
+    selectedClipSlot,
   });
 
   const appView = new LiveAPI("live_app view");
@@ -98,8 +96,7 @@ export function updateView({
   // Update highlighted clip slot
   updateHighlightedClipSlot({
     songView,
-    highlightedClipSlotId,
-    highlightedClipSlot,
+    selectedClipSlot,
   });
 
   // Update detail view
@@ -144,10 +141,7 @@ export function updateView({
   if (selectedClipId !== undefined) result.selectedClipId = selectedClipId;
   if (selectedDeviceId != null) result.selectedDeviceId = selectedDeviceId;
   if (selectInstrument != null) result.selectInstrument = selectInstrument;
-  if (highlightedClipSlotId != null)
-    result.highlightedClipSlotId = highlightedClipSlotId;
-  if (highlightedClipSlot != null)
-    result.highlightedClipSlot = highlightedClipSlot;
+  if (selectedClipSlot != null) result.selectedClipSlot = selectedClipSlot;
   if (showDetail !== undefined)
     result.detailView =
       showDetail === null
@@ -167,7 +161,6 @@ function validateParameters({
   selectedSceneIndex,
   selectedDeviceId,
   selectInstrument,
-  highlightedClipSlotId,
   highlightedClipSlot,
 }) {
   // Track selection validation
@@ -212,19 +205,6 @@ function validateParameters({
     if (sceneAPI.exists() && sceneAPI.id !== selectedSceneId) {
       throw new Error(
         "selectedSceneId and selectedSceneIndex refer to different scenes",
-      );
-    }
-  }
-
-  // Cross-validation for highlighted clip slot ID vs indices
-  if (highlightedClipSlotId != null && highlightedClipSlot != null) {
-    const { trackIndex, clipSlotIndex } = highlightedClipSlot;
-    const clipSlotAPI = new LiveAPI(
-      `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`,
-    );
-    if (clipSlotAPI.exists() && clipSlotAPI.id !== highlightedClipSlotId) {
-      throw new Error(
-        "highlightedClipSlotId and highlightedClipSlot refer to different clip slots",
       );
     }
   }
@@ -325,7 +305,9 @@ function updateDeviceSelection({
       const songView = new LiveAPI("live_set view");
       // Ensure proper "id X" format for select_device call
       const deviceIdStr = selectedDeviceId.toString();
-      const deviceIdForApi = deviceIdStr.startsWith("id ") ? deviceIdStr : `id ${deviceIdStr}`;
+      const deviceIdForApi = deviceIdStr.startsWith("id ")
+        ? deviceIdStr
+        : `id ${deviceIdStr}`;
       songView.call("select_device", deviceIdForApi);
     }
   } else if (selectInstrument === true) {
@@ -363,22 +345,12 @@ function updateDeviceSelection({
   }
 }
 
-function updateHighlightedClipSlot({
-  songView,
-  highlightedClipSlotId,
-  highlightedClipSlot,
-}) {
-  if (highlightedClipSlotId != null) {
-    // Set by ID
-    const clipSlotAPI = LiveAPI.from(highlightedClipSlotId);
-    if (clipSlotAPI.exists()) {
-      songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
-    }
-  } else if (highlightedClipSlot != null) {
+function updateHighlightedClipSlot({ songView, selectedClipSlot }) {
+  if (selectedClipSlot != null) {
     // Set by indices
-    const { trackIndex, clipSlotIndex } = highlightedClipSlot;
+    const { trackIndex, sceneIndex } = selectedClipSlot;
     const clipSlotAPI = new LiveAPI(
-      `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`,
+      `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
     );
     if (clipSlotAPI.exists()) {
       songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);

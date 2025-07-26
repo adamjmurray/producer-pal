@@ -110,19 +110,23 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 
 #### 0.9.5
 
-- [x] Add new `ppal-init` tool to handle the NUX instead of read-song
-- [x] Add new `ppal-read-view` and `ppal-update-view` tools to handle all
+- [x] Add `ppal-init` tool to handle the NUX instead of read-song
+- [x] Add `ppal-read-view` and `ppal-update-view` tools to handle all
       view-related operations and stop changing view state automatically for
       other tools (which can interrupt the user's workflow when AI is generating
       multiple clips in a row)
-- [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
 - [ ] Combine the include* args for read-song and read-track (and any other
       read-* tools?) to be a single include arg that takes an array of what
       detailed info to include
-- [ ] Split off separate read-track include for available routings and don't
-      support it in read-song (it's way too big and repetitive in larger sets)
+- [ ] Enhance read-song to return returnTracks and masterTrack, add new include
+      options?
 - [ ] Support trackId arg for read-track so the return tracks and master track
       can be read
+- [ ] Support sceneId arg for read-scene
+- [ ] Add `ppal-read-device` tool
+- [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
+- [ ] Split off separate read-track include for available routings and don't
+      support it in read-song (it's way too big and repetitive in larger sets)
 - [ ] Make verbose logging in Claude Desktop actually work
 - [ ] Make demo video and add to README and web site
 

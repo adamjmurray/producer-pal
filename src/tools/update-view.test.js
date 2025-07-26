@@ -36,7 +36,7 @@ describe("updateView", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Set up reusable mock objects
     mockAppView = {
       call: liveApiCall,
@@ -71,7 +71,7 @@ describe("updateView", () => {
     global.LiveAPI.mockImplementation(function (path) {
       this.path = path;
       this._path = path;
-      
+
       // Basic methods that all instances need
       this.exists = vi.fn().mockReturnValue(true);
       this.set = liveApiSet;
@@ -79,7 +79,7 @@ describe("updateView", () => {
       this.get = liveApiGet;
       this.getProperty = vi.fn();
       this.setProperty = vi.fn((property, value) => this.set(property, value));
-      
+
       // Mock some specific properties based on path
       if (path === "live_app view") {
         Object.assign(this, mockAppView);
@@ -89,19 +89,23 @@ describe("updateView", () => {
         Object.assign(this, mockTrackAPI);
       } else if (path.includes("clip_slots")) {
         this._id = "id clipslot_id_789";
-      } else if (path.startsWith("live_set tracks") || path.startsWith("live_set return_tracks") || path.startsWith("live_set master_track")) {
+      } else if (
+        path.startsWith("live_set tracks") ||
+        path.startsWith("live_set return_tracks") ||
+        path.startsWith("live_set master_track")
+      ) {
         this._id = "id track_id_123";
       } else if (path.startsWith("live_set scenes")) {
         this._id = "id scene_id_456";
       }
-      
+
       // Add id getter that executes the mock function
       Object.defineProperty(this, "id", {
         get: function () {
           return liveApiId.apply(this);
         },
       });
-      
+
       return this;
     });
 
@@ -215,8 +219,14 @@ describe("updateView", () => {
         this.call = liveApiCall;
         this.get = liveApiGet;
         this.getProperty = vi.fn();
-        this.setProperty = vi.fn((property, value) => this.set(property, value));
-        if (path.startsWith("live_set tracks") || path.startsWith("live_set return_tracks") || path.startsWith("live_set master_track")) {
+        this.setProperty = vi.fn((property, value) =>
+          this.set(property, value),
+        );
+        if (
+          path.startsWith("live_set tracks") ||
+          path.startsWith("live_set return_tracks") ||
+          path.startsWith("live_set master_track")
+        ) {
           this._id = "id track_id_123";
         } else {
           this._id = "id track_id_123";
@@ -271,7 +281,9 @@ describe("updateView", () => {
         this.call = liveApiCall;
         this.get = liveApiGet;
         this.getProperty = vi.fn();
-        this.setProperty = vi.fn((property, value) => this.set(property, value));
+        this.setProperty = vi.fn((property, value) =>
+          this.set(property, value),
+        );
         if (path.startsWith("live_set scenes")) {
           this._id = "id scene_id_456";
         } else {
@@ -377,19 +389,9 @@ describe("updateView", () => {
   });
 
   describe("highlighted clip slot", () => {
-    it("sets highlighted clip slot by ID", () => {
-      const result = updateView({ highlightedClipSlotId: "id clipslot_123" });
-
-      expect(liveApiSet).toHaveBeenCalledWith(
-        "highlighted_clip_slot",
-        "id clipslot_123",
-      );
-      expect(result).toEqual({ highlightedClipSlotId: "id clipslot_123" });
-    });
-
     it("sets highlighted clip slot by indices", () => {
       const result = updateView({
-        highlightedClipSlot: { trackIndex: 1, clipSlotIndex: 3 },
+        selectedClipSlot: { trackIndex: 1, sceneIndex: 3 },
       });
 
       expect(global.LiveAPI).toHaveBeenCalledWith(
@@ -400,7 +402,7 @@ describe("updateView", () => {
         "id clipslot_id_789",
       );
       expect(result).toEqual({
-        highlightedClipSlot: { trackIndex: 1, clipSlotIndex: 3 },
+        selectedClipSlot: { trackIndex: 1, sceneIndex: 3 },
       });
     });
   });
@@ -522,19 +524,6 @@ describe("updateView", () => {
         "selectedSceneId and selectedSceneIndex refer to different scenes",
       );
     });
-
-    it("throws error when clip slot ID and indices refer to different clip slots", () => {
-      liveApiId.mockReturnValue("id different_clipslot");
-
-      expect(() => {
-        updateView({
-          highlightedClipSlotId: "id clipslot_123",
-          highlightedClipSlot: { trackIndex: 1, clipSlotIndex: 3 },
-        });
-      }).toThrow(
-        "highlightedClipSlotId and highlightedClipSlot refer to different clip slots",
-      );
-    });
   });
 
   describe("complex scenarios", () => {
@@ -581,7 +570,9 @@ describe("updateView", () => {
       });
 
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set return_tracks 2");
-      expect(global.LiveAPI).toHaveBeenCalledWith("live_set return_tracks 2 view");
+      expect(global.LiveAPI).toHaveBeenCalledWith(
+        "live_set return_tracks 2 view",
+      );
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       expect(result.selectedTrackType).toBe("return");
       expect(result.selectInstrument).toBe(true);

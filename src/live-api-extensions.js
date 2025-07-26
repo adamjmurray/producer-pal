@@ -70,9 +70,12 @@ if (typeof LiveAPI !== "undefined") {
       case "detail_clip":
       case "highlighted_clip_slot":
         // Properties that expect "id X" format - automatically format IDs
-        const formattedValue = typeof value === 'string' && !value.startsWith("id ") && /^\d+$/.test(value) 
-          ? `id ${value}` 
-          : value;
+        const formattedValue =
+          typeof value === "string" &&
+          !value.startsWith("id ") &&
+          /^\d+$/.test(value)
+            ? `id ${value}`
+            : value;
         return this.set(property, formattedValue);
       default:
         // For all other properties, use regular set

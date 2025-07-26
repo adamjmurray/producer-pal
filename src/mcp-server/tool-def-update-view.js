@@ -58,18 +58,14 @@ export const toolDefUpdateView = defineTool("ppal-update-view", {
         "Select the instrument (or first device) on the selected track",
       ),
 
-    // Highlighted clip slot
-    highlightedClipSlotId: z
-      .string()
-      .optional()
-      .describe("Set highlighted clip slot by ID"),
-    highlightedClipSlot: z
+    // Clip slot selection
+    selectedClipSlot: z
       .object({
         trackIndex: z.number().int().min(0),
-        clipSlotIndex: z.number().int().min(0),
+        sceneIndex: z.number().int().min(0),
       })
       .optional()
-      .describe("Set highlighted clip slot by track and clip slot indices"),
+      .describe("Set highlighted clip slot by track and scene indices"),
 
     // Detail view
     showDetail: z

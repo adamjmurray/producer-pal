@@ -35,9 +35,8 @@ export function readView() {
 
   const highlightedSlot = highlightedClipSlotAPI.exists()
     ? {
-        clipSlotId: highlightedClipSlotAPI.id,
         trackIndex: highlightedClipSlotAPI.trackIndex,
-        clipSlotIndex: highlightedClipSlotAPI.sceneIndex,
+        sceneIndex: highlightedClipSlotAPI.sceneIndex,
       }
     : null;
 
@@ -77,6 +76,6 @@ export function readView() {
       sceneId: selectedSceneId,
       sceneIndex: selectedSceneIndex,
     },
-    highlightedClipSlot: highlightedSlot,
+    selectedClipSlot: highlightedSlot,
   };
 }

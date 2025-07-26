@@ -72,11 +72,20 @@ describe("readView", () => {
           return mockHighlightedSlot;
         // Handle dynamic track view paths
         if (path.match(/^live_set tracks \d+ view$/))
-          return { exists: vi.fn().mockReturnValue(true), get: vi.fn().mockReturnValue(["id", 456]) };
+          return {
+            exists: vi.fn().mockReturnValue(true),
+            get: vi.fn().mockReturnValue(["id", 456]),
+          };
         if (path.match(/^live_set return_tracks \d+ view$/))
-          return { exists: vi.fn().mockReturnValue(true), get: vi.fn().mockReturnValue(["id", 456]) };
+          return {
+            exists: vi.fn().mockReturnValue(true),
+            get: vi.fn().mockReturnValue(["id", 456]),
+          };
         if (path === "live_set master_track view")
-          return { exists: vi.fn().mockReturnValue(false), get: vi.fn().mockReturnValue(null) };
+          return {
+            exists: vi.fn().mockReturnValue(false),
+            get: vi.fn().mockReturnValue(null),
+          };
         return {};
       })();
       liveApiInstances.push(instance);
@@ -113,10 +122,9 @@ describe("readView", () => {
         sceneId: "id 012",
         sceneIndex: 2,
       },
-      highlightedClipSlot: {
-        clipSlotId: "id 999",
+      selectedClipSlot: {
         trackIndex: 1,
-        clipSlotIndex: 3,
+        sceneIndex: 3,
       },
     });
   });
@@ -156,7 +164,7 @@ describe("readView", () => {
         sceneId: null,
         sceneIndex: null,
       },
-      highlightedClipSlot: null,
+      selectedClipSlot: null,
     });
   });
 
@@ -194,7 +202,7 @@ describe("readView", () => {
         sceneId: null,
         sceneIndex: null,
       },
-      highlightedClipSlot: null,
+      selectedClipSlot: null,
     });
   });
 
@@ -225,7 +233,7 @@ describe("readView", () => {
         sceneId: null,
         sceneIndex: null,
       },
-      highlightedClipSlot: null,
+      selectedClipSlot: null,
     });
   });
 
@@ -260,7 +268,7 @@ describe("readView", () => {
         sceneId: null,
         sceneIndex: null,
       },
-      highlightedClipSlot: null,
+      selectedClipSlot: null,
     });
   });
 
@@ -299,7 +307,7 @@ describe("readView", () => {
         sceneId: null,
         sceneIndex: null,
       },
-      highlightedClipSlot: null,
+      selectedClipSlot: null,
     });
   });
 
@@ -337,7 +345,7 @@ describe("readView", () => {
         sceneId: null,
         sceneIndex: null,
       },
-      highlightedClipSlot: null,
+      selectedClipSlot: null,
     });
   });
 });
