@@ -146,6 +146,34 @@ if (typeof LiveAPI !== "undefined") {
     });
   }
 
+  // Return track index extension
+  if (
+    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "returnTrackIndex")
+  ) {
+    Object.defineProperty(LiveAPI.prototype, "returnTrackIndex", {
+      get: function () {
+        const match = this.path.match(/live_set return_tracks (\d+)/);
+        return match ? Number(match[1]) : null;
+      },
+    });
+  }
+
+  // Track type extension
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "trackType")) {
+    Object.defineProperty(LiveAPI.prototype, "trackType", {
+      get: function () {
+        if (this.path.includes("live_set tracks")) {
+          return "regular";
+        } else if (this.path.includes("live_set return_tracks")) {
+          return "return";
+        } else if (this.path.includes("live_set master_track")) {
+          return "master";
+        }
+        return null;
+      },
+    });
+  }
+
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "sceneIndex")) {
     Object.defineProperty(LiveAPI.prototype, "sceneIndex", {
       get: function () {

@@ -35,7 +35,10 @@ describe("readView", () => {
     mockSelectedTrack = {
       exists: vi.fn(),
       trackIndex: 0,
+      returnTrackIndex: null,
+      trackType: "regular",
       id: "id 789",
+      path: "live_set tracks 0",
     };
     mockSelectedScene = {
       exists: vi.fn(),
@@ -68,6 +71,10 @@ describe("readView", () => {
           return mockHighlightedSlot;
         // Handle dynamic track view selected_device paths
         if (path.match(/^live_set tracks \d+ view selected_device$/))
+          return mockSelectedDevice;
+        if (path.match(/^live_set return_tracks \d+ view selected_device$/))
+          return mockSelectedDevice;
+        if (path === "live_set master_track view selected_device")
           return mockSelectedDevice;
         return {};
       })();
@@ -140,8 +147,7 @@ describe("readView", () => {
       browserVisible: false,
       selectedTrack: {
         trackId: null,
-        trackType: "regular",
-        trackIndex: null,
+        trackType: null,
       },
       selectedClipId: null,
       selectedDeviceId: null,
@@ -179,8 +185,7 @@ describe("readView", () => {
       browserVisible: false,
       selectedTrack: {
         trackId: null,
-        trackType: "regular",
-        trackIndex: null,
+        trackType: null,
       },
       selectedClipId: null,
       selectedDeviceId: null,
@@ -211,8 +216,7 @@ describe("readView", () => {
       browserVisible: false,
       selectedTrack: {
         trackId: null,
-        trackType: "regular",
-        trackIndex: null,
+        trackType: null,
       },
       selectedClipId: null,
       selectedDeviceId: null,
@@ -247,8 +251,84 @@ describe("readView", () => {
       browserVisible: true,
       selectedTrack: {
         trackId: null,
-        trackType: "regular",
-        trackIndex: null,
+        trackType: null,
+      },
+      selectedClipId: null,
+      selectedDeviceId: null,
+      selectedScene: {
+        sceneId: null,
+        sceneIndex: null,
+      },
+      highlightedClipSlot: null,
+    });
+  });
+
+  it("reads view state with return track selected", () => {
+    // Setup - Mock return track
+    mockSelectedTrack.exists.mockReturnValue(true);
+    mockSelectedTrack.trackIndex = null;
+    mockSelectedTrack.returnTrackIndex = 1;
+    mockSelectedTrack.trackType = "return";
+    mockSelectedTrack.id = "id 234";
+    mockSelectedTrack.path = "live_set return_tracks 1";
+
+    mockAppView.getProperty.mockReturnValue(1); // Session view
+    mockAppView.call.mockReturnValue(0); // No detail views or browser visible
+    mockSelectedScene.exists.mockReturnValue(false);
+    mockDetailClip.exists.mockReturnValue(false);
+    mockSelectedDevice.exists.mockReturnValue(true);
+    mockHighlightedSlot.exists.mockReturnValue(false);
+
+    // Execute
+    const result = readView();
+
+    // Verify
+    expect(result).toEqual({
+      view: "session",
+      detailView: null,
+      browserVisible: false,
+      selectedTrack: {
+        trackId: "id 234",
+        trackType: "return",
+        returnTrackIndex: 1,
+      },
+      selectedClipId: null,
+      selectedDeviceId: "id 456",
+      selectedScene: {
+        sceneId: null,
+        sceneIndex: null,
+      },
+      highlightedClipSlot: null,
+    });
+  });
+
+  it("reads view state with master track selected", () => {
+    // Setup - Mock master track
+    mockSelectedTrack.exists.mockReturnValue(true);
+    mockSelectedTrack.trackIndex = null;
+    mockSelectedTrack.returnTrackIndex = null;
+    mockSelectedTrack.trackType = "master";
+    mockSelectedTrack.id = "id 345";
+    mockSelectedTrack.path = "live_set master_track";
+
+    mockAppView.getProperty.mockReturnValue(2); // Arrangement view
+    mockAppView.call.mockReturnValue(0); // No detail views or browser visible
+    mockSelectedScene.exists.mockReturnValue(false);
+    mockDetailClip.exists.mockReturnValue(false);
+    mockSelectedDevice.exists.mockReturnValue(false);
+    mockHighlightedSlot.exists.mockReturnValue(false);
+
+    // Execute
+    const result = readView();
+
+    // Verify
+    expect(result).toEqual({
+      view: "arrangement",
+      detailView: null,
+      browserVisible: false,
+      selectedTrack: {
+        trackId: "id 345",
+        trackType: "master",
       },
       selectedClipId: null,
       selectedDeviceId: null,

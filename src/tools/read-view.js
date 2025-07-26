@@ -15,11 +15,9 @@ export function readView() {
     "live_set view highlighted_clip_slot",
   );
 
-  // Extract indices and IDs from paths
-  const selectedTrackIndex = selectedTrack.exists()
-    ? selectedTrack.trackIndex
-    : null;
+  // Extract track info using Live API extensions
   const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
+  const trackType = selectedTrack.exists() ? selectedTrack.trackType : null;
   const selectedSceneIndex = selectedScene.exists()
     ? selectedScene.sceneIndex
     : null;
@@ -28,11 +26,24 @@ export function readView() {
 
   // Get selected device from the selected track's view
   let selectedDeviceId = null;
-  if (selectedTrackIndex !== null) {
-    const selectedTrackView = new LiveAPI(
-      `live_set tracks ${selectedTrackIndex} view selected_device`,
-    );
-    selectedDeviceId = selectedTrackView.exists() ? selectedTrackView.id : null;
+  if (trackType && selectedTrack.exists()) {
+    let trackViewPath;
+    if (trackType === "regular") {
+      const trackIndex = selectedTrack.trackIndex;
+      trackViewPath = `live_set tracks ${trackIndex} view selected_device`;
+    } else if (trackType === "return") {
+      const returnTrackIndex = selectedTrack.returnTrackIndex;
+      trackViewPath = `live_set return_tracks ${returnTrackIndex} view selected_device`;
+    } else if (trackType === "master") {
+      trackViewPath = "live_set master_track view selected_device";
+    }
+
+    if (trackViewPath) {
+      const selectedTrackView = new LiveAPI(trackViewPath);
+      selectedDeviceId = selectedTrackView.exists()
+        ? selectedTrackView.id
+        : null;
+    }
   }
 
   const highlightedSlot = highlightedClipSlotAPI.exists()
@@ -60,15 +71,25 @@ export function readView() {
     appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
   );
 
+  // Build selectedTrack object with appropriate index naming
+  const selectedTrackObject = {
+    trackId: selectedTrackId,
+    trackType: trackType,
+  };
+
+  // Add appropriate index property based on track type
+  if (trackType === "regular" && selectedTrack.exists()) {
+    selectedTrackObject.trackIndex = selectedTrack.trackIndex;
+  } else if (trackType === "return" && selectedTrack.exists()) {
+    selectedTrackObject.returnTrackIndex = selectedTrack.returnTrackIndex;
+  }
+  // Master track gets no index property
+
   return {
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     detailView,
     browserVisible,
-    selectedTrack: {
-      trackId: selectedTrackId,
-      trackType: "regular",
-      trackIndex: selectedTrackIndex,
-    },
+    selectedTrack: selectedTrackObject,
     selectedClipId,
     selectedDeviceId,
     selectedScene: {
