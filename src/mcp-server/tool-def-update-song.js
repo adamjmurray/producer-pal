@@ -7,7 +7,7 @@ import { VALID_SCALE_NAMES } from "../tools/constants.js";
 export const toolDefUpdateSong = defineTool("ppal-update-song", {
   title: "Update Song",
   description:
-    "Updates song properties in the Live Set including view state, tempo, time signature, and scale. " +
+    "Updates song properties in the Live Set including tempo, time signature, and scale. " +
     "Note: changes to scale properties affect currently selected clips and set defaults for new clips.",
   annotations: {
     readOnlyHint: false,
@@ -24,10 +24,6 @@ export const toolDefUpdateSong = defineTool("ppal-update-song", {
       .string()
       .optional()
       .describe('Time signature in format "n/m" (e.g. "4/4")'),
-    view: z
-      .enum(["session", "arrangement"])
-      .optional()
-      .describe("Switch between Session and Arrangement views"),
     scaleRoot: z
       .enum(VALID_PITCH_CLASS_NAMES)
       .optional()
@@ -45,19 +41,6 @@ export const toolDefUpdateSong = defineTool("ppal-update-song", {
       .optional()
       .describe(
         "Enable/disable scale - applies to currently selected clips and sets the default for new clips",
-      ),
-    selectedClipId: z
-      .string()
-      .nullable()
-      .optional()
-      .describe(
-        "Select a specific clip by ID, or pass null to deselect all clips. Clip selection state will be updated before changing any scale settings (which affect the selected clip)",
-      ),
-    showClip: z
-      .boolean()
-      .optional()
-      .describe(
-        "Show the clip detail view after selecting a clip. Only works when selectedClipId is also provided.",
       ),
   },
 });

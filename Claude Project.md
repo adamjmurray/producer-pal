@@ -47,6 +47,9 @@ copied over to Claude Code as appropriate.
   dependencies
 - When building releases, both the `.dxt` file AND the frozen Max for Live
   device are needed
+- **Build Commands**: For testing and development, always use
+  `npm run build:all` to include debugging tools like `ppal-raw-live-api`. Use
+  `npm run build` only for production releases.
 - **Manual Testing Note**: After changing tool descriptions in the code, you
   must toggle the Producer Pal extension off/on in Claude Desktop to refresh the
   cached tool definitions

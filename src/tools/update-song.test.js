@@ -85,7 +85,6 @@ describe("updateSong", () => {
     const result = updateSong({
       tempo: 125,
       timeSignature: "6/8",
-      view: "arrangement",
     });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -102,42 +101,10 @@ describe("updateSong", () => {
       "signature_denominator",
       8,
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Arranger",
-    );
     expect(result).toEqual({
       id: "live_set_id",
       tempo: 125,
       timeSignature: "6/8",
-      view: "arrangement",
-    });
-  });
-
-  it("should switch to Arrangement view when requested", () => {
-    const result = updateSong({ view: "arrangement" });
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Arranger",
-    );
-    expect(result).toEqual({
-      id: "live_set_id",
-      view: "arrangement",
-    });
-  });
-
-  it("should switch to Session view when requested", () => {
-    const result = updateSong({ view: "session" });
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
-    expect(result).toEqual({
-      id: "live_set_id",
-      view: "session",
     });
   });
 
@@ -247,7 +214,6 @@ describe("updateSong", () => {
       scaleRoot: "G",
       scale: "Mixolydian",
       scaleEnabled: true,
-      view: "arrangement",
     });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -279,11 +245,6 @@ describe("updateSong", () => {
       "scale_mode",
       1,
     );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Arranger",
-    );
     expect(result).toEqual({
       id: "live_set_id",
       tempo: 125,
@@ -291,7 +252,6 @@ describe("updateSong", () => {
       scaleRoot: "G",
       scale: "Mixolydian",
       scaleEnabled: true,
-      view: "arrangement",
       scalePitches: ["G", "A", "B", "C", "D", "E", "Gb"],
     });
   });
@@ -302,227 +262,6 @@ describe("updateSong", () => {
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result).toEqual({
       id: "live_set_id",
-    });
-  });
-
-  it("should deselect all clips when selectedClipId is null", () => {
-    const result = updateSong({ scale: "Dorian", selectedClipId: null });
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 0",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set" }),
-      "scale_name",
-      "Dorian",
-    );
-    expect(result).toEqual({
-      id: "live_set_id",
-      scale: "Dorian",
-      selectedClipId: null,
-      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
-    });
-  });
-
-  it("should deselect clips when selectedClipId is null regardless of other properties", () => {
-    const result = updateSong({ tempo: 120, selectedClipId: null });
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 0",
-    );
-    expect(result).toEqual({
-      id: "live_set_id",
-      tempo: 120,
-      selectedClipId: null,
-    });
-  });
-
-  it("should select specific clip when selectedClipId is provided", () => {
-    const result = updateSong({ selectedClipId: "123" });
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
-    );
-    expect(result).toEqual({
-      id: "live_set_id",
-      selectedClipId: "123",
-    });
-  });
-
-  it("should not affect clip selection when selectedClipId is not provided", () => {
-    const result = updateSong({ scale: "Minor" });
-    expect(liveApiSet).not.toHaveBeenCalledWith("detail_clip", "id 0");
-    expect(result).toEqual({
-      id: "live_set_id",
-      scale: "Minor",
-      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
-    });
-  });
-
-  it("should perform clip selection before scale property changes", () => {
-    const result = updateSong({
-      selectedClipId: null,
-      scaleRoot: "F#",
-      scale: "Dorian",
-      scaleEnabled: true,
-    });
-
-    // Verify clip deselection happens first, then scale properties
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      1,
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 0",
-    );
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      2,
-      expect.objectContaining({ path: "live_set" }),
-      "root_note",
-      6,
-    );
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      3,
-      expect.objectContaining({ path: "live_set" }),
-      "scale_name",
-      "Dorian",
-    );
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      4,
-      expect.objectContaining({ path: "live_set" }),
-      "scale_mode",
-      1,
-    );
-
-    expect(result).toEqual({
-      id: "live_set_id",
-      selectedClipId: null,
-      scaleRoot: "F#",
-      scale: "Dorian",
-      scaleEnabled: true,
-      scalePitches: ["Gb", "Ab", "Bb", "B", "Db", "Eb", "F"],
-    });
-  });
-
-  it("should deselect clip and update all scale properties in correct order", () => {
-    const result = updateSong({
-      selectedClipId: null,
-      scaleRoot: "Bb",
-      scale: "Minor",
-      scaleEnabled: false,
-    });
-
-    // Verify clip deselection happens first, then all scale properties in order
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      1,
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 0",
-    );
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      2,
-      expect.objectContaining({ path: "live_set" }),
-      "root_note",
-      10,
-    );
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      3,
-      expect.objectContaining({ path: "live_set" }),
-      "scale_name",
-      "Minor",
-    );
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      4,
-      expect.objectContaining({ path: "live_set" }),
-      "scale_mode",
-      0,
-    );
-
-    expect(result).toEqual({
-      id: "live_set_id",
-      selectedClipId: null,
-      scaleRoot: "Bb",
-      scale: "Minor",
-      scaleEnabled: false,
-    });
-  });
-
-  it("should show clip detail view when showClip is true and clip is selected", () => {
-    const result = updateSong({ selectedClipId: "123", showClip: true });
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "focus_view",
-      "Detail/Clip",
-    );
-    expect(result).toEqual({
-      id: "live_set_id",
-      selectedClipId: "123",
-      showClip: true,
-    });
-  });
-
-  it("should not show clip detail view when showClip is true but no clip is selected", () => {
-    const result = updateSong({ showClip: true });
-    expect(liveApiCall).not.toHaveBeenCalledWith("focus_view", "Detail/Clip");
-    expect(result).toEqual({
-      id: "live_set_id",
-      showClip: true,
-    });
-  });
-
-  it("should not show clip detail view when showClip is true but selectedClipId is null", () => {
-    const result = updateSong({ selectedClipId: null, showClip: true });
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 0",
-    );
-    expect(liveApiCall).not.toHaveBeenCalledWith("focus_view", "Detail/Clip");
-    expect(result).toEqual({
-      id: "live_set_id",
-      selectedClipId: null,
-      showClip: true,
-    });
-  });
-
-  it("should work with view switching and showClip together", () => {
-    const result = updateSong({
-      view: "session",
-      selectedClipId: "456",
-      showClip: true,
-    });
-
-    // Verify correct order: view switch, clip selection, then focus detail view
-    expect(liveApiCall).toHaveBeenNthCalledWithThis(
-      1,
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
-    expect(liveApiSet).toHaveBeenNthCalledWithThis(
-      1,
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 456",
-    );
-    expect(liveApiCall).toHaveBeenNthCalledWithThis(
-      2,
-      expect.objectContaining({ path: "live_app view" }),
-      "focus_view",
-      "Detail/Clip",
-    );
-    expect(result).toEqual({
-      id: "live_set_id",
-      view: "session",
-      selectedClipId: "456",
-      showClip: true,
     });
   });
 

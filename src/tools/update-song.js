@@ -1,7 +1,7 @@
 // src/tools/update-song.js
 import { pitchClassNameToNumber } from "../notation/pitch-class-name-to-number.js";
 import { intervalsToPitchClasses } from "../notation/midi-pitch-to-name.js";
-import { parseTimeSignature, toLiveApiView } from "../utils.js";
+import { parseTimeSignature } from "../utils.js";
 import { VALID_SCALE_NAMES } from "./constants.js";
 
 /**
@@ -9,37 +9,19 @@ import { VALID_SCALE_NAMES } from "./constants.js";
  * @param {Object} args - The parameters
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.view] - Switch between Session and Arrangement views
  * @param {string} [args.scaleRoot] - Scale root note (e.g., "C", "F#", "Bb")
  * @param {string} [args.scale] - Scale name (must be one of the 35 valid scale names)
  * @param {boolean} [args.scaleEnabled] - Enable/disable scale highlighting
- * @param {string|null} [args.selectedClipId] - Select a specific clip by ID, or pass null to deselect all clips
- * @param {boolean} [args.showClip] - Show the clip detail view after selecting a clip
  * @returns {Object} Updated Live Set information
  */
 export function updateSong({
-  view,
   tempo,
   timeSignature,
   scaleRoot,
   scale,
   scaleEnabled,
-  selectedClipId,
-  showClip,
 } = {}) {
   const liveSet = new LiveAPI("live_set");
-
-  // Handle clip selection/deselection (before scale changes)
-  if (selectedClipId !== undefined) {
-    const songView = new LiveAPI("live_set view");
-    if (selectedClipId === null) {
-      // Deselect all clips
-      songView.set("detail_clip", "id 0");
-    } else {
-      // Select specific clip
-      songView.set("detail_clip", "id " + selectedClipId);
-    }
-  }
 
   if (tempo != null) {
     if (tempo < 20 || tempo > 999) {
@@ -72,17 +54,6 @@ export function updateSong({
     liveSet.set("scale_mode", scaleEnabled ? 1 : 0);
   }
 
-  if (view != null) {
-    const appView = new LiveAPI("live_app view");
-    appView.call("show_view", toLiveApiView(view));
-  }
-
-  // Show clip detail view if requested (after view switching and clip selection)
-  if (showClip && selectedClipId != null) {
-    const appView = new LiveAPI("live_app view");
-    appView.call("focus_view", "Detail/Clip");
-  }
-
   // Build optimistic result object
   const songResult = {
     id: liveSet.id,
@@ -94,9 +65,6 @@ export function updateSong({
   if (scaleRoot != null) songResult.scaleRoot = scaleRoot;
   if (scale != null) songResult.scale = scale;
   if (scaleEnabled != null) songResult.scaleEnabled = scaleEnabled;
-  if (view != null) songResult.view = view;
-  if (selectedClipId !== undefined) songResult.selectedClipId = selectedClipId;
-  if (showClip != null) songResult.showClip = showClip;
 
   // Include scalePitches when scale-related parameters are modified
   // But never include when scaleEnabled is explicitly set to false

@@ -46,11 +46,6 @@ describe("transport", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Arranger",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "start_playing",
     );
@@ -179,11 +174,6 @@ describe("transport", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "fire",
     );
@@ -219,15 +209,10 @@ describe("transport", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
       "fire",
     );
-    expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 fire calls
+    expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 fire calls
     expect(result.trackIndexes).toBe("0,1,2");
     expect(result.clipSlotIndexes).toBe("0,1,2");
   });
@@ -256,7 +241,7 @@ describe("transport", () => {
       expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
       "fire",
     );
-    expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 fire calls
+    expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 fire calls
   });
 
   it("should throw error when required parameters are missing for play-session-clip", () => {
@@ -315,11 +300,6 @@ describe("transport", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set scenes 1" }),
       "fire",
     );
@@ -366,11 +346,6 @@ describe("transport", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 1" }),
       "stop_all_clips",
     );
@@ -404,15 +379,10 @@ describe("transport", () => {
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: expect.stringContaining("tracks") }),
       "stop_all_clips",
     );
-    expect(liveApiCall).toHaveBeenCalledTimes(4); // 1 show_view + 3 stop_all_clips calls
+    expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 stop_all_clips calls
   });
 
   it("should throw an error when required parameters are missing for stop-track-session-clip", () => {
@@ -445,11 +415,6 @@ describe("transport", () => {
 
     const result = transport({ action: "stop-all-session-clips" });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Session",
-    );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "stop_all_clips",
@@ -608,11 +573,6 @@ describe("transport", () => {
       // no startTime provided
     });
 
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Arranger",
-    );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "start_playing",

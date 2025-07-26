@@ -695,5 +695,165 @@ describe("LiveAPI extensions", () => {
         expect(floatTrack.trackIndex).toBe(3);
       });
     });
+
+    describe("timeSignature getter", () => {
+      it("should return correct time signature for LiveSet objects", () => {
+        const liveSet = new LiveAPI("live_set");
+        liveSet.getProperty = vi.fn((prop) => {
+          if (prop === "signature_numerator") return 4;
+          if (prop === "signature_denominator") return 4;
+          return null;
+        });
+
+        expect(liveSet.timeSignature).toBe("4/4");
+        expect(liveSet.getProperty).toHaveBeenCalledWith("signature_numerator");
+        expect(liveSet.getProperty).toHaveBeenCalledWith(
+          "signature_denominator",
+        );
+      });
+
+      it("should return correct time signature for Clip objects", () => {
+        const clip = new LiveAPI("live_set tracks 0 clip_slots 0 clip");
+        clip.getProperty = vi.fn((prop) => {
+          if (prop === "signature_numerator") return 3;
+          if (prop === "signature_denominator") return 4;
+          return null;
+        });
+
+        expect(clip.timeSignature).toBe("3/4");
+        expect(clip.getProperty).toHaveBeenCalledWith("signature_numerator");
+        expect(clip.getProperty).toHaveBeenCalledWith("signature_denominator");
+      });
+
+      it("should return correct time signature for Scene objects", () => {
+        const scene = new LiveAPI("live_set scenes 0");
+        scene.getProperty = vi.fn((prop) => {
+          if (prop === "time_signature_numerator") return 6;
+          if (prop === "time_signature_denominator") return 8;
+          return null;
+        });
+
+        expect(scene.timeSignature).toBe("6/8");
+        expect(scene.getProperty).toHaveBeenCalledWith(
+          "time_signature_numerator",
+        );
+        expect(scene.getProperty).toHaveBeenCalledWith(
+          "time_signature_denominator",
+        );
+      });
+
+      it("should return null when time signature properties are null", () => {
+        const liveSet = new LiveAPI("live_set");
+        liveSet.getProperty = vi.fn(() => null);
+
+        expect(liveSet.timeSignature).toBe(null);
+      });
+
+      it("should return null when only numerator is available", () => {
+        const liveSet = new LiveAPI("live_set");
+        liveSet.getProperty = vi.fn((prop) => {
+          if (prop === "signature_numerator") return 4;
+          if (prop === "signature_denominator") return null;
+          return null;
+        });
+
+        expect(liveSet.timeSignature).toBe(null);
+      });
+
+      it("should return null when only denominator is available", () => {
+        const liveSet = new LiveAPI("live_set");
+        liveSet.getProperty = vi.fn((prop) => {
+          if (prop === "signature_numerator") return null;
+          if (prop === "signature_denominator") return 4;
+          return null;
+        });
+
+        expect(liveSet.timeSignature).toBe(null);
+      });
+
+      it("should use signature_numerator/denominator as fallback for unknown object types", () => {
+        // Create an API object with an unknown type
+        const unknownObj = new LiveAPI("unknown_object");
+        unknownObj.getProperty = vi.fn((prop) => {
+          if (prop === "signature_numerator") return 2;
+          if (prop === "signature_denominator") return 2;
+          return null;
+        });
+
+        expect(unknownObj.timeSignature).toBe("2/2");
+        expect(unknownObj.getProperty).toHaveBeenCalledWith(
+          "signature_numerator",
+        );
+        expect(unknownObj.getProperty).toHaveBeenCalledWith(
+          "signature_denominator",
+        );
+      });
+    });
+  });
+
+  describe("setProperty", () => {
+    beforeEach(() => {
+      api.set = vi.fn();
+    });
+
+    it("should auto-format numeric ID for selected_track", () => {
+      api.setProperty("selected_track", "123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "id 123");
+    });
+
+    it("should auto-format numeric ID for selected_scene", () => {
+      api.setProperty("selected_scene", "456");
+      expect(api.set).toHaveBeenCalledWith("selected_scene", "id 456");
+    });
+
+    it("should auto-format numeric ID for detail_clip", () => {
+      api.setProperty("detail_clip", "789");
+      expect(api.set).toHaveBeenCalledWith("detail_clip", "id 789");
+    });
+
+    it("should auto-format numeric ID for highlighted_clip_slot", () => {
+      api.setProperty("highlighted_clip_slot", "101");
+      expect(api.set).toHaveBeenCalledWith("highlighted_clip_slot", "id 101");
+    });
+
+    it("should not double-format already prefixed IDs", () => {
+      api.setProperty("selected_track", "id 123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "id 123");
+    });
+
+    it("should pass through non-numeric strings unchanged", () => {
+      api.setProperty("selected_track", "track_name");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "track_name");
+    });
+
+    it("should pass through non-selection properties unchanged", () => {
+      api.setProperty("name", "123");
+      expect(api.set).toHaveBeenCalledWith("name", "123");
+    });
+
+    it("should handle null values", () => {
+      api.setProperty("selected_track", null);
+      expect(api.set).toHaveBeenCalledWith("selected_track", null);
+    });
+
+    it("should handle undefined values", () => {
+      api.setProperty("selected_scene", undefined);
+      expect(api.set).toHaveBeenCalledWith("selected_scene", undefined);
+    });
+
+    it("should handle numeric strings with non-digits", () => {
+      api.setProperty("selected_track", "123abc");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "123abc");
+    });
+
+    it("should handle IDs that already have id prefix with space", () => {
+      api.setProperty("selected_track", "id track_123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "id track_123");
+    });
+
+    it("should handle IDs that already have id prefix without space", () => {
+      api.setProperty("selected_track", "idtrack_123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "idtrack_123");
+    });
   });
 });

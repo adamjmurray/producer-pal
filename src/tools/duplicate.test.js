@@ -978,11 +978,6 @@ describe("duplicate", () => {
           16,
           8,
         );
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ path: "live_app view" }),
-          "show_view",
-          "Arranger",
-        );
 
         expect(result).toStrictEqual({
           type: "scene",
@@ -1204,12 +1199,6 @@ describe("duplicate", () => {
           arrangementStartTime: "5|1",
         });
 
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ path: "live_app view" }),
-          "show_view",
-          "Arranger",
-        );
-
         expect(result).toStrictEqual({
           type: "scene",
           id: "scene1",
@@ -1258,11 +1247,6 @@ describe("duplicate", () => {
         );
 
         // Verify that show_view was still called
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ path: "live_app view" }),
-          "show_view",
-          "Arranger",
-        );
 
         expect(result).toStrictEqual({
           type: "scene",
@@ -1476,11 +1460,6 @@ describe("duplicate", () => {
           "id clip1",
           8,
         );
-        expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ path: "live_app view" }),
-          "show_view",
-          "Arranger",
-        );
 
         expect(result).toStrictEqual({
           type: "clip",
@@ -1614,7 +1593,7 @@ describe("duplicate", () => {
           "id clip1",
           16,
         );
-        expect(liveApiCall).toHaveBeenCalledTimes(6); // 3 duplicates + 3 show_view calls
+        expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 duplicates
       });
     });
   });

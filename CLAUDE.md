@@ -12,13 +12,13 @@ Ableton Live through a Max for Live device. It uses the Model Context Protocol
 ## Essential Commands
 
 ```bash
-# Build the project (required after changes)
+# Build the project for production/release (user only)
 npm run build
 
 # Development mode with auto-rebuild (includes ppal-raw-live-api tool)
 npm run dev
 
-# Build with all tools including ppal-raw-live-api
+# Build with all tools including ppal-raw-live-api (use this for testing!)
 npm run build:all
 
 # Run tests
@@ -334,6 +334,10 @@ To update the version:
   `(args) => toolFunction(args)`, even if the tool currently has no parameters.
   This prevents bugs when parameters are added later. Never use
   `() => toolFunction()` without args.
+- **ALWAYS use `npm run build:all` for testing**: Claude should never use
+  `npm run build` for testing purposes. Always use `npm run build:all` to
+  include debugging tools like `ppal-raw-live-api`. The regular `npm run build`
+  is for production builds that the user handles for releases.
 - At the end of a block of work (e.g. the end of a TODO list), the code should
   be formatted with `npm run format`
 - At the end of a block of work (e.g. the end of a TODO list), the full test

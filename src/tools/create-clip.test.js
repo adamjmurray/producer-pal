@@ -417,16 +417,6 @@ describe("createClip", () => {
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
         "fire",
       );
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_app view" }),
-        "show_view",
-        "Session",
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set view" }),
-        "detail_clip",
-        "id clip_0_0",
-      );
 
       expect(result).toEqual({
         id: "clip_0_0",
@@ -578,12 +568,6 @@ describe("createClip", () => {
         "Loop 3",
       );
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set view" }),
-        "detail_clip",
-        "id clip_0_1",
-      );
-
       expect(result).toEqual([
         {
           id: "clip_0_1",
@@ -728,16 +712,6 @@ describe("createClip", () => {
         expect.objectContaining({ id: "arrangement_clip" }),
         "name",
         "Arrangement Clip",
-      );
-      expect(liveApiCall).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_app view" }),
-        "show_view",
-        "Arranger",
-      );
-      expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ path: "live_set view" }),
-        "detail_clip",
-        "id arrangement_clip",
       );
 
       expect(result).toEqual({

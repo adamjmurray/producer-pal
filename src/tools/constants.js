@@ -43,6 +43,20 @@ export const LIVE_API_MONITORING_STATE_IN = 0;
 export const LIVE_API_MONITORING_STATE_AUTO = 1;
 export const LIVE_API_MONITORING_STATE_OFF = 2;
 
+// Live API numeric values for focused_document_view
+export const LIVE_API_VIEW_SESSION = 1;
+export const LIVE_API_VIEW_ARRANGEMENT = 2;
+
+// Live API view names from available_main_views
+export const LIVE_API_VIEW_NAMES = {
+  BROWSER: "Browser",
+  ARRANGER: "Arranger",
+  SESSION: "Session",
+  DETAIL: "Detail",
+  DETAIL_CLIP: "Detail/Clip",
+  DETAIL_DEVICE_CHAIN: "Detail/DeviceChain",
+};
+
 export const VALID_SCALE_NAMES = [
   "Major",
   "Minor",

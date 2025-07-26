@@ -19,11 +19,15 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
 
 1. Clone this repository
 2. `npm install`
-3. `npm run build`
+3. `npm run build` (for production) or `npm run build:all` (for development with
+   debugging tools)
 4. Add the `device/Producer_Pal.amxd` Max for Live device to a MIDI track in
    Ableton Live
 5. Drag and drop `desktop-extension/Producer_Pal.dxt` to Claude Desktop →
    Settings → Extension
+
+**Note**: For development and testing, use `npm run build:all` to include
+debugging tools like `ppal-raw-live-api`.
 
 ## Core Development Scripts
 
@@ -124,8 +128,9 @@ data.
 ### Raw Live API Access
 
 For development and debugging, a `ppal-raw-live-api` tool is available when
-building with `npm run dev` or `npm run build:all`. This tool provides direct
-access to the Live API for research and advanced debugging:
+building with `npm run dev` or `npm run build:all` (but NOT with the regular
+`npm run build`). This tool provides direct access to the Live API for research
+and advanced debugging:
 
 ```sh
 # Example: Get tempo using multiple operation types
