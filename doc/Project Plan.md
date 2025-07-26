@@ -115,7 +115,7 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
       view-related operations and stop changing view state automatically for
       other tools (which can interrupt the user's workflow when AI is generating
       multiple clips in a row)
-- [ ] Combine the include* args for read-song and read-track (and any other
+- [x] Combine the include* args for read-song and read-track (and any other
       read-* tools?) to be a single include arg that takes an array of what
       detailed info to include
 - [ ] Enhance read-song to return returnTracks and masterTrack, add new include

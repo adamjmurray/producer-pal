@@ -131,4 +131,12 @@ export const READ_TRACK_DEFAULTS = {
  */
 export const READ_SCENE_DEFAULTS = {
   includeClips: false,
+  includeNotes: false,
+};
+
+/**
+ * Default include parameters for read-clip tool
+ */
+export const READ_CLIP_DEFAULTS = {
+  includeNotes: true,
 };

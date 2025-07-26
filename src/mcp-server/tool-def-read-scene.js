@@ -20,11 +20,12 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
         "Scene index (0-based). This is also the clipSlotIndex of every clip in this scene.",
       ),
     include: z
-      .array(z.enum(["clips"]))
+      .array(z.enum(["clips", "notes"]))
       .default([])
       .describe(
         "Array of data to include in the response. Available options: " +
-          "'clips' (include clip information). " +
+          "'clips' (include clip information), " +
+          "'notes' (include notes data in clip objects). " +
           "Default: [] (no additional data included).",
       ),
   },
