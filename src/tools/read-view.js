@@ -29,16 +29,13 @@ export function readView() {
       }
     : null;
 
-  // Get detail view state
-  const focusedView = appView.getProperty("focused_document_view");
+  // Get detail view state by checking visibility
   let detailView = null;
 
-  // Check if detail view is visible by examining the focused view
-  if (focusedView === 3) {
-    // Detail/Clip view
+  // Check if detail views are visible
+  if (appView.call("is_view_visible", "Detail/Clip")) {
     detailView = "Detail/Clip";
-  } else if (focusedView === 4) {
-    // Detail/Device view
+  } else if (appView.call("is_view_visible", "Detail/DeviceChain")) {
     detailView = "Detail/Device";
   }
 

@@ -28,6 +28,7 @@ describe("readView", () => {
     // Create mock instances
     mockAppView = {
       getProperty: vi.fn(),
+      call: vi.fn(),
     };
     mockSelectedTrack = {
       exists: vi.fn(),
@@ -66,6 +67,7 @@ describe("readView", () => {
   it("reads basic view state with session view", () => {
     // Setup
     mockAppView.getProperty.mockReturnValue(1); // Session view
+    mockAppView.call.mockReturnValue(0); // No detail views visible
     mockSelectedTrack.exists.mockReturnValue(true);
     mockSelectedScene.exists.mockReturnValue(true);
     mockDetailClip.exists.mockReturnValue(true);
@@ -90,7 +92,11 @@ describe("readView", () => {
 
   it("reads view state with arrangement view and detail clip view", () => {
     // Setup
-    mockAppView.getProperty.mockReturnValue(3); // Detail/Clip view
+    mockAppView.getProperty.mockReturnValue(2); // Arrangement view
+    mockAppView.call.mockImplementation((method, view) => {
+      if (method === "is_view_visible" && view === "Detail/Clip") return 1;
+      return 0;
+    });
     mockSelectedTrack.exists.mockReturnValue(false);
     mockSelectedScene.exists.mockReturnValue(false);
     mockDetailClip.exists.mockReturnValue(false);
@@ -101,7 +107,7 @@ describe("readView", () => {
 
     // Verify
     expect(result).toEqual({
-      view: "session", // fromLiveApiView maps 3 to session in our mock
+      view: "arrangement", // fromLiveApiView maps 2 to arrangement in our mock
       selectedTrackIndex: null,
       selectedSceneIndex: null,
       selectedClipId: null,
@@ -112,7 +118,12 @@ describe("readView", () => {
 
   it("reads view state with detail device view", () => {
     // Setup
-    mockAppView.getProperty.mockReturnValue(4); // Detail/Device view
+    mockAppView.getProperty.mockReturnValue(1); // Session view
+    mockAppView.call.mockImplementation((method, view) => {
+      if (method === "is_view_visible" && view === "Detail/DeviceChain")
+        return 1;
+      return 0;
+    });
     mockSelectedTrack.exists.mockReturnValue(false);
     mockSelectedScene.exists.mockReturnValue(false);
     mockDetailClip.exists.mockReturnValue(false);
@@ -135,6 +146,7 @@ describe("readView", () => {
   it("handles null values when nothing is selected", () => {
     // Setup
     mockAppView.getProperty.mockReturnValue(2); // Arrangement view
+    mockAppView.call.mockReturnValue(0); // No detail views visible
     mockSelectedTrack.exists.mockReturnValue(false);
     mockSelectedScene.exists.mockReturnValue(false);
     mockDetailClip.exists.mockReturnValue(false);
