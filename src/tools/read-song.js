@@ -5,19 +5,25 @@ import {
 } from "../notation/midi-pitch-to-name.js";
 import { readScene } from "./read-scene.js";
 import { readTrack } from "./read-track.js";
+import { convertIncludeParams, READ_SONG_DEFAULTS } from "./include-params.js";
 
-export function readSong({
-  includeDrumChains = false,
-  includeNotes = false,
-  includeRackChains = true,
-  includeEmptyScenes = false,
-  includeMidiEffects = false,
-  includeInstrument = true,
-  includeAudioEffects = false,
-  includeRoutings = false,
-  includeSessionClips = false,
-  includeArrangementClips = false,
-} = {}) {
+export function readSong(args = {}) {
+  // Support both new include array format and legacy individual parameters
+  const includeOrLegacyParams =
+    args.include !== undefined ? args.include : args;
+
+  const {
+    includeDrumChains,
+    includeNotes,
+    includeRackChains,
+    includeEmptyScenes,
+    includeMidiEffects,
+    includeInstrument,
+    includeAudioEffects,
+    includeRoutings,
+    includeSessionClips,
+    includeArrangementClips,
+  } = convertIncludeParams(includeOrLegacyParams, READ_SONG_DEFAULTS);
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const trackIds = liveSet.getChildIds("tracks");

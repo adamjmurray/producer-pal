@@ -23,59 +23,39 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
   },
   inputSchema: {
     trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
-    includeDrumChains: z
-      .boolean()
-      .default(false)
+    include: z
+      .array(
+        z.enum([
+          "drum-chains",
+          "notes",
+          "rack-chains",
+          "midi-effects",
+          "instrument",
+          "audio-effects",
+          "routings",
+          "session-clips",
+          "arrangement-clips",
+        ]),
+      )
+      .default([
+        "notes",
+        "rack-chains",
+        "instrument",
+        "session-clips",
+        "arrangement-clips",
+      ])
       .describe(
-        "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state) without chain objects, and return chains are omitted from device output.",
-      ),
-    includeNotes: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Whether to include notes data in clip objects (default: true). When false, clips return without notes property for lighter responses.",
-      ),
-    includeRackChains: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Whether to include chains in rack devices (default: true). When false, non-drum rack devices return without chains property for lighter responses. This is separate from includeDrumChains which controls drum pad chains.",
-      ),
-    includeMidiEffects: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include MIDI effects array (default: false). When true, returns midiEffects array containing MIDI effect devices with chain information if includeRackChains is true.",
-      ),
-    includeInstrument: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Whether to include instrument object (default: true). When true, returns instrument property containing the first instrument device found, or null if none. Multiple instruments log a console warning.",
-      ),
-    includeAudioEffects: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include audio effects array (default: false). When true, returns audioEffects array containing audio effect devices with chain information if includeRackChains is true.",
-      ),
-    includeRoutings: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include input/output routing information (default: false). When true, returns available routing channels/types, current routing settings, and track monitoring state.",
-      ),
-    includeSessionClips: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Whether to include full session clip data (default: true). When false, session clips return minimal data with only clipId and clipSlotIndex for faster responses when detailed clip information is not needed.",
-      ),
-    includeArrangementClips: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Whether to include full arrangement clip data (default: true). When false, arrangement clips return minimal data with only clipId for faster responses when detailed clip information is not needed.",
+        "Array of data to include in the response. Available options: " +
+          "'drum-chains' (include drum pad chains and return chains in rack devices), " +
+          "'notes' (include notes data in clip objects), " +
+          "'rack-chains' (include chains in rack devices), " +
+          "'midi-effects' (include MIDI effects array), " +
+          "'instrument' (include instrument object), " +
+          "'audio-effects' (include audio effects array), " +
+          "'routings' (include input/output routing information), " +
+          "'session-clips' (include full session clip data), " +
+          "'arrangement-clips' (include full arrangement clip data). " +
+          "Default: ['notes', 'rack-chains', 'instrument', 'session-clips', 'arrangement-clips'].",
       ),
   },
 });

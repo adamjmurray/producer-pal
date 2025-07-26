@@ -2,6 +2,7 @@
 import { getHostTrackIndex } from "../get-host-track-index.js";
 import { midiPitchToName } from "../notation/midi-pitch-to-name.js";
 import { VERSION } from "../version.js";
+import { convertIncludeParams, READ_TRACK_DEFAULTS } from "./include-params.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -468,18 +469,24 @@ function categorizeDevices(
  * @param {boolean} args.includeArrangementClips - Whether to include full arrangement clip data (default: true)
  * @returns {Object} Result object with track information
  */
-export function readTrack({
-  trackIndex,
-  includeDrumChains = false,
-  includeNotes = true,
-  includeRackChains = true,
-  includeMidiEffects = false,
-  includeInstrument = true,
-  includeAudioEffects = false,
-  includeRoutings = false,
-  includeSessionClips = true,
-  includeArrangementClips = true,
-} = {}) {
+export function readTrack(args = {}) {
+  const { trackIndex } = args;
+
+  // Support both new include array format and legacy individual parameters
+  const includeOrLegacyParams =
+    args.include !== undefined ? args.include : args;
+
+  const {
+    includeDrumChains,
+    includeNotes,
+    includeRackChains,
+    includeMidiEffects,
+    includeInstrument,
+    includeAudioEffects,
+    includeRoutings,
+    includeSessionClips,
+    includeArrangementClips,
+  } = convertIncludeParams(includeOrLegacyParams, READ_TRACK_DEFAULTS);
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {

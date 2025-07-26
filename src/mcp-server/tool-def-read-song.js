@@ -30,65 +30,35 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
     destructiveHint: false,
   },
   inputSchema: {
-    includeDrumChains: z
-      .boolean()
-      .default(false)
+    include: z
+      .array(
+        z.enum([
+          "drum-chains",
+          "notes",
+          "rack-chains",
+          "empty-scenes",
+          "midi-effects",
+          "instrument",
+          "audio-effects",
+          "routings",
+          "session-clips",
+          "arrangement-clips",
+        ]),
+      )
+      .default(["rack-chains", "instrument"])
       .describe(
-        "Whether to include drum pad chains and return chains in rack devices (default: false). When false, drum pads only include basic properties (name, note, state) without chain objects and return chains are omitted from device output to reduce response size. Drum pads are still available via the drumMap property.",
-      ),
-    includeNotes: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include notes data in clip objects (default: false). When false, clips return without notes property for lighter responses.",
-      ),
-    includeRackChains: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Whether to include chains in rack devices (default: true). When false, non-drum rack devices return without chains property for lighter responses. This is separate from includeDrumChains which controls drum pad chains.",
-      ),
-    includeEmptyScenes: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include scenes that contain no clips (default: false). When true, all scenes are returned regardless of clip content.",
-      ),
-    includeMidiEffects: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include MIDI effects array in track objects (default: false). When true, each track returns midiEffects array containing MIDI effect devices with chain information if includeRackChains is true.",
-      ),
-    includeInstrument: z
-      .boolean()
-      .default(true)
-      .describe(
-        "Whether to include instrument object in track objects (default: true). When true, each track returns instrument property containing the first instrument device found, or null if none. Multiple instruments log a console warning.",
-      ),
-    includeAudioEffects: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include audio effects array in track objects (default: false). When true, each track returns audioEffects array containing audio effect devices with chain information if includeRackChains is true.",
-      ),
-    includeRoutings: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include input/output routing information in track objects (default: false). When true, each track returns available routing channels/types, current routing settings, and track monitoring state.",
-      ),
-    includeSessionClips: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include full session clip data in track objects (default: false). When false, session clips return minimal data with only clipId and clipSlotIndex for faster responses when detailed clip information is not needed.",
-      ),
-    includeArrangementClips: z
-      .boolean()
-      .default(false)
-      .describe(
-        "Whether to include full arrangement clip data in track objects (default: false). When false, arrangement clips return minimal data with only clipId for faster responses when detailed clip information is not needed.",
+        "Array of data to include in the response. Available options: " +
+          "'drum-chains' (include drum pad chains and return chains in rack devices), " +
+          "'notes' (include notes data in clip objects), " +
+          "'rack-chains' (include chains in rack devices), " +
+          "'empty-scenes' (include scenes that contain no clips), " +
+          "'midi-effects' (include MIDI effects array in track objects), " +
+          "'instrument' (include instrument object in track objects), " +
+          "'audio-effects' (include audio effects array in track objects), " +
+          "'routings' (include input/output routing information in track objects), " +
+          "'session-clips' (include full session clip data in track objects), " +
+          "'arrangement-clips' (include full arrangement clip data in track objects). " +
+          "Default: ['rack-chains', 'instrument'].",
       ),
   },
 });

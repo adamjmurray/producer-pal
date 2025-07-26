@@ -1,19 +1,25 @@
 // src/tools/read-scene.js
 import { readClip } from "./read-clip";
+import { convertIncludeParams, READ_SCENE_DEFAULTS } from "./include-params.js";
 
 /**
  * Read comprehensive information about a scene
  * @param {Object} args - The parameters
  * @param {number} args.sceneIndex - Scene index (0-based)
- * @param {boolean} [args.includeClips=false] - Whether to include clip information
- * @param {boolean} [args.includeNotes=true] - Whether to include notes data in clips
+ * @param {string[]} [args.include=[]] - Array of data to include
  * @returns {Object} Result object with scene information
  */
-export function readScene({
-  sceneIndex,
-  includeClips = false,
-  includeNotes = true,
-}) {
+export function readScene(args = {}) {
+  const { sceneIndex } = args;
+
+  // Support both new include array format and legacy individual parameters
+  const includeOrLegacyParams =
+    args.include !== undefined ? args.include : args;
+
+  const { includeClips } = convertIncludeParams(
+    includeOrLegacyParams,
+    READ_SCENE_DEFAULTS,
+  );
   const liveSet = new LiveAPI(`live_set`);
   const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
@@ -50,7 +56,7 @@ export function readScene({
     result.clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
-        readClip({ trackIndex, clipSlotIndex: sceneIndex, includeNotes }),
+        readClip({ trackIndex, clipSlotIndex: sceneIndex }),
       )
       .filter((clip) => clip.id != null);
   }
