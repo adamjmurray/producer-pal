@@ -19,6 +19,7 @@ describe("readView", () => {
     mockSelectedTrack,
     mockSelectedScene,
     mockDetailClip,
+    mockSelectedDevice,
     mockHighlightedSlot;
   let liveApiInstances = [];
 
@@ -43,6 +44,10 @@ describe("readView", () => {
       exists: vi.fn(),
       id: "id 123",
     };
+    mockSelectedDevice = {
+      exists: vi.fn(),
+      id: "id 456",
+    };
     mockHighlightedSlot = {
       exists: vi.fn(),
       trackIndex: 1,
@@ -58,6 +63,9 @@ describe("readView", () => {
         if (path === "live_set view detail_clip") return mockDetailClip;
         if (path === "live_set view highlighted_clip_slot")
           return mockHighlightedSlot;
+        // Handle dynamic track view selected_device paths
+        if (path.match(/^live_set tracks \d+ view selected_device$/))
+          return mockSelectedDevice;
         return {};
       })();
       liveApiInstances.push(instance);
@@ -72,6 +80,7 @@ describe("readView", () => {
     mockSelectedTrack.exists.mockReturnValue(true);
     mockSelectedScene.exists.mockReturnValue(true);
     mockDetailClip.exists.mockReturnValue(true);
+    mockSelectedDevice.exists.mockReturnValue(true);
     mockHighlightedSlot.exists.mockReturnValue(true);
 
     // Execute
@@ -83,6 +92,7 @@ describe("readView", () => {
       selectedTrackIndex: 0,
       selectedSceneIndex: 2,
       selectedClipId: "id 123",
+      selectedDeviceId: "id 456",
       highlightedClipSlot: {
         trackIndex: 1,
         clipSlotIndex: 3,
@@ -106,6 +116,7 @@ describe("readView", () => {
     mockSelectedTrack.exists.mockReturnValue(false);
     mockSelectedScene.exists.mockReturnValue(false);
     mockDetailClip.exists.mockReturnValue(false);
+    mockSelectedDevice.exists.mockReturnValue(false);
     mockHighlightedSlot.exists.mockReturnValue(false);
 
     // Execute
@@ -117,6 +128,7 @@ describe("readView", () => {
       selectedTrackIndex: null,
       selectedSceneIndex: null,
       selectedClipId: null,
+      selectedDeviceId: null,
       highlightedClipSlot: null,
       detailView: "clip",
       browserVisible: false,
@@ -148,6 +160,7 @@ describe("readView", () => {
       selectedTrackIndex: null,
       selectedSceneIndex: null,
       selectedClipId: null,
+      selectedDeviceId: null,
       highlightedClipSlot: null,
       detailView: "device",
       browserVisible: false,
@@ -172,6 +185,7 @@ describe("readView", () => {
       selectedTrackIndex: null,
       selectedSceneIndex: null,
       selectedClipId: null,
+      selectedDeviceId: null,
       highlightedClipSlot: null,
       detailView: null,
       browserVisible: false,
@@ -200,6 +214,7 @@ describe("readView", () => {
       selectedTrackIndex: null,
       selectedSceneIndex: null,
       selectedClipId: null,
+      selectedDeviceId: null,
       highlightedClipSlot: null,
       detailView: null,
       browserVisible: true,

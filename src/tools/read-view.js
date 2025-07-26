@@ -23,6 +23,16 @@ export function readView() {
     ? selectedScene.sceneIndex
     : null;
   const selectedClipId = detailClip.exists() ? detailClip.id : null;
+
+  // Get selected device from the selected track's view
+  let selectedDeviceId = null;
+  if (selectedTrackIndex !== null) {
+    const selectedTrackView = new LiveAPI(
+      `live_set tracks ${selectedTrackIndex} view selected_device`,
+    );
+    selectedDeviceId = selectedTrackView.exists() ? selectedTrackView.id : null;
+  }
+
   const highlightedSlot = highlightedClipSlotAPI.exists()
     ? {
         trackIndex: highlightedClipSlotAPI.trackIndex,
@@ -52,6 +62,7 @@ export function readView() {
     selectedTrackIndex,
     selectedSceneIndex,
     selectedClipId,
+    selectedDeviceId,
     highlightedClipSlot: highlightedSlot,
     detailView,
     browserVisible,
