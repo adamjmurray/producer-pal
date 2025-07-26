@@ -55,14 +55,22 @@ export function readScene(args = {}) {
   if (includeClips) {
     // For backward compatibility: if 'notes' is explicitly in the include array, use that setting
     // Otherwise, let readClip use its own default (true)
-    const includeArray = Array.isArray(includeOrLegacyParams) ? includeOrLegacyParams : [];
+    const includeArray = Array.isArray(includeOrLegacyParams)
+      ? includeOrLegacyParams
+      : [];
     const notesExplicitlyRequested = includeArray.includes("notes");
-    const clipIncludeNotes = notesExplicitlyRequested ? includeNotes : undefined;
-    
+    const clipIncludeNotes = notesExplicitlyRequested
+      ? includeNotes
+      : undefined;
+
     result.clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
-        readClip({ trackIndex, clipSlotIndex: sceneIndex, includeNotes: clipIncludeNotes }),
+        readClip({
+          trackIndex,
+          clipSlotIndex: sceneIndex,
+          includeNotes: clipIncludeNotes,
+        }),
       )
       .filter((clip) => clip.id != null);
   }

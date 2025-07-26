@@ -17,15 +17,15 @@ import { convertIncludeParams, READ_CLIP_DEFAULTS } from "./include-params.js";
  * @returns {Object} Result object with clip information
  */
 export function readClip(args = {}) {
-  const {
-    trackIndex = null,
-    clipSlotIndex = null,
-    clipId = null,
-  } = args;
+  const { trackIndex = null, clipSlotIndex = null, clipId = null } = args;
 
   // Support both new include array format and legacy individual parameters
-  const includeOrLegacyParams = args.include !== undefined ? args.include : args;
-  const { includeNotes } = convertIncludeParams(includeOrLegacyParams, READ_CLIP_DEFAULTS);
+  const includeOrLegacyParams =
+    args.include !== undefined ? args.include : args;
+  const { includeNotes } = convertIncludeParams(
+    includeOrLegacyParams,
+    READ_CLIP_DEFAULTS,
+  );
   if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and clipSlotIndex must be provided",

@@ -49,6 +49,15 @@ export function convertIncludeParams(
         Boolean(defaults.includeArrangementClips),
       includeClips:
         includeOrLegacyParams.includeClips ?? Boolean(defaults.includeClips),
+      includeRegularTracks:
+        includeOrLegacyParams.includeRegularTracks ??
+        Boolean(defaults.includeRegularTracks),
+      includeReturnTracks:
+        includeOrLegacyParams.includeReturnTracks ??
+        Boolean(defaults.includeReturnTracks),
+      includeMasterTrack:
+        includeOrLegacyParams.includeMasterTrack ??
+        Boolean(defaults.includeMasterTrack),
     };
   }
 
@@ -92,6 +101,15 @@ export function convertIncludeParams(
     includeClips:
       includeSet.has("clips") ||
       (shouldApplyDefaults && Boolean(defaults.includeClips)),
+    includeRegularTracks:
+      includeSet.has("regular-tracks") ||
+      (shouldApplyDefaults && Boolean(defaults.includeRegularTracks)),
+    includeReturnTracks:
+      includeSet.has("return-tracks") ||
+      (shouldApplyDefaults && Boolean(defaults.includeReturnTracks)),
+    includeMasterTrack:
+      includeSet.has("master-track") ||
+      (shouldApplyDefaults && Boolean(defaults.includeMasterTrack)),
   };
 }
 
@@ -109,6 +127,9 @@ export const READ_SONG_DEFAULTS = {
   includeRoutings: false,
   includeSessionClips: false,
   includeArrangementClips: false,
+  includeRegularTracks: true,
+  includeReturnTracks: false,
+  includeMasterTrack: false,
 };
 
 /**

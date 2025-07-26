@@ -118,8 +118,8 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Combine the include* args for read-song and read-track (and any other
       read-* tools?) to be a single include arg that takes an array of what
       detailed info to include
-- [ ] Enhance read-song to return returnTracks and masterTrack, add new include
-      options?
+- [x] Enhance read-song to return returnTracks and masterTrack, add new include
+      options
 - [ ] Support trackId arg for read-track so the return tracks and master track
       can be read
 - [ ] Support sceneId arg for read-scene

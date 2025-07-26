@@ -43,9 +43,12 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
           "routings",
           "session-clips",
           "arrangement-clips",
+          "regular-tracks",
+          "return-tracks",
+          "master-track",
         ]),
       )
-      .default(["rack-chains", "instrument"])
+      .default(["regular-tracks", "instrument", "rack-chains"])
       .describe(
         "Array of data to include in the response. Available options: " +
           "'drum-chains' (include drum pad chains and return chains in rack devices), " +
@@ -57,8 +60,11 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
           "'audio-effects' (include audio effects array in track objects), " +
           "'routings' (include input/output routing information in track objects), " +
           "'session-clips' (include full session clip data in track objects), " +
-          "'arrangement-clips' (include full arrangement clip data in track objects). " +
-          "Default: ['rack-chains', 'instrument'].",
+          "'arrangement-clips' (include full arrangement clip data in track objects), " +
+          "'regular-tracks' (include regular tracks array), " +
+          "'return-tracks' (include return tracks array), " +
+          "'master-track' (include master track object). " +
+          "Default: ['rack-chains', 'instrument', 'regular-tracks'].",
       ),
   },
 });

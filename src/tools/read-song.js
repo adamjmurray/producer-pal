@@ -4,7 +4,7 @@ import {
   intervalsToPitchClasses,
 } from "../notation/midi-pitch-to-name.js";
 import { readScene } from "./read-scene.js";
-import { readTrack } from "./read-track.js";
+import { readTrack, readTrackGeneric } from "./read-track.js";
 import { convertIncludeParams, READ_SONG_DEFAULTS } from "./include-params.js";
 
 export function readSong(args = {}) {
@@ -23,10 +23,14 @@ export function readSong(args = {}) {
     includeRoutings,
     includeSessionClips,
     includeArrangementClips,
+    includeRegularTracks,
+    includeReturnTracks,
+    includeMasterTrack,
   } = convertIncludeParams(includeOrLegacyParams, READ_SONG_DEFAULTS);
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const trackIds = liveSet.getChildIds("tracks");
+  const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
   const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
@@ -40,7 +44,14 @@ export function readSong(args = {}) {
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
     scaleEnabled,
-    tracks: trackIds.map((_trackId, trackIndex) =>
+    scenes: sceneIds
+      .map((_sceneId, sceneIndex) => readScene({ sceneIndex, includeNotes }))
+      .filter((scene) => includeEmptyScenes || !scene.isEmpty),
+  };
+
+  // Conditionally include track arrays based on include parameters
+  if (includeRegularTracks) {
+    result.tracks = trackIds.map((_trackId, trackIndex) =>
       readTrack({
         trackIndex,
         includeDrumChains,
@@ -53,11 +64,50 @@ export function readSong(args = {}) {
         includeSessionClips,
         includeArrangementClips,
       }),
-    ),
-    scenes: sceneIds
-      .map((_sceneId, sceneIndex) => readScene({ sceneIndex, includeNotes }))
-      .filter((scene) => includeEmptyScenes || !scene.isEmpty),
-  };
+    );
+  }
+
+  if (includeReturnTracks) {
+    result.returnTracks = returnTrackIds.map(
+      (_returnTrackId, returnTrackIndex) => {
+        const returnTrack = new LiveAPI(
+          `live_set return_tracks ${returnTrackIndex}`,
+        );
+        return readTrackGeneric({
+          track: returnTrack,
+          trackIndex: returnTrackIndex,
+          trackType: "return",
+          includeDrumChains,
+          includeNotes,
+          includeRackChains,
+          includeMidiEffects,
+          includeInstrument,
+          includeAudioEffects,
+          includeRoutings,
+          includeSessionClips,
+          includeArrangementClips,
+        });
+      },
+    );
+  }
+
+  if (includeMasterTrack) {
+    const masterTrack = new LiveAPI("live_set master_track");
+    result.masterTrack = readTrackGeneric({
+      track: masterTrack,
+      trackIndex: null,
+      trackType: "master",
+      includeDrumChains,
+      includeNotes,
+      includeRackChains,
+      includeMidiEffects,
+      includeInstrument,
+      includeAudioEffects,
+      includeRoutings,
+      includeSessionClips,
+      includeArrangementClips,
+    });
+  }
 
   // Only include scale properties when scale is enabled
   if (scaleEnabled) {

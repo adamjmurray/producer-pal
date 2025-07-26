@@ -656,4 +656,126 @@ describe("readSong", () => {
     // Verify expensive Live API calls were not made due to default minimal behavior
     expect(liveApiCall).not.toHaveBeenCalledWith("get_notes_extended");
   });
+
+  it("conditionally includes return tracks and master track", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set return_tracks 0":
+          return "return1";
+        case "live_set return_tracks 1":
+          return "return2";
+        case "live_set master_track":
+          return "master1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Track Types Test Set",
+        tracks: children("track1"),
+        return_tracks: children("return1", "return2"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Regular Track",
+        clip_slots: children(),
+        arrangement_clips: children(),
+        devices: [],
+      },
+      "live_set return_tracks 0": {
+        has_midi_input: 0,
+        name: "Return A",
+        clip_slots: children(), // Return tracks don't have clip slots in actual Live
+        arrangement_clips: children(),
+        devices: [],
+      },
+      "live_set return_tracks 1": {
+        has_midi_input: 0,
+        name: "Return B",
+        clip_slots: children(),
+        arrangement_clips: children(),
+        devices: [],
+      },
+      "live_set master_track": {
+        has_midi_input: 0,
+        name: "Master",
+        clip_slots: children(), // Master track doesn't have clip slots in actual Live
+        arrangement_clips: children(),
+        devices: [],
+      },
+    });
+
+    // Test with all track types included
+    const resultAll = readSong({
+      include: [
+        "regular-tracks",
+        "return-tracks",
+        "master-track",
+        "instrument",
+      ],
+    });
+
+    expect(resultAll).toEqual(
+      expect.objectContaining({
+        tracks: [
+          expect.objectContaining({
+            id: "track1",
+            name: "Regular Track",
+            trackIndex: 0,
+          }),
+        ],
+        returnTracks: [
+          expect.objectContaining({
+            id: "return1",
+            name: "Return A",
+            returnTrackIndex: 0,
+            sessionClips: [], // Return tracks don't have session clips
+          }),
+          expect.objectContaining({
+            id: "return2",
+            name: "Return B",
+            returnTrackIndex: 1,
+            sessionClips: [], // Return tracks don't have session clips
+          }),
+        ],
+        masterTrack: expect.objectContaining({
+          id: "master1",
+          name: "Master",
+          sessionClips: [], // Master track doesn't have session clips
+        }),
+      }),
+    );
+
+    // Test with only return tracks included
+    const resultReturnOnly = readSong({
+      include: ["return-tracks", "instrument"],
+    });
+
+    expect(resultReturnOnly.tracks).toBeUndefined();
+    expect(resultReturnOnly.returnTracks).toHaveLength(2);
+    expect(resultReturnOnly.masterTrack).toBeUndefined();
+
+    // Test with only master track included
+    const resultMasterOnly = readSong({
+      include: ["master-track", "instrument"],
+    });
+
+    expect(resultMasterOnly.tracks).toBeUndefined();
+    expect(resultMasterOnly.returnTracks).toBeUndefined();
+    expect(resultMasterOnly.masterTrack).toBeDefined();
+
+    // Test default behavior (should include regular tracks by default)
+    const resultDefault = readSong();
+
+    expect(resultDefault.tracks).toHaveLength(1);
+    expect(resultDefault.returnTracks).toBeUndefined();
+    expect(resultDefault.masterTrack).toBeUndefined();
+  });
 });

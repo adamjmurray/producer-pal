@@ -21,7 +21,12 @@ import { readClip } from "./read-clip.js";
  * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
  * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
-function computeState(liveObject) {
+function computeState(liveObject, trackType = "regular") {
+  // Master track doesn't have mute/solo/muted_via_solo properties
+  if (trackType === "master") {
+    return STATE.ACTIVE;
+  }
+
   const isMuted = liveObject.getProperty("mute") > 0;
   const isSoloed = liveObject.getProperty("solo") > 0;
   const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
@@ -469,26 +474,37 @@ function categorizeDevices(
  * @param {boolean} args.includeArrangementClips - Whether to include full arrangement clip data (default: true)
  * @returns {Object} Result object with track information
  */
-export function readTrack(args = {}) {
-  const { trackIndex } = args;
-
-  // Support both new include array format and legacy individual parameters
-  const includeOrLegacyParams =
-    args.include !== undefined ? args.include : args;
-
-  const {
-    includeDrumChains,
-    includeNotes,
-    includeRackChains,
-    includeMidiEffects,
-    includeInstrument,
-    includeAudioEffects,
-    includeRoutings,
-    includeSessionClips,
-    includeArrangementClips,
-  } = convertIncludeParams(includeOrLegacyParams, READ_TRACK_DEFAULTS);
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-
+/**
+ * Generic track reader that works with any track type
+ * @param {Object} args - The parameters
+ * @param {Object} args.track - LiveAPI track object
+ * @param {number|null} args.trackIndex - Track index (null for master track)
+ * @param {string} args.trackType - Track type: "regular", "return", or "master"
+ * @param {boolean} args.includeDrumChains - Include drum chains
+ * @param {boolean} args.includeNotes - Include notes in clips
+ * @param {boolean} args.includeRackChains - Include rack chains
+ * @param {boolean} args.includeMidiEffects - Include MIDI effects
+ * @param {boolean} args.includeInstrument - Include instrument
+ * @param {boolean} args.includeAudioEffects - Include audio effects
+ * @param {boolean} args.includeRoutings - Include routing info
+ * @param {boolean} args.includeSessionClips - Include session clips
+ * @param {boolean} args.includeArrangementClips - Include arrangement clips
+ * @returns {Object} Track information
+ */
+export function readTrackGeneric({
+  track,
+  trackIndex,
+  trackType = "regular",
+  includeDrumChains,
+  includeNotes,
+  includeRackChains,
+  includeMidiEffects,
+  includeInstrument,
+  includeAudioEffects,
+  includeRoutings,
+  includeSessionClips,
+  includeArrangementClips,
+}) {
   if (!track.exists()) {
     return {
       id: null,
@@ -500,7 +516,8 @@ export function readTrack(args = {}) {
 
   const groupId = track.get("group_track")[1];
   const isMidiTrack = track.getProperty("has_midi_input") > 0;
-  const isProducerPalHost = trackIndex === getHostTrackIndex();
+  const isProducerPalHost =
+    trackType === "regular" && trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
 
   // Check track capabilities to avoid warnings
@@ -511,15 +528,25 @@ export function readTrack(args = {}) {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
-    trackIndex,
     color: track.getColor(),
     isArmed: canBeArmed ? track.getProperty("arm") > 0 : false,
     followsArrangement: track.getProperty("back_to_arranger") === 0,
     isGroup,
     isGroupMember: track.getProperty("is_grouped") > 0,
     groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
+  };
 
-    sessionClips: includeSessionClips
+  // Add track index properties based on track type
+  if (trackType === "regular") {
+    result.trackIndex = trackIndex;
+  } else if (trackType === "return") {
+    result.returnTrackIndex = trackIndex;
+  }
+  // Master track gets no index property
+
+  // Session clips - only for regular tracks (return and master tracks don't have clip slots)
+  if (trackType === "regular") {
+    result.sessionClips = includeSessionClips
       ? track
           .getChildIds("clip_slots")
           .map((_clipSlotId, clipSlotIndex) =>
@@ -532,17 +559,22 @@ export function readTrack(args = {}) {
             const clip = new LiveAPI(`${slotId} clip`);
             return clip.exists() ? { clipId: clip.id, clipSlotIndex } : null;
           })
-          .filter(Boolean),
+          .filter(Boolean);
+  } else {
+    // Return and master tracks don't have session clips
+    result.sessionClips = [];
+  }
 
-    arrangementClips: isGroup
-      ? [] // Group tracks have no arrangement clips
+  // Arrangement clips - group tracks, return tracks, and master track have no arrangement clips
+  result.arrangementClips =
+    isGroup || trackType === "return" || trackType === "master"
+      ? [] // These track types have no arrangement clips
       : includeArrangementClips
         ? track
             .getChildIds("arrangement_clips")
             .map((clipId) => readClip({ clipId, includeNotes }))
             .filter((clip) => clip.id != null)
-        : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId })),
-  };
+        : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId }));
 
   // Categorize devices into separate arrays
   const categorizedDevices = categorizeDevices(
@@ -578,106 +610,130 @@ export function readTrack(args = {}) {
     result.drumMap = drumMap;
   }
 
-  // Only include playingSlotIndex when >= 0
-  const playingSlotIndex = track.getProperty("playing_slot_index");
-  if (playingSlotIndex >= 0) {
-    result.playingSlotIndex = playingSlotIndex;
-  }
+  // Only include playingSlotIndex when >= 0 (only for regular tracks)
+  if (trackType === "regular") {
+    const playingSlotIndex = track.getProperty("playing_slot_index");
+    if (playingSlotIndex >= 0) {
+      result.playingSlotIndex = playingSlotIndex;
+    }
 
-  // Only include firedSlotIndex when >= 0
-  const firedSlotIndex = track.getProperty("fired_slot_index");
-  if (firedSlotIndex >= 0) {
-    result.firedSlotIndex = firedSlotIndex;
+    // Only include firedSlotIndex when >= 0 (only for regular tracks)
+    const firedSlotIndex = track.getProperty("fired_slot_index");
+    if (firedSlotIndex >= 0) {
+      result.firedSlotIndex = firedSlotIndex;
+    }
   }
 
   // Add state property only if not default "active" state
-  const trackState = computeState(track);
+  const trackState = computeState(track, trackType);
   if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
   }
 
   if (includeRoutings) {
-    // Transform available input routing types - only for tracks that support input routing
-    if (!isGroup) {
-      const availableInputTypes =
-        track.getProperty("available_input_routing_types") || [];
-      result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
+    // Master track has no routing properties
+    if (trackType === "master") {
+      result.availableInputRoutingTypes = [];
+      result.availableInputRoutingChannels = [];
+      result.availableOutputRoutingTypes = [];
+      result.availableOutputRoutingChannels = [];
+      result.inputRoutingType = null;
+      result.inputRoutingChannel = null;
+      result.outputRoutingType = null;
+      result.outputRoutingChannel = null;
+    } else {
+      // Transform available input routing types - only for regular tracks (not return or group tracks)
+      if (!isGroup && trackType === "regular") {
+        const availableInputTypes =
+          track.getProperty("available_input_routing_types") || [];
+        result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
+          name: type.display_name,
+          inputId: String(type.identifier),
+        }));
+
+        const availableInputChannels =
+          track.getProperty("available_input_routing_channels") || [];
+        result.availableInputRoutingChannels = availableInputChannels.map(
+          (ch) => ({
+            name: ch.display_name,
+            inputId: String(ch.identifier),
+          }),
+        );
+      } else if (trackType === "return") {
+        // Return tracks don't have input routing - set empty arrays
+        result.availableInputRoutingTypes = [];
+        result.availableInputRoutingChannels = [];
+      }
+      // Group tracks don't set these properties at all (remain undefined)
+
+      const availableOutputTypes =
+        track.getProperty("available_output_routing_types") || [];
+      result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
         name: type.display_name,
-        inputId: String(type.identifier),
+        outputId: String(type.identifier),
       }));
 
-      const availableInputChannels =
-        track.getProperty("available_input_routing_channels") || [];
-      result.availableInputRoutingChannels = availableInputChannels.map(
+      const availableOutputChannels =
+        track.getProperty("available_output_routing_channels") || [];
+      result.availableOutputRoutingChannels = availableOutputChannels.map(
         (ch) => ({
           name: ch.display_name,
-          inputId: String(ch.identifier),
+          outputId: String(ch.identifier),
         }),
       );
-    }
 
-    const availableOutputTypes =
-      track.getProperty("available_output_routing_types") || [];
-    result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
-      name: type.display_name,
-      outputId: String(type.identifier),
-    }));
+      // Transform current input routing settings - only for regular tracks (not return or group tracks)
+      if (!isGroup && trackType === "regular") {
+        const inputType = track.getProperty("input_routing_type");
+        result.inputRoutingType = inputType
+          ? {
+              name: inputType.display_name,
+              inputId: String(inputType.identifier),
+            }
+          : null;
 
-    const availableOutputChannels =
-      track.getProperty("available_output_routing_channels") || [];
-    result.availableOutputRoutingChannels = availableOutputChannels.map(
-      (ch) => ({
-        name: ch.display_name,
-        outputId: String(ch.identifier),
-      }),
-    );
+        const inputChannel = track.getProperty("input_routing_channel");
+        result.inputRoutingChannel = inputChannel
+          ? {
+              name: inputChannel.display_name,
+              inputId: String(inputChannel.identifier),
+            }
+          : null;
+      } else if (trackType === "return") {
+        // Return tracks don't have input routing - set null
+        result.inputRoutingType = null;
+        result.inputRoutingChannel = null;
+      }
+      // Group tracks don't set these properties at all (remain undefined)
 
-    // Transform current input routing settings - only for tracks that support input routing
-    if (!isGroup) {
-      const inputType = track.getProperty("input_routing_type");
-      result.inputRoutingType = inputType
+      const outputType = track.getProperty("output_routing_type");
+      result.outputRoutingType = outputType
         ? {
-            name: inputType.display_name,
-            inputId: String(inputType.identifier),
+            name: outputType.display_name,
+            outputId: String(outputType.identifier),
           }
         : null;
 
-      const inputChannel = track.getProperty("input_routing_channel");
-      result.inputRoutingChannel = inputChannel
+      const outputChannel = track.getProperty("output_routing_channel");
+      result.outputRoutingChannel = outputChannel
         ? {
-            name: inputChannel.display_name,
-            inputId: String(inputChannel.identifier),
+            name: outputChannel.display_name,
+            outputId: String(outputChannel.identifier),
           }
         : null;
-    }
 
-    const outputType = track.getProperty("output_routing_type");
-    result.outputRoutingType = outputType
-      ? {
-          name: outputType.display_name,
-          outputId: String(outputType.identifier),
-        }
-      : null;
-
-    const outputChannel = track.getProperty("output_routing_channel");
-    result.outputRoutingChannel = outputChannel
-      ? {
-          name: outputChannel.display_name,
-          outputId: String(outputChannel.identifier),
-        }
-      : null;
-
-    // Add monitoring state - only for tracks that can be armed (excludes group/master/return tracks)
-    if (canBeArmed) {
-      const monitoringStateValue = track.getProperty(
-        "current_monitoring_state",
-      );
-      result.monitoringState =
-        {
-          [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
-          [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
-          [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
-        }[monitoringStateValue] ?? "unknown";
+      // Add monitoring state - only for tracks that can be armed (excludes group/master/return tracks)
+      if (canBeArmed) {
+        const monitoringStateValue = track.getProperty(
+          "current_monitoring_state",
+        );
+        result.monitoringState =
+          {
+            [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
+            [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
+            [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
+          }[monitoringStateValue] ?? "unknown";
+      }
     }
   }
 
@@ -687,4 +743,41 @@ export function readTrack(args = {}) {
   }
 
   return result;
+}
+
+export function readTrack(args = {}) {
+  const { trackIndex } = args;
+
+  // Support both new include array format and legacy individual parameters
+  const includeOrLegacyParams =
+    args.include !== undefined ? args.include : args;
+
+  const {
+    includeDrumChains,
+    includeNotes,
+    includeRackChains,
+    includeMidiEffects,
+    includeInstrument,
+    includeAudioEffects,
+    includeRoutings,
+    includeSessionClips,
+    includeArrangementClips,
+  } = convertIncludeParams(includeOrLegacyParams, READ_TRACK_DEFAULTS);
+
+  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
+  return readTrackGeneric({
+    track,
+    trackIndex,
+    trackType: "regular",
+    includeDrumChains,
+    includeNotes,
+    includeRackChains,
+    includeMidiEffects,
+    includeInstrument,
+    includeAudioEffects,
+    includeRoutings,
+    includeSessionClips,
+    includeArrangementClips,
+  });
 }
