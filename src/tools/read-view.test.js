@@ -1,6 +1,7 @@
 // src/tools/read-view.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readView } from "./read-view.js";
+import { LIVE_API_VIEW_NAMES } from "./constants.js";
 
 // Mock the global LiveAPI
 global.LiveAPI = vi.fn();
@@ -94,7 +95,11 @@ describe("readView", () => {
     // Setup
     mockAppView.getProperty.mockReturnValue(2); // Arrangement view
     mockAppView.call.mockImplementation((method, view) => {
-      if (method === "is_view_visible" && view === "Detail/Clip") return 1;
+      if (
+        method === "is_view_visible" &&
+        view === LIVE_API_VIEW_NAMES.DETAIL_CLIP
+      )
+        return 1;
       return 0;
     });
     mockSelectedTrack.exists.mockReturnValue(false);
@@ -112,7 +117,7 @@ describe("readView", () => {
       selectedSceneIndex: null,
       selectedClipId: null,
       highlightedClipSlot: null,
-      detailView: "Detail/Clip",
+      detailView: "clip",
     });
   });
 
@@ -120,7 +125,10 @@ describe("readView", () => {
     // Setup
     mockAppView.getProperty.mockReturnValue(1); // Session view
     mockAppView.call.mockImplementation((method, view) => {
-      if (method === "is_view_visible" && view === "Detail/DeviceChain")
+      if (
+        method === "is_view_visible" &&
+        view === LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN
+      )
         return 1;
       return 0;
     });
@@ -139,7 +147,7 @@ describe("readView", () => {
       selectedSceneIndex: null,
       selectedClipId: null,
       highlightedClipSlot: null,
-      detailView: "Detail/Device",
+      detailView: "device",
     });
   });
 

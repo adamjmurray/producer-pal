@@ -1,6 +1,6 @@
 // src/tools/update-view.js
 import { toLiveApiView } from "../utils.js";
-import { LIVE_API_VIEW_SESSION } from "./constants.js";
+import { LIVE_API_VIEW_SESSION, LIVE_API_VIEW_NAMES } from "./constants.js";
 
 /**
  * Updates the view state in Ableton Live. Use judiciously to avoid interrupting
@@ -55,9 +55,9 @@ export function updateView({
   // Update detail view
   if (showDetail !== undefined) {
     if (showDetail === "clip") {
-      appView.call("focus_view", "Detail/Clip");
+      appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_CLIP);
     } else if (showDetail === "device") {
-      appView.call("focus_view", "Detail/Device");
+      appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN);
     } else if (showDetail === null) {
       // Hide detail view by focusing on main view
       if (
@@ -66,16 +66,16 @@ export function updateView({
           appView.getProperty("focused_document_view") ===
             LIVE_API_VIEW_SESSION)
       ) {
-        appView.call("focus_view", "Session");
+        appView.call("focus_view", LIVE_API_VIEW_NAMES.SESSION);
       } else {
-        appView.call("focus_view", "Arranger");
+        appView.call("focus_view", LIVE_API_VIEW_NAMES.ARRANGER);
       }
     }
   }
 
   // Show loop view for selected clip
   if (showLoop === true && selectedClipId) {
-    appView.call("focus_view", "Detail/Clip");
+    appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_CLIP);
     // Note: There's no direct API to show loop view, but focusing on Detail/Clip
     // with a selected clip will show the clip editor where loop controls are visible
   }

@@ -4,6 +4,7 @@ import { updateView } from "./update-view.js";
 import {
   LIVE_API_VIEW_SESSION,
   LIVE_API_VIEW_ARRANGEMENT,
+  LIVE_API_VIEW_NAMES,
 } from "./constants.js";
 
 // Mock the global LiveAPI
@@ -125,7 +126,10 @@ describe("updateView", () => {
     const result = updateView({ showDetail: "clip" });
 
     // Verify
-    expect(liveApiCall).toHaveBeenCalledWith("focus_view", "Detail/Clip");
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "focus_view",
+      LIVE_API_VIEW_NAMES.DETAIL_CLIP,
+    );
     expect(result).toEqual({ detailView: "Detail/Clip" });
   });
 
@@ -134,7 +138,10 @@ describe("updateView", () => {
     const result = updateView({ showDetail: "device" });
 
     // Verify
-    expect(liveApiCall).toHaveBeenCalledWith("focus_view", "Detail/Device");
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "focus_view",
+      LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN,
+    );
     expect(result).toEqual({ detailView: "Detail/Device" });
   });
 
@@ -146,7 +153,10 @@ describe("updateView", () => {
     const result = updateView({ showDetail: null });
 
     // Verify
-    expect(liveApiCall).toHaveBeenCalledWith("focus_view", "Session");
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "focus_view",
+      LIVE_API_VIEW_NAMES.SESSION,
+    );
     expect(result).toEqual({ detailView: null });
   });
 
@@ -158,7 +168,10 @@ describe("updateView", () => {
     const result = updateView({ showDetail: null });
 
     // Verify
-    expect(liveApiCall).toHaveBeenCalledWith("focus_view", "Arranger");
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "focus_view",
+      LIVE_API_VIEW_NAMES.ARRANGER,
+    );
     expect(result).toEqual({ detailView: null });
   });
 
@@ -170,7 +183,10 @@ describe("updateView", () => {
     });
 
     // Verify
-    expect(liveApiCall).toHaveBeenCalledWith("focus_view", "Detail/Clip");
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "focus_view",
+      LIVE_API_VIEW_NAMES.DETAIL_CLIP,
+    );
     expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_123");
     expect(result).toEqual({
       selectedClipId: "clip_123",
@@ -190,7 +206,10 @@ describe("updateView", () => {
 
     // Verify all operations were called
     expect(liveApiCall).toHaveBeenCalledWith("show_view", 2);
-    expect(liveApiCall).toHaveBeenCalledWith("focus_view", "Detail/Clip");
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "focus_view",
+      LIVE_API_VIEW_NAMES.DETAIL_CLIP,
+    );
     expect(liveApiSet).toHaveBeenCalledWith(
       "selected_track",
       "id track_id_123",

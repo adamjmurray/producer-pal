@@ -1,5 +1,6 @@
 // src/tools/read-view.js
 import { fromLiveApiView } from "../utils.js";
+import { LIVE_API_VIEW_NAMES } from "./constants.js";
 
 /**
  * Reads the current view state in Ableton Live including which view is active
@@ -33,10 +34,12 @@ export function readView() {
   let detailView = null;
 
   // Check if detail views are visible
-  if (appView.call("is_view_visible", "Detail/Clip")) {
-    detailView = "Detail/Clip";
-  } else if (appView.call("is_view_visible", "Detail/DeviceChain")) {
-    detailView = "Detail/Device";
+  if (appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_CLIP)) {
+    detailView = "clip";
+  } else if (
+    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN)
+  ) {
+    detailView = "device";
   }
 
   return {
