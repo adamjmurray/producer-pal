@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readView } from "./read-view.js";
 import { LIVE_API_VIEW_NAMES } from "./constants.js";
+import "../live-api-extensions.js";
 
 // Mock the global LiveAPI
 global.LiveAPI = vi.fn();
@@ -69,13 +70,13 @@ describe("readView", () => {
         if (path === "live_set view detail_clip") return mockDetailClip;
         if (path === "live_set view highlighted_clip_slot")
           return mockHighlightedSlot;
-        // Handle dynamic track view selected_device paths
-        if (path.match(/^live_set tracks \d+ view selected_device$/))
-          return mockSelectedDevice;
-        if (path.match(/^live_set return_tracks \d+ view selected_device$/))
-          return mockSelectedDevice;
-        if (path === "live_set master_track view selected_device")
-          return mockSelectedDevice;
+        // Handle dynamic track view paths
+        if (path.match(/^live_set tracks \d+ view$/))
+          return { exists: vi.fn().mockReturnValue(true), getProperty: vi.fn().mockReturnValue("id 456") };
+        if (path.match(/^live_set return_tracks \d+ view$/))
+          return { exists: vi.fn().mockReturnValue(true), getProperty: vi.fn().mockReturnValue("id 456") };
+        if (path === "live_set master_track view")
+          return { exists: vi.fn().mockReturnValue(false), getProperty: vi.fn().mockReturnValue(null) };
         return {};
       })();
       liveApiInstances.push(instance);

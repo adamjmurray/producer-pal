@@ -26,22 +26,23 @@ export function readView() {
 
   // Get selected device from the selected track's view
   let selectedDeviceId = null;
-  if (trackType && selectedTrack.exists()) {
+  if (selectedTrack.exists()) {
+    // Get the track view path based on track type
     let trackViewPath;
     if (trackType === "regular") {
       const trackIndex = selectedTrack.trackIndex;
-      trackViewPath = `live_set tracks ${trackIndex} view selected_device`;
+      trackViewPath = `live_set tracks ${trackIndex} view`;
     } else if (trackType === "return") {
       const returnTrackIndex = selectedTrack.returnTrackIndex;
-      trackViewPath = `live_set return_tracks ${returnTrackIndex} view selected_device`;
+      trackViewPath = `live_set return_tracks ${returnTrackIndex} view`;
     } else if (trackType === "master") {
-      trackViewPath = "live_set master_track view selected_device";
+      trackViewPath = "live_set master_track view";
     }
 
     if (trackViewPath) {
-      const selectedTrackView = new LiveAPI(trackViewPath);
-      selectedDeviceId = selectedTrackView.exists()
-        ? selectedTrackView.id
+      const trackView = new LiveAPI(trackViewPath);
+      selectedDeviceId = trackView.exists()
+        ? trackView.getProperty("selected_device")
         : null;
     }
   }

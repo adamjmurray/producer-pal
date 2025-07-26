@@ -790,4 +790,70 @@ describe("LiveAPI extensions", () => {
       });
     });
   });
+
+  describe("setProperty", () => {
+    beforeEach(() => {
+      api.set = vi.fn();
+    });
+
+    it("should auto-format numeric ID for selected_track", () => {
+      api.setProperty("selected_track", "123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "id 123");
+    });
+
+    it("should auto-format numeric ID for selected_scene", () => {
+      api.setProperty("selected_scene", "456");
+      expect(api.set).toHaveBeenCalledWith("selected_scene", "id 456");
+    });
+
+    it("should auto-format numeric ID for detail_clip", () => {
+      api.setProperty("detail_clip", "789");
+      expect(api.set).toHaveBeenCalledWith("detail_clip", "id 789");
+    });
+
+    it("should auto-format numeric ID for highlighted_clip_slot", () => {
+      api.setProperty("highlighted_clip_slot", "101");
+      expect(api.set).toHaveBeenCalledWith("highlighted_clip_slot", "id 101");
+    });
+
+    it("should not double-format already prefixed IDs", () => {
+      api.setProperty("selected_track", "id 123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "id 123");
+    });
+
+    it("should pass through non-numeric strings unchanged", () => {
+      api.setProperty("selected_track", "track_name");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "track_name");
+    });
+
+    it("should pass through non-selection properties unchanged", () => {
+      api.setProperty("name", "123");
+      expect(api.set).toHaveBeenCalledWith("name", "123");
+    });
+
+    it("should handle null values", () => {
+      api.setProperty("selected_track", null);
+      expect(api.set).toHaveBeenCalledWith("selected_track", null);
+    });
+
+    it("should handle undefined values", () => {
+      api.setProperty("selected_scene", undefined);
+      expect(api.set).toHaveBeenCalledWith("selected_scene", undefined);
+    });
+
+    it("should handle numeric strings with non-digits", () => {
+      api.setProperty("selected_track", "123abc");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "123abc");
+    });
+
+    it("should handle IDs that already have id prefix with space", () => {
+      api.setProperty("selected_track", "id track_123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "id track_123");
+    });
+
+    it("should handle IDs that already have id prefix without space", () => {
+      api.setProperty("selected_track", "idtrack_123");
+      expect(api.set).toHaveBeenCalledWith("selected_track", "idtrack_123");
+    });
+  });
 });

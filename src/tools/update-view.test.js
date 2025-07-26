@@ -6,8 +6,19 @@ import {
   LIVE_API_VIEW_ARRANGEMENT,
   LIVE_API_VIEW_NAMES,
 } from "./constants.js";
+import "../live-api-extensions.js";
+import {
+  LiveAPI,
+  liveApiCall,
+  liveApiSet,
+  liveApiGet,
+  liveApiId,
+} from "../mock-live-api.js";
 
-// Mock the global LiveAPI
+// Mock the LiveAPI constructor
+vi.mocked(LiveAPI);
+
+// Set up global LiveAPI
 global.LiveAPI = vi.fn();
 
 // Mock utility functions
@@ -19,118 +30,86 @@ vi.mock("../utils.js", () => ({
 }));
 
 describe("updateView", () => {
-  let mockAppView,
-    mockSongView,
-    mockTrackAPI,
-    mockSceneAPI,
-    mockClipSlotAPI,
-    mockDeviceAPI;
-  let liveApiCall,
-    liveApiSet,
-    liveApiGetProperty,
-    liveApiExists,
-    liveApiGetChildIds,
-    liveApiId,
-    liveApiPath;
+  let mockAppView;
+  let mockSongView;
+  let mockTrackAPI;
 
   beforeEach(() => {
     vi.clearAllMocks();
-
-    // Mock methods that will be called on LiveAPI instances
-    liveApiCall = vi.fn();
-    liveApiSet = vi.fn();
-    liveApiGetProperty = vi.fn();
-    liveApiExists = vi.fn().mockReturnValue(true);
-    liveApiGetChildIds = vi.fn().mockReturnValue([]);
-    liveApiId = vi.fn(function () {
-      return this._id;
-    });
-    liveApiPath = vi.fn(function () {
-      return this._path;
-    });
-
-    // Create mock instances
+    
+    // Set up reusable mock objects
     mockAppView = {
       call: liveApiCall,
-      getProperty: liveApiGetProperty,
       _id: "app_view_id",
       _path: "live_app view",
     };
+
     mockSongView = {
       set: liveApiSet,
+      call: liveApiCall,
       _id: "song_view_id",
       _path: "live_set view",
     };
+
     mockTrackAPI = {
-      exists: liveApiExists,
-      getProperty: liveApiGetProperty,
-      getChildIds: liveApiGetChildIds,
-      set: liveApiSet,
-      _id: "id track_id_123",
-      _path: "live_set tracks 2",
+      exists: vi.fn().mockReturnValue(true),
       trackType: "regular",
-      trackIndex: 2,
-      returnTrackIndex: null,
-    };
-    mockSceneAPI = {
-      exists: liveApiExists,
-      _id: "id scene_id_456",
-      _path: "live_set scenes 5",
-    };
-    mockClipSlotAPI = {
-      exists: liveApiExists,
-      _id: "id clipslot_id_789",
-      _path: "live_set tracks 1 clip_slots 3",
-    };
-    mockDeviceAPI = {
-      exists: liveApiExists,
-      getProperty: liveApiGetProperty.mockReturnValue(9), // Instrument type
-      getChildIds: liveApiGetChildIds,
-      _id: "id device_id_999",
-      _path: "live_set tracks 0 devices 0",
+      trackIndex: 1,
+      _id: "id track_id_123",
+      _path: "live_set view selected_track",
     };
 
-    // Mock LiveAPI constructor to return appropriate instances
-    global.LiveAPI.mockImplementation(function (path) {
-      const instance = (() => {
-        if (path === "live_app view") return mockAppView;
-        if (path === "live_set view") return mockSongView;
-        if (path === "live_set view selected_track") return mockTrackAPI;
-        if (path.startsWith("live_set tracks") && path.includes("clip_slots"))
-          return mockClipSlotAPI;
-        if (path.startsWith("live_set tracks") && path.includes("devices"))
-          return mockDeviceAPI;
-        if (path.startsWith("live_set tracks") && path.includes("view"))
-          return mockSongView;
-        if (path.startsWith("live_set tracks")) return mockTrackAPI;
-        if (path.startsWith("live_set return_tracks")) return mockTrackAPI;
-        if (path === "live_set master_track") return mockTrackAPI;
-        if (path.startsWith("live_set scenes")) return mockSceneAPI;
-        if (path.startsWith("id ")) return mockTrackAPI; // Default for ID lookups
-        return {};
-      })();
-
-      // Apply common properties to the instance
-      instance.exists = liveApiExists;
-
-      // Define id and path as getters only if not already defined
-      if (!instance.hasOwnProperty("id")) {
-        Object.defineProperty(instance, "id", {
-          get: function () {
-            return this._id;
-          },
-        });
-      }
-      if (!instance.hasOwnProperty("path")) {
-        Object.defineProperty(instance, "path", {
-          get: function () {
-            return this._path;
-          },
-        });
-      }
-
-      return instance;
+    // Set up mock implementations
+    liveApiId.mockImplementation(function () {
+      return this._id || "id default";
     });
+
+    // Set up liveApiGet for devices
+    liveApiGet.mockReturnValue(["id", "device_123", "id", "device_456"]);
+
+    // Default LiveAPI constructor mock
+    global.LiveAPI.mockImplementation(function (path) {
+      this.path = path;
+      this._path = path;
+      
+      // Basic methods that all instances need
+      this.exists = vi.fn().mockReturnValue(true);
+      this.set = liveApiSet;
+      this.call = liveApiCall;
+      this.get = liveApiGet;
+      this.getProperty = vi.fn();
+      this.setProperty = vi.fn((property, value) => this.set(property, value));
+      
+      // Mock some specific properties based on path
+      if (path === "live_app view") {
+        Object.assign(this, mockAppView);
+      } else if (path === "live_set view") {
+        Object.assign(this, mockSongView);
+      } else if (path === "live_set view selected_track") {
+        Object.assign(this, mockTrackAPI);
+      } else if (path.includes("clip_slots")) {
+        this._id = "id clipslot_id_789";
+      } else if (path.startsWith("live_set tracks") || path.startsWith("live_set return_tracks") || path.startsWith("live_set master_track")) {
+        this._id = "id track_id_123";
+      } else if (path.startsWith("live_set scenes")) {
+        this._id = "id scene_id_456";
+      }
+      
+      // Add id getter that executes the mock function
+      Object.defineProperty(this, "id", {
+        get: function () {
+          return liveApiId.apply(this);
+        },
+      });
+      
+      return this;
+    });
+
+    // Mock static methods
+    global.LiveAPI.from = vi.fn((id) => ({
+      exists: vi.fn().mockReturnValue(true),
+      id: id.toString().startsWith("id ") ? id : `id ${id}`,
+    }));
   });
 
   describe("basic functionality", () => {
@@ -227,7 +206,28 @@ describe("updateView", () => {
     });
 
     it("skips track selection when track does not exist", () => {
-      liveApiExists.mockReturnValue(false);
+      // Mock the exists method to return false for this test
+      global.LiveAPI.mockImplementation(function (path) {
+        this.path = path;
+        this._path = path;
+        this.exists = vi.fn().mockReturnValue(false);
+        this.set = liveApiSet;
+        this.call = liveApiCall;
+        this.get = liveApiGet;
+        this.getProperty = vi.fn();
+        this.setProperty = vi.fn((property, value) => this.set(property, value));
+        if (path.startsWith("live_set tracks") || path.startsWith("live_set return_tracks") || path.startsWith("live_set master_track")) {
+          this._id = "id track_id_123";
+        } else {
+          this._id = "id track_id_123";
+        }
+        Object.defineProperty(this, "id", {
+          get: function () {
+            return liveApiId.apply(this);
+          },
+        });
+        return this;
+      });
 
       const result = updateView({ selectedTrackIndex: 99 });
 
@@ -262,7 +262,28 @@ describe("updateView", () => {
     });
 
     it("skips scene selection when scene does not exist", () => {
-      liveApiExists.mockReturnValue(false);
+      // Mock the exists method to return false for this test
+      global.LiveAPI.mockImplementation(function (path) {
+        this.path = path;
+        this._path = path;
+        this.exists = vi.fn().mockReturnValue(false);
+        this.set = liveApiSet;
+        this.call = liveApiCall;
+        this.get = liveApiGet;
+        this.getProperty = vi.fn();
+        this.setProperty = vi.fn((property, value) => this.set(property, value));
+        if (path.startsWith("live_set scenes")) {
+          this._id = "id scene_id_456";
+        } else {
+          this._id = "id scene_id_456";
+        }
+        Object.defineProperty(this, "id", {
+          get: function () {
+            return liveApiId.apply(this);
+          },
+        });
+        return this;
+      });
 
       const result = updateView({ selectedSceneIndex: 99 });
 
@@ -323,43 +344,34 @@ describe("updateView", () => {
 
       const result = updateView({ selectedDeviceId: "id device_123" });
 
-      expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 0 view");
-      expect(liveApiSet).toHaveBeenCalledWith(
-        "selected_device",
+      expect(global.LiveAPI).toHaveBeenCalledWith("live_set view");
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "select_device",
         "id device_123",
       );
       expect(result).toEqual({ selectedDeviceId: "id device_123" });
     });
 
     it("selects instrument on specified track", () => {
-      liveApiGetChildIds.mockReturnValue(["id device_123"]);
-
       const result = updateView({
         selectedTrackType: "regular",
         selectedTrackIndex: 0,
         selectInstrument: true,
       });
 
-      expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 0 devices");
-      expect(liveApiSet).toHaveBeenCalledWith(
-        "selected_device",
-        "id device_123",
-      );
+      expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 0 view");
+      expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       expect(result.selectInstrument).toBe(true);
     });
 
     it("selects instrument on currently selected track", () => {
       mockTrackAPI.trackType = "regular";
       mockTrackAPI.trackIndex = 1;
-      liveApiGetChildIds.mockReturnValue(["id device_456"]);
 
       const result = updateView({ selectInstrument: true });
 
-      expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 1 devices");
-      expect(liveApiSet).toHaveBeenCalledWith(
-        "selected_device",
-        "id device_456",
-      );
+      expect(global.LiveAPI).toHaveBeenCalledWith("live_set tracks 1 view");
+      expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       expect(result).toEqual({ selectInstrument: true });
     });
   });
@@ -562,8 +574,6 @@ describe("updateView", () => {
     });
 
     it("handles return track with device selection", () => {
-      liveApiGetChildIds.mockReturnValue(["id device_return"]);
-
       const result = updateView({
         selectedTrackType: "return",
         selectedTrackIndex: 2,
@@ -571,9 +581,8 @@ describe("updateView", () => {
       });
 
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set return_tracks 2");
-      expect(global.LiveAPI).toHaveBeenCalledWith(
-        "live_set return_tracks 2 devices",
-      );
+      expect(global.LiveAPI).toHaveBeenCalledWith("live_set return_tracks 2 view");
+      expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
       expect(result.selectedTrackType).toBe("return");
       expect(result.selectInstrument).toBe(true);
     });

@@ -51,6 +51,13 @@ if (typeof LiveAPI !== "undefined") {
           }
         }
         return null;
+      case "selected_device":
+        // Handle device ID format: ["id", 78] -> "78"
+        const deviceResult = this.get(property);
+        if (deviceResult && deviceResult.length === 2 && deviceResult[0] === "id") {
+          return deviceResult[1].toString();
+        }
+        return deviceResult?.[0];
       default:
         return this.get(property)?.[0];
     }
@@ -65,6 +72,15 @@ if (typeof LiveAPI !== "undefined") {
         // Convert value to JSON format expected by Live API
         const jsonValue = JSON.stringify({ [property]: value });
         return this.set(property, jsonValue);
+      case "selected_track":
+      case "selected_scene":
+      case "detail_clip":
+      case "highlighted_clip_slot":
+        // Properties that expect "id X" format - automatically format IDs
+        const formattedValue = typeof value === 'string' && !value.startsWith("id ") && /^\d+$/.test(value) 
+          ? `id ${value}` 
+          : value;
+        return this.set(property, formattedValue);
       default:
         // For all other properties, use regular set
         return this.set(property, value);

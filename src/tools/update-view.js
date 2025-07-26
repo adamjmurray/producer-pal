@@ -83,7 +83,8 @@ export function updateView({
       songView.set("detail_clip", "id 0");
     } else {
       // Select specific clip
-      songView.set("detail_clip", selectedClipId);
+      const clipAPI = LiveAPI.from(selectedClipId);
+      songView.setProperty("detail_clip", clipAPI.id);
     }
   }
 
@@ -243,9 +244,9 @@ function updateTrackSelection({
 
   if (selectedTrackId != null) {
     // Select by ID
-    trackAPI = new LiveAPI(selectedTrackId);
+    trackAPI = LiveAPI.from(selectedTrackId);
     if (trackAPI.exists()) {
-      songView.set("selected_track", selectedTrackId);
+      songView.setProperty("selected_track", trackAPI.id);
       result.selectedTrackId = selectedTrackId;
       if (selectedTrackType != null)
         result.selectedTrackType = selectedTrackType;
@@ -269,7 +270,7 @@ function updateTrackSelection({
       trackAPI = new LiveAPI(trackPath);
       if (trackAPI.exists()) {
         finalTrackId = trackAPI.id;
-        songView.set("selected_track", finalTrackId);
+        songView.setProperty("selected_track", trackAPI.id);
         result.selectedTrackId = finalTrackId;
         result.selectedTrackType = trackType;
         if (trackType !== "master" && selectedTrackIndex != null) {
@@ -291,9 +292,9 @@ function updateSceneSelection({
 
   if (selectedSceneId != null) {
     // Select by ID
-    const sceneAPI = new LiveAPI(selectedSceneId);
+    const sceneAPI = LiveAPI.from(selectedSceneId);
     if (sceneAPI.exists()) {
-      songView.set("selected_scene", selectedSceneId);
+      songView.setProperty("selected_scene", sceneAPI.id);
       result.selectedSceneId = selectedSceneId;
       if (selectedSceneIndex != null)
         result.selectedSceneIndex = selectedSceneIndex;
@@ -303,7 +304,7 @@ function updateSceneSelection({
     const sceneAPI = new LiveAPI(`live_set scenes ${selectedSceneIndex}`);
     if (sceneAPI.exists()) {
       const sceneId = sceneAPI.id;
-      songView.set("selected_scene", sceneId);
+      songView.setProperty("selected_scene", sceneAPI.id);
       result.selectedSceneId = sceneId;
       result.selectedSceneIndex = selectedSceneIndex;
     }
@@ -318,23 +319,14 @@ function updateDeviceSelection({
   trackSelectionResult,
 }) {
   if (selectedDeviceId != null) {
-    // Select specific device by ID
-    const deviceAPI = new LiveAPI(selectedDeviceId);
+    // Select specific device by ID using the main song view
+    const deviceAPI = LiveAPI.from(selectedDeviceId);
     if (deviceAPI.exists()) {
-      // Get the track that contains this device to set it as selected
-      const devicePath = deviceAPI.path;
-      const trackPathMatch = devicePath.match(
-        /(live_set (?:tracks|return_tracks) \d+|live_set master_track)/,
-      );
-      if (trackPathMatch) {
-        const trackPath = trackPathMatch[1];
-        const trackAPI = new LiveAPI(trackPath);
-        if (trackAPI.exists()) {
-          const trackViewPath = `${trackPath} view`;
-          const trackView = new LiveAPI(trackViewPath);
-          trackView.set("selected_device", selectedDeviceId);
-        }
-      }
+      const songView = new LiveAPI("live_set view");
+      // Ensure proper "id X" format for select_device call
+      const deviceIdStr = selectedDeviceId.toString();
+      const deviceIdForApi = deviceIdStr.startsWith("id ") ? deviceIdStr : `id ${deviceIdStr}`;
+      songView.call("select_device", deviceIdForApi);
     }
   } else if (selectInstrument === true) {
     // Select instrument on the currently selected or specified track
@@ -362,27 +354,10 @@ function updateDeviceSelection({
     }
 
     if (trackPath) {
-      // Find and select the instrument (first device, or first instrument device)
-      const devicesAPI = new LiveAPI(`${trackPath} devices`);
-      const deviceIds = devicesAPI.getChildIds("devices");
-
-      for (const deviceId of deviceIds) {
-        const deviceAPI = new LiveAPI(deviceId);
-        if (deviceAPI.exists()) {
-          const deviceType = deviceAPI.getProperty("type");
-          if (deviceType === 9 || deviceType === 10 || deviceType === 11) {
-            // Instrument types
-            const trackView = new LiveAPI(`${trackPath} view`);
-            trackView.set("selected_device", deviceId);
-            break;
-          }
-        }
-      }
-
-      // If no instrument found, select first device
-      if (deviceIds.length > 0) {
-        const trackView = new LiveAPI(`${trackPath} view`);
-        trackView.set("selected_device", deviceIds[0]);
+      // Use the track view's select_instrument function
+      const trackView = new LiveAPI(`${trackPath} view`);
+      if (trackView.exists()) {
+        trackView.call("select_instrument");
       }
     }
   }
@@ -395,9 +370,9 @@ function updateHighlightedClipSlot({
 }) {
   if (highlightedClipSlotId != null) {
     // Set by ID
-    const clipSlotAPI = new LiveAPI(highlightedClipSlotId);
+    const clipSlotAPI = LiveAPI.from(highlightedClipSlotId);
     if (clipSlotAPI.exists()) {
-      songView.set("highlighted_clip_slot", highlightedClipSlotId);
+      songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
     }
   } else if (highlightedClipSlot != null) {
     // Set by indices
@@ -406,12 +381,7 @@ function updateHighlightedClipSlot({
       `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`,
     );
     if (clipSlotAPI.exists()) {
-      const clipSlotId = clipSlotAPI.id;
-      // Ensure ID has proper format for Live API
-      const formattedId = clipSlotId.startsWith("id ")
-        ? clipSlotId
-        : `id ${clipSlotId}`;
-      songView.set("highlighted_clip_slot", formattedId);
+      songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
     }
   }
 }
