@@ -12,27 +12,66 @@ export const toolDefUpdateView = defineTool("ppal-update-view", {
     destructiveHint: false,
   },
   inputSchema: {
+    // Main view
     view: z
       .enum(["session", "arrangement"])
       .optional()
       .describe("Switch between Session and Arrangement views"),
+
+    // Track selection
+    selectedTrackId: z.string().optional().describe("Select track by ID"),
+    selectedTrackType: z
+      .enum(["regular", "return", "master"])
+      .optional()
+      .describe("Type of track to select"),
     selectedTrackIndex: z
       .number()
       .int()
       .min(0)
       .optional()
-      .describe("Select track by index (0-based)"),
+      .describe(
+        "Track index (0-based) - for regular or return tracks, not used for master",
+      ),
+
+    // Scene selection
+    selectedSceneId: z.string().optional().describe("Select scene by ID"),
     selectedSceneIndex: z
       .number()
       .int()
       .min(0)
       .optional()
       .describe("Select scene by index (0-based)"),
+
+    // Clip selection
     selectedClipId: z
       .string()
       .nullable()
       .optional()
       .describe("Select clip by ID, or pass null to deselect all clips"),
+
+    // Device selection
+    selectedDeviceId: z.string().optional().describe("Select device by ID"),
+    selectInstrument: z
+      .boolean()
+      .optional()
+      .describe(
+        "Select the instrument (or first device) on the selected track",
+      ),
+
+    // Highlighted clip slot
+    highlightedClipSlotId: z
+      .string()
+      .optional()
+      .describe("Set highlighted clip slot by ID"),
+    highlightedClipSlot: z
+      .object({
+        trackIndex: z.number().int().min(0),
+        clipSlotIndex: z.number().int().min(0),
+      })
+      .optional()
+      .describe("Set highlighted clip slot by track and clip slot indices"),
+
+    // Detail view
     showDetail: z
       .enum(["clip", "device"])
       .nullable()
@@ -41,6 +80,9 @@ export const toolDefUpdateView = defineTool("ppal-update-view", {
     showLoop: z
       .boolean()
       .optional()
-      .describe("Show loop view for selected clip (boolean)"),
+      .describe("Show loop view for selected clip"),
+
+    // Browser
+    browserVisible: z.boolean().optional().describe("Show or hide the browser"),
   },
 });
