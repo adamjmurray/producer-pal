@@ -72,11 +72,11 @@ describe("readView", () => {
           return mockHighlightedSlot;
         // Handle dynamic track view paths
         if (path.match(/^live_set tracks \d+ view$/))
-          return { exists: vi.fn().mockReturnValue(true), getProperty: vi.fn().mockReturnValue("id 456") };
+          return { exists: vi.fn().mockReturnValue(true), get: vi.fn().mockReturnValue(["id", 456]) };
         if (path.match(/^live_set return_tracks \d+ view$/))
-          return { exists: vi.fn().mockReturnValue(true), getProperty: vi.fn().mockReturnValue("id 456") };
+          return { exists: vi.fn().mockReturnValue(true), get: vi.fn().mockReturnValue(["id", 456]) };
         if (path === "live_set master_track view")
-          return { exists: vi.fn().mockReturnValue(false), getProperty: vi.fn().mockReturnValue(null) };
+          return { exists: vi.fn().mockReturnValue(false), get: vi.fn().mockReturnValue(null) };
         return {};
       })();
       liveApiInstances.push(instance);
@@ -108,7 +108,7 @@ describe("readView", () => {
         trackIndex: 0,
       },
       selectedClipId: "id 123",
-      selectedDeviceId: "id 456",
+      selectedDeviceId: "456",
       selectedScene: {
         sceneId: "id 012",
         sceneIndex: 2,
@@ -294,7 +294,7 @@ describe("readView", () => {
         returnTrackIndex: 1,
       },
       selectedClipId: null,
-      selectedDeviceId: "id 456",
+      selectedDeviceId: "456",
       selectedScene: {
         sceneId: null,
         sceneIndex: null,

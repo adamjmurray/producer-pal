@@ -51,13 +51,6 @@ if (typeof LiveAPI !== "undefined") {
           }
         }
         return null;
-      case "selected_device":
-        // Handle device ID format: ["id", 78] -> "78"
-        const deviceResult = this.get(property);
-        if (deviceResult && deviceResult.length === 2 && deviceResult[0] === "id") {
-          return deviceResult[1].toString();
-        }
-        return deviceResult?.[0];
       default:
         return this.get(property)?.[0];
     }

@@ -27,23 +27,9 @@ export function readView() {
   // Get selected device from the selected track's view
   let selectedDeviceId = null;
   if (selectedTrack.exists()) {
-    // Get the track view path based on track type
-    let trackViewPath;
-    if (trackType === "regular") {
-      const trackIndex = selectedTrack.trackIndex;
-      trackViewPath = `live_set tracks ${trackIndex} view`;
-    } else if (trackType === "return") {
-      const returnTrackIndex = selectedTrack.returnTrackIndex;
-      trackViewPath = `live_set return_tracks ${returnTrackIndex} view`;
-    } else if (trackType === "master") {
-      trackViewPath = "live_set master_track view";
-    }
-
-    if (trackViewPath) {
-      const trackView = new LiveAPI(trackViewPath);
-      selectedDeviceId = trackView.exists()
-        ? trackView.getProperty("selected_device")
-        : null;
+    const trackView = new LiveAPI(`${selectedTrack.path} view`);
+    if (trackView.exists()) {
+      selectedDeviceId = trackView.get("selected_device")?.[1]?.toString();
     }
   }
 
@@ -55,10 +41,7 @@ export function readView() {
       }
     : null;
 
-  // Get detail view state by checking visibility
   let detailView = null;
-
-  // Check if detail views are visible
   if (appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_CLIP)) {
     detailView = "clip";
   } else if (
@@ -67,24 +50,21 @@ export function readView() {
     detailView = "device";
   }
 
-  // Check if browser is visible
   const browserVisible = Boolean(
     appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
   );
 
-  // Build selectedTrack object with appropriate index naming
   const selectedTrackObject = {
     trackId: selectedTrackId,
     trackType: trackType,
   };
 
-  // Add appropriate index property based on track type
   if (trackType === "regular" && selectedTrack.exists()) {
     selectedTrackObject.trackIndex = selectedTrack.trackIndex;
   } else if (trackType === "return" && selectedTrack.exists()) {
     selectedTrackObject.returnTrackIndex = selectedTrack.returnTrackIndex;
   }
-  // Master track gets no index property
+  // master track gets no index property
 
   return {
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
