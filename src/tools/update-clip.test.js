@@ -160,13 +160,6 @@ describe("updateClip", () => {
       ids: "999",
       name: "Test Arrangement Clip",
     });
-
-    // Should call show_view with "Arranger" for Live API compatibility
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Arranger",
-    );
   });
 
   it("should update multiple clips by comma-separated IDs", () => {
@@ -197,7 +190,7 @@ describe("updateClip", () => {
       "looping",
       false,
     );
-    expect(liveApiSet).toHaveBeenCalledTimes(5); // 2 calls per clip, plus view change
+    expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per clip
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "456" }),
       "color",
@@ -207,11 +200,6 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "456" }),
       "looping",
       false,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
@@ -555,16 +543,11 @@ describe("updateClip", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledTimes(2);
+    expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "name",
       "Only Name Update",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
     );
 
     expect(liveApiCall).not.toHaveBeenCalledWith(
@@ -760,17 +743,12 @@ describe("updateClip", () => {
       name: "Filtered",
     });
 
-    // set the names of the two clips, and display the clip detail view:
-    expect(liveApiSet).toHaveBeenCalledTimes(3);
+    // set the names of the two clips:
+    expect(liveApiSet).toHaveBeenCalledTimes(2);
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "name",
       "Filtered",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "456" }),

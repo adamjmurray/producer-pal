@@ -740,9 +740,6 @@ function duplicateSceneToArrangement(
     }
   }
 
-  const appView = new LiveAPI("live_app view");
-  appView.call("show_view", "Arranger");
-
   const result = {
     arrangementStartTime: abletonBeatsToBarBeat(
       arrangementStartTimeBeats,
@@ -844,9 +841,6 @@ function duplicateClipToArrangement(
 
     duplicatedClips.push(getMinimalClipInfo(newClip));
   }
-
-  const appView = new LiveAPI("live_app view");
-  appView.call("show_view", "Arranger");
 
   const result = {
     arrangementStartTime: abletonBeatsToBarBeat(

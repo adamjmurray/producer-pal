@@ -36,7 +36,6 @@ export function transport({
     throw new Error("transport failed: action is required");
   }
   const liveSet = new LiveAPI("live_set");
-  const appView = new LiveAPI("live_app view");
 
   // Get song time signature for bar|beat conversions
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
@@ -95,7 +94,6 @@ export function transport({
 
   switch (action) {
     case "play-arrangement":
-      appView.call("show_view", "Arranger");
       if (startTime == null) {
         liveSet.set("start_time", 0);
         startTimeBeats = 0;
@@ -107,7 +105,6 @@ export function transport({
       break;
 
     case "update-arrangement":
-      appView.call("show_view", "Arranger");
       // No playback state change, just the loop and follow settings above
       break;
 
@@ -124,7 +121,6 @@ export function transport({
         );
       }
 
-      appView.call("show_view", "Session");
       scene.call("fire");
 
       isPlaying = true;
@@ -144,8 +140,6 @@ export function transport({
 
       const trackIndexList = parseCommaSeparatedIndices(trackIndexes);
       const clipSlotIndexList = parseCommaSeparatedIndices(clipSlotIndexes);
-
-      appView.call("show_view", "Session");
 
       for (let i = 0; i < trackIndexList.length; i++) {
         const trackIndex = trackIndexList[i];
@@ -182,8 +176,6 @@ export function transport({
 
       const stopTrackIndexList = parseCommaSeparatedIndices(trackIndexes);
 
-      appView.call("show_view", "Session");
-
       for (const trackIndex of stopTrackIndexList) {
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
         if (!track.exists()) {
@@ -197,7 +189,6 @@ export function transport({
       break;
 
     case "stop-all-session-clips":
-      appView.call("show_view", "Session");
       liveSet.call("stop_all_clips");
       // the transport/arrangement might still be playing so don't update isPlaying
       break;

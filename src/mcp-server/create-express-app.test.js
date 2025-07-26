@@ -84,6 +84,8 @@ describe("MCP Express App", () => {
         "ppal-init",
         "ppal-read-song",
         "ppal-update-song",
+        "ppal-read-view",
+        "ppal-update-view",
         "ppal-create-track",
         "ppal-read-track",
         "ppal-update-track",

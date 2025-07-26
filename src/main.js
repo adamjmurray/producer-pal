@@ -23,8 +23,10 @@ import { readClip } from "./tools/read-clip";
 import { readScene } from "./tools/read-scene";
 import { readSong } from "./tools/read-song";
 import { readTrack } from "./tools/read-track";
+import { readView } from "./tools/read-view";
 import { transport } from "./tools/transport";
 import { updateClip } from "./tools/update-clip";
+import { updateView } from "./tools/update-view";
 import { updateScene } from "./tools/update-scene";
 import { updateSong } from "./tools/update-song";
 import { updateTrack } from "./tools/update-track";
@@ -48,6 +50,8 @@ const tools = {
   "ppal-create-track": (args) => createTrack(args),
   "ppal-read-track": (args) => readTrack(args),
   "ppal-update-track": (args) => updateTrack(args),
+  "ppal-read-view": (args) => readView(args),
+  "ppal-update-view": (args) => updateView(args),
   "ppal-create-clip": (args) => createClip(args),
   "ppal-read-clip": (args) => readClip(args),
   "ppal-update-clip": (args) => updateClip(args),

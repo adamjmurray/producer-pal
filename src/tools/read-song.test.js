@@ -140,7 +140,6 @@ describe("readSong", () => {
     expect(result).toEqual({
       id: "live_set_id",
       abletonLiveVersion: "12.2",
-      view: "session",
       name: "Test Live Set",
       isPlaying: true,
       followsArrangement: true,
@@ -150,10 +149,6 @@ describe("readSong", () => {
       scale: "Major",
       scaleRoot: "C",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
-      selectedTrackIndex: 0,
-      selectedSceneIndex: 0,
-      selectedClipId: "clip1",
-      highlightedClipSlot: null, // TODO: Fix this test mock
       tracks: [
         {
           id: "track1",
@@ -273,17 +268,12 @@ describe("readSong", () => {
     expect(result).toEqual({
       id: "live_set",
       abletonLiveVersion: "12.2",
-      view: "arrangement",
       name: "Empty Live Set",
       tempo: 100,
       timeSignature: "3/4",
       isPlaying: false,
       followsArrangement: false,
       scaleEnabled: false,
-      selectedTrackIndex: null,
-      selectedSceneIndex: null,
-      selectedClipId: null,
-      highlightedClipSlot: null,
       tracks: [],
       scenes: [],
     });

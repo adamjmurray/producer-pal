@@ -14,8 +14,10 @@ import { toolDefReadClip } from "./tool-def-read-clip.js";
 import { toolDefReadScene } from "./tool-def-read-scene.js";
 import { toolDefReadSong } from "./tool-def-read-song.js";
 import { toolDefReadTrack } from "./tool-def-read-track.js";
+import { toolDefReadView } from "./tool-def-read-view.js";
 import { toolDefTransport } from "./tool-def-transport.js";
 import { toolDefUpdateClip } from "./tool-def-update-clip.js";
+import { toolDefUpdateView } from "./tool-def-update-view.js";
 import { toolDefUpdateScene } from "./tool-def-update-scene.js";
 import { toolDefUpdateSong } from "./tool-def-update-song.js";
 import { toolDefUpdateTrack } from "./tool-def-update-track.js";
@@ -32,6 +34,9 @@ export function createMcpServer(callLiveApi) {
 
   addTool(toolDefReadSong);
   addTool(toolDefUpdateSong);
+
+  addTool(toolDefReadView);
+  addTool(toolDefUpdateView);
 
   addTool(toolDefCreateTrack);
   addTool(toolDefReadTrack);
