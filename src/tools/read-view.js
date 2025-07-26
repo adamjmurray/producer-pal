@@ -42,6 +42,11 @@ export function readView() {
     detailView = "device";
   }
 
+  // Check if browser is visible
+  const browserVisible = Boolean(
+    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
+  );
+
   return {
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     selectedTrackIndex,
@@ -49,5 +54,6 @@ export function readView() {
     selectedClipId,
     highlightedClipSlot: highlightedSlot,
     detailView,
+    browserVisible,
   };
 }

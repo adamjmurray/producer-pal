@@ -68,7 +68,7 @@ describe("readView", () => {
   it("reads basic view state with session view", () => {
     // Setup
     mockAppView.getProperty.mockReturnValue(1); // Session view
-    mockAppView.call.mockReturnValue(0); // No detail views visible
+    mockAppView.call.mockReturnValue(0); // No detail views or browser visible
     mockSelectedTrack.exists.mockReturnValue(true);
     mockSelectedScene.exists.mockReturnValue(true);
     mockDetailClip.exists.mockReturnValue(true);
@@ -88,6 +88,7 @@ describe("readView", () => {
         clipSlotIndex: 3,
       },
       detailView: null,
+      browserVisible: false,
     });
   });
 
@@ -118,6 +119,7 @@ describe("readView", () => {
       selectedClipId: null,
       highlightedClipSlot: null,
       detailView: "clip",
+      browserVisible: false,
     });
   });
 
@@ -148,13 +150,14 @@ describe("readView", () => {
       selectedClipId: null,
       highlightedClipSlot: null,
       detailView: "device",
+      browserVisible: false,
     });
   });
 
   it("handles null values when nothing is selected", () => {
     // Setup
     mockAppView.getProperty.mockReturnValue(2); // Arrangement view
-    mockAppView.call.mockReturnValue(0); // No detail views visible
+    mockAppView.call.mockReturnValue(0); // No detail views or browser visible
     mockSelectedTrack.exists.mockReturnValue(false);
     mockSelectedScene.exists.mockReturnValue(false);
     mockDetailClip.exists.mockReturnValue(false);
@@ -171,6 +174,35 @@ describe("readView", () => {
       selectedClipId: null,
       highlightedClipSlot: null,
       detailView: null,
+      browserVisible: false,
+    });
+  });
+
+  it("reads view state with browser visible", () => {
+    // Setup
+    mockAppView.getProperty.mockReturnValue(1); // Session view
+    mockAppView.call.mockImplementation((method, view) => {
+      if (method === "is_view_visible" && view === LIVE_API_VIEW_NAMES.BROWSER)
+        return 1;
+      return 0;
+    });
+    mockSelectedTrack.exists.mockReturnValue(false);
+    mockSelectedScene.exists.mockReturnValue(false);
+    mockDetailClip.exists.mockReturnValue(false);
+    mockHighlightedSlot.exists.mockReturnValue(false);
+
+    // Execute
+    const result = readView();
+
+    // Verify
+    expect(result).toEqual({
+      view: "session",
+      selectedTrackIndex: null,
+      selectedSceneIndex: null,
+      selectedClipId: null,
+      highlightedClipSlot: null,
+      detailView: null,
+      browserVisible: true,
     });
   });
 });
