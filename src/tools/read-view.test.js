@@ -35,10 +35,12 @@ describe("readView", () => {
     mockSelectedTrack = {
       exists: vi.fn(),
       trackIndex: 0,
+      id: "id 789",
     };
     mockSelectedScene = {
       exists: vi.fn(),
       sceneIndex: 2,
+      id: "id 012",
     };
     mockDetailClip = {
       exists: vi.fn(),
@@ -90,7 +92,9 @@ describe("readView", () => {
     expect(result).toEqual({
       view: "session",
       selectedTrackIndex: 0,
+      selectedTrackId: "id 789",
       selectedSceneIndex: 2,
+      selectedSceneId: "id 012",
       selectedClipId: "id 123",
       selectedDeviceId: "id 456",
       highlightedClipSlot: {
@@ -126,7 +130,9 @@ describe("readView", () => {
     expect(result).toEqual({
       view: "arrangement", // fromLiveApiView maps 2 to arrangement in our mock
       selectedTrackIndex: null,
+      selectedTrackId: null,
       selectedSceneIndex: null,
+      selectedSceneId: null,
       selectedClipId: null,
       selectedDeviceId: null,
       highlightedClipSlot: null,
@@ -158,7 +164,9 @@ describe("readView", () => {
     expect(result).toEqual({
       view: "session",
       selectedTrackIndex: null,
+      selectedTrackId: null,
       selectedSceneIndex: null,
+      selectedSceneId: null,
       selectedClipId: null,
       selectedDeviceId: null,
       highlightedClipSlot: null,
@@ -183,7 +191,9 @@ describe("readView", () => {
     expect(result).toEqual({
       view: "arrangement",
       selectedTrackIndex: null,
+      selectedTrackId: null,
       selectedSceneIndex: null,
+      selectedSceneId: null,
       selectedClipId: null,
       selectedDeviceId: null,
       highlightedClipSlot: null,
@@ -212,7 +222,9 @@ describe("readView", () => {
     expect(result).toEqual({
       view: "session",
       selectedTrackIndex: null,
+      selectedTrackId: null,
       selectedSceneIndex: null,
+      selectedSceneId: null,
       selectedClipId: null,
       selectedDeviceId: null,
       highlightedClipSlot: null,

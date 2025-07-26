@@ -15,13 +15,15 @@ export function readView() {
     "live_set view highlighted_clip_slot",
   );
 
-  // Extract indices from paths
+  // Extract indices and IDs from paths
   const selectedTrackIndex = selectedTrack.exists()
     ? selectedTrack.trackIndex
     : null;
+  const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
   const selectedSceneIndex = selectedScene.exists()
     ? selectedScene.sceneIndex
     : null;
+  const selectedSceneId = selectedScene.exists() ? selectedScene.id : null;
   const selectedClipId = detailClip.exists() ? detailClip.id : null;
 
   // Get selected device from the selected track's view
@@ -60,7 +62,9 @@ export function readView() {
   return {
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     selectedTrackIndex,
+    selectedTrackId,
     selectedSceneIndex,
+    selectedSceneId,
     selectedClipId,
     selectedDeviceId,
     highlightedClipSlot: highlightedSlot,
