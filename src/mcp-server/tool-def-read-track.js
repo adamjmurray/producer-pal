@@ -26,6 +26,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
     include: z
       .array(
         z.enum([
+          "*",
           "drum-chains",
           "notes",
           "rack-chains",
@@ -46,6 +47,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       ])
       .describe(
         "Array of data to include in the response. Available options: " +
+          "'*' (include all available options), " +
           "'drum-chains' (include drum pad chains and return chains in rack devices), " +
           "'notes' (include notes data in clip objects), " +
           "'rack-chains' (include chains in rack devices), " +

@@ -511,4 +511,79 @@ describe("readClip", () => {
       notes: "1|1 t0.25 C1 1|2 v90 D1 1|3 v100 C1 1|4 v90 D1",
     });
   });
+
+  it("includes all available options when '*' is used", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        name: "Wildcard Test Clip",
+        looping: 1,
+        is_playing: 0,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 1,
+        end_marker: 5,
+        loop_start: 1,
+        loop_end: 5,
+      },
+    });
+
+    liveApiCall.mockImplementation((method) => {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+            {
+              pitch: 64,
+              start_time: 2,
+              duration: 1,
+              velocity: 80,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+          ],
+        });
+      }
+      return null;
+    });
+
+    // Test with '*' - should include everything
+    const resultWildcard = readClip({
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      include: ["*"],
+    });
+
+    // Test explicit list - should produce identical result
+    const resultExplicit = readClip({
+      trackIndex: 0,
+      clipSlotIndex: 0,
+      include: ["notes"],
+    });
+
+    // Results should be identical
+    expect(resultWildcard).toEqual(resultExplicit);
+
+    // Verify key properties are included
+    expect(resultWildcard).toEqual(
+      expect.objectContaining({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+        type: "midi",
+        name: "Wildcard Test Clip",
+        notes: expect.any(String),
+        noteCount: 2,
+      }),
+    );
+
+    // Verify notes are included
+    expect(resultWildcard.notes).toBe("1|1 C3 1|3 v80 E3");
+  });
 });

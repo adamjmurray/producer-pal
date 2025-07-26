@@ -778,4 +778,143 @@ describe("readSong", () => {
     expect(resultDefault.returnTracks).toBeUndefined();
     expect(resultDefault.masterTrack).toBeUndefined();
   });
+
+  it("includes all available options when '*' is used", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set return_tracks 0":
+          return "return1";
+        case "live_set master_track":
+          return "master1";
+        case "live_set scenes 0":
+          return "scene1";
+        case "live_set tracks 0 devices 0":
+          return "synth1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Wildcard Test Set",
+        tracks: children("track1"),
+        return_tracks: children("return1"),
+        scenes: children("scene1"),
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: children(),
+        arrangement_clips: children(),
+        devices: children("synth1"),
+        available_input_routing_channels: [
+          '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}]}',
+        ],
+        available_input_routing_types: [
+          '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}]}',
+        ],
+        available_output_routing_channels: [
+          '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
+        ],
+        available_output_routing_types: [
+          '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
+        ],
+        input_routing_channel: [
+          '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
+        ],
+        input_routing_type: [
+          '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
+        ],
+        output_routing_channel: [
+          '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+        ],
+        output_routing_type: [
+          '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+        ],
+        current_monitoring_state: [1],
+      },
+      "live_set return_tracks 0": {
+        has_midi_input: 0,
+        name: "Return A",
+        arrangement_clips: children(),
+        devices: [],
+      },
+      "live_set master_track": {
+        has_midi_input: 0,
+        name: "Master",
+        arrangement_clips: children(),
+        devices: [],
+      },
+      "live_set scenes 0": {
+        name: "Scene 1",
+        is_empty: 0,
+        tempo_enabled: 0,
+        time_signature_enabled: 0,
+        is_triggered: 0,
+        color: 16777215,
+      },
+      synth1: {
+        name: "Analog",
+        class_name: "UltraAnalog",
+        class_display_name: "Analog",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 0,
+        can_have_drum_pads: 0,
+      },
+    });
+
+    // Test with '*' - should include everything
+    const resultWildcard = readSong({
+      include: ["*"],
+    });
+
+    // Test explicit list - should produce identical result
+    const resultExplicit = readSong({
+      include: [
+        "drum-chains",
+        "notes",
+        "rack-chains",
+        "empty-scenes",
+        "midi-effects",
+        "instrument",
+        "audio-effects",
+        "routings",
+        "session-clips",
+        "arrangement-clips",
+        "regular-tracks",
+        "return-tracks",
+        "master-track",
+      ],
+    });
+
+    // Results should be identical
+    expect(resultWildcard).toEqual(resultExplicit);
+
+    // Verify key properties are included
+    expect(resultWildcard).toEqual(
+      expect.objectContaining({
+        tracks: expect.any(Array),
+        returnTracks: expect.any(Array),
+        masterTrack: expect.any(Object),
+        scenes: expect.any(Array),
+      }),
+    );
+
+    // Verify track has all expected properties
+    expect(resultWildcard.tracks[0]).toEqual(
+      expect.objectContaining({
+        instrument: expect.any(Object),
+        availableInputRoutingChannels: expect.any(Array),
+        inputRoutingChannel: expect.any(Object),
+        sessionClips: expect.any(Array),
+        arrangementClips: expect.any(Array),
+      }),
+    );
+  });
 });

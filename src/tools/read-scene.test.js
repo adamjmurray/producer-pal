@@ -158,4 +158,66 @@ describe("readScene", () => {
       ],
     });
   });
+
+  it("includes all available options when '*' is used", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set scenes 0":
+          return "scene_0";
+        case "live_set tracks 0 clip_slots 0 clip":
+          return "clip_0_0";
+        case "live_set tracks 1 clip_slots 0 clip":
+          return "clip_1_0";
+        default:
+          return this._id;
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        tracks: children("track1", "track2"),
+      },
+      Scene: {
+        name: "Wildcard Test Scene",
+        color: 65280,
+        is_empty: 0,
+        is_triggered: 0,
+        tempo: 140,
+        tempo_enabled: 1,
+        time_signature_numerator: 3,
+        time_signature_denominator: 4,
+        time_signature_enabled: 1,
+      },
+    });
+
+    // Test with '*' - should include everything
+    const resultWildcard = readScene({
+      sceneIndex: 0,
+      include: ["*"],
+    });
+
+    // Test explicit list - should produce identical result
+    const resultExplicit = readScene({
+      sceneIndex: 0,
+      include: ["clips", "notes"],
+    });
+
+    // Results should be identical
+    expect(resultWildcard).toEqual(resultExplicit);
+
+    // Verify key properties are included
+    expect(resultWildcard).toEqual(
+      expect.objectContaining({
+        id: "scene_0",
+        name: "Wildcard Test Scene (1)",
+        sceneIndex: 0,
+        clips: expect.any(Array),
+      }),
+    );
+
+    // Verify clips array is present
+    expect(resultWildcard.clips).toHaveLength(2);
+  });
 });

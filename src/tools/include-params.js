@@ -1,6 +1,75 @@
 // src/tools/include-params.js
 
 /**
+ * All available include options mapped by tool type
+ */
+const ALL_INCLUDE_OPTIONS = {
+  song: [
+    "drum-chains",
+    "notes",
+    "rack-chains",
+    "empty-scenes",
+    "midi-effects",
+    "instrument",
+    "audio-effects",
+    "routings",
+    "session-clips",
+    "arrangement-clips",
+    "regular-tracks",
+    "return-tracks",
+    "master-track",
+  ],
+  track: [
+    "drum-chains",
+    "notes",
+    "rack-chains",
+    "midi-effects",
+    "instrument",
+    "audio-effects",
+    "routings",
+    "session-clips",
+    "arrangement-clips",
+  ],
+  scene: ["clips", "notes"],
+  clip: ["notes"],
+};
+
+/**
+ * Expand '*' in include array to all available options for the given tool type
+ * @param {string[]} includeArray - Array of include options that may contain '*'
+ * @param {Object} defaults - Default values to determine tool type from structure
+ * @returns {string[]} Expanded array with '*' replaced by all available options
+ */
+function expandWildcardIncludes(includeArray, defaults) {
+  if (!includeArray.includes("*")) {
+    return includeArray;
+  }
+
+  // Determine tool type from defaults structure to get appropriate options
+  let toolType = "song"; // default fallback
+  if (defaults.includeRegularTracks !== undefined) {
+    toolType = "song";
+  } else if (defaults.includeSessionClips !== undefined) {
+    toolType = "track";
+  } else if (defaults.includeClips !== undefined) {
+    toolType = "scene";
+  } else if (
+    Object.keys(defaults).length === 1 &&
+    defaults.includeNotes !== undefined
+  ) {
+    toolType = "clip";
+  }
+
+  const allOptions = ALL_INCLUDE_OPTIONS[toolType] || [];
+
+  // Create set with all non-'*' options plus all available options
+  const expandedSet = new Set(includeArray.filter((option) => option !== "*"));
+  allOptions.forEach((option) => expandedSet.add(option));
+
+  return Array.from(expandedSet);
+}
+
+/**
  * Convert new include array format to legacy boolean parameters, with backward compatibility
  * @param {string[]|Object} includeOrLegacyParams - Array of kebab-case include options OR legacy parameter object
  * @param {Object} defaults - Default values for each parameter
@@ -61,8 +130,12 @@ export function convertIncludeParams(
     };
   }
 
-  // New array format
-  const includeSet = new Set(includeOrLegacyParams);
+  // New array format - expand '*' to all available options
+  const expandedIncludes = expandWildcardIncludes(
+    includeOrLegacyParams,
+    defaults,
+  );
+  const includeSet = new Set(expandedIncludes);
 
   // For new array format, always use the provided array (defaults are handled by tool definitions)
   const shouldApplyDefaults = false;

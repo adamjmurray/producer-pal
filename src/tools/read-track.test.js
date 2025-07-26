@@ -2206,4 +2206,120 @@ describe("readTrack", () => {
       expect(result.isArmed).toBe(false);
     });
   });
+
+  describe("wildcard include '*'", () => {
+    it("includes all available options when '*' is used", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "synth1";
+          case "live_set tracks 0 devices 1":
+            return "effect1";
+          case "live_set tracks 0 clip_slots 0 clip":
+            return "clip1";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          name: "Wildcard Test Track",
+          has_midi_input: 1,
+          devices: children("synth1", "effect1"),
+          clip_slots: children("slot1"),
+          arrangement_clips: children("arr_clip1"),
+          available_input_routing_channels: [
+            '{"available_input_routing_channels": [{"display_name": "In 1", "identifier": 1}]}',
+          ],
+          available_input_routing_types: [
+            '{"available_input_routing_types": [{"display_name": "Ext. In", "identifier": 17}]}',
+          ],
+          available_output_routing_channels: [
+            '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
+          ],
+          available_output_routing_types: [
+            '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
+          ],
+          input_routing_channel: [
+            '{"input_routing_channel": {"display_name": "In 1", "identifier": 1}}',
+          ],
+          input_routing_type: [
+            '{"input_routing_type": {"display_name": "Ext. In", "identifier": 17}}',
+          ],
+          output_routing_channel: [
+            '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+          ],
+          output_routing_type: [
+            '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+          ],
+          current_monitoring_state: [1],
+        }),
+        synth1: {
+          name: "Analog",
+          class_name: "UltraAnalog",
+          class_display_name: "Analog",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        effect1: {
+          name: "Reverb",
+          class_name: "Reverb",
+          class_display_name: "Reverb",
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+        slot1: {
+          clip: expectedClip("clip1", "session"),
+        },
+        clip1: expectedClip("clip1", "session"),
+        arr_clip1: expectedClip("arr_clip1", "arrangement"),
+      });
+
+      // Test with '*' - should include everything
+      const resultWildcard = readTrack({
+        trackIndex: 0,
+        include: ["*"],
+      });
+
+      // Test explicit list - should produce identical result
+      const resultExplicit = readTrack({
+        trackIndex: 0,
+        include: [
+          "drum-chains",
+          "notes",
+          "rack-chains",
+          "midi-effects",
+          "instrument",
+          "audio-effects",
+          "routings",
+          "session-clips",
+          "arrangement-clips",
+        ],
+      });
+
+      // Results should be identical
+      expect(resultWildcard).toEqual(resultExplicit);
+
+      // Verify key properties are included
+      expect(resultWildcard).toEqual(
+        expect.objectContaining({
+          instrument: expect.any(Object),
+          audioEffects: expect.any(Array),
+          midiEffects: expect.any(Array),
+          sessionClips: expect.any(Array),
+          arrangementClips: expect.any(Array),
+          availableInputRoutingChannels: expect.any(Array),
+          inputRoutingChannel: expect.any(Object),
+          monitoringState: expect.any(String),
+        }),
+      );
+    });
+  });
 });
