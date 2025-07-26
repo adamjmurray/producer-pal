@@ -1,7 +1,10 @@
 // src/mcp-server/tool-def-read-view.js
 import { defineTool } from "./define-tool.js";
 
-const description = `Reads the current view state in Ableton Live including which view is active (Session/Arrangement), selected track/scene/clip, and detail view status. Use this to understand what the user is currently looking at before making decisions about view changes.`;
+const description = `Reads the current view state in Ableton Live including main view (session/arrangement),
+selected track/scene/clip/device, selected track type (regular/return/master),
+highlighted clip slot, detail view status (clip/device), and browser visibility.
+Use this to understand what the user is currently looking at before making decisions about view changes.`;
 
 export const toolDefReadView = defineTool("ppal-read-view", {
   title: "Read View State",
