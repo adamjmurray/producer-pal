@@ -52,6 +52,7 @@ describe("readView", () => {
     };
     mockHighlightedSlot = {
       exists: vi.fn(),
+      id: "id 999",
       trackIndex: 1,
       sceneIndex: 3,
     };
@@ -91,18 +92,24 @@ describe("readView", () => {
     // Verify
     expect(result).toEqual({
       view: "session",
-      selectedTrackIndex: 0,
-      selectedTrackId: "id 789",
-      selectedSceneIndex: 2,
-      selectedSceneId: "id 012",
+      detailView: null,
+      browserVisible: false,
+      selectedTrack: {
+        trackId: "id 789",
+        trackType: "regular",
+        trackIndex: 0,
+      },
       selectedClipId: "id 123",
       selectedDeviceId: "id 456",
+      selectedScene: {
+        sceneId: "id 012",
+        sceneIndex: 2,
+      },
       highlightedClipSlot: {
+        clipSlotId: "id 999",
         trackIndex: 1,
         clipSlotIndex: 3,
       },
-      detailView: null,
-      browserVisible: false,
     });
   });
 
@@ -129,15 +136,20 @@ describe("readView", () => {
     // Verify
     expect(result).toEqual({
       view: "arrangement", // fromLiveApiView maps 2 to arrangement in our mock
-      selectedTrackIndex: null,
-      selectedTrackId: null,
-      selectedSceneIndex: null,
-      selectedSceneId: null,
-      selectedClipId: null,
-      selectedDeviceId: null,
-      highlightedClipSlot: null,
       detailView: "clip",
       browserVisible: false,
+      selectedTrack: {
+        trackId: null,
+        trackType: "regular",
+        trackIndex: null,
+      },
+      selectedClipId: null,
+      selectedDeviceId: null,
+      selectedScene: {
+        sceneId: null,
+        sceneIndex: null,
+      },
+      highlightedClipSlot: null,
     });
   });
 
@@ -163,15 +175,20 @@ describe("readView", () => {
     // Verify
     expect(result).toEqual({
       view: "session",
-      selectedTrackIndex: null,
-      selectedTrackId: null,
-      selectedSceneIndex: null,
-      selectedSceneId: null,
-      selectedClipId: null,
-      selectedDeviceId: null,
-      highlightedClipSlot: null,
       detailView: "device",
       browserVisible: false,
+      selectedTrack: {
+        trackId: null,
+        trackType: "regular",
+        trackIndex: null,
+      },
+      selectedClipId: null,
+      selectedDeviceId: null,
+      selectedScene: {
+        sceneId: null,
+        sceneIndex: null,
+      },
+      highlightedClipSlot: null,
     });
   });
 
@@ -190,15 +207,20 @@ describe("readView", () => {
     // Verify
     expect(result).toEqual({
       view: "arrangement",
-      selectedTrackIndex: null,
-      selectedTrackId: null,
-      selectedSceneIndex: null,
-      selectedSceneId: null,
-      selectedClipId: null,
-      selectedDeviceId: null,
-      highlightedClipSlot: null,
       detailView: null,
       browserVisible: false,
+      selectedTrack: {
+        trackId: null,
+        trackType: "regular",
+        trackIndex: null,
+      },
+      selectedClipId: null,
+      selectedDeviceId: null,
+      selectedScene: {
+        sceneId: null,
+        sceneIndex: null,
+      },
+      highlightedClipSlot: null,
     });
   });
 
@@ -221,15 +243,20 @@ describe("readView", () => {
     // Verify
     expect(result).toEqual({
       view: "session",
-      selectedTrackIndex: null,
-      selectedTrackId: null,
-      selectedSceneIndex: null,
-      selectedSceneId: null,
-      selectedClipId: null,
-      selectedDeviceId: null,
-      highlightedClipSlot: null,
       detailView: null,
       browserVisible: true,
+      selectedTrack: {
+        trackId: null,
+        trackType: "regular",
+        trackIndex: null,
+      },
+      selectedClipId: null,
+      selectedDeviceId: null,
+      selectedScene: {
+        sceneId: null,
+        sceneIndex: null,
+      },
+      highlightedClipSlot: null,
     });
   });
 });

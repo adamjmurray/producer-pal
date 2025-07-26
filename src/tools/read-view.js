@@ -37,6 +37,7 @@ export function readView() {
 
   const highlightedSlot = highlightedClipSlotAPI.exists()
     ? {
+        clipSlotId: highlightedClipSlotAPI.id,
         trackIndex: highlightedClipSlotAPI.trackIndex,
         clipSlotIndex: highlightedClipSlotAPI.sceneIndex,
       }
@@ -61,14 +62,19 @@ export function readView() {
 
   return {
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
-    selectedTrackIndex,
-    selectedTrackId,
-    selectedSceneIndex,
-    selectedSceneId,
-    selectedClipId,
-    selectedDeviceId,
-    highlightedClipSlot: highlightedSlot,
     detailView,
     browserVisible,
+    selectedTrack: {
+      trackId: selectedTrackId,
+      trackType: "regular",
+      trackIndex: selectedTrackIndex,
+    },
+    selectedClipId,
+    selectedDeviceId,
+    selectedScene: {
+      sceneId: selectedSceneId,
+      sceneIndex: selectedSceneIndex,
+    },
+    highlightedClipSlot: highlightedSlot,
   };
 }
