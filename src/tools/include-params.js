@@ -66,7 +66,7 @@ function expandWildcardIncludes(includeArray, defaults) {
       expandedArray.push(...SHORTCUT_MAPPINGS[option]);
     } else if (option === "scenes") {
       // 'scenes' means include non-empty scenes, which is achieved by NOT setting empty-scenes
-      // This is handled in the convertIncludeParams function
+      // This is handled in the parseIncludeArray function
       expandedArray.push(option);
     } else {
       expandedArray.push(option);
@@ -103,132 +103,136 @@ function expandWildcardIncludes(includeArray, defaults) {
 }
 
 /**
- * Convert new include array format to legacy boolean parameters, with backward compatibility
- * @param {string[]|Object} includeOrLegacyParams - Array of kebab-case include options OR legacy parameter object
+ * Parse include array format and return boolean flags for each option
+ * @param {string[]} includeArray - Array of kebab-case include options
  * @param {Object} defaults - Default values for each parameter
  * @returns {Object} Object with boolean include* properties
  */
-export function convertIncludeParams(
-  includeOrLegacyParams = [],
-  defaults = {},
-) {
-  // Handle backward compatibility: if we get an object instead of an array,
-  // it's the old parameter format
-  if (
-    typeof includeOrLegacyParams === "object" &&
-    !Array.isArray(includeOrLegacyParams)
-  ) {
-    // Legacy format - merge with defaults
+export function parseIncludeArray(includeArray, defaults = {}) {
+  // If no include array is provided (undefined), use defaults
+  if (includeArray === undefined) {
     return {
-      includeDrumChains:
-        includeOrLegacyParams.includeDrumChains ??
-        Boolean(defaults.includeDrumChains),
-      includeNotes:
-        includeOrLegacyParams.includeNotes ?? Boolean(defaults.includeNotes),
-      includeRackChains:
-        includeOrLegacyParams.includeRackChains ??
-        Boolean(defaults.includeRackChains),
-      includeEmptyScenes:
-        includeOrLegacyParams.includeEmptyScenes ??
-        Boolean(defaults.includeEmptyScenes),
-      includeScenes: false, // Not available in legacy format
-      includeMidiEffects:
-        includeOrLegacyParams.includeMidiEffects ??
-        Boolean(defaults.includeMidiEffects),
-      includeInstrument:
-        includeOrLegacyParams.includeInstrument ??
-        Boolean(defaults.includeInstrument),
-      includeAudioEffects:
-        includeOrLegacyParams.includeAudioEffects ??
-        Boolean(defaults.includeAudioEffects),
-      includeRoutings:
-        includeOrLegacyParams.includeRoutings ??
-        Boolean(defaults.includeRoutings),
-      includeAvailableRoutings: false, // Not available in legacy format
-      includeSessionClips:
-        includeOrLegacyParams.includeSessionClips ??
-        Boolean(defaults.includeSessionClips),
-      includeArrangementClips:
-        includeOrLegacyParams.includeArrangementClips ??
-        Boolean(defaults.includeArrangementClips),
-      includeClips:
-        includeOrLegacyParams.includeClips ?? Boolean(defaults.includeClips),
-      includeRegularTracks:
-        includeOrLegacyParams.includeRegularTracks ??
-        Boolean(defaults.includeRegularTracks),
-      includeReturnTracks:
-        includeOrLegacyParams.includeReturnTracks ??
-        Boolean(defaults.includeReturnTracks),
-      includeMasterTrack:
-        includeOrLegacyParams.includeMasterTrack ??
-        Boolean(defaults.includeMasterTrack),
+      includeDrumChains: Boolean(defaults.includeDrumChains),
+      includeNotes: Boolean(defaults.includeNotes),
+      includeRackChains: Boolean(defaults.includeRackChains),
+      includeEmptyScenes: Boolean(defaults.includeEmptyScenes),
+      includeScenes: false, // This is not a default option
+      includeMidiEffects: Boolean(defaults.includeMidiEffects),
+      includeInstrument: Boolean(defaults.includeInstrument),
+      includeAudioEffects: Boolean(defaults.includeAudioEffects),
+      includeRoutings: Boolean(defaults.includeRoutings),
+      includeAvailableRoutings: Boolean(defaults.includeAvailableRoutings),
+      includeSessionClips: Boolean(defaults.includeSessionClips),
+      includeArrangementClips: Boolean(defaults.includeArrangementClips),
+      includeClips: Boolean(defaults.includeClips),
+      includeRegularTracks: Boolean(defaults.includeRegularTracks),
+      includeReturnTracks: Boolean(defaults.includeReturnTracks),
+      includeMasterTrack: Boolean(defaults.includeMasterTrack),
     };
   }
 
-  // New array format - expand '*' to all available options
-  const expandedIncludes = expandWildcardIncludes(
-    includeOrLegacyParams,
-    defaults,
-  );
+  // Expand shortcuts and '*' to concrete options
+  const expandedIncludes = expandWildcardIncludes(includeArray, defaults);
   const includeSet = new Set(expandedIncludes);
-
-  // For new array format, always use the provided array (defaults are handled by tool definitions)
-  const shouldApplyDefaults = false;
 
   // Handle 'scenes' option: if 'scenes' is present, it means include non-empty scenes
   // which is the opposite of includeEmptyScenes
   const hasScenes = includeSet.has("scenes");
   const hasEmptyScenes = includeSet.has("empty-scenes");
 
-  return {
+  // Determine which options are supported by this tool based on defaults
+  const supportedOptions = Object.keys(defaults);
+  const supportedOptionsInArray = expandedIncludes.filter((option) => {
+    // Convert kebab-case to camelCase to match defaults keys
+    const camelCase = option.replace(/-([a-z])/g, (_, letter) =>
+      letter.toUpperCase(),
+    );
+    const includeKey = `include${camelCase.charAt(0).toUpperCase()}${camelCase.slice(1)}`;
+    return supportedOptions.includes(includeKey);
+  });
+
+  // If no supported options are mentioned in the array, use defaults for all
+  const useDefaults = supportedOptionsInArray.length === 0;
+
+  const result = {
     includeDrumChains:
       includeSet.has("drum-chains") ||
-      (shouldApplyDefaults && Boolean(defaults.includeDrumChains)),
+      (useDefaults && Boolean(defaults.includeDrumChains)),
     includeNotes:
       includeSet.has("notes") ||
-      (shouldApplyDefaults && Boolean(defaults.includeNotes)),
+      (useDefaults && Boolean(defaults.includeNotes)),
     includeRackChains:
       includeSet.has("rack-chains") ||
-      (shouldApplyDefaults && Boolean(defaults.includeRackChains)),
+      (useDefaults && Boolean(defaults.includeRackChains)),
     includeEmptyScenes:
-      hasEmptyScenes ||
-      (shouldApplyDefaults && Boolean(defaults.includeEmptyScenes)),
-    includeScenes: hasScenes, // New property for 'scenes' option
+      hasEmptyScenes || (useDefaults && Boolean(defaults.includeEmptyScenes)),
+    includeScenes: hasScenes, // This is not a default option
     includeMidiEffects:
       includeSet.has("midi-effects") ||
-      (shouldApplyDefaults && Boolean(defaults.includeMidiEffects)),
+      (useDefaults && Boolean(defaults.includeMidiEffects)),
     includeInstrument:
       includeSet.has("instrument") ||
-      (shouldApplyDefaults && Boolean(defaults.includeInstrument)),
+      (useDefaults && Boolean(defaults.includeInstrument)),
     includeAudioEffects:
       includeSet.has("audio-effects") ||
-      (shouldApplyDefaults && Boolean(defaults.includeAudioEffects)),
+      (useDefaults && Boolean(defaults.includeAudioEffects)),
     includeRoutings:
       includeSet.has("routings") ||
-      (shouldApplyDefaults && Boolean(defaults.includeRoutings)),
+      (useDefaults && Boolean(defaults.includeRoutings)),
     includeAvailableRoutings:
       includeSet.has("available-routings") ||
-      (shouldApplyDefaults && Boolean(defaults.includeAvailableRoutings)),
+      (useDefaults && Boolean(defaults.includeAvailableRoutings)),
     includeSessionClips:
       includeSet.has("session-clips") ||
-      (shouldApplyDefaults && Boolean(defaults.includeSessionClips)),
+      (useDefaults && Boolean(defaults.includeSessionClips)),
     includeArrangementClips:
       includeSet.has("arrangement-clips") ||
-      (shouldApplyDefaults && Boolean(defaults.includeArrangementClips)),
+      (useDefaults && Boolean(defaults.includeArrangementClips)),
     includeClips:
       includeSet.has("clips") ||
-      (shouldApplyDefaults && Boolean(defaults.includeClips)),
+      (useDefaults && Boolean(defaults.includeClips)),
     includeRegularTracks:
       includeSet.has("regular-tracks") ||
-      (shouldApplyDefaults && Boolean(defaults.includeRegularTracks)),
+      (useDefaults && Boolean(defaults.includeRegularTracks)),
     includeReturnTracks:
       includeSet.has("return-tracks") ||
-      (shouldApplyDefaults && Boolean(defaults.includeReturnTracks)),
+      (useDefaults && Boolean(defaults.includeReturnTracks)),
     includeMasterTrack:
       includeSet.has("master-track") ||
-      (shouldApplyDefaults && Boolean(defaults.includeMasterTrack)),
+      (useDefaults && Boolean(defaults.includeMasterTrack)),
   };
+  return result;
 }
+
+/**
+ * Convert include flags back to an array format
+ * @param {Object} includeFlags - Object with boolean include* properties
+ * @returns {string[]} Array of include options
+ */
+export function includeArrayFromFlags(includeFlags) {
+  const includes = [];
+
+  if (includeFlags.includeDrumChains) includes.push("drum-chains");
+  if (includeFlags.includeNotes) includes.push("notes");
+  if (includeFlags.includeRackChains) includes.push("rack-chains");
+  if (includeFlags.includeEmptyScenes) includes.push("empty-scenes");
+  if (includeFlags.includeScenes) includes.push("scenes");
+  if (includeFlags.includeMidiEffects) includes.push("midi-effects");
+  if (includeFlags.includeInstrument) includes.push("instrument");
+  if (includeFlags.includeAudioEffects) includes.push("audio-effects");
+  if (includeFlags.includeRoutings) includes.push("routings");
+  if (includeFlags.includeAvailableRoutings)
+    includes.push("available-routings");
+  if (includeFlags.includeSessionClips) includes.push("session-clips");
+  if (includeFlags.includeArrangementClips) includes.push("arrangement-clips");
+  if (includeFlags.includeClips) includes.push("clips");
+  if (includeFlags.includeRegularTracks) includes.push("regular-tracks");
+  if (includeFlags.includeReturnTracks) includes.push("return-tracks");
+  if (includeFlags.includeMasterTrack) includes.push("master-track");
+
+  return includes;
+}
+
 
 /**
  * Default include parameters for read-song tool

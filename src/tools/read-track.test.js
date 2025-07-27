@@ -365,7 +365,10 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 2, include: ["notes", "rack-chains", "instrument"] });
+    const result = readTrack({
+      trackIndex: 2,
+      include: ["notes", "rack-chains", "instrument"],
+    });
 
     // Since clips exist at slots 0 and 2, we should get minimal data for those slots
     expect(result.sessionClips).toEqual([
@@ -395,7 +398,10 @@ describe("readTrack", () => {
       },
     });
 
-    const result = readTrack({ trackIndex: 2, include: ["notes", "rack-chains", "instrument"] });
+    const result = readTrack({
+      trackIndex: 2,
+      include: ["notes", "rack-chains", "instrument"],
+    });
 
     expect(result.arrangementClips).toEqual([
       { clipId: "id arr_clip1" },
@@ -460,7 +466,15 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "midi-effects", "audio-effects"],
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "midi-effects",
+          "audio-effects",
+        ],
       });
 
       expect(result.instrument).toEqual({
@@ -559,7 +573,14 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "audio-effects"],
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "audio-effects",
+        ],
       });
 
       expect(result.instrument).toEqual({
@@ -701,7 +722,17 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "audio-effects"] });
+      const result = readTrack({
+        trackIndex: 0,
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "audio-effects",
+        ],
+      });
 
       expect(result.audioEffects).toHaveLength(1);
       expect(result.audioEffects[0]).toEqual({
@@ -1082,7 +1113,17 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "drum-chains"] });
+      const result = readTrack({
+        trackIndex: 0,
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "drum-chains",
+        ],
+      });
       expect(result.instrument).toEqual({
         id: "drum_rack",
         name: "Drum Rack",
@@ -1154,7 +1195,17 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "audio-effects"] });
+      const result = readTrack({
+        trackIndex: 0,
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "audio-effects",
+        ],
+      });
       expect(result.audioEffects).toEqual([
         {
           id: "device1",
@@ -1741,7 +1792,17 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "drum-chains"] });
+      const result = readTrack({
+        trackIndex: 0,
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "drum-chains",
+        ],
+      });
 
       expect(result.instrument.drumPads).toEqual([
         expect.objectContaining({
@@ -1961,7 +2022,17 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "drum-chains"] });
+      const result = readTrack({
+        trackIndex: 0,
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "drum-chains",
+        ],
+      });
 
       // Should detect the nested instrument and not add hasInstrument property
       expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
@@ -2210,7 +2281,17 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackIndex: 0, include: ["notes", "rack-chains", "instrument", "session-clips", "arrangement-clips", "routings"] });
+      const result = readTrack({
+        trackIndex: 0,
+        include: [
+          "notes",
+          "rack-chains",
+          "instrument",
+          "session-clips",
+          "arrangement-clips",
+          "routings",
+        ],
+      });
 
       // Should omit monitoringState property without accessing current_monitoring_state
       expect(result.monitoringState).toBeUndefined();

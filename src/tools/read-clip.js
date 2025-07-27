@@ -4,7 +4,7 @@ import {
   abletonBeatsToBarBeatDuration,
 } from "../notation/barbeat/barbeat-time.js";
 import { formatNotation } from "../notation/notation.js";
-import { convertIncludeParams, READ_CLIP_DEFAULTS } from "./include-params.js";
+import { parseIncludeArray, READ_CLIP_DEFAULTS } from "./include-params.js";
 
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
@@ -19,13 +19,7 @@ import { convertIncludeParams, READ_CLIP_DEFAULTS } from "./include-params.js";
 export function readClip(args = {}) {
   const { trackIndex = null, clipSlotIndex = null, clipId = null } = args;
 
-  // Support both new include array format and legacy individual parameters
-  const includeOrLegacyParams =
-    args.include !== undefined ? args.include : args;
-  const { includeNotes } = convertIncludeParams(
-    includeOrLegacyParams,
-    READ_CLIP_DEFAULTS,
-  );
+  const { includeNotes } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
   if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and clipSlotIndex must be provided",

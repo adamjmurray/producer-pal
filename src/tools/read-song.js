@@ -5,29 +5,15 @@ import {
 } from "../notation/midi-pitch-to-name.js";
 import { readScene } from "./read-scene.js";
 import { readTrack, readTrackGeneric } from "./read-track.js";
-import { convertIncludeParams, READ_SONG_DEFAULTS } from "./include-params.js";
+import {
+  parseIncludeArray,
+  includeArrayFromFlags,
+  READ_SONG_DEFAULTS,
+} from "./include-params.js";
 
 export function readSong(args = {}) {
-  // Support both new include array format and legacy individual parameters
-  const includeOrLegacyParams =
-    args.include !== undefined ? args.include : args;
-
-  const {
-    includeDrumChains,
-    includeNotes,
-    includeRackChains,
-    includeEmptyScenes,
-    includeScenes,
-    includeMidiEffects,
-    includeInstrument,
-    includeAudioEffects,
-    includeRoutings,
-    includeSessionClips,
-    includeArrangementClips,
-    includeRegularTracks,
-    includeReturnTracks,
-    includeMasterTrack,
-  } = convertIncludeParams(includeOrLegacyParams, READ_SONG_DEFAULTS);
+  const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
+  const includeArray = includeArrayFromFlags(includeFlags);
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
   const trackIds = liveSet.getChildIds("tracks");
@@ -46,43 +32,39 @@ export function readSong(args = {}) {
     timeSignature: liveSet.timeSignature,
     scaleEnabled,
     scenes: sceneIds
-      .map((_sceneId, sceneIndex) => readScene({ sceneIndex, includeNotes }))
+      .map((_sceneId, sceneIndex) =>
+        readScene({ sceneIndex, include: includeArray }),
+      )
       .filter((scene) => {
         // New logic: if user explicitly uses 'scenes' option, only include non-empty scenes
         // If user uses 'empty-scenes', only include empty scenes
         // If user uses both (via 'all-scenes'), include all scenes
         // Otherwise, use original logic (includeEmptyScenes || !scene.isEmpty)
-        if (includeScenes && includeEmptyScenes) {
+        if (includeFlags.includeScenes && includeFlags.includeEmptyScenes) {
           return true; // Include all scenes (both empty and non-empty)
-        } else if (includeScenes && !includeEmptyScenes) {
+        } else if (
+          includeFlags.includeScenes &&
+          !includeFlags.includeEmptyScenes
+        ) {
           return !scene.isEmpty; // Include only non-empty scenes
         } else {
           // Original logic: always include scenes, filtered by includeEmptyScenes
-          return includeEmptyScenes || !scene.isEmpty;
+          return includeFlags.includeEmptyScenes || !scene.isEmpty;
         }
       }),
   };
 
   // Conditionally include track arrays based on include parameters
-  if (includeRegularTracks) {
+  if (includeFlags.includeRegularTracks) {
     result.tracks = trackIds.map((_trackId, trackIndex) =>
       readTrack({
         trackIndex,
-        includeDrumChains,
-        includeNotes,
-        includeRackChains,
-        includeMidiEffects,
-        includeInstrument,
-        includeAudioEffects,
-        includeRoutings,
-        includeAvailableRoutings: false, // read-song doesn't support available routings
-        includeSessionClips,
-        includeArrangementClips,
+        include: includeArray,
       }),
     );
   }
 
-  if (includeReturnTracks) {
+  if (includeFlags.includeReturnTracks) {
     result.returnTracks = returnTrackIds.map(
       (_returnTrackId, returnTrackIndex) => {
         const returnTrack = new LiveAPI(
@@ -92,37 +74,19 @@ export function readSong(args = {}) {
           track: returnTrack,
           trackIndex: returnTrackIndex,
           trackType: "return",
-          includeDrumChains,
-          includeNotes,
-          includeRackChains,
-          includeMidiEffects,
-          includeInstrument,
-          includeAudioEffects,
-          includeRoutings,
-          includeAvailableRoutings: false, // read-song doesn't support available routings
-          includeSessionClips,
-          includeArrangementClips,
+          include: includeArray,
         });
       },
     );
   }
 
-  if (includeMasterTrack) {
+  if (includeFlags.includeMasterTrack) {
     const masterTrack = new LiveAPI("live_set master_track");
     result.masterTrack = readTrackGeneric({
       track: masterTrack,
       trackIndex: null,
       trackType: "master",
-      includeDrumChains,
-      includeNotes,
-      includeRackChains,
-      includeMidiEffects,
-      includeInstrument,
-      includeAudioEffects,
-      includeRoutings,
-      includeAvailableRoutings: false, // read-song doesn't support available routings
-      includeSessionClips,
-      includeArrangementClips,
+      include: includeArray,
     });
   }
 

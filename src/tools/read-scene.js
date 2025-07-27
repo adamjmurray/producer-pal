@@ -1,6 +1,6 @@
 // src/tools/read-scene.js
 import { readClip } from "./read-clip";
-import { convertIncludeParams, READ_SCENE_DEFAULTS } from "./include-params.js";
+import { parseIncludeArray, READ_SCENE_DEFAULTS } from "./include-params.js";
 
 /**
  * Read comprehensive information about a scene
@@ -11,15 +11,7 @@ import { convertIncludeParams, READ_SCENE_DEFAULTS } from "./include-params.js";
  */
 export function readScene(args = {}) {
   const { sceneIndex } = args;
-
-  // Support both new include array format and legacy individual parameters
-  const includeOrLegacyParams =
-    args.include !== undefined ? args.include : args;
-
-  const { includeClips, includeNotes } = convertIncludeParams(
-    includeOrLegacyParams,
-    READ_SCENE_DEFAULTS,
-  );
+  const includeFlags = parseIncludeArray(args.include, READ_SCENE_DEFAULTS);
   const liveSet = new LiveAPI(`live_set`);
   const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
@@ -52,24 +44,14 @@ export function readScene(args = {}) {
     result.triggered = true;
   }
 
-  if (includeClips) {
-    // For backward compatibility: if 'notes' is explicitly in the include array, use that setting
-    // Otherwise, let readClip use its own default (true)
-    const includeArray = Array.isArray(includeOrLegacyParams)
-      ? includeOrLegacyParams
-      : [];
-    const notesExplicitlyRequested = includeArray.includes("notes");
-    const clipIncludeNotes = notesExplicitlyRequested
-      ? includeNotes
-      : undefined;
-
+  if (includeFlags.includeClips) {
     result.clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
         readClip({
           trackIndex,
           clipSlotIndex: sceneIndex,
-          includeNotes: clipIncludeNotes,
+          include: args.include,
         }),
       )
       .filter((clip) => clip.id != null);

@@ -2,7 +2,7 @@
 import { getHostTrackIndex } from "../get-host-track-index.js";
 import { midiPitchToName } from "../notation/midi-pitch-to-name.js";
 import { VERSION } from "../version.js";
-import { convertIncludeParams, READ_TRACK_DEFAULTS } from "./include-params.js";
+import { parseIncludeArray, READ_TRACK_DEFAULTS } from "./include-params.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
@@ -497,17 +497,20 @@ export function readTrackGeneric({
   track,
   trackIndex,
   trackType = "regular",
-  includeDrumChains,
-  includeNotes,
-  includeRackChains,
-  includeMidiEffects,
-  includeInstrument,
-  includeAudioEffects,
-  includeRoutings,
-  includeAvailableRoutings,
-  includeSessionClips,
-  includeArrangementClips,
+  include,
 }) {
+  const {
+    includeDrumChains,
+    includeNotes,
+    includeRackChains,
+    includeMidiEffects,
+    includeInstrument,
+    includeAudioEffects,
+    includeRoutings,
+    includeAvailableRoutings,
+    includeSessionClips,
+    includeArrangementClips,
+  } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
   if (!track.exists()) {
     return {
       id: null,
@@ -553,7 +556,11 @@ export function readTrackGeneric({
       ? track
           .getChildIds("clip_slots")
           .map((_clipSlotId, clipSlotIndex) =>
-            readClip({ trackIndex, clipSlotIndex, includeNotes }),
+            readClip({
+              trackIndex,
+              clipSlotIndex,
+              include: include,
+            }),
           )
           .filter((clip) => clip.id != null)
       : track
@@ -575,7 +582,12 @@ export function readTrackGeneric({
       : includeArrangementClips
         ? track
             .getChildIds("arrangement_clips")
-            .map((clipId) => readClip({ clipId, includeNotes }))
+            .map((clipId) =>
+              readClip({
+                clipId,
+                include: include,
+              }),
+            )
             .filter((clip) => clip.id != null)
         : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId }));
 
@@ -758,39 +770,12 @@ export function readTrackGeneric({
 
 export function readTrack(args = {}) {
   const { trackIndex } = args;
-
-  // Support both new include array format and legacy individual parameters
-  const includeOrLegacyParams =
-    args.include !== undefined ? args.include : args;
-
-  const {
-    includeDrumChains,
-    includeNotes,
-    includeRackChains,
-    includeMidiEffects,
-    includeInstrument,
-    includeAudioEffects,
-    includeRoutings,
-    includeAvailableRoutings,
-    includeSessionClips,
-    includeArrangementClips,
-  } = convertIncludeParams(includeOrLegacyParams, READ_TRACK_DEFAULTS);
-
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
   return readTrackGeneric({
     track,
     trackIndex,
     trackType: "regular",
-    includeDrumChains,
-    includeNotes,
-    includeRackChains,
-    includeMidiEffects,
-    includeInstrument,
-    includeAudioEffects,
-    includeRoutings,
-    includeAvailableRoutings,
-    includeSessionClips,
-    includeArrangementClips,
+    include: args.include,
   });
 }
