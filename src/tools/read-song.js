@@ -17,6 +17,7 @@ export function readSong(args = {}) {
     includeNotes,
     includeRackChains,
     includeEmptyScenes,
+    includeScenes,
     includeMidiEffects,
     includeInstrument,
     includeAudioEffects,
@@ -46,7 +47,20 @@ export function readSong(args = {}) {
     scaleEnabled,
     scenes: sceneIds
       .map((_sceneId, sceneIndex) => readScene({ sceneIndex, includeNotes }))
-      .filter((scene) => includeEmptyScenes || !scene.isEmpty),
+      .filter((scene) => {
+        // New logic: if user explicitly uses 'scenes' option, only include non-empty scenes
+        // If user uses 'empty-scenes', only include empty scenes  
+        // If user uses both (via 'all-scenes'), include all scenes
+        // Otherwise, use original logic (includeEmptyScenes || !scene.isEmpty)
+        if (includeScenes && includeEmptyScenes) {
+          return true; // Include all scenes (both empty and non-empty)
+        } else if (includeScenes && !includeEmptyScenes) {
+          return !scene.isEmpty; // Include only non-empty scenes
+        } else {
+          // Original logic: always include scenes, filtered by includeEmptyScenes
+          return includeEmptyScenes || !scene.isEmpty;
+        }
+      }),
   };
 
   // Conditionally include track arrays based on include parameters

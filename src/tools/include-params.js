@@ -9,6 +9,7 @@ const ALL_INCLUDE_OPTIONS = {
     "notes",
     "rack-chains",
     "empty-scenes",
+    "scenes",
     "midi-effects",
     "instrument",
     "audio-effects",
@@ -18,6 +19,9 @@ const ALL_INCLUDE_OPTIONS = {
     "regular-tracks",
     "return-tracks",
     "master-track",
+    "all-tracks",
+    "all-devices",
+    "all-scenes",
   ],
   track: [
     "drum-chains",
@@ -29,20 +33,46 @@ const ALL_INCLUDE_OPTIONS = {
     "routings",
     "session-clips",
     "arrangement-clips",
+    "all-devices",
   ],
   scene: ["clips", "notes"],
   clip: ["notes"],
 };
 
 /**
- * Expand '*' in include array to all available options for the given tool type
- * @param {string[]} includeArray - Array of include options that may contain '*'
+ * Shortcut mappings for include options
+ */
+const SHORTCUT_MAPPINGS = {
+  "all-tracks": ["regular-tracks", "return-tracks", "master-track"],
+  "all-devices": ["midi-effects", "instrument", "audio-effects"],
+  "all-scenes": ["scenes", "empty-scenes"],
+  scenes: [], // 'scenes' is handled specially - it means include non-empty scenes (opposite of empty-scenes)
+};
+
+/**
+ * Expand shortcuts and '*' in include array to concrete options
+ * @param {string[]} includeArray - Array of include options that may contain '*' or shortcuts
  * @param {Object} defaults - Default values to determine tool type from structure
- * @returns {string[]} Expanded array with '*' replaced by all available options
+ * @returns {string[]} Expanded array with shortcuts and '*' replaced by concrete options
  */
 function expandWildcardIncludes(includeArray, defaults) {
-  if (!includeArray.includes("*")) {
-    return includeArray;
+  // First expand shortcuts
+  let expandedArray = [];
+  for (const option of includeArray) {
+    if (SHORTCUT_MAPPINGS[option]) {
+      expandedArray.push(...SHORTCUT_MAPPINGS[option]);
+    } else if (option === "scenes") {
+      // 'scenes' means include non-empty scenes, which is achieved by NOT setting empty-scenes
+      // This is handled in the convertIncludeParams function
+      expandedArray.push(option);
+    } else {
+      expandedArray.push(option);
+    }
+  }
+
+  // Then handle '*' expansion
+  if (!expandedArray.includes("*")) {
+    return expandedArray;
   }
 
   // Determine tool type from defaults structure to get appropriate options
@@ -63,7 +93,7 @@ function expandWildcardIncludes(includeArray, defaults) {
   const allOptions = ALL_INCLUDE_OPTIONS[toolType] || [];
 
   // Create set with all non-'*' options plus all available options
-  const expandedSet = new Set(includeArray.filter((option) => option !== "*"));
+  const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
   allOptions.forEach((option) => expandedSet.add(option));
 
   return Array.from(expandedSet);
@@ -98,6 +128,7 @@ export function convertIncludeParams(
       includeEmptyScenes:
         includeOrLegacyParams.includeEmptyScenes ??
         Boolean(defaults.includeEmptyScenes),
+      includeScenes: false, // Not available in legacy format
       includeMidiEffects:
         includeOrLegacyParams.includeMidiEffects ??
         Boolean(defaults.includeMidiEffects),
@@ -140,6 +171,11 @@ export function convertIncludeParams(
   // For new array format, always use the provided array (defaults are handled by tool definitions)
   const shouldApplyDefaults = false;
 
+  // Handle 'scenes' option: if 'scenes' is present, it means include non-empty scenes
+  // which is the opposite of includeEmptyScenes
+  const hasScenes = includeSet.has("scenes");
+  const hasEmptyScenes = includeSet.has("empty-scenes");
+
   return {
     includeDrumChains:
       includeSet.has("drum-chains") ||
@@ -151,8 +187,9 @@ export function convertIncludeParams(
       includeSet.has("rack-chains") ||
       (shouldApplyDefaults && Boolean(defaults.includeRackChains)),
     includeEmptyScenes:
-      includeSet.has("empty-scenes") ||
+      hasEmptyScenes ||
       (shouldApplyDefaults && Boolean(defaults.includeEmptyScenes)),
+    includeScenes: hasScenes, // New property for 'scenes' option
     includeMidiEffects:
       includeSet.has("midi-effects") ||
       (shouldApplyDefaults && Boolean(defaults.includeMidiEffects)),

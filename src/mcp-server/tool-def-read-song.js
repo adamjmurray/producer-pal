@@ -38,6 +38,7 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
           "notes",
           "rack-chains",
           "empty-scenes",
+          "scenes",
           "midi-effects",
           "instrument",
           "audio-effects",
@@ -47,16 +48,20 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
           "regular-tracks",
           "return-tracks",
           "master-track",
+          "all-tracks",
+          "all-devices",
+          "all-scenes",
         ]),
       )
-      .default(["regular-tracks", "instrument", "rack-chains"])
+      .default(["regular-tracks", "instrument", "rack-chains", "scenes"])
       .describe(
         "Array of data to include in the response. Available options: " +
           "'*' (include all available options), " +
           "'drum-chains' (include drum pad chains and return chains in rack devices), " +
           "'notes' (include notes data in clip objects), " +
-          "'rack-chains' (include chains in rack devices), " +
+          "'rack-chains' (include chains in rack devices, required for dump pad note mappings in drum racks), " +
           "'empty-scenes' (include scenes that contain no clips), " +
+          "'scenes' (include scenes that contain clips), " +
           "'midi-effects' (include MIDI effects array in track objects), " +
           "'instrument' (include instrument object in track objects), " +
           "'audio-effects' (include audio effects array in track objects), " +
@@ -65,8 +70,11 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
           "'arrangement-clips' (include full arrangement clip data in track objects), " +
           "'regular-tracks' (include regular tracks array), " +
           "'return-tracks' (include return tracks array), " +
-          "'master-track' (include master track object). " +
-          "Default: ['rack-chains', 'instrument', 'regular-tracks'].",
+          "'master-track' (include master track object), " +
+          "'all-tracks' (shortcut for regular-tracks, return-tracks, master-track), " +
+          "'all-devices' (shortcut for midi-effects, instrument, audio-effects), " +
+          "'all-scenes' (shortcut for scenes, empty-scenes). " +
+          "Default: ['regular-tracks', 'instrument', 'rack-chains', 'scenes'].",
       ),
   },
 });
