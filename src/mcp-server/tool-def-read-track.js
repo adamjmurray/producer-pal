@@ -22,7 +22,26 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
     destructiveHint: false,
   },
   inputSchema: {
-    trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
+    trackIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Track index (0-based). This is also the returnTrackIndex for return tracks. Ignored when trackType is 'master'. Can be omitted if trackId is provided or trackType is 'master'.",
+      ),
+    trackId: z
+      .string()
+      .optional()
+      .describe(
+        "Track ID to directly access any track. Either this or trackIndex must be provided (except for master track which requires neither).",
+      ),
+    trackType: z
+      .enum(["regular", "return", "master"])
+      .default("regular")
+      .describe(
+        "Type of track to read: 'regular' for regular tracks (default), 'return' for return tracks, 'master' for master track. Ignored when trackId is provided.",
+      ),
     include: z
       .array(
         z.enum([

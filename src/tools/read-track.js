@@ -462,17 +462,9 @@ function categorizeDevices(
 /**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
- * @param {number} args.trackIndex - Track index (0-based)
- * @param {boolean} args.includeDrumChains - Whether to include drum pad chains and return chains (default: false)
- * @param {boolean} args.includeNotes - Whether to include notes data in clips (default: true)
- * @param {boolean} args.includeRackChains - Whether to include chains in rack devices (default: true)
- * @param {boolean} args.includeMidiEffects - Whether to include MIDI effects array (default: false)
- * @param {boolean} args.includeInstrument - Whether to include instrument object (default: true)
- * @param {boolean} args.includeAudioEffects - Whether to include audio effects array (default: false)
- * @param {boolean} args.includeRoutings - Whether to include current routing settings (default: false)
- * @param {boolean} args.includeAvailableRoutings - Whether to include available routing options (default: false)
- * @param {boolean} args.includeSessionClips - Whether to include full session clip data (default: true)
- * @param {boolean} args.includeArrangementClips - Whether to include full arrangement clip data (default: true)
+ * @param {number} args.trackIndex - Track index (0-based). Also used as returnTrackIndex for return tracks. Ignored for master track.
+ * @param {string} args.trackType - Type of track: "regular" (default), "return", or "master"
+ * @param {Array} args.include - Array of data to include in the response
  * @returns {Object} Result object with track information
  */
 /**
@@ -512,12 +504,22 @@ export function readTrackGeneric({
     includeArrangementClips,
   } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
   if (!track.exists()) {
-    return {
+    const result = {
       id: null,
       type: null,
       name: null,
-      trackIndex,
     };
+
+    // Add appropriate index property based on track type
+    if (trackType === "regular") {
+      result.trackIndex = trackIndex;
+    } else if (trackType === "return") {
+      result.returnTrackIndex = trackIndex;
+    } else if (trackType === "master") {
+      result.trackIndex = null;
+    }
+
+    return result;
   }
 
   const groupId = track.get("group_track")[1];
@@ -769,13 +771,49 @@ export function readTrackGeneric({
 }
 
 export function readTrack(args = {}) {
-  const { trackIndex } = args;
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  const { trackIndex, trackId, trackType = "regular" } = args;
+
+  // Validate parameters
+  if (trackId == null && trackIndex == null && trackType !== "master") {
+    throw new Error("Either trackId or trackIndex must be provided");
+  }
+
+  let track;
+  let resolvedTrackIndex = trackIndex;
+  let resolvedTrackType = trackType;
+
+  if (trackId != null) {
+    // Use trackId to access track directly
+    track = LiveAPI.from(trackId);
+    if (!track.exists()) {
+      throw new Error(`No track exists for trackId "${trackId}"`);
+    }
+
+    // Determine track type and index from the track's path
+    resolvedTrackType = track.trackType;
+    resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
+  } else {
+    // Construct the appropriate Live API path based on track type
+    let trackPath;
+    if (trackType === "regular") {
+      trackPath = `live_set tracks ${trackIndex}`;
+    } else if (trackType === "return") {
+      trackPath = `live_set return_tracks ${trackIndex}`;
+    } else if (trackType === "master") {
+      trackPath = "live_set master_track";
+    } else {
+      throw new Error(
+        `Invalid trackType: ${trackType}. Must be "regular", "return", or "master".`,
+      );
+    }
+
+    track = new LiveAPI(trackPath);
+  }
 
   return readTrackGeneric({
     track,
-    trackIndex,
-    trackType: "regular",
+    trackIndex: resolvedTrackType === "master" ? null : resolvedTrackIndex,
+    trackType: resolvedTrackType,
     include: args.include,
   });
 }

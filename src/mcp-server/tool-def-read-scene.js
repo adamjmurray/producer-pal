@@ -16,8 +16,15 @@ export const toolDefReadScene = defineTool("ppal-read-scene", {
       .number()
       .int()
       .min(0)
+      .optional()
       .describe(
-        "Scene index (0-based). This is also the clipSlotIndex of every clip in this scene.",
+        "Scene index (0-based). This is also the clipSlotIndex of every clip in this scene. Can be omitted only if sceneId is provided.",
+      ),
+    sceneId: z
+      .string()
+      .optional()
+      .describe(
+        "Scene ID to directly access any scene. Either this or sceneIndex must be provided.",
       ),
     include: z
       .array(z.enum(["*", "clips", "notes"]))

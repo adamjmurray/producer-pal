@@ -2417,4 +2417,641 @@ describe("readTrack", () => {
       );
     });
   });
+
+  describe("trackType parameter", () => {
+    describe("return tracks", () => {
+      it("reads return track when trackType is 'return'", () => {
+        liveApiId.mockImplementation(function () {
+          if (this.path === "live_set return_tracks 1") {
+            return "return_track_1";
+          }
+          return "id 0";
+        });
+
+        mockLiveApiGet({
+          "live_set return_tracks 1": {
+            name: "Return B",
+            has_midi_input: 0, // Return tracks are typically audio
+            color: 65280, // Green
+            mute: 0,
+            solo: 0,
+            arm: 0,
+            can_be_armed: 0, // Return tracks cannot be armed
+            is_foldable: 0,
+            is_grouped: 0,
+            group_track: ["id", 0],
+            devices: [],
+            clip_slots: [],
+            arrangement_clips: [],
+            back_to_arranger: 0,
+            playing_slot_index: -1,
+            fired_slot_index: -1,
+            muted_via_solo: 0,
+          },
+        });
+
+        const result = readTrack({ trackIndex: 1, trackType: "return" });
+
+        expect(result).toEqual({
+          id: "return_track_1",
+          type: "audio",
+          name: "Return B",
+          color: "#00FF00",
+          returnTrackIndex: 1,
+          isArmed: false,
+          followsArrangement: true,
+          isGroup: false,
+          isGroupMember: false,
+          groupId: null,
+          sessionClips: [], // Return tracks have no session clips
+          arrangementClips: [], // Return tracks have no arrangement clips
+          instrument: null,
+        });
+      });
+
+      it("returns null values when return track does not exist", () => {
+        liveApiId.mockReturnValue("id 0");
+
+        const result = readTrack({ trackIndex: 99, trackType: "return" });
+
+        expect(result).toEqual({
+          id: null,
+          type: null,
+          name: null,
+          returnTrackIndex: 99,
+        });
+      });
+
+      it("includes routing properties for return tracks when requested", () => {
+        liveApiId.mockImplementation(function () {
+          if (this.path === "live_set return_tracks 0") {
+            return "return_track_1";
+          }
+          return "id 0";
+        });
+        liveApiPath.mockImplementation(function () {
+          return this._path;
+        });
+
+        mockLiveApiGet({
+          "live_set return_tracks 0": {
+            name: "Return A",
+            has_midi_input: 0,
+            can_be_armed: 0,
+            color: 0,
+            mute: 0,
+            solo: 0,
+            arm: 0,
+            is_foldable: 0,
+            is_grouped: 0,
+            group_track: ["id", 0],
+            devices: [],
+            clip_slots: [],
+            arrangement_clips: [],
+            back_to_arranger: 0,
+            playing_slot_index: -1,
+            fired_slot_index: -1,
+            muted_via_solo: 0,
+            available_output_routing_channels: [
+              '{"available_output_routing_channels": [{"display_name": "Master", "identifier": 26}]}',
+            ],
+            available_output_routing_types: [
+              '{"available_output_routing_types": [{"display_name": "Track Out", "identifier": 25}]}',
+            ],
+            output_routing_channel: [
+              '{"output_routing_channel": {"display_name": "Master", "identifier": 26}}',
+            ],
+            output_routing_type: [
+              '{"output_routing_type": {"display_name": "Track Out", "identifier": 25}}',
+            ],
+            available_input_routing_channels: null,
+            available_input_routing_types: null,
+            input_routing_channel: null,
+            input_routing_type: null,
+          },
+        });
+
+        const result = readTrack({
+          trackIndex: 0,
+          trackType: "return",
+          include: ["routings", "available-routings"],
+        });
+
+        // Return tracks should have null input routing (they don't accept input)
+        expect(result.inputRoutingType).toBeNull();
+        expect(result.inputRoutingChannel).toBeNull();
+        expect(result.availableInputRoutingTypes).toEqual([]);
+        expect(result.availableInputRoutingChannels).toEqual([]);
+
+        // But should have output routing
+        expect(result.outputRoutingType).toEqual({
+          name: "Track Out",
+          outputId: "25",
+        });
+        expect(result.outputRoutingChannel).toEqual({
+          name: "Master",
+          outputId: "26",
+        });
+      });
+    });
+
+    describe("master track", () => {
+      it("reads master track when trackType is 'master'", () => {
+        liveApiId.mockImplementation(function () {
+          if (this.path === "live_set master_track") {
+            return "master_track";
+          }
+          return "id 0";
+        });
+
+        mockLiveApiGet({
+          "live_set master_track": {
+            name: "Master",
+            has_midi_input: 0, // Master track is audio
+            color: 16777215, // White
+            can_be_armed: 0, // Master track cannot be armed
+            is_foldable: 0,
+            is_grouped: 0,
+            group_track: ["id", 0],
+            devices: children("compressor1"),
+            clip_slots: [],
+            arrangement_clips: [],
+            back_to_arranger: 0,
+            playing_slot_index: -1,
+            fired_slot_index: -1,
+            muted_via_solo: 0,
+            mute: 0,
+            solo: 0,
+            arm: 0,
+          },
+          compressor1: {
+            name: "Compressor",
+            class_name: "Compressor2",
+            class_display_name: "Compressor",
+            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+            is_active: 1,
+            can_have_chains: 0,
+            can_have_drum_pads: 0,
+          },
+        });
+
+        const result = readTrack({ trackIndex: 999, trackType: "master" }); // trackIndex should be ignored
+
+        expect(result).toEqual({
+          id: "master_track",
+          type: "audio",
+          name: "Master",
+          color: "#FFFFFF",
+          isArmed: false,
+          followsArrangement: true,
+          isGroup: false,
+          isGroupMember: false,
+          groupId: null,
+          sessionClips: [], // Master track has no session clips
+          arrangementClips: [], // Master track has no arrangement clips
+          instrument: null,
+        });
+
+        // trackIndex should be ignored for master track
+        expect(result.trackIndex).toBeUndefined();
+        expect(result.returnTrackIndex).toBeUndefined();
+      });
+
+      it("returns null values when master track does not exist", () => {
+        liveApiId.mockReturnValue("id 0");
+
+        const result = readTrack({ trackIndex: 0, trackType: "master" });
+
+        expect(result).toEqual({
+          id: null,
+          type: null,
+          name: null,
+          trackIndex: null, // trackIndex is null for master track
+        });
+      });
+
+      it("includes audio effects for master track when requested", () => {
+        liveApiId.mockImplementation(function () {
+          switch (this._path) {
+            case "live_set master_track":
+              return "master_track";
+            case "live_set master_track devices 0":
+              return "compressor1";
+            case "live_set master_track devices 1":
+              return "limiter1";
+            default:
+              return this._id;
+          }
+        });
+
+        mockLiveApiGet({
+          "live_set master_track": {
+            name: "Master",
+            has_midi_input: 0,
+            color: 0,
+            mute: 0,
+            solo: 0,
+            arm: 0,
+            can_be_armed: 0,
+            is_foldable: 0,
+            is_grouped: 0,
+            group_track: ["id", 0],
+            devices: children("compressor1", "limiter1"),
+            clip_slots: [],
+            arrangement_clips: [],
+            back_to_arranger: 0,
+            playing_slot_index: -1,
+            fired_slot_index: -1,
+            muted_via_solo: 0,
+          },
+          compressor1: {
+            name: "Compressor",
+            class_name: "Compressor2",
+            class_display_name: "Compressor",
+            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+            is_active: 1,
+            can_have_chains: 0,
+            can_have_drum_pads: 0,
+          },
+          limiter1: {
+            name: "Limiter",
+            class_name: "Limiter",
+            class_display_name: "Limiter",
+            type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+            is_active: 1,
+            can_have_chains: 0,
+            can_have_drum_pads: 0,
+          },
+        });
+
+        const result = readTrack({
+          trackIndex: 0,
+          trackType: "master",
+          include: ["audio-effects"],
+        });
+
+        expect(result.audioEffects).toEqual([
+          {
+            id: "compressor1",
+            name: "Compressor",
+            type: DEVICE_TYPE.AUDIO_EFFECT,
+          },
+          {
+            id: "limiter1",
+            name: "Limiter",
+            type: DEVICE_TYPE.AUDIO_EFFECT,
+          },
+        ]);
+      });
+
+      it("sets null routing properties for master track when requested", () => {
+        liveApiId.mockReturnValue("master_track");
+        mockLiveApiGet({
+          Track: {
+            name: "Master",
+            has_midi_input: 0,
+            can_be_armed: 0,
+            color: 0,
+            mute: 0,
+            solo: 0,
+            arm: 0,
+            is_foldable: 0,
+            is_grouped: 0,
+            group_track: ["id", 0],
+            devices: [],
+            clip_slots: [],
+            arrangement_clips: [],
+            back_to_arranger: 0,
+            playing_slot_index: -1,
+            fired_slot_index: -1,
+            muted_via_solo: 0,
+          },
+        });
+
+        const result = readTrack({
+          trackIndex: 0,
+          trackType: "master",
+          include: ["routings", "available-routings"],
+        });
+
+        // Master track should have null routing properties
+        expect(result.inputRoutingType).toBeNull();
+        expect(result.inputRoutingChannel).toBeNull();
+        expect(result.outputRoutingType).toBeNull();
+        expect(result.outputRoutingChannel).toBeNull();
+        expect(result.availableInputRoutingTypes).toEqual([]);
+        expect(result.availableInputRoutingChannels).toEqual([]);
+        expect(result.availableOutputRoutingTypes).toEqual([]);
+        expect(result.availableOutputRoutingChannels).toEqual([]);
+      });
+
+      it("reads master track without requiring trackIndex", () => {
+        liveApiId.mockReturnValue("master_track");
+        mockLiveApiGet({
+          "live_set master_track": {
+            name: "Master",
+            has_midi_input: 0,
+            can_be_armed: 0,
+            color: 16777215, // White
+            mute: 0,
+            solo: 0,
+            arm: 0,
+            is_foldable: 0,
+            is_grouped: 0,
+            group_track: ["id", 0],
+            devices: [],
+            clip_slots: [],
+            arrangement_clips: [],
+            back_to_arranger: 0,
+            playing_slot_index: -1,
+            fired_slot_index: -1,
+            muted_via_solo: 0,
+          },
+        });
+
+        const result = readTrack({ trackType: "master" });
+
+        expect(result).toEqual({
+          id: "master_track",
+          type: "audio",
+          name: "Master",
+          color: "#FFFFFF",
+          isArmed: false,
+          followsArrangement: true,
+          isGroup: false,
+          isGroupMember: false,
+          groupId: null,
+          sessionClips: [],
+          arrangementClips: [],
+          instrument: null,
+        });
+      });
+    });
+
+    describe("regular tracks (default behavior)", () => {
+      it("defaults to regular track when trackType is not specified", () => {
+        liveApiId.mockReturnValue("track1");
+        mockLiveApiGet({
+          Track: mockTrackProperties({
+            name: "Default Track",
+          }),
+        });
+
+        const result = readTrack({ trackIndex: 0 });
+
+        expect(result.trackIndex).toBe(0);
+        expect(result.returnTrackIndex).toBeUndefined();
+        expect(result.id).toBe("track1");
+      });
+
+      it("reads regular track when trackType is explicitly 'regular'", () => {
+        liveApiId.mockReturnValue("track1");
+        mockLiveApiGet({
+          Track: mockTrackProperties({
+            name: "Regular Track",
+          }),
+        });
+
+        const result = readTrack({ trackIndex: 0, trackType: "regular" });
+
+        expect(result.trackIndex).toBe(0);
+        expect(result.returnTrackIndex).toBeUndefined();
+        expect(result.id).toBe("track1");
+      });
+    });
+
+    describe("invalid trackType", () => {
+      it("throws error for invalid trackType", () => {
+        expect(() => {
+          readTrack({ trackIndex: 0, trackType: "invalid" });
+        }).toThrow(
+          'Invalid trackType: invalid. Must be "regular", "return", or "master".',
+        );
+      });
+    });
+  });
+
+  describe("trackId parameter", () => {
+    it("reads track by trackId", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id 123") {
+          return "123";
+        }
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id 123") {
+          return "live_set tracks 2";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        "live_set tracks 2": {
+          name: "Track by ID",
+          has_midi_input: 1,
+          color: 16711680, // Red
+          mute: 0,
+          solo: 0,
+          arm: 1,
+          can_be_armed: 1,
+          is_foldable: 0,
+          is_grouped: 0,
+          group_track: ["id", 0],
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+          back_to_arranger: 0,
+          playing_slot_index: -1,
+          fired_slot_index: -1,
+          muted_via_solo: 0,
+        },
+      });
+
+      const result = readTrack({ trackId: "123" });
+
+      expect(result).toEqual({
+        id: "123",
+        type: "midi",
+        name: "Track by ID",
+        trackIndex: 2,
+        color: "#FF0000",
+        isArmed: true,
+        followsArrangement: true,
+        isGroup: false,
+        isGroupMember: false,
+        groupId: null,
+        sessionClips: [],
+        arrangementClips: [],
+        instrument: null,
+      });
+    });
+
+    it("reads return track by trackId", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id 456") {
+          return "456";
+        }
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id 456") {
+          return "live_set return_tracks 1";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        "live_set return_tracks 1": {
+          name: "Return by ID",
+          has_midi_input: 0,
+          color: 65280, // Green
+          mute: 0,
+          solo: 0,
+          arm: 0,
+          can_be_armed: 0,
+          is_foldable: 0,
+          is_grouped: 0,
+          group_track: ["id", 0],
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+          back_to_arranger: 0,
+          playing_slot_index: -1,
+          fired_slot_index: -1,
+          muted_via_solo: 0,
+        },
+      });
+
+      const result = readTrack({ trackId: "456" });
+
+      expect(result).toEqual({
+        id: "456",
+        type: "audio",
+        name: "Return by ID",
+        returnTrackIndex: 1,
+        color: "#00FF00",
+        isArmed: false,
+        followsArrangement: true,
+        isGroup: false,
+        isGroupMember: false,
+        groupId: null,
+        sessionClips: [],
+        arrangementClips: [],
+        instrument: null,
+      });
+    });
+
+    it("reads master track by trackId", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id 789") {
+          return "789";
+        }
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id 789") {
+          return "live_set master_track";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        "live_set master_track": {
+          name: "Master by ID",
+          has_midi_input: 0,
+          color: 16777215, // White
+          mute: 0,
+          solo: 0,
+          arm: 0,
+          can_be_armed: 0,
+          is_foldable: 0,
+          is_grouped: 0,
+          group_track: ["id", 0],
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+          back_to_arranger: 0,
+          playing_slot_index: -1,
+          fired_slot_index: -1,
+          muted_via_solo: 0,
+        },
+      });
+
+      const result = readTrack({ trackId: "789" });
+
+      expect(result).toEqual({
+        id: "789",
+        type: "audio",
+        name: "Master by ID",
+        color: "#FFFFFF",
+        isArmed: false,
+        followsArrangement: true,
+        isGroup: false,
+        isGroupMember: false,
+        groupId: null,
+        sessionClips: [],
+        arrangementClips: [],
+        instrument: null,
+      });
+    });
+
+    it("throws error when trackId does not exist", () => {
+      liveApiId.mockReturnValue("id 0");
+
+      expect(() => {
+        readTrack({ trackId: "nonexistent" });
+      }).toThrow('No track exists for trackId "nonexistent"');
+    });
+
+    it("throws error when neither trackId nor trackIndex provided", () => {
+      expect(() => {
+        readTrack({});
+      }).toThrow("Either trackId or trackIndex must be provided");
+    });
+
+    it("ignores trackType when trackId is provided", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id 999") {
+          return "999";
+        }
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id 999") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        "live_set tracks 0": {
+          name: "Track ignores type",
+          has_midi_input: 1,
+          color: 0,
+          mute: 0,
+          solo: 0,
+          arm: 0,
+          can_be_armed: 1,
+          is_foldable: 0,
+          is_grouped: 0,
+          group_track: ["id", 0],
+          devices: [],
+          clip_slots: [],
+          arrangement_clips: [],
+          back_to_arranger: 0,
+          playing_slot_index: -1,
+          fired_slot_index: -1,
+          muted_via_solo: 0,
+        },
+      });
+
+      // trackType should be ignored when trackId is provided
+      const result = readTrack({ trackId: "999", trackType: "return" });
+
+      // Should read as regular track (from path) not return track
+      expect(result.trackIndex).toBe(0);
+      expect(result.returnTrackIndex).toBeUndefined();
+    });
+  });
 });
