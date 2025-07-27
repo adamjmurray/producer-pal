@@ -95,6 +95,7 @@ describe("MCP Express App", () => {
         "ppal-update-scene",
         "ppal-create-clip",
         "ppal-read-clip",
+        "ppal-read-device",
         "ppal-update-clip",
         "ppal-transport",
         "ppal-delete",

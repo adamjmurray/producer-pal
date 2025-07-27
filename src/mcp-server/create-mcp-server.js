@@ -11,6 +11,7 @@ import { toolDefInit } from "./tool-def-init.js";
 import { toolDefMemory } from "./tool-def-memory.js";
 import { toolDefRawLiveApi } from "./tool-def-raw-live-api.js";
 import { toolDefReadClip } from "./tool-def-read-clip.js";
+import { toolDefReadDevice } from "./tool-def-read-device.js";
 import { toolDefReadScene } from "./tool-def-read-scene.js";
 import { toolDefReadSong } from "./tool-def-read-song.js";
 import { toolDefReadTrack } from "./tool-def-read-track.js";
@@ -49,6 +50,7 @@ export function createMcpServer(callLiveApi) {
 
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
+  addTool(toolDefReadDevice);
   addTool(toolDefUpdateClip);
 
   addTool(toolDefTransport);

@@ -127,7 +127,7 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Support trackId arg for read-track so the return tracks and master track
       can be read
 - [x] Support sceneId arg for read-scene
-- [ ] Add `ppal-read-device` tool
+- [x] Add `ppal-read-device` tool
 - [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
 - [ ] Make verbose logging in Claude Desktop actually work
 - [ ] Make demo video and add to README and web site

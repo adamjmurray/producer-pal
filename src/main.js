@@ -20,6 +20,7 @@ import { init } from "./tools/init";
 import { memory } from "./tools/memory";
 import { rawLiveApi } from "./tools/raw-live-api";
 import { readClip } from "./tools/read-clip";
+import { readDevice } from "./tools/read-device";
 import { readScene } from "./tools/read-scene";
 import { readSong } from "./tools/read-song";
 import { readTrack } from "./tools/read-track";
@@ -54,6 +55,7 @@ const tools = {
   "ppal-update-view": (args) => updateView(args),
   "ppal-create-clip": (args) => createClip(args),
   "ppal-read-clip": (args) => readClip(args),
+  "ppal-read-device": (args) => readDevice(args),
   "ppal-update-clip": (args) => updateClip(args),
   "ppal-delete": (args) => deleteObject(args),
   "ppal-duplicate": (args) => duplicate(args),
