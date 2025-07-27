@@ -142,7 +142,7 @@ describe("readScene", () => {
       },
     });
 
-    const result = readScene({ sceneIndex: 0, includeClips: true });
+    const result = readScene({ sceneIndex: 0, include: ["clips"] });
 
     expect(result).toEqual({
       id: "scene_0",

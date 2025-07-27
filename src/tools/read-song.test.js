@@ -131,10 +131,7 @@ describe("readSong", () => {
     });
 
     const result = readSong({
-      includeEmptyScenes: true,
-      includeSessionClips: true,
-      includeArrangementClips: true,
-      includeNotes: true,
+      include: ["regular-tracks", "instrument", "rack-chains", "empty-scenes", "session-clips", "arrangement-clips", "notes"],
     });
 
     expect(result).toEqual({
@@ -259,10 +256,7 @@ describe("readSong", () => {
     });
 
     const result = readSong({
-      includeEmptyScenes: true,
-      includeSessionClips: true,
-      includeArrangementClips: true,
-      includeNotes: true,
+      include: ["regular-tracks", "instrument", "rack-chains", "empty-scenes", "session-clips", "arrangement-clips", "notes"],
     });
 
     expect(result).toEqual({
@@ -333,8 +327,7 @@ describe("readSong", () => {
     });
 
     const result = readSong({
-      includeDrumChains: true,
-      includeAudioEffects: true,
+      include: ["regular-tracks", "instrument", "rack-chains", "drum-chains", "audio-effects"],
     });
 
     // Check that tracks have the expected device configurations
@@ -435,11 +428,7 @@ describe("readSong", () => {
     });
 
     const result = readSong({
-      includeEmptyScenes: true,
-      includeAudioEffects: true,
-      includeSessionClips: true,
-      includeArrangementClips: true,
-      includeNotes: true,
+      include: ["regular-tracks", "instrument", "rack-chains", "empty-scenes", "audio-effects", "session-clips", "arrangement-clips", "notes"],
     });
 
     // Check that drum rack devices are included with drumPads but without devices in drumPad chains
@@ -510,7 +499,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({ includeRoutings: true });
+    const result = readSong({ include: ["regular-tracks", "instrument", "rack-chains", "routings"] });
 
     expect(result.tracks[0]).toEqual(
       expect.objectContaining({
@@ -553,7 +542,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({ includeRoutings: false });
+    const result = readSong({ include: ["regular-tracks", "instrument", "rack-chains"] });
 
     expect(result.tracks[0]).toEqual(
       expect.objectContaining({
@@ -603,8 +592,7 @@ describe("readSong", () => {
 
     // Test with minimal clip loading
     const result = readSong({
-      includeSessionClips: false,
-      includeArrangementClips: false,
+      include: ["regular-tracks", "instrument", "rack-chains"],
     });
 
     expect(result.tracks[0].sessionClips).toEqual([
