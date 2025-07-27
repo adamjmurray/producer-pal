@@ -664,4 +664,249 @@ describe("bar|beat parseNotation()", () => {
       },
     ]);
   });
+
+  describe("comment support", () => {
+    it("handles line comments with //", () => {
+      const result = parseNotation("1|1 C3 // this is a C major");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles hash comments with #", () => {
+      const result = parseNotation("1|1 C1 # kick drum");
+      expect(result).toEqual([
+        {
+          pitch: 36,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles block comments", () => {
+      const result = parseNotation("1|1 /* velocity */ v100 C3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles multi-line block comments", () => {
+      const result = parseNotation(`1|1 C3 /* this is a 
+multi-line comment */ D3`);
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles comments at the start of input", () => {
+      const result = parseNotation("// start comment\n1|1 C3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles comments at the end of input", () => {
+      const result = parseNotation("1|1 C3 D3 // end comment");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles comments in the middle of tokens", () => {
+      const result = parseNotation("1|1 /* middle */ C3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles multiple comment styles in one line", () => {
+      const result = parseNotation(
+        "1|1 C3 // major third /* mixed */ # styles",
+      );
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles empty comments", () => {
+      const result = parseNotation("1|1 C3 // \n1|2 D3 # \n1|3 /**/ E3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 2,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles comments between state changes", () => {
+      const result = parseNotation(
+        "v100 // set velocity\nt0.5 // set duration\n1|1 C3 // play note",
+      );
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles comments with special characters", () => {
+      const result = parseNotation("1|1 C3 // C major chord!@#$%^&*()");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles drum pattern with comments", () => {
+      const result = parseNotation(`
+        1|1 v100 t0.25 p1.0 C1 // kick drum
+        v80-100 p0.8 Gb1 // hi-hat with variation
+        1|1.5 p0.6 Gb1 // ghost hi-hat
+        1|2 v90 p1.0 D1 // snare
+        v100 p0.9 Gb1 // another hi-hat
+      `);
+      expect(result).toEqual([
+        {
+          pitch: 36,
+          start_time: 0,
+          duration: 0.25,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 42,
+          start_time: 0,
+          duration: 0.25,
+          velocity: 80,
+          probability: 0.8,
+          velocity_deviation: 20,
+        },
+        {
+          pitch: 42,
+          start_time: 0.5,
+          duration: 0.25,
+          velocity: 80,
+          probability: 0.6,
+          velocity_deviation: 20,
+        },
+        {
+          pitch: 38,
+          start_time: 1,
+          duration: 0.25,
+          velocity: 90,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 42,
+          start_time: 1,
+          duration: 0.25,
+          velocity: 100,
+          probability: 0.9,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+  });
 });

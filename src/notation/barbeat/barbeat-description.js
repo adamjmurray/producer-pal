@@ -74,6 +74,25 @@ Drum pattern with probability and velocity variation
 v100 p0.9 Gb1
 \`\`\`
 
+## Comments
+
+You can add comments to bar|beat notation:
+
+\`\`\`
+// Line comment
+1|1 C3 D3 E3 // C major triad
+
+# Hash comment
+1|1 C1 # kick drum
+
+/* Block comment */
+1|1 v100 /* forte */ C3
+
+/* Multi-line
+   block comment */
+1|1 C3 D3
+\`\`\`
+
 ## Musical Density Guidelines
 
 Professional arrangements prioritize clarity and impact:

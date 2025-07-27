@@ -128,7 +128,7 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
       can be read
 - [x] Support sceneId arg for read-scene
 - [x] Add `ppal-read-device` tool
-- [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
+- [x] Support comments in bar|beat format (probably #, // and /\* \*/)
 - [ ] Make verbose logging in Claude Desktop actually work
 - [ ] Make demo video and add to README and web site
 
