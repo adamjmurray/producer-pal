@@ -59,7 +59,7 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
           "'*' (include all available options), " +
           "'drum-chains' (include drum pad chains and return chains in rack devices), " +
           "'notes' (include notes data in clip objects), " +
-          "'rack-chains' (include chains in rack devices, required for dump pad note mappings in drum racks), " +
+          "'rack-chains' (include chains in rack devices), " +
           "'empty-scenes' (include scenes that contain no clips), " +
           "'scenes' (include scenes that contain clips), " +
           "'midi-effects' (include MIDI effects array in track objects), " +
