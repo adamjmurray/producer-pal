@@ -469,7 +469,8 @@ function categorizeDevices(
  * @param {boolean} args.includeMidiEffects - Whether to include MIDI effects array (default: false)
  * @param {boolean} args.includeInstrument - Whether to include instrument object (default: true)
  * @param {boolean} args.includeAudioEffects - Whether to include audio effects array (default: false)
- * @param {boolean} args.includeRoutings - Whether to include input/output routing information (default: false)
+ * @param {boolean} args.includeRoutings - Whether to include current routing settings (default: false)
+ * @param {boolean} args.includeAvailableRoutings - Whether to include available routing options (default: false)
  * @param {boolean} args.includeSessionClips - Whether to include full session clip data (default: true)
  * @param {boolean} args.includeArrangementClips - Whether to include full arrangement clip data (default: true)
  * @returns {Object} Result object with track information
@@ -486,7 +487,8 @@ function categorizeDevices(
  * @param {boolean} args.includeMidiEffects - Include MIDI effects
  * @param {boolean} args.includeInstrument - Include instrument
  * @param {boolean} args.includeAudioEffects - Include audio effects
- * @param {boolean} args.includeRoutings - Include routing info
+ * @param {boolean} args.includeRoutings - Include current routing settings
+ * @param {boolean} args.includeAvailableRoutings - Include available routing options
  * @param {boolean} args.includeSessionClips - Include session clips
  * @param {boolean} args.includeArrangementClips - Include arrangement clips
  * @returns {Object} Track information
@@ -502,6 +504,7 @@ export function readTrackGeneric({
   includeInstrument,
   includeAudioEffects,
   includeRoutings,
+  includeAvailableRoutings,
   includeSessionClips,
   includeArrangementClips,
 }) {
@@ -630,58 +633,15 @@ export function readTrackGeneric({
     result.state = trackState;
   }
 
+  // Handle current routing settings
   if (includeRoutings) {
     // Master track has no routing properties
     if (trackType === "master") {
-      result.availableInputRoutingTypes = [];
-      result.availableInputRoutingChannels = [];
-      result.availableOutputRoutingTypes = [];
-      result.availableOutputRoutingChannels = [];
       result.inputRoutingType = null;
       result.inputRoutingChannel = null;
       result.outputRoutingType = null;
       result.outputRoutingChannel = null;
     } else {
-      // Transform available input routing types - only for regular tracks (not return or group tracks)
-      if (!isGroup && trackType === "regular") {
-        const availableInputTypes =
-          track.getProperty("available_input_routing_types") || [];
-        result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
-          name: type.display_name,
-          inputId: String(type.identifier),
-        }));
-
-        const availableInputChannels =
-          track.getProperty("available_input_routing_channels") || [];
-        result.availableInputRoutingChannels = availableInputChannels.map(
-          (ch) => ({
-            name: ch.display_name,
-            inputId: String(ch.identifier),
-          }),
-        );
-      } else if (trackType === "return") {
-        // Return tracks don't have input routing - set empty arrays
-        result.availableInputRoutingTypes = [];
-        result.availableInputRoutingChannels = [];
-      }
-      // Group tracks don't set these properties at all (remain undefined)
-
-      const availableOutputTypes =
-        track.getProperty("available_output_routing_types") || [];
-      result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
-        name: type.display_name,
-        outputId: String(type.identifier),
-      }));
-
-      const availableOutputChannels =
-        track.getProperty("available_output_routing_channels") || [];
-      result.availableOutputRoutingChannels = availableOutputChannels.map(
-        (ch) => ({
-          name: ch.display_name,
-          outputId: String(ch.identifier),
-        }),
-      );
-
       // Transform current input routing settings - only for regular tracks (not return or group tracks)
       if (!isGroup && trackType === "regular") {
         const inputType = track.getProperty("input_routing_type");
@@ -737,6 +697,57 @@ export function readTrackGeneric({
     }
   }
 
+  // Handle available routing options
+  if (includeAvailableRoutings) {
+    // Master track has no routing properties
+    if (trackType === "master") {
+      result.availableInputRoutingTypes = [];
+      result.availableInputRoutingChannels = [];
+      result.availableOutputRoutingTypes = [];
+      result.availableOutputRoutingChannels = [];
+    } else {
+      // Transform available input routing types - only for regular tracks (not return or group tracks)
+      if (!isGroup && trackType === "regular") {
+        const availableInputTypes =
+          track.getProperty("available_input_routing_types") || [];
+        result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
+          name: type.display_name,
+          inputId: String(type.identifier),
+        }));
+
+        const availableInputChannels =
+          track.getProperty("available_input_routing_channels") || [];
+        result.availableInputRoutingChannels = availableInputChannels.map(
+          (ch) => ({
+            name: ch.display_name,
+            inputId: String(ch.identifier),
+          }),
+        );
+      } else if (trackType === "return") {
+        // Return tracks don't have input routing - set empty arrays
+        result.availableInputRoutingTypes = [];
+        result.availableInputRoutingChannels = [];
+      }
+      // Group tracks don't set these properties at all (remain undefined)
+
+      const availableOutputTypes =
+        track.getProperty("available_output_routing_types") || [];
+      result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
+        name: type.display_name,
+        outputId: String(type.identifier),
+      }));
+
+      const availableOutputChannels =
+        track.getProperty("available_output_routing_channels") || [];
+      result.availableOutputRoutingChannels = availableOutputChannels.map(
+        (ch) => ({
+          name: ch.display_name,
+          outputId: String(ch.identifier),
+        }),
+      );
+    }
+  }
+
   if (isProducerPalHost) {
     result.hasProducerPalDevice = true;
     result.producerPalVersion = VERSION;
@@ -760,6 +771,7 @@ export function readTrack(args = {}) {
     includeInstrument,
     includeAudioEffects,
     includeRoutings,
+    includeAvailableRoutings,
     includeSessionClips,
     includeArrangementClips,
   } = convertIncludeParams(includeOrLegacyParams, READ_TRACK_DEFAULTS);
@@ -777,6 +789,7 @@ export function readTrack(args = {}) {
     includeInstrument,
     includeAudioEffects,
     includeRoutings,
+    includeAvailableRoutings,
     includeSessionClips,
     includeArrangementClips,
   });

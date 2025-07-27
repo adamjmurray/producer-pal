@@ -34,9 +34,11 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "instrument",
           "audio-effects",
           "routings",
+          "available-routings",
           "session-clips",
           "arrangement-clips",
           "all-devices",
+          "all-routings",
         ]),
       )
       .default([
@@ -55,10 +57,12 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "'midi-effects' (include MIDI effects array), " +
           "'instrument' (include instrument object), " +
           "'audio-effects' (include audio effects array), " +
-          "'routings' (include input/output routing information), " +
+          "'routings' (include current routing settings), " +
+          "'available-routings' (include available routing options), " +
           "'session-clips' (include full session clip data), " +
           "'arrangement-clips' (include full arrangement clip data), " +
-          "'all-devices' (shortcut for midi-effects, instrument, audio-effects). " +
+          "'all-devices' (shortcut for midi-effects, instrument, audio-effects), " +
+          "'all-routings' (shortcut for routings, available-routings). " +
           "Default: ['notes', 'rack-chains', 'instrument', 'session-clips', 'arrangement-clips'].",
       ),
   },

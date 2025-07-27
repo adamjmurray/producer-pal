@@ -515,10 +515,6 @@ describe("readSong", () => {
     expect(result.tracks[0]).toEqual(
       expect.objectContaining({
         name: "Test Track",
-        availableInputRoutingChannels: [{ name: "In 1", inputId: "1" }],
-        availableInputRoutingTypes: [{ name: "Ext. In", inputId: "17" }],
-        availableOutputRoutingChannels: [{ name: "Master", outputId: "26" }],
-        availableOutputRoutingTypes: [{ name: "Track Out", outputId: "25" }],
         inputRoutingChannel: { name: "In 1", inputId: "1" },
         inputRoutingType: { name: "Ext. In", inputId: "17" },
         outputRoutingChannel: { name: "Master", outputId: "26" },
@@ -526,6 +522,16 @@ describe("readSong", () => {
         monitoringState: "auto",
       }),
     );
+
+    // Verify that available routing properties are NOT included (read-song doesn't support them)
+    expect(result.tracks[0]).not.toHaveProperty(
+      "availableInputRoutingChannels",
+    );
+    expect(result.tracks[0]).not.toHaveProperty("availableInputRoutingTypes");
+    expect(result.tracks[0]).not.toHaveProperty(
+      "availableOutputRoutingChannels",
+    );
+    expect(result.tracks[0]).not.toHaveProperty("availableOutputRoutingTypes");
   });
 
   it("excludes routing information from tracks when includeRoutings is false", () => {
@@ -910,7 +916,6 @@ describe("readSong", () => {
     expect(resultWildcard.tracks[0]).toEqual(
       expect.objectContaining({
         instrument: expect.any(Object),
-        availableInputRoutingChannels: expect.any(Array),
         inputRoutingChannel: expect.any(Object),
         sessionClips: expect.any(Array),
         arrangementClips: expect.any(Array),

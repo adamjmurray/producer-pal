@@ -31,9 +31,11 @@ const ALL_INCLUDE_OPTIONS = {
     "instrument",
     "audio-effects",
     "routings",
+    "available-routings",
     "session-clips",
     "arrangement-clips",
     "all-devices",
+    "all-routings",
   ],
   scene: ["clips", "notes"],
   clip: ["notes"],
@@ -46,6 +48,7 @@ const SHORTCUT_MAPPINGS = {
   "all-tracks": ["regular-tracks", "return-tracks", "master-track"],
   "all-devices": ["midi-effects", "instrument", "audio-effects"],
   "all-scenes": ["scenes", "empty-scenes"],
+  "all-routings": ["routings", "available-routings"],
   scenes: [], // 'scenes' is handled specially - it means include non-empty scenes (opposite of empty-scenes)
 };
 
@@ -141,6 +144,7 @@ export function convertIncludeParams(
       includeRoutings:
         includeOrLegacyParams.includeRoutings ??
         Boolean(defaults.includeRoutings),
+      includeAvailableRoutings: false, // Not available in legacy format
       includeSessionClips:
         includeOrLegacyParams.includeSessionClips ??
         Boolean(defaults.includeSessionClips),
@@ -202,6 +206,9 @@ export function convertIncludeParams(
     includeRoutings:
       includeSet.has("routings") ||
       (shouldApplyDefaults && Boolean(defaults.includeRoutings)),
+    includeAvailableRoutings:
+      includeSet.has("available-routings") ||
+      (shouldApplyDefaults && Boolean(defaults.includeAvailableRoutings)),
     includeSessionClips:
       includeSet.has("session-clips") ||
       (shouldApplyDefaults && Boolean(defaults.includeSessionClips)),
@@ -253,6 +260,7 @@ export const READ_TRACK_DEFAULTS = {
   includeInstrument: true,
   includeAudioEffects: false,
   includeRoutings: false,
+  includeAvailableRoutings: false,
   includeSessionClips: true,
   includeArrangementClips: true,
 };

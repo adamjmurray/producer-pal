@@ -49,7 +49,7 @@ export function readSong(args = {}) {
       .map((_sceneId, sceneIndex) => readScene({ sceneIndex, includeNotes }))
       .filter((scene) => {
         // New logic: if user explicitly uses 'scenes' option, only include non-empty scenes
-        // If user uses 'empty-scenes', only include empty scenes  
+        // If user uses 'empty-scenes', only include empty scenes
         // If user uses both (via 'all-scenes'), include all scenes
         // Otherwise, use original logic (includeEmptyScenes || !scene.isEmpty)
         if (includeScenes && includeEmptyScenes) {
@@ -75,6 +75,7 @@ export function readSong(args = {}) {
         includeInstrument,
         includeAudioEffects,
         includeRoutings,
+        includeAvailableRoutings: false, // read-song doesn't support available routings
         includeSessionClips,
         includeArrangementClips,
       }),
@@ -98,6 +99,7 @@ export function readSong(args = {}) {
           includeInstrument,
           includeAudioEffects,
           includeRoutings,
+          includeAvailableRoutings: false, // read-song doesn't support available routings
           includeSessionClips,
           includeArrangementClips,
         });
@@ -118,6 +120,7 @@ export function readSong(args = {}) {
       includeInstrument,
       includeAudioEffects,
       includeRoutings,
+      includeAvailableRoutings: false, // read-song doesn't support available routings
       includeSessionClips,
       includeArrangementClips,
     });

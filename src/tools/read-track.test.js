@@ -2050,7 +2050,10 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["all-routings"],
+      });
 
       expect(result.availableInputRoutingChannels).toEqual([
         { name: "In 1", inputId: "1" },
@@ -2103,7 +2106,10 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["all-routings"],
+      });
 
       expect(result.availableInputRoutingChannels).toEqual([]);
       expect(result.availableInputRoutingTypes).toEqual([]);
@@ -2138,7 +2144,10 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["all-routings"],
+      });
 
       // Group tracks should omit input routing properties entirely
       expect(result.availableInputRoutingChannels).toBeUndefined();
@@ -2178,7 +2187,10 @@ describe("readTrack", () => {
         }),
       });
 
-      const result = readTrack({ trackIndex: 0, includeRoutings: true });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["all-routings"],
+      });
 
       // Should return "unknown" for unsupported monitoring state values
       expect(result.monitoringState).toBe("unknown");
@@ -2299,8 +2311,11 @@ describe("readTrack", () => {
           "instrument",
           "audio-effects",
           "routings",
+          "available-routings",
           "session-clips",
           "arrangement-clips",
+          "all-devices",
+          "all-routings",
         ],
       });
 

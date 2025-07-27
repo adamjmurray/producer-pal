@@ -120,13 +120,15 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
       detailed info to include
 - [x] Enhance read-song to return returnTracks and masterTrack, add new include
       options
+- [x] support include arg values '\*', 'all-tracks', 'all-scenes',
+      'all-devices', 'all-routings'
+- [x] Split off separate read-track include for available routings and don't
+      support it in read-song (it's way too big and repetitive in larger sets)
 - [ ] Support trackId arg for read-track so the return tracks and master track
       can be read
 - [ ] Support sceneId arg for read-scene
 - [ ] Add `ppal-read-device` tool
 - [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
-- [ ] Split off separate read-track include for available routings and don't
-      support it in read-song (it's way too big and repetitive in larger sets)
 - [ ] Make verbose logging in Claude Desktop actually work
 - [ ] Make demo video and add to README and web site
 
