@@ -135,7 +135,7 @@ describe("readSong", () => {
         "regular-tracks",
         "instrument",
         "rack-chains",
-        "empty-scenes",
+        "scenes",
         "session-clips",
         "arrangement-clips",
         "notes",
@@ -207,16 +207,6 @@ describe("readSong", () => {
           isEmpty: false,
           tempo: 120,
           timeSignature: "4/4",
-        },
-        {
-          id: "scene2",
-          name: "Scene 2 (2)",
-          sceneIndex: 1,
-          color: "#00FF00",
-          isEmpty: true,
-          triggered: true,
-          tempo: "disabled",
-          timeSignature: "disabled",
         },
       ],
     });
@@ -910,6 +900,7 @@ describe("readSong", () => {
         "notes",
         "rack-chains",
         "empty-scenes",
+        "scenes",
         "midi-effects",
         "instrument",
         "audio-effects",
@@ -944,5 +935,58 @@ describe("readSong", () => {
         arrangementClips: expect.any(Array),
       }),
     );
+  });
+
+  it("returns minimal data when include is an empty array", () => {
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+    liveApiId.mockImplementation(function () {
+      return this._id ?? "test_id";
+    });
+
+    mockLiveApiGet({
+      live_set: {
+        tracks: children(),
+        return_tracks: children(),
+        scenes: children(),
+        name: "Test Set",
+        is_playing: 0,
+        back_to_arranger: 0,
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scale_mode: 0,
+      },
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    const result = readSong({ include: [] });
+
+    // Should have basic song properties
+    expect(result).toEqual(
+      expect.objectContaining({
+        id: "live_set",
+        abletonLiveVersion: "12.2",
+        name: "Test Set",
+        isPlaying: false,
+        followsArrangement: true,
+        tempo: 120,
+        timeSignature: "4/4",
+        scaleEnabled: false,
+        scenes: [], // Empty because include:[] doesn't include scenes
+      }),
+    );
+
+    // Should NOT include any of the optional properties
+    expect(result).not.toHaveProperty("tracks");
+    expect(result).not.toHaveProperty("returnTracks");
+    expect(result).not.toHaveProperty("masterTrack");
   });
 });

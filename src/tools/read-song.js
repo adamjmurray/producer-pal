@@ -36,20 +36,18 @@ export function readSong(args = {}) {
         readScene({ sceneIndex, include: includeArray }),
       )
       .filter((scene) => {
-        // New logic: if user explicitly uses 'scenes' option, only include non-empty scenes
+        // If user explicitly uses 'scenes' option, only include non-empty scenes
         // If user uses 'empty-scenes', only include empty scenes
         // If user uses both (via 'all-scenes'), include all scenes
-        // Otherwise, use original logic (includeEmptyScenes || !scene.isEmpty)
+        // If neither is specified, don't include any scenes
         if (includeFlags.includeScenes && includeFlags.includeEmptyScenes) {
           return true; // Include all scenes (both empty and non-empty)
-        } else if (
-          includeFlags.includeScenes &&
-          !includeFlags.includeEmptyScenes
-        ) {
+        } else if (includeFlags.includeScenes) {
           return !scene.isEmpty; // Include only non-empty scenes
+        } else if (includeFlags.includeEmptyScenes) {
+          return scene.isEmpty; // Include only empty scenes
         } else {
-          // Original logic: always include scenes, filtered by includeEmptyScenes
-          return includeFlags.includeEmptyScenes || !scene.isEmpty;
+          return false; // Don't include any scenes
         }
       }),
   };

@@ -49,7 +49,6 @@ const SHORTCUT_MAPPINGS = {
   "all-devices": ["midi-effects", "instrument", "audio-effects"],
   "all-scenes": ["scenes", "empty-scenes"],
   "all-routings": ["routings", "available-routings"],
-  scenes: [], // 'scenes' is handled specially - it means include non-empty scenes (opposite of empty-scenes)
 };
 
 /**
@@ -64,10 +63,6 @@ function expandWildcardIncludes(includeArray, defaults) {
   for (const option of includeArray) {
     if (SHORTCUT_MAPPINGS[option]) {
       expandedArray.push(...SHORTCUT_MAPPINGS[option]);
-    } else if (option === "scenes") {
-      // 'scenes' means include non-empty scenes, which is achieved by NOT setting empty-scenes
-      // This is handled in the parseIncludeArray function
-      expandedArray.push(option);
     } else {
       expandedArray.push(option);
     }
@@ -116,7 +111,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeNotes: Boolean(defaults.includeNotes),
       includeRackChains: Boolean(defaults.includeRackChains),
       includeEmptyScenes: Boolean(defaults.includeEmptyScenes),
-      includeScenes: false, // This is not a default option
+      includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
       includeInstrument: Boolean(defaults.includeInstrument),
       includeAudioEffects: Boolean(defaults.includeAudioEffects),
@@ -140,66 +135,45 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   const hasScenes = includeSet.has("scenes");
   const hasEmptyScenes = includeSet.has("empty-scenes");
 
-  // Determine which options are supported by this tool based on defaults
-  const supportedOptions = Object.keys(defaults);
-  const supportedOptionsInArray = expandedIncludes.filter((option) => {
-    // Convert kebab-case to camelCase to match defaults keys
-    const camelCase = option.replace(/-([a-z])/g, (_, letter) =>
-      letter.toUpperCase(),
-    );
-    const includeKey = `include${camelCase.charAt(0).toUpperCase()}${camelCase.slice(1)}`;
-    return supportedOptions.includes(includeKey);
-  });
-
-  // If no supported options are mentioned in the array, use defaults for all
-  const useDefaults = supportedOptionsInArray.length === 0;
+  // If an empty array was explicitly provided, return all false
+  if (includeArray.length === 0) {
+    return {
+      includeDrumChains: false,
+      includeNotes: false,
+      includeRackChains: false,
+      includeEmptyScenes: false,
+      includeScenes: false,
+      includeMidiEffects: false,
+      includeInstrument: false,
+      includeAudioEffects: false,
+      includeRoutings: false,
+      includeAvailableRoutings: false,
+      includeSessionClips: false,
+      includeArrangementClips: false,
+      includeClips: false,
+      includeRegularTracks: false,
+      includeReturnTracks: false,
+      includeMasterTrack: false,
+    };
+  }
 
   const result = {
-    includeDrumChains:
-      includeSet.has("drum-chains") ||
-      (useDefaults && Boolean(defaults.includeDrumChains)),
-    includeNotes:
-      includeSet.has("notes") ||
-      (useDefaults && Boolean(defaults.includeNotes)),
-    includeRackChains:
-      includeSet.has("rack-chains") ||
-      (useDefaults && Boolean(defaults.includeRackChains)),
-    includeEmptyScenes:
-      hasEmptyScenes || (useDefaults && Boolean(defaults.includeEmptyScenes)),
-    includeScenes: hasScenes, // This is not a default option
-    includeMidiEffects:
-      includeSet.has("midi-effects") ||
-      (useDefaults && Boolean(defaults.includeMidiEffects)),
-    includeInstrument:
-      includeSet.has("instrument") ||
-      (useDefaults && Boolean(defaults.includeInstrument)),
-    includeAudioEffects:
-      includeSet.has("audio-effects") ||
-      (useDefaults && Boolean(defaults.includeAudioEffects)),
-    includeRoutings:
-      includeSet.has("routings") ||
-      (useDefaults && Boolean(defaults.includeRoutings)),
-    includeAvailableRoutings:
-      includeSet.has("available-routings") ||
-      (useDefaults && Boolean(defaults.includeAvailableRoutings)),
-    includeSessionClips:
-      includeSet.has("session-clips") ||
-      (useDefaults && Boolean(defaults.includeSessionClips)),
-    includeArrangementClips:
-      includeSet.has("arrangement-clips") ||
-      (useDefaults && Boolean(defaults.includeArrangementClips)),
-    includeClips:
-      includeSet.has("clips") ||
-      (useDefaults && Boolean(defaults.includeClips)),
-    includeRegularTracks:
-      includeSet.has("regular-tracks") ||
-      (useDefaults && Boolean(defaults.includeRegularTracks)),
-    includeReturnTracks:
-      includeSet.has("return-tracks") ||
-      (useDefaults && Boolean(defaults.includeReturnTracks)),
-    includeMasterTrack:
-      includeSet.has("master-track") ||
-      (useDefaults && Boolean(defaults.includeMasterTrack)),
+    includeDrumChains: includeSet.has("drum-chains"),
+    includeNotes: includeSet.has("notes"),
+    includeRackChains: includeSet.has("rack-chains"),
+    includeEmptyScenes: hasEmptyScenes,
+    includeScenes: hasScenes,
+    includeMidiEffects: includeSet.has("midi-effects"),
+    includeInstrument: includeSet.has("instrument"),
+    includeAudioEffects: includeSet.has("audio-effects"),
+    includeRoutings: includeSet.has("routings"),
+    includeAvailableRoutings: includeSet.has("available-routings"),
+    includeSessionClips: includeSet.has("session-clips"),
+    includeArrangementClips: includeSet.has("arrangement-clips"),
+    includeClips: includeSet.has("clips"),
+    includeRegularTracks: includeSet.has("regular-tracks"),
+    includeReturnTracks: includeSet.has("return-tracks"),
+    includeMasterTrack: includeSet.has("master-track"),
   };
   return result;
 }
@@ -233,7 +207,6 @@ export function includeArrayFromFlags(includeFlags) {
   return includes;
 }
 
-
 /**
  * Default include parameters for read-song tool
  */
@@ -242,6 +215,7 @@ export const READ_SONG_DEFAULTS = {
   includeNotes: false,
   includeRackChains: true,
   includeEmptyScenes: false,
+  includeScenes: true, // This matches the tool definition default
   includeMidiEffects: false,
   includeInstrument: true,
   includeAudioEffects: false,
