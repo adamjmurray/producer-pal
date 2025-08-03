@@ -3,7 +3,8 @@ import { appendFileSync, existsSync, mkdirSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";
 
-// Check verbose logging environment variable
+// Check logging environment variables
+const enableLogging = process.env.ENABLE_LOGGING === "true";
 const verboseLogging = process.env.VERBOSE_LOGGING === "true";
 
 // Detect if running under Vitest to avoid file operations during tests
@@ -21,8 +22,8 @@ const LOG_DIR = (() => {
   }
 })();
 
-// Ensure directory exists (skip during tests)
-if (!isRunningInVitest) {
+// Ensure directory exists (skip during tests or when logging disabled)
+if (!isRunningInVitest && enableLogging) {
   try {
     if (!existsSync(LOG_DIR)) {
       mkdirSync(LOG_DIR, { recursive: true });
@@ -38,8 +39,8 @@ const LOG_FILE = join(
 );
 
 function writeLog(level, message) {
-  // Skip file operations when running under Vitest
-  if (isRunningInVitest) {
+  // Skip file operations when running under Vitest or when logging disabled
+  if (isRunningInVitest || !enableLogging) {
     return;
   }
 
@@ -58,13 +59,13 @@ export const logger = {
   info: (message) => writeLog("INFO", message),
   error: (message) => writeLog("ERROR", message),
   debug: (message) => {
-    if (verboseLogging) {
+    if (verboseLogging && enableLogging) {
       writeLog("DEBUG", message);
     }
   },
 };
 
-// Log startup (skip during tests)
-if (!isRunningInVitest) {
+// Log startup (skip during tests or when logging disabled)
+if (!isRunningInVitest && enableLogging) {
   logger.info(`Bridge logger started - writing to ${LOG_FILE}`);
 }

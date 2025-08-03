@@ -22,6 +22,7 @@
       "args": ["${__dirname}/claude-ableton-connector.js"],
       "env": {
         "MCP_SERVER_ORIGIN": "${user_config.mcp_server_origin}",
+        "ENABLE_LOGGING": "${user_config.enable_logging}",
         "VERBOSE_LOGGING": "${user_config.verbose_logging}"
       }
     }
@@ -42,10 +43,18 @@
       "sensitive": false,
       "default": "http://localhost:3350"
     },
+    "enable_logging": {
+      "type": "boolean",
+      "title": "Enable file logging",
+      "description": "Enable logging to files. When disabled, no log files are created. Logging is disabled by default to avoid unnecessary file system writes.",
+      "required": false,
+      "sensitive": false,
+      "default": false
+    },
     "verbose_logging": {
       "type": "boolean",
       "title": "Enable verbose logging",
-      "description": "Enable detailed debug logging for troubleshooting. Shows request details, tool call arguments, and internal operations. Keep disabled for normal use.",
+      "description": "Enable detailed debug logging for troubleshooting. Shows request details, tool call arguments, and internal operations. Only has effect when file logging is enabled. Keep disabled for normal use.",
       "required": false,
       "sensitive": false,
       "default": false
