@@ -25,7 +25,7 @@ bar|beat is a precise, stateful music notation format for MIDI sequencing.
   - Sets velocity for following notes until changed
   - Single value: \`v100\` (fixed velocity)
   - Range: \`v80-120\` or \`v120-80\` (random velocity between min and max, auto-ordered)
-  - **⚠️ SPECIAL: \`v0\` = DELETE NOTES** (ppal-update-clip only, requires clearExistingNotes: false)
+  - **⚠️ SPECIAL: \`v0\` = DELETE NOTES** (ppal-update-clip only, requires noteUpdateMode: "merge")
   - Default: 100
 
 - **Duration (\`t<float>\`)**
@@ -118,7 +118,7 @@ Professional arrangements prioritize clarity and impact:
 
 ### v0 Note Deletion (ppal-update-clip only)
 
-When using \`ppal-update-clip\` with \`clearExistingNotes: false\`, notes with \`v0\` velocity delete existing notes at the exact same bar|beat position and pitch:
+When using \`ppal-update-clip\` with \`noteUpdateMode: "merge"\`, notes with \`v0\` velocity delete existing notes at the exact same bar|beat position and pitch:
 
 \`\`\`
 v0 2|1.5 Gb1  // Deletes hi-hat at bar 2, beat 1.5
@@ -127,18 +127,18 @@ v0 2|1.5 Gb1  // Deletes hi-hat at bar 2, beat 1.5
 **Requirements for successful deletion:**
 - Exact timing match: \`3|2.5\` will not delete a note at \`3|2.6\`
 - Exact pitch match: \`Gb1\` will not delete \`F#1\` (even though they're enharmonic)
-- Must use \`clearExistingNotes: false\`
+- Must use \`noteUpdateMode: "merge"\`
 
 **Tool differences:**
 - \`ppal-create-clip\`: v0 notes are filtered out (not added to the clip)
-- \`ppal-update-clip\`: v0 notes become deletion requests when \`clearExistingNotes: false\`
+- \`ppal-update-clip\`: v0 notes become deletion requests when \`noteUpdateMode: "merge"\`
 
 ### ⚠️ CRITICAL: Read-First Workflow
 
 **ALWAYS read the clip first** to get exact positions - guessing will fail!
 
 1. **Read**: \`ppal-read-clip\` to identify exact positions and pitches
-2. **Delete**: \`ppal-update-clip\` with \`clearExistingNotes: false\` and \`v0\` notes  
+2. **Delete**: \`ppal-update-clip\` with \`noteUpdateMode: "merge"\` and \`v0\` notes
 3. **Verify**: \`ppal-read-clip\` again to confirm changes
 
 ### Common Deletion Examples
