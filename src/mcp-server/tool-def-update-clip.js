@@ -2,12 +2,20 @@
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
+const description = `Updates properties of existing clips by ID.
+Use this tool to modify clips that already exist, including clips created by duplicating scenes or tracks. To create new clips in empty clip slots, use create-clip instead. 
+All properties except ids are optional.
+Supports bulk operations when provided with comma-separated clip IDs.
+
+IMPORTANT: All timing parameters (startMarker, length) and note positions in the bar|beat notation are relative to the clip's start time, not the global arrangement timeline.
+
+TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details.
+
+RANGE TIP: To ensure compatibility with most instruments, a generally safe default pitch range is C1-C5. Only use extreme ranges when you're certain the instrument supports them or the user asks for it.`;
+
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
-  description:
-    "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +
-    "Updates properties of existing clips by ID. Supports bulk operations when provided with comma-separated clip IDs. All properties except ids are optional. Use this tool to modify clips that already exist, including clips created by duplicating scenes or tracks. To create new clips in empty clip slots, use create-clip instead. " +
-    "IMPORTANT: All timing parameters (startMarker, length) and note positions in the bar|beat notation are relative to the clip's start time, not the global arrangement timeline.",
+  description,
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
