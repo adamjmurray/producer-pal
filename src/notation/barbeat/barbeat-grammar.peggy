@@ -28,6 +28,9 @@ time
   = bar:positiveInt "|" beat:positiveFloat {
     return { bar, beat };
   }
+  / "|" beat:positiveFloat {
+    return { bar: null, beat };
+  }
 
 probability
   = "p" val:unsignedFloat {

@@ -909,4 +909,263 @@ multi-line comment */ D3`);
       ]);
     });
   });
+
+  describe("|beat shortcut syntax", () => {
+    it("uses |beat shortcut within same bar", () => {
+      const result = parseNotation("1|1 C3 |2 D3 |3 E3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 1
+        {
+          pitch: 62,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 2
+        {
+          pitch: 64,
+          start_time: 2,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 3
+      ]);
+    });
+
+    it("uses |beat shortcut after bar change", () => {
+      const result = parseNotation("1|1 C3 2|1 D3 |2 E3 |3 F3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 1
+        {
+          pitch: 62,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 2, beat 1
+        {
+          pitch: 64,
+          start_time: 5,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 2, beat 2
+        {
+          pitch: 65,
+          start_time: 6,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 2, beat 3
+      ]);
+    });
+
+    it("mixes full bar|beat and |beat notation", () => {
+      const result = parseNotation("1|1 C3 |2 D3 3|1 E3 |4 F3 2|3 G3 |4 A3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 1
+        {
+          pitch: 62,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 2
+        {
+          pitch: 64,
+          start_time: 8,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 3, beat 1
+        {
+          pitch: 65,
+          start_time: 11,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 3, beat 4
+        {
+          pitch: 67,
+          start_time: 6,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 2, beat 3
+        {
+          pitch: 69,
+          start_time: 7,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 2, beat 4
+      ]);
+    });
+
+    it("handles |beat with sub-beat timing", () => {
+      const result = parseNotation("1|1.5 C3 |2.25 D3 |3.75 E3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0.5,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 1.5
+        {
+          pitch: 62,
+          start_time: 1.25,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 2.25
+        {
+          pitch: 64,
+          start_time: 2.75,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 3.75
+      ]);
+    });
+
+    it("preserves state across |beat shortcuts", () => {
+      const result = parseNotation("1|1 v80 t0.5 p0.8 C3 |2 D3 |3 v100 E3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 80,
+          probability: 0.8,
+          velocity_deviation: 0,
+        }, // bar 1, beat 1
+        {
+          pitch: 62,
+          start_time: 1,
+          duration: 0.5,
+          velocity: 80,
+          probability: 0.8,
+          velocity_deviation: 0,
+        }, // bar 1, beat 2
+        {
+          pitch: 64,
+          start_time: 2,
+          duration: 0.5,
+          velocity: 100,
+          probability: 0.8,
+          velocity_deviation: 0,
+        }, // bar 1, beat 3 (velocity changed but duration and probability preserved)
+      ]);
+    });
+
+    it("works with different time signatures", () => {
+      const result = parseNotation("1|1 C3 |2 D3 |3 E3", {
+        timeSigNumerator: 3,
+        timeSigDenominator: 4,
+      });
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 1
+        {
+          pitch: 62,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 2
+        {
+          pitch: 64,
+          start_time: 2,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 3
+      ]);
+    });
+
+    it("assumes bar 1 when |beat is used at start without initial bar", () => {
+      const result = parseNotation("|2 C3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 2 (assumed)
+      ]);
+    });
+
+    it("assumes bar 1 when |beat is used without any prior bar number", () => {
+      const result = parseNotation("v100 t0.5 |2 C3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 1,
+          duration: 0.5,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 2 (assumed)
+      ]);
+    });
+
+    it("assumes bar 1 when |beat is used after state changes but before any bar number", () => {
+      const result = parseNotation("v100 |1 C3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        }, // bar 1, beat 1 (assumed)
+      ]);
+    });
+  });
 });

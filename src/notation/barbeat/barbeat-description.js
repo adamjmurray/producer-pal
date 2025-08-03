@@ -12,6 +12,7 @@ bar|beat is a precise, stateful music notation format for MIDI sequencing.
   - \`bar\` - 1-based bar number (integer)
   - \`beat\` - 1-based beat number within bar (float for sub-beat precision). The beat depends on the time signature denominator (e.g. in 6/8, an 8th note gets the beat).
   - \`1|1\` - the start of a clip
+  - \`|beat\` - shortcut to reuse current bar number (e.g., \`1|1 C3 |2 D3\` plays C3 at bar 1 beat 1, D3 at bar 1 beat 2)
   - Can be standalone to set default time for following notes
   - Persists until explicitly changed
 
@@ -57,6 +58,12 @@ Simple melody with state changes:
 1|2 D3
 1|3 E3
 2|1 v80 t2.0 G3
+\`\`\`
+
+Using |beat shortcut to reduce redundancy:
+\`\`\`
+1|1 C3 |2 D3 |3 E3
+2|1 F3 |2 G3
 \`\`\`
 
 Sub-beat timing:

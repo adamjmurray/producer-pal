@@ -45,7 +45,7 @@ export function init({} = {}, context) {
     },
     nextStep: `The assistant should automatically call ppal-read-song with no arguments
 (the defaults) to avoid timing out with complex songs running on older, slower computers.
-If read-song with no arguments fails, don't try again, just tell the user what happened.`
+If read-song with no arguments fails, don't try again, just tell the user what happened.`,
   };
 
   const hostTrackIndex = getHostTrackIndex();
