@@ -1,7 +1,6 @@
 // src/tools/read-track.js
 import { getHostTrackIndex } from "../get-host-track-index.js";
 import { VERSION } from "../version.js";
-import { parseIncludeArray, READ_TRACK_DEFAULTS } from "./include-params.js";
 import {
   DEVICE_TYPE,
   LIVE_API_MONITORING_STATE_AUTO,
@@ -10,6 +9,7 @@ import {
   MONITORING_STATE,
   STATE,
 } from "./constants.js";
+import { parseIncludeArray, READ_TRACK_DEFAULTS } from "./include-params.js";
 import { readClip } from "./read-clip.js";
 import { getDrumMap, readDevice } from "./shared/device-reader.js";
 
@@ -212,9 +212,13 @@ export function readTrackGeneric({
           )
           .filter((clip) => clip.id != null)
       : track
-          .getChildIds("clip_slots")
-          .map((slotId, clipSlotIndex) => {
-            const clip = new LiveAPI(`${slotId} clip`);
+          .getChildren("clip_slots")
+          .map((clipSlot, clipSlotIndex) => {
+            const clipArray = clipSlot.get("clip");
+            // avoid Live API warning trying to construct with "id 0" for empty slots:
+            if (!clipArray || (Array.isArray(clipArray) && clipArray[1] === 0))
+              return null;
+            const clip = LiveAPI.from(clipArray);
             return clip.exists() ? { clipId: clip.id, clipSlotIndex } : null;
           })
           .filter(Boolean);

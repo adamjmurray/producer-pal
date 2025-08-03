@@ -595,6 +595,10 @@ describe("readSong", () => {
           return "track1";
         case "id slot1 clip": // Direct access to slot1's clip
           return "clip1";
+        case "clip1":
+          return "clip1";
+        case "id clip1":
+          return "clip1";
         default:
           return "id 0";
       }
@@ -612,6 +616,9 @@ describe("readSong", () => {
         clip_slots: children("slot1"),
         arrangement_clips: children("arr_clip1"),
         devices: [],
+      },
+      "id slot1": {
+        clip: ["id", "clip1"],
       },
     });
 
@@ -637,6 +644,10 @@ describe("readSong", () => {
           return "track1";
         case "id slot1 clip":
           return "clip1";
+        case "clip1":
+          return "clip1";
+        case "id clip1":
+          return "clip1";
         default:
           return "id 0";
       }
@@ -654,6 +665,9 @@ describe("readSong", () => {
         clip_slots: children("slot1"),
         arrangement_clips: children("arr_clip1"),
         devices: [],
+      },
+      "id slot1": {
+        clip: ["id", "clip1"],
       },
     });
 

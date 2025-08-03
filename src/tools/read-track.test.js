@@ -344,6 +344,14 @@ describe("readTrack", () => {
           return "clip1";
         case "id slot3 clip": // Direct access to slot3's clip
           return "clip2";
+        case "clip1":
+          return "clip1";
+        case "clip2":
+          return "clip2";
+        case "id clip1":
+          return "clip1";
+        case "id clip2":
+          return "clip2";
         default:
           return "id 0";
       }
@@ -362,6 +370,15 @@ describe("readTrack", () => {
         back_to_arranger: 1,
         clip_slots: children("slot1", "slot2", "slot3"),
         devices: [],
+      },
+      "id slot1": {
+        clip: ["id", "clip1"],
+      },
+      "id slot2": {
+        clip: ["id", 0],
+      },
+      "id slot3": {
+        clip: ["id", "clip2"],
       },
     });
 
