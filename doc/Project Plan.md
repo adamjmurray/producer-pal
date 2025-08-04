@@ -129,7 +129,10 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Support sceneId arg for read-scene
 - [x] Add `ppal-read-device` tool
 - [x] Support comments in bar|beat format (probably #, // and /\* \*/)
-- [ ] Make verbose logging in Claude Desktop actually work
+- [x] Make verbose logging in Claude Desktop actually work
+- [x] Fix the duplicate track name issues in duplicate.routeToSource (see
+      dedicated md file in docs explaining the issue and potential solutions)
+- [ ] Return scene count when not returning empty scenes in read-\* tools
 - [ ] Make demo video and add to README and web site
 
 ### 🚀 1.0.0 Release
@@ -161,8 +164,6 @@ bigger product features in the 1.x line (see below)_
 - [ ] Improved mocking system with unified interface for LiveAPI objects
 - [ ] State Sync: ID-first operations, smart error recovery (see doc/Better
       State Sync Plan.md)
-- [ ] Fix the duplicate track name issues in duplicate.routeToSource (see
-      dedicated md file in docs explaining the issue and potential solutions)
 
 #### 1.1.0 - Customization
 
