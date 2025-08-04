@@ -8,7 +8,6 @@ const ALL_INCLUDE_OPTIONS = {
     "drum-chains",
     "notes",
     "rack-chains",
-    "empty-scenes",
     "scenes",
     "midi-effects",
     "instrument",
@@ -21,7 +20,6 @@ const ALL_INCLUDE_OPTIONS = {
     "master-track",
     "all-tracks",
     "all-devices",
-    "all-scenes",
   ],
   track: [
     "drum-chains",
@@ -47,7 +45,6 @@ const ALL_INCLUDE_OPTIONS = {
 const SHORTCUT_MAPPINGS = {
   "all-tracks": ["regular-tracks", "return-tracks", "master-track"],
   "all-devices": ["midi-effects", "instrument", "audio-effects"],
-  "all-scenes": ["scenes", "empty-scenes"],
   "all-routings": ["routings", "available-routings"],
 };
 
@@ -110,7 +107,6 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeDrumChains: Boolean(defaults.includeDrumChains),
       includeNotes: Boolean(defaults.includeNotes),
       includeRackChains: Boolean(defaults.includeRackChains),
-      includeEmptyScenes: Boolean(defaults.includeEmptyScenes),
       includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
       includeInstrument: Boolean(defaults.includeInstrument),
@@ -130,10 +126,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   const expandedIncludes = expandWildcardIncludes(includeArray, defaults);
   const includeSet = new Set(expandedIncludes);
 
-  // Handle 'scenes' option: if 'scenes' is present, it means include non-empty scenes
-  // which is the opposite of includeEmptyScenes
   const hasScenes = includeSet.has("scenes");
-  const hasEmptyScenes = includeSet.has("empty-scenes");
 
   // If an empty array was explicitly provided, return all false
   if (includeArray.length === 0) {
@@ -141,7 +134,6 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeDrumChains: false,
       includeNotes: false,
       includeRackChains: false,
-      includeEmptyScenes: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstrument: false,
@@ -161,7 +153,6 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeDrumChains: includeSet.has("drum-chains"),
     includeNotes: includeSet.has("notes"),
     includeRackChains: includeSet.has("rack-chains"),
-    includeEmptyScenes: hasEmptyScenes,
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has("midi-effects"),
     includeInstrument: includeSet.has("instrument"),
@@ -189,7 +180,6 @@ export function includeArrayFromFlags(includeFlags) {
   if (includeFlags.includeDrumChains) includes.push("drum-chains");
   if (includeFlags.includeNotes) includes.push("notes");
   if (includeFlags.includeRackChains) includes.push("rack-chains");
-  if (includeFlags.includeEmptyScenes) includes.push("empty-scenes");
   if (includeFlags.includeScenes) includes.push("scenes");
   if (includeFlags.includeMidiEffects) includes.push("midi-effects");
   if (includeFlags.includeInstrument) includes.push("instrument");
@@ -214,8 +204,7 @@ export const READ_SONG_DEFAULTS = {
   includeDrumChains: false,
   includeNotes: false,
   includeRackChains: true,
-  includeEmptyScenes: false,
-  includeScenes: true, // This matches the tool definition default
+  includeScenes: false,
   includeMidiEffects: false,
   includeInstrument: true,
   includeAudioEffects: false,

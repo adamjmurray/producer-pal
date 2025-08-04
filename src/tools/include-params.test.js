@@ -17,8 +17,7 @@ describe("parseIncludeArray", () => {
       includeDrumChains: false,
       includeNotes: false,
       includeRackChains: true,
-      includeEmptyScenes: false,
-      includeScenes: true,
+      includeScenes: false,
       includeMidiEffects: false,
       includeInstrument: true,
       includeAudioEffects: false,
@@ -40,7 +39,6 @@ describe("parseIncludeArray", () => {
       includeDrumChains: false,
       includeNotes: false,
       includeRackChains: false,
-      includeEmptyScenes: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstrument: false,
@@ -84,13 +82,6 @@ describe("parseIncludeArray", () => {
     expect(result.includeAudioEffects).toBe(true);
   });
 
-  it("expands all-scenes shortcut", () => {
-    const result = parseIncludeArray(["all-scenes"], READ_SONG_DEFAULTS);
-
-    expect(result.includeScenes).toBe(true);
-    expect(result.includeEmptyScenes).toBe(true);
-  });
-
   it("expands wildcard to all available options", () => {
     const result = parseIncludeArray(["*"], READ_SONG_DEFAULTS);
 
@@ -98,7 +89,6 @@ describe("parseIncludeArray", () => {
     expect(result.includeDrumChains).toBe(true);
     expect(result.includeNotes).toBe(true);
     expect(result.includeRackChains).toBe(true);
-    expect(result.includeEmptyScenes).toBe(true);
     expect(result.includeScenes).toBe(true);
     expect(result.includeMidiEffects).toBe(true);
     expect(result.includeInstrument).toBe(true);
@@ -109,29 +99,6 @@ describe("parseIncludeArray", () => {
     expect(result.includeRegularTracks).toBe(true);
     expect(result.includeReturnTracks).toBe(true);
     expect(result.includeMasterTrack).toBe(true);
-  });
-
-  it("handles scenes vs empty-scenes correctly", () => {
-    // Just 'scenes' should include non-empty scenes only
-    const withScenes = parseIncludeArray(["scenes"], READ_SONG_DEFAULTS);
-    expect(withScenes.includeScenes).toBe(true);
-    expect(withScenes.includeEmptyScenes).toBe(false);
-
-    // Just 'empty-scenes' should include empty scenes only
-    const withEmptyScenes = parseIncludeArray(
-      ["empty-scenes"],
-      READ_SONG_DEFAULTS,
-    );
-    expect(withEmptyScenes.includeScenes).toBe(false);
-    expect(withEmptyScenes.includeEmptyScenes).toBe(true);
-
-    // Both should include all scenes
-    const withBoth = parseIncludeArray(
-      ["scenes", "empty-scenes"],
-      READ_SONG_DEFAULTS,
-    );
-    expect(withBoth.includeScenes).toBe(true);
-    expect(withBoth.includeEmptyScenes).toBe(true);
   });
 
   it("handles track defaults correctly", () => {
@@ -176,7 +143,6 @@ describe("includeArrayFromFlags", () => {
       includeDrumChains: false,
       includeNotes: true,
       includeRackChains: true,
-      includeEmptyScenes: false,
       includeScenes: true,
       includeMidiEffects: false,
       includeInstrument: true,
@@ -207,7 +173,6 @@ describe("includeArrayFromFlags", () => {
       includeDrumChains: false,
       includeNotes: false,
       includeRackChains: false,
-      includeEmptyScenes: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstrument: false,

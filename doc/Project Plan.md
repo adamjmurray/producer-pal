@@ -132,7 +132,9 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Make verbose logging in Claude Desktop actually work
 - [x] Fix the duplicate track name issues in duplicate.routeToSource (see
       dedicated md file in docs explaining the issue and potential solutions)
-- [ ] Return scene count when not returning empty scenes in read-\* tools
+- [x] Remove empty-scenes filter from ppal-read-song, don't include full scene
+      details by default, and return minimal scene info when scenes are not
+      included
 - [ ] Make demo video and add to README and web site
 
 ### 🚀 1.0.0 Release
@@ -176,6 +178,7 @@ bigger product features in the 1.x line (see below)_
 - [ ] Rack variation control (store, load, delete)
 - [ ] List device parameters
 - [ ] Change device parameters
+- [ ] Insert devices into tracks (whenever the LiveAPI supports it)
 
 #### 2.0.0 - Learning & Personas
 

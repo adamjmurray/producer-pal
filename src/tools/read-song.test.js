@@ -208,6 +208,16 @@ describe("readSong", () => {
           tempo: 120,
           timeSignature: "4/4",
         },
+        {
+          id: "scene2",
+          name: "Scene 2 (2)",
+          sceneIndex: 1,
+          color: "#00FF00",
+          isEmpty: true,
+          tempo: "disabled",
+          timeSignature: "disabled",
+          triggered: true,
+        },
       ],
     });
 
@@ -258,7 +268,6 @@ describe("readSong", () => {
         "regular-tracks",
         "instrument",
         "rack-chains",
-        "empty-scenes",
         "session-clips",
         "arrangement-clips",
         "notes",
@@ -444,7 +453,6 @@ describe("readSong", () => {
         "regular-tracks",
         "instrument",
         "rack-chains",
-        "empty-scenes",
         "audio-effects",
         "session-clips",
         "arrangement-clips",
@@ -913,7 +921,6 @@ describe("readSong", () => {
         "drum-chains",
         "notes",
         "rack-chains",
-        "empty-scenes",
         "scenes",
         "midi-effects",
         "instrument",
@@ -994,7 +1001,7 @@ describe("readSong", () => {
         tempo: 120,
         timeSignature: "4/4",
         scaleEnabled: false,
-        scenes: [], // Empty because include:[] doesn't include scenes
+        scenes: [], // Empty because no scenes exist in the Live Set
       }),
     );
 

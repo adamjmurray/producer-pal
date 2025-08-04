@@ -31,25 +31,11 @@ export function readSong(args = {}) {
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
     scaleEnabled,
-    scenes: sceneIds
-      .map((_sceneId, sceneIndex) =>
-        readScene({ sceneIndex, include: includeArray }),
-      )
-      .filter((scene) => {
-        // If user explicitly uses 'scenes' option, only include non-empty scenes
-        // If user uses 'empty-scenes', only include empty scenes
-        // If user uses both (via 'all-scenes'), include all scenes
-        // If neither is specified, don't include any scenes
-        if (includeFlags.includeScenes && includeFlags.includeEmptyScenes) {
-          return true; // Include all scenes (both empty and non-empty)
-        } else if (includeFlags.includeScenes) {
-          return !scene.isEmpty; // Include only non-empty scenes
-        } else if (includeFlags.includeEmptyScenes) {
-          return scene.isEmpty; // Include only empty scenes
-        } else {
-          return false; // Don't include any scenes
-        }
-      }),
+    scenes: includeFlags.includeScenes
+      ? sceneIds.map((_sceneId, sceneIndex) =>
+          readScene({ sceneIndex, include: includeArray }),
+        )
+      : sceneIds.map((sceneId) => ({ id: sceneId })),
   };
 
   // Conditionally include track arrays based on include parameters
