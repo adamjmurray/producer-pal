@@ -62,6 +62,7 @@ describe("duplicate", () => {
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
         duplicatedClips: [],
+        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -92,6 +93,7 @@ describe("duplicate", () => {
         count: 3,
         name: "Custom Track",
         duplicated: true,
+        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
         objects: [
           {
             newTrackId: "live_set/tracks/1",
@@ -181,6 +183,7 @@ describe("duplicate", () => {
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
         duplicatedClips: [],
+        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -304,6 +307,7 @@ describe("duplicate", () => {
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
         duplicatedClips: [],
+        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -349,6 +353,7 @@ describe("duplicate", () => {
         newTrackId: "live_set/tracks/1",
         newTrackIndex: 1,
         duplicatedClips: [],
+        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
       });
       // withoutDevices should not appear in result when false (default)
 
@@ -1617,6 +1622,7 @@ describe("duplicate", () => {
         newTrackId: expect.any(String),
         newTrackIndex: expect.any(Number),
         duplicatedClips: [],
+        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
       });
       expect(result.objects).toBeUndefined();
     });

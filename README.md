@@ -193,6 +193,28 @@ example of a melody like that in the lead track in Ableton Live". It can be very
 powerful to ask the AI to perform web searches and do research during these
 types of conversations.
 
+### Advanced Technique: MIDI Layering with routeToSource
+
+Producer Pal can create sophisticated layering setups where multiple tracks
+control a single instrument:
+
+**Example: Create a phasing pattern**
+
+> Duplicate the melody track and use routeToSource. Then make the clips
+> different lengths - a 3-bar pattern on one track and a 4-bar pattern on the
+> other creates an evolving 12-bar cycle.
+
+**Example: Build complex drums from simple parts**
+
+> Create a basic kick pattern, then duplicate the track with routeToSource. Add
+> hi-hats to the new track. Duplicate again for snares. Now you can launch
+> different combinations of clips for dynamic drum arrangements.
+
+**Example: Polyrhythmic textures**
+
+> After creating a 4/4 arpeggio, duplicate with routeToSource and change the new
+> clip to 7/8 time. The polyrhythmic interplay creates rich, evolving textures.
+
 ## Tips
 
 For a full feature reference see [FEATURES.md](./FEATURES.md).

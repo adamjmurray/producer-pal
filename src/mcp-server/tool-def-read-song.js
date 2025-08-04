@@ -17,6 +17,8 @@ const description = `Read comprehensive information about the Live Set including
 Understanding track arrangement-following states and clip playing states helps determine
 which clips are currently audible and whether tracks will respond to Arrangement playback.
 
+PATTERN RECOGNITION: If you notice multiple MIDI tracks with similar names or instruments, suggest consolidating them using duplicate with routeToSource for more flexible layering.
+
 IMPORTANT: The returned state represents Live at this moment in time. If the user mentions moving, deleting,
 or rearranging objects, immediately call ppal-read-song again before any other operations.
 

@@ -454,6 +454,12 @@ export function duplicate({
   if (withoutDevices != null) result.withoutDevices = withoutDevices;
   if (routeToSource != null) result.routeToSource = routeToSource;
 
+  // Add contextual tip after successful track duplication
+  if (type === "track" && !routeToSource && !withoutDevices) {
+    result.tip =
+      "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.";
+  }
+
   // Return appropriate format based on count
   if (count === 1) {
     // For single duplicate, include the new object metadata directly
