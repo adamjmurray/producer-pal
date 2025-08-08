@@ -11,7 +11,7 @@
   "author": "Adam Murray",
   "license": "Personal Use License",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.1",
+    "@modelcontextprotocol/sdk": "^1.17.2",
     "express": "^5.1.0",
     "zod": "^3.25.76"
   },
