@@ -140,9 +140,12 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 
 Stable, documented, user-friendly baseline
 
+- [ ] Simplify all tool descriptions to reduce context window load on the LLM
 - [ ] Make demo video and add to README and web site
 - [ ] Check FEATURES.md is up-to-date (cleanup above completed tasks and merge
       into it)
+- [ ] Document a full QA validation plan
+- [ ] Test the full QA validation plan
 - [ ] Do a pass over the claude instruction files
 - [ ] Cleanup the plans below into a top level ROADMAP.md
 
