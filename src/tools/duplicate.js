@@ -121,6 +121,67 @@ function createClipsForLength(
 }
 
 /**
+ * Find the correct routing option for a track when duplicate names exist
+ * @param {LiveAPI} sourceTrack - The source track LiveAPI object
+ * @param {string} sourceTrackName - The source track's name
+ * @param {Array} availableTypes - Available output routing types from the new track
+ * @returns {Object|undefined} The correct routing option or undefined
+ */
+function findRoutingOptionForDuplicateNames(
+  sourceTrack,
+  sourceTrackName,
+  availableTypes,
+) {
+  // Get all routing options with the same name
+  const matchingOptions = availableTypes.filter(
+    (type) => type.display_name === sourceTrackName,
+  );
+
+  // If only one match, return it (no duplicates)
+  if (matchingOptions.length <= 1) {
+    return matchingOptions[0];
+  }
+
+  // Multiple matches - need to find the correct one
+  const liveSet = new LiveAPI("live_set");
+  const allTrackIds = liveSet.getChildIds("tracks");
+
+  // Find all tracks with the same name and their info
+  const tracksWithSameName = allTrackIds
+    .map((trackId, index) => {
+      const track = new LiveAPI(trackId);
+      return {
+        index,
+        id: track.id,
+        name: track.getProperty("name"),
+      };
+    })
+    .filter((track) => track.name === sourceTrackName);
+
+  // Sort by ID (creation order) - IDs are numeric strings
+  tracksWithSameName.sort((a, b) => {
+    const idA = parseInt(a.id);
+    const idB = parseInt(b.id);
+    return idA - idB;
+  });
+
+  // Find source track's position in the sorted list
+  const sourcePosition = tracksWithSameName.findIndex(
+    (track) => track.id === sourceTrack.id,
+  );
+
+  if (sourcePosition === -1) {
+    console.error(
+      `Warning: Could not find source track in duplicate name list for "${sourceTrackName}"`,
+    );
+    return undefined;
+  }
+
+  // Return the routing option at the same position
+  return matchingOptions[sourcePosition];
+}
+
+/**
  * Copy all properties from source clip to destination clip
  * @param {LiveAPI} sourceClip - The clip to copy from
  * @param {LiveAPI} destClip - The clip to copy to
@@ -393,6 +454,12 @@ export function duplicate({
   if (withoutDevices != null) result.withoutDevices = withoutDevices;
   if (routeToSource != null) result.routeToSource = routeToSource;
 
+  // Add contextual tip after successful track duplication
+  if (type === "track" && !routeToSource && !withoutDevices) {
+    result.tip =
+      "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.";
+  }
+
   // Return appropriate format based on count
   if (count === 1) {
     // For single duplicate, include the new object metadata directly
@@ -570,15 +637,41 @@ function duplicateTrack(
     const availableTypes = newTrack.getProperty(
       "available_output_routing_types",
     );
-    const sourceRouting = availableTypes?.find(
-      (type) => type.display_name === sourceTrackName,
-    );
+
+    // Check if there are duplicate track names
+    const matchingNames =
+      availableTypes?.filter((type) => type.display_name === sourceTrackName) ||
+      [];
+
+    let sourceRouting;
+    if (matchingNames.length > 1) {
+      // Multiple tracks with the same name - use duplicate-aware matching
+      sourceRouting = findRoutingOptionForDuplicateNames(
+        sourceTrack,
+        sourceTrackName,
+        availableTypes,
+      );
+
+      if (!sourceRouting) {
+        console.error(
+          `Warning: Could not route to "${sourceTrackName}" due to duplicate track names. ` +
+            `Consider renaming tracks to have unique names.`,
+        );
+      }
+    } else {
+      // Simple case - use the single match (or undefined if no match)
+      sourceRouting = matchingNames[0];
+    }
 
     if (sourceRouting) {
       newTrack.setProperty("output_routing_type", {
         identifier: sourceRouting.identifier,
       });
       // Let Live set the default channel for this routing type
+    } else if (matchingNames.length === 0) {
+      console.error(
+        `Warning: Could not find track "${sourceTrackName}" in routing options`,
+      );
     }
   }
 
@@ -740,9 +833,6 @@ function duplicateSceneToArrangement(
     }
   }
 
-  const appView = new LiveAPI("live_app view");
-  appView.call("show_view", "Arranger");
-
   const result = {
     arrangementStartTime: abletonBeatsToBarBeat(
       arrangementStartTimeBeats,
@@ -844,9 +934,6 @@ function duplicateClipToArrangement(
 
     duplicatedClips.push(getMinimalClipInfo(newClip));
   }
-
-  const appView = new LiveAPI("live_app view");
-  appView.call("show_view", "Arranger");
 
   const result = {
     arrangementStartTime: abletonBeatsToBarBeat(

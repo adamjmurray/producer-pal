@@ -5,7 +5,7 @@ import { MAX_AUTO_CREATED_TRACKS } from "../tools/constants.js";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
-  description: `Creates new tracks at the specified index. Tracks will be inserted at the given index and existing tracks will shift right. All properties are optional except trackIndex. Maximum ${MAX_AUTO_CREATED_TRACKS} tracks can be created.`,
+  description: `Creates new tracks at the specified index. Tracks will be inserted at the given index and existing tracks will shift right. All properties are optional except trackIndex. Maximum ${MAX_AUTO_CREATED_TRACKS} tracks can be created. TIP: After creating tracks, you can use the duplicate tool with routeToSource=true to layer multiple MIDI patterns through a single instrument. This enables polyrhythmic and phasing techniques.`,
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

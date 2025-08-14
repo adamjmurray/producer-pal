@@ -286,8 +286,8 @@ describe("BarBeatScript Parser", () => {
 
     it("rejects invalid characters with proper error messages", () => {
       expect(() => parser.parse("1|1 @")).toThrow();
-      expect(() => parser.parse("1|1 #")).toThrow();
       expect(() => parser.parse("1|1 $")).toThrow();
+      expect(() => parser.parse("1|1 %")).toThrow();
     });
 
     it("handles control characters in error messages", () => {

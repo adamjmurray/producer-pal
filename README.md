@@ -1,4 +1,4 @@
-# Producer Pal
+# <sub><img src="./img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
 Make music in Ableton Live with an AI assistant such as
 [Anthropic Claude](https://www.anthropic.com/claude).
@@ -10,7 +10,8 @@ Make music in Ableton Live with an AI assistant such as
   Suite edition)
 - [Claude Desktop](https://claude.ai/download) (or another
   [MCP-compatible](https://modelcontextprotocol.io/) AI chat client like Claude
-  Code or VS Code)
+  Code or VS Code). _I hope to add support for more AI models via something like
+  [LM Studio](https://lmstudio.ai/) in the future._
 
 ## Installing
 
@@ -26,27 +27,43 @@ Make music in Ableton Live with an AI assistant such as
 
    ![install in Ableton](./img/install-in-ableton.png)
 
-3. Open Claude Desktop &rarr; Settings &rarr; Extensions. Drag and drop
+3. Install into Claude Desktop by going to Claude Desktop &rarr; Settings &rarr;
+   Extensions and:
+
+   3a. If you already have extensions installed, you can drag and drop
    [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
-   into it:
+   into the Extensions screen:
 
-   ![install in Claude](./img/install-in-claude.png)
+   ![install in Claude Desktop](./img/install-in-claude.png)
 
-4. Don't forget to click "Install"
+   3b. Or, if you have never installed a Claude Desktop extension before, you
+   need to click "Advanced settings" on the Extensions screen, then click
+   "Install extension...", and choose the
+   [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
+   file.
 
-   ![install in Claude, part 2](./img/install-in-claude-2.png)
+   ![install first extension in Claude Desktop](./img/install-in-claude-first-extension.png)
 
-5. You should see 16 Producer Pal tools in Claude's "Search and Tools" menu
+4. Don't forget to click "Install" and complete the Claude Desktop installation:
+
+   ![install in Claude Desktop, part 2](./img/install-in-claude-2.png)
+
+5. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
 
    ![Producer Pal tools in Claude](./img/tools-in-claude.png)
 
 6. Start a conversation with "Let's play with Ableton Live"
 
-   ![Producer Pal demo](./img/screenshot.png)
+   ![Producer Pal start a conversation](./img/screenshot.png)
+
+7. In order for Producer Pal to work, you need to allow the tools to be used:
+
+   <img alt="Producer Pal allow tools" src="./img/producer-pal-permission.png" height="350"/>
+
+See the [usage info for help getting started](#usage).
 
 See
-[the latest release](https://github.com/adamjmurray/producer-pal/releases/latest/)
-for more info on this version.
+[the latest release for more info on this version](https://github.com/adamjmurray/producer-pal/releases/latest/).
 
 ## Support and Issues
 
@@ -166,13 +183,6 @@ track when working with Producer Pal.
   Producer Pal into Ableton Live templates. (Saving and opening normal projects
   seems fine.)
 
-- When using the `routeToSource` feature to duplicate tracks, Producer Pal may
-  route to the wrong track if there are duplicate track names in your Live Set.
-  The feature routes to the first track with a matching name, which may not be
-  the intended source track. To avoid this issue, maintain unique track names
-  when using `routeToSource` (the AI is guided by the Producer Pal tools'
-  interface to try to do this).
-
 ### Advanced Examples
 
 Above are some basic ideas to get you started. For best results, be very
@@ -192,6 +202,28 @@ good melody in [some genre]?", chat about that topic, and then ask "Show me an
 example of a melody like that in the lead track in Ableton Live". It can be very
 powerful to ask the AI to perform web searches and do research during these
 types of conversations.
+
+### Advanced Technique: MIDI Layering with routeToSource
+
+Producer Pal can create sophisticated layering setups where multiple tracks
+control a single instrument:
+
+**Example: Create a phasing pattern**
+
+> Duplicate the melody track and use routeToSource. Then make the clips
+> different lengths - a 3-bar pattern on one track and a 4-bar pattern on the
+> other creates an evolving 12-bar cycle.
+
+**Example: Build complex drums from simple parts**
+
+> Create a basic kick pattern, then duplicate the track with routeToSource. Add
+> hi-hats to the new track. Duplicate again for snares. Now you can launch
+> different combinations of clips for dynamic drum arrangements.
+
+**Example: Polyrhythmic textures**
+
+> After creating a 4/4 arpeggio, duplicate with routeToSource and change the new
+> clip to 7/8 time. The polyrhythmic interplay creates rich, evolving textures.
 
 ## Tips
 

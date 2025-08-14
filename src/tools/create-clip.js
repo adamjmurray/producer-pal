@@ -6,7 +6,7 @@ import {
   barBeatDurationToAbletonBeats,
 } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
-import { parseTimeSignature, setAllNonNull, toLiveApiView } from "../utils.js";
+import { parseTimeSignature, setAllNonNull } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
 
 /**
@@ -296,18 +296,6 @@ export function createClip({
     });
 
     createdClips.push(clipResult);
-
-    if (i === 0) {
-      const appView = new LiveAPI("live_app view");
-      const songView = new LiveAPI("live_set view");
-      appView.call("show_view", toLiveApiView(view));
-      songView.set("detail_clip", `id ${clip.id}`);
-      appView.call("focus_view", "Detail/Clip");
-      if (loop) {
-        const clipView = new LiveAPI(`${clip.path} view`);
-        clipView.call("show_loop");
-      }
-    }
   }
 
   // Handle automatic playback for Session clips

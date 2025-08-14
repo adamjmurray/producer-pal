@@ -10,29 +10,23 @@ import {
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { formatErrorResponse } from "../mcp-response-utils.js";
 import { createMcpServer } from "../mcp-server/create-mcp-server.js";
+import { logger } from "./file-logger.js";
 
 const SETUP_URL =
   "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal";
 
 /**
- * Enhanced stdio-to-HTTP bridge for MCP communication
+ * stdio-to-HTTP bridge for MCP communication
  * Provides graceful fallback when Producer Pal is not running
  */
 export class StdioHttpBridge {
   constructor(httpUrl, options = {}) {
     this.httpUrl = httpUrl;
     this.options = options;
-    this.verbose = options.verbose || false;
     this.mcpServer = null;
     this.httpClient = null;
     this.isConnected = false;
     this.fallbackTools = this._generateFallbackTools();
-  }
-
-  _log(message, ...args) {
-    if (this.verbose) {
-      console.error(message, ...args);
-    }
   }
 
   _generateFallbackTools() {
@@ -89,7 +83,7 @@ The default URL value is http://localhost:3350`);
       try {
         await this.httpClient.close();
       } catch (error) {
-        this._log("[Bridge] Error closing old client:", error.message);
+        logger.error(`Error closing old client: ${error.message}`);
       }
       this.httpClient = null;
     }
@@ -107,16 +101,13 @@ The default URL value is http://localhost:3350`);
       this.isConnected = true;
       console.error("[Bridge] Connected to HTTP MCP server");
     } catch (error) {
-      console.error("[Bridge] HTTP connection failed:", error.message);
+      logger.error(`HTTP connection failed: ${error.message}`);
       this.isConnected = false;
       if (this.httpClient) {
         try {
           this.httpClient.close();
         } catch (closeError) {
-          this._log(
-            "[Bridge] Error closing failed client:",
-            closeError.message,
-          );
+          logger.error(`Error closing failed client: ${closeError.message}`);
         }
         this.httpClient = null;
       }
@@ -127,8 +118,8 @@ The default URL value is http://localhost:3350`);
   }
 
   async start() {
-    console.error(`[Bridge] Starting enhanced stdio-to-HTTP bridge`);
-    this._log(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
+    logger.info(`Starting stdio-to-HTTP bridge`);
+    logger.debug(`[Bridge] Target HTTP URL: ${this.httpUrl}`);
 
     // Create MCP server that will handle stdio connections
     this.mcpServer = new Server(
@@ -145,31 +136,29 @@ The default URL value is http://localhost:3350`);
 
     // Set up request handlers
     this.mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
-      this._log(`[Bridge] Handling tools/list request`);
+      logger.debug(`[Bridge] Handling tools/list request`);
 
       // Always try to connect to HTTP server first
       try {
         await this._ensureHttpConnection();
         const result = await this.httpClient.listTools();
-        this._log(`[Bridge] tools/list successful via HTTP`);
+        logger.debug(`[Bridge] tools/list successful via HTTP`);
         return result;
       } catch (error) {
-        this._log(
-          `[Bridge] HTTP tools/list failed, using fallback:`,
-          error.message,
+        logger.debug(
+          `[Bridge] HTTP tools/list failed, using fallback: ${error.message}`,
         );
         this.isConnected = false;
       }
 
       // Return fallback tools when HTTP is not available
-      this._log(`[Bridge] Returning fallback tools list`);
+      logger.debug(`[Bridge] Returning fallback tools list`);
       return this.fallbackTools;
     });
 
     this.mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
-      this._log(
-        `[Bridge] Tool call: ${request.params.name}`,
-        request.params.arguments,
+      logger.debug(
+        `[Bridge] Tool call: ${request.params.name} ${JSON.stringify(request.params.arguments)}`,
       );
 
       // Always try to connect to HTTP server first
@@ -181,18 +170,19 @@ The default URL value is http://localhost:3350`);
         };
 
         const result = await this.httpClient.callTool(toolRequest);
-        this._log(`[Bridge] Tool call successful for ${request.params.name}`);
+        logger.debug(
+          `[Bridge] Tool call successful for ${request.params.name}`,
+        );
         return result;
       } catch (error) {
-        console.error(
-          `[Bridge] HTTP tool call failed for ${request.params.name}:`,
-          error.message,
+        logger.error(
+          `HTTP tool call failed for ${request.params.name}: ${error.message}`,
         );
 
         // Check if this is an MCP protocol error (has numeric code) vs connectivity error
         // Any numeric code means we connected and got a structured JSON-RPC response
         if (error.code && typeof error.code === "number") {
-          this._log(
+          logger.debug(
             `[Bridge] MCP protocol error detected (code ${error.code}), returning the error to the client`,
           );
           // Extract the actual error message, removing any "MCP error {code}:" prefix
@@ -209,7 +199,7 @@ The default URL value is http://localhost:3350`);
         this.isConnected = false;
 
         if (error.code === "ERR_INVALID_URL") {
-          this._log(
+          logger.debug(
             `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
           );
           return this._createMisconfiguredUrlResponse();
@@ -217,7 +207,7 @@ The default URL value is http://localhost:3350`);
       }
 
       // Return setup error when Producer Pal is not available
-      this._log(
+      logger.debug(
         `[Bridge] Connectivity problem detected. Returning setup error response`,
       );
       return this._createSetupErrorResponse();
@@ -227,10 +217,8 @@ The default URL value is http://localhost:3350`);
     const transport = new StdioServerTransport();
     await this.mcpServer.connect(transport);
 
-    console.error(
-      `[Bridge] Enhanced stdio-to-HTTP bridge started successfully`,
-    );
-    this._log(`[Bridge] HTTP connected: ${this.isConnected}`);
+    logger.info(`stdio-to-HTTP bridge started successfully`);
+    logger.debug(`[Bridge] HTTP connected: ${this.isConnected}`);
   }
 
   async stop() {
@@ -238,7 +226,7 @@ The default URL value is http://localhost:3350`);
       try {
         this.httpClient.close();
       } catch (error) {
-        this._log("[Bridge] Error closing HTTP client:", error.message);
+        logger.error(`Error closing HTTP client: ${error.message}`);
       }
       this.httpClient = null;
     }
@@ -246,11 +234,11 @@ The default URL value is http://localhost:3350`);
       try {
         this.mcpServer.close();
       } catch (error) {
-        this._log("[Bridge] Error closing MCP server:", error.message);
+        logger.error(`Error closing MCP server: ${error.message}`);
       }
       this.mcpServer = null;
     }
     this.isConnected = false;
-    console.error(`[Bridge] Enhanced stdio-to-HTTP bridge stopped`);
+    logger.info(`stdio-to-HTTP bridge stopped`);
   }
 }

@@ -66,7 +66,16 @@ vi.mock(import("zod-to-json-schema"), () => ({
   zodToJsonSchema: vi.fn(() => ({ type: "object", properties: {} })),
 }));
 
+vi.mock(import("./file-logger.js"), () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  },
+}));
+
 // Import the class after mocking
+import { logger } from "./file-logger.js";
 import { StdioHttpBridge } from "./stdio-http-bridge.js";
 
 describe("StdioHttpBridge", () => {
@@ -76,9 +85,7 @@ describe("StdioHttpBridge", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    bridge = new StdioHttpBridge("http://localhost:3350/mcp", {
-      verbose: true,
-    });
+    bridge = new StdioHttpBridge("http://localhost:3350/mcp");
   });
 
   afterEach(() => {
@@ -88,8 +95,7 @@ describe("StdioHttpBridge", () => {
   describe("constructor", () => {
     it("initializes with correct default values", () => {
       expect(bridge.httpUrl).toBe("http://localhost:3350/mcp");
-      expect(bridge.options).toEqual({ verbose: true });
-      expect(bridge.verbose).toBe(true);
+      expect(bridge.options).toEqual({});
       expect(bridge.mcpServer).toBeNull();
       expect(bridge.httpClient).toBeNull();
       expect(bridge.isConnected).toBe(false);
@@ -97,7 +103,7 @@ describe("StdioHttpBridge", () => {
     });
 
     it("accepts custom options", () => {
-      const options = { timeout: 5000, verbose: true };
+      const options = { timeout: 5000 };
       const customBridge = new StdioHttpBridge(
         "http://localhost:8080/mcp",
         options,
@@ -105,12 +111,11 @@ describe("StdioHttpBridge", () => {
 
       expect(customBridge.httpUrl).toBe("http://localhost:8080/mcp");
       expect(customBridge.options).toEqual(options);
-      expect(customBridge.verbose).toBe(true);
     });
 
-    it("defaults verbose to false when not specified", () => {
+    it("creates bridge with no options", () => {
       const quietBridge = new StdioHttpBridge("http://localhost:3350/mcp");
-      expect(quietBridge.verbose).toBe(false);
+      expect(quietBridge.options).toEqual({});
     });
 
     it("generates fallback tools excluding ppal-raw-live-api", () => {
@@ -214,9 +219,8 @@ describe("StdioHttpBridge", () => {
         "Failed to connect to Producer Pal MCP server",
       );
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Error closing failed client:",
-        "Close failed",
+      expect(logger.error).toHaveBeenCalledWith(
+        "Error closing failed client: Close failed",
       );
       expect(bridge.isConnected).toBe(false);
       expect(bridge.httpClient).toBeNull();
@@ -232,9 +236,8 @@ describe("StdioHttpBridge", () => {
 
       await bridge._ensureHttpConnection();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Error closing old client:",
-        "Close failed",
+      expect(logger.error).toHaveBeenCalledWith(
+        "Error closing old client: Close failed",
       );
       expect(bridge.isConnected).toBe(true);
     });
@@ -249,14 +252,12 @@ describe("StdioHttpBridge", () => {
       expect(mockServer.setRequestHandler).toHaveBeenCalledTimes(2);
       expect(mockServer.connect).toHaveBeenCalledWith(mockTransport);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Starting enhanced stdio-to-HTTP bridge",
-      );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.info).toHaveBeenCalledWith("Starting stdio-to-HTTP bridge");
+      expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Target HTTP URL: http://localhost:3350/mcp",
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Enhanced stdio-to-HTTP bridge started successfully",
+      expect(logger.info).toHaveBeenCalledWith(
+        "stdio-to-HTTP bridge started successfully",
       );
     });
 
@@ -278,7 +279,7 @@ describe("StdioHttpBridge", () => {
       const result = await listToolsHandler();
 
       expect(result).toEqual(httpTools);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] tools/list successful via HTTP",
       );
     });
@@ -299,8 +300,8 @@ describe("StdioHttpBridge", () => {
 
       expect(result).toEqual(bridge.fallbackTools);
       // Verify that fallback behavior was triggered
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Returning fallback tools list"),
+      expect(logger.debug).toHaveBeenCalledWith(
+        "[Bridge] Returning fallback tools list",
       );
     });
 
@@ -332,7 +333,7 @@ describe("StdioHttpBridge", () => {
         arguments: { arg1: "value1" },
       });
       expect(result).toEqual(toolResult);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect(logger.debug).toHaveBeenCalledWith(
         "[Bridge] Tool call successful for test-tool",
       );
     });
@@ -360,8 +361,8 @@ describe("StdioHttpBridge", () => {
 
       expect(result).toEqual(bridge._createSetupErrorResponse());
       // Verify that error response behavior was triggered
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining("Returning setup error response"),
+      expect(logger.debug).toHaveBeenCalledWith(
+        "[Bridge] Connectivity problem detected. Returning setup error response",
       );
     });
 
@@ -416,9 +417,8 @@ describe("StdioHttpBridge", () => {
 
       await callToolHandler(request);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Tool call: ppal-read-song",
-        { trackIndex: 0 },
+      expect(logger.debug).toHaveBeenCalledWith(
+        '[Bridge] Tool call: ppal-read-song {"trackIndex":0}',
       );
     });
   });
@@ -436,9 +436,7 @@ describe("StdioHttpBridge", () => {
       expect(bridge.mcpServer).toBeNull();
       expect(bridge.isConnected).toBe(false);
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Enhanced stdio-to-HTTP bridge stopped",
-      );
+      expect(logger.info).toHaveBeenCalledWith("stdio-to-HTTP bridge stopped");
     });
 
     it("handles errors when closing clients", async () => {
@@ -455,13 +453,11 @@ describe("StdioHttpBridge", () => {
 
       await bridge.stop();
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Error closing HTTP client:",
-        "Close failed",
+      expect(logger.error).toHaveBeenCalledWith(
+        "Error closing HTTP client: Close failed",
       );
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Bridge] Error closing MCP server:",
-        "Close failed",
+      expect(logger.error).toHaveBeenCalledWith(
+        "Error closing MCP server: Close failed",
       );
 
       // Should still clean up references

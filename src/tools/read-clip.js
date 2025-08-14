@@ -4,21 +4,22 @@ import {
   abletonBeatsToBarBeatDuration,
 } from "../notation/barbeat/barbeat-time.js";
 import { formatNotation } from "../notation/notation.js";
+import { parseIncludeArray, READ_CLIP_DEFAULTS } from "./include-params.js";
+
 /**
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
  * @param {Object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based)
  * @param {string} [args.clipId] - Clip ID to directly access any clip
- * @param {boolean} [args.includeNotes] - Whether to include notes data (default: true)
+ * @param {string[]} [args.include] - Array of data to include in response
+ * @param {boolean} [args.includeNotes] - Whether to include notes data (legacy parameter)
  * @returns {Object} Result object with clip information
  */
-export function readClip({
-  trackIndex = null,
-  clipSlotIndex = null,
-  clipId = null,
-  includeNotes = true,
-}) {
+export function readClip(args = {}) {
+  const { trackIndex = null, clipSlotIndex = null, clipId = null } = args;
+
+  const { includeNotes } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
   if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and clipSlotIndex must be provided",
@@ -76,7 +77,7 @@ export function readClip({
       timeSigDenominator,
     ),
     isPlaying: clip.getProperty("is_playing") > 0,
-    timeSignature: `${timeSigNumerator}/${timeSigDenominator}`,
+    timeSignature: clip.timeSignature,
   };
 
   // Only include triggered when clip is triggered

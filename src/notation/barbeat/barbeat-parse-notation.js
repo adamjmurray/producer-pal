@@ -47,12 +47,25 @@ export function parseNotation(barBeatExpression, options = {}) {
     let currentProbability = DEFAULT_PROBABILITY;
     let currentVelocityMin = null;
     let currentVelocityMax = null;
+    let hasExplicitBarNumber = false;
 
     const events = [];
 
     for (const element of ast) {
       if (element.bar !== undefined && element.beat !== undefined) {
-        currentTime = { bar: element.bar, beat: element.beat };
+        if (element.bar === null) {
+          // |beat shortcut - keep current bar, update beat
+          if (!hasExplicitBarNumber) {
+            // Assume bar 1 if no explicit bar number has been set
+            currentTime = { bar: 1, beat: element.beat };
+          } else {
+            currentTime = { bar: currentTime.bar, beat: element.beat };
+          }
+        } else {
+          // Full bar|beat - update both
+          currentTime = { bar: element.bar, beat: element.beat };
+          hasExplicitBarNumber = true;
+        }
       } else if (element.velocity !== undefined) {
         currentVelocity = element.velocity;
         // Clear velocity range when single velocity is set

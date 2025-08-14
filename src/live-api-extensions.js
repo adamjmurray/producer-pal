@@ -65,6 +65,18 @@ if (typeof LiveAPI !== "undefined") {
         // Convert value to JSON format expected by Live API
         const jsonValue = JSON.stringify({ [property]: value });
         return this.set(property, jsonValue);
+      case "selected_track":
+      case "selected_scene":
+      case "detail_clip":
+      case "highlighted_clip_slot":
+        // Properties that expect "id X" format - automatically format IDs
+        const formattedValue =
+          typeof value === "string" &&
+          !value.startsWith("id ") &&
+          /^\d+$/.test(value)
+            ? `id ${value}`
+            : value;
+        return this.set(property, formattedValue);
       default:
         // For all other properties, use regular set
         return this.set(property, value);
@@ -146,6 +158,34 @@ if (typeof LiveAPI !== "undefined") {
     });
   }
 
+  // Return track index extension
+  if (
+    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "returnTrackIndex")
+  ) {
+    Object.defineProperty(LiveAPI.prototype, "returnTrackIndex", {
+      get: function () {
+        const match = this.path.match(/live_set return_tracks (\d+)/);
+        return match ? Number(match[1]) : null;
+      },
+    });
+  }
+
+  // Track type extension
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "trackType")) {
+    Object.defineProperty(LiveAPI.prototype, "trackType", {
+      get: function () {
+        if (this.path.includes("live_set tracks")) {
+          return "regular";
+        } else if (this.path.includes("live_set return_tracks")) {
+          return "return";
+        } else if (this.path.includes("live_set master_track")) {
+          return "master";
+        }
+        return null;
+      },
+    });
+  }
+
   if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "sceneIndex")) {
     Object.defineProperty(LiveAPI.prototype, "sceneIndex", {
       get: function () {
@@ -172,6 +212,44 @@ if (typeof LiveAPI !== "undefined") {
         // Also try scene path (clip slot index is the scene index in session view)
         match = this.path.match(/live_set scenes (\d+)/);
         return match ? Number(match[1]) : null;
+      },
+    });
+  }
+
+  if (
+    !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "timeSignature")
+  ) {
+    Object.defineProperty(LiveAPI.prototype, "timeSignature", {
+      get: function () {
+        // Different Live API object types use different property names for time signature
+        const objectType = this.type;
+        let numeratorProp, denominatorProp;
+
+        switch (objectType) {
+          case "LiveSet":
+          case "Clip":
+            numeratorProp = "signature_numerator";
+            denominatorProp = "signature_denominator";
+            break;
+          case "Scene":
+            numeratorProp = "time_signature_numerator";
+            denominatorProp = "time_signature_denominator";
+            break;
+          default:
+            // For unknown types, try the more common LiveSet/Clip pattern first
+            numeratorProp = "signature_numerator";
+            denominatorProp = "signature_denominator";
+            break;
+        }
+
+        const numerator = this.getProperty(numeratorProp);
+        const denominator = this.getProperty(denominatorProp);
+
+        if (numerator != null && denominator != null) {
+          return `${numerator}/${denominator}`;
+        }
+
+        return null;
       },
     });
   }

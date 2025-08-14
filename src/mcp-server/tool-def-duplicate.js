@@ -6,13 +6,18 @@ import {
   MAX_AUTO_CREATED_TRACKS,
 } from "../tools/constants.js";
 
+const description = `TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details.
+Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes.
+TRACK LAYERING: Use routeToSource=true when duplicating tracks to create powerful MIDI layering setups. This routes the new track to control the source track's instrument, allowing multiple clips of different lengths to create evolving patterns, polyrhythms, and phasing effects. Perfect for building complex arrangements from simple elements.
+WHEN TO SUGGEST routeToSource: When users ask about: layering MIDI, polyrhythms, phasing patterns, Steve Reich-style compositions, combining multiple patterns, merging MIDI streams, or creating evolving/generative patterns. This feature is ideal for these use cases.
+When duplicating scenes or tracks, clips are duplicated by default but can be excluded with withoutClips:true. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip.
+IMPORTANT: For Arrangement clips, all timing is relative to each clip's start time, not the global arrangement timeline.
+IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arrangement clips will only play if their tracks are currently in arrangement-following state (see transport tool).
+VIEW GUIDANCE: When duplicating to arrangement, consider using ppal-update-view to show the arrangement if the user wants to see the duplicated content.`;
+
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate Clip/Track/Scene",
-  description:
-    "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +
-    `Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes. When duplicating scenes or tracks, clips are duplicated by default but can be excluded with withoutClips:true. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip. ` +
-    "IMPORTANT: For Arrangement clips, all timing is relative to each clip's start time, not the global arrangement timeline. " +
-    "IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arrangement clips will only play if their tracks are currently in arrangement-following state (see transport tool).",
+  description,
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -68,7 +73,10 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .boolean()
       .optional()
       .describe(
-        "Create a routing setup where the new track controls the source track's instrument. Effects: 1) New track has no clips or devices, 2) New track output routes to source track, 3) Source track is armed for input, 4) Source track input set to 'No Input' to prevent unwanted external input. WARNING: This changes the source track's input routing settings and arms the source track. IMPORTANT: If there are duplicate track names in your set, routeToSource may route to the wrong track. Maintain unique track names to avoid this issue.",
+        "Enable MIDI layering: Routes the new track's output to the source track's instrument, allowing multiple clips to play simultaneously through one instrument. " +
+          "Perfect for: 1) Polyrhythmic patterns with clips of different lengths, 2) Phasing effects à la Steve Reich, 3) Building complex arrangements from simple loops, 4) Live performance with clip launching flexibility. " +
+          "Effects: New track has no clips or devices, output routes to source track, source track is armed for input. " +
+          "WARNING: Maintain unique track names to avoid routing issues.",
       ),
   },
 });

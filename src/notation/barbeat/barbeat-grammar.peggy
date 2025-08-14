@@ -28,6 +28,9 @@ time
   = bar:positiveInt "|" beat:positiveFloat {
     return { bar, beat };
   }
+  / "|" beat:positiveFloat {
+    return { bar: null, beat };
+  }
 
 probability
   = "p" val:unsignedFloat {
@@ -106,6 +109,19 @@ signedFloat
     return sign ? -value : value;
   } 
 
+// Comments
+lineComment
+  = "//" [^\r\n]*
+
+hashComment
+  = "#" [^\r\n]*
+
+blockComment
+  = "/*" (!"*/" .)* "*/"
+
+comment
+  = lineComment / hashComment / blockComment
+
 // Whitespace
-WS = [ \t\r\n]+ // required
-_ = [ \t\r\n]*  // optional
+WS = ([ \t\r\n] / comment)+ // required
+_ = ([ \t\r\n] / comment)*  // optional

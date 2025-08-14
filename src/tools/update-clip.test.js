@@ -49,6 +49,23 @@ describe("updateClip", () => {
     );
   });
 
+  it("should require noteUpdateMode parameter when notes are provided", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Should work without noteUpdateMode when no notes provided
+    expect(() => updateClip({ ids: "123", name: "Test" })).not.toThrow();
+
+    // Should fail validation at MCP level when notes provided without noteUpdateMode
+    // This will be caught by the zod schema validation in the MCP server
+  });
+
   it("should throw error when clip ID doesn't exist", () => {
     liveApiId.mockReturnValue("0");
     expect(() => updateClip({ ids: "nonexistent" })).toThrow(
@@ -160,13 +177,6 @@ describe("updateClip", () => {
       ids: "999",
       name: "Test Arrangement Clip",
     });
-
-    // Should call show_view with "Arranger" for Live API compatibility
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_app view" }),
-      "show_view",
-      "Arranger",
-    );
   });
 
   it("should update multiple clips by comma-separated IDs", () => {
@@ -197,7 +207,7 @@ describe("updateClip", () => {
       "looping",
       false,
     );
-    expect(liveApiSet).toHaveBeenCalledTimes(5); // 2 calls per clip, plus view change
+    expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per clip
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "456" }),
       "color",
@@ -207,11 +217,6 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "456" }),
       "looping",
       false,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
@@ -285,6 +290,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
+      noteUpdateMode: "replace",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -327,7 +333,7 @@ describe("updateClip", () => {
       trackIndex: 0,
       clipSlotIndex: 0,
       notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
-      clearExistingNotes: true,
+      noteUpdateMode: "replace",
     });
   });
 
@@ -343,6 +349,7 @@ describe("updateClip", () => {
       ids: "123",
       timeSignature: "6/8",
       notes: "1|1 C3 2|1 D3",
+      noteUpdateMode: "replace",
     });
 
     // In 6/8 time, bar 2 beat 1 should be 3 Ableton beats (6 musical beats * 4/8 = 3 Ableton beats)
@@ -398,6 +405,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar
+      noteUpdateMode: "replace",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -442,6 +450,7 @@ describe("updateClip", () => {
       ids: "123",
       notes:
         "1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1.0 D1 v100 p0.9 Gb1",
+      noteUpdateMode: "replace",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -555,16 +564,11 @@ describe("updateClip", () => {
       name: "Only Name Update",
     });
 
-    expect(liveApiSet).toHaveBeenCalledTimes(2);
+    expect(liveApiSet).toHaveBeenCalledTimes(1);
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "name",
       "Only Name Update",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
     );
 
     expect(liveApiCall).not.toHaveBeenCalledWith(
@@ -760,17 +764,12 @@ describe("updateClip", () => {
       name: "Filtered",
     });
 
-    // set the names of the two clips, and display the clip detail view:
-    expect(liveApiSet).toHaveBeenCalledTimes(3);
+    // set the names of the two clips:
+    expect(liveApiSet).toHaveBeenCalledTimes(2);
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
       "name",
       "Filtered",
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set view" }),
-      "detail_clip",
-      "id 123",
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "456" }),
@@ -811,6 +810,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
+      noteUpdateMode: "replace",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -854,6 +854,7 @@ describe("updateClip", () => {
     updateClip({
       ids: "123",
       notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
+      noteUpdateMode: "replace",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -870,7 +871,7 @@ describe("updateClip", () => {
     );
   });
 
-  it("should replace notes by default (clearExistingNotes: true)", () => {
+  it("should replace notes when noteUpdateMode is 'replace'", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -883,7 +884,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes: "1|1 C3",
-      clearExistingNotes: true, // explicit true
+      noteUpdateMode: "replace",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -911,10 +912,10 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.clearExistingNotes).toBe(true);
+    expect(result.noteUpdateMode).toBe("replace");
   });
 
-  it("should replace notes by default when clearExistingNotes is not specified", () => {
+  it("should add to existing notes when noteUpdateMode is 'merge'", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -927,51 +928,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes: "1|1 C3",
-      // clearExistingNotes not specified, should default to true
-    });
-
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "remove_notes_extended",
-      0,
-      127,
-      0,
-      1000000,
-    );
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ],
-      },
-    );
-
-    expect(result.clearExistingNotes).toBe(true);
-  });
-
-  it("should add to existing notes when clearExistingNotes is false", () => {
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
-    });
-
-    const result = updateClip({
-      ids: "123",
-      notes: "1|1 C3",
-      clearExistingNotes: false,
+      noteUpdateMode: "merge",
     });
 
     expect(liveApiCall).not.toHaveBeenCalledWith(
@@ -995,10 +952,10 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.clearExistingNotes).toBe(false);
+    expect(result.noteUpdateMode).toBe("merge");
   });
 
-  it("should not call add_new_notes when clearExistingNotes is false and notes array is empty", () => {
+  it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -1011,7 +968,7 @@ describe("updateClip", () => {
     updateClip({
       ids: "123",
       notes: "1|1 v0 C3", // All notes filtered out
-      clearExistingNotes: false,
+      noteUpdateMode: "merge",
     });
 
     expect(liveApiCall).not.toHaveBeenCalledWith(
@@ -1046,7 +1003,7 @@ describe("updateClip", () => {
     );
   });
 
-  it("should delete specific notes with v0 when clearExistingNotes is false", () => {
+  it("should delete specific notes with v0 when noteUpdateMode is 'merge'", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -1094,7 +1051,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes: "1|1 v0 C3 v100 F3", // Delete C3 at 1|1, add F3 at 1|1
-      clearExistingNotes: false,
+      noteUpdateMode: "merge",
     });
 
     // Should call get_notes_extended to read existing notes
@@ -1153,7 +1110,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.clearExistingNotes).toBe(false);
+    expect(result.noteUpdateMode).toBe("merge");
   });
 
   it("should handle v0 notes when no existing notes match", () => {
@@ -1188,7 +1145,7 @@ describe("updateClip", () => {
     updateClip({
       ids: "123",
       notes: "1|1 v0 C3", // Try to delete C3 at 1|1 (doesn't exist)
-      clearExistingNotes: false,
+      noteUpdateMode: "merge",
     });
 
     // Should still read existing notes and remove/add them back
@@ -1226,7 +1183,7 @@ describe("updateClip", () => {
     );
   });
 
-  it("should not call get_notes_extended when clearExistingNotes is false but no v0 notes", () => {
+  it("should not call get_notes_extended when noteUpdateMode is 'merge' but no v0 notes", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -1239,7 +1196,7 @@ describe("updateClip", () => {
     updateClip({
       ids: "123",
       notes: "1|1 v100 C3", // No v0 notes
-      clearExistingNotes: false,
+      noteUpdateMode: "merge",
     });
 
     // Should not call get_notes_extended since no v0 notes

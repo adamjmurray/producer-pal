@@ -110,21 +110,44 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 
 #### 0.9.5
 
-- [ ] Add new ppal-init tool to handle the NUX instead of read-song
-- [ ] Support comments in bar|beat format (probably #, // and /\* \*/)
-- [ ] Combine the include* args for read-song and read-track (and any other
+- [x] Add `ppal-init` tool to handle the NUX instead of read-song
+- [x] Add `ppal-read-view` and `ppal-update-view` tools to handle all
+      view-related operations and stop changing view state automatically for
+      other tools (which can interrupt the user's workflow when AI is generating
+      multiple clips in a row)
+- [x] Combine the include* args for read-song and read-track (and any other
       read-* tools?) to be a single include arg that takes an array of what
       detailed info to include
-- [ ] Split off separate read-track include for available routings and don't
+- [x] Enhance read-song to return returnTracks and masterTrack, add new include
+      options
+- [x] support include arg values '\*', 'all-tracks', 'all-scenes',
+      'all-devices', 'all-routings'
+- [x] Split off separate read-track include for available routings and don't
       support it in read-song (it's way too big and repetitive in larger sets)
-- [ ] Support trackId arg for read-track so the return tracks and master track
+- [x] Support trackId arg for read-track so the return tracks and master track
       can be read
-- [ ] Make verbose logging in Claude Desktop actually work
-- [ ] Make demo video and add to README and web site
+- [x] Support sceneId arg for read-scene
+- [x] Add `ppal-read-device` tool
+- [x] Support comments in bar|beat format (probably #, // and /\* \*/)
+- [x] Make verbose logging in Claude Desktop actually work
+- [x] Fix the duplicate track name issues in duplicate.routeToSource (see
+      dedicated md file in docs explaining the issue and potential solutions)
+- [x] Remove empty-scenes filter from ppal-read-song, don't include full scene
+      details by default, and return minimal scene info when scenes are not
+      included
 
 ### 🚀 1.0.0 Release
 
 Stable, documented, user-friendly baseline
+
+- [ ] Simplify all tool descriptions to reduce context window load on the LLM
+- [ ] Make demo video and add to README and web site
+- [ ] Check FEATURES.md is up-to-date (cleanup above completed tasks and merge
+      into it)
+- [ ] Document a full QA validation plan
+- [ ] Test the full QA validation plan
+- [ ] Do a pass over the claude instruction files
+- [ ] Cleanup the plans below into a top level ROADMAP.md
 
 ### Post-1.0.0
 
@@ -134,6 +157,7 @@ _TODO: Split this apart into separate minor or patch releases intermixed with
 bigger product features in the 1.x line (see below)_
 
 - [ ] Ability to change arrangement clip length
+- [ ] Groove support
 - [ ] Popup window editor for project notes (probably jweb, with a rich
       text/markdown library)
 - [ ] Streamline installation process: Install Claude Desktop extension and have
@@ -150,8 +174,6 @@ bigger product features in the 1.x line (see below)_
 - [ ] Improved mocking system with unified interface for LiveAPI objects
 - [ ] State Sync: ID-first operations, smart error recovery (see doc/Better
       State Sync Plan.md)
-- [ ] Fix the duplicate track name issues in duplicate.routeToSource (see
-      dedicated md file in docs explaining the issue and potential solutions)
 
 #### 1.1.0 - Customization
 
@@ -164,6 +186,7 @@ bigger product features in the 1.x line (see below)_
 - [ ] Rack variation control (store, load, delete)
 - [ ] List device parameters
 - [ ] Change device parameters
+- [ ] Insert devices into tracks (whenever the LiveAPI supports it)
 
 #### 2.0.0 - Learning & Personas
 
@@ -192,6 +215,7 @@ baked.
 - Auto-arrangement suggestions
 - Multi-track composition templates
 - Groove and swing enhancements
+- Microtonal support
 
 **Beyond Composition:**
 

@@ -12,7 +12,7 @@ import { MAX_CLIP_BEATS } from "./constants.js";
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param {string} [args.notes] - Musical notation string
- * @param {boolean} [args.clearExistingNotes=true] - Whether to replace all notes (true) or add to existing notes (false)
+ * @param {string} args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -25,7 +25,7 @@ import { MAX_CLIP_BEATS } from "./constants.js";
 export function updateClip({
   ids,
   notes: notationString,
-  clearExistingNotes = true,
+  noteUpdateMode,
   name,
   color,
   timeSignature,
@@ -42,7 +42,6 @@ export function updateClip({
   const clipIds = parseCommaSeparatedIds(ids);
 
   const updatedClips = [];
-  let isFirstClip = true;
 
   for (const id of clipIds) {
     // Convert string ID to LiveAPI path if needed
@@ -112,7 +111,7 @@ export function updateClip({
       const v0Notes = notes.filter((note) => note.velocity === 0);
       const regularNotes = notes.filter((note) => note.velocity > 0);
 
-      if (clearExistingNotes) {
+      if (noteUpdateMode === "replace") {
         clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
         // Only add regular notes when clearing (v0 notes are filtered out for Live API)
         if (regularNotes.length > 0) {
@@ -203,23 +202,9 @@ export function updateClip({
     if (loopStart != null) clipResult.loopStart = loopStart;
     if (loop != null) clipResult.loop = loop;
     if (notationString != null) clipResult.notes = notationString;
-    if (notationString != null)
-      clipResult.clearExistingNotes = clearExistingNotes;
+    if (notationString != null) clipResult.noteUpdateMode = noteUpdateMode;
 
     updatedClips.push(clipResult);
-
-    if (isFirstClip) {
-      const appView = new LiveAPI("live_app view");
-      const songView = new LiveAPI("live_set view");
-      appView.call("show_view", isArrangementClip ? "Arranger" : "Session");
-      songView.set("detail_clip", `id ${clip.id}`);
-      appView.call("focus_view", "Detail/Clip");
-      if (loop || clip.getProperty("looping")) {
-        const clipViewAPI = new LiveAPI(`${clip.path} view`);
-        clipViewAPI.call("show_loop");
-      }
-      isFirstClip = false;
-    }
   }
 
   // Return single object if single ID was provided, array if comma-separated IDs were provided

@@ -147,7 +147,3 @@ Messages sent from v8 back to Node for Max:
 
 See the dedicated bar|beat Specification. Implemented with a parser generator
 library `peggy`.
-
-## MCP tool interfaces
-
-TODO document with examples, like above

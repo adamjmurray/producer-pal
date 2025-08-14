@@ -81,9 +81,11 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
-        "ppal-create-clip",
-        "ppal-read-clip",
-        "ppal-update-clip",
+        "ppal-init",
+        "ppal-read-song",
+        "ppal-update-song",
+        "ppal-read-view",
+        "ppal-update-view",
         "ppal-create-track",
         "ppal-read-track",
         "ppal-update-track",
@@ -91,8 +93,10 @@ describe("MCP Express App", () => {
         "ppal-create-scene",
         "ppal-read-scene",
         "ppal-update-scene",
-        "ppal-read-song",
-        "ppal-update-song",
+        "ppal-create-clip",
+        "ppal-read-clip",
+        "ppal-read-device",
+        "ppal-update-clip",
         "ppal-transport",
         "ppal-delete",
         "ppal-duplicate",
@@ -233,7 +237,7 @@ describe("MCP Express App", () => {
         "mcp_request",
         expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
-        '{"trackIndex":1,"includeDrumChains":false,"includeNotes":true,"includeRackChains":true,"includeMidiEffects":false,"includeInstrument":true,"includeAudioEffects":false,"includeRoutings":false,"includeSessionClips":true,"includeArrangementClips":true}', // argsJSON
+        '{"trackIndex":1,"trackType":"regular","include":["notes","rack-chains","instrument","session-clips","arrangement-clips"]}', // argsJSON
       );
     });
 
