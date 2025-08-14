@@ -1,6 +1,4 @@
-&nbsp;
-
-# <img src="./img/producer-pal-logo.svg" style="height:48px; position: relative; top: 8px;"/> Producer Pal
+# <sub><img src="./img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
 Make music in Ableton Live with an AI assistant such as
 [Anthropic Claude](https://www.anthropic.com/claude).
