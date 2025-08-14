@@ -140,6 +140,9 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 
 Stable, documented, user-friendly baseline
 
+- [ ] The deep link to install instructions embedded inside Producer Pal no
+      longer works (because of the addition of the logo to the README's main
+      header)
 - [ ] Simplify all tool descriptions to reduce context window load on the LLM
 - [ ] Make demo video and add to README and web site
 - [ ] Check FEATURES.md is up-to-date (cleanup above completed tasks and merge
