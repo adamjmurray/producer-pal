@@ -135,11 +135,16 @@ See `doc/Per Project Context and Tabbed UI Spec.md`
 - [x] Remove empty-scenes filter from ppal-read-song, don't include full scene
       details by default, and return minimal scene info when scenes are not
       included
-- [ ] Make demo video and add to README and web site
 
 ### 🚀 1.0.0 Release
 
 Stable, documented, user-friendly baseline
+
+- [ ] Make demo video and add to README and web site
+- [ ] Check FEATURES.md is up-to-date (cleanup above completed tasks and merge
+      into it)
+- [ ] Do a pass over the claude instruction files
+- [ ] Cleanup the plans below into a top level ROADMAP.md
 
 ### Post-1.0.0
 
@@ -207,6 +212,7 @@ baked.
 - Auto-arrangement suggestions
 - Multi-track composition templates
 - Groove and swing enhancements
+- Microtonal support
 
 **Beyond Composition:**
 
