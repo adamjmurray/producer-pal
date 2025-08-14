@@ -1,3 +1,5 @@
+&nbsp;
+
 # <img src="./img/producer-pal-logo.svg" style="height:48px; position: relative; top: 8px;"/> Producer Pal
 
 Make music in Ableton Live with an AI assistant such as
