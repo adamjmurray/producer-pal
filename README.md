@@ -10,7 +10,8 @@ Make music in Ableton Live with an AI assistant such as
   Suite edition)
 - [Claude Desktop](https://claude.ai/download) (or another
   [MCP-compatible](https://modelcontextprotocol.io/) AI chat client like Claude
-  Code or VS Code)
+  Code or VS Code). _I hope to add support for more AI models via something like
+  [LM Studio](https://lmstudio.ai/) in the future._
 
 ## Installing
 
@@ -26,27 +27,43 @@ Make music in Ableton Live with an AI assistant such as
 
    ![install in Ableton](./img/install-in-ableton.png)
 
-3. Open Claude Desktop &rarr; Settings &rarr; Extensions. Drag and drop
+3. Install into Claude Desktop by going to Claude Desktop &rarr; Settings &rarr;
+   Extensions and:
+
+   3a. If you already have extensions installed, you can drag and drop
    [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
-   into it:
+   into the Extensions screen:
 
-   ![install in Claude](./img/install-in-claude.png)
+   ![install in Claude Desktop](./img/install-in-claude.png)
 
-4. Don't forget to click "Install"
+   3b. Or, if you have never installed a Claude Desktop extension before, you
+   need to click "Advanced settings" on the Extensions screen, then click
+   "Install extension...", and choose the
+   [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
+   file.
 
-   ![install in Claude, part 2](./img/install-in-claude-2.png)
+   ![install first extension in Claude Desktop](./img/install-in-claude-first-extension.png)
 
-5. You should see 16 Producer Pal tools in Claude's "Search and Tools" menu
+4. Don't forget to click "Install" and complete the Claude Desktop installation:
+
+   ![install in Claude Desktop, part 2](./img/install-in-claude-2.png)
+
+5. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
 
    ![Producer Pal tools in Claude](./img/tools-in-claude.png)
 
 6. Start a conversation with "Let's play with Ableton Live"
 
-   ![Producer Pal demo](./img/screenshot.png)
+   ![Producer Pal start a conversation](./img/screenshot.png)
+
+7. In order for Producer Pal to work, you need to allow the tools to be used:
+
+   ![Producer Pal allow tools](./img/producer-pal-permission.png)
+
+See the [usage info for help getting started](#usage).
 
 See
-[the latest release](https://github.com/adamjmurray/producer-pal/releases/latest/)
-for more info on this version.
+[the latest release for more info on this version](https://github.com/adamjmurray/producer-pal/releases/latest/).
 
 ## Support and Issues
 
