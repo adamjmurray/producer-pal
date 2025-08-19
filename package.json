@@ -29,7 +29,7 @@
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
-    "rollup": "^4.46.2",
+    "rollup": "^4.46.3",
     "vitest": "^3.2.4"
   },
   "prettier": {
