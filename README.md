@@ -58,7 +58,7 @@ Make music in Ableton Live with an AI assistant such as
 
 7. In order for Producer Pal to work, you need to allow the tools to be used:
 
-   <img alt="Producer Pal allow tools" src="./img/producer-pal-permission.png" height="350"/>
+   <img alt="Producer Pal allow tools" src="./img/producer-pal-permission.png" width="450"/>
 
 See the [usage info for help getting started](#usage).
 

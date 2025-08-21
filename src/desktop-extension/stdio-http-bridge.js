@@ -13,7 +13,7 @@ import { createMcpServer } from "../mcp-server/create-mcp-server.js";
 import { logger } from "./file-logger.js";
 
 const SETUP_URL =
-  "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal";
+  "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#-producer-pal";
 
 /**
  * stdio-to-HTTP bridge for MCP communication
@@ -62,7 +62,7 @@ For Producer Pal to work, the user must ensure:
 2. The Producer Pal Max for Live device has been added to the Ableton Live Set
 3. The device has successfully loaded and shows "Producer Pal Running"
 
-Provide the [detailed setup instructions](https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#producer-pal) for guidance.`);
+Provide the [detailed setup instructions](${SETUP_URL}) for guidance.`);
   }
 
   _createMisconfiguredUrlResponse() {
