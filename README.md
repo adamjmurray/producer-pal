@@ -3,6 +3,12 @@
 Make music in Ableton Live with an AI assistant such as
 [Anthropic Claude](https://www.anthropic.com/claude).
 
+## Demo
+
+[![demo video thumbnail](https://img.youtube.com/vi/ypZBVI0Ncso/0.jpg)](https://youtu.be/ypZBVI0Ncso?si=_lFAMCP257Gyyy_v&t=85)
+
+This demo link skips over the installation process. If you rewind the video to the beginning you can see how it was installed.
+
 ## Requirements
 
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
