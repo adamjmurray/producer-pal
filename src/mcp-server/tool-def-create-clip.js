@@ -26,7 +26,10 @@ RANGE TIP: Many instruments, especially sample-based ones (orchestral libraries,
 
 MUSICAL GUIDE: Effective arrangements prioritize clarity over density. 'Epic' or 'dramatic' impact comes from dynamics (v50-v120), rhythmic variety, and strategic space, not from multiplying the number of notes.
 
-VIEW GUIDANCE: After creating clips, consider using ppal-read-view and ppal-update-view to show them if the user would benefit from seeing the created clips.`;
+VIEW GUIDANCE: After creating clips, consider using ppal-read-view and ppal-update-view to show them if the user would benefit from seeing the created clips.
+
+WORKFLOW: When creating a scene of clips, generally auto="play-scene" should be used when creating each clip.
+`;
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
