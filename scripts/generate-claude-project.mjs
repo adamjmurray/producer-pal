@@ -33,10 +33,11 @@ async function copyDirectoriesAndFiles() {
   const itemsToCopy = [
     // Directories (automatically get directory prefix)
     // Use targetDirName to override the directory name in output
-    { src: "src", isDir: true },
+    { src: ".github", isDir: true, targetDirName: "_github" },
+    { src: "config", isDir: true },
     { src: "doc", isDir: true },
     { src: "scripts", isDir: true },
-    { src: ".github", isDir: true, targetDirName: "_github" },
+    { src: "src", isDir: true },
 
     // Individual files (no prefix)
     { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
@@ -45,8 +46,6 @@ async function copyDirectoriesAndFiles() {
     { src: "LICENSE.md" },
     { src: "package.json" },
     { src: "README.md" },
-    { src: "rollup.config.mjs" },
-    { src: "vitest.config.ts" },
     {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
