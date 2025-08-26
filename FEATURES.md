@@ -114,6 +114,8 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - **Durations**: bar:beat format (4:0 = 4 bars, 1:2 = 1 bar + 2 beats)
 - **Velocity**: Values from 1-127 (or ranges like 80-100)
 - **Probability**: 0.0 to 1.0 (1.0 = always plays)
+- **Comments**: Include commentary using // for single lines, # for inline, or
+  /\* \*/ for blocks
 
 ## Object Management
 
@@ -161,3 +163,9 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - Shows Live Set name, tempo, and basic info
 - Displays project notes if enabled
 - Automatically called when you mention "Ableton" or "Producer Pal"
+
+### Network Control
+
+- Control Ableton Live on another computer on your network
+- Configure with full URL in Claude Desktop extension settings
+- Enables collaborative production and remote control workflows
