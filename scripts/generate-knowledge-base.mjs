@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// scripts/generate-claude-project.mjs
+// scripts/generate-knowledge-base.mjs
 
 import fs from "fs/promises";
 import path from "path";
@@ -7,7 +7,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
-const outputDir = path.join(projectRoot, "claude-project");
+const outputDir = path.join(projectRoot, "knowledge-base");
 
 const FLAT_SEP = "--";
 
@@ -115,19 +115,19 @@ async function findAllFiles(dir) {
 
 async function main() {
   try {
-    console.log("Generating Claude Project files...");
+    console.log("Generating knowledge base files...");
 
     await cleanAndCreateOutputDir();
     await copyDirectoriesAndFiles();
 
     console.log(
-      `\nComplete! Files copied to: ${path.relative(projectRoot, outputDir)}`,
+      `\nComplete! Knowledge base files copied to: ${path.relative(projectRoot, outputDir)}`,
     );
 
     const files = await fs.readdir(outputDir);
     console.log(`Total files: ${files.length}`);
   } catch (error) {
-    console.error("Error generating Claude Project files:", error);
+    console.error("Error generating knowledge base files:", error);
     process.exit(1);
   }
 }
