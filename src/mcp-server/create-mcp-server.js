@@ -18,10 +18,10 @@ import { toolDefReadTrack } from "./tool-def-read-track.js";
 import { toolDefReadView } from "./tool-def-read-view.js";
 import { toolDefTransport } from "./tool-def-transport.js";
 import { toolDefUpdateClip } from "./tool-def-update-clip.js";
-import { toolDefUpdateView } from "./tool-def-update-view.js";
 import { toolDefUpdateScene } from "./tool-def-update-scene.js";
 import { toolDefUpdateSong } from "./tool-def-update-song.js";
 import { toolDefUpdateTrack } from "./tool-def-update-track.js";
+import { toolDefUpdateView } from "./tool-def-update-view.js";
 
 export function createMcpServer(callLiveApi) {
   const server = new McpServer({
@@ -36,9 +36,6 @@ export function createMcpServer(callLiveApi) {
   addTool(toolDefReadSong);
   addTool(toolDefUpdateSong);
 
-  addTool(toolDefReadView);
-  addTool(toolDefUpdateView);
-
   addTool(toolDefCreateTrack);
   addTool(toolDefReadTrack);
   addTool(toolDefUpdateTrack);
@@ -50,8 +47,11 @@ export function createMcpServer(callLiveApi) {
 
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
-  addTool(toolDefReadDevice);
   addTool(toolDefUpdateClip);
+
+  addTool(toolDefReadDevice);
+  addTool(toolDefReadView);
+  addTool(toolDefUpdateView);
 
   addTool(toolDefTransport);
   addTool(toolDefDelete);

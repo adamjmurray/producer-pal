@@ -53,6 +53,9 @@ const toolDescriptions = {
     "Reads comprehensive information about the Live Set including global settings and all tracks",
   "ppal-update-song":
     "Updates global song settings like tempo, time signature, and scales",
+  "ppal-read-view": "Reads the current view state in Ableton Live",
+  "ppal-update-view": "Updates the view state in Ableton Live",
+  "ppal-read-device": "Reads information about devices in Ableton Live",
   "ppal-duplicate": "Duplicates objects between Session and Arrangement views",
   "ppal-delete": "Deletes various objects (tracks, clips, scenes)",
   "ppal-memory": "Manages user-defined project notes for Producer Pal",
@@ -68,36 +71,11 @@ for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
 }
 
 // Create readable long description
-const longDescription = `# Setup
-
-Requires Ableton Live 12.2 or higher with Max for Live (Ableton Live Suite, or another edition of Live + the Max for Live add-on).
+const longDescription = `Requires Ableton Live 12.2 or higher with Max for Live (Ableton Live Suite, or another edition of Live + the Max for Live add-on).
 
 Add the Producer Pal Max for Live device (the Producer_Pal.amxd file) to an Ableton Live project. It must be added to a MIDI track and it's recommended you add it to a dedicated track (rather than a track with an instrument you want to play). Then ask Claude Desktop (with this extension enabled): "Let's play with Ableton Live".
 
-This software is not affiliated with Ableton, Cycling '74, or Anthropic.
-
-# Usage examples
-
- • Start a chat like:
-
- > Let's play with Ableton Live
-
- • Create a track called "Drums" with a drum rack and ask:
-
- > Generate a 4-bar drum loop
-
- • Create a track called "Chords" with an instrument and ask:
-
- > Generate a 4-chord progression of whole notes
-
- • Then, with a "Bass" track, ask:
-
- > Generate a bassline to go along with the chords
-
- • Ask the AI what it can do:
-
- > What are all the things you can do with your Ableton Live tools
- `;
+This software is not affiliated with Ableton, Cycling '74, or Anthropic.`;
 
 // Read template and replace placeholders
 const template = readFileSync(
