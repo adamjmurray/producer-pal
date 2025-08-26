@@ -77,7 +77,7 @@ describe("init", () => {
     expect(result).toEqual(
       expect.objectContaining({
         connected: true,
-        producerPalVersion: "0.9.5",
+        producerPalVersion: "0.9.6",
         abletonLiveVersion: "12.2",
         songName: "Test Project",
         view: "session",
@@ -87,7 +87,7 @@ describe("init", () => {
         trackCount: 3,
         sceneCount: 2,
         welcome: expect.objectContaining({
-          title: "Producer Pal 0.9.5 connected to Ableton Live",
+          title: "Producer Pal 0.9.6 connected to Ableton Live",
           tips: [
             "**Save often!** I can modify and delete things in your project, and I make mistakes.",
             "If you rearrange tracks/clips/scenes, tell me so I stay in sync.",
