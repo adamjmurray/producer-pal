@@ -9,6 +9,12 @@
   },
   "author": "Adam Murray",
   "license": "MIT License",
+  "keywords": [
+    "music",
+    "ai",
+    "mcp",
+    "ableton"
+  ],
   "scripts": {
     "build": "npm run parser:build && rollup -c config/rollup.config.mjs && npm run dxt:build",
     "build:all": "ENABLE_RAW_LIVE_API=true npm run parser:build && ENABLE_RAW_LIVE_API=true rollup -c config/rollup.config.mjs",
@@ -51,14 +57,5 @@
     "prettier": "^3.6.2",
     "rollup": "^4.48.1",
     "vitest": "^3.2.4"
-  },
-  "keywords": [
-    "music",
-    "ai",
-    "mcp",
-    "ableton"
-  ],
-  "prettier": {
-    "proseWrap": "always"
   }
 }

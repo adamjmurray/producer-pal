@@ -8,5 +8,6 @@
     "Streamable",
     "unquotedpath"
   ],
+  "prettier.configPath": "config/prettier.config.mjs",
   "prettier.ignorePath": "config/.prettierignore"
 }
