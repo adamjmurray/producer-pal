@@ -46,7 +46,6 @@ async function copyDirectoriesAndFiles() {
     { src: "package.json" },
     { src: "README.md" },
     { src: "rollup.config.mjs" },
-    { src: "test-setup.js" },
     { src: "vitest.config.ts" },
     {
       src: "coverage/coverage-summary.txt",

@@ -6,7 +6,7 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["src/**/*.test.js"],
-    setupFiles: ["./test-setup.js"],
+    setupFiles: ["src/test-setup.js"],
     restoreMocks: true,
     coverage: {
       provider: "v8",

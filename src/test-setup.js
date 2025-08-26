@@ -1,11 +1,11 @@
-// test-setup.js
+// src/test-setup.js
 import { beforeEach, vi } from "vitest";
-import "./src/expect-extensions";
-import { LiveAPI, liveApiCall, mockLiveApiGet } from "./src/mock-live-api";
-import { Task } from "./src/mock-task";
+import "./expect-extensions";
+import { LiveAPI, liveApiCall, mockLiveApiGet } from "./mock-live-api";
+import { Task } from "./mock-task";
 
 globalThis.LiveAPI = LiveAPI;
-await import("./src/live-api-extensions");
+await import("./live-api-extensions");
 
 globalThis.Task = Task;
 globalThis.outlet = vi.fn();
