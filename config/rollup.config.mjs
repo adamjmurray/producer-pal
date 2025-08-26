@@ -1,12 +1,17 @@
-// rollup.config.mjs
+// config/rollup.config.mjs
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
 import { copyFileSync, readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 
-const licenseText = readFileSync("LICENSE.md", "utf-8");
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const rootDir = join(__dirname, "..");
+
+const licenseText = readFileSync(join(rootDir, "LICENSE.md"), "utf-8");
 const licenseHeader = `/*\n${licenseText}\n*/\n\n`;
 
 const terserOptions = {
@@ -29,15 +34,15 @@ const addLicenseHeader = () => ({
 const copyLicense = (destination) => ({
   name: "copy-license",
   writeBundle() {
-    copyFileSync("LICENSE.md", destination);
+    copyFileSync(join(rootDir, "LICENSE.md"), destination);
   },
 });
 
 export default [
   {
-    input: "src/main.js",
+    input: join(rootDir, "src/main.js"),
     output: {
-      file: "device/main.js",
+      file: join(rootDir, "device/main.js"),
       format: "es",
     },
     plugins: [
@@ -50,13 +55,13 @@ export default [
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
-      copyLicense("device/LICENSE.md"),
+      copyLicense(join(rootDir, "device/LICENSE.md")),
     ],
   },
   {
-    input: "src/mcp-server.js",
+    input: join(rootDir, "src/mcp-server.js"),
     output: {
-      file: "device/mcp-server.mjs",
+      file: join(rootDir, "device/mcp-server.mjs"),
       format: "es",
     },
     external: ["max-api"],
@@ -82,9 +87,9 @@ export default [
     ],
   },
   {
-    input: "src/desktop-extension/claude-ableton-connector.js",
+    input: join(rootDir, "src/desktop-extension/claude-ableton-connector.js"),
     output: {
-      file: "desktop-extension/claude-ableton-connector.js",
+      file: join(rootDir, "desktop-extension/claude-ableton-connector.js"),
       format: "es",
     },
     plugins: [
@@ -104,7 +109,7 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
-      copyLicense("desktop-extension/LICENSE.md"),
+      copyLicense(join(rootDir, "desktop-extension/LICENSE.md")),
     ],
   },
 ];

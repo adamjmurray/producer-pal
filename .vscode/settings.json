@@ -7,5 +7,6 @@
     "modelcontextprotocol",
     "Streamable",
     "unquotedpath"
-  ]
+  ],
+  "prettier.ignorePath": "config/.prettierignore"
 }

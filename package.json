@@ -2,14 +2,34 @@
   "name": "producer-pal",
   "version": "0.9.6",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
+  "homepage": "https://github.com/adamjmurray/producer-pal#readme",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/adamjmurray/producer-pal.git"
   },
-  "homepage": "https://github.com/adamjmurray/producer-pal#readme",
-  "keywords": [],
   "author": "Adam Murray",
-  "license": "Personal Use License",
+  "license": "MIT License",
+  "scripts": {
+    "build": "npm run parser:build && rollup -c config/rollup.config.mjs && npm run dxt:build",
+    "build:all": "ENABLE_RAW_LIVE_API=true npm run parser:build && ENABLE_RAW_LIVE_API=true rollup -c config/rollup.config.mjs",
+    "dev": "ENABLE_RAW_LIVE_API=true rollup -c config/rollup.config.mjs -w",
+    "test": "npm run test:setup && vitest run -c config/vitest.config.ts",
+    "test:watch": "npm run test:setup && vitest -c config/vitest.config.ts",
+    "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.ts",
+    "test:setup": "npm run parser:build",
+    "coverage": "npm run test:coverage",
+    "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
+    "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
+    "format": "prettier --ignore-path config/.prettierignore --write .",
+    "format:check": "prettier --ignore-path config/.prettierignore --check .",
+    "claude:project": "npm run test:coverage && node scripts/generate-claude-project.mjs",
+    "dxt:clean": "rm -f desktop-extension/*.dxt desktop-extension/manifest.json",
+    "dxt:build": "node scripts/build-desktop-extension.mjs",
+    "version:bump": "node scripts/bump-version.mjs",
+    "version:bump:minor": "node scripts/bump-version.mjs minor",
+    "version:bump:major": "node scripts/bump-version.mjs major",
+    "release:prepare": "node scripts/prepare-release.mjs"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.3",
     "express": "^5.1.0",
@@ -32,28 +52,13 @@
     "rollup": "^4.48.1",
     "vitest": "^3.2.4"
   },
+  "keywords": [
+    "music",
+    "ai",
+    "mcp",
+    "ableton"
+  ],
   "prettier": {
     "proseWrap": "always"
-  },
-  "scripts": {
-    "build": "npm run parser:build && rollup -c && npm run dxt:build",
-    "build:all": "ENABLE_RAW_LIVE_API=true npm run parser:build && ENABLE_RAW_LIVE_API=true rollup -c",
-    "dev": "ENABLE_RAW_LIVE_API=true rollup -c -w",
-    "test": "npm run test:setup && vitest run",
-    "test:watch": "npm run test:setup && vitest",
-    "test:coverage": "npm run test:setup && vitest run --coverage",
-    "test:setup": "npm run parser:build",
-    "coverage": "npm run test:coverage",
-    "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
-    "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
-    "format": "prettier --write .",
-    "format:check": "prettier --check .",
-    "claude:project": "npm run test:coverage && node scripts/generate-claude-project.mjs",
-    "dxt:clean": "rm -f desktop-extension/*.dxt desktop-extension/manifest.json",
-    "dxt:build": "node scripts/build-desktop-extension.mjs",
-    "version:bump": "node scripts/bump-version.mjs",
-    "version:bump:minor": "node scripts/bump-version.mjs minor",
-    "version:bump:major": "node scripts/bump-version.mjs major",
-    "release:prepare": "node scripts/prepare-release.mjs"
   }
 }
