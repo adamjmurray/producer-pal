@@ -269,12 +269,23 @@ When providing contextual help or adaptive behavior, prefer tool description
 instructions over adding code complexity. Let Claude's intelligence handle
 context-aware responses.
 
+**Hybrid approach:** Some tools (like `ppal-init`) return dynamic guidance in
+their response data. This combines static tool instructions with
+context-specific messages, giving Claude both general patterns and specific
+situational guidance.
+
 **Good candidates for tool instructions:**
 
 - Noticing patterns in data (e.g., missing instruments on MIDI tracks)
 - Providing contextual warnings or tips
 - Adapting messages based on Live Set state
 - Educational guidance about best practices
+
+**When to use dynamic response data:**
+
+- Welcome messages or initialization guidance
+- Context that changes based on device state
+- Warnings specific to the current operation
 
 **When to use code instead:**
 
@@ -285,7 +296,8 @@ context-aware responses.
 
 **Examples:**
 
-- Welcome message in `ppal-init` uses instructions, not session state
+- Welcome message in `ppal-init` uses both: tool instructions for general
+  behavior, dynamic response for specific messages
 - Missing instrument detection uses instructions, not data flags
 
 **Benefits:**
