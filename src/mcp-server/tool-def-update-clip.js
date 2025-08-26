@@ -1,5 +1,5 @@
 // src/mcp-server/tool-def-update-clip.js
-import { z } from "zod";
+import { z } from "zod/v3";
 import { defineTool } from "./define-tool.js";
 
 const description = `Updates properties of existing clips by ID.

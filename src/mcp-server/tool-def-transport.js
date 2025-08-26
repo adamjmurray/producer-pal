@@ -1,5 +1,5 @@
 // src/mcp-server/tool-def-transport.js
-import { z } from "zod";
+import { z } from "zod/v3";
 import { defineTool } from "./define-tool.js";
 
 export const toolDefTransport = defineTool("ppal-transport", {

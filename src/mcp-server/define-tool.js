@@ -1,5 +1,5 @@
 // src/mcp-server/define-tool.js
-import { z } from "zod";
+import { z } from "zod/v3";
 import { formatErrorResponse } from "../mcp-response-utils.js";
 
 export function defineTool(name, options) {

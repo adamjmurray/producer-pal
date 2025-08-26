@@ -1,5 +1,5 @@
 // src/mcp-server/tool-def-update-scene.js
-import { z } from "zod";
+import { z } from "zod/v3";
 import { defineTool } from "./define-tool.js";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {

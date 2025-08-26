@@ -1,8 +1,8 @@
 // src/mcp-server/tool-def-update-song.js
-import { z } from "zod";
-import { defineTool } from "./define-tool.js";
+import { z } from "zod/v3";
 import { VALID_PITCH_CLASS_NAMES } from "../notation/pitch-class-name-to-number.js";
 import { VALID_SCALE_NAMES } from "../tools/constants.js";
+import { defineTool } from "./define-tool.js";
 
 export const toolDefUpdateSong = defineTool("ppal-update-song", {
   title: "Update Song",
