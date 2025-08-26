@@ -17,8 +17,8 @@ For executable files with shebang:
 // scripts/cli.mjs
 ```
 
-This ensures clarity when files are copied to Claude Project with flattened
-names.
+This ensures clarity when files are copied to knowledge base (e.g. a Claude
+Project) with flattened names.
 
 ### Import Requirements
 

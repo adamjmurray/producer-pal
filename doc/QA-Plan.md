@@ -1,4 +1,8 @@
-# Manual Testing Scenarios - Producer Pal
+# Producer Pal Manual QA Plan
+
+How to manually confirm most Producer Pal functionality is working as intended.
+
+TODO: WORK IN PROGRESS for Producer Pal 1.0.0
 
 ## Scenario 1: Blank Canvas
 
