@@ -7,7 +7,8 @@ Make music in Ableton Live with an AI assistant such as
 
 [![demo video thumbnail](https://img.youtube.com/vi/ypZBVI0Ncso/0.jpg)](https://youtu.be/ypZBVI0Ncso?si=_lFAMCP257Gyyy_v&t=85)
 
-This demo link skips over the installation process. If you rewind the video to the beginning you can see how it was installed.
+This demo link skips over the installation process. If you rewind the video to
+the beginning you can see how it was installed.
 
 ## Requirements
 

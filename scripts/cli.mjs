@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/cli.mjs
+// scripts/cli.mjs
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
@@ -89,10 +89,10 @@ async function main() {
     // Handle commands
     if (command === "tools/list") {
       console.log("\nAvailable Tools:");
-      const tools = await client.listTools();
+      const { tools } = await client.listTools();
 
-      if (tools.tools && tools.tools.length > 0) {
-        tools.tools.forEach((tool, index) => {
+      if (tools?.length > 0) {
+        tools.forEach((tool, index) => {
           console.log(`\n${index + 1}. ${tool.name}`);
           if (tool.description) {
             console.log(`   Description: ${tool.description}`);

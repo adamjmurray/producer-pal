@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/generate-claude-project.mjs
+// scripts/generate-claude-project.mjs
 
 import fs from "fs/promises";
 import path from "path";
@@ -35,7 +35,7 @@ async function copyDirectoriesAndFiles() {
     // Use targetDirName to override the directory name in output
     { src: "src", isDir: true },
     { src: "doc", isDir: true },
-    { src: "tools", isDir: true },
+    { src: "scripts", isDir: true },
     { src: ".github", isDir: true, targetDirName: "_github" },
 
     // Individual files (no prefix)

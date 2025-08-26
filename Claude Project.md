@@ -38,7 +38,7 @@ copied over to Claude Code as appropriate.
   [SSE transport is deprecated](https://github.com/modelcontextprotocol/typescript-sdk?tab=readme-ov-file#backwards-compatibility).
 - Claude Desktop requires a Desktop Extension to connect to Ableton Live
 - The Claude Desktop Extension manifest is generated from
-  `tools/desktop-extension-manifest.template.json` during build
+  `scripts/desktop-extension-manifest.template.json` during build
 - User configuration (like port) is handled by Claude Desktop, not manual JSON
   editing
 - The extension bridge (`claude-ableton-connector.js`) provides graceful

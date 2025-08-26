@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/prepare-release.mjs
+// scripts/prepare-release.mjs
 import { execSync } from "child_process";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "fs";
 import { dirname, join } from "path";

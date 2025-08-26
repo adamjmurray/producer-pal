@@ -1,4 +1,4 @@
-// tools/build-desktop-extension.mjs
+// scripts/build-desktop-extension.mjs
 import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";

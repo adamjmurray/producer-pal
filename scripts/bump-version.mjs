@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tools/bump-version.mjs
+// scripts/bump-version.mjs
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";

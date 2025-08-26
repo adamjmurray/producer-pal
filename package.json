@@ -48,12 +48,12 @@
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "claude:project": "npm run test:coverage && node tools/generate-claude-project.mjs",
+    "claude:project": "npm run test:coverage && node scripts/generate-claude-project.mjs",
     "dxt:clean": "rm -f desktop-extension/*.dxt desktop-extension/manifest.json",
-    "dxt:build": "node tools/build-desktop-extension.mjs",
-    "version:bump": "node tools/bump-version.mjs",
-    "version:bump:minor": "node tools/bump-version.mjs minor",
-    "version:bump:major": "node tools/bump-version.mjs major",
-    "release:prepare": "node tools/prepare-release.mjs"
+    "dxt:build": "node scripts/build-desktop-extension.mjs",
+    "version:bump": "node scripts/bump-version.mjs",
+    "version:bump:minor": "node scripts/bump-version.mjs minor",
+    "version:bump:major": "node scripts/bump-version.mjs major",
+    "release:prepare": "node scripts/prepare-release.mjs"
   }
 }

@@ -258,18 +258,18 @@ integration with Claude Code's MCP capabilities.
 #### CLI Tool (Fallback)
 
 For situations where the direct MCP connection isn't available or working, the
-`tools/cli.mjs` tool can connect directly to the MCP server:
+`scripts/cli.mjs` tool can connect directly to the MCP server:
 
 ```bash
 # Show server info (default)
-node tools/cli.mjs
+node scripts/cli.mjs
 
 # List available tools
-node tools/cli.mjs tools/list
+node scripts/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node tools/cli.mjs tools/call ppal-read-song '{}'
-node tools/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+node scripts/cli.mjs tools/call ppal-read-song '{}'
+node scripts/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 ```
 
 **IMPORTANT:** ALWAYS ask the user for permission before using the CLI tool to
@@ -278,23 +278,23 @@ update state in Ableton Live.
 #### Testing the Desktop Extension
 
 For testing the desktop extension's stdio-HTTP bridge without requiring Claude
-Desktop installation, use the `tools/test-desktop-extension.mjs` script:
+Desktop installation, use the `scripts/test-desktop-extension.mjs` script:
 
 ```bash
 # Basic bridge test (initialize + tools/list)
-node tools/test-desktop-extension.mjs
+node scripts/test-desktop-extension.mjs
 
 # Test specific tool without arguments
-node tools/test-desktop-extension.mjs ppal-read-song
+node scripts/test-desktop-extension.mjs ppal-read-song
 
 # Test tool with arguments
-node tools/test-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
+node scripts/test-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
 
 # Test with custom HTTP URL
-node tools/test-desktop-extension.mjs http://localhost:3350/mcp ppal-read-song
+node scripts/test-desktop-extension.mjs http://localhost:3350/mcp ppal-read-song
 
 # Show usage help
-node tools/test-desktop-extension.mjs --help
+node scripts/test-desktop-extension.mjs --help
 ```
 
 This script simulates Claude Desktop's MCP protocol communication by:
@@ -318,7 +318,7 @@ access to the Live API for research and debugging purposes:
 
 ```bash
 # Example: Multiple operation types on live_set tempo
-node tools/cli.mjs tools/call ppal-raw-live-api '{
+node scripts/cli.mjs tools/call ppal-raw-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -398,14 +398,14 @@ To update the version:
       bundled along with the source code for easy distribution (so end users
       don't have to install any npm modules)
   - The entry point for the v8 code is `src/main.js`
-- **Source file path comments**: All source files in `src/**` and `tools/**`
+- **Source file path comments**: All source files in `src/**` and `scripts/**`
   must always include the relative path to the file in a comment on the first
   line (or second line after a shebang for executable files). This rule ensures
   that when files are copied to the Claude Project with flattened names like
   `src--tools--create-clip.js`, Claude can understand the original file
   structure, relationships between files, and import dependencies. Examples:
   - `src/main.js` → first line: `// src/main.js`
-  - `tools/cli.mjs` → second line: `// tools/cli.mjs` (after
+  - `scripts/cli.mjs` → second line: `// scripts/cli.mjs` (after
     `#!/usr/bin/env node`)
   - `src/tools/duplicate.js` → first line: `// src/tools/duplicate.js`
 - **Explicit file extensions in imports**: All import statements must include
@@ -480,7 +480,7 @@ To update the version:
   with different CPU characteristics. Therefore, for playback-related state, we
   return optimistic results assuming the operation succeeded (e.g. assume a clip
   isTriggered:true when autoplaying it)
-- **NEVER use the CLI tool (`tools/cli.mjs`) without explicit permission from
+- **NEVER use the CLI tool (`scripts/cli.mjs`) without explicit permission from
   the user.** The user may be in the middle of their own testing or music
   production work, and running commands could interfere with their Ableton Live
   session or produce unexpected results.
@@ -494,13 +494,13 @@ To update the version:
 ## Desktop Extension (DXT) Rules
 
 - The Desktop Extension manifest is generated from
-  `tools/desktop-extension-manifest.template.json` during build
+  `scripts/desktop-extension-manifest.template.json` during build
 - User configuration (like port) is handled by Claude Desktop, not manual JSON
   editing
 - The extension bridge (`claude-ableton-connector.js`) provides graceful
   fallback when Live isn't running
-- Test the extension bridge with `node tools/test-desktop-extension.mjs` without
-  needing Claude Desktop
+- Test the extension bridge with `node scripts/test-desktop-extension.mjs`
+  without needing Claude Desktop
 - The built `.dxt` file includes the stdio-HTTP bridge bundled with all
   dependencies
 - When building releases, both the `.dxt` file AND the frozen Max for Live

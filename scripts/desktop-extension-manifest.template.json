@@ -13,17 +13,13 @@
   "documentation": "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#-producer-pal",
   "support": "https://github.com/adamjmurray/producer-pal/discussions",
   "icon": "producer-pal-logo.png",
-  "screenshots": [
-    "screenshot.png"
-  ],
+  "screenshots": ["screenshot.png"],
   "server": {
     "type": "node",
     "entry_point": "claude-ableton-connector.js",
     "mcp_config": {
       "command": "node",
-      "args": [
-        "${__dirname}/claude-ableton-connector.js"
-      ],
+      "args": ["${__dirname}/claude-ableton-connector.js"],
       "env": {
         "MCP_SERVER_ORIGIN": "${user_config.mcp_server_origin}",
         "ENABLE_LOGGING": "${user_config.enable_logging}",
@@ -33,10 +29,7 @@
   },
   "tools": "{{tools}}",
   "compatibility": {
-    "platforms": [
-      "darwin",
-      "win32"
-    ],
+    "platforms": ["darwin", "win32"],
     "runtimes": {
       "node": ">=18.0.0"
     }
