@@ -144,12 +144,14 @@ Stable, documented, user-friendly baseline
       longer works (because of the addition of the logo to the README's main
       header)
 - [x] Make demo video and add to README and web site
-- [ ] Simplify all tool descriptions to reduce context window load on the LLM
-- [ ] Check FEATURES.md is up-to-date (cleanup above completed tasks and merge
+- [x] Check FEATURES.md is up-to-date (cleanup above completed tasks and merge
       into it)
+- [x] Do a pass over the claude instruction files
+- [ ] Simplify all tool descriptions to reduce context window load on the LLM
 - [ ] Document a full QA validation plan
 - [ ] Test the full QA validation plan
-- [ ] Do a pass over the claude instruction files
+- [ ] Explore usage with other "frontier" LLMs and document local LLM usage with
+      LM Studio
 - [ ] Cleanup the plans below into a top level ROADMAP.md
 
 ### Post-1.0.0
