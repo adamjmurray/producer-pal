@@ -1,6 +1,6 @@
 // src/mcp-server/define-tool.test.js
 import { describe, expect, it, vi } from "vitest";
-import { z } from "zod/v3";
+import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
 describe("defineTool", () => {

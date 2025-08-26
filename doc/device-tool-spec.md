@@ -11,7 +11,7 @@ tools.
 
 ```javascript
 // src/mcp-server/tool-def-device.js
-import { z } from "zod/v3";
+import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
 export const toolDefDevice = defineTool("device", {

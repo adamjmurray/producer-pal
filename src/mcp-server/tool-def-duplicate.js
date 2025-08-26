@@ -1,10 +1,10 @@
 // src/mcp-server/tool-def-duplicate.js
-import { z } from "zod/v3";
+import { z } from "zod";
+import { defineTool } from "./define-tool.js";
 import {
   MAX_AUTO_CREATED_SCENES,
   MAX_AUTO_CREATED_TRACKS,
 } from "../tools/constants.js";
-import { defineTool } from "./define-tool.js";
 
 const description = `TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details.
 Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes.

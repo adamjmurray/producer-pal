@@ -1,7 +1,7 @@
 // src/mcp-server/tool-def-read-device.js
-import { z } from "zod/v3";
-import { DEVICE_TYPES } from "../tools/constants.js";
+import { z } from "zod";
 import { defineTool } from "./define-tool.js";
+import { DEVICE_TYPES } from "../tools/constants.js";
 
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",

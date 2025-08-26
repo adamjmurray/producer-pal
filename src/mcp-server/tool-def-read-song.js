@@ -1,5 +1,5 @@
 // src/mcp-server/tool-def-read-song.js
-import { z } from "zod/v3";
+import { z } from "zod";
 import { DEVICE_TYPES } from "../tools/constants.js";
 import { defineTool } from "./define-tool.js";
 

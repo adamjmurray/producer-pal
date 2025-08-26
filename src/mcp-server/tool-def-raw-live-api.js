@@ -1,5 +1,5 @@
 // src/mcp-server/tool-def-raw-live-api.js
-import { z } from "zod/v3";
+import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
 export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {

@@ -1,5 +1,5 @@
 // src/mcp-server/tool-def-create-scene.js
-import { z } from "zod/v3";
+import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 
 export const toolDefCreateScene = defineTool("ppal-create-scene", {

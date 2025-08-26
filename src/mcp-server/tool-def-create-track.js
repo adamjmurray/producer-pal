@@ -1,7 +1,7 @@
 // src/mcp-server/tool-def-create-track.js
-import { z } from "zod/v3";
-import { MAX_AUTO_CREATED_TRACKS } from "../tools/constants.js";
+import { z } from "zod";
 import { defineTool } from "./define-tool.js";
+import { MAX_AUTO_CREATED_TRACKS } from "../tools/constants.js";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
