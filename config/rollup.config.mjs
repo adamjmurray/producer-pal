@@ -58,7 +58,7 @@ export default [
     ],
   },
   {
-    input: join(rootDir, "src/mcp-server.js"),
+    input: join(rootDir, "src/mcp-server/mcp-server.js"),
     output: {
       file: join(rootDir, "device/mcp-server.mjs"),
       format: "es",
