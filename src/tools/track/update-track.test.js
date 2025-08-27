@@ -1,6 +1,6 @@
 // src/tools/track/update-track.test.js
 import { describe, expect, it } from "vitest";
-import { liveApiId, liveApiPath, liveApiSet } from "../../mock-live-api";
+import { liveApiId, liveApiPath, liveApiSet } from "../../test/mock-live-api";
 import { MONITORING_STATE } from "../constants";
 import { updateTrack } from "./update-track";
 

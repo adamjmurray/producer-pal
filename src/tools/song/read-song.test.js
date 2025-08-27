@@ -8,7 +8,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../mock-live-api.js";
+} from "../../test/mock-live-api.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,

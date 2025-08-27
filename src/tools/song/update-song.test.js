@@ -5,7 +5,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
-} from "../../mock-live-api";
+} from "../../test/mock-live-api";
 import { updateSong } from "./update-song";
 
 describe("updateSong", () => {

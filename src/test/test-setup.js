@@ -5,7 +5,7 @@ import { LiveAPI, liveApiCall, mockLiveApiGet } from "./mock-live-api";
 import { Task } from "./mock-task";
 
 globalThis.LiveAPI = LiveAPI;
-await import("./live-api-extensions");
+await import("../live-api-extensions");
 
 globalThis.Task = Task;
 globalThis.outlet = vi.fn();

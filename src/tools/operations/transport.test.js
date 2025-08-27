@@ -5,7 +5,7 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../mock-live-api";
+} from "../../test/mock-live-api";
 import { transport } from "./transport";
 
 describe("transport", () => {

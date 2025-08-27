@@ -6,7 +6,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
-} from "../../mock-live-api.js";
+} from "../../test/mock-live-api.js";
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { updateView } from "./update-view.js";
 

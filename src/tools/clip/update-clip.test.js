@@ -6,7 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../mock-live-api";
+} from "../../test/mock-live-api";
 import { updateClip } from "./update-clip";
 
 describe("updateClip", () => {

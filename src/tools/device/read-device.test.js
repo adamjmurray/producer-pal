@@ -1,6 +1,10 @@
 // src/tools/device/read-device.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { liveApiCall, liveApiGet, liveApiId } from "../../mock-live-api.js";
+import {
+  liveApiCall,
+  liveApiGet,
+  liveApiId,
+} from "../../test/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 
 describe("readDevice", () => {

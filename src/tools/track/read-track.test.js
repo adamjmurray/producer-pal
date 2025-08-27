@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../mock-live-api.js";
+} from "../../test/mock-live-api.js";
 import { VERSION } from "../../version.js";
 import {
   DEVICE_TYPE,

@@ -7,7 +7,7 @@ import {
   liveApiSet,
   mockLiveApiGet,
   MockSequence,
-} from "../../mock-live-api";
+} from "../../test/mock-live-api";
 import { MAX_AUTO_CREATED_SCENES } from "../constants";
 import { createClip } from "./create-clip";
 

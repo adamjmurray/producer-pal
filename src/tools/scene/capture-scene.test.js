@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../mock-live-api";
+} from "../../test/mock-live-api";
 import { captureScene } from "./capture-scene";
 
 describe("captureScene", () => {

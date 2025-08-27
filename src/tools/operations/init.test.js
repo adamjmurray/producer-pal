@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../mock-live-api.js";
+} from "../../test/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { init } from "./init.js";
 

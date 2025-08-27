@@ -6,7 +6,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
-} from "../../mock-live-api.js";
+} from "../../test/mock-live-api.js";
 import { rawLiveApi } from "./raw-live-api.js";
 
 describe("rawLiveApi", () => {
