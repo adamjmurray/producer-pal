@@ -55,11 +55,11 @@ http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350
 ## Manual Testing Notes
 
 **Important**: After changing tool descriptions in the Producer Pal code (like
-in `src/mcp-server/add-tool-*.js`), you must toggle the Producer Pal extension
-off/on in Claude Desktop to refresh the cached tool definitions. Simply
-rebuilding the code or restarting Claude Desktop is not sufficient - the
-extension must be disabled and re-enabled in Claude Desktop → Settings →
-Extensions to see updated tool descriptions.
+in `src/tools/**/*.def.js`), you must toggle the Producer Pal extension off/on
+in Claude Desktop to refresh the cached tool definitions. Simply rebuilding the
+code or restarting Claude Desktop is not sufficient - the extension must be
+disabled and re-enabled in Claude Desktop → Settings → Extensions to see updated
+tool descriptions.
 
 ## Coding Agents
 
@@ -165,7 +165,7 @@ Version numbers appear in these locations:
 
 1. `package.json` (root) - Source of truth
 2. `desktop-extension/package.json`
-3. `src/version.js`
+3. `src/shared/version.js`
 4. `device/Producer_Pal.amxd` - In the Max UI (manual update required)
 
 ### Release Process

@@ -30,16 +30,17 @@ Claude Desktop → Desktop Extension Bridge → MCP Server (Node.js) → Max for
 
 Key entry points:
 
-- MCP Server: `src/mcp-server.js`
-- V8 code: `src/main.js`
-- Tools: `src/tools/*.js`
+- MCP Server: `src/mcp-server/mcp-server.js`
+- V8 code: `src/live-api-adapter/live-api-adapter.js`
+- Tools: `src/tools/**/*.js`
 
 See `docs/Architecture.md` for detailed system design.
 
 ## Critical Coding Rules
 
 - **Always pass args to tool functions**: Use `(args) => toolFunction(args)`
-  pattern in `src/main.js`, never `() => toolFunction()`
+  pattern in `src/live-api-adapter/live-api-adapter.js`, never
+  `() => toolFunction()`
 
 - **Import extensions**: Always include `.js` in imports
 
@@ -49,8 +50,8 @@ See `docs/Architecture.md` for detailed system design.
 - **Zod limitations**: Use only primitive types and enums. For list-like inputs,
   use comma-separated strings
 
-- **Live API**: Use `src/live-api-extensions.js` interface instead of raw
-  `.get("property")?.[0]` calls
+- **Live API**: Use `src/live-api-adapter/live-api-extensions.js` interface
+  instead of raw `.get("property")?.[0]` calls
 
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 
