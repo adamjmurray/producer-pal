@@ -48,27 +48,25 @@ async function copyFile(sourcePath, targetPath) {
 async function copyDirectoriesAndFiles() {
   const itemsToCopy = [
     // Directories (automatically get directory prefix)
-    // Use targetDirName to override the directory name in output
     { src: ".github", isDir: true, targetDirName: "_github" },
     { src: "config", isDir: true },
-    { src: "doc", isDir: true },
+    { src: "doc", isDir: true, exclude: ["img"] },
     { src: "scripts", isDir: true },
     { src: "src", isDir: true },
 
-    // Individual files (no prefix)
+    // Individual files
     { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
     { src: "DEVELOPERS.md" },
     { src: "FEATURES.md" },
     { src: "LICENSE.md" },
     { src: "package.json" },
     { src: "README.md" },
+    { src: "ROADMAP.md" },
     {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
-    // { src: "desktop-extension/icon.png" },
     { src: "desktop-extension/package.json" },
-    // { src: "desktop-extension/screenshot.png" },
   ];
 
   console.log("Copying files...");
@@ -81,7 +79,7 @@ async function copyDirectoriesAndFiles() {
 
       if (item.isDir && stat.isDirectory()) {
         // Copy all files from directory with automatic prefix
-        const files = await findAllFiles(sourcePath);
+        const files = await findAllFiles(sourcePath, item.exclude || []);
 
         const dirName = item.targetDirName || path.basename(item.src);
 
@@ -107,20 +105,32 @@ async function copyDirectoriesAndFiles() {
   }
 }
 
-async function findAllFiles(dir) {
+async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   const files = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
+    const relativePath = path.relative(baseDir, fullPath);
 
     // Skip .DS_Store files
     if (entry.name === ".DS_Store") {
       continue;
     }
 
+    // Check if this path should be excluded
+    if (
+      excludePaths.some(
+        (excludePath) =>
+          relativePath === excludePath ||
+          relativePath.startsWith(excludePath + path.sep),
+      )
+    ) {
+      continue;
+    }
+
     if (entry.isDirectory()) {
-      files.push(...(await findAllFiles(fullPath)));
+      files.push(...(await findAllFiles(fullPath, excludePaths, baseDir)));
     } else if (entry.isFile()) {
       files.push(fullPath);
     }
