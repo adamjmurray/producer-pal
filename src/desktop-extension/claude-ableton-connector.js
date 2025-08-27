@@ -1,4 +1,3 @@
-// src/desktop-extension/claude-ableton-connector.js
 import { StdioHttpBridge } from "./stdio-http-bridge.js";
 import { logger } from "./file-logger.js";
 

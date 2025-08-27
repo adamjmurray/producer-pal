@@ -1,4 +1,3 @@
-// src/tools/operations/delete.js
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 /**

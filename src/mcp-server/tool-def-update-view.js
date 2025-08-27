@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-update-view.js
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 

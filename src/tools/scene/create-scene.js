@@ -1,4 +1,3 @@
-// src/tools/scene/create-scene.js
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { parseTimeSignature } from "../shared/utils.js";
 

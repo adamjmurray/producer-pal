@@ -1,4 +1,3 @@
-// src/tools/clip/create-clip.test.js
 import { describe, expect, it } from "vitest";
 import {
   children,

@@ -1,4 +1,3 @@
-// src/notation/barbeat/barbeat-time.js
 
 /**
  * TODO: rename the non-duration-based functions in here (i.e. not the last two) to clearly indicate we are handling bar|beat positions

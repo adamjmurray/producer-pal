@@ -1,4 +1,3 @@
-// src/tools/scene/read-scene.test.js
 import { describe, expect, it } from "vitest";
 import {
   children,

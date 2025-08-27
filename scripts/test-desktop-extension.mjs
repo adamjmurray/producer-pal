@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-// scripts/test-desktop-extension.mjs
 // Test script for the stdio-HTTP bridge without requiring Claude Desktop installation
 import { spawn } from "child_process";
 

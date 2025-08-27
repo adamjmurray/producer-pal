@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-// scripts/generate-knowledge-base.mjs
-
 import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -25,8 +23,26 @@ async function cleanAndCreateOutputDir() {
   await fs.mkdir(outputDir, { recursive: true });
 }
 
+const codeExts = [".js", ".mjs", ".ts", ".jsx", ".tsx"];
+
 async function copyFile(sourcePath, targetPath) {
-  await fs.copyFile(sourcePath, targetPath);
+  const ext = path.extname(sourcePath);
+
+  if (codeExts.includes(ext)) {
+    // Read original content
+    const originalContent = await fs.readFile(sourcePath, "utf8");
+
+    // Generate path comment based on source path relative to project root
+    const relativePath = path.relative(projectRoot, sourcePath);
+    const pathComment = `// ${relativePath}\n`;
+
+    // Prepend path comment and write to target
+    const contentWithComment = pathComment + originalContent;
+    await fs.writeFile(targetPath, contentWithComment, "utf8");
+  } else {
+    // Regular copy for non-JS files or files that shouldn't have path comments
+    await fs.copyFile(sourcePath, targetPath);
+  }
 }
 
 async function copyDirectoriesAndFiles() {

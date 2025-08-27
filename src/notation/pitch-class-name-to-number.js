@@ -1,4 +1,3 @@
-// src/notation/pitch-class-name-to-number.js
 
 /**
  * Mapping from pitch class names to numbers (0-11)

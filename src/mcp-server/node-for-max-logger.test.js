@@ -1,4 +1,3 @@
-// src/mcp-server/node-for-max-logger.test.js
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as logger from "./node-for-max-logger.js";

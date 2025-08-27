@@ -1,4 +1,3 @@
-// src/tools/shared/device-reader.js
 import { midiPitchToName } from "../../notation/midi-pitch-to-name.js";
 import {
   DEVICE_TYPE,

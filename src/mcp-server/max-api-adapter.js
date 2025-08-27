@@ -1,4 +1,3 @@
-// src/mcp-server/max-api-adapter.js
 // Adapter for communication between Node.js MCP server and Max v8 environment
 
 import Max from "max-api";

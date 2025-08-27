@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-read-clip.js
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 

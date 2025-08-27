@@ -1,4 +1,3 @@
-// src/mock-live-api.js
 import { vi } from "vitest";
 
 export class MockSequence extends Array {}

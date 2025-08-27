@@ -1,4 +1,3 @@
-// src/mcp-server/create-express-app.js
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";

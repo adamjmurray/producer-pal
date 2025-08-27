@@ -1,4 +1,3 @@
-// src/tools/scene/capture-scene.js
 
 /**
  * Captures the currently playing clips into a new scene

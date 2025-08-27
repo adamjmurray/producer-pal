@@ -1,4 +1,3 @@
-// src/tools/operations/init.js
 import { VERSION } from "../../version.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";

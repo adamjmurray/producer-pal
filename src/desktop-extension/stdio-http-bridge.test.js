@@ -1,4 +1,3 @@
-// src/desktop-extension/stdio-http-bridge.test.js
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock MCP SDK components

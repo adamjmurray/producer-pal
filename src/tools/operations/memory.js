@@ -1,4 +1,3 @@
-// src/tools/operations/memory.js
 
 /**
  * Manages user-defined project context stored in the Max device.

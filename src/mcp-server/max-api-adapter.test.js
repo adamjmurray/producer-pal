@@ -1,4 +1,3 @@
-// src/mcp-server/max-api-adapter.test.js
 import Max from "max-api";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MAX_ERROR_DELIMITER } from "../mcp-response-utils.js";

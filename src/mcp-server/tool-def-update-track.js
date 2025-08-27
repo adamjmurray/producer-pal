@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-update-track.js
 import { z } from "zod";
 import { MONITORING_STATE } from "../tools/constants.js";
 import { defineTool } from "./define-tool.js";

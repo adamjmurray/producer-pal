@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-read-device.js
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 import { DEVICE_TYPES } from "../tools/constants.js";

@@ -1,4 +1,3 @@
-// src/mcp-server/create-mcp-server.js
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "../version.js";
 import { toolDefCaptureScene } from "./tool-def-capture-scene.js";

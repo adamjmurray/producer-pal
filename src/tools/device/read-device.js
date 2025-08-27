@@ -1,4 +1,3 @@
-// src/tools/device/read-device.js
 import "../../live-api-extensions.js";
 import { readDevice as readDeviceShared } from "../shared/device-reader.js";
 

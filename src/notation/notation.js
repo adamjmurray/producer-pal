@@ -1,4 +1,3 @@
-// src/notation/notation.js
 export {
   formatNotation,
   notationDescription,

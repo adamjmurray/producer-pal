@@ -1,4 +1,3 @@
-// src/tools/track/update-track.js
 import {
   LIVE_API_MONITORING_STATE_AUTO,
   LIVE_API_MONITORING_STATE_IN,

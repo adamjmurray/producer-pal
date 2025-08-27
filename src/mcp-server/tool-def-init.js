@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-init.js
 import { defineTool } from "./define-tool.js";
 
 const description = `Initialize the connection to Ableton Live and get basic Live Set information.

@@ -38,26 +38,24 @@ See `docs/Architecture.md` for detailed system design.
 
 ## Critical Coding Rules
 
-1. **Always pass args to tool functions**: Use `(args) => toolFunction(args)`
-   pattern in `src/main.js`, never `() => toolFunction()`
+- **Always pass args to tool functions**: Use `(args) => toolFunction(args)`
+  pattern in `src/main.js`, never `() => toolFunction()`
 
-2. **File path comments**: First line must be `// src/path/to/file.js`
+- **Import extensions**: Always include `.js` in imports
 
-3. **Import extensions**: Always include `.js` in imports
+- **Testing builds**: Always use `npm run build:all` for development (includes
+  debugging tools like `ppal-raw-live-api`)
 
-4. **Testing builds**: Always use `npm run build:all` for development (includes
-   debugging tools like `ppal-raw-live-api`)
+- **Zod limitations**: Use only primitive types and enums. For list-like inputs,
+  use comma-separated strings
 
-5. **Zod limitations**: Use only primitive types and enums. For bulk operations,
-   use comma-separated strings
+- **Live API**: Use `src/live-api-extensions.js` interface instead of raw
+  `.get("property")?.[0]` calls
 
-6. **Live API**: Use `src/live-api-extensions.js` interface instead of raw
-   `.get("property")?.[0]` calls
+- **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 
-7. **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
-
-8. **Playback state**: Return optimistic results for playback operations (don't
-   rely on immediate state reads)
+- **Playback state**: Return optimistic results for playback operations (don't
+  rely on immediate state reads)
 
 ## Testing After Changes
 

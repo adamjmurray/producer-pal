@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-read-view.js
 import { defineTool } from "./define-tool.js";
 
 const description = `Reads the current view state in Ableton Live including main view (session/arrangement),

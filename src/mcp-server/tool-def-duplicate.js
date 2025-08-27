@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-duplicate.js
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 import {

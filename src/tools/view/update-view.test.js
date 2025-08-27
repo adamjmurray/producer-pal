@@ -1,4 +1,3 @@
-// src/tools/view/update-view.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   LiveAPI,

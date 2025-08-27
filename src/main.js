@@ -1,4 +1,3 @@
-// src/main.js
 // Entry point for the tool implementations with direct Live API access
 
 import * as console from "./console";

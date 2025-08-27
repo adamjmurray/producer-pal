@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-update-song.js
 import { z } from "zod";
 import { defineTool } from "./define-tool.js";
 import { VALID_PITCH_CLASS_NAMES } from "../notation/pitch-class-name-to-number.js";

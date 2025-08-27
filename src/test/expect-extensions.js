@@ -1,4 +1,3 @@
-// src/expect-extensions.js
 import { expect } from "vitest";
 
 const inspect = (obj) => JSON.stringify(obj, null, 2);

@@ -1,4 +1,3 @@
-// src/tools/clip/update-clip.js
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,

@@ -1,4 +1,3 @@
-// src/test-setup.js
 import { beforeEach, vi } from "vitest";
 import "./expect-extensions";
 import { LiveAPI, liveApiCall, mockLiveApiGet } from "./mock-live-api";

@@ -1,4 +1,3 @@
-// src/tools/scene/update-scene.js
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**

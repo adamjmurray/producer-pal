@@ -1,4 +1,3 @@
-// src/mcp-response-utils.js
 
 // Message chunking constants
 export const MAX_ERROR_DELIMITER = "$$___MAX_ERRORS___$$";

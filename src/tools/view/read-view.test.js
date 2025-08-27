@@ -1,4 +1,3 @@
-// src/tools/view/read-view.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { readView } from "./read-view.js";

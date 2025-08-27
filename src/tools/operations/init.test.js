@@ -1,4 +1,3 @@
-// src/tools/operations/init.test.js
 import { describe, expect, it, vi } from "vitest";
 import {
   children,

@@ -1,4 +1,3 @@
-// src/tools/device/read-device.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,

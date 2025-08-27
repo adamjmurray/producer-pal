@@ -1,4 +1,3 @@
-// src/tools/song/update-song.js
 import { intervalsToPitchClasses } from "../../notation/midi-pitch-to-name.js";
 import { pitchClassNameToNumber } from "../../notation/pitch-class-name-to-number.js";
 import { VALID_SCALE_NAMES } from "../constants.js";

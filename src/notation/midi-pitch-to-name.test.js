@@ -1,4 +1,3 @@
-// src/notation/midi-pitch-to-name.test.js
 import {
   midiPitchToName,
   intervalsToPitchClasses,

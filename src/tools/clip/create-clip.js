@@ -1,4 +1,3 @@
-// src/tools/clip/create-clip.js
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,

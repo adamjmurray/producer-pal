@@ -1,4 +1,3 @@
-// src/live-api-extensions.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import "./live-api-extensions";
 import { LiveAPI, liveApiId } from "./test/mock-live-api";

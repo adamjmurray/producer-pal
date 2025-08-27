@@ -1,4 +1,3 @@
-// src/live-api-extensions.js
 if (typeof LiveAPI !== "undefined") {
   /**
    * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing

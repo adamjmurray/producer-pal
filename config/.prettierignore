@@ -1,4 +1,2 @@
-# config/.prettierignore
-
-# Don't format auto-generated files:
+# auto-generated files:
 ../src/**/barbeat-parser.js

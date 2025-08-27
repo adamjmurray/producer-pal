@@ -1,4 +1,3 @@
-// src/notation/pitch-class-name-to-number.test.js
 import { describe, expect, it } from "vitest";
 import {
   PITCH_CLASS_VALUES,

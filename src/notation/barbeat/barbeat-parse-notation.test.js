@@ -1,4 +1,3 @@
-// src/notation/barbeat/barbeat-parse-notation.test.js
 import { describe, expect, it } from "vitest";
 import { parseNotation } from "./barbeat-parse-notation";
 

@@ -1,4 +1,3 @@
-// src/mcp-server/tool-def-create-clip.js
 import { z } from "zod";
 import { notationDescription } from "../notation/notation.js";
 import { defineTool } from "./define-tool.js";

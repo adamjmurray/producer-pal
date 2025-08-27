@@ -1,4 +1,3 @@
-// test/license-embedded.test.js
 import { existsSync, readFileSync } from "fs";
 import { describe, expect, it } from "vitest";
 

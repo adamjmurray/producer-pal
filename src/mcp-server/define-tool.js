@@ -1,4 +1,3 @@
-// src/mcp-server/define-tool.js
 import { z } from "zod";
 import { formatErrorResponse } from "../mcp-response-utils.js";
 
