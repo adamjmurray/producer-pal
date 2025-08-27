@@ -7,6 +7,7 @@
     "type": "git",
     "url": "git+https://github.com/adamjmurray/producer-pal.git"
   },
+  "type": "module",
   "author": "Adam Murray",
   "license": "MIT License",
   "keywords": [
