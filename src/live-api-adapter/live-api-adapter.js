@@ -1,36 +1,36 @@
 // Entry point for the tool implementations with direct Live API access
-
-import * as console from "./console";
 import "./live-api-extensions";
+
+import * as console from "../console";
 import {
   formatErrorResponse,
   formatSuccessResponse,
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
-} from "./mcp-response-utils";
-import { createClip } from "./tools/clip/create-clip";
-import { readClip } from "./tools/clip/read-clip";
-import { updateClip } from "./tools/clip/update-clip";
-import { readDevice } from "./tools/device/read-device";
-import { deleteObject } from "./tools/operations/delete";
-import { duplicate } from "./tools/operations/duplicate";
-import { init } from "./tools/operations/init";
-import { memory } from "./tools/operations/memory";
-import { rawLiveApi } from "./tools/operations/raw-live-api";
-import { transport } from "./tools/operations/transport";
-import { captureScene } from "./tools/scene/capture-scene";
-import { createScene } from "./tools/scene/create-scene";
-import { readScene } from "./tools/scene/read-scene";
-import { updateScene } from "./tools/scene/update-scene";
-import { readSong } from "./tools/song/read-song";
-import { updateSong } from "./tools/song/update-song";
-import { createTrack } from "./tools/track/create-track";
-import { readTrack } from "./tools/track/read-track";
-import { updateTrack } from "./tools/track/update-track";
-import { readView } from "./tools/view/read-view";
-import { updateView } from "./tools/view/update-view";
-import { VERSION } from "./version";
+} from "../mcp-response-utils";
+import { createClip } from "../tools/clip/create-clip";
+import { readClip } from "../tools/clip/read-clip";
+import { updateClip } from "../tools/clip/update-clip";
+import { readDevice } from "../tools/device/read-device";
+import { deleteObject } from "../tools/operations/delete";
+import { duplicate } from "../tools/operations/duplicate";
+import { init } from "../tools/operations/init";
+import { memory } from "../tools/operations/memory";
+import { rawLiveApi } from "../tools/operations/raw-live-api";
+import { transport } from "../tools/operations/transport";
+import { captureScene } from "../tools/scene/capture-scene";
+import { createScene } from "../tools/scene/create-scene";
+import { readScene } from "../tools/scene/read-scene";
+import { updateScene } from "../tools/scene/update-scene";
+import { readSong } from "../tools/song/read-song";
+import { updateSong } from "../tools/song/update-song";
+import { createTrack } from "../tools/track/create-track";
+import { readTrack } from "../tools/track/read-track";
+import { updateTrack } from "../tools/track/update-track";
+import { readView } from "../tools/view/read-view";
+import { updateView } from "../tools/view/update-view";
+import { VERSION } from "../version";
 
 const userContext = {
   projectNotes: {

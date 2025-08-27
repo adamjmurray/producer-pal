@@ -1,3 +1,4 @@
+import * as console from "../../console.js";
 import { VERSION } from "../../version.js";
 import { readClip } from "../clip/read-clip.js";
 import {

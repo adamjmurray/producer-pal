@@ -39,9 +39,9 @@ const copyLicense = (destination) => ({
 
 export default [
   {
-    input: join(rootDir, "src/main.js"),
+    input: join(rootDir, "src/live-api-adapter/live-api-adapter.js"),
     output: {
-      file: join(rootDir, "device/main.js"),
+      file: join(rootDir, "device/live-api-adapter.js"),
       format: "es",
     },
     plugins: [
