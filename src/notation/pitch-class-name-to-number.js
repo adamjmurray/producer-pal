@@ -1,4 +1,3 @@
-
 /**
  * Mapping from pitch class names to numbers (0-11)
  * Supports both sharp and flat enharmonic equivalents

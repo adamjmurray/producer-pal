@@ -1,4 +1,3 @@
-
 /**
  * Sets properties on a target object, but only for non-null values
  * @param {Object} target - The object to set properties on
