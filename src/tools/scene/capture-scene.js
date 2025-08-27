@@ -1,4 +1,3 @@
-
 /**
  * Captures the currently playing clips into a new scene
  * @param {Object} args - The parameters

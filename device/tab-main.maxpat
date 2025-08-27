@@ -38,7 +38,7 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 46.0, 239.0, 229.0, 62.0 ],
-					"text" : ";\rmax launchbrowser https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#-producer-pal"
+					"text" : ";\rmax launchbrowser https://github.com/adamjmurray/producer-pal#readme"
 				}
 
 			}

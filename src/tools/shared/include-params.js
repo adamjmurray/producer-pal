@@ -1,4 +1,3 @@
-
 /**
  * All available include options mapped by tool type
  */
