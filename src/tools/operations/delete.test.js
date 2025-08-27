@@ -1,4 +1,4 @@
-// src/tools/delete.test.js
+// src/tools/operations/delete.test.js
 import { describe, expect, it } from "vitest";
 import {
   liveApiCall,

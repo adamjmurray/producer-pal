@@ -1,4 +1,4 @@
-// src/tools/read-scene.js
+// src/tools/scene/read-scene.js
 import { readClip } from "../clip/read-clip";
 import {
   parseIncludeArray,

@@ -1,4 +1,4 @@
-// src/tools/create-scene.test.js
+// src/tools/scene/create-scene.test.js
 import { describe, expect, it } from "vitest";
 import {
   children,

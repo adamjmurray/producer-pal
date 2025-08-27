@@ -1,4 +1,4 @@
-// src/tools/read-song.test.js
+// src/tools/song/read-song.test.js
 import { describe, expect, it } from "vitest";
 import {
   children,

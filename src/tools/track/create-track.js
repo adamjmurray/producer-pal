@@ -1,4 +1,4 @@
-// src/tools/create-track.js
+// src/tools/track/create-track.js
 import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
 import { withoutNulls } from "../shared/utils.js";
 

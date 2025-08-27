@@ -1,4 +1,4 @@
-// src/tools/read-song.js
+// src/tools/song/read-song.js
 import {
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,

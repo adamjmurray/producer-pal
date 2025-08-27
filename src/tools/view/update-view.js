@@ -1,4 +1,4 @@
-// src/tools/update-view.js
+// src/tools/view/update-view.js
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { toLiveApiView } from "../shared/utils.js";
 

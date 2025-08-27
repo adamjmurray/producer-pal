@@ -1,4 +1,4 @@
-// src/tools/read-clip.js
+// src/tools/clip/read-clip.js
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,

@@ -1,4 +1,4 @@
-// src/tools/update-clip.test.js
+// src/tools/clip/update-clip.test.js
 import { describe, expect, it } from "vitest";
 import {
   liveApiCall,

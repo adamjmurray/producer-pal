@@ -1,4 +1,4 @@
-// src/tools/include-params.test.js
+// src/tools/shared/include-params.test.js
 import { describe, expect, it } from "vitest";
 import {
   parseIncludeArray,

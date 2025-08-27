@@ -1,4 +1,4 @@
-// src/tools/get-host-track-index.js
+// src/tools/shared/get-host-track-index.js
 
 export function getHostTrackIndex() {
   try {

@@ -1,4 +1,4 @@
-// src/tools/read-track.js
+// src/tools/track/read-track.js
 import { VERSION } from "../../version.js";
 import { readClip } from "../clip/read-clip.js";
 import {

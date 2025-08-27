@@ -1,4 +1,4 @@
-// src/tools/read-view.js
+// src/tools/view/read-view.js
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { fromLiveApiView } from "../shared/utils.js";
 

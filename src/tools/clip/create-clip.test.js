@@ -1,4 +1,4 @@
-// src/tools/create-clip.test.js
+// src/tools/clip/create-clip.test.js
 import { describe, expect, it } from "vitest";
 import {
   children,

@@ -1,4 +1,4 @@
-// src/tools/include-params.js
+// src/tools/shared/include-params.js
 
 /**
  * All available include options mapped by tool type

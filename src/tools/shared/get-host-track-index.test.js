@@ -1,4 +1,4 @@
-// src/tools/get-host-track-index.test.js
+// src/tools/shared/get-host-track-index.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { liveApiPath } from "../../mock-live-api.js";
 import { getHostTrackIndex } from "./get-host-track-index.js";

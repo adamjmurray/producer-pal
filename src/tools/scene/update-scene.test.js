@@ -1,4 +1,4 @@
-// src/tools/update-scene.test.js
+// src/tools/scene/update-scene.test.js
 import { describe, expect, it } from "vitest";
 import { liveApiId, liveApiPath, liveApiSet } from "../../mock-live-api";
 import { updateScene } from "./update-scene";
