@@ -126,7 +126,6 @@ export async function mcp_request(requestId, tool, argsJSON) {
       userContext.projectNotes.enabled && tool === "ppal-read-song";
 
     try {
-      // TODO: Get projectNotes behaviors under test coverage
       result = formatSuccessResponse({
         ...(await callTool(tool, args)),
         ...(includeUserContext ? { userContext } : {}),
