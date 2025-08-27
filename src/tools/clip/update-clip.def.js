@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "./define-tool.js";
+import { defineTool } from "../shared/define-tool.js";
 
 const description = `Updates properties of existing clips by ID.
 Use this tool to modify clips that already exist, including clips created by duplicating scenes or tracks. To create new clips in empty clip slots, use create-clip instead. 

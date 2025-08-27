@@ -46,7 +46,7 @@ npm test
 To test/debug, you can use:
 
 ```
-npx @modelcontextprotocol/inspector
+DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
 ```
 
 and then open
@@ -67,12 +67,12 @@ Claude Code assists with the development of this project. A `CLAUDE.md` is
 setup, and the `docs` folder contains content that may be worth referencing for
 some development tasks.
 
-Additionally, there is a feature `npm run knowledge-base` (or the shortcut `npm run kb`) which flattens out the
-contents of this project into a knowledge-base folder that can be drag and dropped in its
-entirety into a Claude Project (or ChatGPT or Gemini projects or whatever you
-prefer) for complex brainstorming and planning sessions. Then, those results can
-then be fed back into Claude Code (for example by generating a new file for the
-`docs` folder).
+Additionally, there is a feature `npm run knowledge-base` (or the shortcut
+`npm run kb`) which flattens out the contents of this project into a
+knowledge-base folder that can be drag and dropped in its entirety into a Claude
+Project (or ChatGPT or Gemini projects or whatever you prefer) for complex
+brainstorming and planning sessions. Then, those results can then be fed back
+into Claude Code (for example by generating a new file for the `docs` folder).
 
 ## Development Testing
 

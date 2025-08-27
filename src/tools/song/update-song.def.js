@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { defineTool } from "./define-tool.js";
-import { VALID_PITCH_CLASS_NAMES } from "../notation/pitch-class-name-to-number.js";
-import { VALID_SCALE_NAMES } from "../tools/constants.js";
+import { defineTool } from "../shared/define-tool.js";
+import { VALID_PITCH_CLASS_NAMES } from "../../notation/pitch-class-name-to-number.js";
+import { VALID_SCALE_NAMES } from "../constants.js";
 
 export const toolDefUpdateSong = defineTool("ppal-update-song", {
   title: "Update Song",

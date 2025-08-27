@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { notationDescription } from "../notation/notation.js";
-import { defineTool } from "./define-tool.js";
+import { notationDescription } from "../../notation/notation.js";
+import { defineTool } from "../shared/define-tool.js";
 
 const description = `Creates MIDI clips in Session or Arrangement.
 

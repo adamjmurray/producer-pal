@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "./define-tool.js";
+import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefCaptureScene = defineTool("ppal-capture-scene", {
   title: "Capture Scene",

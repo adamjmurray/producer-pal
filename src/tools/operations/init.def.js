@@ -1,4 +1,4 @@
-import { defineTool } from "./define-tool.js";
+import { defineTool } from "../shared/define-tool.js";
 
 const description = `Initialize the connection to Ableton Live and get basic Live Set information.
 Returns connection status, basic Live Set info, Producer Pal version, and project notes (if enabled).

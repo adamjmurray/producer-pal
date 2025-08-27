@@ -1,4 +1,4 @@
-import { defineTool } from "./define-tool.js";
+import { defineTool } from "../shared/define-tool.js";
 
 const description = `Reads the current view state in Ableton Live including main view (session/arrangement),
 selected track/scene/clip/device, selected track type (regular/return/master),

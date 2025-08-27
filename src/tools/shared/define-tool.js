@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { formatErrorResponse } from "../mcp-response-utils.js";
+import { formatErrorResponse } from "../../mcp-response-utils.js";
 
 export function defineTool(name, options) {
   return (server, callLiveApi) => {

@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { DEVICE_TYPES } from "../tools/constants.js";
-import { defineTool } from "./define-tool.js";
+import { DEVICE_TYPES } from "../constants.js";
+import { defineTool } from "../shared/define-tool.js";
 
 const description = `Read comprehensive information about the Live Set including global settings and all tracks:
 - Tracks includes clip arrays with time-based properties in bar|beat format.

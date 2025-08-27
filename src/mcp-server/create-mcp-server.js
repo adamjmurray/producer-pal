@@ -1,26 +1,26 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "../version.js";
-import { toolDefCaptureScene } from "./tool-def-capture-scene.js";
-import { toolDefCreateClip } from "./tool-def-create-clip.js";
-import { toolDefCreateScene } from "./tool-def-create-scene.js";
-import { toolDefCreateTrack } from "./tool-def-create-track.js";
-import { toolDefDelete } from "./tool-def-delete.js";
-import { toolDefDuplicate } from "./tool-def-duplicate.js";
-import { toolDefInit } from "./tool-def-init.js";
-import { toolDefMemory } from "./tool-def-memory.js";
-import { toolDefRawLiveApi } from "./tool-def-raw-live-api.js";
-import { toolDefReadClip } from "./tool-def-read-clip.js";
-import { toolDefReadDevice } from "./tool-def-read-device.js";
-import { toolDefReadScene } from "./tool-def-read-scene.js";
-import { toolDefReadSong } from "./tool-def-read-song.js";
-import { toolDefReadTrack } from "./tool-def-read-track.js";
-import { toolDefReadView } from "./tool-def-read-view.js";
-import { toolDefTransport } from "./tool-def-transport.js";
-import { toolDefUpdateClip } from "./tool-def-update-clip.js";
-import { toolDefUpdateScene } from "./tool-def-update-scene.js";
-import { toolDefUpdateSong } from "./tool-def-update-song.js";
-import { toolDefUpdateTrack } from "./tool-def-update-track.js";
-import { toolDefUpdateView } from "./tool-def-update-view.js";
+import { toolDefCaptureScene } from "../tools/scene/capture-scene.def.js";
+import { toolDefCreateClip } from "../tools/clip/create-clip.def.js";
+import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
+import { toolDefCreateTrack } from "../tools/track/create-track.def.js";
+import { toolDefDelete } from "../tools/operations/delete.def.js";
+import { toolDefDuplicate } from "../tools/operations/duplicate.def.js";
+import { toolDefInit } from "../tools/operations/init.def.js";
+import { toolDefMemory } from "../tools/operations/memory.def.js";
+import { toolDefRawLiveApi } from "../tools/operations/raw-live-api.def.js";
+import { toolDefReadClip } from "../tools/clip/read-clip.def.js";
+import { toolDefReadDevice } from "../tools/device/read-device.def.js";
+import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
+import { toolDefReadSong } from "../tools/song/read-song.def.js";
+import { toolDefReadTrack } from "../tools/track/read-track.def.js";
+import { toolDefReadView } from "../tools/view/read-view.def.js";
+import { toolDefTransport } from "../tools/operations/transport.def.js";
+import { toolDefUpdateClip } from "../tools/clip/update-clip.def.js";
+import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
+import { toolDefUpdateSong } from "../tools/song/update-song.def.js";
+import { toolDefUpdateTrack } from "../tools/track/update-track.def.js";
+import { toolDefUpdateView } from "../tools/view/update-view.def.js";
 
 export function createMcpServer(callLiveApi) {
   const server = new McpServer({
