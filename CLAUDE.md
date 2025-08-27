@@ -63,8 +63,9 @@ See `doc/Architecture.md` for detailed system design.
 - **Tool descriptions changed**: Toggle Producer Pal extension off/on in Claude
   Desktop
 - **Code changes**: Run `npm test`
-- **End-to-end validation**: Use CLI tool (see `docs/Development-Tools.md`)
-- **Before committing**: Run `npm run format`
+- **End-to-end validation (upon request)**: Use CLI tool (see
+  `doc/Development-Tools.md`)
+- **Before claiming you are done**: ALWAYS run `npm run format`
 
 ## Project Constraints
 
