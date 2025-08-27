@@ -1,6 +1,6 @@
 // src/tools/read-view.js
-import { fromLiveApiView } from "../utils.js";
 import { LIVE_API_VIEW_NAMES } from "./constants.js";
+import { fromLiveApiView } from "./shared/utils.js";
 
 /**
  * Reads the current view state in Ableton Live including which view is active

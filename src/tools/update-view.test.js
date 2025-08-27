@@ -1,19 +1,15 @@
 // src/tools/update-view.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { updateView } from "./update-view.js";
-import {
-  LIVE_API_VIEW_SESSION,
-  LIVE_API_VIEW_ARRANGEMENT,
-  LIVE_API_VIEW_NAMES,
-} from "./constants.js";
 import "../live-api-extensions.js";
 import {
   LiveAPI,
   liveApiCall,
-  liveApiSet,
   liveApiGet,
   liveApiId,
+  liveApiSet,
 } from "../mock-live-api.js";
+import { LIVE_API_VIEW_NAMES } from "./constants.js";
+import { updateView } from "./update-view.js";
 
 // Mock the LiveAPI constructor
 vi.mocked(LiveAPI);
@@ -22,7 +18,7 @@ vi.mocked(LiveAPI);
 global.LiveAPI = vi.fn();
 
 // Mock utility functions
-vi.mock("../utils.js", () => ({
+vi.mock("./shared/utils.js", () => ({
   toLiveApiView: vi.fn((view) => {
     const viewMap = { session: 1, arrangement: 2 };
     return viewMap[view] || 1;

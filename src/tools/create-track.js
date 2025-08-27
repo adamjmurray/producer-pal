@@ -1,6 +1,6 @@
 // src/tools/create-track.js
-import { withoutNulls } from "../utils.js";
 import { MAX_AUTO_CREATED_TRACKS } from "./constants.js";
+import { withoutNulls } from "./shared/utils.js";
 
 /**
  * Creates new tracks at the specified index

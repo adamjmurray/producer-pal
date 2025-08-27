@@ -1,5 +1,4 @@
 // src/tools/read-track.js
-import { getHostTrackIndex } from "../get-host-track-index.js";
 import { VERSION } from "../version.js";
 import {
   DEVICE_TYPE,
@@ -12,6 +11,7 @@ import {
 import { parseIncludeArray, READ_TRACK_DEFAULTS } from "./include-params.js";
 import { readClip } from "./read-clip.js";
 import { getDrumMap, readDevice } from "./shared/device-reader.js";
+import { getHostTrackIndex } from "./shared/get-host-track-index.js";
 
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties

@@ -1,6 +1,6 @@
 // src/tools/delete.js
-import { getHostTrackIndex } from "../get-host-track-index";
-import { parseCommaSeparatedIds } from "../utils.js";
+import { getHostTrackIndex } from "./shared/get-host-track-index";
+import { parseCommaSeparatedIds } from "./shared/utils.js";
 /**
  * Deletes objects by ids
  * @param {Object} args - The parameters

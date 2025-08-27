@@ -1,6 +1,6 @@
 // src/tools/create-scene.js
-import { parseTimeSignature } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
+import { parseTimeSignature } from "./shared/utils.js";
 
 /**
  * Creates new scenes at the specified index

@@ -1,11 +1,11 @@
 // src/tools/update-clip.js
 import {
-  barBeatToAbletonBeats,
   barBeatDurationToAbletonBeats,
+  barBeatToAbletonBeats,
 } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
-import { parseCommaSeparatedIds, parseTimeSignature } from "../utils.js";
 import { MAX_CLIP_BEATS } from "./constants.js";
+import { parseCommaSeparatedIds, parseTimeSignature } from "./shared/utils.js";
 
 /**
  * Updates properties of existing clips

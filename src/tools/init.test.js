@@ -11,11 +11,11 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "./constants.js";
 import { init } from "./init.js";
 
 // Mock the getHostTrackIndex function
-vi.mock("../get-host-track-index.js", () => ({
+vi.mock(import("./shared/get-host-track-index.js"), () => ({
   getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
 }));
 
-import { getHostTrackIndex } from "../get-host-track-index.js";
+import { getHostTrackIndex } from "./shared/get-host-track-index.js";
 
 describe("init", () => {
   it("returns basic Live Set information and connection status", () => {

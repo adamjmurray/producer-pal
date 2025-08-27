@@ -1,5 +1,5 @@
 // src/tools/update-scene.js
-import { parseCommaSeparatedIds, parseTimeSignature } from "../utils.js";
+import { parseCommaSeparatedIds, parseTimeSignature } from "./shared/utils.js";
 
 /**
  * Updates properties of existing scenes

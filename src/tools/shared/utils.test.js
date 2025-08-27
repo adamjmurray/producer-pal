@@ -1,13 +1,13 @@
-// src/utils.test.js
+// src/tools/utils.test.js
 import { describe, expect, it } from "vitest";
 import {
-  setAllNonNull,
-  withoutNulls,
+  fromLiveApiView,
   parseCommaSeparatedIds,
   parseCommaSeparatedIndices,
   parseTimeSignature,
+  setAllNonNull,
   toLiveApiView,
-  fromLiveApiView,
+  withoutNulls,
 } from "./utils";
 
 describe("setAllNonNull", () => {

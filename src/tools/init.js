@@ -1,8 +1,8 @@
 // src/tools/init.js
-import { getHostTrackIndex } from "../get-host-track-index.js";
-import { fromLiveApiView } from "../utils.js";
 import { VERSION } from "../version.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "./constants.js";
+import { getHostTrackIndex } from "./shared/get-host-track-index.js";
+import { fromLiveApiView } from "./shared/utils.js";
 /**
  * Initialize connection to Ableton Live with minimal data for safety
  * @param {Object} _ - No parameters used

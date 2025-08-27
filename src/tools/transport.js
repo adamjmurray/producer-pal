@@ -3,7 +3,7 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "../notation/barbeat/barbeat-time";
-import { parseCommaSeparatedIndices } from "../utils.js";
+import { parseCommaSeparatedIndices } from "./shared/utils.js";
 
 /**
  * Unified control for all playback functionality in both Arrangement and Session views.

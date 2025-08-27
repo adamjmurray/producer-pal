@@ -1,14 +1,14 @@
 // src/tools/read-view.test.js
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readView } from "./read-view.js";
-import { LIVE_API_VIEW_NAMES } from "./constants.js";
 import "../live-api-extensions.js";
+import { LIVE_API_VIEW_NAMES } from "./constants.js";
+import { readView } from "./read-view.js";
 
 // Mock the global LiveAPI
 global.LiveAPI = vi.fn();
 
 // Mock utility functions
-vi.mock("../utils.js", () => ({
+vi.mock("./shared/utils.js", () => ({
   fromLiveApiView: vi.fn((view) => {
     const viewMap = { 1: "session", 2: "arrangement" };
     return viewMap[view] || "session";

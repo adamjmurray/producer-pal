@@ -1,6 +1,6 @@
 // src/tools/update-view.js
-import { toLiveApiView } from "../utils.js";
-import { LIVE_API_VIEW_SESSION, LIVE_API_VIEW_NAMES } from "./constants.js";
+import { LIVE_API_VIEW_NAMES } from "./constants.js";
+import { toLiveApiView } from "./shared/utils.js";
 
 /**
  * Updates the view state in Ableton Live. Use judiciously to avoid interrupting

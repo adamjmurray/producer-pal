@@ -1,13 +1,13 @@
 // src/tools/create-clip.js
 import {
+  barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
   barBeatToBeats,
   beatsToBarBeat,
-  barBeatDurationToAbletonBeats,
 } from "../notation/barbeat/barbeat-time";
 import { parseNotation } from "../notation/notation";
-import { parseTimeSignature, setAllNonNull } from "../utils.js";
 import { MAX_AUTO_CREATED_SCENES } from "./constants.js";
+import { parseTimeSignature, setAllNonNull } from "./shared/utils.js";
 
 /**
  * Creates MIDI clips in Session or Arrangement view

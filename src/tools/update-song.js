@@ -1,8 +1,8 @@
 // src/tools/update-song.js
-import { pitchClassNameToNumber } from "../notation/pitch-class-name-to-number.js";
 import { intervalsToPitchClasses } from "../notation/midi-pitch-to-name.js";
-import { parseTimeSignature } from "../utils.js";
+import { pitchClassNameToNumber } from "../notation/pitch-class-name-to-number.js";
 import { VALID_SCALE_NAMES } from "./constants.js";
+import { parseTimeSignature } from "./shared/utils.js";
 
 /**
  * Updates Live Set parameters like tempo, time signature, scale, and playback state.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.
