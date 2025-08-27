@@ -1,4 +1,3 @@
-// src/notation/midi-pitch-to-name.js
 export const PITCH_CLASS_NAMES = [
   "C",
   "Db",

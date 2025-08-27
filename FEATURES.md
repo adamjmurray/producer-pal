@@ -1,165 +1,171 @@
-## Feature Reference
+# Producer Pal Features
 
-You can simply ask the AI what it can do with Producer Pal / its Ableton Live
-tools. For reference, here is a list of all the tools and their features:
+Producer Pal provides AI-powered tools for music production in Ableton Live.
+Simply ask the AI what you want to do, and it will use these tools to help you
+create.
 
-### `ppal-transport` tool
+## Transport & Playback
 
-Controls playback in both Arrangement and Session views via various actions:
+### Transport Control (`ppal-transport`)
 
-- `play-arrangement` - Start arrangement playback from a specified position
-- `update-arrangement` - Modify arrangement loop and track follow settings
-  without affecting playback
-- `play-scene` - Launch all clips in a Session view scene
-- `play-session-clip` - Trigger specific clips in Session view
-- `stop-track-session-clip` - Stop Session clips in specific tracks
-- `stop-all-session-clips` - Stop all Session view clips
-- `stop` - Stop all playback
+- Start/stop playback in Session or Arrangement view
+- Play specific scenes or clips
+- Set loop points and playback position
+- Control which tracks follow the Arrangement
+- Stop all clips or specific track clips
 
-### `ppal-read-song` tool
+## Song Management
 
-Returns comprehensive Live Set information including:
+### Read Song (`ppal-read-song`)
 
-- Ableton Live version
-- Song name
-- Current view (Session/Arranger)
-- Playback state and tempo
-- Time signature
-- Scale settings (mode, root note, intervals)
-- All tracks with their clips
-- All scenes
+- Get complete Live Set overview
+- View all tracks, scenes, and clips at once
+- See tempo, time signature, and scale settings
+- Check what's playing and track states
 
-### `ppal-update-song` tool
+### Update Song (`ppal-update-song`)
 
-Updates global song properties:
+- Change tempo (20-999 BPM)
+- Set time signature
+- Switch between Session and Arrangement views
+- Configure musical scales
 
-- Tempo (20-999 BPM)
-- Time signature (e.g., "4/4")
-- View switching (Session/Arranger)
+## Scene Operations
 
-### `ppal-create-scene` tool
+### Create Scene (`ppal-create-scene`)
 
-Creates scenes at specified index with the given:
+- Add new scenes at any position
+- Set scene name, color, tempo, and time signature
+- Scenes can follow song tempo or have their own
 
-- name, color, tempo, and time signature (or follow the song's tempo/time
-  signature)
+### Read Scene (`ppal-read-scene`)
 
-### `ppal-read-scene` tool
+- View scene details and all its clips
+- Check which clips are playing/triggered
+- See scene tempo and time signature
 
-Retrieves scene information:
+### Update Scene (`ppal-update-scene`)
 
-- Name, color, tempo, time signature
-- Playing/triggered state
-- Clip details for all tracks in the scene
+- Rename scenes and change colors
+- Modify scene tempo and time signature
+- Bulk update multiple scenes at once
+- Enable/disable scene-specific tempo
 
-### `ppal-update-scene` tool
+### Capture Scene (`ppal-capture-scene`)
 
-Updates existing scenes:
+- Capture currently playing clips into a new scene
 
-- Modify name, color, tempo, time signature
-- Disable scene tempo/time signature to follow the song's tempo/time signature
-- Bulk operations with comma-separated IDs
+## Track Management
 
-### `ppal-capture-scene` tool
+### Create Track (`ppal-create-track`)
 
-Captures currently playing clips as a new scene below the selected scene.
-
-### `ppal-create-track` tool
-
-Creates MIDI or audio tracks:
-
-- Insert at specified index
+- Add MIDI or audio tracks
+- Position tracks exactly where you want
 - Set initial mute/solo/arm states
 
-### `ppal-read-track` tool
+### Read Track (`ppal-read-track`)
 
-Returns comprehensive track information:
+- Get detailed track information
+- View all clips in Session and Arrangement
+- See devices, routing options, and drum pad mappings
+- Check track states (muted, soloed, armed)
 
-- Type (MIDI/audio), name, color
-- Mute/solo/arm states
-- Playing/fired clip indices
-- All Session and Arranger clips
-- Drum pad information in tracks containing drum racks (so it's known that e.g.
-  pitch C1 triggers the 808 kick)
+### Update Track (`ppal-update-track`)
 
-### `ppal-update-track` tool
+- Rename tracks and change colors
+- Control mute/solo/arm states
+- Configure input/output routing
+- Set monitoring modes
+- Bulk update multiple tracks
 
-Updates existing tracks by ID:
+## Clip Creation & Editing
 
-- Modify name, color, mute/solo/arm states
-- Bulk operations with comma-separated IDs
+### Create Clip (`ppal-create-clip`)
 
-### `ppal-create-clip` tool
+- Generate MIDI clips with notes, velocities, and timing
+- Place clips in Session slots or Arrangement timeline
+- Support for probability, velocity ranges, and complex rhythms
+- Auto-create scenes as needed
 
-Creates MIDI clips in Session or Arrangement view:
+### Read Clip (`ppal-read-clip`)
 
-- Generate MIDI clips with full support for pitch, timing, velocity, velocity
-  ranges, and note probability
-- Time is represented as bars and beats respecting the current time signature,
-  allowing for longer, more complex rhythmic patterns to be handled accurately
-- Works with Session and Arranger clips
-- Autoplay option for Session clips
-- Auto-creates scenes if needed (Session view)
-- Sequential placement for multiple clips
+- View clip properties and MIDI notes
+- See notes in musical notation (C3, D#4, etc.)
+- Check loop settings and time signatures
+- Works with Session and Arrangement clips
 
-### `ppal-read-clip` tool
+### Update Clip (`ppal-update-clip`)
 
-Retrieves clip information:
-
-- Type (MIDI/audio), name, color
-- MIDI notes in readable notation format with time represented as bars and beats
-- Loop settings
-- Works with Session and Arranger clips
-
-### `ppal-update-clip` tool
-
-Updates existing clips by ID:
-
-- Update the pitches, timing, velocities, velocity ranges, and note
-  probabilities of MIDI clips
-- Time is represented as bars and beats respecting the current time signature,
-  allowing for longer, more complex rhythmic patterns to be handled accurately
-- Modify name and color
-- Modify loop setting
-- Modify time signature
-- Works with Session and Arranger clips
-- Bulk operations with comma-separated IDs
-
-### `ppal-delete` tool
-
-Deletes objects by ID and type:
-
-- Delete tracks, scenes, or clips
-- Bulk deletion with comma-separated IDs
-
-### `ppal-duplicate` tool
-
-Duplicates objects with advanced options:
-
-- Tracks: Sequential duplication
-- Scenes: To Session or Arranger view
-- Clips: To Session slots or Arranger timeline
-- Precise timing control for Arranger placement
+- Edit MIDI notes and timing
+- Modify velocities and probability
+- Change clip names and colors
+- Adjust loop settings
+- Update or merge note patterns
+- Bulk edit multiple clips
 
 ### Custom Music Notation
 
-All clip and time-related operations support a custom notation format designed
-for use by AI.
+Producer Pal uses a text-based music notation syntax called `bar|beat` to work
+with MIDI clips. It helps LLMs translate natural language expressions of time to
+the correct time positions in Ableton Live clips and the arrangement timeline.
 
-Pitches are named as they appear in the piano roll, so middle C is "C3", and the
-AI understands this. You can spell out note names like C, Eb, F# talk to the AI
-about pitches this way.
+- **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
+- **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
+- **Durations**: bar:beat format (4:0 = 4 bars, 1:2 = 1 bar + 2 beats)
+- **Velocity**: Values from 1-127 (or ranges like 80-100)
+- **Probability**: 0.0 to 1.0 (1.0 = always plays)
+- **Comments**: Include commentary using // for single lines, # for inline, or
+  /\* \*/ for blocks
 
-Time is represented in bar:beat syntax where bars are whole numbers and beats
-can have fractions. 1:1 is the start of the song/clip: the first beat of the
-first measure. 2:1.5 is the second measures, one half beat past the start of the
-measure. The number of beats per measure is determined from the time signature.
-Note that every clip can have its own time signature. Arrangement view song
-positions are in terms of the song's time signature, and new clips will default
-to using the song's time signature.
+## Object Management
 
-Generally, you can speak naturally about clip and song positions in terms of
-bars and beats, such "add a drum fill at the end of every four bars", or
-"generate a new clip in bar 5 of the arrangement". You can also try using the
-bear:beat format directly if you want, such as "generate a clip in the
-arrangement at 17:2-21:2".
+### Duplicate (`ppal-duplicate`)
+
+- Copy tracks, scenes, or clips
+- Duplicate to Session or Arrangement
+- Create multiple copies at once
+- Track routing options allow layering multiple MIDI clips on a single
+  instrument
+
+### Delete (`ppal-delete`)
+
+- Remove tracks, scenes, or clips
+- Bulk delete multiple objects
+
+## View Control
+
+### Read View (`ppal-read-view`)
+
+- Check what's currently visible in Live
+- See selected track, scene, clip, and device
+
+### Update View (`ppal-update-view`)
+
+- Switch between Session and Arrangement views
+- Select specific tracks, scenes, or clips
+- Show/hide browser and detail views
+- Focus on devices or clip details
+
+## Project Notes
+
+### Memory (`ppal-memory`)
+
+- Store project-specific notes and context
+- Help Producer Pal understand your project goals
+- AI can read and update notes (when enabled)
+- Notes are saved with your Live Set
+
+## Connection & Setup
+
+### Initialize (`ppal-init`)
+
+- Connects to Ableton Live and verifies everything is working
+- Shows Live Set name, tempo, and basic info
+- Displays project notes if enabled
+- Automatically called when you mention "Ableton" or "Producer Pal"
+
+### Network Control
+
+- Control Ableton Live on another computer on your network
+- Configure with full URL in Claude Desktop extension settings
+- Enables collaborative production and remote control workflows

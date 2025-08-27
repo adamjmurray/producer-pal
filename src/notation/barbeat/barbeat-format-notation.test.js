@@ -1,4 +1,3 @@
-// src/notation/barbeat/barbeat-format-notation.test.js
 import { formatNotation } from "./barbeat-format-notation";
 import { parseNotation } from "./barbeat-parse-notation";
 

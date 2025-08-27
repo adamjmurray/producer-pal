@@ -1,4 +1,3 @@
-// src/notation/barbeat/barbeat-time.test.js
 import { describe, expect, it } from "vitest";
 import {
   abletonBeatsToBarBeat,

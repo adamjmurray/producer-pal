@@ -1,5 +1,5 @@
-// src/tools/shared/device-reader.js
 import { midiPitchToName } from "../../notation/midi-pitch-to-name.js";
+import * as console from "../../shared/v8-max-console.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,

@@ -1,4 +1,3 @@
-// src/mcp-server/max-api-adapter.js
 // Adapter for communication between Node.js MCP server and Max v8 environment
 
 import Max from "max-api";
@@ -6,7 +5,7 @@ import crypto from "node:crypto";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
-} from "../mcp-response-utils.js";
+} from "../shared/mcp-response-utils.js";
 import * as console from "./node-for-max-logger.js";
 
 export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;

@@ -1,4 +1,3 @@
-// src/notation/barbeat/barbeat-parse-notation.js
 import {
   DEFAULT_BEATS_PER_BAR,
   DEFAULT_DURATION,

@@ -1,4 +1,3 @@
-// src/desktop-extension/file-logger.js
 import { appendFileSync, existsSync, mkdirSync } from "fs";
 import { homedir } from "os";
 import { join } from "path";

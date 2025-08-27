@@ -1,4 +1,3 @@
-// src/desktop-extension/claude-ableton-connector.test.js
 import { describe, expect, it, vi } from "vitest";
 
 // Mock the StdioHttpBridge class

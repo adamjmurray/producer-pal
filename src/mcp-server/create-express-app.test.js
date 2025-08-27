@@ -1,9 +1,8 @@
-// src/mcp-server/create-express-app.test.js
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "../mcp-response-utils.js";
+import { MAX_ERROR_DELIMITER } from "../shared/mcp-response-utils.js";
 import { setTimeoutForTesting } from "./max-api-adapter.js";
 
 describe("MCP Express App", () => {
@@ -84,8 +83,6 @@ describe("MCP Express App", () => {
         "ppal-init",
         "ppal-read-song",
         "ppal-update-song",
-        "ppal-read-view",
-        "ppal-update-view",
         "ppal-create-track",
         "ppal-read-track",
         "ppal-update-track",
@@ -95,8 +92,10 @@ describe("MCP Express App", () => {
         "ppal-update-scene",
         "ppal-create-clip",
         "ppal-read-clip",
-        "ppal-read-device",
         "ppal-update-clip",
+        "ppal-read-device",
+        "ppal-read-view",
+        "ppal-update-view",
         "ppal-transport",
         "ppal-delete",
         "ppal-duplicate",

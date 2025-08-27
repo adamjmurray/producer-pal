@@ -1,4 +1,3 @@
-// src/notation/barbeat/barbeat-format-notation.js
 import { midiPitchToName } from "../midi-pitch-to-name.js";
 import {
   DEFAULT_BEATS_PER_BAR,

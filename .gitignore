@@ -1,6 +1,6 @@
 .DS_Store
 node_modules
-claude-project
+knowledge-base
 coverage
 desktop-extension/*.dxt
 desktop-extension/*.js

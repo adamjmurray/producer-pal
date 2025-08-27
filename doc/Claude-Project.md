@@ -1,0 +1,65 @@
+# Producer Pal: AI Music Production Assistant
+
+An AI music production assistant for Ableton Live using the Model Context
+Protocol (MCP) with a Max for Live device.
+
+## Purpose of This Project
+
+This Claude Project is for brainstorming, analysis, and planning. Code
+development happens in Claude Code. Outputs here are typically:
+
+- Technical plans in markdown for Claude Code
+- Code snippets to explore ideas
+- Architecture decisions and design discussions
+
+## Key Constraints
+
+- **Language**: JavaScript only (embedded environment constraint)
+- **Platform**: Live 12.2, Max 9, Node.js 20
+- **Repository**: `/Users/adammurray/workspace/producer-pal`
+- **Documentation**: See CLAUDE.md in project resources for coding standards
+
+## Critical Rules
+
+- **Testing**: Always use `npm run build:all` for development (includes debug
+  tools)
+- **Manual Testing**: After changing tool descriptions, toggle extension off/on
+  in Claude Desktop
+- **Files**: All source files must have `// path/to/file.js` as first line
+  comment
+- **Missing Files**: Don't infer contents - ask if files are missing
+- **Duplicate Files**: Report any duplicates immediately
+
+## Architecture Overview
+
+- **MCP Server** (`src/mcp-server.js`): Runs in Node for Max
+- **V8 Code** (`src/main.js`): Runs in Max v8 object, calls Live API
+- **Desktop Extension**: Bridges Claude Desktop to MCP server
+- **Two Bundles**: MCP server bundle (Node.js) and V8 bundle (Max)
+
+## Design Philosophy
+
+- Minimize dependencies
+- Tool instructions over code complexity
+- Let Claude's intelligence handle contextual responses
+- Return optimistic results for playback operations
+
+## Reference Documentation
+
+In project resources:
+
+- `CLAUDE.md` - Coding standards for Claude Code
+- `docs/Architecture.md` - System design details
+- `docs/Coding-Standards.md` - Code patterns and rules
+- `docs/Development-Tools.md` - CLI and debugging tools
+- `DEVELOPERS.md` - Development setup
+- `FEATURES.md` - Feature list
+
+## Trusted Resources
+
+If web search needed:
+
+- Max/Live API: https://docs.cycling74.com/apiref/
+- MCP: https://modelcontextprotocol.io/
+- Live Manual: https://www.ableton.com/en/live-manual/12/
+- Tutorials: https://adammurray.link/max-for-live/

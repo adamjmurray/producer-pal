@@ -46,7 +46,7 @@ npm test
 To test/debug, you can use:
 
 ```
-npx @modelcontextprotocol/inspector
+DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
 ```
 
 and then open
@@ -55,24 +55,24 @@ http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350
 ## Manual Testing Notes
 
 **Important**: After changing tool descriptions in the Producer Pal code (like
-in `src/mcp-server/add-tool-*.js`), you must toggle the Producer Pal extension
-off/on in Claude Desktop to refresh the cached tool definitions. Simply
-rebuilding the code or restarting Claude Desktop is not sufficient - the
-extension must be disabled and re-enabled in Claude Desktop → Settings →
-Extensions to see updated tool descriptions.
+in `src/tools/**/*.def.js`), you must toggle the Producer Pal extension off/on
+in Claude Desktop to refresh the cached tool definitions. Simply rebuilding the
+code or restarting Claude Desktop is not sufficient - the extension must be
+disabled and re-enabled in Claude Desktop → Settings → Extensions to see updated
+tool descriptions.
 
 ## Coding Agents
 
 Claude Code assists with the development of this project. A `CLAUDE.md` is
-setup, and the `docs` folder contains content that may be worth referencing for
+setup, and the `doc` folder contains content that may be worth referencing for
 some development tasks.
 
-Additionally, there is a feature `npm run claude:project` which flattens out the
-contents of this project into a folder that can be drag and dropped in its
-entirety into a Claude Project (or ChatGPT or Gemini projects or whatever you
-prefer) for complex brainstorming and planning sessions. Then, those results can
-then be fed back into Claude Code (for example by generating a new file for the
-`docs` folder).
+Additionally, there is a feature `npm run knowledge-base` (or the shortcut
+`npm run kb`) which flattens out the contents of this project into a
+knowledge-base folder that can be drag and dropped in its entirety into a Claude
+Project (or ChatGPT or Gemini projects or whatever you prefer) for complex
+brainstorming and planning sessions. Then, those results can then be fed back
+into Claude Code (for example by generating a new file for the `doc` folder).
 
 ## Development Testing
 
@@ -99,24 +99,24 @@ integration with Claude Code's MCP capabilities.
 ### CLI Tool (Fallback)
 
 For situations where the direct MCP connection isn't available or working, use
-the CLI tool at `tools/cli.mjs` to directly connect to the MCP server:
+the CLI tool at `scripts/cli.mjs` to directly connect to the MCP server:
 
 ```sh
 # Show server info (default)
-node tools/cli.mjs
+node scripts/cli.mjs
 
 # List available tools
-node tools/cli.mjs tools/list
+node scripts/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node tools/cli.mjs tools/call ppal-read-song '{}'
-node tools/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+node scripts/cli.mjs tools/call ppal-read-song '{}'
+node scripts/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 
 # Use a different server URL
-node tools/cli.mjs http://localhost:6274/mcp tools/list
+node scripts/cli.mjs http://localhost:6274/mcp tools/list
 
 # Show help
-node tools/cli.mjs --help
+node scripts/cli.mjs --help
 ```
 
 This CLI tool connects directly to your running Ableton Live session and can
@@ -134,7 +134,7 @@ and advanced debugging:
 
 ```sh
 # Example: Get tempo using multiple operation types
-node tools/cli.mjs tools/call ppal-raw-live-api '{
+node scripts/cli.mjs tools/call ppal-raw-live-api '{
   "path": "live_set",
   "operations": [
     {"type": "get", "property": "tempo"},
@@ -143,7 +143,7 @@ node tools/cli.mjs tools/call ppal-raw-live-api '{
 }'
 
 # Example: Navigate to a track and check if it exists
-node tools/cli.mjs tools/call ppal-raw-live-api '{
+node scripts/cli.mjs tools/call ppal-raw-live-api '{
   "operations": [
     {"type": "goto", "value": "live_set tracks 0"},
     {"type": "exists"},
@@ -165,7 +165,7 @@ Version numbers appear in these locations:
 
 1. `package.json` (root) - Source of truth
 2. `desktop-extension/package.json`
-3. `src/version.js`
+3. `src/shared/version.js`
 4. `device/Producer_Pal.amxd` - In the Max UI (manual update required)
 
 ### Release Process
@@ -182,8 +182,8 @@ npm run version:bump:major  # major: 0.9.1 → 1.0.0
 This script updates:
 
 - ✅ package.json files
-- ✅ src/version.js
-- ✅ Max device UI (it uses the value in src/version.js)
+- ✅ src/shared/version.js
+- ✅ Max device UI (it uses the value in src/shared/version.js)
 
 #### Step 2: Test and Commit
 
