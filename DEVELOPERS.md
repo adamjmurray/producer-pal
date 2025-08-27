@@ -64,7 +64,7 @@ tool descriptions.
 ## Coding Agents
 
 Claude Code assists with the development of this project. A `CLAUDE.md` is
-setup, and the `docs` folder contains content that may be worth referencing for
+setup, and the `doc` folder contains content that may be worth referencing for
 some development tasks.
 
 Additionally, there is a feature `npm run knowledge-base` (or the shortcut
@@ -72,7 +72,7 @@ Additionally, there is a feature `npm run knowledge-base` (or the shortcut
 knowledge-base folder that can be drag and dropped in its entirety into a Claude
 Project (or ChatGPT or Gemini projects or whatever you prefer) for complex
 brainstorming and planning sessions. Then, those results can then be fed back
-into Claude Code (for example by generating a new file for the `docs` folder).
+into Claude Code (for example by generating a new file for the `doc` folder).
 
 ## Development Testing
 
@@ -182,8 +182,8 @@ npm run version:bump:major  # major: 0.9.1 → 1.0.0
 This script updates:
 
 - ✅ package.json files
-- ✅ src/version.js
-- ✅ Max device UI (it uses the value in src/version.js)
+- ✅ src/shared/version.js
+- ✅ Max device UI (it uses the value in src/shared/version.js)
 
 #### Step 2: Test and Commit
 

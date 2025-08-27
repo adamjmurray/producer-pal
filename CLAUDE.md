@@ -34,7 +34,7 @@ Key entry points:
 - V8 code: `src/live-api-adapter/live-api-adapter.js`
 - Tools: `src/tools/**/*.js`
 
-See `docs/Architecture.md` for detailed system design.
+See `doc/Architecture.md` for detailed system design.
 
 ## Critical Coding Rules
 
@@ -75,8 +75,8 @@ See `docs/Architecture.md` for detailed system design.
 
 ## Documentation
 
-- `docs/Architecture.md` - System design and components
-- `docs/Coding-Standards.md` - Code style, patterns, and rules
-- `docs/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
+- `doc/Architecture.md` - System design and components
+- `doc/Coding-Standards.md` - Code style, patterns, and rules
+- `doc/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
 - `DEVELOPERS.md` - Development setup and testing
 - `FEATURES.md` - Complete feature list

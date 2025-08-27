@@ -63,7 +63,7 @@ not running.
 ### 2. MCP Server (`src/mcp-server/mcp-server.js`)
 
 HTTP endpoint for MCP communication running in Node for Max. Entry point that
-imports all tool definitions from `src/mcp-server/**`.
+imports all tool definitions from `src/tools/**/*.def.js`.
 
 **Key details:**
 
@@ -76,7 +76,7 @@ imports all tool definitions from `src/mcp-server/**`.
 Core logic for each operation. Each tool is a pure function that transforms
 requests into Live API calls.
 
-### 4. Live API Bridge (`src/mcp-server/mcp-server.js`)
+### 4. Live API Adapter (`src/live-api-adapter/live-api-adapter.js`)
 
 V8 JavaScript that receives messages from Node.js and calls Live API. Entry
 point for the V8 Max object.
