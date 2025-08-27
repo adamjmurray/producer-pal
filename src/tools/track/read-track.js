@@ -1,5 +1,5 @@
-import * as console from "../../console.js";
-import { VERSION } from "../../version.js";
+import * as console from "../../shared/v8-max-console.js";
+import { VERSION } from "../../shared/version.js";
 import { readClip } from "../clip/read-clip.js";
 import {
   DEVICE_TYPE,

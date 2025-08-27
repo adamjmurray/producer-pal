@@ -48,7 +48,7 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
 
 ## Component Details
 
-### 1. Desktop Extension Bridge (`src/desktop-extension/main.js`)
+### 1. Desktop Extension Bridge (`src/desktop-extension/claude-ableton-connector.js`)
 
 Stdio-to-HTTP bridge that converts Claude Desktop's stdio transport to HTTP for
 connecting to the MCP server. Provides graceful fallback when Producer Pal is
@@ -60,7 +60,7 @@ not running.
 - Graceful degradation when Live isn't running
 - Returns helpful setup instructions when offline
 
-### 2. MCP Server (`src/mcp-server.js`)
+### 2. MCP Server (`src/mcp-server/mcp-server.js`)
 
 HTTP endpoint for MCP communication running in Node for Max. Entry point that
 imports all tool definitions from `src/mcp-server/**`.
@@ -71,12 +71,12 @@ imports all tool definitions from `src/mcp-server/**`.
 - Uses StreamableHTTP transport (SSE is deprecated)
 - Bundles all dependencies (@modelcontextprotocol/sdk, express, zod)
 
-### 3. Tool Implementations (`src/tools/*.js`)
+### 3. Tool Implementations (`src/tools/**`)
 
 Core logic for each operation. Each tool is a pure function that transforms
 requests into Live API calls.
 
-### 4. Live API Bridge (`src/main.js`)
+### 4. Live API Bridge (`src/mcp-server/mcp-server.js`)
 
 V8 JavaScript that receives messages from Node.js and calls Live API. Entry
 point for the V8 Max object.
@@ -99,15 +99,15 @@ Two separate JavaScript bundles built with rollup.js:
 
 ### MCP Server Bundle
 
-- **Entry:** `src/mcp-server.js`
+- **Entry:** `src/mcp-server/mcp-server.js`
 - **Output:** `device/mcp-server.mjs`
 - **Target:** Node.js (Node for Max)
 - **Dependencies:** Bundled for distribution
 
 ### V8 Bundle
 
-- **Entry:** `src/main.js`
-- **Output:** `device/main.js`
+- **Entry:** `src/live-api-adapter/live-api-adapter.js`
+- **Output:** `device/live-api-adapter.js`
 - **Target:** V8 engine (Max v8 object)
 - **Dependencies:** None (uses Max built-ins)
 
@@ -129,7 +129,7 @@ Communication between Node.js and V8:
 ## Live API Interface
 
 The Live API has idiosyncrasies that are abstracted by
-`src/live-api-extensions.js`:
+`src/live-api-adapter/live-api-extensions.js`:
 
 - Properties accessed via `.get("propertyName")?.[0]`
 - Color values need special conversion
@@ -152,7 +152,7 @@ changes yet.
 
 ## Versioning
 
-Semantic versioning (major.minor.patch) maintained in `src/version.js`:
+Semantic versioning (major.minor.patch) maintained in `src/shared/version.js`:
 
 - Displayed in server startup logs
 - Sent to MCP SDK as server version
@@ -161,6 +161,6 @@ Semantic versioning (major.minor.patch) maintained in `src/version.js`:
 ## Testing Infrastructure
 
 - **Framework:** Vitest
-- **Mock Live API:** `src/mock-live-api.js`
+- **Mock Live API:** `src/test/mock-live-api.js`
 - **Test location:** Colocated with source (`*.test.js`)
 - **Assertions:** Use `expect.objectContaining()` for maintainable tests

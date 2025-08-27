@@ -1,14 +1,15 @@
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions";
 
-import * as console from "../console";
 import {
   formatErrorResponse,
   formatSuccessResponse,
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
-} from "../mcp-response-utils";
+} from "../shared/mcp-response-utils";
+import * as console from "../shared/v8-max-console";
+import { VERSION } from "../shared/version";
 import { createClip } from "../tools/clip/create-clip";
 import { readClip } from "../tools/clip/read-clip";
 import { updateClip } from "../tools/clip/update-clip";
@@ -30,7 +31,6 @@ import { readTrack } from "../tools/track/read-track";
 import { updateTrack } from "../tools/track/update-track";
 import { readView } from "../tools/view/read-view";
 import { updateView } from "../tools/view/update-view";
-import { VERSION } from "../version";
 
 const userContext = {
   projectNotes: {

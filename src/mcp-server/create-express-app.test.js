@@ -2,7 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import Max from "max-api";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { MAX_ERROR_DELIMITER } from "../mcp-response-utils.js";
+import { MAX_ERROR_DELIMITER } from "../shared/mcp-response-utils.js";
 import { setTimeoutForTesting } from "./max-api-adapter.js";
 
 describe("MCP Express App", () => {

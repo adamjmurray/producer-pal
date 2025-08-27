@@ -7,8 +7,8 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { formatErrorResponse } from "../mcp-response-utils.js";
 import { createMcpServer } from "../mcp-server/create-mcp-server.js";
+import { formatErrorResponse } from "../shared/mcp-response-utils.js";
 import { logger } from "./file-logger.js";
 
 const SETUP_URL =

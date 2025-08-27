@@ -1,4 +1,7 @@
-// enhance Max v8's basic console logging functions (`post()` and `error()`) to behave more like a browser console
+// Enhance Max v8's basic console logging functions (`post()` and `error()`) to behave more like a browser console
+// Note: this is for Max v8 runtime only, meaning is can be used with src/live-api-adapter and src/tools code.
+// There are dedicated logging solutions for the Claude Desktop Extension and MCP Server (Node for Max) code
+// in the respective source code folders.
 const str = (any) => {
   switch (Object.getPrototypeOf(any ?? Object.prototype)) {
     case Array.prototype:

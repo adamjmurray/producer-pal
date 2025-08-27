@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { VERSION } from "../../shared/version.js";
 import {
   children,
   expectedClip,
@@ -6,7 +7,6 @@ import {
   liveApiPath,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
-import { VERSION } from "../../version.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,

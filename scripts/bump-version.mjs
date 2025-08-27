@@ -39,16 +39,14 @@ execSync("npm install", {
 });
 console.log("✓ Updated desktop-extension/package-lock.json");
 
-// Update src/version.js
-const versionPath = join(rootDir, "src/version.js");
-const versionContent = `// src/version.js
-
-// Semantic versioning: major.minor.patch
+// Update version.js
+const versionPath = join(rootDir, "src/shared/version.js");
+const versionContent = `// Semantic versioning: major.minor.patch
 // Currently in pre-release, working towards 1.0.0
 export const VERSION = "${newVersion}";
 `;
 writeFileSync(versionPath, versionContent);
-console.log("✓ Updated src/version.js");
+console.log("✓ Updated src/shared/version.js");
 
 console.log(`\n✅ Version bumped to ${newVersion}\n`);
 console.log("⚠️  Manual step required:");

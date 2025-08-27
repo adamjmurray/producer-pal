@@ -1,9 +1,9 @@
-import * as console from "../../console";
 import {
   abletonBeatsToBarBeat,
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time";
+import * as console from "../../shared/v8-max-console";
 import { MAX_CLIP_BEATS } from "../constants";
 
 /**
