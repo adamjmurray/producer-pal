@@ -1,4 +1,3 @@
-
 const MAX_OPERATIONS = 50;
 
 /**

@@ -11,8 +11,7 @@ import { createMcpServer } from "../mcp-server/create-mcp-server.js";
 import { formatErrorResponse } from "../shared/mcp-response-utils.js";
 import { logger } from "./file-logger.js";
 
-const SETUP_URL =
-  "https://github.com/adamjmurray/producer-pal?tab=readme-ov-file#-producer-pal";
+const SETUP_URL = "https://github.com/adamjmurray/producer-pal#readme";
 
 /**
  * stdio-to-HTTP bridge for MCP communication
