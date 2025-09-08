@@ -1,4 +1,3 @@
-
 /**
  * Manages user-defined project context stored in the Max device.
  * @param {Object} args - The parameters
