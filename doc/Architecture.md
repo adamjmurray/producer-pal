@@ -100,14 +100,14 @@ Two separate JavaScript bundles built with rollup.js:
 ### MCP Server Bundle
 
 - **Entry:** `src/mcp-server/mcp-server.js`
-- **Output:** `device/mcp-server.mjs`
+- **Output:** `max-for-live-device/mcp-server.mjs`
 - **Target:** Node.js (Node for Max)
 - **Dependencies:** Bundled for distribution
 
 ### V8 Bundle
 
 - **Entry:** `src/live-api-adapter/live-api-adapter.js`
-- **Output:** `device/live-api-adapter.js`
+- **Output:** `max-for-live-device/live-api-adapter.js`
 - **Target:** V8 engine (Max v8 object)
 - **Dependencies:** None (uses Max built-ins)
 

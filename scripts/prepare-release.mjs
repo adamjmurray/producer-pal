@@ -54,7 +54,7 @@ copyFileSync(dxtSource, dxtDest);
 console.log("\n✅ Copied Producer_Pal.dxt to releases/");
 
 console.log("\n📋 Next steps:");
-console.log("1. Open device/Producer_Pal.amxd in Max");
+console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
 console.log("2. Click the freeze button");
 console.log("3. Save as: releases/Producer_Pal.amxd");
 console.log("4. Test both files work correctly");

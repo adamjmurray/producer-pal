@@ -6,10 +6,10 @@ claude-desktop-extension/*.dxt
 claude-desktop-extension/*.js
 claude-desktop-extension/LICENSE.md
 claude-desktop-extension/manifest.json
-device/*.js
-device/*.mjs
-device/LICENSE.md
-device/Ableton Folder Info/
+max-for-live-device/*.js
+max-for-live-device/*.mjs
+max-for-live-device/LICENSE.md
+max-for-live-device/Ableton Folder Info/
 *.afdesign~lock~
 releases
 scratchpad

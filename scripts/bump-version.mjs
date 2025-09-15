@@ -50,7 +50,7 @@ console.log("✓ Updated src/shared/version.js");
 
 console.log(`\n✅ Version bumped to ${newVersion}\n`);
 console.log("⚠️  Manual step required:");
-console.log(`1. Open device/Producer_Pal.amxd in Max`);
+console.log(`1. Open max-for-live-device/Producer_Pal.amxd in Max`);
 console.log(`2. Update version display to: ${newVersion}`);
 console.log(`3. Save the device (do NOT freeze yet)\n`);
 console.log("Then run:");

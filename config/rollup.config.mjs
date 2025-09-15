@@ -41,7 +41,7 @@ export default [
   {
     input: join(rootDir, "src/live-api-adapter/live-api-adapter.js"),
     output: {
-      file: join(rootDir, "device/live-api-adapter.js"),
+      file: join(rootDir, "max-for-live-device/live-api-adapter.js"),
       format: "es",
     },
     plugins: [
@@ -54,13 +54,13 @@ export default [
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
-      copyLicense(join(rootDir, "device/LICENSE.md")),
+      copyLicense(join(rootDir, "max-for-live-device/LICENSE.md")),
     ],
   },
   {
     input: join(rootDir, "src/mcp-server/mcp-server.js"),
     output: {
-      file: join(rootDir, "device/mcp-server.mjs"),
+      file: join(rootDir, "max-for-live-device/mcp-server.mjs"),
       format: "es",
     },
     external: ["max-api"],

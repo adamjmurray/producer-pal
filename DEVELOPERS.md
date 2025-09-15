@@ -21,8 +21,8 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
 2. `npm install`
 3. `npm run build` (for production) or `npm run build:all` (for development with
    debugging tools)
-4. Add the `device/Producer_Pal.amxd` Max for Live device to a MIDI track in
-   Ableton Live
+4. Add the `max-for-live-device/Producer_Pal.amxd` Max for Live device to a MIDI
+   track in Ableton Live
 5. Drag and drop `claude-desktop-extension/Producer_Pal.dxt` to Claude Desktop →
    Settings → Extension
 
@@ -166,7 +166,8 @@ Version numbers appear in these locations:
 1. `package.json` (root) - Source of truth
 2. `claude-desktop-extension/package.json`
 3. `src/shared/version.js`
-4. `device/Producer_Pal.amxd` - In the Max UI (manual update required)
+4. `max-for-live-device/Producer_Pal.amxd` - In the Max UI (manual update
+   required)
 
 ### Release Process
 
@@ -218,7 +219,7 @@ This script:
 
 #### Step 5: Freeze Max Device
 
-1. Open `device/Producer_Pal.amxd` in Max
+1. Open `max-for-live-device/Producer_Pal.amxd` in Max
 2. Click the freeze button
 3. Save as: `releases/Producer_Pal.amxd`
 
