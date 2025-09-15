@@ -39,7 +39,7 @@
     "release:prepare": "node scripts/prepare-release.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.3",
+    "@modelcontextprotocol/sdk": "^1.18.0",
     "express": "^5.1.0",
     "zod": "^3.25.76"
   },
@@ -52,7 +52,7 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@types/express": "^5.0.3",
     "@types/max-api": "^2.0.3",
-    "@types/node": "^24.3.1",
+    "@types/node": "^24.4.0",
     "@vitest/coverage-v8": "^3.2.4",
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.6",
