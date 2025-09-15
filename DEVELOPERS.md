@@ -213,15 +213,15 @@ npm run release:prepare
 
 This script:
 
-- Cleans the `releases/` directory
+- Cleans the release/` directory
 - Builds the `.mcpb` file
-- Copies it to `releases/Producer_Pal.mcpb`
+- Copies it to `release/Producer_Pal.mcpb`
 
 #### Step 5: Freeze Max Device
 
 1. Open `max-for-live-device/Producer_Pal.amxd` in Max
 2. Click the freeze button
-3. Save as: `releases/Producer_Pal.amxd`
+3. Save as: `release/Producer_Pal.amxd`
 
 #### Step 6: Create GitHub Pre-Release
 
@@ -229,7 +229,7 @@ This script:
 2. Click "Draft a new release"
 3. Choose tag: `vX.Y.Z`
 4. Release title: `X.Y.Z`
-5. Upload files from `releases/`:
+5. Upload files from `release/`:
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
 6. ✅ Check "Set as a pre-release"
@@ -296,7 +296,7 @@ If problems are found during pre-release testing:
 3. **Rebuild**
 
    ```sh
-   npm run release:prepare
+   npm run release:prep
    # Freeze Max device again
    ```
 

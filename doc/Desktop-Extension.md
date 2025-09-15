@@ -26,7 +26,7 @@ This process:
 
 ### Distribution Requirements
 
-When building releases:
+When building a release:
 
 - **Both** the `.mcpb` file AND the frozen Max for Live device are needed
 - The `.mcpb` includes the stdio-HTTP bridge bundled with all dependencies

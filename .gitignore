@@ -11,5 +11,5 @@ max-for-live-device/*.mjs
 max-for-live-device/LICENSE
 max-for-live-device/Ableton Folder Info/
 *.afdesign~lock~
-releases
+release
 scratchpad

@@ -36,7 +36,8 @@
     "version:bump": "node scripts/bump-version.mjs",
     "version:bump:minor": "node scripts/bump-version.mjs minor",
     "version:bump:major": "node scripts/bump-version.mjs major",
-    "release:prepare": "node scripts/prepare-release.mjs"
+    "release:prepare": "node scripts/prepare-release.mjs",
+    "release:prep": "node scripts/prepare-release.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.0",
