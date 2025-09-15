@@ -48,7 +48,7 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
 
 ## Component Details
 
-### 1. Desktop Extension Bridge (`src/desktop-extension/producer-pal-portal.js`)
+### 1. Desktop Extension Bridge (`src/claude-desktop-extension/producer-pal-portal.js`)
 
 Stdio-to-HTTP bridge that converts Claude Desktop's stdio transport to HTTP for
 connecting to the MCP server. Provides graceful fallback when Producer Pal is

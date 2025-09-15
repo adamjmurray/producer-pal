@@ -2,10 +2,10 @@
 node_modules
 knowledge-base
 coverage
-desktop-extension/*.dxt
-desktop-extension/*.js
-desktop-extension/LICENSE.md
-desktop-extension/manifest.json
+claude-desktop-extension/*.dxt
+claude-desktop-extension/*.js
+claude-desktop-extension/LICENSE.md
+claude-desktop-extension/manifest.json
 device/*.js
 device/*.mjs
 device/LICENSE.md

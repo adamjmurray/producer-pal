@@ -24,20 +24,20 @@ execSync(`npm version ${versionType} --no-git-tag-version`, {
 const rootPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 const newVersion = rootPkg.version;
 
-// Update desktop-extension/package.json
-const dxtPkgPath = join(rootDir, "desktop-extension/package.json");
+// Update claude-desktop-extension/package.json
+const dxtPkgPath = join(rootDir, "claude-desktop-extension/package.json");
 const dxtPkg = JSON.parse(readFileSync(dxtPkgPath, "utf8"));
 dxtPkg.version = newVersion;
 writeFileSync(dxtPkgPath, JSON.stringify(dxtPkg, null, 2) + "\n");
-console.log("✓ Updated desktop-extension/package.json");
+console.log("✓ Updated claude-desktop-extension/package.json");
 
-// Update desktop-extension/package-lock.json
-console.log("Updating desktop-extension/package-lock.json...");
+// Update claude-desktop-extension/package-lock.json
+console.log("Updating claude-desktop-extension/package-lock.json...");
 execSync("npm install", {
-  cwd: join(rootDir, "desktop-extension"),
+  cwd: join(rootDir, "claude-desktop-extension"),
   stdio: "inherit",
 });
-console.log("✓ Updated desktop-extension/package-lock.json");
+console.log("✓ Updated claude-desktop-extension/package-lock.json");
 
 // Update version.js
 const versionPath = join(rootDir, "src/shared/version.js");

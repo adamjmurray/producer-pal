@@ -10,7 +10,7 @@ Desktop's stdio transport and the HTTP MCP server running in Ableton Live.
 ### Manifest Generation
 
 The Desktop Extension manifest is generated from
-`scripts/desktop-extension-manifest.template.json` during build:
+`scripts/claude-desktop-extension-manifest.template.json` during build:
 
 ```bash
 npm run dxt:build
@@ -19,10 +19,9 @@ npm run dxt:build
 This process:
 
 1. Extracts tool definitions from the MCP server
-2. Filters out development-only tools (like `ppal-raw-live-api`)
-3. Generates user-friendly tool descriptions
-4. Creates `desktop-extension/manifest.json`
-5. Bundles everything into `Producer_Pal.dxt`
+2. Generates user-friendly tool descriptions
+3. Creates `claude-desktop-extension/manifest.json`
+4. Bundles everything into `Producer_Pal.dxt`
 
 ### Distribution Requirements
 
@@ -34,7 +33,7 @@ When building releases:
 
 ## Extension Bridge Implementation
 
-### File: `src/desktop-extension/main.js` (producer-pal-portal.js in bundle)
+### File: `src/claude-desktop-extension/main.js` (producer-pal-portal.js in bundle)
 
 The bridge provides robust fallback behavior:
 
@@ -94,16 +93,16 @@ Test the stdio-HTTP bridge without Claude Desktop:
 
 ```bash
 # Basic test
-node scripts/test-desktop-extension.mjs
+node scripts/test-claude-desktop-extension.mjs
 
 # Test specific tool
-node scripts/test-desktop-extension.mjs ppal-read-song
+node scripts/test-claude-desktop-extension.mjs ppal-read-song
 
 # Test with arguments
-node scripts/test-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
+node scripts/test-claude-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
 
 # Custom URL
-node scripts/test-desktop-extension.mjs http://localhost:3350/mcp ppal-read-song
+node scripts/test-claude-desktop-extension.mjs http://localhost:3350/mcp ppal-read-song
 ```
 
 The test script:

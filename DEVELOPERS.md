@@ -23,7 +23,7 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
    debugging tools)
 4. Add the `device/Producer_Pal.amxd` Max for Live device to a MIDI track in
    Ableton Live
-5. Drag and drop `desktop-extension/Producer_Pal.dxt` to Claude Desktop →
+5. Drag and drop `claude-desktop-extension/Producer_Pal.dxt` to Claude Desktop →
    Settings → Extension
 
 **Note**: For development and testing, use `npm run build:all` to include
@@ -164,7 +164,7 @@ shortcuts (`get`, `set`, `call`, `goto`, `info`), and extension methods
 Version numbers appear in these locations:
 
 1. `package.json` (root) - Source of truth
-2. `desktop-extension/package.json`
+2. `claude-desktop-extension/package.json`
 3. `src/shared/version.js`
 4. `device/Producer_Pal.amxd` - In the Max UI (manual update required)
 

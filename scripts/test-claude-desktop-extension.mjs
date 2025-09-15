@@ -7,7 +7,7 @@ const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log(
-    "Usage: test-desktop-extension.mjs [url] [tool-name] [tool-args-json]",
+    "Usage: test-claude-desktop-extension.mjs [url] [tool-name] [tool-args-json]",
   );
   console.log("");
   console.log(
@@ -27,16 +27,16 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
   console.log("");
   console.log("Examples:");
   console.log(
-    "  test-desktop-extension.mjs                                    # Basic bridge test",
+    "  test-claude-desktop-extension.mjs                                    # Basic bridge test",
   );
   console.log(
-    "  test-desktop-extension.mjs http://localhost:3350/mcp          # Custom URL",
+    "  test-claude-desktop-extension.mjs http://localhost:3350/mcp          # Custom URL",
   );
   console.log(
-    "  test-desktop-extension.mjs ppal-read-song                     # Test ppal-read-song tool",
+    "  test-claude-desktop-extension.mjs ppal-read-song                     # Test ppal-read-song tool",
   );
   console.log(
-    "  test-desktop-extension.mjs ppal-read-track '{\"trackIndex\": 0}' # Test with arguments",
+    "  test-claude-desktop-extension.mjs ppal-read-track '{\"trackIndex\": 0}' # Test with arguments",
   );
   console.log("");
   process.exit(0);
@@ -64,10 +64,14 @@ console.log(`Testing stdio-HTTP bridge...`);
 console.log(`HTTP URL: ${httpUrl}`);
 
 // Start the bridge
-const bridge = spawn("node", ["desktop-extension/producer-pal-portal.js"], {
-  stdio: ["pipe", "pipe", "pipe"], // Capture stderr so we can filter it
-  env: { ...process.env, PRODUCER_PAL_PORT: new URL(httpUrl).port },
-});
+const bridge = spawn(
+  "node",
+  ["claude-desktop-extension/producer-pal-portal.js"],
+  {
+    stdio: ["pipe", "pipe", "pipe"], // Capture stderr so we can filter it
+    env: { ...process.env, PRODUCER_PAL_PORT: new URL(httpUrl).port },
+  },
+);
 
 // MCP protocol messages
 const initMessage = {

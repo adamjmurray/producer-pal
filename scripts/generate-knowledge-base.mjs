@@ -66,7 +66,7 @@ async function copyDirectoriesAndFiles() {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
-    { src: "desktop-extension/package.json" },
+    { src: "claude-desktop-extension/package.json" },
   ];
 
   console.log("Copying files...");

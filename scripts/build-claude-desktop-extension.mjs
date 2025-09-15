@@ -12,7 +12,7 @@ const server = createMcpServer();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
-const desktopExtensionDir = join(rootDir, "desktop-extension");
+const desktopExtensionDir = join(rootDir, "claude-desktop-extension");
 
 console.log("Building DXT bundle...");
 
@@ -81,7 +81,7 @@ This software is not affiliated with Ableton, Cycling '74, or Anthropic.`;
 
 // Read template and replace placeholders
 const template = readFileSync(
-  join(__dirname, "desktop-extension-manifest.template.json"),
+  join(__dirname, "claude-desktop-extension-manifest.template.json"),
   "utf8",
 );
 const manifest = template
@@ -104,9 +104,11 @@ console.log("Dependencies installed successfully");
 
 console.log("Packing DXT...");
 execSync(
-  `npx @anthropic-ai/dxt pack desktop-extension desktop-extension/${DXT_FILENAME.replace(" ", "\\ ")}`,
+  `npx @anthropic-ai/dxt pack claude-desktop-extension claude-desktop-extension/${DXT_FILENAME.replace(" ", "\\ ")}`,
   { cwd: rootDir, stdio: "inherit" },
 );
 console.log("DXT packed successfully!");
 
-console.log(`✓ Desktop extension built: desktop-extension/${DXT_FILENAME}`);
+console.log(
+  `✓ Desktop extension built: claude-desktop-extension/${DXT_FILENAME}`,
+);

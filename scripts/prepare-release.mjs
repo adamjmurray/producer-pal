@@ -42,7 +42,7 @@ console.log("Building desktop extension...");
 execSync("npm run build", { cwd: rootDir, stdio: "inherit" });
 
 // Copy .dxt file
-const dxtSource = join(rootDir, "desktop-extension/Producer_Pal.dxt");
+const dxtSource = join(rootDir, "claude-desktop-extension/Producer_Pal.dxt");
 const dxtDest = join(releasesDir, "Producer_Pal.dxt");
 
 if (!existsSync(dxtSource)) {

@@ -88,7 +88,7 @@ export default [
   {
     input: join(rootDir, "src/portal/producer-pal-portal.js"),
     output: {
-      file: join(rootDir, "desktop-extension/producer-pal-portal.js"),
+      file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
       format: "es",
     },
     plugins: [
@@ -108,7 +108,7 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
-      copyLicense(join(rootDir, "desktop-extension/LICENSE.md")),
+      copyLicense(join(rootDir, "claude-desktop-extension/LICENSE.md")),
     ],
   },
 ];
