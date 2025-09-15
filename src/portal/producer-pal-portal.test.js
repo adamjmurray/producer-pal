@@ -13,11 +13,11 @@ vi.mock(import("./stdio-http-bridge.js"), () => ({
 // Import after mocking
 import { StdioHttpBridge } from "./stdio-http-bridge.js";
 
-describe("claude-ableton-connector", () => {
+describe("producer-pal-portal", () => {
   describe("module execution", () => {
     it("creates StdioHttpBridge instance and calls start", async () => {
       // Trigger one dynamic import to verify basic behavior
-      await import("./claude-ableton-connector.js");
+      await import("./producer-pal-portal.js");
 
       expect(StdioHttpBridge).toHaveBeenCalled();
       expect(mockBridge.start).toHaveBeenCalled();

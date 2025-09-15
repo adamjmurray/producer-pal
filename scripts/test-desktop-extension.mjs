@@ -64,14 +64,10 @@ console.log(`Testing stdio-HTTP bridge...`);
 console.log(`HTTP URL: ${httpUrl}`);
 
 // Start the bridge
-const bridge = spawn(
-  "node",
-  ["desktop-extension/claude-ableton-connector.js"],
-  {
-    stdio: ["pipe", "pipe", "pipe"], // Capture stderr so we can filter it
-    env: { ...process.env, PRODUCER_PAL_PORT: new URL(httpUrl).port },
-  },
-);
+const bridge = spawn("node", ["desktop-extension/producer-pal-portal.js"], {
+  stdio: ["pipe", "pipe", "pipe"], // Capture stderr so we can filter it
+  env: { ...process.env, PRODUCER_PAL_PORT: new URL(httpUrl).port },
+});
 
 // MCP protocol messages
 const initMessage = {

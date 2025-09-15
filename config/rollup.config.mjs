@@ -86,9 +86,9 @@ export default [
     ],
   },
   {
-    input: join(rootDir, "src/desktop-extension/claude-ableton-connector.js"),
+    input: join(rootDir, "src/portal/producer-pal-portal.js"),
     output: {
-      file: join(rootDir, "desktop-extension/claude-ableton-connector.js"),
+      file: join(rootDir, "desktop-extension/producer-pal-portal.js"),
       format: "es",
     },
     plugins: [

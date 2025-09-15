@@ -34,7 +34,7 @@ When building releases:
 
 ## Extension Bridge Implementation
 
-### File: `src/desktop-extension/main.js` (claude-ableton-connector.js in bundle)
+### File: `src/desktop-extension/main.js` (producer-pal-portal.js in bundle)
 
 The bridge provides robust fallback behavior:
 

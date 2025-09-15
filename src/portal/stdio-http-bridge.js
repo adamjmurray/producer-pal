@@ -91,7 +91,7 @@ The default URL value is http://localhost:3350`);
     try {
       const httpTransport = new StreamableHTTPClientTransport(url);
       this.httpClient = new Client({
-        name: "claude-ableton-connector",
+        name: "producer-pal-portal",
         version: "1.0.0",
       });
 

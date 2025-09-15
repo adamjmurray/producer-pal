@@ -3,7 +3,7 @@
   "version": "0.9.7",
   "description": "DXT bundle for Ableton Producer Pal",
   "type": "module",
-  "main": "claude-ableton-connector.js",
+  "main": "producer-pal-portal.js",
   "dependencies": {},
   "engines": {
     "node": ">=18.0.0"
