@@ -11,7 +11,7 @@ Live.
 ### Manifest Generation
 
 The Desktop Extension manifest is generated from
-`scripts/claude-desktop-extension-manifest.template.json` during build:
+`claude-desktop-extension/manifest.template.json` during build:
 
 ```bash
 npm run dxt:build

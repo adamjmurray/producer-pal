@@ -81,7 +81,7 @@ This software is not affiliated with Ableton, Cycling '74, or Anthropic.`;
 
 // Read template and replace placeholders
 const template = readFileSync(
-  join(__dirname, "claude-desktop-extension-manifest.template.json"),
+  join(__dirname, "..", "claude-desktop-extension", "manifest.template.json"),
   "utf8",
 );
 const manifest = template
