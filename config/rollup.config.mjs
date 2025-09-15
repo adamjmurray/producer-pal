@@ -87,10 +87,16 @@ export default [
   },
   {
     input: join(rootDir, "src/portal/producer-pal-portal.js"),
-    output: {
-      file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
-      format: "es",
-    },
+    output: [
+      {
+        file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
+        format: "es",
+      },
+      {
+        file: join(rootDir, "release/producer-pal-portal.js"),
+        format: "es",
+      },
+    ],
     plugins: [
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(

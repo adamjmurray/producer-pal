@@ -232,6 +232,7 @@ This script:
 5. Upload files from `release/`:
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
+   - `producer-pal-portal.js`
 6. ✅ Check "Set as a pre-release"
 7. Write release notes
 8. Publish pre-release
