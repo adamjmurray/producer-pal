@@ -23,8 +23,8 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
    debugging tools)
 4. Add the `max-for-live-device/Producer_Pal.amxd` Max for Live device to a MIDI
    track in Ableton Live
-5. Drag and drop `claude-desktop-extension/Producer_Pal.dxt` to Claude Desktop →
-   Settings → Extension
+5. Drag and drop `claude-desktop-extension/Producer_Pal.mcpb` to Claude Desktop
+   → Settings → Extension
 
 **Note**: For development and testing, use `npm run build:all` to include
 debugging tools like `ppal-raw-live-api`.
@@ -214,8 +214,8 @@ npm run release:prepare
 This script:
 
 - Cleans the `releases/` directory
-- Builds the `.dxt` file
-- Copies it to `releases/Producer_Pal.dxt`
+- Builds the `.mcpb` file
+- Copies it to `releases/Producer_Pal.mcpb`
 
 #### Step 5: Freeze Max Device
 
@@ -231,7 +231,7 @@ This script:
 4. Release title: `X.Y.Z`
 5. Upload files from `releases/`:
    - `Producer_Pal.amxd`
-   - `Producer_Pal.dxt`
+   - `Producer_Pal.mcpb`
 6. ✅ Check "Set as a pre-release"
 7. Write release notes
 8. Publish pre-release
@@ -316,6 +316,6 @@ production-ready.
 After release, these URLs will always point to the latest version:
 
 - [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-- [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
+- [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
 
 No README updates needed for new releases!

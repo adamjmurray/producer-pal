@@ -17,7 +17,8 @@ Make music in Ableton Live with an AI assistant such as
 </a>
 <br>
 
-Start from the beginning of the video to [watch how to install and get started](https://www.youtube.com/watch?v=ypZBVI0Ncso)
+Start from the beginning of the video to
+[watch how to install and get started](https://www.youtube.com/watch?v=ypZBVI0Ncso)
 (_3.3 minutes long, no sound for first 90 seconds_).
 
 ## Requirements
@@ -35,7 +36,7 @@ Start from the beginning of the video to [watch how to install and get started](
 1. Download the latest version:
    - [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd) -
      the Max for Live device
-   - [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt) -
+   - [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb) -
      the Claude Desktop extension
 
 2. Add
@@ -48,7 +49,7 @@ Start from the beginning of the video to [watch how to install and get started](
    Extensions and:
 
    3a. If you already have extensions installed, you can drag and drop
-   [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
+   [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
    into the Extensions screen:
 
    ![install in Claude Desktop](./doc/img/install-in-claude.png)
@@ -56,7 +57,7 @@ Start from the beginning of the video to [watch how to install and get started](
    3b. Or, if you have never installed a Claude Desktop extension before, you
    need to click "Advanced settings" on the Extensions screen, then click
    "Install extension...", and choose the
-   [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
+   [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
    file.
 
    ![install first extension in Claude Desktop](./doc/img/install-in-claude-first-extension.png)

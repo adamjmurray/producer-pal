@@ -41,17 +41,19 @@ mkdirSync(releasesDir);
 console.log("Building desktop extension...");
 execSync("npm run build", { cwd: rootDir, stdio: "inherit" });
 
-// Copy .dxt file
-const dxtSource = join(rootDir, "claude-desktop-extension/Producer_Pal.dxt");
-const dxtDest = join(releasesDir, "Producer_Pal.dxt");
+// Copy .mcpb file
+const dxtSource = join(rootDir, "claude-desktop-extension/Producer_Pal.mcpb");
+const dxtDest = join(releasesDir, "Producer_Pal.mcpb");
 
 if (!existsSync(dxtSource)) {
-  console.error("❌ Error: Producer_Pal.dxt not found. Build may have failed.");
+  console.error(
+    "❌ Error: Producer_Pal.mcpb not found. Build may have failed.",
+  );
   process.exit(1);
 }
 
 copyFileSync(dxtSource, dxtDest);
-console.log("\n✅ Copied Producer_Pal.dxt to releases/");
+console.log("\n✅ Copied Producer_Pal.mcpb to releases/");
 
 console.log("\n📋 Next steps:");
 console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");

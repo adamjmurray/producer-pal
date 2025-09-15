@@ -2,7 +2,7 @@
 node_modules
 knowledge-base
 coverage
-claude-desktop-extension/*.dxt
+claude-desktop-extension/*.mcpb
 claude-desktop-extension/*.js
 claude-desktop-extension/LICENSE
 claude-desktop-extension/manifest.json

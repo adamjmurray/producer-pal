@@ -2,8 +2,9 @@
 
 ## Overview
 
-The Producer Pal Desktop Extension (DXT) provides the bridge between Claude
-Desktop's stdio transport and the HTTP MCP server running in Ableton Live.
+The Producer Pal Desktop Extension (MCP Bundle) provides the bridge between
+Claude Desktop's stdio transport and the HTTP MCP server running in Ableton
+Live.
 
 ## Build Process
 
@@ -21,14 +22,14 @@ This process:
 1. Extracts tool definitions from the MCP server
 2. Generates user-friendly tool descriptions
 3. Creates `claude-desktop-extension/manifest.json`
-4. Bundles everything into `Producer_Pal.dxt`
+4. Bundles everything into `Producer_Pal.mcpb`
 
 ### Distribution Requirements
 
 When building releases:
 
-- **Both** the `.dxt` file AND the frozen Max for Live device are needed
-- The `.dxt` includes the stdio-HTTP bridge bundled with all dependencies
+- **Both** the `.mcpb` file AND the frozen Max for Live device are needed
+- The `.mcpb` includes the stdio-HTTP bridge bundled with all dependencies
 - User configuration (like port) is handled by Claude Desktop UI
 
 ## Extension Bridge Implementation

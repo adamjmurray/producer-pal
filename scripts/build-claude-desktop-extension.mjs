@@ -6,7 +6,7 @@ import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 
-const DXT_FILENAME = "Producer_Pal.dxt";
+const BUNDLE_FILENAME = "Producer_Pal.mcpb";
 
 const server = createMcpServer();
 
@@ -14,7 +14,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 const desktopExtensionDir = join(rootDir, "claude-desktop-extension");
 
-console.log("Building DXT bundle...");
+console.log("Building MCP bundle...");
 
 console.log("Generating manifest.json...");
 
@@ -102,13 +102,13 @@ console.log("Installing dependencies...");
 execSync("npm install", { cwd: desktopExtensionDir, stdio: "inherit" });
 console.log("Dependencies installed successfully");
 
-console.log("Packing DXT...");
+console.log("Packing MCP bundle...");
 execSync(
-  `npx @anthropic-ai/dxt pack claude-desktop-extension claude-desktop-extension/${DXT_FILENAME.replace(" ", "\\ ")}`,
+  `npx @anthropic-ai/mcpb pack claude-desktop-extension claude-desktop-extension/${BUNDLE_FILENAME.replace(" ", "\\ ")}`,
   { cwd: rootDir, stdio: "inherit" },
 );
-console.log("DXT packed successfully!");
+console.log("MCP bundle packed successfully!");
 
 console.log(
-  `✓ Desktop extension built: claude-desktop-extension/${DXT_FILENAME}`,
+  `✓ Desktop extension built: claude-desktop-extension/${BUNDLE_FILENAME}`,
 );
