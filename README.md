@@ -5,10 +5,20 @@ Make music in Ableton Live with an AI assistant such as
 
 ## Demo
 
-[![demo video thumbnail](https://img.youtube.com/vi/ypZBVI0Ncso/0.jpg)](https://youtu.be/ypZBVI0Ncso?si=_lFAMCP257Gyyy_v&t=85)
+<a href="https://www.youtube.com/watch?v=ypZBVI0Ncso&t=86s">
+<figure>
+    <img
+    src="https://img.youtube.com/vi/ypZBVI0Ncso/0.jpg"
+    alt="Producer Pal demo video thumbnail" />
+  <br>
+  <figcaption>Watch Producer Pal create a 4-part, 8-bar loop from scratch.</figcaption>
+  <br>
+</figure>
+</a>
+<br>
 
-This demo link skips over the installation process. If you rewind the video to
-the beginning you can see how it was installed.
+Start from the beginning of the video to [watch how to install and get started](https://www.youtube.com/watch?v=ypZBVI0Ncso)
+(_3.3 minutes long, no sound for first 90 seconds_).
 
 ## Requirements
 
