@@ -60,10 +60,12 @@ const toolDescriptions = {
   "ppal-delete": "Deletes various objects (tracks, clips, scenes)",
   "ppal-memory": "Manages user-defined project notes for Producer Pal",
 };
+if (process.env.ENABLE_RAW_LIVE_API === "true") {
+  console.log("Including raw LIVE API tool in manifest");
+  toolDescriptions["ppal-raw-live-api"] = "Direct access to the Live API";
+}
 
 for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
-  if (name === "ppal-raw-live-api") continue; // Skip development-only tool
-
   tools.push({
     name: getDisplayName(toolInfo) || name,
     description: toolDescriptions[name],
