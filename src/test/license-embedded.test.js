@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from "fs";
 import { describe, expect, it } from "vitest";
 
 describe("License embedding", () => {
-  it("should have the current LICENSE.md embedded in the Max for Live device", () => {
-    const licensePath = "LICENSE.md";
+  it("should have the current LICENSE embedded in the Max for Live device", () => {
+    const licensePath = "LICENSE";
     const devicePath = "max-for-live-device/Producer_Pal.amxd";
 
     // Check files exist

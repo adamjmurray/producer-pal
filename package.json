@@ -31,7 +31,7 @@
     "format:check": "prettier --ignore-path config/.prettierignore --check .",
     "knowledge-base": "npm run test:coverage && node scripts/generate-knowledge-base.mjs",
     "kb": "npm run knowledge-base",
-    "dxt:clean": "rm -f claude-desktop-extension/*.dxt claude-desktop-extension/*.js claude-desktop-extension/manifest.json claude-desktop-extension/LICENSE.md",
+    "dxt:clean": "rm -f claude-desktop-extension/*.dxt claude-desktop-extension/*.js claude-desktop-extension/manifest.json claude-desktop-extension/LICENSE",
     "dxt:build": "node scripts/build-claude-desktop-extension.mjs",
     "version:bump": "node scripts/bump-version.mjs",
     "version:bump:minor": "node scripts/bump-version.mjs minor",

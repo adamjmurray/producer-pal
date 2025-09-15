@@ -4,11 +4,11 @@ knowledge-base
 coverage
 claude-desktop-extension/*.dxt
 claude-desktop-extension/*.js
-claude-desktop-extension/LICENSE.md
+claude-desktop-extension/LICENSE
 claude-desktop-extension/manifest.json
 max-for-live-device/*.js
 max-for-live-device/*.mjs
-max-for-live-device/LICENSE.md
+max-for-live-device/LICENSE
 max-for-live-device/Ableton Folder Info/
 *.afdesign~lock~
 releases

@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
-const licenseText = readFileSync(join(rootDir, "LICENSE.md"), "utf-8");
+const licenseText = readFileSync(join(rootDir, "LICENSE"), "utf-8");
 const licenseHeader = `/*\n${licenseText}\n*/\n\n`;
 
 const terserOptions = {
@@ -33,7 +33,7 @@ const addLicenseHeader = () => ({
 const copyLicense = (destination) => ({
   name: "copy-license",
   writeBundle() {
-    copyFileSync(join(rootDir, "LICENSE.md"), destination);
+    copyFileSync(join(rootDir, "LICENSE"), destination);
   },
 });
 
@@ -54,7 +54,7 @@ export default [
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
-      copyLicense(join(rootDir, "max-for-live-device/LICENSE.md")),
+      copyLicense(join(rootDir, "max-for-live-device/LICENSE")),
     ],
   },
   {
@@ -108,7 +108,7 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
-      copyLicense(join(rootDir, "claude-desktop-extension/LICENSE.md")),
+      copyLicense(join(rootDir, "claude-desktop-extension/LICENSE")),
     ],
   },
 ];
