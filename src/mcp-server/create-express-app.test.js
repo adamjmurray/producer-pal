@@ -93,7 +93,7 @@ describe("MCP Express App", () => {
         "ppal-create-clip",
         "ppal-read-clip",
         "ppal-update-clip",
-        "ppal-read-device",
+        // "ppal-read-device",
         "ppal-read-view",
         "ppal-update-view",
         "ppal-transport",

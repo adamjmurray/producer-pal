@@ -1,7 +1,25 @@
 import { z } from "zod";
-import { defineTool } from "../shared/define-tool.js";
 import { DEVICE_TYPES } from "../constants.js";
+import { defineTool } from "../shared/define-tool.js";
 
+/**
+ * HISTORICAL NOTE (Sept 2025):
+ * This tool was created as a fallback mechanism for a hypothetical edge case where
+ * read-track would fail due to massive numbers of nested rack devices. In practice,
+ * this has never been needed because:
+ *
+ * 1. Performance improvements (chunking, better timeouts) solved the underlying issues
+ * 2. The overhauled include system with sensible defaults prevents most timeouts
+ * 3. ppal-init separates initialization from reading, reducing initial load
+ * 4. No real-world use case has emerged requiring direct device access by ID
+ *
+ * The tool is implemented but not exposed via MCP to save context window space.
+ * If you ever encounter projects where read-track consistently fails due to
+ * device complexity, this tool can be re-enabled by uncommenting its registration
+ * in create-mcp-server.js.
+ *
+ * Last verified unused: Sept 2025 (searched all conversations, zero organic usage)
+ */
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
   description:

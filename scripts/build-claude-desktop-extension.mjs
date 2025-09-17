@@ -55,7 +55,7 @@ const toolDescriptions = {
     "Updates global song settings like tempo, time signature, and scales",
   "ppal-read-view": "Reads the current view state in Ableton Live",
   "ppal-update-view": "Updates the view state in Ableton Live",
-  "ppal-read-device": "Reads information about devices in Ableton Live",
+  "ppal-read-device": "Reads information about devices in Ableton Live", // Keep implementation available but not exposed via MCP (see read-device.js for why)
   "ppal-duplicate": "Duplicates objects between Session and Arrangement views",
   "ppal-delete": "Deletes various objects (tracks, clips, scenes)",
   "ppal-memory": "Manages user-defined project notes for Producer Pal",
