@@ -52,7 +52,9 @@ development happens in Claude Code. Outputs here are typically:
 
 In project resources:
 
-- `CLAUDE.md` - Coding standards for Claude Code
+- `AGENTS.md` - Coding standards for coding agents
+- `CLAUDE.md` - Trigger Claude Code to use AGENTS.md
+- `GEMINI.md` - Trigger Gemini CLI to use AGENTS.md
 - `docs/Architecture.md` - System design details
 - `docs/Coding-Standards.md` - Code patterns and rules
 - `docs/Development-Tools.md` - CLI and debugging tools

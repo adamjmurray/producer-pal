@@ -56,7 +56,9 @@ async function copyDirectoriesAndFiles() {
 
     // Individual files
     { src: ".gitignore", flatName: "gitignore" },
-    { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
+    { src: "AGENTS.md" },
+    { src: "CLAUDE.md" },
+    { src: "GEMINI.md" },
     { src: "DEVELOPERS.md" },
     { src: "FEATURES.md" },
     { src: "INSTALLATION.md" },
