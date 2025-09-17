@@ -99,7 +99,7 @@ Musical notation parser and utilities for creating and manipulating MIDI clips.
 
 ## Build System
 
-Two separate JavaScript bundles built with rollup.js:
+Three separate JavaScript bundles built with rollup.js:
 
 ### MCP Server Bundle
 
@@ -114,6 +114,18 @@ Two separate JavaScript bundles built with rollup.js:
 - **Output:** `max-for-live-device/live-api-adapter.js`
 - **Target:** V8 engine (Max v8 object)
 - **Dependencies:** None (uses Max built-ins)
+
+### Portal Bundle
+
+- **Entry:** `src/portal/producer-pal-portal.js`
+- **Output:** `release/producer-pal-portal.js`
+- **Target:** Node.js (standalone process)
+- **Dependencies:** Bundled for distribution (zero runtime dependencies)
+- **Purpose:** stdio-to-HTTP adapter for Claude Desktop Extension
+- **Features:**
+  - Converts MCP stdio transport to streamable HTTP
+  - Graceful degradation when Live isn't running
+  - Returns setup instructions when offline
 
 ## Message Protocol
 
