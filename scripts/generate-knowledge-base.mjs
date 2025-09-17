@@ -55,9 +55,11 @@ async function copyDirectoriesAndFiles() {
     { src: "src", isDir: true },
 
     // Individual files
+    { src: ".gitignore", flatName: "gitignore" },
     { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
     { src: "DEVELOPERS.md" },
     { src: "FEATURES.md" },
+    { src: "INSTALLATION.md" },
     { src: "LICENSE" },
     { src: "package.json" },
     { src: "README.md" },
@@ -66,7 +68,10 @@ async function copyDirectoriesAndFiles() {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
-    { src: "claude-desktop-extension/.mcpbignore" },
+    {
+      src: "claude-desktop-extension/.mcpbignore",
+      flatName: "claude-desktop-extension--mcpbignore",
+    },
     { src: "claude-desktop-extension/manifest.template.json" },
     { src: "claude-desktop-extension/package.json" },
   ];

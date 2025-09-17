@@ -24,31 +24,27 @@ npm run parser:build
 
 ## Architecture
 
-```
-Claude Desktop → Desktop Extension Bridge → MCP Server (Node.js) → Max for Live Device → Live API
-```
+Claude Desktop + Extension → Portal script → Max for Live Device (MCP Server) →
+Live API
 
 Key entry points:
 
 - MCP Server: `src/mcp-server/mcp-server.js`
-- V8 code: `src/live-api-adapter/live-api-adapter.js`
+- Max V8 code: `src/live-api-adapter/live-api-adapter.js`
+- Portal: `src/portal/producer-pal-portal.js`
 - Tools: `src/tools/**/*.js`
 
 See `doc/Architecture.md` for detailed system design.
 
 ## Critical Coding Rules
 
-- **Always pass args to tool functions**: Use `(args) => toolFunction(args)`
-  pattern in `src/live-api-adapter/live-api-adapter.js`, never
-  `() => toolFunction()`
-
 - **Import extensions**: Always include `.js` in imports
 
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
-- **Zod limitations**: Use only primitive types and enums. For list-like inputs,
-  use comma-separated strings
+- **Zod limitations**: Use only primitive types and enums in tool input schemas.
+  For list-like inputs, use comma-separated strings
 
 - **Live API**: Use `src/live-api-adapter/live-api-extensions.js` interface
   instead of raw `.get("property")?.[0]` calls
@@ -60,8 +56,6 @@ See `doc/Architecture.md` for detailed system design.
 
 ## Testing After Changes
 
-- **Tool descriptions changed**: Toggle Producer Pal extension off/on in Claude
-  Desktop
 - **Code changes**: Run `npm test`
 - **End-to-end validation (upon request)**: Use CLI tool (see
   `doc/Development-Tools.md`)
@@ -69,9 +63,9 @@ See `doc/Architecture.md` for detailed system design.
 
 ## Project Constraints
 
-- JavaScript only (no TypeScript) due to embedded environment
-- Node.js 20, Live 12.2, Max 9
-- Two rollup bundles: MCP server (Node.js) and V8 code (Max)
+- JavaScript only (no TypeScript)
+- Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
+  stdio-to-http "portal"
 - Dependencies bundled for distribution
 
 ## Documentation
@@ -80,4 +74,3 @@ See `doc/Architecture.md` for detailed system design.
 - `doc/Coding-Standards.md` - Code style, patterns, and rules
 - `doc/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
 - `DEVELOPERS.md` - Development setup and testing
-- `FEATURES.md` - Complete feature list

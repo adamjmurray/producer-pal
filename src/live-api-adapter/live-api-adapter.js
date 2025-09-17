@@ -40,6 +40,10 @@ const userContext = {
   },
 };
 
+/*
+**IMPORTANT**: Always pass args to tool functions
+Use the `(args) => toolFunction(args)` pattern, never just `() => toolFunction()`
+*/
 const tools = {
   "ppal-init": (args) => init(args, userContext),
   "ppal-read-song": (args) => readSong(args),

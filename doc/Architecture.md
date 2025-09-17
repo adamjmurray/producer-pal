@@ -7,6 +7,11 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
 
 ## Architecture Diagram
 
+This shows how things work end-to-end with Claude Desktop. Other LLMs can use
+Producer Pal by running the Producer Pal Portal (stdio MCP server) or connecting
+directly to the MCP server inside Ableton Live via http. It's possible to run
+LLMs locally with no online dependencies.
+
 ```
      +-----------------+
      | Anthropic Cloud |
@@ -18,12 +23,12 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
      | Claude Desktop |
      +---------------+
              ↑
-             | MCP stdio transport (via DXT)
+             | MCP stdio transport (via Claude Desktop extension)
              ↓
- +---------------------------+
- | Producer Pal Extension     |
- | (producer-pal-portal) |
- +---------------------------+
+  +-------------------------+
+  |   Producer Pal Portal   |
+  | (stdio-to-http adapter) |
+  +-------------------------+
              ↑
              | MCP streamable HTTP transport
              ↓
@@ -48,11 +53,10 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
 
 ## Component Details
 
-### 1. Desktop Extension Bridge (`src/claude-desktop-extension/producer-pal-portal.js`)
+### 1. Producer Pal Portal (`src/portal/producer-pal-portal.js`)
 
-Stdio-to-HTTP bridge that converts Claude Desktop's stdio transport to HTTP for
-connecting to the MCP server. Provides graceful fallback when Producer Pal is
-not running.
+Stdio-to-HTTP bridge that converts MCP stdio transport to HTTP for connecting to
+the MCP server. Provides graceful fallback when Producer Pal is not running.
 
 **Key features:**
 

@@ -32,10 +32,14 @@ development happens in Claude Code. Outputs here are typically:
 
 ## Architecture Overview
 
-- **MCP Server** (`src/mcp-server.js`): Runs in Node for Max
-- **V8 Code** (`src/main.js`): Runs in Max v8 object, calls Live API
-- **Desktop Extension**: Bridges Claude Desktop to MCP server
-- **Two Bundles**: MCP server bundle (Node.js) and V8 bundle (Max)
+- **MCP Server** (`src/mcp-server/mcp-server.js`): Runs in Node for Max
+- **V8 Code** (`src/live-api-adapter/live-api-adapter.js`): Runs in Max v8
+  object, calls Live API
+- **Producer Pal Portal** (`src/portal/producer-pal-portal.js`): Adapts the MCP
+  the stdio transport to the streaming http transport
+- **Desktop Extension**: Bridges Claude Desktop to MCP server via the portal
+- **Three Bundles**: MCP server bundle (Node.js), V8 bundle (Max), and MCP
+  stdio-to-http "portal"
 
 ## Design Philosophy
 
@@ -54,6 +58,8 @@ In project resources:
 - `docs/Development-Tools.md` - CLI and debugging tools
 - `DEVELOPERS.md` - Development setup
 - `FEATURES.md` - Feature list
+- `INSTALLATION.md` - Installation guide supporting various LLMs
+- `LICENSE` - The software license (MIT)
 
 ## Trusted Resources
 
