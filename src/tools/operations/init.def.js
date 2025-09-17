@@ -11,7 +11,7 @@ WHEN TO USE: If the user asks to play with Ableton Live or Producer Pal, or star
 After calling ppal-init, you can use other tools like ppal-read-song and ppal-read-track for more detailed information`;
 
 export const toolDefInit = defineTool("ppal-init", {
-  title: "Initialize Producer Pal",
+  title: "Initialize",
   description,
   annotations: {
     readOnlyHint: true,
