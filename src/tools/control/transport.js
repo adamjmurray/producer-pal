@@ -1,7 +1,7 @@
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time";
+} from "../../notation/barbeat/barbeat-time.js";
 import { parseCommaSeparatedIndices } from "../shared/utils.js";
 
 /**
