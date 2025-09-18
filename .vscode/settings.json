@@ -1,12 +1,13 @@
 {
   "cSpell.words": [
     "Ableton",
-    "adammurray",
     "amxd",
     "BarBeat",
     "modelcontextprotocol",
+    "ppal",
     "Streamable",
-    "unquotedpath"
+    "unquotedpath",
+    "Wavetable"
   ],
   "prettier.configPath": "config/prettier.config.mjs",
   "prettier.ignorePath": "config/.prettierignore"
