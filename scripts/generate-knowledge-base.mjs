@@ -70,10 +70,7 @@ async function copyDirectoriesAndFiles() {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
-    {
-      src: "claude-desktop-extension/.mcpbignore",
-      flatName: "claude-desktop-extension--mcpbignore",
-    },
+    { src: "claude-desktop-extension/.mcpbignore" },
     { src: "claude-desktop-extension/manifest.template.json" },
     { src: "claude-desktop-extension/package.json" },
   ];
