@@ -26,6 +26,59 @@
 
 If it doesn't work, see the [troubleshooting guide](#troubleshooting).
 
+## Choosing a Connection method
+
+Depending on the AI model you want to use, you may have choices between the
+following connection methods:
+
+### MCP Bundle
+
+MCP bundles are plugins for desktop apps in the
+[.mcbp format](https://github.com/anthropics/mcpb). It can be setup quickly in a
+few clicks with no special technical knowledge required.
+
+The `Producer_Pal.mcpb` file
+[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+is used to [install the Producer Pal Claude Desktop extension](#claude-desktop).
+Currently it is only compatible with Claude Desktop. If you
+[use Claude](#anthropic-claude-installation) this is the easiest way to start
+using Producer Pal.
+
+### producer-pal-portal.js
+
+The `producer-pal-portal.js` script
+[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+can connect most local MCP-compatible AI apps to Producer Pal.
+
+The script provides an
+[MCP stdio transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio)
+connection to the Producer Pal
+[MCP server](https://modelcontextprotocol.io/docs/learn/server-concepts) running
+inside its Max for Live device.
+
+This is recommended over the HTTP connection because it is more robust: it works
+even if Ableton Live / Producer Pal is not running and will help you debug
+broken connections. Note: this option requires [Node.js](https://nodejs.org/) to
+be installed.
+
+### HTTP
+
+This is the most minimal install method. You only need the Producer Pal Max for
+Live device and an MCP/HTTP-compatible AI app.
+
+HTTP is the fastest way to try [Gemini CLI](#gemini-cli) and
+[Claude Code](#claude-code) with Producer Pal.
+
+HTTP is the only option for connecting remote clients like the
+[claude.ai Web App](#claudeai-web-app) and [ChatGPT web app](#chatgpt-web-app),
+but this also requires a [web tunnel](#web-tunneling-options). Note: You can
+access Producer Pal from another computer on your local network without using a
+web tunnel.
+
+A downside compared to the `producer-pal-portal.js` script is you may need to
+restart your AI app or refresh MCP servers if you forgot to run Ableton Live
+with the Producer Pal Max for Live device first.
+
 ## Anthropic Claude Installation
 
 No subscription is required to use Claude, but you must register an Anthropic
@@ -81,9 +134,14 @@ terminal.
    [official docs](https://www.anthropic.com/claude-code))
 2. Download `producer-pal-portal.js` from the release and note its full path
 3. Configure the MCP server:
-   ```bash
-   claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
-   ```
+   - with producer-pal-portal.js
+     ```bash
+     claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
+     ```
+   - or via HTTP
+     ```bash
+     claude mcp add --transport http producer-pal http://localhost:3350/mcp
+     ```
 4. Start Claude Code: `claude` (consider running in an empty directory)
 5. Say "Let's play with Ableton Live" or "call your ppal-init tool"
 
@@ -118,6 +176,7 @@ For using Producer Pal through the Claude web interface.
    ```json
    {
      "mcpServers": {
+       // ... other MCP server configs ...
        "producer-pal": {
          "command": "node",
          "args": ["/absolute/path/to/producer-pal-portal.js"]
@@ -131,6 +190,7 @@ For using Producer Pal through the Claude web interface.
    ```json
    {
      "mcpServers": {
+       // ... other MCP server configs ...
        "producer-pal": {
          "httpUrl": "http://localhost:3350"
        }
@@ -179,11 +239,37 @@ Run AI models locally without Internet connection.
 
 1. Download [LM Studio](https://lmstudio.ai/)
 2. Install a compatible model:
-   - **Qwen 3** - Recommended for music production tasks
-   - **GPT OSS 20B** - Alternative option
-3. Configure MCP server connection:
-   - In LM Studio settings, add MCP server
-   - Point to `producer-pal-portal.js` or use HTTP URL `http://localhost:3350`
+   - Qwen 3+ (tested with the 4b-2507 and 4b-thinking-2507 models)
+   - OpenAI GPT-OSS (tested with the 20B model)
+3. Configure MCP servers in LM Studio Settings → Program → Integrations → edit
+   mcp.json:
+
+   **Option A: Via producer-pal-portal.js**
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "command": "node",
+         "args": ["/absolute/path/to/producer-pal-portal.js"]
+       }
+     }
+   }
+   ```
+
+   **Option B: Direct HTTP connection**
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "httpUrl": "http://localhost:3350"
+       }
+     }
+   }
+   ```
 
 ## Other MCP-compatible LLMs
 
