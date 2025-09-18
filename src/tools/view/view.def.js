@@ -26,6 +26,7 @@ export const toolDefView = defineTool("ppal-view", {
     selectedTrackType: z
       .enum(["regular", "return", "master"])
       .optional()
+      .default("regular")
       .describe("Type of track to select"),
     selectedTrackIndex: z
       .number()
