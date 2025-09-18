@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefTransport = defineTool("ppal-transport", {
-  title: "Control Transport",
+  title: "Transport",
   description:
     "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +
     "Controls the Arrangement and Session transport, including playback, position, and loop settings. " +

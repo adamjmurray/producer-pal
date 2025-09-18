@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefDelete = defineTool("ppal-delete", {
-  title: "Delete Clip/Track/Scene",
+  title: "Delete",
   description:
     "Deletes objects by ids and type. Supports bulk operations with comma-separated IDs of the same type.",
   annotations: {

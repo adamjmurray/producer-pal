@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefMemory = defineTool("ppal-memory", {
-  title: "Read/Write Project Notes",
+  title: "Project Notes",
   description:
     "Manages user-defined project notes that help Producer Pal understand project-specific goals and preferences. " +
     "The project notes are stored in the Live project and can be enabled and made writable through the Producer Pal device UI. " +

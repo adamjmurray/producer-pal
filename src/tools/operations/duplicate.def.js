@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { defineTool } from "../shared/define-tool.js";
 import {
   MAX_AUTO_CREATED_SCENES,
   MAX_AUTO_CREATED_TRACKS,
 } from "../constants.js";
+import { defineTool } from "../shared/define-tool.js";
 
 const description = `TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details.
 Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes.
@@ -15,7 +15,7 @@ IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arra
 VIEW GUIDANCE: When duplicating to arrangement, consider using ppal-update-view to show the arrangement if the user wants to see the duplicated content.`;
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
-  title: "Duplicate Clip/Track/Scene",
+  title: "Duplicate",
   description,
   annotations: {
     readOnlyHint: false,
