@@ -1,10 +1,14 @@
 import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
-const description = `Updates the view state in Ableton Live. Use judiciously to avoid interrupting user workflow. Generally only change views when: 1) User explicitly asks to see something, 2) After creating/modifying objects the user specifically asked to work on, 3) Context strongly suggests the user would benefit from seeing the result. When in doubt, don't change views.`;
+const description = `Reads or updates the view state in Ableton Live.
 
-export const toolDefUpdateView = defineTool("ppal-update-view", {
-  title: "Update View State",
+When called with no arguments, returns the current view state including main view (session/arrangement), selected track/scene/clip/device, selected track type (regular/return/master), highlighted clip slot, detail view status (clip/device), and browser visibility.
+
+When called with arguments, updates the view and returns the full view state with updates optimistically applied. Use update functionality judiciously to avoid interrupting user workflow. Generally only change views when: 1) User explicitly asks to see something, 2) After creating/modifying objects the user specifically asked to work on, 3) Context strongly suggests the user would benefit from seeing the result. When in doubt, don't change views.`;
+
+export const toolDefView = defineTool("ppal-view", {
+  title: "View State",
   description,
   annotations: {
     readOnlyHint: false,
@@ -64,7 +68,7 @@ export const toolDefUpdateView = defineTool("ppal-update-view", {
         sceneIndex: z.number().int().min(0),
       })
       .optional()
-      .describe("Set highlighted clip slot by track and scene indices"),
+      .describe("Select a clip slot by track and scene indices"),
 
     // Detail view
     showDetail: z

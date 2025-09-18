@@ -1,14 +1,95 @@
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
-import { toLiveApiView } from "../shared/utils.js";
+import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
 
 /**
- * Updates the view state in Ableton Live. Use judiciously to avoid interrupting
- * user workflow. Generally only change views when: 1) User explicitly asks to see
- * something, 2) After creating/modifying objects the user specifically asked to
- * work on, 3) Context strongly suggests the user would benefit from seeing the
- * result. When in doubt, don't change views.
+ * Reads or updates the view state in Ableton Live.
+ *
+ * When called with no arguments (or empty object), returns the current view state.
+ * When called with arguments, updates the view and returns the full view state
+ * with updates optimistically applied.
+ *
+ * Use update functionality judiciously to avoid interrupting user workflow.
+ * Generally only change views when: 1) User explicitly asks to see something,
+ * 2) After creating/modifying objects the user specifically asked to work on,
+ * 3) Context strongly suggests the user would benefit from seeing the result.
+ * When in doubt, don't change views.
  */
-export function updateView({
+function readViewState() {
+  const appView = new LiveAPI("live_app view");
+  const selectedTrack = new LiveAPI("live_set view selected_track");
+  const selectedScene = new LiveAPI("live_set view selected_scene");
+  const detailClip = new LiveAPI("live_set view detail_clip");
+  const highlightedClipSlotAPI = new LiveAPI(
+    "live_set view highlighted_clip_slot",
+  );
+
+  // Extract track info using Live API extensions
+  const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
+  const trackType = selectedTrack.exists() ? selectedTrack.trackType : null;
+  const selectedSceneIndex = selectedScene.exists()
+    ? selectedScene.sceneIndex
+    : null;
+  const selectedSceneId = selectedScene.exists() ? selectedScene.id : null;
+  const selectedClipId = detailClip.exists() ? detailClip.id : null;
+
+  // Get selected device from the selected track's view
+  let selectedDeviceId = null;
+  if (selectedTrack.exists()) {
+    const trackView = new LiveAPI(`${selectedTrack.path} view`);
+    if (trackView.exists()) {
+      selectedDeviceId =
+        trackView.get("selected_device")?.[1]?.toString() || null;
+    }
+  }
+
+  const highlightedSlot = highlightedClipSlotAPI.exists()
+    ? {
+        trackIndex: highlightedClipSlotAPI.trackIndex,
+        sceneIndex: highlightedClipSlotAPI.sceneIndex,
+      }
+    : null;
+
+  let detailView = null;
+  if (appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_CLIP)) {
+    detailView = "clip";
+  } else if (
+    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN)
+  ) {
+    detailView = "device";
+  }
+
+  const browserVisible = Boolean(
+    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
+  );
+
+  const selectedTrackObject = {
+    trackId: selectedTrackId,
+    trackType: trackType,
+  };
+
+  if (trackType === "regular" && selectedTrack.exists()) {
+    selectedTrackObject.trackIndex = selectedTrack.trackIndex;
+  } else if (trackType === "return" && selectedTrack.exists()) {
+    selectedTrackObject.returnTrackIndex = selectedTrack.returnTrackIndex;
+  }
+  // master track gets no index property
+
+  return {
+    view: fromLiveApiView(appView.getProperty("focused_document_view")),
+    detailView,
+    browserVisible,
+    selectedTrack: selectedTrackObject,
+    selectedClipId,
+    selectedDeviceId,
+    selectedScene: {
+      sceneId: selectedSceneId,
+      sceneIndex: selectedSceneIndex,
+    },
+    selectedClipSlot: highlightedSlot,
+  };
+}
+
+export function view({
   // Main view
   view,
 
@@ -127,8 +208,18 @@ export function updateView({
     }
   }
 
-  // Build optimistic result object with only the parameters that were set
-  const result = {};
+  // Get current view state as base
+  const result = readViewState();
+
+  // If no arguments provided, return current state only
+  const hasArgs = Object.values(arguments[0] || {}).some(
+    (val) => val !== undefined,
+  );
+  if (!hasArgs) {
+    return result;
+  }
+
+  // Apply optimistic updates on top of current state
   if (view != null) result.view = view;
 
   // Add track selection results
@@ -141,11 +232,9 @@ export function updateView({
   if (selectedDeviceId != null) result.selectedDeviceId = selectedDeviceId;
   if (selectInstrument != null) result.selectInstrument = selectInstrument;
   if (selectedClipSlot != null) result.selectedClipSlot = selectedClipSlot;
-  if (showDetail !== undefined)
-    result.detailView =
-      showDetail === null
-        ? null
-        : `Detail/${showDetail.charAt(0).toUpperCase() + showDetail.slice(1)}`;
+  if (showDetail !== undefined) {
+    result.detailView = showDetail === null ? null : showDetail;
+  }
   if (showLoop != null) result.showLoop = showLoop;
   if (browserVisible != null) result.browserVisible = browserVisible;
 
@@ -160,7 +249,7 @@ function validateParameters({
   selectedSceneIndex,
   selectedDeviceId,
   selectInstrument,
-  highlightedClipSlot,
+  selectedClipSlot,
 }) {
   // Track selection validation
   if (selectedTrackType === "master" && selectedTrackIndex != null) {

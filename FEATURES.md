@@ -134,17 +134,16 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 ## View Control
 
-### Read View (`ppal-read-view`)
+### View (`ppal-view`)
 
-- Check what's currently visible in Live
-- See selected track, scene, clip, and device
-
-### Update View (`ppal-update-view`)
-
-- Switch between Session and Arrangement views
-- Select specific tracks, scenes, or clips
-- Show/hide browser and detail views
-- Focus on devices or clip details
+- Read current view state (when no arguments)
+  - Check what's currently visible in Live
+  - See selected track, scene, clip, and device
+- Update view state (when arguments provided)
+  - Switch between Session and Arrangement views
+  - Select specific tracks, scenes, or clips
+  - Show/hide browser and detail views
+  - Focus on devices or clip details
 
 ## Project Notes
 

@@ -29,8 +29,7 @@ import { updateSong } from "../tools/song/update-song";
 import { createTrack } from "../tools/track/create-track";
 import { readTrack } from "../tools/track/read-track";
 import { updateTrack } from "../tools/track/update-track";
-import { readView } from "../tools/view/read-view";
-import { updateView } from "../tools/view/update-view";
+import { view } from "../tools/view/view.js";
 
 const userContext = {
   projectNotes: {
@@ -54,8 +53,7 @@ const tools = {
   "ppal-create-track": (args) => createTrack(args),
   "ppal-read-track": (args) => readTrack(args),
   "ppal-update-track": (args) => updateTrack(args),
-  "ppal-read-view": (args) => readView(args),
-  "ppal-update-view": (args) => updateView(args),
+  "ppal-view": (args) => view(args),
   "ppal-create-clip": (args) => createClip(args),
   "ppal-read-clip": (args) => readClip(args),
   "ppal-read-device": (args) => readDevice(args), // Keep implementation available but not exposed via MCP (see read-device.js for why)
