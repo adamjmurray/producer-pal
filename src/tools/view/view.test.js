@@ -543,7 +543,7 @@ describe("view", () => {
     });
 
     it("hides detail view using hide_view API", () => {
-      const result = view({ showDetail: null });
+      const result = view({ showDetail: "none" });
 
       expect(liveApiCall).toHaveBeenCalledWith(
         "hide_view",

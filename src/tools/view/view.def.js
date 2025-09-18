@@ -73,10 +73,9 @@ export const toolDefView = defineTool("ppal-view", {
 
     // Detail view
     showDetail: z
-      .enum(["clip", "device"])
-      .nullable()
+      .enum(["clip", "device", "none"])
       .optional()
-      .describe("Show detail view - 'clip', 'device', or null to hide"),
+      .describe("Show detail view - 'clip', 'device', or 'none' to hide"),
     showLoop: z
       .boolean()
       .optional()

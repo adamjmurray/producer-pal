@@ -185,7 +185,7 @@ export function view({
       appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_CLIP);
     } else if (showDetail === "device") {
       appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN);
-    } else if (showDetail === null) {
+    } else if (showDetail === "none") {
       // Hide detail view by hiding the detail view directly
       appView.call("hide_view", LIVE_API_VIEW_NAMES.DETAIL);
     }
@@ -233,7 +233,7 @@ export function view({
   if (selectInstrument != null) result.selectInstrument = selectInstrument;
   if (selectedClipSlot != null) result.selectedClipSlot = selectedClipSlot;
   if (showDetail !== undefined) {
-    result.detailView = showDetail === null ? null : showDetail;
+    result.detailView = showDetail === "none" ? null : showDetail;
   }
   if (showLoop != null) result.showLoop = showLoop;
   if (browserVisible != null) result.browserVisible = browserVisible;
