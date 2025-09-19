@@ -110,9 +110,9 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-read-song",
       );
       expect(readSongTool).toBeDefined();
-      expect(readSongTool.description).toContain("the Live Set");
+      expect(readSongTool.description).toContain("Ableton Live Set");
       expect(readSongTool.description).toContain("global settings");
-      expect(readSongTool.description).toContain("all tracks");
+      expect(readSongTool.description).toContain("track list");
 
       const updateClipTool = result.tools.find(
         (tool) => tool.name === "ppal-update-clip",

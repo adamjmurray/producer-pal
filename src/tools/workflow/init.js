@@ -32,8 +32,7 @@ export function init({} = {}, context) {
     trackCount: trackIds.length,
     sceneCount: sceneIds.length,
 
-    // Welcome message as data, not in tool description
-    welcome: {
+    messageForUser: {
       title: `Producer Pal ${VERSION} connected to Ableton Live`,
       tips: [
         "**Save often!** I can modify and delete things in your project, and I make mistakes.",
@@ -42,9 +41,9 @@ export function init({} = {}, context) {
       suggestion: null, // Will be set based on Live Set state
       warnings: [], // Array for any warnings
     },
-    nextStep: `The assistant should automatically call ppal-read-song with no arguments
-(the defaults) to avoid timing out with complex songs running on older, slower computers.
-If read-song with no arguments fails, don't try again, just tell the user what happened.`,
+    nextStep: `Automatically call ppal-read-song *with no arguments* for an initial overview of the state of Live.
+Give the user a summary of their Live Set and relay the messageForUser.
+If ppal-read-song fails, don't try again: tell the user what happened and relay the messageForUser.`,
   };
 
   const hostTrackIndex = getHostTrackIndex();
@@ -95,24 +94,24 @@ If read-song with no arguments fails, don't try again, just tell the user what h
 
   // Set warnings and suggestions based on findings
   if (instrumentOnHostTrack) {
-    result.welcome.warnings.push(
-      "There's an instrument on the Producer Pal track. It's better to keep the Max for Live device on its own track in case you want to duplicate the instrument track later.",
+    result.messageForUser.warnings.push(
+      "There's an instrument on the Producer Pal track. It's better to keep the Max for Live device on its own track.",
     );
   }
 
   if (foundAnyInstrument) {
-    result.welcome.suggestion =
+    result.messageForUser.suggestion =
       "Try asking me to create a drum beat, bassline, melody, or chord progression.";
   } else {
-    result.welcome.suggestion = `There are no instruments in your project. Instruments are needed to produce sound. 
-Live's extensive built-in collection includes Wavetable, Operator, Analog, Electric, Tension, Collision, Sampler, 
+    result.messageForUser.suggestion = `There are no instruments in your project. Instruments are needed to produce sound.
+Live's extensive built-in collection includes Wavetable, Operator, Analog, Electric, Tension, Collision, Sampler,
 Drum Rack, Drum Sampler, and especially the newer Drift and Meld instruments.
 Note: I cannot add instruments directly - I can only suggest which Live instruments or plugins might work well for your intended sound.`;
   }
 
   // Clean up empty warnings array
-  if (result.welcome.warnings.length === 0) {
-    delete result.welcome.warnings;
+  if (result.messageForUser.warnings.length === 0) {
+    delete result.messageForUser.warnings;
   }
 
   // Include project notes if enabled (moved from read-song)
