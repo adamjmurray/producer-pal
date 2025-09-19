@@ -287,11 +287,15 @@ If problems are found during pre-release testing:
    ```sh
    # Delete remote tag
    git push origin --delete vX.Y.Z
+
    # Delete local tag
    git tag -d vX.Y.Z
+
    # Recreate tag at current commit
    git tag vX.Y.Z
-   git push origin vX.Y.Z
+
+   # Assuming we're still in the dev branch:
+   git push origin dev vX.Y.Z
    ```
 
 3. **Rebuild**
