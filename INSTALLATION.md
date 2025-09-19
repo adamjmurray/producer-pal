@@ -265,7 +265,7 @@ Run AI models locally without Internet connection.
      "mcpServers": {
        // ... other MCP server configs ...
        "producer-pal": {
-         "httpUrl": "http://localhost:3350"
+         "url": "http://localhost:3350/mcp"
        }
      }
    }
