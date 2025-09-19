@@ -39,7 +39,7 @@ describe("init", () => {
 
     liveApiCall.mockImplementation(function (method) {
       if (method === "get_version_string") {
-        return "12.2";
+        return "12.3";
       }
       return null;
     });
@@ -77,7 +77,7 @@ describe("init", () => {
       expect.objectContaining({
         connected: true,
         producerPalVersion: "0.9.7",
-        abletonLiveVersion: "12.2",
+        abletonLiveVersion: "12.3",
         songName: "Test Project",
         view: "session",
         tempo: 120,
@@ -86,9 +86,9 @@ describe("init", () => {
         trackCount: 3,
         sceneCount: 2,
         messageForUser: expect.objectContaining({
-          title: "Producer Pal 0.9.7 connected to Ableton Live",
+          title: "Producer Pal 0.9.7 connected to Ableton Live 12.3",
           tips: [
-            "**Save often!** I can modify and delete things in your project, and I make mistakes.",
+            "Save often! I can modify and delete things in your project, and I make mistakes.",
             "If you rearrange tracks/clips/scenes, tell me so I stay in sync.",
           ],
           suggestion: expect.any(String),
@@ -203,9 +203,7 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.messageForUser.suggestion).toBe(
-      "Try asking me to create a drum beat, bassline, melody, or chord progression.",
-    );
+    expect(result.messageForUser.suggestion).toContain("Ready to create");
     expect(result.messageForUser.warnings).toBeUndefined(); // No warnings expected
   });
 
@@ -261,11 +259,11 @@ describe("init", () => {
     const result = init();
 
     expect(result.messageForUser.warnings).toEqual([
-      "There's an instrument on the Producer Pal track. It's better to keep the Max for Live device on its own track.",
+      expect.stringContaining(
+        "There's an instrument on the Producer Pal track.",
+      ),
     ]);
-    expect(result.messageForUser.suggestion).toBe(
-      "Try asking me to create a drum beat, bassline, melody, or chord progression.",
-    );
+    expect(result.messageForUser.suggestion).toContain("Ready to create");
   });
 
   it("provides no-instruments suggestion when no instruments are found", () => {
@@ -320,9 +318,7 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.messageForUser.suggestion).toContain(
-      "There are no instruments in your project",
-    );
+    expect(result.messageForUser.suggestion).toContain("No instruments found.");
     expect(result.messageForUser.warnings).toBeUndefined(); // Empty warnings array should be deleted
   });
 
@@ -558,7 +554,7 @@ describe("init", () => {
         trackCount: 0,
         sceneCount: 0,
         messageForUser: expect.objectContaining({
-          suggestion: expect.stringContaining("no instruments"),
+          suggestion: expect.stringContaining("No instruments"),
         }),
       }),
     );

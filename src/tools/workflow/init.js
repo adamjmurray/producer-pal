@@ -17,11 +17,13 @@ export function init({} = {}, context) {
   const trackIds = liveSet.getChildIds("tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
+  const abletonLiveVersion = liveApp.call("get_version_string");
+
   // Basic Live info
   const result = {
     connected: true,
     producerPalVersion: VERSION,
-    abletonLiveVersion: liveApp.call("get_version_string"),
+    abletonLiveVersion,
     songName: liveSet.getProperty("name") || "Untitled",
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     tempo: liveSet.getProperty("tempo"),
@@ -33,17 +35,18 @@ export function init({} = {}, context) {
     sceneCount: sceneIds.length,
 
     messageForUser: {
-      title: `Producer Pal ${VERSION} connected to Ableton Live`,
+      title: `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
       tips: [
-        "**Save often!** I can modify and delete things in your project, and I make mistakes.",
+        "Save often! I can modify and delete things in your project, and I make mistakes.",
         "If you rearrange tracks/clips/scenes, tell me so I stay in sync.",
       ],
-      suggestion: null, // Will be set based on Live Set state
       warnings: [], // Array for any warnings
+      suggestion: null, // Will be set based on Live Set state
     },
-    nextStep: `Automatically call ppal-read-song *with no arguments* for an initial overview of the state of Live.
-Give the user a summary of their Live Set and relay the messageForUser.
-If ppal-read-song fails, don't try again: tell the user what happened and relay the messageForUser.`,
+    nextStep: `Automatically call ppal-read-song *with no arguments* for the best view of the state of Live.
+Tell the user a summary of their Live Set and the messageForUser.
+If ppal-read-song fails, don't try again: tell the user the error and messageForUser.
+Wait for input before proceeding.`,
   };
 
   const hostTrackIndex = getHostTrackIndex();
@@ -95,18 +98,17 @@ If ppal-read-song fails, don't try again: tell the user what happened and relay 
   // Set warnings and suggestions based on findings
   if (instrumentOnHostTrack) {
     result.messageForUser.warnings.push(
-      "There's an instrument on the Producer Pal track. It's better to keep the Max for Live device on its own track.",
+      "There's an instrument on the Producer Pal track. It's best to keep the Max for Live device on its own track.",
     );
   }
 
   if (foundAnyInstrument) {
     result.messageForUser.suggestion =
-      "Try asking me to create a drum beat, bassline, melody, or chord progression.";
+      "Ready to create or edit MIDI (drums, bass, melodies, chords), arrange clips, build scenes, or manage your Live Set.";
   } else {
-    result.messageForUser.suggestion = `There are no instruments in your project. Instruments are needed to produce sound.
-Live's extensive built-in collection includes Wavetable, Operator, Analog, Electric, Tension, Collision, Sampler,
-Drum Rack, Drum Sampler, and especially the newer Drift and Meld instruments.
-Note: I cannot add instruments directly - I can only suggest which Live instruments or plugins might work well for your intended sound.`;
+    result.messageForUser.suggestion = `No instruments found. To create music with MIDI clips, you'll need instruments.
+Add any Live instrument (Wavetable, Operator, Meld, Drift, Drum Rack, etc.) or plugin.
+I can't add instruments but can compose MIDI patterns once they're there.`;
   }
 
   // Clean up empty warnings array
