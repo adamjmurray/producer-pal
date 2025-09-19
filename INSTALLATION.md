@@ -237,6 +237,10 @@ For using Producer Pal through the Claude web interface.
 
 5. Start a new chat with Developer Mode and Producer Pal explicitly enabled
 
+Starting conversations with "Let's play with Ableton Live" doesn't work well in
+this setup. Instead, try "Open Ableton with Producer Pal" or "Run the Producer
+Pal ppal-init tool".
+
 ## LM Studio
 
 Run AI models locally without Internet connection.
