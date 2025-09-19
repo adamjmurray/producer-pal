@@ -27,48 +27,11 @@ const version = rootPackageJson.version;
 // Generate tools from MCP server (excluding development-only ppal-raw-live-api)
 const tools = [];
 
-// User-facing descriptions for tools in the desktop extension manifest
-// These are crisp, concise descriptions for end users, unlike the detailed
-// LLM-facing descriptions in the MCP tool definitions
-const toolDescriptions = {
-  "ppal-init":
-    "Initialize connection to Ableton Live and get basic Live Set information",
-  "ppal-transport":
-    "Controls Arrangement and Session transport, playback, position, and loop settings",
-  "ppal-create-clip": "Creates MIDI clips in Session or Arrangement view",
-  "ppal-read-clip":
-    "Reads information about clips including notes and properties",
-  "ppal-update-clip": "Updates clip properties, notes, and settings",
-  "ppal-create-track": "Creates new tracks in the Live Set",
-  "ppal-read-track":
-    "Reads information about tracks including clips and settings",
-  "ppal-update-track":
-    "Updates track properties like name, color, and settings",
-  "ppal-capture-scene":
-    "Captures existing clips from tracks into a new or existing scene",
-  "ppal-create-scene": "Creates new scenes in Session view",
-  "ppal-read-scene": "Reads information about scenes and their clips",
-  "ppal-update-scene": "Updates scene properties like name and color",
-  "ppal-read-song":
-    "Reads comprehensive information about the Live Set including global settings and all tracks",
-  "ppal-update-song":
-    "Updates global song settings like tempo, time signature, and scales",
-  "ppal-read-view": "Reads the current view state in Ableton Live",
-  "ppal-view": "Read and update the view state in Ableton Live",
-  "ppal-read-device": "Reads information about devices in Ableton Live", // Keep implementation available but not exposed via MCP (see read-device.js for why)
-  "ppal-duplicate": "Duplicates objects between Session and Arrangement views",
-  "ppal-delete": "Deletes various objects (tracks, clips, scenes)",
-  "ppal-memory": "Manages user-defined project notes for Producer Pal",
-};
-if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  console.log("Including raw LIVE API tool in manifest");
-  toolDescriptions["ppal-raw-live-api"] = "Direct access to the Live API";
-}
-
 for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
+  const shortDescription = toolInfo.description.split("\n")[0];
   tools.push({
     name: getDisplayName(toolInfo) || name,
-    description: toolDescriptions[name],
+    description: shortDescription,
   });
 }
 
