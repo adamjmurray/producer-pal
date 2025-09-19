@@ -19,7 +19,11 @@
    - [OpenAI](#openai)
      - [Codex CLI](#codex-cli)
      - [ChatGPT web app](#chatgpt-web-app)
-   - [LM Studio](#lm-studio) (local models, no Internet required)
+   - [LM Studio](#lm-studio) for local models useable with no Internet,
+     including:
+     - Mistral AI Magistral
+     - Alibaba Qwen 3
+     - OpenAI GPT OSS
    - [Other MCP-compatible LLMs](#other-mcp-compatible-llms)
 
 3. Start a conversation with "let's play with ableton live"
@@ -241,6 +245,7 @@ Run AI models locally without Internet connection.
 2. Install a compatible model:
    - Qwen 3+ (tested with the 4b-2507 and 4b-thinking-2507 models)
    - OpenAI GPT-OSS (tested with the 20B model)
+   - Mistral AI Magistral (tested with the small-2509 model)
 3. Configure MCP servers in LM Studio Settings → Program → Integrations → edit
    mcp.json:
 
