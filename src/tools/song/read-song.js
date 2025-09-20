@@ -25,7 +25,6 @@ export function readSong(args = {}) {
     id: liveSet.id,
     abletonLiveVersion: liveApp.call("get_version_string"),
     name: liveSet.getProperty("name"),
-    isPlaying: liveSet.getProperty("is_playing") > 0,
     followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
@@ -35,6 +34,12 @@ export function readSong(args = {}) {
         )
       : sceneIds.map((sceneId) => ({ id: sceneId.replace("id ", "") })),
   };
+
+  // Only include isPlaying when true
+  const isPlaying = liveSet.getProperty("is_playing") > 0;
+  if (isPlaying) {
+    result.isPlaying = isPlaying;
+  }
 
   // Conditionally include track arrays based on include parameters
   if (includeFlags.includeRegularTracks) {
