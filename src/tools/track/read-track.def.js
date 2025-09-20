@@ -3,7 +3,9 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
-  description: "Read track details including clips, devices, and routing.",
+  description: `Read track details including clips, devices, and routing.
+Clip time formats: bar|beat for positions (1|1 = first beat), bar:beat for durations (4:0 = 4 bars). Beats can be fractional.
+Clip MIDI notes use bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] notes.`,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,

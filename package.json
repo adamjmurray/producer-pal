@@ -19,6 +19,7 @@
   "scripts": {
     "build": "npm run parser:build && rollup -c config/rollup.config.mjs && npm run dxt:build",
     "build:all": "ENABLE_RAW_LIVE_API=true npm run build",
+    "build:watch": "npm run build && rollup -c config/rollup.config.mjs -w",
     "dev": "ENABLE_RAW_LIVE_API=true rollup -c config/rollup.config.mjs -w",
     "test": "npm run test:setup && vitest run -c config/vitest.config.mjs",
     "test:watch": "npm run test:setup && vitest -c config/vitest.config.mjs",
