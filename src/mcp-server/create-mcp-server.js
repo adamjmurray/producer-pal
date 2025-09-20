@@ -38,10 +38,10 @@ export function createMcpServer(callLiveApi) {
   addTool(toolDefReadTrack);
   addTool(toolDefUpdateTrack);
 
-  addTool(toolDefCaptureScene);
   addTool(toolDefCreateScene);
   addTool(toolDefReadScene);
   addTool(toolDefUpdateScene);
+  addTool(toolDefCaptureScene);
 
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
@@ -51,9 +51,8 @@ export function createMcpServer(callLiveApi) {
   // See src/tools/read-device.js for historical context
   // addTool(toolDefReadDevice);
 
-  addTool(toolDefView);
-
   addTool(toolDefTransport);
+  addTool(toolDefView);
   addTool(toolDefDelete);
   addTool(toolDefDuplicate);
   addTool(toolDefMemory);
