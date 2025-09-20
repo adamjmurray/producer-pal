@@ -221,7 +221,7 @@ export function readTrackGeneric({
             if (!clipArray || (Array.isArray(clipArray) && clipArray[1] === 0))
               return null;
             const clip = LiveAPI.from(clipArray);
-            return clip.exists() ? { clipId: clip.id, clipSlotIndex } : null;
+            return clip.exists() ? { id: clip.id, clipSlotIndex } : null;
           })
           .filter(Boolean);
   } else {
@@ -245,7 +245,7 @@ export function readTrackGeneric({
             .filter((clip) => clip.id != null)
         : track
             .getChildIds("arrangement_clips")
-            .map((clipId) => ({ clipId: clipId.replace("id ", "") }));
+            .map((clipId) => ({ id: clipId.replace("id ", "") }));
 
   // Categorize devices into separate arrays
   const categorizedDevices = categorizeDevices(

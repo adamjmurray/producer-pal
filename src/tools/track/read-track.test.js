@@ -388,8 +388,8 @@ describe("readTrack", () => {
 
     // Since clips exist at slots 0 and 2, we should get minimal data for those slots
     expect(result.sessionClips).toEqual([
-      { clipId: "clip1", clipSlotIndex: 0 },
-      { clipId: "clip2", clipSlotIndex: 2 },
+      { id: "clip1", clipSlotIndex: 0 },
+      { id: "clip2", clipSlotIndex: 2 },
     ]);
   });
 
@@ -420,8 +420,8 @@ describe("readTrack", () => {
     });
 
     expect(result.arrangementClips).toEqual([
-      { clipId: "arr_clip1" },
-      { clipId: "arr_clip2" },
+      { id: "arr_clip1" },
+      { id: "arr_clip2" },
     ]);
   });
 
@@ -454,9 +454,9 @@ describe("readTrack", () => {
 
     // Verify that arrangement clip IDs are clean strings without "id " prefix
     expect(result.arrangementClips).toEqual([
-      { clipId: "arr_clip3" },
-      { clipId: "arr_clip4" },
-      { clipId: "arr_clip5" },
+      { id: "arr_clip3" },
+      { id: "arr_clip4" },
+      { id: "arr_clip5" },
     ]);
 
     // Verify consistency with track ID format

@@ -635,11 +635,9 @@ describe("readSong", () => {
     });
 
     expect(result.tracks[0].sessionClips).toEqual([
-      { clipId: "clip1", clipSlotIndex: 0 },
+      { id: "clip1", clipSlotIndex: 0 },
     ]);
-    expect(result.tracks[0].arrangementClips).toEqual([
-      { clipId: "arr_clip1" },
-    ]);
+    expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
   });
 
   it("uses default parameter values when no arguments provided", () => {
@@ -683,11 +681,9 @@ describe("readSong", () => {
 
     // Verify default behavior: minimal clip data, no notes
     expect(result.tracks[0].sessionClips).toEqual([
-      { clipId: "clip1", clipSlotIndex: 0 },
+      { id: "clip1", clipSlotIndex: 0 },
     ]);
-    expect(result.tracks[0].arrangementClips).toEqual([
-      { clipId: "arr_clip1" },
-    ]);
+    expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
 
     // Verify that notes are not included (since includeNotes defaults to false)
     expect(result.tracks[0].sessionClips[0].notes).toBeUndefined();
