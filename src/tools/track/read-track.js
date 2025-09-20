@@ -142,7 +142,6 @@ export function readTrackGeneric({
 }) {
   const {
     includeDrumChains,
-    includeNotes,
     includeRackChains,
     includeMidiEffects,
     includeInstrument,
@@ -244,7 +243,9 @@ export function readTrackGeneric({
               }),
             )
             .filter((clip) => clip.id != null)
-        : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId }));
+        : track
+            .getChildIds("arrangement_clips")
+            .map((clipId) => ({ clipId: clipId.replace("id ", "") }));
 
   // Categorize devices into separate arrays
   const categorizedDevices = categorizeDevices(

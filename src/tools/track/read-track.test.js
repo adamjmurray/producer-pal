@@ -420,9 +420,47 @@ describe("readTrack", () => {
     });
 
     expect(result.arrangementClips).toEqual([
-      { clipId: "id arr_clip1" },
-      { clipId: "id arr_clip2" },
+      { clipId: "arr_clip1" },
+      { clipId: "arr_clip2" },
     ]);
+  });
+
+  it("returns arrangement clip IDs without 'id ' prefix when includeArrangementClips is false", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set tracks 1":
+          return "track2";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Arrangement ID Test Track",
+        color: 255,
+        clip_slots: [],
+        arrangement_clips: children("arr_clip3", "arr_clip4", "arr_clip5"),
+        devices: [],
+      },
+    });
+
+    // Call with includeArrangementClips explicitly false to get minimal data
+    const result = readTrack({
+      trackIndex: 1,
+      include: ["notes", "rack-chains", "instrument"], // excludes "arrangement-clips"
+    });
+
+    // Verify that arrangement clip IDs are clean strings without "id " prefix
+    expect(result.arrangementClips).toEqual([
+      { clipId: "arr_clip3" },
+      { clipId: "arr_clip4" },
+      { clipId: "arr_clip5" },
+    ]);
+
+    // Verify consistency with track ID format
+    expect(result.id).toBe("track2");
   });
 
   describe("devices", () => {

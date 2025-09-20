@@ -638,7 +638,7 @@ describe("readSong", () => {
       { clipId: "clip1", clipSlotIndex: 0 },
     ]);
     expect(result.tracks[0].arrangementClips).toEqual([
-      { clipId: "id arr_clip1" },
+      { clipId: "arr_clip1" },
     ]);
   });
 
@@ -686,7 +686,7 @@ describe("readSong", () => {
       { clipId: "clip1", clipSlotIndex: 0 },
     ]);
     expect(result.tracks[0].arrangementClips).toEqual([
-      { clipId: "id arr_clip1" },
+      { clipId: "arr_clip1" },
     ]);
 
     // Verify that notes are not included (since includeNotes defaults to false)
