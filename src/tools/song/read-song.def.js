@@ -45,9 +45,9 @@ Use this for an overview of the state of Live and call again after any moves/del
 - "instruments"
 - "audio-effects"
 - "all-devices" → midi effects + instruments + audio effects
-- "rack-chains" → chains in rack devices
+- "rack-chains" → device chains in rack devices
 - "drum-chains" → drum pad and return chains in drum racks
-- "drum-maps" → drum pad mappings without full chain data
+- "drum-maps" → drum pad mappings without chain data
 - "session-clips"
 - "arrangement-clips"
 - "clip-notes" → MIDI notes (slow with many clips)

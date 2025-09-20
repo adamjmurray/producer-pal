@@ -1,89 +1,72 @@
 import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
-import { DEVICE_TYPES } from "../constants.js";
 
 export const toolDefReadTrack = defineTool("ppal-read-track", {
   title: "Read Track",
-  description:
-    "Read comprehensive information about a track. Returns sessionClips and arrangementClips arrays containing clip objects with time-based properties in bar|beat format. " +
-    "Understanding track state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline. " +
-    "Use includeRoutings to get input/output routing information including available channels and types. " +
-    `DEVICE TYPES: Device objects have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}. ` +
-    "ENTITY STATES (for tracks, drum pads, and rack chains): " +
-    "When no 'state' property is present, the entity is active (normal state - playing or ready to play). " +
-    "When present, 'state' can be: " +
-    "'muted': Explicitly muted via UI button; " +
-    "'muted-via-solo': Muted as side-effect of another entity being soloed; " +
-    "'muted-also-via-solo': Both explicitly muted AND muted via solo (won't become active even if unmuted or other entity unsoloed); " +
-    "'soloed': Explicitly soloed, causing others to be muted-via-solo.",
+  description: "Read track details including clips, devices, and routing.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
   },
   inputSchema: {
+    trackId: z
+      .string()
+      .optional()
+      .describe("Provide this or trackType/trackIndex"),
+    trackType: z
+      .enum(["regular", "return", "master"])
+      .default("regular")
+      .describe(
+        "Regular tracks and return tracks have independent trackIndexes. The master track has no index.",
+      ),
     trackIndex: z
       .number()
       .int()
       .min(0)
       .optional()
-      .describe(
-        "Track index (0-based). This is also the returnTrackIndex for return tracks. Ignored when trackType is 'master'. Can be omitted if trackId is provided or trackType is 'master'.",
-      ),
-    trackId: z
-      .string()
-      .optional()
-      .describe(
-        "Track ID to directly access any track. Either this or trackIndex must be provided (except for master track which requires neither).",
-      ),
-    trackType: z
-      .enum(["regular", "return", "master"])
-      .default("regular")
-      .describe(
-        "Type of track to read: 'regular' for regular tracks (default), 'return' for return tracks, 'master' for master track. Ignored when trackId is provided.",
-      ),
+      .describe("Track index (0-based)"),
     include: z
       .array(
         z.enum([
-          "*",
-          "drum-chains",
-          "drum-maps",
+          "session-clips",
+          "arrangement-clips",
           "clip-notes",
-          "rack-chains",
           "midi-effects",
           "instruments",
           "audio-effects",
+          "all-devices",
+          "rack-chains",
+          "drum-chains",
+          "drum-maps",
           "routings",
           "available-routings",
-          "session-clips",
-          "arrangement-clips",
-          "all-devices",
           "all-routings",
+          "*",
         ]),
       )
       .default([
-        "clip-notes",
-        "drum-maps",
-        "instruments",
         "session-clips",
         "arrangement-clips",
+        "clip-notes",
+        "instruments",
+        "drum-maps",
       ])
       .describe(
-        "Array of data to include in the response. Available options: " +
-          "'*' (include all available options), " +
-          "'drum-chains' (include drum pad chains and return chains in rack devices), " +
-          "'drum-maps' (include drum pad mappings without full chain data), " +
-          "'clip-notes' (include notes data in clip objects), " +
-          "'rack-chains' (include chains in rack devices), " +
-          "'midi-effects' (include MIDI effects array), " +
-          "'instruments' (include instrument object), " +
-          "'audio-effects' (include audio effects array), " +
-          "'routings' (include current routing settings), " +
-          "'available-routings' (include available routing options), " +
-          "'session-clips' (include full session clip data), " +
-          "'arrangement-clips' (include full arrangement clip data), " +
-          "'all-devices' (shortcut for midi-effects, instruments, audio-effects), " +
-          "'all-routings' (shortcut for routings, available-routings). " +
-          "Default: ['clip-notes', 'drum-maps', 'instruments', 'session-clips', 'arrangement-clips'].",
+        `Data to include. Options:
+- "session-clips"
+- "arrangement-clips"
+- "clip-notes"
+- "midi-effects"
+- "instruments"
+- "audio-effects"
+- "all-devices" → midi-effects + instrument + audio-effects
+- "rack-chains" → device chains in rack devices
+- "drum-chains" → drum pad and return chains in drum racks
+- "drum-maps" → drum pad mappings without chain data
+- "routings" → current routing settings
+- "available-routings" → available routing options
+- "all-routings" → routings + available-routings
+- "*" → everything (avoid unless simple Live Set)`,
       ),
   },
 });
