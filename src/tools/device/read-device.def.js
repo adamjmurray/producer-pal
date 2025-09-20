@@ -23,7 +23,7 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
   description:
-    "Read information about a specific device by ID. Returns device properties including type, name, and structure. " +
+    "Read information about a specific device by ID\nReturns device properties including type, name, and structure. " +
     "For rack devices, can optionally include chains and drum pad mappings. " +
     `Device types include: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}. ` +
     "ENTITY STATES (for drum pads and rack chains): " +

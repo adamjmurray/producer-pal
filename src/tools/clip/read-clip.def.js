@@ -4,7 +4,7 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
   description:
-    "Retrieves clip information including notes. Returns type ('midi' or 'audio'), name, and time-based properties for all clips. " +
+    "Retrieves clip information including notes.\nReturns type ('midi' or 'audio'), name, and time-based properties for all clips. " +
     "Time-based properties (length, startMarker, loopStart, arrangementStartTime) are returned in bar|beat format (e.g. '2|3.5') using musical beats. " +
     "The 'length' field shows the effective playing duration: for looping clips, this is the loop length; for non-looping clips, this is the total playback duration. " +
     "arrangementStartTime respects the song's time signature, while other time-based properties depend on the clip's time signature (which may be different from the song). " +

@@ -5,7 +5,8 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefUpdateTrack = defineTool("ppal-update-track", {
   title: "Update Track",
   description:
-    "Updates properties of existing tracks by ID. Supports bulk operations when provided with comma-separated track IDs. " +
+    "Updates properties of existing tracks.\n" +
+    "Supports bulk operations when provided with comma-separated track IDs. " +
     "All properties except ids are optional. " +
     "Routing properties accept identifier strings that can be obtained from ppal-read-track or ppal-read-song with includeRoutings: true. " +
     "IMPORTANT: When changing routing, always set the routing type BEFORE setting the channel, " +

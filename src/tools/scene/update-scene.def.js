@@ -4,7 +4,8 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
   description:
-    "Updates properties of existing scenes by ID. Supports bulk operations when provided with comma-separated scene IDs. " +
+    "Updates properties of existing scenes.\n" +
+    "Supports bulk operations when provided with comma-separated scene IDs. " +
     "Note: This only modifies scene properties - does not affect playback or launch scenes. " +
     "All properties except ids are optional.",
   annotations: {

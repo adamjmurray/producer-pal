@@ -2,10 +2,10 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefTransport = defineTool("ppal-transport", {
-  title: "Transport",
+  title: "Live Transport",
   description:
+    "Controls the Arrangement and Session transport, including playback, position, and loop settings.\n" +
     "TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details. " +
-    "Controls the Arrangement and Session transport, including playback, position, and loop settings. " +
     "IMPORTANT: Tracks can only play one clip at a time. Session clips take precedence over Arrangement clips. " +
     "When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.",
   annotations: {

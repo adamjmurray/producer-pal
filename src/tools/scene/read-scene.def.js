@@ -4,7 +4,8 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
   description:
-    "Read comprehensive information about a scene. When includeClips is true, returns clip objects with time-based properties in bar|beat format. " +
+    "Read details about a scene.\n" +
+    "When includeClips is true, returns clip objects with time-based properties in bar|beat format. " +
     "Understanding scene state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline.",
   annotations: {
     readOnlyHint: true,
