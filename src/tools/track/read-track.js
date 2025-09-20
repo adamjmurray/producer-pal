@@ -108,6 +108,13 @@ function categorizeDevices(
   };
 }
 
+// Helper function to strip chains from device objects
+function stripChains(device) {
+  if (!device || typeof device !== "object") return device;
+  const { chains, ...rest } = device;
+  return rest;
+}
+
 /**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
@@ -142,6 +149,7 @@ export function readTrackGeneric({
 }) {
   const {
     includeDrumChains,
+    includeDrumMaps,
     includeRackChains,
     includeMidiEffects,
     includeInstrument,
@@ -266,26 +274,36 @@ export function readTrackGeneric({
             .map((clipId) => ({ id: clipId.replace("id ", "") }));
 
   // Categorize devices into separate arrays
+  // When includeDrumMaps is true but includeRackChains is false, we need to get chains
+  // to extract drum maps but then strip them from the final result
+  const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
   const categorizedDevices = categorizeDevices(
     trackDevices,
     includeDrumChains,
-    includeRackChains,
+    shouldFetchChainsForDrumMaps ? true : includeRackChains,
   );
 
   // Add device categories based on inclusion flags
   if (includeMidiEffects) {
-    result.midiEffects = categorizedDevices.midiEffects;
+    result.midiEffects = shouldFetchChainsForDrumMaps
+      ? categorizedDevices.midiEffects.map(stripChains)
+      : categorizedDevices.midiEffects;
   }
   if (includeInstrument) {
     // For Producer Pal host track, omit instrument property when it's null
     if (isProducerPalHost && categorizedDevices.instrument === null) {
       // Don't include instrument property at all
     } else {
-      result.instrument = categorizedDevices.instrument;
+      result.instrument =
+        shouldFetchChainsForDrumMaps && categorizedDevices.instrument
+          ? stripChains(categorizedDevices.instrument)
+          : categorizedDevices.instrument;
     }
   }
   if (includeAudioEffects) {
-    result.audioEffects = categorizedDevices.audioEffects;
+    result.audioEffects = shouldFetchChainsForDrumMaps
+      ? categorizedDevices.audioEffects.map(stripChains)
+      : categorizedDevices.audioEffects;
   }
 
   // Extract drum map from all categorized devices (critical for drumMap preservation)

@@ -4,6 +4,7 @@
 const ALL_INCLUDE_OPTIONS = {
   song: [
     "drum-chains",
+    "drum-maps",
     "notes",
     "rack-chains",
     "scenes",
@@ -21,6 +22,7 @@ const ALL_INCLUDE_OPTIONS = {
   ],
   track: [
     "drum-chains",
+    "drum-maps",
     "notes",
     "rack-chains",
     "midi-effects",
@@ -103,6 +105,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   if (includeArray === undefined) {
     return {
       includeDrumChains: Boolean(defaults.includeDrumChains),
+      includeDrumMaps: Boolean(defaults.includeDrumMaps),
       includeNotes: Boolean(defaults.includeNotes),
       includeRackChains: Boolean(defaults.includeRackChains),
       includeScenes: Boolean(defaults.includeScenes),
@@ -130,6 +133,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   if (includeArray.length === 0) {
     return {
       includeDrumChains: false,
+      includeDrumMaps: false,
       includeNotes: false,
       includeRackChains: false,
       includeScenes: false,
@@ -149,6 +153,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
 
   const result = {
     includeDrumChains: includeSet.has("drum-chains"),
+    includeDrumMaps: includeSet.has("drum-maps"),
     includeNotes: includeSet.has("notes"),
     includeRackChains: includeSet.has("rack-chains"),
     includeScenes: hasScenes,
@@ -176,6 +181,7 @@ export function includeArrayFromFlags(includeFlags) {
   const includes = [];
 
   if (includeFlags.includeDrumChains) includes.push("drum-chains");
+  if (includeFlags.includeDrumMaps) includes.push("drum-maps");
   if (includeFlags.includeNotes) includes.push("notes");
   if (includeFlags.includeRackChains) includes.push("rack-chains");
   if (includeFlags.includeScenes) includes.push("scenes");
@@ -200,8 +206,9 @@ export function includeArrayFromFlags(includeFlags) {
  */
 export const READ_SONG_DEFAULTS = {
   includeDrumChains: false,
+  includeDrumMaps: true,
   includeNotes: false,
-  includeRackChains: true,
+  includeRackChains: false,
   includeScenes: false,
   includeMidiEffects: false,
   includeInstrument: true,
@@ -219,8 +226,9 @@ export const READ_SONG_DEFAULTS = {
  */
 export const READ_TRACK_DEFAULTS = {
   includeDrumChains: false,
+  includeDrumMaps: true,
   includeNotes: true,
-  includeRackChains: true,
+  includeRackChains: false,
   includeMidiEffects: false,
   includeInstrument: true,
   includeAudioEffects: false,

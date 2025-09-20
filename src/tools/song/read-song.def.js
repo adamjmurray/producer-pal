@@ -25,13 +25,14 @@ Use this for an overview of the state of Live and call again after any moves/del
           "all-devices",
           "rack-chains",
           "drum-chains",
+          "drum-maps",
           "session-clips",
           "arrangement-clips",
           "notes",
           "*",
         ]),
       )
-      .default(["regular-tracks", "instrument", "rack-chains"])
+      .default(["regular-tracks", "instrument", "drum-maps"])
       .describe(
         `Data to include. Options:
 - "regular-tracks"
@@ -46,6 +47,7 @@ Use this for an overview of the state of Live and call again after any moves/del
 - "all-devices" → midi effects + instrument + audio effects
 - "rack-chains" → chains in rack devices
 - "drum-chains" → drum pad and return chains in drum racks
+- "drum-maps" → drum pad mappings without full chain data
 - "session-clips"
 - "arrangement-clips"
 - "notes" → MIDI notes (slow with many clips)

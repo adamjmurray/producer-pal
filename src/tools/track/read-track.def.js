@@ -46,6 +46,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         z.enum([
           "*",
           "drum-chains",
+          "drum-maps",
           "notes",
           "rack-chains",
           "midi-effects",
@@ -61,7 +62,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
       )
       .default([
         "notes",
-        "rack-chains",
+        "drum-maps",
         "instrument",
         "session-clips",
         "arrangement-clips",
@@ -70,6 +71,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         "Array of data to include in the response. Available options: " +
           "'*' (include all available options), " +
           "'drum-chains' (include drum pad chains and return chains in rack devices), " +
+          "'drum-maps' (include drum pad mappings without full chain data), " +
           "'notes' (include notes data in clip objects), " +
           "'rack-chains' (include chains in rack devices), " +
           "'midi-effects' (include MIDI effects array), " +
@@ -81,7 +83,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "'arrangement-clips' (include full arrangement clip data), " +
           "'all-devices' (shortcut for midi-effects, instrument, audio-effects), " +
           "'all-routings' (shortcut for routings, available-routings). " +
-          "Default: ['notes', 'rack-chains', 'instrument', 'session-clips', 'arrangement-clips'].",
+          "Default: ['notes', 'drum-maps', 'instrument', 'session-clips', 'arrangement-clips'].",
       ),
   },
 });

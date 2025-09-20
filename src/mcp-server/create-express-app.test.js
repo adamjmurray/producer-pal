@@ -235,7 +235,7 @@ describe("MCP Express App", () => {
         "mcp_request",
         expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
-        '{"trackIndex":1,"trackType":"regular","include":["notes","rack-chains","instrument","session-clips","arrangement-clips"]}', // argsJSON
+        '{"trackIndex":1,"trackType":"regular","include":["notes","drum-maps","instrument","session-clips","arrangement-clips"]}', // argsJSON
       );
     });
 

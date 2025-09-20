@@ -691,7 +691,10 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instrument", "rack-chains"],
+      });
 
       expect(result.instrument).toEqual({
         id: "rack1",
@@ -871,7 +874,10 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instrument", "rack-chains"],
+      });
 
       expect(result.instrument).toEqual({
         id: "outer_rack",
@@ -948,7 +954,10 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instrument", "rack-chains"],
+      });
 
       expect(result.instrument).toEqual({
         id: "rack1",
@@ -1035,7 +1044,10 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({ trackIndex: 0 });
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instrument", "rack-chains"],
+      });
 
       expect(result.instrument).toEqual({
         id: "rack1",
@@ -3071,6 +3083,389 @@ describe("readTrack", () => {
       // Should read as regular track (from path) not return track
       expect(result.trackIndex).toBe(0);
       expect(result.returnTrackIndex).toBeUndefined();
+    });
+  });
+
+  describe("drum-maps include option", () => {
+    it("includes drumMap but strips chains when using drum-maps", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "drumrack1";
+          case "live_set tracks 0 devices 0 drum_pads 60":
+            return "pad1";
+          case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 0 drum_pads 60 chains 0 devices 0":
+            return "kick_device";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "main_chain";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("drumrack1"),
+        }),
+        drumrack1: {
+          name: "Test Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad1"),
+          chains: children("main_chain"),
+          return_chains: [],
+        },
+        main_chain: {
+          name: "Main Chain",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: [],
+        },
+        pad1: {
+          note: 60, // C3
+          name: "Test Kick",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          chains: children("chain1"),
+        },
+        chain1: {
+          name: "Kick Chain",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: children("kick_device"),
+        },
+        kick_device: {
+          name: "Kick Instrument",
+          class_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        },
+      });
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instrument", "drum-maps"],
+      });
+
+      // Should have drumMap
+      expect(result.drumMap).toEqual({
+        C3: "Test Kick",
+      });
+
+      // Should have instrument but NO chains
+      expect(result.instrument).toEqual({
+        id: "drumrack1",
+        name: "Drum Rack",
+        displayName: "Test Drum Rack",
+        type: DEVICE_TYPE.DRUM_RACK,
+        drumPads: [
+          {
+            name: "Test Kick",
+            note: 60,
+          },
+        ],
+      });
+
+      // Critical: chains should be stripped
+      expect(result.instrument.chains).toBeUndefined();
+    });
+
+    it("drum racks don't have main chains even with rack-chains included", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "drumrack1";
+          case "live_set tracks 0 devices 0 drum_pads 60":
+            return "pad1";
+          case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
+            return "chain1";
+          case "live_set tracks 0 devices 0 drum_pads 60 chains 0 devices 0":
+            return "kick_device2";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "main_chain";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("drumrack1"),
+        }),
+        drumrack1: {
+          name: "Test Drum Rack",
+          class_name: "DrumGroupDevice",
+          class_display_name: "Drum Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 1,
+          drum_pads: children("pad1"),
+          chains: children("main_chain"),
+          return_chains: [],
+        },
+        main_chain: {
+          name: "Main Chain",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: [],
+        },
+        pad1: {
+          note: 60, // C3
+          name: "Test Kick",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          chains: children("chain1"),
+        },
+        chain1: {
+          name: "Kick Chain",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: children("kick_device2"),
+        },
+        kick_device2: {
+          name: "Kick Instrument",
+          class_name: "Simpler",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        },
+      });
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instrument", "drum-maps", "rack-chains"],
+      });
+
+      // Should have drumMap
+      expect(result.drumMap).toEqual({
+        C3: "Test Kick",
+      });
+
+      // Should have instrument WITHOUT chains (drum racks don't expose main chains)
+      expect(result.instrument).toEqual({
+        id: "drumrack1",
+        name: "Drum Rack",
+        displayName: "Test Drum Rack",
+        type: DEVICE_TYPE.DRUM_RACK,
+        drumPads: [
+          {
+            name: "Test Kick",
+            note: 60,
+          },
+        ],
+      });
+
+      // Critical: chains should NOT be present on drum racks
+      expect(result.instrument.chains).toBeUndefined();
+    });
+
+    it("strips chains from all device types when using drum-maps", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "midi_effect_rack";
+          case "live_set tracks 0 devices 1":
+            return "instrument_rack";
+          case "live_set tracks 0 devices 2":
+            return "audio_effect_rack";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "midi_chain";
+          case "live_set tracks 0 devices 1 chains 0":
+            return "inst_chain";
+          case "live_set tracks 0 devices 2 chains 0":
+            return "audio_chain";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children(
+            "midi_effect_rack",
+            "instrument_rack",
+            "audio_effect_rack",
+          ),
+        }),
+        midi_effect_rack: {
+          name: "MIDI Effect Rack",
+          class_name: "MidiEffectGroupDevice",
+          class_display_name: "MIDI Effect Rack",
+          type: LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("midi_chain"),
+          return_chains: [],
+        },
+        instrument_rack: {
+          name: "Instrument Rack",
+          class_name: "InstrumentGroupDevice",
+          class_display_name: "Instrument Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("inst_chain"),
+          return_chains: [],
+        },
+        audio_effect_rack: {
+          name: "Audio Effect Rack",
+          class_name: "AudioEffectGroupDevice",
+          class_display_name: "Audio Effect Rack",
+          type: LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("audio_chain"),
+          return_chains: [],
+        },
+        midi_chain: {
+          name: "MIDI Chain",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: [],
+        },
+        inst_chain: {
+          name: "Inst Chain",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: [],
+        },
+        audio_chain: {
+          name: "Audio Chain",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: [],
+        },
+      });
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["midi-effects", "instrument", "audio-effects", "drum-maps"],
+      });
+
+      // All devices should have chains stripped
+      expect(result.midiEffects[0]).toEqual({
+        id: "midi_effect_rack",
+        name: "MIDI Effect Rack",
+        type: DEVICE_TYPE.MIDI_EFFECT_RACK,
+      });
+      expect(result.midiEffects[0].chains).toBeUndefined();
+
+      expect(result.instrument).toEqual({
+        id: "instrument_rack",
+        name: "Instrument Rack",
+        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      });
+      expect(result.instrument.chains).toBeUndefined();
+
+      expect(result.audioEffects[0]).toEqual({
+        id: "audio_effect_rack",
+        name: "Audio Effect Rack",
+        type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
+      });
+      expect(result.audioEffects[0].chains).toBeUndefined();
+    });
+
+    it("uses drum-maps by default (not rack-chains)", () => {
+      liveApiId.mockImplementation(function () {
+        switch (this._path) {
+          case "live_set tracks 0":
+            return "track1";
+          case "live_set tracks 0 devices 0":
+            return "instrument_rack";
+          case "live_set tracks 0 devices 0 chains 0":
+            return "chain1";
+          default:
+            return this._id;
+        }
+      });
+
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("instrument_rack"),
+        }),
+        instrument_rack: {
+          name: "Instrument Rack",
+          class_name: "InstrumentGroupDevice",
+          class_display_name: "Instrument Rack",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 1,
+          can_have_drum_pads: 0,
+          chains: children("chain1"),
+          return_chains: [],
+        },
+        chain1: {
+          name: "Chain 1",
+          mute: 0,
+          muted_via_solo: 0,
+          solo: 0,
+          devices: [],
+        },
+      });
+
+      // Call with NO include param - should use defaults
+      const result = readTrack({ trackIndex: 0 });
+
+      // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
+      expect(result.instrument).toEqual({
+        id: "instrument_rack",
+        name: "Instrument Rack",
+        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      });
+      expect(result.instrument.chains).toBeUndefined();
+    });
+
+    it("handles drum-maps with no drum racks gracefully", () => {
+      mockLiveApiGet({
+        Track: mockTrackProperties({
+          devices: children("wavetable"),
+        }),
+        wavetable: {
+          name: "Wavetable",
+          class_name: "InstrumentVector",
+          class_display_name: "Wavetable",
+          type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+          is_active: 1,
+          can_have_chains: 0,
+          can_have_drum_pads: 0,
+        },
+      });
+
+      const result = readTrack({
+        trackIndex: 0,
+        include: ["instrument", "drum-maps"],
+      });
+
+      // Should have instrument but no drumMap
+      expect(result.instrument).toEqual({
+        id: "wavetable",
+        name: "Wavetable",
+        type: DEVICE_TYPE.INSTRUMENT,
+      });
+      expect(result.drumMap).toBeUndefined();
+      expect(result.instrument.chains).toBeUndefined();
     });
   });
 });

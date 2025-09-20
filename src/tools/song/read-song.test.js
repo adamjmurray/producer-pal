@@ -1042,4 +1042,129 @@ describe("readSong", () => {
     expect(result).not.toHaveProperty("returnTracks");
     expect(result).not.toHaveProperty("masterTrack");
   });
+
+  it("uses drum-maps by default and strips chains", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set":
+          return "live_set";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 0 devices 0":
+          return "drumrack1";
+        case "live_set tracks 0 devices 0 drum_pads 60":
+          return "pad1";
+        case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
+          return "chain1";
+        case "live_set tracks 0 devices 0 drum_pads 60 chains 0 devices 0":
+          return "kick_device";
+        case "live_set tracks 0 devices 0 chains 0":
+          return "main_chain";
+        case "live_app":
+          return "live_app";
+        default:
+          return this._id;
+      }
+    });
+
+    mockLiveApiGet({
+      live_set: {
+        name: "Test Song",
+        tracks: children("track1"),
+        return_tracks: [],
+        scenes: [],
+        back_to_arranger: 0,
+        tempo: 120,
+        time_signature_numerator: 4,
+        time_signature_denominator: 4,
+        scale_mode: 0, // Scale disabled
+      },
+      track1: {
+        has_midi_input: 1,
+        name: "Drums",
+        color: 16711680,
+        back_to_arranger: 0,
+        devices: children("drumrack1"),
+        clip_slots: [],
+        arrangement_clips: [],
+        can_be_armed: 1,
+        arm: 0,
+        is_foldable: 0,
+        is_grouped: 0,
+        group_track: ["id", "0"],
+        mute: 0,
+        solo: 0,
+        muted_via_solo: 0,
+        playing_slot_index: -1,
+        fired_slot_index: -1,
+      },
+      drumrack1: {
+        name: "Test Drum Rack",
+        class_name: "DrumGroupDevice",
+        class_display_name: "Drum Rack",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        drum_pads: children("pad1"),
+        chains: children("main_chain"),
+        return_chains: [],
+      },
+      main_chain: {
+        name: "Main Chain",
+        mute: 0,
+        muted_via_solo: 0,
+        solo: 0,
+        devices: [],
+      },
+      pad1: {
+        note: 60, // C3
+        name: "Test Kick",
+        mute: 0,
+        muted_via_solo: 0,
+        solo: 0,
+        chains: children("chain1"),
+      },
+      chain1: {
+        name: "Kick Chain",
+        mute: 0,
+        muted_via_solo: 0,
+        solo: 0,
+        devices: children("kick_device"),
+      },
+      kick_device: {
+        name: "Kick Instrument",
+        class_name: "Simpler",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      },
+      live_app: {
+        version_string: "12.2.5",
+      },
+    });
+
+    // Call with NO arguments - should use defaults (including drum-maps)
+    const result = readSong();
+
+    // Should have drumMap on the track
+    expect(result.tracks[0].drumMap).toEqual({
+      C3: "Test Kick",
+    });
+
+    // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
+    expect(result.tracks[0].instrument).toEqual({
+      id: "drumrack1",
+      name: "Drum Rack",
+      displayName: "Test Drum Rack",
+      type: DEVICE_TYPE.DRUM_RACK,
+      drumPads: [
+        {
+          name: "Test Kick",
+          note: 60,
+        },
+      ],
+    });
+
+    // Critical: chains should be stripped due to drum-maps default
+    expect(result.tracks[0].instrument.chains).toBeUndefined();
+  });
 });
