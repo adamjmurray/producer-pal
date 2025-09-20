@@ -8,7 +8,7 @@ When called with no arguments, returns the current view state including main vie
 When called with arguments, updates the view and returns the full view state with updates optimistically applied. Use update functionality judiciously to avoid interrupting user workflow. Generally only change views when: 1) User explicitly asks to see something, 2) After creating/modifying objects the user specifically asked to work on, 3) Context strongly suggests the user would benefit from seeing the result. When in doubt, don't change views.`;
 
 export const toolDefView = defineTool("ppal-view", {
-  title: "View State",
+  title: "Manage View",
   description,
   annotations: {
     readOnlyHint: false,
