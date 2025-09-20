@@ -149,7 +149,6 @@ describe("readSong", () => {
       followsArrangement: true,
       tempo: 120,
       timeSignature: "4/4",
-      scaleEnabled: true,
       scale: "Major",
       scaleRoot: "C",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
@@ -281,7 +280,6 @@ describe("readSong", () => {
       timeSignature: "3/4",
       isPlaying: false,
       followsArrangement: false,
-      scaleEnabled: false,
       tracks: [],
       scenes: [],
     });
@@ -1042,7 +1040,6 @@ describe("readSong", () => {
         followsArrangement: true,
         tempo: 120,
         timeSignature: "4/4",
-        scaleEnabled: false,
         scenes: [], // Empty because no scenes exist in the Live Set
       }),
     );

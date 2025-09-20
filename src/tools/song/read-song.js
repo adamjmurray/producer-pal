@@ -29,7 +29,6 @@ export function readSong(args = {}) {
     followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
-    scaleEnabled,
     scenes: includeFlags.includeScenes
       ? sceneIds.map((_sceneId, sceneIndex) =>
           readScene({ sceneIndex, include: includeArray }),
