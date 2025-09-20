@@ -54,10 +54,13 @@ See `doc/Architecture.md` for detailed system design.
 
 ## Testing After Changes
 
-- **Code changes**: Run `npm test`
-- **End-to-end validation (upon request)**: Use CLI tool (see
-  `doc/Development-Tools.md`)
-- **Before claiming you are done**: ALWAYS run `npm run format`
+- After ALL code changes: Run `npm test`
+- End-to-end validation and investigation (upon request):
+  ```
+  node scripts/cli.mjs tools/list
+  node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
+  ```
+- Before claiming you are done: ALWAYS run `npm run format`
 
 ## Project Constraints
 
