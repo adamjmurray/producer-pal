@@ -21,10 +21,10 @@ Requires [Node.js](https://nodejs.org) (recommended v22 or higher)
 2. `npm install`
 3. `npm run build` (for production) or `npm run build:all` (for development with
    debugging tools)
-4. Add the `device/Producer_Pal.amxd` Max for Live device to a MIDI track in
-   Ableton Live
-5. Drag and drop `desktop-extension/Producer_Pal.dxt` to Claude Desktop →
-   Settings → Extension
+4. Add the `max-for-live-device/Producer_Pal.amxd` Max for Live device to a MIDI
+   track in Ableton Live
+5. Drag and drop `claude-desktop-extension/Producer_Pal.mcpb` to Claude Desktop
+   → Settings → Extension
 
 **Note**: For development and testing, use `npm run build:all` to include
 debugging tools like `ppal-raw-live-api`.
@@ -164,9 +164,10 @@ shortcuts (`get`, `set`, `call`, `goto`, `info`), and extension methods
 Version numbers appear in these locations:
 
 1. `package.json` (root) - Source of truth
-2. `desktop-extension/package.json`
+2. `claude-desktop-extension/package.json`
 3. `src/shared/version.js`
-4. `device/Producer_Pal.amxd` - In the Max UI (manual update required)
+4. `max-for-live-device/Producer_Pal.amxd` - In the Max UI (manual update
+   required)
 
 ### Release Process
 
@@ -212,15 +213,15 @@ npm run release:prepare
 
 This script:
 
-- Cleans the `releases/` directory
-- Builds the `.dxt` file
-- Copies it to `releases/Producer_Pal.dxt`
+- Cleans the release/` directory
+- Builds the `.mcpb` file
+- Copies it to `release/Producer_Pal.mcpb`
 
 #### Step 5: Freeze Max Device
 
-1. Open `device/Producer_Pal.amxd` in Max
+1. Open `max-for-live-device/Producer_Pal.amxd` in Max
 2. Click the freeze button
-3. Save as: `releases/Producer_Pal.amxd`
+3. Save as: `release/Producer_Pal.amxd`
 
 #### Step 6: Create GitHub Pre-Release
 
@@ -228,9 +229,10 @@ This script:
 2. Click "Draft a new release"
 3. Choose tag: `vX.Y.Z`
 4. Release title: `X.Y.Z`
-5. Upload files from `releases/`:
+5. Upload files from `release/`:
    - `Producer_Pal.amxd`
-   - `Producer_Pal.dxt`
+   - `Producer_Pal.mcpb`
+   - `producer-pal-portal.js`
 6. ✅ Check "Set as a pre-release"
 7. Write release notes
 8. Publish pre-release
@@ -285,17 +287,21 @@ If problems are found during pre-release testing:
    ```sh
    # Delete remote tag
    git push origin --delete vX.Y.Z
+
    # Delete local tag
    git tag -d vX.Y.Z
+
    # Recreate tag at current commit
    git tag vX.Y.Z
-   git push origin vX.Y.Z
+
+   # Assuming we're still in the dev branch:
+   git push origin dev vX.Y.Z
    ```
 
 3. **Rebuild**
 
    ```sh
-   npm run release:prepare
+   npm run release:prep
    # Freeze Max device again
    ```
 
@@ -315,6 +321,6 @@ production-ready.
 After release, these URLs will always point to the latest version:
 
 - [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-- [Producer_Pal.dxt](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.dxt)
+- [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
 
 No README updates needed for new releases!

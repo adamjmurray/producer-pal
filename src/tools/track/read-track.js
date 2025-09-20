@@ -108,6 +108,13 @@ function categorizeDevices(
   };
 }
 
+// Helper function to strip chains from device objects
+function stripChains(device) {
+  if (!device || typeof device !== "object") return device;
+  const { chains, ...rest } = device;
+  return rest;
+}
+
 /**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
@@ -123,10 +130,10 @@ function categorizeDevices(
  * @param {number|null} args.trackIndex - Track index (null for master track)
  * @param {string} args.trackType - Track type: "regular", "return", or "master"
  * @param {boolean} args.includeDrumChains - Include drum chains
- * @param {boolean} args.includeNotes - Include notes in clips
+ * @param {boolean} args.includeClipNotes - Include notes in clips
  * @param {boolean} args.includeRackChains - Include rack chains
  * @param {boolean} args.includeMidiEffects - Include MIDI effects
- * @param {boolean} args.includeInstrument - Include instrument
+ * @param {boolean} args.includeInstruments - Include instruments
  * @param {boolean} args.includeAudioEffects - Include audio effects
  * @param {boolean} args.includeRoutings - Include current routing settings
  * @param {boolean} args.includeAvailableRoutings - Include available routing options
@@ -142,10 +149,10 @@ export function readTrackGeneric({
 }) {
   const {
     includeDrumChains,
-    includeNotes,
+    includeDrumMaps,
     includeRackChains,
     includeMidiEffects,
-    includeInstrument,
+    includeInstruments,
     includeAudioEffects,
     includeRoutings,
     includeAvailableRoutings,
@@ -186,12 +193,30 @@ export function readTrackGeneric({
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
     color: track.getColor(),
-    isArmed: canBeArmed ? track.getProperty("arm") > 0 : false,
     followsArrangement: track.getProperty("back_to_arranger") === 0,
-    isGroup,
-    isGroupMember: track.getProperty("is_grouped") > 0,
-    groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
   };
+
+  // Only include isArmed when true
+  const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
+  if (isArmed) {
+    result.isArmed = isArmed;
+  }
+
+  // Only include isGroup when true
+  if (isGroup) {
+    result.isGroup = isGroup;
+  }
+
+  // Only include isGroupMember when true
+  const isGroupMember = track.getProperty("is_grouped") > 0;
+  if (isGroupMember) {
+    result.isGroupMember = isGroupMember;
+  }
+
+  // only include groupId when not null/empty/0
+  if (groupId) {
+    result.groupId = `${groupId}`;
+  }
 
   // Add track index properties based on track type
   if (trackType === "regular") {
@@ -222,7 +247,7 @@ export function readTrackGeneric({
             if (!clipArray || (Array.isArray(clipArray) && clipArray[1] === 0))
               return null;
             const clip = LiveAPI.from(clipArray);
-            return clip.exists() ? { clipId: clip.id, clipSlotIndex } : null;
+            return clip.exists() ? { id: clip.id, clipSlotIndex } : null;
           })
           .filter(Boolean);
   } else {
@@ -244,29 +269,41 @@ export function readTrackGeneric({
               }),
             )
             .filter((clip) => clip.id != null)
-        : track.getChildIds("arrangement_clips").map((clipId) => ({ clipId }));
+        : track
+            .getChildIds("arrangement_clips")
+            .map((clipId) => ({ id: clipId.replace("id ", "") }));
 
   // Categorize devices into separate arrays
+  // When includeDrumMaps is true but includeRackChains is false, we need to get chains
+  // to extract drum maps but then strip them from the final result
+  const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
   const categorizedDevices = categorizeDevices(
     trackDevices,
     includeDrumChains,
-    includeRackChains,
+    shouldFetchChainsForDrumMaps ? true : includeRackChains,
   );
 
   // Add device categories based on inclusion flags
   if (includeMidiEffects) {
-    result.midiEffects = categorizedDevices.midiEffects;
+    result.midiEffects = shouldFetchChainsForDrumMaps
+      ? categorizedDevices.midiEffects.map(stripChains)
+      : categorizedDevices.midiEffects;
   }
-  if (includeInstrument) {
+  if (includeInstruments) {
     // For Producer Pal host track, omit instrument property when it's null
     if (isProducerPalHost && categorizedDevices.instrument === null) {
       // Don't include instrument property at all
     } else {
-      result.instrument = categorizedDevices.instrument;
+      result.instruments =
+        shouldFetchChainsForDrumMaps && categorizedDevices.instrument
+          ? stripChains(categorizedDevices.instrument)
+          : categorizedDevices.instrument;
     }
   }
   if (includeAudioEffects) {
-    result.audioEffects = categorizedDevices.audioEffects;
+    result.audioEffects = shouldFetchChainsForDrumMaps
+      ? categorizedDevices.audioEffects.map(stripChains)
+      : categorizedDevices.audioEffects;
   }
 
   // Extract drum map from all categorized devices (critical for drumMap preservation)

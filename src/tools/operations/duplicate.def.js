@@ -1,12 +1,13 @@
 import { z } from "zod";
-import { defineTool } from "../shared/define-tool.js";
 import {
   MAX_AUTO_CREATED_SCENES,
   MAX_AUTO_CREATED_TRACKS,
 } from "../constants.js";
+import { defineTool } from "../shared/define-tool.js";
 
-const description = `TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details.
-Duplicates an object by id and type. Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes.
+const description = `Duplicates an object by id and type. 
+Supports creating multiple duplicates with the count parameter. Subject to limits: maximum ${MAX_AUTO_CREATED_TRACKS} tracks and ${MAX_AUTO_CREATED_SCENES} scenes.
+TIME FORMATS: Uses bar|beat for positions, bar:beat for durations. See create-clip for details.
 TRACK LAYERING: Use routeToSource=true when duplicating tracks to create powerful MIDI layering setups. This routes the new track to control the source track's instrument, allowing multiple clips of different lengths to create evolving patterns, polyrhythms, and phasing effects. Perfect for building complex arrangements from simple elements.
 WHEN TO SUGGEST routeToSource: When users ask about: layering MIDI, polyrhythms, phasing patterns, Steve Reich-style compositions, combining multiple patterns, merging MIDI streams, or creating evolving/generative patterns. This feature is ideal for these use cases.
 When duplicating scenes or tracks, clips are duplicated by default but can be excluded with withoutClips:true. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip.
@@ -15,7 +16,7 @@ IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arra
 VIEW GUIDANCE: When duplicating to arrangement, consider using ppal-update-view to show the arrangement if the user wants to see the duplicated content.`;
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
-  title: "Duplicate Clip/Track/Scene",
+  title: "Duplicate Track/Scene/Clip",
   description,
   annotations: {
     readOnlyHint: false,

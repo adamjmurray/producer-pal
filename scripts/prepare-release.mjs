@@ -29,33 +29,35 @@ try {
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 console.log(`Building version: ${pkg.version}\n`);
 
-// Clean releases directory
-const releasesDir = join(rootDir, "releases");
-if (existsSync(releasesDir)) {
-  console.log("Cleaning releases directory...");
-  rmSync(releasesDir, { recursive: true });
+// Clean release directory
+const releaseDir = join(rootDir, "release");
+if (existsSync(releaseDir)) {
+  console.log("Cleaning release directory...");
+  rmSync(releaseDir, { recursive: true });
 }
-mkdirSync(releasesDir);
+mkdirSync(releaseDir);
 
 // Build
 console.log("Building desktop extension...");
 execSync("npm run build", { cwd: rootDir, stdio: "inherit" });
 
-// Copy .dxt file
-const dxtSource = join(rootDir, "desktop-extension/Producer_Pal.dxt");
-const dxtDest = join(releasesDir, "Producer_Pal.dxt");
+// Copy .mcpb file
+const dxtSource = join(rootDir, "claude-desktop-extension/Producer_Pal.mcpb");
+const dxtDest = join(releaseDir, "Producer_Pal.mcpb");
 
 if (!existsSync(dxtSource)) {
-  console.error("❌ Error: Producer_Pal.dxt not found. Build may have failed.");
+  console.error(
+    "❌ Error: Producer_Pal.mcpb not found. Build may have failed.",
+  );
   process.exit(1);
 }
 
 copyFileSync(dxtSource, dxtDest);
-console.log("\n✅ Copied Producer_Pal.dxt to releases/");
+console.log("\n✅ Copied Producer_Pal.mcpb to release/");
 
 console.log("\n📋 Next steps:");
-console.log("1. Open device/Producer_Pal.amxd in Max");
+console.log("1. Open max-for-live-device/Producer_Pal.amxd in Max");
 console.log("2. Click the freeze button");
-console.log("3. Save as: releases/Producer_Pal.amxd");
+console.log("3. Save as: release/Producer_Pal.amxd");
 console.log("4. Test both files work correctly");
 console.log("5. Continue with git merge and tag steps (see DEVELOPERS.md)");

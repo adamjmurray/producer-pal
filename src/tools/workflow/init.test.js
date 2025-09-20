@@ -39,7 +39,7 @@ describe("init", () => {
 
     liveApiCall.mockImplementation(function (method) {
       if (method === "get_version_string") {
-        return "12.2";
+        return "12.3";
       }
       return null;
     });
@@ -76,8 +76,8 @@ describe("init", () => {
     expect(result).toEqual(
       expect.objectContaining({
         connected: true,
-        producerPalVersion: "0.9.6",
-        abletonLiveVersion: "12.2",
+        producerPalVersion: "0.9.7",
+        abletonLiveVersion: "12.3",
         songName: "Test Project",
         view: "session",
         tempo: 120,
@@ -85,10 +85,10 @@ describe("init", () => {
         isPlaying: true,
         trackCount: 3,
         sceneCount: 2,
-        welcome: expect.objectContaining({
-          title: "Producer Pal 0.9.6 connected to Ableton Live",
+        messageForUser: expect.objectContaining({
+          title: "Producer Pal 0.9.7 connected to Ableton Live 12.3",
           tips: [
-            "**Save often!** I can modify and delete things in your project, and I make mistakes.",
+            "Save often! I can modify and delete things in your project, and I make mistakes.",
             "If you rearrange tracks/clips/scenes, tell me so I stay in sync.",
           ],
           suggestion: expect.any(String),
@@ -203,10 +203,8 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.welcome.suggestion).toBe(
-      "Try asking me to create a drum beat, bassline, melody, or chord progression.",
-    );
-    expect(result.welcome.warnings).toBeUndefined(); // No warnings expected
+    expect(result.messageForUser.suggestion).toContain("Ready to create");
+    expect(result.messageForUser.warnings).toBeUndefined(); // No warnings expected
   });
 
   it("warns when instrument is on host track", () => {
@@ -260,12 +258,12 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.welcome.warnings).toEqual([
-      "There's an instrument on the Producer Pal track. It's better to keep the Max for Live device on its own track in case you want to duplicate the instrument track later.",
+    expect(result.messageForUser.warnings).toEqual([
+      expect.stringContaining(
+        "There's an instrument on the Producer Pal track.",
+      ),
     ]);
-    expect(result.welcome.suggestion).toBe(
-      "Try asking me to create a drum beat, bassline, melody, or chord progression.",
-    );
+    expect(result.messageForUser.suggestion).toContain("Ready to create");
   });
 
   it("provides no-instruments suggestion when no instruments are found", () => {
@@ -320,13 +318,8 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.welcome.suggestion).toBe(
-      `There are no instruments in your project. Instruments are needed to produce sound. 
-Live's extensive built-in collection includes Wavetable, Operator, Analog, Electric, Tension, Collision, Sampler, 
-Drum Rack, Drum Sampler, and especially the newer Drift and Meld instruments.
-Note: I cannot add instruments directly - I can only suggest which Live instruments or plugins might work well for your intended sound.`,
-    );
-    expect(result.welcome.warnings).toBeUndefined(); // Empty warnings array should be deleted
+    expect(result.messageForUser.suggestion).toContain("No instruments found.");
+    expect(result.messageForUser.warnings).toBeUndefined(); // Empty warnings array should be deleted
   });
 
   it("includes project notes when context is provided and enabled", () => {
@@ -560,8 +553,8 @@ Note: I cannot add instruments directly - I can only suggest which Live instrume
         connected: true,
         trackCount: 0,
         sceneCount: 0,
-        welcome: expect.objectContaining({
-          suggestion: expect.stringContaining("no instruments"),
+        messageForUser: expect.objectContaining({
+          suggestion: expect.stringContaining("No instruments"),
         }),
       }),
     );

@@ -7,6 +7,11 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
 
 ## Architecture Diagram
 
+This shows how things work end-to-end with Claude Desktop. Other LLMs can use
+Producer Pal by running the Producer Pal Portal (stdio MCP server) or connecting
+directly to the MCP server inside Ableton Live via http. It's possible to run
+LLMs locally with no online dependencies.
+
 ```
      +-----------------+
      | Anthropic Cloud |
@@ -18,12 +23,12 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
      | Claude Desktop |
      +---------------+
              ↑
-             | MCP stdio transport (via DXT)
+             | MCP stdio transport (via Claude Desktop extension)
              ↓
- +---------------------------+
- | Producer Pal Extension     |
- | (claude-ableton-connector) |
- +---------------------------+
+  +-------------------------+
+  |   Producer Pal Portal   |
+  | (stdio-to-http adapter) |
+  +-------------------------+
              ↑
              | MCP streamable HTTP transport
              ↓
@@ -48,11 +53,10 @@ the Model Context Protocol (MCP) to enable AI assistants to manipulate music.
 
 ## Component Details
 
-### 1. Desktop Extension Bridge (`src/desktop-extension/claude-ableton-connector.js`)
+### 1. Producer Pal Portal (`src/portal/producer-pal-portal.js`)
 
-Stdio-to-HTTP bridge that converts Claude Desktop's stdio transport to HTTP for
-connecting to the MCP server. Provides graceful fallback when Producer Pal is
-not running.
+Stdio-to-HTTP bridge that converts MCP stdio transport to HTTP for connecting to
+the MCP server. Provides graceful fallback when Producer Pal is not running.
 
 **Key features:**
 
@@ -95,21 +99,33 @@ Musical notation parser and utilities for creating and manipulating MIDI clips.
 
 ## Build System
 
-Two separate JavaScript bundles built with rollup.js:
+Three separate JavaScript bundles built with rollup.js:
 
 ### MCP Server Bundle
 
 - **Entry:** `src/mcp-server/mcp-server.js`
-- **Output:** `device/mcp-server.mjs`
+- **Output:** `max-for-live-device/mcp-server.mjs`
 - **Target:** Node.js (Node for Max)
 - **Dependencies:** Bundled for distribution
 
 ### V8 Bundle
 
 - **Entry:** `src/live-api-adapter/live-api-adapter.js`
-- **Output:** `device/live-api-adapter.js`
+- **Output:** `max-for-live-device/live-api-adapter.js`
 - **Target:** V8 engine (Max v8 object)
 - **Dependencies:** None (uses Max built-ins)
+
+### Portal Bundle
+
+- **Entry:** `src/portal/producer-pal-portal.js`
+- **Output:** `release/producer-pal-portal.js`
+- **Target:** Node.js (standalone process)
+- **Dependencies:** Bundled for distribution (zero runtime dependencies)
+- **Purpose:** stdio-to-HTTP adapter for Claude Desktop Extension
+- **Features:**
+  - Converts MCP stdio transport to streamable HTTP
+  - Graceful degradation when Live isn't running
+  - Returns setup instructions when offline
 
 ## Message Protocol
 

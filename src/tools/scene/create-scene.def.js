@@ -4,7 +4,8 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefCreateScene = defineTool("ppal-create-scene", {
   title: "Create Scene",
   description:
-    "Creates new scenes at the specified index. Scenes will be inserted at the given index and existing scenes will shift down. " +
+    "Creates new scenes at the specified index.\n" +
+    "Scenes will be inserted at the given index and existing scenes will shift down. " +
     "Note: This only creates scene objects - use the transport tool's play-scene action to launch scenes and trigger their clips. " +
     "All properties are optional except sceneIndex.",
   annotations: {

@@ -1,13 +1,12 @@
 import { z } from "zod";
-import { defineTool } from "../shared/define-tool.js";
 import { VALID_PITCH_CLASS_NAMES } from "../../notation/pitch-class-name-to-number.js";
 import { VALID_SCALE_NAMES } from "../constants.js";
+import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefUpdateSong = defineTool("ppal-update-song", {
-  title: "Update Song",
+  title: "Update Live Set",
   description:
-    "Updates song properties in the Live Set including tempo, time signature, and scale. " +
-    "Note: changes to scale properties affect currently selected clips and set defaults for new clips.",
+    "Updates song properties in the Live Set including tempo, time signature, and scale.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,

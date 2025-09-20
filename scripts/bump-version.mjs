@@ -24,20 +24,20 @@ execSync(`npm version ${versionType} --no-git-tag-version`, {
 const rootPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
 const newVersion = rootPkg.version;
 
-// Update desktop-extension/package.json
-const dxtPkgPath = join(rootDir, "desktop-extension/package.json");
+// Update claude-desktop-extension/package.json
+const dxtPkgPath = join(rootDir, "claude-desktop-extension/package.json");
 const dxtPkg = JSON.parse(readFileSync(dxtPkgPath, "utf8"));
 dxtPkg.version = newVersion;
 writeFileSync(dxtPkgPath, JSON.stringify(dxtPkg, null, 2) + "\n");
-console.log("✓ Updated desktop-extension/package.json");
+console.log("✓ Updated claude-desktop-extension/package.json");
 
-// Update desktop-extension/package-lock.json
-console.log("Updating desktop-extension/package-lock.json...");
+// Update claude-desktop-extension/package-lock.json
+console.log("Updating claude-desktop-extension/package-lock.json...");
 execSync("npm install", {
-  cwd: join(rootDir, "desktop-extension"),
+  cwd: join(rootDir, "claude-desktop-extension"),
   stdio: "inherit",
 });
-console.log("✓ Updated desktop-extension/package-lock.json");
+console.log("✓ Updated claude-desktop-extension/package-lock.json");
 
 // Update version.js
 const versionPath = join(rootDir, "src/shared/version.js");
@@ -50,7 +50,7 @@ console.log("✓ Updated src/shared/version.js");
 
 console.log(`\n✅ Version bumped to ${newVersion}\n`);
 console.log("⚠️  Manual step required:");
-console.log(`1. Open device/Producer_Pal.amxd in Max`);
+console.log(`1. Open max-for-live-device/Producer_Pal.amxd in Max`);
 console.log(`2. Update version display to: ${newVersion}`);
 console.log(`3. Save the device (do NOT freeze yet)\n`);
 console.log("Then run:");

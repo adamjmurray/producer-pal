@@ -1,31 +1,10 @@
 import { z } from "zod";
-import { DEVICE_TYPES } from "../constants.js";
 import { defineTool } from "../shared/define-tool.js";
 
-const description = `Read comprehensive information about the Live Set including global settings and all tracks:
-- Tracks includes clip arrays with time-based properties in bar|beat format.
-- Devices have a 'type' property with these possible values: ${DEVICE_TYPES.map((type) => `'${type}'`).join(", ")}.
-- Tracks, drum pads, and rack chains may have a 'state' property:
-  - No 'state' property means the entity is active (normal state - playing or ready to play)
-  - When present, 'state' can be:
-    - 'muted': Explicitly muted via UI button;
-    - 'muted-via-solo': Muted as side-effect of another entity being soloed;
-    - 'muted-also-via-solo': Both explicitly muted AND muted via solo (won't become active even if unmuted or other entity unsoloed);
-    - 'soloed': Explicitly soloed, causing others to be muted-via-solo.
-
-Understanding track arrangement-following states and clip playing states helps determine
-which clips are currently audible and whether tracks will respond to Arrangement playback.
-
-PATTERN RECOGNITION: If you notice multiple MIDI tracks with similar names or instruments, suggest consolidating them using duplicate with routeToSource for more flexible layering.
-
-IMPORTANT: The returned state represents Live at this moment in time. If the user mentions moving, deleting,
-or rearranging objects, immediately call ppal-read-song again before any other operations.
-
-If this is the start of a new Producer Pal session call ppal-init before calling this.`;
-
 export const toolDefReadSong = defineTool("ppal-read-song", {
-  title: "Read Song",
-  description,
+  title: "Read Live Set",
+  description: `Read details about the Ableton Live Set including global settings, tracks, scenes, devices, and clips.
+Use this for an overview of the state of Live and call again after any moves/deletes by the user.`,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -34,44 +13,45 @@ export const toolDefReadSong = defineTool("ppal-read-song", {
     include: z
       .array(
         z.enum([
-          "*",
-          "drum-chains",
-          "notes",
-          "rack-chains",
-          "scenes",
-          "midi-effects",
-          "instrument",
-          "audio-effects",
-          "routings",
-          "session-clips",
-          "arrangement-clips",
           "regular-tracks",
           "return-tracks",
           "master-track",
           "all-tracks",
+          "routings",
+          "scenes",
+          "midi-effects",
+          "instruments",
+          "audio-effects",
           "all-devices",
+          "rack-chains",
+          "drum-chains",
+          "drum-maps",
+          "session-clips",
+          "arrangement-clips",
+          "clip-notes",
+          "*",
         ]),
       )
-      .default(["regular-tracks", "instrument", "rack-chains"])
+      .default(["regular-tracks", "instruments", "drum-maps"])
       .describe(
-        "Array of data to include in the response. Available options: " +
-          "'*' (include all available options), " +
-          "'drum-chains' (include drum pad chains and return chains in rack devices), " +
-          "'notes' (include notes data in clip objects), " +
-          "'rack-chains' (include chains in rack devices), " +
-          "'scenes' (include full scene details), " +
-          "'midi-effects' (include MIDI effects array in track objects), " +
-          "'instrument' (include instrument object in track objects), " +
-          "'audio-effects' (include audio effects array in track objects), " +
-          "'routings' (include input/output routing information in track objects), " +
-          "'session-clips' (include full session clip data in track objects), " +
-          "'arrangement-clips' (include full arrangement clip data in track objects), " +
-          "'regular-tracks' (include regular tracks array), " +
-          "'return-tracks' (include return tracks array), " +
-          "'master-track' (include master track object), " +
-          "'all-tracks' (shortcut for regular-tracks, return-tracks, master-track), " +
-          "'all-devices' (shortcut for midi-effects, instrument, audio-effects). " +
-          "Default: ['regular-tracks', 'instrument', 'rack-chains'].",
+        `Data to include. Options:
+- "regular-tracks"
+- "return-tracks"
+- "master-track"
+- "all-tracks" → regular + return + master tracks
+- "routings" → track input/output routings
+- "scenes"
+- "midi-effects"
+- "instruments"
+- "audio-effects"
+- "all-devices" → midi effects + instruments + audio effects
+- "rack-chains" → device chains in rack devices
+- "drum-chains" → drum pad and return chains in drum racks
+- "drum-maps" → drum pad mappings without chain data
+- "session-clips"
+- "arrangement-clips"
+- "clip-notes" → MIDI notes (slow with many clips)
+- "*" → everything (avoid unless simple Live Set)`,
       ),
   },
 });

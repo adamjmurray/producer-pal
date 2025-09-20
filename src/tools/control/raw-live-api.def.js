@@ -2,9 +2,9 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
-  title: "Raw Live API",
+  title: "Live API",
   description:
-    "Provides direct, low-level access to the Live API for research, development, and debugging purposes. " +
+    "Provides direct, low-level access to the Live API for research, development, and debugging purposes.\n" +
     "This tool exposes full LiveAPI capabilities including built-in properties, methods, and extensions. " +
     "Execute multiple operations sequentially on a LiveAPI instance. " +
     "Core operations (explicit): get_property, set_property, call_method. " +

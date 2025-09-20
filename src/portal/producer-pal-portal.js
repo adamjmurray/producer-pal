@@ -1,5 +1,5 @@
-import { StdioHttpBridge } from "./stdio-http-bridge.js";
 import { logger } from "./file-logger.js";
+import { StdioHttpBridge } from "./stdio-http-bridge.js";
 
 // Main execution function
 const mcpServerOrigin =
@@ -23,7 +23,7 @@ process.on("SIGTERM", async () => {
   process.exit(0);
 });
 
-// Start the bridge - this should always succeed now
+// Start the bridge - this should always succeed
 bridge.start().catch((error) => {
   logger.error(`Failed to start enhanced bridge: ${error.message}`);
   process.exit(1);

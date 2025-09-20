@@ -565,7 +565,7 @@ describe("readClip", () => {
     const resultExplicit = readClip({
       trackIndex: 0,
       clipSlotIndex: 0,
-      include: ["notes"],
+      include: ["clip-notes"],
     });
 
     // Results should be identical
