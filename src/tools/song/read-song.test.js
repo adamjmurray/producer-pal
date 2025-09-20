@@ -957,6 +957,53 @@ describe("readSong", () => {
     );
   });
 
+  it("returns scene IDs without 'id ' prefix when includeScenes is false", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Scene ID Test Set",
+        is_playing: 0,
+        back_to_arranger: 1,
+        scale_mode: 0,
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        tracks: children("track1"),
+        scenes: children("scene9", "scene10", "scene11"),
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: children(),
+        arrangement_clips: children(),
+        devices: [],
+      },
+    });
+
+    // Call with default include (which doesn't include "scenes")
+    const result = readSong();
+
+    // Verify that scene IDs are clean numeric strings without "id " prefix
+    expect(result.scenes).toEqual([
+      { id: "scene9" },
+      { id: "scene10" },
+      { id: "scene11" },
+    ]);
+
+    // Verify consistency with track IDs format
+    expect(result.tracks[0].id).toBe("track1");
+  });
+
   it("returns minimal data when include is an empty array", () => {
     liveApiPath.mockImplementation(function () {
       return this._path;

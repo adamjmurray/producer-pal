@@ -34,7 +34,7 @@ export function readSong(args = {}) {
       ? sceneIds.map((_sceneId, sceneIndex) =>
           readScene({ sceneIndex, include: includeArray }),
         )
-      : sceneIds.map((sceneId) => ({ id: sceneId })),
+      : sceneIds.map((sceneId) => ({ id: sceneId.replace("id ", "") })),
   };
 
   // Conditionally include track arrays based on include parameters
