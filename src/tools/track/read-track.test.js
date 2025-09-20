@@ -83,9 +83,6 @@ describe("readTrack", () => {
       state: "soloed",
       isArmed: true,
       followsArrangement: true,
-      isGroup: false,
-      isGroupMember: false,
-      groupId: null,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       arrangementClips: [],
@@ -120,11 +117,7 @@ describe("readTrack", () => {
       trackIndex: 1,
       color: "#00FF00",
       state: "muted",
-      isArmed: false,
       followsArrangement: true,
-      isGroup: false,
-      isGroupMember: false,
-      groupId: null,
       arrangementClips: [],
       sessionClips: [],
       instrument: null,
@@ -169,7 +162,6 @@ describe("readTrack", () => {
       trackIndex: 0,
       color: "#FF0000",
       state: "soloed",
-      isArmed: false,
       followsArrangement: true,
       isGroup: true,
       isGroupMember: true,
@@ -270,11 +262,7 @@ describe("readTrack", () => {
       name: "Track with Clips",
       trackIndex: 2,
       color: "#0000FF",
-      isArmed: false,
       followsArrangement: false,
-      isGroup: false,
-      isGroupMember: false,
-      groupId: null,
       playingSlotIndex: 0,
       arrangementClips: [],
       sessionClips: [
@@ -2299,7 +2287,7 @@ describe("readTrack", () => {
 
       // Group track specific properties
       expect(result.isGroup).toBe(true);
-      expect(result.isArmed).toBe(false);
+      expect(result.isArmed).toBeUndefined();
       expect(result.monitoringState).toBeUndefined(); // Group tracks cannot be armed, so monitoring state is omitted
     });
 
@@ -2349,7 +2337,7 @@ describe("readTrack", () => {
 
       // Should omit monitoringState property without accessing current_monitoring_state
       expect(result.monitoringState).toBeUndefined();
-      expect(result.isArmed).toBe(false);
+      expect(result.isArmed).toBeUndefined();
     });
   });
 
@@ -2512,11 +2500,7 @@ describe("readTrack", () => {
           name: "Return B",
           color: "#00FF00",
           returnTrackIndex: 1,
-          isArmed: false,
           followsArrangement: true,
-          isGroup: false,
-          isGroupMember: false,
-          groupId: null,
           sessionClips: [], // Return tracks have no session clips
           arrangementClips: [], // Return tracks have no arrangement clips
           instrument: null,
@@ -2656,11 +2640,7 @@ describe("readTrack", () => {
           type: "audio",
           name: "Master",
           color: "#FFFFFF",
-          isArmed: false,
           followsArrangement: true,
-          isGroup: false,
-          isGroupMember: false,
-          groupId: null,
           sessionClips: [], // Master track has no session clips
           arrangementClips: [], // Master track has no arrangement clips
           instrument: null,
@@ -2830,11 +2810,7 @@ describe("readTrack", () => {
           type: "audio",
           name: "Master",
           color: "#FFFFFF",
-          isArmed: false,
           followsArrangement: true,
-          isGroup: false,
-          isGroupMember: false,
-          groupId: null,
           sessionClips: [],
           arrangementClips: [],
           instrument: null,
@@ -2932,9 +2908,6 @@ describe("readTrack", () => {
         color: "#FF0000",
         isArmed: true,
         followsArrangement: true,
-        isGroup: false,
-        isGroupMember: false,
-        groupId: null,
         sessionClips: [],
         arrangementClips: [],
         instrument: null,
@@ -2985,11 +2958,7 @@ describe("readTrack", () => {
         name: "Return by ID",
         returnTrackIndex: 1,
         color: "#00FF00",
-        isArmed: false,
         followsArrangement: true,
-        isGroup: false,
-        isGroupMember: false,
-        groupId: null,
         sessionClips: [],
         arrangementClips: [],
         instrument: null,
@@ -3039,11 +3008,7 @@ describe("readTrack", () => {
         type: "audio",
         name: "Master by ID",
         color: "#FFFFFF",
-        isArmed: false,
         followsArrangement: true,
-        isGroup: false,
-        isGroupMember: false,
-        groupId: null,
         sessionClips: [],
         arrangementClips: [],
         instrument: null,

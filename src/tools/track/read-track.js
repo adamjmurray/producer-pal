@@ -185,12 +185,30 @@ export function readTrackGeneric({
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
     color: track.getColor(),
-    isArmed: canBeArmed ? track.getProperty("arm") > 0 : false,
     followsArrangement: track.getProperty("back_to_arranger") === 0,
-    isGroup,
-    isGroupMember: track.getProperty("is_grouped") > 0,
-    groupId: groupId ? `${groupId}` : null, // id 0 means it doesn't exist, so convert to null
   };
+
+  // Only include isArmed when true
+  const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
+  if (isArmed) {
+    result.isArmed = isArmed;
+  }
+
+  // Only include isGroup when true
+  if (isGroup) {
+    result.isGroup = isGroup;
+  }
+
+  // Only include isGroupMember when true
+  const isGroupMember = track.getProperty("is_grouped") > 0;
+  if (isGroupMember) {
+    result.isGroupMember = isGroupMember;
+  }
+
+  // only include groupId when not null/empty/0
+  if (groupId) {
+    result.groupId = `${groupId}`;
+  }
 
   // Add track index properties based on track type
   if (trackType === "regular") {
