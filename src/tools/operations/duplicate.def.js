@@ -16,7 +16,7 @@ IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arra
 VIEW GUIDANCE: When duplicating to arrangement, consider using ppal-update-view to show the arrangement if the user wants to see the duplicated content.`;
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
-  title: "Duplicate (track/scene/clip)",
+  title: "Duplicate Track/Scene/Clip",
   description,
   annotations: {
     readOnlyHint: false,

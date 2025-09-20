@@ -3,7 +3,7 @@
   "name": "Producer Pal",
   "version": "{{version}}",
   "description": "AI music production assistant for Ableton Live. Create clips, control the transport, manage tracks and scenes directly from Claude.",
-  "long_description": "{{long_description}}",
+  "long_description": "To use: Add the Producer Pal device (Producer_Pal.amxd) to a MIDI track in Ableton Live. Ask Claude Desktop (with this extension enabled): \"connect to ableton\".\nRequires Ableton Live 12.2+ with Max for Live (e.g. Ableton Live Suite).",
   "author": {
     "name": "Adam Murray",
     "email": "adam@adammurray.link",

@@ -35,13 +35,6 @@ for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
   });
 }
 
-// Create readable long description
-const longDescription = `Requires Ableton Live 12.2 or higher with Max for Live (Ableton Live Suite, or another edition of Live + the Max for Live add-on).
-
-Add the Producer Pal Max for Live device (the Producer_Pal.amxd file) to an Ableton Live project. It must be added to a MIDI track and it's recommended you add it to a dedicated track (rather than a track with an instrument you want to play). Then ask Claude Desktop (with this extension enabled): "Let's play with Ableton Live".
-
-This software is not affiliated with Ableton, Cycling '74, or Anthropic.`;
-
 // Read template and replace placeholders
 const template = readFileSync(
   join(__dirname, "..", "claude-desktop-extension", "manifest.template.json"),
@@ -52,8 +45,7 @@ const manifest = template
   .replace(
     /"\{\{tools\}\}"/g,
     JSON.stringify(tools, null, 2).replace(/\n/g, "\n  "),
-  )
-  .replace(/"\{\{long_description\}\}"/g, JSON.stringify(longDescription));
+  );
 
 // Write generated manifest
 writeFileSync(join(desktopExtensionDir, "manifest.json"), manifest);
