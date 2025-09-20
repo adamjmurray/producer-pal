@@ -41,13 +41,13 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
         "Clip ID to directly access any clip. Either this or trackIndex and clipSlotIndex must be provided.",
       ),
     include: z
-      .array(z.enum(["*", "notes"]))
-      .default(["notes"])
+      .array(z.enum(["*", "clip-notes"]))
+      .default(["clip-notes"])
       .describe(
         "Array of data to include in the response. Available options: " +
           "'*' (include all available options), " +
-          "'notes' (include notes data in clip objects). " +
-          "Default: ['notes'].",
+          "'clip-notes' (include notes data in clip objects). " +
+          "Default: ['clip-notes'].",
       ),
   },
 });

@@ -5,11 +5,11 @@ const ALL_INCLUDE_OPTIONS = {
   song: [
     "drum-chains",
     "drum-maps",
-    "notes",
+    "clip-notes",
     "rack-chains",
     "scenes",
     "midi-effects",
-    "instrument",
+    "instruments",
     "audio-effects",
     "routings",
     "session-clips",
@@ -23,10 +23,10 @@ const ALL_INCLUDE_OPTIONS = {
   track: [
     "drum-chains",
     "drum-maps",
-    "notes",
+    "clip-notes",
     "rack-chains",
     "midi-effects",
-    "instrument",
+    "instruments",
     "audio-effects",
     "routings",
     "available-routings",
@@ -35,8 +35,8 @@ const ALL_INCLUDE_OPTIONS = {
     "all-devices",
     "all-routings",
   ],
-  scene: ["clips", "notes"],
-  clip: ["notes"],
+  scene: ["clips", "clip-notes"],
+  clip: ["clip-notes"],
 };
 
 /**
@@ -44,7 +44,7 @@ const ALL_INCLUDE_OPTIONS = {
  */
 const SHORTCUT_MAPPINGS = {
   "all-tracks": ["regular-tracks", "return-tracks", "master-track"],
-  "all-devices": ["midi-effects", "instrument", "audio-effects"],
+  "all-devices": ["midi-effects", "instruments", "audio-effects"],
   "all-routings": ["routings", "available-routings"],
 };
 
@@ -80,7 +80,7 @@ function expandWildcardIncludes(includeArray, defaults) {
     toolType = "scene";
   } else if (
     Object.keys(defaults).length === 1 &&
-    defaults.includeNotes !== undefined
+    defaults.includeClipNotes !== undefined
   ) {
     toolType = "clip";
   }
@@ -106,11 +106,11 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     return {
       includeDrumChains: Boolean(defaults.includeDrumChains),
       includeDrumMaps: Boolean(defaults.includeDrumMaps),
-      includeNotes: Boolean(defaults.includeNotes),
+      includeClipNotes: Boolean(defaults.includeClipNotes),
       includeRackChains: Boolean(defaults.includeRackChains),
       includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
-      includeInstrument: Boolean(defaults.includeInstrument),
+      includeInstruments: Boolean(defaults.includeInstruments),
       includeAudioEffects: Boolean(defaults.includeAudioEffects),
       includeRoutings: Boolean(defaults.includeRoutings),
       includeAvailableRoutings: Boolean(defaults.includeAvailableRoutings),
@@ -134,11 +134,11 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     return {
       includeDrumChains: false,
       includeDrumMaps: false,
-      includeNotes: false,
+      includeClipNotes: false,
       includeRackChains: false,
       includeScenes: false,
       includeMidiEffects: false,
-      includeInstrument: false,
+      includeInstruments: false,
       includeAudioEffects: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
@@ -154,11 +154,11 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   const result = {
     includeDrumChains: includeSet.has("drum-chains"),
     includeDrumMaps: includeSet.has("drum-maps"),
-    includeNotes: includeSet.has("notes"),
+    includeClipNotes: includeSet.has("clip-notes"),
     includeRackChains: includeSet.has("rack-chains"),
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has("midi-effects"),
-    includeInstrument: includeSet.has("instrument"),
+    includeInstruments: includeSet.has("instruments"),
     includeAudioEffects: includeSet.has("audio-effects"),
     includeRoutings: includeSet.has("routings"),
     includeAvailableRoutings: includeSet.has("available-routings"),
@@ -182,11 +182,11 @@ export function includeArrayFromFlags(includeFlags) {
 
   if (includeFlags.includeDrumChains) includes.push("drum-chains");
   if (includeFlags.includeDrumMaps) includes.push("drum-maps");
-  if (includeFlags.includeNotes) includes.push("notes");
+  if (includeFlags.includeClipNotes) includes.push("clip-notes");
   if (includeFlags.includeRackChains) includes.push("rack-chains");
   if (includeFlags.includeScenes) includes.push("scenes");
   if (includeFlags.includeMidiEffects) includes.push("midi-effects");
-  if (includeFlags.includeInstrument) includes.push("instrument");
+  if (includeFlags.includeInstruments) includes.push("instruments");
   if (includeFlags.includeAudioEffects) includes.push("audio-effects");
   if (includeFlags.includeRoutings) includes.push("routings");
   if (includeFlags.includeAvailableRoutings)
@@ -207,11 +207,11 @@ export function includeArrayFromFlags(includeFlags) {
 export const READ_SONG_DEFAULTS = {
   includeDrumChains: false,
   includeDrumMaps: true,
-  includeNotes: false,
+  includeClipNotes: false,
   includeRackChains: false,
   includeScenes: false,
   includeMidiEffects: false,
-  includeInstrument: true,
+  includeInstruments: true,
   includeAudioEffects: false,
   includeRoutings: false,
   includeSessionClips: false,
@@ -227,10 +227,10 @@ export const READ_SONG_DEFAULTS = {
 export const READ_TRACK_DEFAULTS = {
   includeDrumChains: false,
   includeDrumMaps: true,
-  includeNotes: true,
+  includeClipNotes: true,
   includeRackChains: false,
   includeMidiEffects: false,
-  includeInstrument: true,
+  includeInstruments: true,
   includeAudioEffects: false,
   includeRoutings: false,
   includeAvailableRoutings: false,
@@ -243,12 +243,12 @@ export const READ_TRACK_DEFAULTS = {
  */
 export const READ_SCENE_DEFAULTS = {
   includeClips: false,
-  includeNotes: false,
+  includeClipNotes: false,
 };
 
 /**
  * Default include parameters for read-clip tool
  */
 export const READ_CLIP_DEFAULTS = {
-  includeNotes: true,
+  includeClipNotes: true,
 };

@@ -20,7 +20,7 @@ Use this for an overview of the state of Live and call again after any moves/del
           "routings",
           "scenes",
           "midi-effects",
-          "instrument",
+          "instruments",
           "audio-effects",
           "all-devices",
           "rack-chains",
@@ -28,11 +28,11 @@ Use this for an overview of the state of Live and call again after any moves/del
           "drum-maps",
           "session-clips",
           "arrangement-clips",
-          "notes",
+          "clip-notes",
           "*",
         ]),
       )
-      .default(["regular-tracks", "instrument", "drum-maps"])
+      .default(["regular-tracks", "instruments", "drum-maps"])
       .describe(
         `Data to include. Options:
 - "regular-tracks"
@@ -42,15 +42,15 @@ Use this for an overview of the state of Live and call again after any moves/del
 - "routings" → track input/output routings
 - "scenes"
 - "midi-effects"
-- "instrument"
+- "instruments"
 - "audio-effects"
-- "all-devices" → midi effects + instrument + audio effects
+- "all-devices" → midi effects + instruments + audio effects
 - "rack-chains" → chains in rack devices
 - "drum-chains" → drum pad and return chains in drum racks
 - "drum-maps" → drum pad mappings without full chain data
 - "session-clips"
 - "arrangement-clips"
-- "notes" → MIDI notes (slow with many clips)
+- "clip-notes" → MIDI notes (slow with many clips)
 - "*" → everything (avoid unless simple Live Set)`,
       ),
   },

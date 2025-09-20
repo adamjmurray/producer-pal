@@ -130,10 +130,10 @@ function stripChains(device) {
  * @param {number|null} args.trackIndex - Track index (null for master track)
  * @param {string} args.trackType - Track type: "regular", "return", or "master"
  * @param {boolean} args.includeDrumChains - Include drum chains
- * @param {boolean} args.includeNotes - Include notes in clips
+ * @param {boolean} args.includeClipNotes - Include notes in clips
  * @param {boolean} args.includeRackChains - Include rack chains
  * @param {boolean} args.includeMidiEffects - Include MIDI effects
- * @param {boolean} args.includeInstrument - Include instrument
+ * @param {boolean} args.includeInstruments - Include instruments
  * @param {boolean} args.includeAudioEffects - Include audio effects
  * @param {boolean} args.includeRoutings - Include current routing settings
  * @param {boolean} args.includeAvailableRoutings - Include available routing options
@@ -152,7 +152,7 @@ export function readTrackGeneric({
     includeDrumMaps,
     includeRackChains,
     includeMidiEffects,
-    includeInstrument,
+    includeInstruments,
     includeAudioEffects,
     includeRoutings,
     includeAvailableRoutings,
@@ -289,12 +289,12 @@ export function readTrackGeneric({
       ? categorizedDevices.midiEffects.map(stripChains)
       : categorizedDevices.midiEffects;
   }
-  if (includeInstrument) {
+  if (includeInstruments) {
     // For Producer Pal host track, omit instrument property when it's null
     if (isProducerPalHost && categorizedDevices.instrument === null) {
       // Don't include instrument property at all
     } else {
-      result.instrument =
+      result.instruments =
         shouldFetchChainsForDrumMaps && categorizedDevices.instrument
           ? stripChains(categorizedDevices.instrument)
           : categorizedDevices.instrument;

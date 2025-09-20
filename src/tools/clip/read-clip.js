@@ -15,13 +15,16 @@ import {
  * @param {number} [args.clipSlotIndex] - Clip slot index (0-based)
  * @param {string} [args.clipId] - Clip ID to directly access any clip
  * @param {string[]} [args.include] - Array of data to include in response
- * @param {boolean} [args.includeNotes] - Whether to include notes data (legacy parameter)
+ * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
  * @returns {Object} Result object with clip information
  */
 export function readClip(args = {}) {
   const { trackIndex = null, clipSlotIndex = null, clipId = null } = args;
 
-  const { includeNotes } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
+  const { includeClipNotes } = parseIncludeArray(
+    args.include,
+    READ_CLIP_DEFAULTS,
+  );
   if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and clipSlotIndex must be provided",
@@ -114,7 +117,7 @@ export function readClip(args = {}) {
     );
     const notes = JSON.parse(notesDictionary).notes;
     result.noteCount = notes.length;
-    if (includeNotes) {
+    if (includeClipNotes) {
       result.notes = formatNotation(notes, {
         timeSigNumerator,
         timeSigDenominator,

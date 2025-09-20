@@ -47,10 +47,10 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "*",
           "drum-chains",
           "drum-maps",
-          "notes",
+          "clip-notes",
           "rack-chains",
           "midi-effects",
-          "instrument",
+          "instruments",
           "audio-effects",
           "routings",
           "available-routings",
@@ -61,9 +61,9 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         ]),
       )
       .default([
-        "notes",
+        "clip-notes",
         "drum-maps",
-        "instrument",
+        "instruments",
         "session-clips",
         "arrangement-clips",
       ])
@@ -72,18 +72,18 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "'*' (include all available options), " +
           "'drum-chains' (include drum pad chains and return chains in rack devices), " +
           "'drum-maps' (include drum pad mappings without full chain data), " +
-          "'notes' (include notes data in clip objects), " +
+          "'clip-notes' (include notes data in clip objects), " +
           "'rack-chains' (include chains in rack devices), " +
           "'midi-effects' (include MIDI effects array), " +
-          "'instrument' (include instrument object), " +
+          "'instruments' (include instrument object), " +
           "'audio-effects' (include audio effects array), " +
           "'routings' (include current routing settings), " +
           "'available-routings' (include available routing options), " +
           "'session-clips' (include full session clip data), " +
           "'arrangement-clips' (include full arrangement clip data), " +
-          "'all-devices' (shortcut for midi-effects, instrument, audio-effects), " +
+          "'all-devices' (shortcut for midi-effects, instruments, audio-effects), " +
           "'all-routings' (shortcut for routings, available-routings). " +
-          "Default: ['notes', 'drum-maps', 'instrument', 'session-clips', 'arrangement-clips'].",
+          "Default: ['clip-notes', 'drum-maps', 'instruments', 'session-clips', 'arrangement-clips'].",
       ),
   },
 });

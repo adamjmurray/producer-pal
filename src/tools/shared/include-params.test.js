@@ -15,11 +15,11 @@ describe("parseIncludeArray", () => {
     expect(result).toEqual({
       includeDrumChains: false,
       includeDrumMaps: true,
-      includeNotes: false,
+      includeClipNotes: false,
       includeRackChains: false,
       includeScenes: false,
       includeMidiEffects: false,
-      includeInstrument: true,
+      includeInstruments: true,
       includeAudioEffects: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
@@ -38,11 +38,11 @@ describe("parseIncludeArray", () => {
     expect(result).toEqual({
       includeDrumChains: false,
       includeDrumMaps: false,
-      includeNotes: false,
+      includeClipNotes: false,
       includeRackChains: false,
       includeScenes: false,
       includeMidiEffects: false,
-      includeInstrument: false,
+      includeInstruments: false,
       includeAudioEffects: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
@@ -57,12 +57,12 @@ describe("parseIncludeArray", () => {
 
   it("handles specific include options", () => {
     const result = parseIncludeArray(
-      ["regular-tracks", "instrument"],
+      ["regular-tracks", "instruments"],
       READ_SONG_DEFAULTS,
     );
 
     expect(result.includeRegularTracks).toBe(true);
-    expect(result.includeInstrument).toBe(true);
+    expect(result.includeInstruments).toBe(true);
     expect(result.includeReturnTracks).toBe(false);
     expect(result.includeMasterTrack).toBe(false);
   });
@@ -79,7 +79,7 @@ describe("parseIncludeArray", () => {
     const result = parseIncludeArray(["all-devices"], READ_TRACK_DEFAULTS);
 
     expect(result.includeMidiEffects).toBe(true);
-    expect(result.includeInstrument).toBe(true);
+    expect(result.includeInstruments).toBe(true);
     expect(result.includeAudioEffects).toBe(true);
   });
 
@@ -88,11 +88,11 @@ describe("parseIncludeArray", () => {
 
     // All song-related options should be true
     expect(result.includeDrumChains).toBe(true);
-    expect(result.includeNotes).toBe(true);
+    expect(result.includeClipNotes).toBe(true);
     expect(result.includeRackChains).toBe(true);
     expect(result.includeScenes).toBe(true);
     expect(result.includeMidiEffects).toBe(true);
-    expect(result.includeInstrument).toBe(true);
+    expect(result.includeInstruments).toBe(true);
     expect(result.includeAudioEffects).toBe(true);
     expect(result.includeRoutings).toBe(true);
     expect(result.includeSessionClips).toBe(true);
@@ -107,10 +107,10 @@ describe("parseIncludeArray", () => {
 
     expect(result).toEqual(
       expect.objectContaining({
-        includeNotes: true,
+        includeClipNotes: true,
         includeDrumMaps: true,
         includeRackChains: false,
-        includeInstrument: true,
+        includeInstruments: true,
         includeSessionClips: true,
         includeArrangementClips: true,
       }),
@@ -123,7 +123,7 @@ describe("parseIncludeArray", () => {
     expect(result).toEqual(
       expect.objectContaining({
         includeClips: false,
-        includeNotes: false,
+        includeClipNotes: false,
       }),
     );
   });
@@ -133,7 +133,7 @@ describe("parseIncludeArray", () => {
 
     expect(result).toEqual(
       expect.objectContaining({
-        includeNotes: true,
+        includeClipNotes: true,
       }),
     );
   });
@@ -143,11 +143,11 @@ describe("includeArrayFromFlags", () => {
   it("converts flags back to array format", () => {
     const flags = {
       includeDrumChains: false,
-      includeNotes: true,
+      includeClipNotes: true,
       includeRackChains: true,
       includeScenes: true,
       includeMidiEffects: false,
-      includeInstrument: true,
+      includeInstruments: true,
       includeAudioEffects: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
@@ -162,10 +162,10 @@ describe("includeArrayFromFlags", () => {
     const result = includeArrayFromFlags(flags);
 
     expect(result).toEqual([
-      "notes",
+      "clip-notes",
       "rack-chains",
       "scenes",
-      "instrument",
+      "instruments",
       "regular-tracks",
     ]);
   });
@@ -173,11 +173,11 @@ describe("includeArrayFromFlags", () => {
   it("returns empty array when all flags are false", () => {
     const flags = {
       includeDrumChains: false,
-      includeNotes: false,
+      includeClipNotes: false,
       includeRackChains: false,
       includeScenes: false,
       includeMidiEffects: false,
-      includeInstrument: false,
+      includeInstruments: false,
       includeAudioEffects: false,
       includeRoutings: false,
       includeAvailableRoutings: false,
@@ -204,13 +204,13 @@ describe("includeArrayFromFlags", () => {
 
     it("parseIncludeArray handles drum-maps with other options", () => {
       const result = parseIncludeArray(
-        ["instrument", "drum-maps", "notes"],
+        ["instruments", "drum-maps", "clip-notes"],
         READ_SONG_DEFAULTS,
       );
 
       expect(result.includeDrumMaps).toBe(true);
-      expect(result.includeInstrument).toBe(true);
-      expect(result.includeNotes).toBe(true);
+      expect(result.includeInstruments).toBe(true);
+      expect(result.includeClipNotes).toBe(true);
       expect(result.includeRackChains).toBe(false);
     });
 
@@ -218,13 +218,13 @@ describe("includeArrayFromFlags", () => {
       const flags = {
         includeDrumMaps: true,
         includeRackChains: false,
-        includeInstrument: true,
+        includeInstruments: true,
       };
 
       const result = includeArrayFromFlags(flags);
 
       expect(result).toContain("drum-maps");
-      expect(result).toContain("instrument");
+      expect(result).toContain("instruments");
       expect(result).not.toContain("rack-chains");
     });
 
@@ -232,14 +232,14 @@ describe("includeArrayFromFlags", () => {
       const flags = {
         includeDrumMaps: false,
         includeRackChains: true,
-        includeInstrument: true,
+        includeInstruments: true,
       };
 
       const result = includeArrayFromFlags(flags);
 
       expect(result).not.toContain("drum-maps");
       expect(result).toContain("rack-chains");
-      expect(result).toContain("instrument");
+      expect(result).toContain("instruments");
     });
   });
 });
