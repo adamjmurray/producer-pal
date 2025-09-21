@@ -373,6 +373,61 @@ describe("init", () => {
     );
   });
 
+  it("notes when project notes are writable", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Project with Notes",
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const context = {
+      projectNotes: {
+        enabled: true,
+        writable: true,
+        content: "Working on a house track with heavy bass",
+      },
+    };
+
+    const result = init({}, context);
+
+    expect(result.projectNotes).toEqual(
+      "Working on a house track with heavy bass",
+    );
+    expect(result.$instructions).toContain("Summarize the project notes");
+    expect(result.$instructions).toContain(
+      "follow any instructions in project notes",
+    );
+    expect(result.$instructions).toContain(
+      "mention you can update the project notes",
+    );
+  });
+
   it("excludes project notes when context is disabled", () => {
     liveApiId.mockImplementation(function () {
       return this._id;
@@ -415,7 +470,7 @@ describe("init", () => {
 
     const result = init({}, context);
 
-    expect(result.userContext).toBeUndefined();
+    expect(result.projectNotes).toBeUndefined();
   });
 
   it("handles missing context gracefully", () => {
@@ -453,7 +508,7 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.userContext).toBeUndefined();
+    expect(result.projectNotes).toBeUndefined();
   });
 
   it("handles null host track index gracefully", () => {

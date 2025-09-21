@@ -113,7 +113,6 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
   // Include project notes if enabled (moved from read-song)
   if (context?.projectNotes?.enabled && context.projectNotes.content) {
     result.projectNotes = context.projectNotes.content;
-    // TODO: mention it to the user if the notes are writable?
   }
 
   result.$instructions =
@@ -123,7 +122,11 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
       "* Summarize the Live Set state (if ppal-read-song fails, say the error and don't try again)",
       ...(result.projectNotes
         ? [
-            "* Summarize the project notes, and verify you will follow any instructions in project notes if applicable.",
+            `* Summarize the project notes, ${
+              context?.projectNotes?.writable
+                ? "mention you can update the project notes, "
+                : ""
+            }and verify you will follow any instructions in project notes if applicable.`,
           ]
         : []),
       "* Say the messagesForUser and wait for input",
