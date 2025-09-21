@@ -77,11 +77,13 @@ describe("init", () => {
       connected: true,
       producerPalVersion: "0.9.7",
       abletonLiveVersion: "12.3",
-      songName: "Test Project",
-      tempo: 120,
-      timeSignature: "4/4",
-      trackCount: 3,
-      sceneCount: 2,
+      liveSet: {
+        name: "Test Project",
+        trackCount: 3,
+        sceneCount: 2,
+        tempo: 120,
+        timeSignature: "4/4",
+      },
       messagesForUser: expect.stringContaining(
         "Producer Pal 0.9.7 connected to Ableton Live 12.3",
       ),
@@ -141,8 +143,10 @@ describe("init", () => {
 
     expect(result).toEqual(
       expect.objectContaining({
-        tempo: 140,
-        timeSignature: "3/4",
+        liveSet: expect.objectContaining({
+          tempo: 140,
+          timeSignature: "3/4",
+        }),
       }),
     );
   });
@@ -566,8 +570,10 @@ describe("init", () => {
     expect(result).toEqual(
       expect.objectContaining({
         connected: true,
-        trackCount: 1,
-        sceneCount: 1,
+        liveSet: expect.objectContaining({
+          trackCount: 1,
+          sceneCount: 1,
+        }),
       }),
     );
   });
@@ -615,8 +621,10 @@ describe("init", () => {
     expect(result).toEqual(
       expect.objectContaining({
         connected: true,
-        trackCount: 0,
-        sceneCount: 0,
+        liveSet: expect.objectContaining({
+          trackCount: 0,
+          sceneCount: 0,
+        }),
         messagesForUser: expect.stringContaining("* No instruments found"),
       }),
     );
@@ -660,7 +668,7 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.scale).toBe("Eb Minor");
+    expect(result.liveSet.scale).toBe("Eb Minor");
   });
 
   it("excludes scale property when scale is disabled", () => {
@@ -701,6 +709,6 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.scale).toBeUndefined();
+    expect(result.liveSet.scale).toBeUndefined();
   });
 });

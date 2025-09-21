@@ -23,14 +23,13 @@ export function init({} = {}, context) {
     connected: true,
     producerPalVersion: VERSION,
     abletonLiveVersion,
-    songName: liveSet.getProperty("name"),
-
-    // Just counts, no detailed data
-    trackCount: trackIds.length,
-    sceneCount: sceneIds.length,
-
-    tempo: liveSet.getProperty("tempo"),
-    timeSignature: liveSet.timeSignature,
+    liveSet: {
+      name: liveSet.getProperty("name"),
+      trackCount: trackIds.length,
+      sceneCount: sceneIds.length,
+      tempo: liveSet.getProperty("tempo"),
+      timeSignature: liveSet.timeSignature,
+    },
   };
 
   const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
@@ -38,7 +37,7 @@ export function init({} = {}, context) {
     const scaleName = liveSet.getProperty("scale_name");
     const rootNote = liveSet.getProperty("root_note");
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
-    result.scale = `${scaleRoot} ${scaleName}`;
+    result.liveSet.scale = `${scaleRoot} ${scaleName}`;
   }
 
   const messages = [
