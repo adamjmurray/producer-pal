@@ -149,8 +149,7 @@ describe("readSong", () => {
       followsArrangement: true,
       tempo: 120,
       timeSignature: "4/4",
-      scale: "Major",
-      scaleRoot: "C",
+      scale: "C Major",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
       tracks: [
         {

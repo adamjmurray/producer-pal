@@ -79,9 +79,10 @@ export function readSong(args = {}) {
 
   // Only include scale properties when scale is enabled
   if (scaleEnabled) {
-    result.scale = liveSet.getProperty("scale_name");
+    const scaleName = liveSet.getProperty("scale_name");
     const rootNote = liveSet.getProperty("root_note");
-    result.scaleRoot = PITCH_CLASS_NAMES[rootNote];
+    const scaleRoot = PITCH_CLASS_NAMES[rootNote];
+    result.scale = `${scaleRoot} ${scaleName}`;
     const scaleIntervals = liveSet.getProperty("scale_intervals");
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }

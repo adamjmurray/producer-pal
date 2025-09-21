@@ -59,11 +59,39 @@ describe("pitch-class-name-to-number", () => {
         "Invalid pitch class",
       );
       expect(() => pitchClassNameToNumber("H")).toThrow("Invalid pitch class");
-      expect(() => pitchClassNameToNumber("c")).toThrow("Invalid pitch class");
       expect(() => pitchClassNameToNumber("C##")).toThrow(
         "Invalid pitch class",
       );
       expect(() => pitchClassNameToNumber("")).toThrow("Invalid pitch class");
+    });
+
+    it("should handle case insensitive input", () => {
+      // Test lowercase
+      expect(pitchClassNameToNumber("c")).toBe(0);
+      expect(pitchClassNameToNumber("c#")).toBe(1);
+      expect(pitchClassNameToNumber("db")).toBe(1);
+      expect(pitchClassNameToNumber("d")).toBe(2);
+      expect(pitchClassNameToNumber("f#")).toBe(6);
+      expect(pitchClassNameToNumber("gb")).toBe(6);
+      expect(pitchClassNameToNumber("bb")).toBe(10);
+      expect(pitchClassNameToNumber("b")).toBe(11);
+
+      // Test uppercase (already tested above, but included for completeness)
+      expect(pitchClassNameToNumber("C")).toBe(0);
+      expect(pitchClassNameToNumber("C#")).toBe(1);
+      expect(pitchClassNameToNumber("DB")).toBe(1);
+      expect(pitchClassNameToNumber("D")).toBe(2);
+      expect(pitchClassNameToNumber("F#")).toBe(6);
+      expect(pitchClassNameToNumber("GB")).toBe(6);
+      expect(pitchClassNameToNumber("BB")).toBe(10);
+      expect(pitchClassNameToNumber("B")).toBe(11);
+
+      // Test mixed case
+      expect(pitchClassNameToNumber("Eb")).toBe(3);
+      expect(pitchClassNameToNumber("eB")).toBe(3);
+      expect(pitchClassNameToNumber("g#")).toBe(8);
+      expect(pitchClassNameToNumber("aB")).toBe(8);
+      expect(pitchClassNameToNumber("a#")).toBe(10);
     });
 
     it("should throw error for non-string inputs", () => {
@@ -90,11 +118,21 @@ describe("pitch-class-name-to-number", () => {
     it("should return false for invalid pitch class names", () => {
       expect(isValidPitchClassName("invalid")).toBe(false);
       expect(isValidPitchClassName("H")).toBe(false);
-      expect(isValidPitchClassName("c")).toBe(false);
       expect(isValidPitchClassName("")).toBe(false);
       expect(isValidPitchClassName(123)).toBe(false);
       expect(isValidPitchClassName(null)).toBe(false);
       expect(isValidPitchClassName(undefined)).toBe(false);
+    });
+
+    it("should handle case insensitive validation", () => {
+      expect(isValidPitchClassName("c")).toBe(true);
+      expect(isValidPitchClassName("C")).toBe(true);
+      expect(isValidPitchClassName("c#")).toBe(true);
+      expect(isValidPitchClassName("C#")).toBe(true);
+      expect(isValidPitchClassName("db")).toBe(true);
+      expect(isValidPitchClassName("Db")).toBe(true);
+      expect(isValidPitchClassName("BB")).toBe(true);
+      expect(isValidPitchClassName("bb")).toBe(true);
     });
   });
 });
