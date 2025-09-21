@@ -4,7 +4,7 @@ export const toolDefInit = defineTool("ppal-init", {
   title: "Connect to Ableton Live",
   description: `Initialize connection to Ableton Live.
 Call before other ppal-* tools when the user mentions Ableton/Producer Pal or open/connect to/play with ableton.
-Automatically follow the returned nextStep, then relay the messageForUser.`,
+Provides instructions to complete the initialization.`,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,

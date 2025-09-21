@@ -34,19 +34,17 @@ export function init({} = {}, context) {
     trackCount: trackIds.length,
     sceneCount: sceneIds.length,
 
-    messageForUser: {
-      title: `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
-      tips: [
-        "Save often! I can modify and delete things in your project, and I make mistakes.",
-        "If you rearrange tracks/clips/scenes, tell me so I stay in sync.",
-      ],
-      warnings: [], // Array for any warnings
-      suggestion: null, // Will be set based on Live Set state
-    },
-    nextStep: `Automatically call ppal-read-song *with no arguments* for the best view of the state of Live.
-Tell the user a summary of their Live Set and the messageForUser.
-If ppal-read-song fails, don't try again: tell the user the error and messageForUser.
-Wait for input before proceeding.`,
+    messagesForUser: [
+      `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
+      "Save often! I can modify and delete things in your project, and I make mistakes.",
+      "If you rearrange tracks/clips/scenes, tell me so I stay in sync.",
+      // additional tips set based on the state of the Live Set
+    ],
+
+    $instructions: `To complete Producer Pal initialization:
+Automatically call ppal-read-song _with no arguments_ for the best overview of the Live Set.
+Give a summary of the Live Set (if ppal-read-song fails, say the error and don't try again).
+Say the messagesForUser and wait for input before proceeding.`,
   };
 
   const hostTrackIndex = getHostTrackIndex();
@@ -95,25 +93,23 @@ Wait for input before proceeding.`,
     }
   }
 
-  // Set warnings and suggestions based on findings
-  if (instrumentOnHostTrack) {
-    result.messageForUser.warnings.push(
-      "There's an instrument on the Producer Pal track. It's best to keep the Max for Live device on its own track.",
-    );
-  }
+  // Set additional tips based on findings
 
-  if (foundAnyInstrument) {
-    result.messageForUser.suggestion =
-      "Ready to create or edit MIDI (drums, bass, melodies, chords), arrange clips, build scenes, or manage your Live Set.";
+  // TODO: relay this info in $meta response data when delete-track or duplicate (track) fails due to this:
+  // if (instrumentOnHostTrack) {
+  //   result.messagesForUser.push(
+  //     "The Producer Pal device should be on its own track, but it's on a track with an instrument.",
+  //   );
+  // }
+
+  if (!foundAnyInstrument) {
+    result.messagesForUser.push(`No instruments found.
+To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, plugins, etc).
+I can't add instruments but can compose MIDI patterns once they're there.`);
   } else {
-    result.messageForUser.suggestion = `No instruments found. To create music with MIDI clips, you'll need instruments.
-Add any Live instrument (Wavetable, Operator, Meld, Drift, Drum Rack, etc.) or plugin.
-I can't add instruments but can compose MIDI patterns once they're there.`;
-  }
-
-  // Clean up empty warnings array
-  if (result.messageForUser.warnings.length === 0) {
-    delete result.messageForUser.warnings;
+    result.messagesForUser.push(
+      "Ready to create or edit MIDI clips, build scenes, arrange a song, and manage your Live Set.",
+    );
   }
 
   // Include project notes if enabled (moved from read-song)
