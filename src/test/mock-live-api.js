@@ -100,7 +100,7 @@ export function mockLiveApiGet(overrides = {}) {
     // });
     if (overridesByProp != null) {
       const override = overridesByProp[prop];
-      if (override != null) {
+      if (override !== undefined) {
         // optionally support mocking a sequence of return values:
         if (override instanceof MockSequence) {
           overridesByProp.__callCount__ ??= {};

@@ -19,8 +19,6 @@ export function readSong(args = {}) {
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
-  const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
-
   const result = {
     id: liveSet.id,
     abletonLiveVersion: liveApp.call("get_version_string"),
@@ -78,6 +76,7 @@ export function readSong(args = {}) {
   }
 
   // Only include scale properties when scale is enabled
+  const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
   if (scaleEnabled) {
     const scaleName = liveSet.getProperty("scale_name");
     const rootNote = liveSet.getProperty("root_note");

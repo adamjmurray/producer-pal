@@ -79,16 +79,14 @@ describe("init", () => {
         producerPalVersion: "0.9.7",
         abletonLiveVersion: "12.3",
         songName: "Test Project",
-        view: "session",
         tempo: 120,
         timeSignature: "4/4",
-        isPlaying: true,
         trackCount: 3,
         sceneCount: 2,
         messagesForUser: expect.arrayContaining([
           "Producer Pal 0.9.7 connected to Ableton Live 12.3",
           "Save often! I can modify and delete things in your project, and I make mistakes.",
-          "If you rearrange tracks/clips/scenes, tell me so I stay in sync.",
+          "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
           expect.any(String), // dynamic message based on Live Set state
         ]),
       }),
@@ -136,10 +134,8 @@ describe("init", () => {
 
     expect(result).toEqual(
       expect.objectContaining({
-        view: "arrangement",
         tempo: 140,
         timeSignature: "3/4",
-        isPlaying: false,
       }),
     );
   });
@@ -368,9 +364,13 @@ describe("init", () => {
 
     const result = init({}, context);
 
-    expect(result.userContext).toEqual({
-      projectNotes: "Working on a house track with heavy bass",
-    });
+    expect(result.projectNotes).toEqual(
+      "Working on a house track with heavy bass",
+    );
+    expect(result.$instructions).toContain("Summarize the project notes");
+    expect(result.$instructions).toContain(
+      "follow any instructions in project notes",
+    );
   });
 
   it("excludes project notes when context is disabled", () => {
@@ -564,7 +564,7 @@ describe("init", () => {
     );
   });
 
-  it("handles fallback song name when name is null", () => {
+  it("includes scale property when scale is enabled", () => {
     liveApiId.mockImplementation(function () {
       return this._id;
     });
@@ -582,13 +582,16 @@ describe("init", () => {
 
     mockLiveApiGet({
       LiveSet: {
-        name: null, // No name set
+        name: "Scale Test Project",
         tempo: 120,
         signature_numerator: 4,
         signature_denominator: 4,
         is_playing: 0,
         tracks: [],
         scenes: [],
+        scale_mode: 1, // Scale enabled
+        scale_name: "Minor",
+        root_note: 3, // D#
       },
       AppView: {
         focused_document_view: "Session",
@@ -599,6 +602,47 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result.songName).toBe("Untitled");
+    expect(result.scale).toBe("Eb Minor");
+  });
+
+  it("excludes scale property when scale is disabled", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "No Scale Project",
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+        scale_mode: 0, // Scale disabled
+        scale_name: "Major",
+        root_note: 0,
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const result = init();
+
+    expect(result.scale).toBeUndefined();
   });
 });
