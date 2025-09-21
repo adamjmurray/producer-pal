@@ -70,7 +70,7 @@ Start from the beginning of the video to
 
    ![Producer Pal tools in Claude](./doc/img/tools-in-claude.png)
 
-6. Start a conversation with "Let's play with Ableton Live"
+6. Start a conversation with "connect to ableton"
 
    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
@@ -115,11 +115,7 @@ keys instead of subscription access costs money for every interaction.
 
 - Start a chat like:
 
-  > let's play with Ableton Live
-
-  or simply:
-
-  > ableton
+  > connect to ableton
 
 - If Ableton Live or the Producer Pal Max for Live device aren't running, the AI
   will let you know. Once it's running, say:
@@ -265,9 +261,9 @@ usage limits faster, so it's recommended to leave it off until you need it.
 Keep your context window small for best results. In practical terms, that means:
 If you have a very long conversation, consider starting a new conversation.
 Claude can easily re-read the state of Ableton Live in a new conversation (just
-say "Let's play with Ableton Live" again). If you want to maintain context from
-the old conversation, ask Claude to summarize the current conversation and copy
-and paste the summary into a new conversation.
+say "connect to ableton" again). If you want to maintain context from the old
+conversation, ask Claude to summarize the current conversation and copy and
+paste the summary into a new conversation.
 
 To help keep your context window small, it's recommended to use standalone
 conversations by default and not use a Claude Project. However, you may find

@@ -26,7 +26,7 @@
      - OpenAI GPT OSS
    - [Other MCP-compatible LLMs](#other-mcp-compatible-llms)
 
-3. Start a conversation with "let's play with ableton live"
+3. Start a conversation with "connect to ableton"
 
 If it doesn't work, see the [troubleshooting guide](#troubleshooting).
 
@@ -121,7 +121,7 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 
    ![Producer Pal tools in Claude](./doc/img/tools-in-claude.png)
 
-6. Start a conversation with "Let's play with Ableton Live"
+6. Start a conversation with "connect to ableton"
 
    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
@@ -147,7 +147,7 @@ terminal.
      claude mcp add --transport http producer-pal http://localhost:3350/mcp
      ```
 4. Start Claude Code: `claude` (consider running in an empty directory)
-5. Say "Let's play with Ableton Live" or "call your ppal-init tool"
+5. Say "connect to ableton" or "call your ppal-init tool"
 
 ### claude.ai Web App
 
@@ -216,7 +216,7 @@ For using Producer Pal through the Claude web interface.
    args = ["/absolute/path/to/producer-pal-portal.js"]
    ```
 3. Run `codex` (consider in an empty directory)
-4. Say "Let's play with Ableton Live" or "call your ppal-init tool"
+4. Say "connect to ableton" or "call your ppal-init tool"
 
 ### ChatGPT Web App
 
@@ -235,11 +235,9 @@ For using Producer Pal through the Claude web interface.
    - No authentication required
    - Trust the connector
 
-5. Start a new chat with Developer Mode and Producer Pal explicitly enabled
-
-Starting conversations with "Let's play with Ableton Live" doesn't work well in
-this setup. Instead, try "Open Ableton with Producer Pal" or "Run the Producer
-Pal ppal-init tool".
+5. IMPORTANT: Start a new chat with Developer Mode and Producer Pal explicitly
+   enabled
+6. Say "connect to ableton" or "run the producer pal ppal-init tool".
 
 ## LM Studio
 
@@ -328,10 +326,10 @@ For remote access to Producer Pal, you'll need a tunneling service.
 
 ### AI won't use Producer Pal
 
-Some AIs won't respond properly to "Let's play with Ableton Live" and may claim
-they can't directly interact with Ableton Live even if they actually can. It's
-possible everything is setup correctly and the AI needs a nudge to start using
-Producer Pal. Try this first:
+Some AIs won't respond properly to "connect to ableton" and may claim they can't
+directly interact with Ableton Live even if they actually can. It's possible
+everything is setup correctly and the AI needs a nudge to start using Producer
+Pal. Try this first:
 
 - Ask "what tools do you have?" and check if it can see Producer Pal tools such
   as `ppal-init`
