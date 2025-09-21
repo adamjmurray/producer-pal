@@ -73,24 +73,31 @@ describe("init", () => {
 
     const result = init();
 
-    expect(result).toEqual(
-      expect.objectContaining({
-        connected: true,
-        producerPalVersion: "0.9.7",
-        abletonLiveVersion: "12.3",
-        songName: "Test Project",
-        tempo: 120,
-        timeSignature: "4/4",
-        trackCount: 3,
-        sceneCount: 2,
-        messagesForUser: expect.arrayContaining([
-          "Producer Pal 0.9.7 connected to Ableton Live 12.3",
-          "Save often! I can modify and delete things in your project, and I make mistakes.",
-          "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
-          expect.any(String), // dynamic message based on Live Set state
-        ]),
-      }),
+    expect(result).toEqual({
+      connected: true,
+      producerPalVersion: "0.9.7",
+      abletonLiveVersion: "12.3",
+      songName: "Test Project",
+      tempo: 120,
+      timeSignature: "4/4",
+      trackCount: 3,
+      sceneCount: 2,
+      messagesForUser: expect.stringContaining(
+        "Producer Pal 0.9.7 connected to Ableton Live 12.3",
+      ),
+      $instructions: expect.stringContaining("To initialize Producer Pal:"),
+    });
+
+    expect(result.messagesForUser).toContain("Save often!");
+    expect(result.messagesForUser).toContain(
+      "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
     );
+
+    expect(result.$instructions).toContain(
+      "Call ppal-read-song _with no arguments_",
+    );
+    expect(result.$instructions).toContain("Summarize the Live Set state");
+    expect(result.$instructions).toContain("Say the messagesForUser");
   });
 
   it("handles arrangement view correctly", () => {
@@ -198,7 +205,7 @@ describe("init", () => {
     const result = init();
 
     expect(result.messagesForUser).toEqual(
-      expect.arrayContaining([expect.stringContaining("Ready to create")]),
+      expect.stringContaining("* Ready to create"),
     );
   });
 
@@ -316,9 +323,7 @@ describe("init", () => {
     const result = init();
 
     expect(result.messagesForUser).toEqual(
-      expect.arrayContaining([
-        expect.stringContaining("No instruments found."),
-      ]),
+      expect.stringContaining("* No instruments found."),
     );
   });
 
@@ -612,9 +617,7 @@ describe("init", () => {
         connected: true,
         trackCount: 0,
         sceneCount: 0,
-        messagesForUser: expect.arrayContaining([
-          expect.stringContaining("No instruments"),
-        ]),
+        messagesForUser: expect.stringContaining("* No instruments found"),
       }),
     );
   });

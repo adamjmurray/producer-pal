@@ -41,7 +41,7 @@ export function init({} = {}, context) {
     result.scale = `${scaleRoot} ${scaleName}`;
   }
 
-  result.messagesForUser = [
+  const messages = [
     `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
     "Save often! I can modify and delete things in your project, and I make mistakes.",
     "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
@@ -101,16 +101,19 @@ export function init({} = {}, context) {
   //}
 
   if (!foundAnyInstrument) {
-    result.messagesForUser.push(`No instruments found.
+    messages.push(`No instruments found.
 To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, plugins, etc).
 I can't add instruments but can compose MIDI patterns once they're there.`);
   } else {
-    result.messagesForUser.push(
+    messages.push(
       "Ready to create or edit MIDI clips, build scenes, arrange a song, and manage your Live Set.",
     );
   }
 
-  // Include project notes if enabled (moved from read-song)
+  // Format as markdown bullet list
+  result.messagesForUser = messages.map((msg) => `* ${msg}`).join("\n");
+
+  // Include project notes if enabled
   if (context?.projectNotes?.enabled && context.projectNotes.content) {
     result.projectNotes = context.projectNotes.content;
   }
