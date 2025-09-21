@@ -1,7 +1,19 @@
 # <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
-Make music in Ableton Live with an AI assistant such as
-[Anthropic Claude](https://www.anthropic.com/claude).
+Collaboratively make music in Ableton Live with an AI assistant.
+
+Works with any LLM that supports
+[MCP tools](https://modelcontextprotocol.io/docs/learn/server-concepts#tools)
+including:
+
+- [Anthropic Claude](https://claude.com/product/overview)
+- [Google Gemini](https://gemini.google/overview)
+- [OpenAI GPT](https://chatgpt.com/overview)
+- Offline local LLMs in [LM Studio](https://lmstudio.ai/) or similar apps, such
+  as:
+  - [Qwen 3](https://lmstudio.ai/models/qwen/qwen3-4b-2507)
+  - [GPT OSS](https://lmstudio.ai/models/openai/gpt-oss-20b)
+  - [Mistral models](https://lmstudio.ai/models/mistralai/magistral-small-2509)
 
 ## Demo
 
@@ -26,59 +38,63 @@ Start from the beginning of the video to
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
   Suite edition)
-- [Claude Desktop](https://claude.ai/download) (or another
-  [MCP-compatible](https://modelcontextprotocol.io/) AI chat client like Claude
-  Code or VS Code). _I hope to add support for more AI models via something like
-  [LM Studio](https://lmstudio.ai/) in the future._
+- A compatible AI app (see [installation instructions](#installation) below)
 
-## Installing
+## Installation
 
-1. Download the latest version:
-   - [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd) -
-     the Max for Live device
-   - [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb) -
-     the Claude Desktop extension
+1. Download
+   [the Producer_Pal.amxd Max for Live device](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 
-2. Add
-   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-   to an Ableton Live project
+2. Add `Producer_Pal.amxd` to an Ableton Live project
 
    ![install in Ableton](./doc/img/install-in-ableton.png)
 
-3. Install into Claude Desktop by going to Claude Desktop &rarr; Settings &rarr;
-   Extensions and:
+3. Complete the installation for the AI you use:
 
-   3a. If you already have extensions installed, you can drag and drop
-   [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-   into the Extensions screen:
+   3a. Continue the
+   [Quick Start Guide for Claude Desktop](#quick-start-for-claude-desktop)
+
+   3b. Or see [the full Installation Guide](./INSTALLATION.md) for other LLMs
+
+### Quick Start for Claude Desktop
+
+If you are using [Claude Desktop](https://claude.ai/download):
+
+4. Download
+   [the Producer_Pal.mcpb Claude Desktop extension](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+
+5. Install it into Claude Desktop by going to Claude Desktop &rarr; Settings
+   &rarr; Extensions and:
+
+   5a. If you already have extensions installed, you can drag and drop
+   `Producer_Pal.mcpb` into the Extensions screen:
 
    ![install in Claude Desktop](./doc/img/install-in-claude.png)
 
-   3b. Or, if you have never installed a Claude Desktop extension before, you
+   5b. Or, if you have never installed a Claude Desktop extension before, you
    need to click "Advanced settings" on the Extensions screen, then click
-   "Install extension...", and choose the
-   [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-   file.
+   "Install extension...", and choose the `Producer_Pal.mcpb` file.
 
    ![install first extension in Claude Desktop](./doc/img/install-in-claude-first-extension.png)
 
-4. Don't forget to click "Install" and complete the Claude Desktop installation:
+6. Don't forget to click "Install" and complete the Claude Desktop installation:
 
    ![install in Claude Desktop, part 2](./doc/img/install-in-claude-2.png)
 
-5. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
+7. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
+   sure it's enabled when starting a conversation):
 
    ![Producer Pal tools in Claude](./doc/img/tools-in-claude.png)
 
-6. Start a conversation with "connect to ableton"
+8. Start a conversation with "connect to ableton"
 
    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
-7. In order for Producer Pal to work, you need to allow the tools to be used:
+9. In order for Producer Pal to work, you need to allow the tools to be used:
 
    <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
 
-See the [usage info for help getting started](#usage).
+See the [usage info for more help getting started](#usage).
 
 See
 [the latest release for more info on this version](https://github.com/adamjmurray/producer-pal/releases/latest/).
@@ -89,7 +105,7 @@ See
   [GitHub Issues](https://github.com/adamjmurray/producer-pal/issues) (please do
   not send pull requests)
 - **Documentation**:
-  [GitHub Homepage (this page)](https://github.com/adamjmurray/producer-pal/#producer-pal)
+  [GitHub Homepage (this page)](https://github.com/adamjmurray/producer-pal/#readme)
   and [the dedicated area of my website](https://adammurray.link/producer-pal/)
 - **Community**:
   [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
@@ -99,15 +115,16 @@ See
 **🧪 EXPERIMENTAL SOFTWARE**: Always save and backup your Live sets before use.
 The software may cause crashes, data loss, or unexpected behavior.
 
-**🔒 PRIVACY**: Your musical data (MIDI notes, track names, tempo, etc.) is
-transmitted to Anthropic's Claude AI service for processing. Review
-[Anthropic's privacy policy](https://www.anthropic.com/privacy). Do not use with
-confidential or commercially sensitive musical content.
+**🔒 PRIVACY**: When using an online model from Anthropic, Google, OpenAI, etc
+your musical data (MIDI notes, track names, tempo, etc.) is transmitted to the
+online service for processing. Review the AI provider's privacy policy and
+account settings for more info. Do not use online AI services with confidential
+or commercially sensitive musical content. Producer Pal supports offline models
+for scenarios where data must be kept private.
 
-**💰 USAGE COSTS**: While the Producer Pal itself is free, it requires Claude
-AI. Claude's free and subscription accounts have usage limits (recommended:
-avoid Opus and "extended thinking" mode on free and Pro accounts). Using API
-keys instead of subscription access costs money for every interaction.
+**💰 USAGE COSTS**: Producer Pal itself is free. Some AI models require
+subscriptions, or API keys that can cost money for every interaction. Many AI
+models supported by Producer Pal have a free tier with usage limits.
 
 ## Usage
 
