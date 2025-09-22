@@ -1,8 +1,10 @@
 # <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal Installation Guide
 
-1. Add the
-   [Producer Pal Max for Live device (`Producer_Pal.amxd`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-   to a MIDI track in [Ableton Live 12.2+](https://www.ableton.com/live/) with
+1. Download the
+   [Producer Pal Max for Live device (`Producer_Pal.amxd`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd).
+
+2. Add `Producer_Pal.amxd` to a MIDI track in
+   [Ableton Live 12.2+](https://www.ableton.com/live/) with
    [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
    Suite):
 
@@ -10,7 +12,7 @@
 
    It should show "Producer Pal Running".
 
-2. Setup an AI model to use Producer Pal:
+3. Setup an AI model to use Producer Pal:
    - [Anthropic Claude](#anthropic-claude-installation)
      - [Claude Desktop](#claude-desktop)
      - [Claude Code](#claude-code)
@@ -27,7 +29,7 @@
      - OpenAI GPT OSS
    - [Other MCP-compatible LLMs](#other-mcp-compatible-llms)
 
-3. Start a conversation with "connect to ableton"
+4. Start a conversation with "connect to ableton"
 
 If it doesn't work, see the [troubleshooting guide](#troubleshooting).
 
@@ -103,7 +105,7 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 
    3a. If you already have extensions installed, drag and drop
    `Producer_Pal.mcp` into the Extensions screen:
-   
+
    <img src="./doc/img/install-in-claude.png" alt="install in Claude Desktop" width="700">
 
    3b. Or, if you have never installed a Claude Desktop extension before, you
@@ -112,21 +114,21 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
    [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
    file.
 
-    <img src="./doc/img/install-in-claude-first-extension.png" alt="install first extension in Claude Desktop" width="700">   
+    <img src="./doc/img/install-in-claude-first-extension.png" alt="install first extension in Claude Desktop" width="700">
 
-5. Don't forget to click "Install" and complete the Claude Desktop installation:
+4. Don't forget to click "Install" and complete the Claude Desktop installation:
 
-   <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">   
+   <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">
 
-7. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
+5. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
 
-    <img src="./doc/img/tools-in-claude.png" alt="Producer Pal tools in Claude" width="700">   
+   <img src="./doc/img/tools-in-claude.png" alt="Producer Pal tools in Claude" width="700">
 
-9. Start a conversation with "connect to ableton"
+6. Start a conversation with "connect to ableton"
 
    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
-10. In order for Producer Pal to work, you need to allow the tools to be used:
+7. In order for Producer Pal to work, you need to allow the tools to be used:
 
    <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
 
