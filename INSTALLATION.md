@@ -7,7 +7,8 @@
      [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton
      Live Suite)
    - Add the device to a MIDI track, ideally an empty one:
-     ![install in Ableton](./doc/img/install-in-ableton.png)
+
+     <img src="./doc/img/install-in-ableton.png" width="300">
 
 2. Connect an AI model to Producer Pal:
    - [Anthropic Claude](#anthropic-claude-installation)
@@ -30,7 +31,7 @@
 
 If it doesn't work, see the [troubleshooting guide](#troubleshooting).
 
-## Choosing a Connection method
+## Choosing a Connection Method
 
 Depending on the AI model you want to use, you may have choices between the
 following connection methods:
@@ -137,7 +138,8 @@ interface for Claude.
 1. Install Claude Code: `npm install -g @anthropic/claude-code` (see
    [the official docs](https://www.anthropic.com/claude-code))
 2. Download `producer-pal-portal.js` from the release and note its full path
-3. Configure the MCP server:
+3. Configure the MCP server via one of these
+   [connection methods](#choosing-a-connection-method):
    - with producer-pal-portal.js
      ```bash
      claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
@@ -177,7 +179,8 @@ To use Producer Pal through [the Claude web interface](https://claude.ai/new):
 is a command line interface for Google Gemini.
 
 1. [Install Gemini CLI](https://github.com/google-gemini/gemini-cli?#-installation)
-2. Configure MCP in `~/.gemini/settings.json`:
+2. Configure MCP in `~/.gemini/settings.json` to use one of these
+   [connection methods](#choosing-a-connection-method):
 
    **Option A: Via producer-pal-portal.js**
 
@@ -206,7 +209,8 @@ is a command line interface for Google Gemini.
    }
    ```
 
-3. Start Gemini CLI and Producer Pal tools will be available
+3. Run `gemini` to start the Gemini CLI
+4. Start a conversation with "connect to ableton"
 
 ## OpenAI
 
@@ -216,7 +220,8 @@ is a command line interface for Google Gemini.
 for OpenAI models.
 
 1. [Install OpenAI Codex](https://github.com/openai/codex#quickstart)
-2. Edit `~/.codex/config.toml`:
+2. Edit `~/.codex/config.toml` to setup one of these
+   [connection methods](#choosing-a-connection-method):
    ```toml
    [mcp_servers.producer-pal]
    command = "node"
@@ -259,7 +264,8 @@ Run AI models locally without Internet connection.
    - OpenAI GPT-OSS (tested with the 20B model)
    - Mistral AI Magistral (tested with the small-2509 model)
 3. Configure MCP servers in LM Studio Settings → Program → Integrations → edit
-   mcp.json:
+   mcp.json using one of these
+   [connection methods](#choosing-a-connection-method):
 
    **Option A: Via producer-pal-portal.js**
 
@@ -293,6 +299,9 @@ Run AI models locally without Internet connection.
 ## Other MCP-compatible LLMs
 
 Producer Pal works with any LLM that supports the Model Context Protocol.
+
+You can use the
+[STDIO or HTTP connection method](#choosing-a-connection-method).
 
 ### Local MCP via stdio
 
