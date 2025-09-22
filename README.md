@@ -15,15 +15,18 @@ including:
   - [Mistral Magistral (small)](https://mistral.ai/news/magistral)
 
 See the [Producer Pal Installation Guide](./INSTALLATION.md) to get started with
-any of these models, or continue reading for a
+any of these AI models, or continue reading for a
 [Quick Start Guide for Claude Desktop](#installation).
+
+Find out what's new in
+[the latest release notes](https://github.com/adamjmurray/producer-pal/releases/latest/).
 
 ## Demo
 
-Start from the beginning of this video to
-[watch how easy it is to setup Producer Pal with Claude Desktop](https://www.youtube.com/watch?v=ypZBVI0Ncso)
-(_3⅓ minutes long, no sound for first 90 seconds_), or click the thumbnail to
-jump to the music-making:
+Watch
+[how to install and use Producer Pal with Claude Desktop](https://www.youtube.com/watch?v=ypZBVI0Ncso)
+(_3⅓ minutes long, no sound for the first 90 seconds_), or click the thumbnail
+to jump to the music-making:
 
 <a href="https://www.youtube.com/watch?v=ypZBVI0Ncso&t=86s">
 <figure>
@@ -42,23 +45,25 @@ jump to the music-making:
   [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
   Suite edition)
 - A compatible AI app (see the [Installation Guide](./INSTALLATION.md) or
-  continue for the [Quick Start Guide for Claude Desktop](#installation))
+  continue reading to [setup with Claude Desktop](#installation))
 
 ## Installation
 
 1. Download
-   [the Producer_Pal.amxd Max for Live device](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
+   [the `Producer_Pal.amxd` Max for Live device](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 
 2. Add `Producer_Pal.amxd` to an Ableton Live project
 
    ![install in Ableton](./doc/img/install-in-ableton.png)
 
-3. Complete the installation for your AI:
+3. Setup an AI model to use Producer Pal:
 
-   3a. Continue the
-   [Quick Start Guide for Claude Desktop](#quick-start-for-claude-desktop)
+   3a. Continue reading for the
+   [Quick Start for Claude Desktop](#quick-start-for-claude-desktop)
 
-   3b. Or see the [Installation Guide](./INSTALLATION.md) for other LLMs
+   3b. Or see the [Installation Guide](./INSTALLATION.md) to use other
+   apps/LLMs, including [Gemini CLI](./INSTALLATION.md#gemini-cli) or
+   [OpenAI Codex CLI](./INSTALLATION.md#codex-cli)
 
 ### Quick Start for Claude Desktop
 
@@ -99,10 +104,7 @@ If you are using [Claude Desktop](https://claude.ai/download):
 
     <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
 
-See the [usage info for more help getting started](#usage).
-
-See
-[the latest release for more info on this version](https://github.com/adamjmurray/producer-pal/releases/latest/).
+See the [Usage Guide](#usage) for more help getting started.
 
 ## Support and Issues
 

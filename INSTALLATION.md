@@ -12,15 +12,16 @@
 
    It should show "Producer Pal Running".
 
-3. Setup an AI model to use Producer Pal using one of the following guides:
+3. Setup an AI model to use Producer Pal using one of the following guides (⭐️
+   indicates recommended options):
    - [Anthropic Claude](#anthropic-claude-installation)
-     - [Claude Desktop](#claude-desktop)
-     - [Claude Code](#claude-code)
+     - [Claude Desktop](#claude-desktop) ⭐️
+     - [Claude Code](#claude-code) ⭐️
      - [claude.ai Web App](#claudeai-web-app)
    - [Google Gemini](#google-gemini)
-     - [Gemini CLI](#gemini-cli)
+     - [Gemini CLI](#gemini-cli) ⭐️
    - [OpenAI](#openai)
-     - [Codex CLI](#codex-cli)
+     - [Codex CLI](#codex-cli)⭐️
      - [ChatGPT web app](#chatgpt-web-app)
    - [LM Studio](#lm-studio) for local models useable with no Internet,
      including:
@@ -65,10 +66,11 @@ connection to the Producer Pal
 [MCP server](https://modelcontextprotocol.io/docs/learn/server-concepts) running
 inside its Max for Live device.
 
-This is recommended over the HTTP connection because it is more robust: it works
-even if Ableton Live / Producer Pal is not running and will help you debug
-broken connections. Note: this option requires [Node.js](https://nodejs.org/) to
-be installed.
+⭐️ `producer-pal-portal.js` is recommended over the HTTP connection method
+because it is more robust: it works even if Ableton Live / Producer Pal is not
+running and will help you debug connection issues.
+
+Note: this option requires [Node.js](https://nodejs.org/) to be installed.
 
 ### HTTP
 
@@ -178,6 +180,9 @@ To use Producer Pal through [the Claude web interface](https://claude.ai/new):
 
 ## Google Gemini
 
+If you have a Google account, you can use Gemini for free with generous usage
+limits that reset daily.
+
 ### Gemini CLI
 
 [Gemini CLI](https://developers.google.com/gemini-code-assist/docs/gemini-cli)
@@ -224,6 +229,9 @@ is a command line interface for Google Gemini.
 [Codex CLI](https://developers.openai.com/codex/cli) is a command line interface
 for OpenAI models.
 
+At the time of writing, a paid OpenAI subscription is needed to use Codex CLI.
+This may change later.
+
 1. [Install OpenAI Codex](https://github.com/openai/codex#quickstart)
 2. Edit `~/.codex/config.toml` to setup one of these
    [connection methods](#choosing-a-connection-method):
@@ -249,19 +257,25 @@ To use Producer Pal through [the ChatGPT web interface](https://chatgpt.com/):
    Note your public URL (e.g., `https://1234abcd.ngrok-free.app`)
 
 2. Go to [ChatGPT](https://chatgpt.com) → Settings
-3. Enable Developer Mode
+3. Enable Developer Mode. _Note: At the time of writing, a paid OpenAI
+   subscription is needed to enable Developer Mode. This may change later._
 4. Add a Custom Connector:
    - URL: Your tunnel URL + `/mcp` (e.g., `https://1234abcd.ngrok-free.app/mcp`)
    - No authentication required
    - Trust the connector
-
 5. IMPORTANT: Start a new chat with Developer Mode and Producer Pal explicitly
    enabled
 6. Start a conversation with "connect to ableton"
 
 ## LM Studio
 
-Run AI models locally without Internet connection.
+Run AI models locally without an Internet connection.
+
+**This functionality is experimental.** It requires more technical prowess to
+setup and diagnose issues, the quality of results does not compare to the
+"frontier models" documented above (Claude, Gemini, OpenAI's "flagship" GPT
+models work _much_ better), it runs much slower, and Producer Pal needs more
+optimization to better support these smaller local AI models.
 
 1. Download [LM Studio](https://lmstudio.ai/)
 2. Install a compatible model:
@@ -301,6 +315,32 @@ Run AI models locally without Internet connection.
 
 4. Start a conversation with "connect to ableton"
 
+### Optimizing for Local Models
+
+- Shut down every other app you don't need to be running (e.g. your web browser
+  and chat apps)
+- Consider running Ableton Live on a different machine on the local network
+- **You probably need at least 16k context window size** because Producer Pal
+  currently requires a fairly large context window with respect to local models
+  (this should improve soon). Larger context windows are slower, so experiment.
+- To use all Producer Pal tools, you probably need to max out the context window
+  size, but large context windows make the model run significantly slower.
+  Therefore **it is recommended to disable some of the Producer Pal tools**. A
+  reasonable minimal toolset for experimentation is:
+  - `ppal-init`
+  - `ppal-read-song`
+  - `ppal-create-clip`
+  - `ppal-read-clip`
+  - `ppal-update-clip`
+  - `ppal-transport`
+
+  Try disabling all the other tools and using a 16k context window.
+
+- When using a model with the GGUF engine, try enabling the
+  advanced/experimental settings for Flash Attention and setting the K/V caches'
+  quantization to Q8 or Q4.
+- Research how to optimize for your machine / GPU
+
 ## Other MCP-compatible LLMs
 
 Producer Pal works with any LLM that supports the Model Context Protocol.
@@ -334,6 +374,10 @@ For cloud-hosted LLMs or remote access:
 ## Web Tunneling Options
 
 For remote access to Producer Pal, you'll need a tunneling service.
+
+_Note: Producer Pal performs no authentication, so anyone who knows your web
+tunnel address can connect and control Ableton Live. You should keep your web
+tunnel address secret._
 
 ### ngrok (Recommended)
 
