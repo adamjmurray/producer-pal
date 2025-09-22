@@ -3,15 +3,19 @@ import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
-import { copyFileSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import copy from "rollup-plugin-copy";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
-const licenseText = readFileSync(join(rootDir, "LICENSE"), "utf-8");
-const licenseHeader = `/*\n${licenseText}\n*/\n\n`;
+const licensePath = join(rootDir, "LICENSE");
+const licenseText = readFileSync(licensePath, "utf-8");
+
+const thirdPartyLicensesFolder = join(rootDir, "licenses");
 
 const terserOptions = {
   compress: false,
@@ -23,17 +27,14 @@ const terserOptions = {
   },
 };
 
-const addLicenseHeader = () => ({
+const addLicenseHeader = (options = {}) => ({
   name: "add-license-header",
   renderChunk(code) {
-    return licenseHeader + code;
-  },
-});
-
-const copyLicense = (destination) => ({
-  name: "copy-license",
-  writeBundle() {
-    copyFileSync(join(rootDir, "LICENSE"), destination);
+    return `/*\n${licenseText}${
+      options.includeThirdPartyLicenses
+        ? "\nThis file includes bundled dependencies.\nSee https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses."
+        : ""
+    }\n*/\n\n${code}`;
   },
 });
 
@@ -54,7 +55,6 @@ export default [
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
-      copyLicense(join(rootDir, "max-for-live-device/LICENSE")),
     ],
   },
   {
@@ -83,6 +83,7 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
+      addLicenseHeader({ includeThirdPartyLicenses: true }),
     ],
   },
   {
@@ -114,7 +115,16 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
-      copyLicense(join(rootDir, "claude-desktop-extension/LICENSE")),
+      addLicenseHeader({ includeThirdPartyLicenses: true }),
+      copy({
+        targets: [
+          { src: licensePath, dest: "claude-desktop-extension" },
+          {
+            src: thirdPartyLicensesFolder,
+            dest: "claude-desktop-extension",
+          },
+        ],
+      }),
     ],
   },
 ];

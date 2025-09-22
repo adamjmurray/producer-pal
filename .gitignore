@@ -5,6 +5,7 @@ coverage
 claude-desktop-extension/*.mcpb
 claude-desktop-extension/*.js
 claude-desktop-extension/LICENSE
+claude-desktop-extension/licenses
 claude-desktop-extension/manifest.json
 max-for-live-device/*.js
 max-for-live-device/*.mjs

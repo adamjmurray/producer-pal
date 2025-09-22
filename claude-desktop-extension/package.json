@@ -1,7 +1,7 @@
 {
   "name": "producer-pal-mcp-bundle",
   "version": "0.9.7",
-  "description": "DXT bundle for Ableton Producer Pal",
+  "description": "MCP bundle for Ableton Producer Pal",
   "type": "module",
   "main": "producer-pal-portal.js",
   "dependencies": {},
