@@ -12,7 +12,7 @@
 
    It should show "Producer Pal Running".
 
-3. Setup an AI model to use Producer Pal:
+3. Setup an AI model to use Producer Pal using one of the following guides:
    - [Anthropic Claude](#anthropic-claude-installation)
      - [Claude Desktop](#claude-desktop)
      - [Claude Code](#claude-code)
@@ -31,7 +31,9 @@
 
 4. Start a conversation with "connect to ableton"
 
-If it doesn't work, see the [troubleshooting guide](#troubleshooting).
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+See the [Usage Guide](./README.md#usage) for ideas on how to use Producer Pal.
 
 ## Choosing a Connection Method
 

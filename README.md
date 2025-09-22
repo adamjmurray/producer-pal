@@ -9,13 +9,21 @@ including:
 - [Anthropic Claude](https://claude.com/product/overview)
 - [Google Gemini](https://gemini.google/overview)
 - [OpenAI GPT](https://chatgpt.com/overview)
-- Offline local LLMs in [LM Studio](https://lmstudio.ai/) or similar apps, such
-  as:
-  - [Qwen 3](https://lmstudio.ai/models/qwen/qwen3-4b-2507)
-  - [GPT OSS](https://lmstudio.ai/models/openai/gpt-oss-20b)
-  - [Mistral models](https://lmstudio.ai/models/mistralai/magistral-small-2509)
+- Offline local LLMs via apps like [LM Studio](https://lmstudio.ai/), such as:
+  - [Qwen 3 (4B)](https://qwenlm.github.io/blog/qwen3/)
+  - [GPT OSS (20B)](https://openai.com/index/introducing-gpt-oss/)
+  - [Mistral Magistral (small)](https://mistral.ai/news/magistral)
+
+See the [Producer Pal Installation Guide](./INSTALLATION.md) to get started with
+any of these models, or continue reading for a
+[Quick Start Guide for Claude Desktop](#installation).
 
 ## Demo
+
+Start from the beginning of this video to
+[watch how easy it is to setup Producer Pal with Claude Desktop](https://www.youtube.com/watch?v=ypZBVI0Ncso)
+(_3⅓ minutes long, no sound for first 90 seconds_), or click the thumbnail to
+jump to the music-making:
 
 <a href="https://www.youtube.com/watch?v=ypZBVI0Ncso&t=86s">
 <figure>
@@ -27,18 +35,14 @@ including:
   <br>
 </figure>
 </a>
-<br>
-
-Start from the beginning of the video to
-[watch how to install and get started](https://www.youtube.com/watch?v=ypZBVI0Ncso)
-(_3.3 minutes long, no sound for first 90 seconds_).
 
 ## Requirements
 
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
   Suite edition)
-- A compatible AI app (see [installation instructions](#installation) below)
+- A compatible AI app (see the [Installation Guide](./INSTALLATION.md) or
+  continue for the [Quick Start Guide for Claude Desktop](#installation))
 
 ## Installation
 
@@ -49,19 +53,19 @@ Start from the beginning of the video to
 
    ![install in Ableton](./doc/img/install-in-ableton.png)
 
-3. Complete the installation for the AI you use:
+3. Complete the installation for your AI:
 
    3a. Continue the
    [Quick Start Guide for Claude Desktop](#quick-start-for-claude-desktop)
 
-   3b. Or see [the full Installation Guide](./INSTALLATION.md) for other LLMs
+   3b. Or see the [Installation Guide](./INSTALLATION.md) for other LLMs
 
 ### Quick Start for Claude Desktop
 
 If you are using [Claude Desktop](https://claude.ai/download):
 
 4.  Download
-    [the Producer_Pal.mcpb Claude Desktop extension](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+    [the `Producer_Pal.mcpb` Claude Desktop extension](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
 
 5.  Install it into Claude Desktop by going to Claude Desktop &rarr; Settings
     &rarr; Extensions and:
