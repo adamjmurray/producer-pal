@@ -5,6 +5,7 @@
    to a MIDI track in [Ableton Live 12.2+](https://www.ableton.com/live/) with
    [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
    Suite):
+
    <img src="./doc/img/install-in-ableton.png" alt="install in Ableton" width="500">
 
    It should show "Producer Pal Running".
