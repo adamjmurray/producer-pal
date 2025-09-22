@@ -51,6 +51,7 @@ async function copyDirectoriesAndFiles() {
     { src: ".github", isDir: true, targetDirName: "_github" },
     { src: "config", isDir: true },
     { src: "doc", isDir: true, exclude: ["img"] },
+    { src: "licenses", isDir: true },
     { src: "scripts", isDir: true },
     { src: "src", isDir: true },
 
