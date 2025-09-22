@@ -131,7 +131,7 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 
 ### Claude Code
 
-This is a command line interface designed for developers who work in the
+[Claude Code](https://claude.com/product/claude-code) is a command line interface designed for developers who work in the
 terminal.
 
 1. Install Claude Code: `npm install -g @anthropic/claude-code` (or see
