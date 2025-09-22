@@ -2,14 +2,13 @@
 
 1. Add the
    [Producer Pal Max for Live device (`Producer_Pal.amxd`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-   to your Ableton Live project
-   - Requires [Ableton Live 12.2+](https://www.ableton.com/live/) with
-     [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton
-     Live Suite)
-   - Add the device to a MIDI track, ideally an empty one:
-     ![install in Ableton](./doc/img/install-in-ableton.png)
+   to a MIDI track in [Ableton Live 12.2+](https://www.ableton.com/live/) with [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live Suite):
 
-2. Connect an AI model to Producer Pal:
+   <img src="./doc/img/install-in-ableton.png" alt="install in Ableton" width="500">
+
+   It should show "Producer Pal Running".
+
+3. Connect an AI model to Producer Pal:
    - [Anthropic Claude](#anthropic-claude-installation)
      - [Claude Desktop](#claude-desktop)
      - [Claude Code](#claude-code)
@@ -26,7 +25,7 @@
      - OpenAI GPT OSS
    - [Other MCP-compatible LLMs](#other-mcp-compatible-llms)
 
-3. Start a conversation with "connect to ableton"
+4. Start a conversation with "connect to ableton"
 
 If it doesn't work, see the [troubleshooting guide](#troubleshooting).
 
