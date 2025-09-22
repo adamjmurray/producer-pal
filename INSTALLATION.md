@@ -10,7 +10,7 @@
 
    It should show "Producer Pal Running".
 
-2. Connect an AI model to Producer Pal:
+2. Setup an AI model to use Producer Pal:
    - [Anthropic Claude](#anthropic-claude-installation)
      - [Claude Desktop](#claude-desktop)
      - [Claude Code](#claude-code)
@@ -103,8 +103,8 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 
    3a. If you already have extensions installed, drag and drop
    `Producer_Pal.mcp` into the Extensions screen:
-
-   ![install in Claude Desktop](./doc/img/install-in-claude.png)
+   
+   <img src="./doc/img/install-in-claude.png" alt="install in Claude Desktop" width="700">
 
    3b. Or, if you have never installed a Claude Desktop extension before, you
    need to click "Advanced settings" on the Extensions screen, then click
@@ -112,21 +112,21 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
    [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
    file.
 
-   ![install first extension in Claude Desktop](./doc/img/install-in-claude-first-extension.png)
+    <img src="./doc/img/install-in-claude-first-extension.png" alt="install first extension in Claude Desktop" width="700">   
 
-4. Don't forget to click "Install" and complete the Claude Desktop installation:
+5. Don't forget to click "Install" and complete the Claude Desktop installation:
 
-   ![install in Claude Desktop, part 2](./doc/img/install-in-claude-2.png)
+   <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">   
 
-5. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
+7. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
 
-   ![Producer Pal tools in Claude](./doc/img/tools-in-claude.png)
+    <img src="./doc/img/tools-in-claude.png" alt="Producer Pal tools in Claude" width="700">   
 
-6. Start a conversation with "connect to ableton"
+9. Start a conversation with "connect to ableton"
 
    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
-7. In order for Producer Pal to work, you need to allow the tools to be used:
+10. In order for Producer Pal to work, you need to allow the tools to be used:
 
    <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
 
