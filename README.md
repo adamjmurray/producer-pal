@@ -60,39 +60,40 @@ Start from the beginning of the video to
 
 If you are using [Claude Desktop](https://claude.ai/download):
 
-4. Download
-   [the Producer_Pal.mcpb Claude Desktop extension](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+4.  Download
+    [the Producer_Pal.mcpb Claude Desktop extension](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
 
-5. Install it into Claude Desktop by going to Claude Desktop &rarr; Settings
-   &rarr; Extensions and:
+5.  Install it into Claude Desktop by going to Claude Desktop &rarr; Settings
+    &rarr; Extensions and:
 
-   5a. If you already have extensions installed, you can drag and drop
-   `Producer_Pal.mcpb` into the Extensions screen:
+    5a. If you already have extensions installed, you can drag and drop
+    `Producer_Pal.mcpb` into the Extensions screen:
 
-   ![install in Claude Desktop](./doc/img/install-in-claude.png)
+     <img src="./doc/img/install-in-claude.png" alt="install in Claude Desktop" width="700">
 
-   5b. Or, if you have never installed a Claude Desktop extension before, you
-   need to click "Advanced settings" on the Extensions screen, then click
-   "Install extension...", and choose the `Producer_Pal.mcpb` file.
+    5b. Or, if you have never installed a Claude Desktop extension before, you
+    need to click "Advanced settings" on the Extensions screen, then click
+    "Install extension...", and choose the `Producer_Pal.mcpb` file.
 
-   ![install first extension in Claude Desktop](./doc/img/install-in-claude-first-extension.png)
+    <img src="./doc/img/install-in-claude-first-extension.png" alt="install first extension in Claude Desktop" width="700">
 
-6. Don't forget to click "Install" and complete the Claude Desktop installation:
+6.  Don't forget to click "Install" and complete the Claude Desktop
+    installation:
 
-   ![install in Claude Desktop, part 2](./doc/img/install-in-claude-2.png)
+    <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">
 
-7. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
-   sure it's enabled when starting a conversation):
+7.  You should see Producer Pal tools in Claude's "Search and Tools" menu (make
+    sure it's enabled when starting a conversation):
 
-   ![Producer Pal tools in Claude](./doc/img/tools-in-claude.png)
+    <img src="./doc/img/tools-in-claude.png" alt="Producer Pal tools in Claude" width="700">
 
-8. Start a conversation with "connect to ableton"
+8.  Start a conversation with "connect to ableton"
 
-   ![Producer Pal start a conversation](./doc/img/screenshot.png)
+    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
-9. In order for Producer Pal to work, you need to allow the tools to be used:
+9.  In order for Producer Pal to work, you need to allow the tools to be used:
 
-   <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
+    <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
 
 See the [usage info for more help getting started](#usage).
 

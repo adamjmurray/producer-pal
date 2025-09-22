@@ -120,7 +120,8 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 
    <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">
 
-5. You should see 20 Producer Pal tools in Claude's "Search and Tools" menu:
+5. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
+   sure it's enabled when starting a conversation):
 
    <img src="./doc/img/tools-in-claude.png" alt="Producer Pal tools in Claude" width="700">
 
@@ -349,17 +350,32 @@ For remote access to Producer Pal, you'll need a tunneling service.
 
 ### AI won't use Producer Pal
 
-Some AIs won't respond properly to "connect to ableton" and may claim they can't
-directly interact with Ableton Live even if they actually can. It's possible
-everything is setup correctly and the AI needs a nudge to start using Producer
-Pal. Try this first:
+Things to check:
 
-- Ask "what tools do you have?" and check if it can see Producer Pal tools such
-  as `ppal-init`
+- The Producer Pal Max for Live device has been added to Ableton Live and says
+  "Producer Pal Running"
+- The Producer Pal tools are enabled for the AI. AI apps let you disable tools
+  and it's a good idea to disable tools you aren't using
+- If the Producer Pal device was not running in Live, or the Producer Pal tools
+  were not enabled, you may need to start a new conversation
+
+Some AIs won't respond to "connect to ableton". Some may incorrectly claim they
+have no way of interacting with Ableton Live. If you can see the Producer Pal
+tools and they are enabled, try this:
+
+- Ask the AI "what tools do you have?"
+- Check the AI knows it has Producer Pal tools such as `ppal-init`
 - Say "call your ppal-init tool"
 
-If you can successfully initiate a ppal-init tool call, Producer Pal should
-work.
+Once you trigger a `ppal-init` tool call, Producer Pal should work. If saying
+"connect to ableton" doesn't achieve this, find a way to reliably trigger
+`ppal-init` with your AI. For example, "connect to ableton with your tools" or
+"connect to ableton with your ppal-init tool" might work more reliably.
+
+If you can see the Producer Pal tools but the AI cannot, or will not call
+`ppal-init` no matter what you try, check you are using an AI model that
+supports tools. Locally running models might not be compatible, for example,
+many models supported by [LM Studio](#lm-studio) can't use tools.
 
 ### Connection Issues
 
