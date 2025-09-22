@@ -142,6 +142,10 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 [Claude Code](https://claude.com/product/claude-code) is a command line
 interface for Claude.
 
+Note: When using Producer Pal with coding tools such as Claude Code, it's best
+to run the coding agent in an empty folder so it doesn't get distracted by an
+unrelated coding project.
+
 1. Install Claude Code: `npm install -g @anthropic/claude-code` (see
    [the official docs](https://www.anthropic.com/claude-code))
 2. Download `producer-pal-portal.js` from the release and note its full path
@@ -155,7 +159,7 @@ interface for Claude.
      ```bash
      claude mcp add --transport http producer-pal http://localhost:3350/mcp
      ```
-4. Start Claude Code: `claude` (consider running in an empty directory)
+4. Start Claude Code by runnning `claude` (ideally in an empty folder)
 5. Start a conversation with "connect to ableton"
 
 ### claude.ai Web App
@@ -188,6 +192,10 @@ limits that reset daily.
 [Gemini CLI](https://developers.google.com/gemini-code-assist/docs/gemini-cli)
 is a command line interface for Google Gemini.
 
+Note: When using Producer Pal with coding tools such as Gemini CLI, it's best to
+run the coding agent in an empty folder so it doesn't get distracted by an
+unrelated coding project.
+
 1. [Install Gemini CLI](https://github.com/google-gemini/gemini-cli?#-installation)
 2. Configure MCP in `~/.gemini/settings.json` to use one of these
    [connection methods](#choosing-a-connection-method):
@@ -219,7 +227,7 @@ is a command line interface for Google Gemini.
    }
    ```
 
-3. Run `gemini` to start the Gemini CLI
+3. Run `gemini` to start the Gemini CLI (ideally in an empty folder)
 4. Start a conversation with "connect to ableton"
 
 ## OpenAI
@@ -232,6 +240,10 @@ for OpenAI models.
 At the time of writing, a paid OpenAI subscription is needed to use Codex CLI.
 This may change later.
 
+Note: When using Producer Pal with coding tools such as Codex CLI, it's best to
+run the coding agent in an empty folder so it doesn't get distracted by an
+unrelated coding project.
+
 1. [Install OpenAI Codex](https://github.com/openai/codex#quickstart)
 2. Edit `~/.codex/config.toml` to setup one of these
    [connection methods](#choosing-a-connection-method):
@@ -240,7 +252,7 @@ This may change later.
    command = "node"
    args = ["/absolute/path/to/producer-pal-portal.js"]
    ```
-3. Run `codex` (consider in an empty directory)
+3. Run `codex` (ideally in an empty folder)
 4. Start a conversation with "connect to ableton"
 
 ### ChatGPT Web App
