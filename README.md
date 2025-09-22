@@ -277,23 +277,28 @@ the functionality, it can often correct itself with clear feedback. If it
 doesn't have the functionality, it should be able to explain its limitations and
 help set your expectations.
 
-If Claude is making mistakes or you are asking for something particularly
-complex, try the "extended thinking" feature. This works with both the Sonnet
-and Opus models. Note this is probably overkill most of the time and will reach
-usage limits faster, so it's recommended to leave it off until you need it.
+If the AI is making mistakes or you are asking for something particularly
+complex, if the AI supports it (e.g. Claude), try the "extended thinking"
+feature or set thinking/reasoning effort to high. Note this is probably overkill
+most of the time and will reach usage limits faster, so it's recommended to
+leave it off until you need it.
 
 Keep your context window small for best results. In practical terms, that means:
-If you have a very long conversation, consider starting a new conversation.
-Claude can easily re-read the state of Ableton Live in a new conversation (just
-say "connect to ableton" again). If you want to maintain context from the old
-conversation, ask Claude to summarize the current conversation and copy and
-paste the summary into a new conversation.
+If you have a very long conversation, consider starting a new conversation. The
+AI can easily re-read the state of Ableton Live in a new conversation (just say
+"connect to ableton" again). If you want to maintain context from the old
+conversation, ask the AI to summarize the current conversation and copy and
+paste that summary into a new conversation. Or add things you want the AI to
+remember to the project notes in the Max for Live device's UI.
 
 To help keep your context window small, it's recommended to use standalone
-conversations by default and not use a Claude Project. However, you may find
-value in setting up a focused Claude Project for specific musical goals, for
-example, by specifying some music theory rules in the Claude Project
-instructions or knowledge base.
+conversations by default and not use a "project" with additional context (e.g. a
+Claude Project). In the context of coding assistants like Gemini CLI, Codex CLI,
+and Claude Code, this means running the AI in an empty folder (not a code
+repository) when you want to use Produce Pal. However, you may find value in
+setting up a focused AI project for specific musical goals, for example, by
+specifying music theory rules and info in a Claude Project's instructions and/or
+knowledge base files.
 
 ## Producer Pal's Mission
 
