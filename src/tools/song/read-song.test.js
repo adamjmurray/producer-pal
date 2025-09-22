@@ -132,12 +132,12 @@ describe("readSong", () => {
     const result = readSong({
       include: [
         "regular-tracks",
-        "instrument",
+        "instruments",
         "rack-chains",
         "scenes",
         "session-clips",
         "arrangement-clips",
-        "notes",
+        "clip-notes",
       ],
     });
 
@@ -149,9 +149,7 @@ describe("readSong", () => {
       followsArrangement: true,
       tempo: 120,
       timeSignature: "4/4",
-      scaleEnabled: true,
-      scale: "Major",
-      scaleRoot: "C",
+      scale: "C Major",
       scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
       tracks: [
         {
@@ -161,11 +159,8 @@ describe("readSong", () => {
           trackIndex: 0,
           color: "#FF0000",
           state: "soloed",
-          isArmed: false,
           followsArrangement: true,
           isGroup: true,
-          isGroupMember: false,
-          groupId: null,
           playingSlotIndex: 2,
           firedSlotIndex: 3,
           arrangementClips: [],
@@ -173,7 +168,7 @@ describe("readSong", () => {
             expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
             expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
           ],
-          instrument: null,
+          instruments: null,
         },
         {
           id: "track2",
@@ -182,8 +177,6 @@ describe("readSong", () => {
           trackIndex: 1,
           color: "#00FF00",
           state: "muted",
-          isArmed: false,
-          isGroup: false,
           followsArrangement: false,
           isGroupMember: true,
           groupId: "track1",
@@ -193,7 +186,7 @@ describe("readSong", () => {
           sessionClips: [
             expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
           ],
-          instrument: null,
+          instruments: null,
         },
         expectedTrack({ id: "track3", trackIndex: 2 }),
       ],
@@ -265,11 +258,11 @@ describe("readSong", () => {
     const result = readSong({
       include: [
         "regular-tracks",
-        "instrument",
+        "instruments",
         "rack-chains",
         "session-clips",
         "arrangement-clips",
-        "notes",
+        "clip-notes",
       ],
     });
 
@@ -279,9 +272,7 @@ describe("readSong", () => {
       name: "Empty Live Set",
       tempo: 100,
       timeSignature: "3/4",
-      isPlaying: false,
       followsArrangement: false,
-      scaleEnabled: false,
       tracks: [],
       scenes: [],
     });
@@ -343,7 +334,7 @@ describe("readSong", () => {
     const result = readSong({
       include: [
         "regular-tracks",
-        "instrument",
+        "instruments",
         "rack-chains",
         "drum-chains",
         "audio-effects",
@@ -354,7 +345,7 @@ describe("readSong", () => {
     expect(result.tracks).toEqual([
       expect.objectContaining({
         name: "Synth Track",
-        instrument: expect.objectContaining({
+        instruments: expect.objectContaining({
           name: "Analog",
           type: DEVICE_TYPE.INSTRUMENT,
         }),
@@ -367,7 +358,7 @@ describe("readSong", () => {
       }),
       expect.objectContaining({
         name: "Audio Track",
-        instrument: null,
+        instruments: null,
         audioEffects: [
           expect.objectContaining({
             name: "Reverb",
@@ -450,17 +441,17 @@ describe("readSong", () => {
     const result = readSong({
       include: [
         "regular-tracks",
-        "instrument",
+        "instruments",
         "rack-chains",
         "audio-effects",
         "session-clips",
         "arrangement-clips",
-        "notes",
+        "clip-notes",
       ],
     });
 
     // Check that drum rack devices are included with drumPads but without devices in drumPad chains
-    expect(result.tracks[0].instrument).toEqual(
+    expect(result.tracks[0].instruments).toEqual(
       expect.objectContaining({
         name: "Drum Rack",
         type: DEVICE_TYPE.DRUM_RACK,
@@ -474,7 +465,7 @@ describe("readSong", () => {
       }),
     ]);
     // Drum rack device should be present with drumPads but drumPad chains should not have devices
-    const drumRack = result.tracks[0].instrument;
+    const drumRack = result.tracks[0].instruments;
     expect(drumRack).toBeDefined();
     expect(drumRack.drumPads).toBeDefined();
     // If drumPads exist, they should not have chain property when includeDrumChains=false
@@ -528,7 +519,7 @@ describe("readSong", () => {
     });
 
     const result = readSong({
-      include: ["regular-tracks", "instrument", "rack-chains", "routings"],
+      include: ["regular-tracks", "instruments", "rack-chains", "routings"],
     });
 
     expect(result.tracks[0]).toEqual(
@@ -573,7 +564,7 @@ describe("readSong", () => {
     });
 
     const result = readSong({
-      include: ["regular-tracks", "instrument", "rack-chains"],
+      include: ["regular-tracks", "instruments", "rack-chains"],
     });
 
     expect(result.tracks[0]).toEqual(
@@ -631,15 +622,13 @@ describe("readSong", () => {
 
     // Test with minimal clip loading
     const result = readSong({
-      include: ["regular-tracks", "instrument", "rack-chains"],
+      include: ["regular-tracks", "instruments", "rack-chains"],
     });
 
     expect(result.tracks[0].sessionClips).toEqual([
-      { clipId: "clip1", clipSlotIndex: 0 },
+      { id: "clip1", clipSlotIndex: 0 },
     ]);
-    expect(result.tracks[0].arrangementClips).toEqual([
-      { clipId: "id arr_clip1" },
-    ]);
+    expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
   });
 
   it("uses default parameter values when no arguments provided", () => {
@@ -683,11 +672,9 @@ describe("readSong", () => {
 
     // Verify default behavior: minimal clip data, no notes
     expect(result.tracks[0].sessionClips).toEqual([
-      { clipId: "clip1", clipSlotIndex: 0 },
+      { id: "clip1", clipSlotIndex: 0 },
     ]);
-    expect(result.tracks[0].arrangementClips).toEqual([
-      { clipId: "id arr_clip1" },
-    ]);
+    expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
 
     // Verify that notes are not included (since includeNotes defaults to false)
     expect(result.tracks[0].sessionClips[0].notes).toBeUndefined();
@@ -758,7 +745,7 @@ describe("readSong", () => {
         "regular-tracks",
         "return-tracks",
         "master-track",
-        "instrument",
+        "instruments",
       ],
     });
 
@@ -795,7 +782,7 @@ describe("readSong", () => {
 
     // Test with only return tracks included
     const resultReturnOnly = readSong({
-      include: ["return-tracks", "instrument"],
+      include: ["return-tracks", "instruments"],
     });
 
     expect(resultReturnOnly.tracks).toBeUndefined();
@@ -804,7 +791,7 @@ describe("readSong", () => {
 
     // Test with only master track included
     const resultMasterOnly = readSong({
-      include: ["master-track", "instrument"],
+      include: ["master-track", "instruments"],
     });
 
     expect(resultMasterOnly.tracks).toBeUndefined();
@@ -918,11 +905,11 @@ describe("readSong", () => {
     const resultExplicit = readSong({
       include: [
         "drum-chains",
-        "notes",
+        "clip-notes",
         "rack-chains",
         "scenes",
         "midi-effects",
-        "instrument",
+        "instruments",
         "audio-effects",
         "routings",
         "session-clips",
@@ -949,12 +936,59 @@ describe("readSong", () => {
     // Verify track has all expected properties
     expect(resultWildcard.tracks[0]).toEqual(
       expect.objectContaining({
-        instrument: expect.any(Object),
+        instruments: expect.any(Object),
         inputRoutingChannel: expect.any(Object),
         sessionClips: expect.any(Array),
         arrangementClips: expect.any(Array),
       }),
     );
+  });
+
+  it("returns scene IDs without 'id ' prefix when includeScenes is false", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Scene ID Test Set",
+        is_playing: 0,
+        back_to_arranger: 1,
+        scale_mode: 0,
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        tracks: children("track1"),
+        scenes: children("scene9", "scene10", "scene11"),
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: children(),
+        arrangement_clips: children(),
+        devices: [],
+      },
+    });
+
+    // Call with default include (which doesn't include "scenes")
+    const result = readSong();
+
+    // Verify that scene IDs are clean numeric strings without "id " prefix
+    expect(result.scenes).toEqual([
+      { id: "scene9" },
+      { id: "scene10" },
+      { id: "scene11" },
+    ]);
+
+    // Verify consistency with track IDs format
+    expect(result.tracks[0].id).toBe("track1");
   });
 
   it("returns minimal data when include is an empty array", () => {
@@ -995,11 +1029,9 @@ describe("readSong", () => {
         id: "live_set",
         abletonLiveVersion: "12.2",
         name: "Test Set",
-        isPlaying: false,
         followsArrangement: true,
         tempo: 120,
         timeSignature: "4/4",
-        scaleEnabled: false,
         scenes: [], // Empty because no scenes exist in the Live Set
       }),
     );
@@ -1008,5 +1040,130 @@ describe("readSong", () => {
     expect(result).not.toHaveProperty("tracks");
     expect(result).not.toHaveProperty("returnTracks");
     expect(result).not.toHaveProperty("masterTrack");
+  });
+
+  it("uses drum-maps by default and strips chains", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set":
+          return "live_set";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 0 devices 0":
+          return "drumrack1";
+        case "live_set tracks 0 devices 0 drum_pads 60":
+          return "pad1";
+        case "live_set tracks 0 devices 0 drum_pads 60 chains 0":
+          return "chain1";
+        case "live_set tracks 0 devices 0 drum_pads 60 chains 0 devices 0":
+          return "kick_device";
+        case "live_set tracks 0 devices 0 chains 0":
+          return "main_chain";
+        case "live_app":
+          return "live_app";
+        default:
+          return this._id;
+      }
+    });
+
+    mockLiveApiGet({
+      live_set: {
+        name: "Test Song",
+        tracks: children("track1"),
+        return_tracks: [],
+        scenes: [],
+        back_to_arranger: 0,
+        tempo: 120,
+        time_signature_numerator: 4,
+        time_signature_denominator: 4,
+        scale_mode: 0, // Scale disabled
+      },
+      track1: {
+        has_midi_input: 1,
+        name: "Drums",
+        color: 16711680,
+        back_to_arranger: 0,
+        devices: children("drumrack1"),
+        clip_slots: [],
+        arrangement_clips: [],
+        can_be_armed: 1,
+        arm: 0,
+        is_foldable: 0,
+        is_grouped: 0,
+        group_track: ["id", "0"],
+        mute: 0,
+        solo: 0,
+        muted_via_solo: 0,
+        playing_slot_index: -1,
+        fired_slot_index: -1,
+      },
+      drumrack1: {
+        name: "Test Drum Rack",
+        class_name: "DrumGroupDevice",
+        class_display_name: "Drum Rack",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+        is_active: 1,
+        can_have_chains: 1,
+        can_have_drum_pads: 1,
+        drum_pads: children("pad1"),
+        chains: children("main_chain"),
+        return_chains: [],
+      },
+      main_chain: {
+        name: "Main Chain",
+        mute: 0,
+        muted_via_solo: 0,
+        solo: 0,
+        devices: [],
+      },
+      pad1: {
+        note: 60, // C3
+        name: "Test Kick",
+        mute: 0,
+        muted_via_solo: 0,
+        solo: 0,
+        chains: children("chain1"),
+      },
+      chain1: {
+        name: "Kick Chain",
+        mute: 0,
+        muted_via_solo: 0,
+        solo: 0,
+        devices: children("kick_device"),
+      },
+      kick_device: {
+        name: "Kick Instrument",
+        class_name: "Simpler",
+        type: LIVE_API_DEVICE_TYPE_INSTRUMENT,
+      },
+      live_app: {
+        version_string: "12.2.5",
+      },
+    });
+
+    // Call with NO arguments - should use defaults (including drum-maps)
+    const result = readSong();
+
+    // Should have drumMap on the track
+    expect(result.tracks[0].drumMap).toEqual({
+      C3: "Test Kick",
+    });
+
+    // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
+    expect(result.tracks[0].instruments).toEqual({
+      id: "drumrack1",
+      name: "Drum Rack",
+      displayName: "Test Drum Rack",
+      type: DEVICE_TYPE.DRUM_RACK,
+      drumPads: [
+        {
+          name: "Test Kick",
+          note: 60,
+        },
+      ],
+    });
+
+    // Critical: chains should be stripped due to drum-maps default
+    expect(result.tracks[0].instruments.chains).toBeUndefined();
   });
 });

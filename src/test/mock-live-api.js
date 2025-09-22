@@ -100,7 +100,7 @@ export function mockLiveApiGet(overrides = {}) {
     // });
     if (overridesByProp != null) {
       const override = overridesByProp[prop];
-      if (override != null) {
+      if (override !== undefined) {
         // optionally support mocking a sequence of return values:
         if (override instanceof MockSequence) {
           overridesByProp.__callCount__ ??= {};
@@ -217,14 +217,11 @@ export const expectedTrack = (overrides = {}) => ({
   color: "#FF0000",
   isArmed: true,
   followsArrangement: true,
-  isGroup: false,
-  isGroupMember: false,
-  groupId: null,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
   arrangementClips: [],
   sessionClips: [],
-  instrument: null,
+  instruments: null,
   ...overrides,
 });
 

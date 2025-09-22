@@ -3,15 +3,19 @@ import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
 import replace from "@rollup/plugin-replace";
 import terser from "@rollup/plugin-terser";
-import { copyFileSync, readFileSync } from "fs";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
+
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import copy from "rollup-plugin-copy";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
-const licenseText = readFileSync(join(rootDir, "LICENSE.md"), "utf-8");
-const licenseHeader = `/*\n${licenseText}\n*/\n\n`;
+const licensePath = join(rootDir, "LICENSE");
+const licenseText = readFileSync(licensePath, "utf-8");
+
+const thirdPartyLicensesFolder = join(rootDir, "licenses");
 
 const terserOptions = {
   compress: false,
@@ -23,17 +27,14 @@ const terserOptions = {
   },
 };
 
-const addLicenseHeader = () => ({
+const addLicenseHeader = (options = {}) => ({
   name: "add-license-header",
   renderChunk(code) {
-    return licenseHeader + code;
-  },
-});
-
-const copyLicense = (destination) => ({
-  name: "copy-license",
-  writeBundle() {
-    copyFileSync(join(rootDir, "LICENSE.md"), destination);
+    return `/*\n${licenseText}${
+      options.includeThirdPartyLicenses
+        ? "\nThis file includes bundled dependencies.\nSee https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses."
+        : ""
+    }\n*/\n\n${code}`;
   },
 });
 
@@ -41,7 +42,7 @@ export default [
   {
     input: join(rootDir, "src/live-api-adapter/live-api-adapter.js"),
     output: {
-      file: join(rootDir, "device/live-api-adapter.js"),
+      file: join(rootDir, "max-for-live-device/live-api-adapter.js"),
       format: "es",
     },
     plugins: [
@@ -54,13 +55,12 @@ export default [
       { renderChunk: (code) => code.replace(/\nexport.*/, "") }, // remove top-level exports
       terser(terserOptions),
       addLicenseHeader(),
-      copyLicense(join(rootDir, "device/LICENSE.md")),
     ],
   },
   {
     input: join(rootDir, "src/mcp-server/mcp-server.js"),
     output: {
-      file: join(rootDir, "device/mcp-server.mjs"),
+      file: join(rootDir, "max-for-live-device/mcp-server.mjs"),
       format: "es",
     },
     external: ["max-api"],
@@ -83,14 +83,21 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
+      addLicenseHeader({ includeThirdPartyLicenses: true }),
     ],
   },
   {
-    input: join(rootDir, "src/desktop-extension/claude-ableton-connector.js"),
-    output: {
-      file: join(rootDir, "desktop-extension/claude-ableton-connector.js"),
-      format: "es",
-    },
+    input: join(rootDir, "src/portal/producer-pal-portal.js"),
+    output: [
+      {
+        file: join(rootDir, "claude-desktop-extension/producer-pal-portal.js"),
+        format: "es",
+      },
+      {
+        file: join(rootDir, "release/producer-pal-portal.js"),
+        format: "es",
+      },
+    ],
     plugins: [
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
@@ -108,7 +115,16 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
-      copyLicense(join(rootDir, "desktop-extension/LICENSE.md")),
+      addLicenseHeader({ includeThirdPartyLicenses: true }),
+      copy({
+        targets: [
+          { src: licensePath, dest: "claude-desktop-extension" },
+          {
+            src: thirdPartyLicensesFolder,
+            dest: "claude-desktop-extension",
+          },
+        ],
+      }),
     ],
   },
 ];

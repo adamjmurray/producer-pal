@@ -1,2 +1,5 @@
-# auto-generated files:
+# generated files:
+../.claude
+../coverage
+../knowledge-base
 ../src/**/barbeat-parser.js

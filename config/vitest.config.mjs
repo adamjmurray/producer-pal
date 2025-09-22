@@ -18,11 +18,25 @@ export default defineConfig({
       ],
       include: ["src/**"],
       exclude: [
-        "src/main.js",
-        "src/console.js",
-        "src/mcp-server.js",
-        "src/mock-*",
+        // ignore files that are not feasible to test
+
+        // ignore typedefs:
         "**/*.d.ts",
+
+        // ignore the bundle entry scripts:
+        "src/live-api-adapter/live-api-adapter.js",
+        "src/mcp-server/mcp-server.js",
+        "src/portal/producer-pal-portal.js",
+
+        // ignore disabled tool definitions:
+        "src/tools/device/read-device.def.js",
+
+        // ignore loggers:
+        "src/portal/file-logger.js",
+        "src/shared/v8-max-console.js",
+
+        // ignore other hard-to-test files:
+        "src/test/mock-task.js",
       ],
       reportOnFailure: true,
     },

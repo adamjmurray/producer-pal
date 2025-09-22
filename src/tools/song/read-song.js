@@ -19,23 +19,25 @@ export function readSong(args = {}) {
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
-  const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
-
   const result = {
     id: liveSet.id,
     abletonLiveVersion: liveApp.call("get_version_string"),
     name: liveSet.getProperty("name"),
-    isPlaying: liveSet.getProperty("is_playing") > 0,
     followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
-    scaleEnabled,
     scenes: includeFlags.includeScenes
       ? sceneIds.map((_sceneId, sceneIndex) =>
           readScene({ sceneIndex, include: includeArray }),
         )
-      : sceneIds.map((sceneId) => ({ id: sceneId })),
+      : sceneIds.map((sceneId) => ({ id: sceneId.replace("id ", "") })),
   };
+
+  // Only include isPlaying when true
+  const isPlaying = liveSet.getProperty("is_playing") > 0;
+  if (isPlaying) {
+    result.isPlaying = isPlaying;
+  }
 
   // Conditionally include track arrays based on include parameters
   if (includeFlags.includeRegularTracks) {
@@ -74,10 +76,12 @@ export function readSong(args = {}) {
   }
 
   // Only include scale properties when scale is enabled
+  const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
   if (scaleEnabled) {
-    result.scale = liveSet.getProperty("scale_name");
+    const scaleName = liveSet.getProperty("scale_name");
     const rootNote = liveSet.getProperty("root_note");
-    result.scaleRoot = PITCH_CLASS_NAMES[rootNote];
+    const scaleRoot = PITCH_CLASS_NAMES[rootNote];
+    result.scale = `${scaleRoot} ${scaleName}`;
     const scaleIntervals = liveSet.getProperty("scale_intervals");
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }

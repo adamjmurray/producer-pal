@@ -1,0 +1,11 @@
+{
+  "name": "producer-pal-mcp-bundle",
+  "version": "0.9.7",
+  "description": "MCP bundle for Ableton Producer Pal",
+  "type": "module",
+  "main": "producer-pal-portal.js",
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

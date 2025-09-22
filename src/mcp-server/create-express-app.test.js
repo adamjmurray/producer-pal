@@ -86,17 +86,16 @@ describe("MCP Express App", () => {
         "ppal-create-track",
         "ppal-read-track",
         "ppal-update-track",
-        "ppal-capture-scene",
         "ppal-create-scene",
         "ppal-read-scene",
         "ppal-update-scene",
+        "ppal-capture-scene",
         "ppal-create-clip",
         "ppal-read-clip",
         "ppal-update-clip",
-        "ppal-read-device",
-        "ppal-read-view",
-        "ppal-update-view",
+        // "ppal-read-device",
         "ppal-transport",
+        "ppal-view",
         "ppal-delete",
         "ppal-duplicate",
         "ppal-memory",
@@ -111,9 +110,9 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-read-song",
       );
       expect(readSongTool).toBeDefined();
-      expect(readSongTool.description).toContain("the Live Set");
+      expect(readSongTool.description).toContain("Ableton Live Set");
       expect(readSongTool.description).toContain("global settings");
-      expect(readSongTool.description).toContain("all tracks");
+      expect(readSongTool.description).toContain("tracks, scenes, devices");
 
       const updateClipTool = result.tools.find(
         (tool) => tool.name === "ppal-update-clip",
@@ -236,7 +235,7 @@ describe("MCP Express App", () => {
         "mcp_request",
         expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
-        '{"trackIndex":1,"trackType":"regular","include":["notes","rack-chains","instrument","session-clips","arrangement-clips"]}', // argsJSON
+        '{"trackType":"regular","trackIndex":1,"include":["session-clips","arrangement-clips","clip-notes","instruments","drum-maps"]}', // argsJSON
       );
     });
 

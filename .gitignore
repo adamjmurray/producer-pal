@@ -2,14 +2,15 @@
 node_modules
 knowledge-base
 coverage
-desktop-extension/*.dxt
-desktop-extension/*.js
-desktop-extension/LICENSE.md
-desktop-extension/manifest.json
-device/*.js
-device/*.mjs
-device/LICENSE.md
-device/Ableton Folder Info/
+claude-desktop-extension/*.mcpb
+claude-desktop-extension/*.js
+claude-desktop-extension/LICENSE
+claude-desktop-extension/licenses
+claude-desktop-extension/manifest.json
+max-for-live-device/*.js
+max-for-live-device/*.mjs
+max-for-live-device/LICENSE
+max-for-live-device/Ableton Folder Info/
 *.afdesign~lock~
-releases
+release
 scratchpad

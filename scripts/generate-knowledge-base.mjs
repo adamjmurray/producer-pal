@@ -51,14 +51,19 @@ async function copyDirectoriesAndFiles() {
     { src: ".github", isDir: true, targetDirName: "_github" },
     { src: "config", isDir: true },
     { src: "doc", isDir: true, exclude: ["img"] },
+    { src: "licenses", isDir: true },
     { src: "scripts", isDir: true },
     { src: "src", isDir: true },
 
     // Individual files
-    { src: "CLAUDE.md" }, // so the Claude Project can give advice on using Claude Code
+    { src: ".gitignore", flatName: "gitignore" },
+    { src: "AGENTS.md" },
+    { src: "CLAUDE.md" },
+    { src: "GEMINI.md" },
     { src: "DEVELOPERS.md" },
     { src: "FEATURES.md" },
-    { src: "LICENSE.md" },
+    { src: "INSTALLATION.md" },
+    { src: "LICENSE" },
     { src: "package.json" },
     { src: "README.md" },
     { src: "ROADMAP.md" },
@@ -66,7 +71,9 @@ async function copyDirectoriesAndFiles() {
       src: "coverage/coverage-summary.txt",
       flatName: "test-coverage-summary.txt",
     },
-    { src: "desktop-extension/package.json" },
+    { src: "claude-desktop-extension/.mcpbignore" },
+    { src: "claude-desktop-extension/manifest.template.json" },
+    { src: "claude-desktop-extension/package.json" },
   ];
 
   console.log("Copying files...");

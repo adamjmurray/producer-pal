@@ -157,8 +157,8 @@ These come from the MCP SDK's dependencies and don't affect functionality.
 
 After building, verify:
 
-1. `device/mcp-server.mjs` exists and is > 1MB
-2. `device/main.js` exists
+1. `max-for-live-device/mcp-server.mjs` exists and is > 1MB
+2. `max-for-live-device/main.js` exists
 3. No unexpected errors in build output
 
 ## Testing Workflows
@@ -190,7 +190,7 @@ npm run test:coverage
 npm run format:check
 
 # Manual testing
-node scripts/test-desktop-extension.mjs
+node scripts/test-claude-desktop-extension.mjs
 ```
 
 ## Debugging Tips
@@ -200,7 +200,7 @@ node scripts/test-desktop-extension.mjs
 For desktop extension debugging:
 
 ```bash
-ENABLE_LOGGING=true VERBOSE_LOGGING=true node scripts/test-desktop-extension.mjs
+ENABLE_LOGGING=true VERBOSE_LOGGING=true node scripts/test-claude-desktop-extension.mjs
 ```
 
 ### Check Log Files
