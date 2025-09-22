@@ -245,13 +245,18 @@ run the coding agent in an empty folder so it doesn't get distracted by an
 unrelated coding project.
 
 1. [Install OpenAI Codex](https://github.com/openai/codex#quickstart)
-2. Edit `~/.codex/config.toml` to setup one of these
-   [connection methods](#choosing-a-connection-method):
+2. Edit `~/.codex/config.toml`:
+
    ```toml
    [mcp_servers.producer-pal]
    command = "node"
    args = ["/absolute/path/to/producer-pal-portal.js"]
    ```
+
+   Note: at the time of writing, `producer-pal-portal.js`is the only
+   [connection method](#choosing-a-connection-method) that works with Codex CLI
+   (HTTP is not supported).
+
 3. Run `codex` (ideally in an empty folder)
 4. Start a conversation with "connect to ableton"
 
@@ -370,11 +375,18 @@ node /path/to/producer-pal-portal.js
 
 ### Local MCP via HTTP
 
-Connect directly to:
+Connect directly to the URL:
 
 ```
-http://localhost:3350
+http://localhost:3350/mcp
 ```
+
+Note: Sometimes an additional setting is needed for HTTP connections. For
+example, [Cline](https://cline.bot/) requires `"type": "streamableHttp"` to be
+configured along with the `url`.
+
+In some apps, the `/mcp` path might be omitted from the URL. It is typically
+present.
 
 ### Remote MCP via HTTP tunnel
 
