@@ -131,11 +131,11 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 
 ### Claude Code
 
-[Claude Code](https://claude.com/product/claude-code) is a command line interface designed for developers who work in the
-terminal.
+[Claude Code](https://claude.com/product/claude-code) is a command line
+interface for Claude.
 
-1. Install Claude Code: `npm install -g @anthropic/claude-code` (or see
-   [official docs](https://www.anthropic.com/claude-code))
+1. Install Claude Code: `npm install -g @anthropic/claude-code` (see
+   [the official docs](https://www.anthropic.com/claude-code))
 2. Download `producer-pal-portal.js` from the release and note its full path
 3. Configure the MCP server:
    - with producer-pal-portal.js
@@ -147,13 +147,14 @@ terminal.
      claude mcp add --transport http producer-pal http://localhost:3350/mcp
      ```
 4. Start Claude Code: `claude` (consider running in an empty directory)
-5. Say "connect to ableton" or "call your ppal-init tool"
+5. Start a conversation with "connect to ableton"
 
 ### claude.ai Web App
 
-For using Producer Pal through the Claude web interface.
+To use Producer Pal through [the Claude web interface](https://claude.ai/new):
 
-1. Set up a web tunnel to expose your local Producer Pal server:
+1. Set up [a web tunnel](#web-tunneling-options) to expose your local Producer
+   Pal server, for example:
 
    ```bash
    ngrok http http://localhost:3350
@@ -166,13 +167,16 @@ For using Producer Pal through the Claude web interface.
    ```
    https://1234abcd.ngrok-free.app/mcp
    ```
-4. Start a new conversation and Producer Pal will be available
+4. Start a conversation with "connect to ableton"
 
 ## Google Gemini
 
 ### Gemini CLI
 
-1. Install [Gemini CLI](https://github.com/google-gemini/gemini-cli#readme)
+[Gemini CLI](https://developers.google.com/gemini-code-assist/docs/gemini-cli)
+is a command line interface for Google Gemini.
+
+1. [Install Gemini CLI](https://github.com/google-gemini/gemini-cli?#-installation)
 2. Configure MCP in `~/.gemini/settings.json`:
 
    **Option A: Via producer-pal-portal.js**
@@ -208,7 +212,10 @@ For using Producer Pal through the Claude web interface.
 
 ### Codex CLI
 
-1. Install [OpenAI Codex](https://github.com/openai/codex#quickstart)
+[Codex CLI](https://developers.openai.com/codex/cli) is a command line interface
+for OpenAI models.
+
+1. [Install OpenAI Codex](https://github.com/openai/codex#quickstart)
 2. Edit `~/.codex/config.toml`:
    ```toml
    [mcp_servers.producer-pal]
@@ -216,11 +223,14 @@ For using Producer Pal through the Claude web interface.
    args = ["/absolute/path/to/producer-pal-portal.js"]
    ```
 3. Run `codex` (consider in an empty directory)
-4. Say "connect to ableton" or "call your ppal-init tool"
+4. Start a conversation with "connect to ableton"
 
 ### ChatGPT Web App
 
-1. Set up a web tunnel:
+To use Producer Pal through [the ChatGPT web interface](https://chatgpt.com/):
+
+1. Set up [a web tunnel](#web-tunneling-options) to expose your local Producer
+   Pal server, for example:
 
    ```bash
    ngrok http http://localhost:3350
@@ -237,7 +247,7 @@ For using Producer Pal through the Claude web interface.
 
 5. IMPORTANT: Start a new chat with Developer Mode and Producer Pal explicitly
    enabled
-6. Say "connect to ableton" or "run the producer pal ppal-init tool".
+6. Start a conversation with "connect to ableton"
 
 ## LM Studio
 
@@ -277,6 +287,8 @@ Run AI models locally without Internet connection.
      }
    }
    ```
+
+4. Start a conversation with "connect to ableton"
 
 ## Other MCP-compatible LLMs
 
