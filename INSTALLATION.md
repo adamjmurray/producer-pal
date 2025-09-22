@@ -1,4 +1,4 @@
-# Producer Pal Installation Guide
+# <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal Installation Guide
 
 1. Add the
    [Producer Pal Max for Live device (`Producer_Pal.amxd`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
@@ -371,6 +371,10 @@ work.
 
 For issues and questions:
 
-- GitHub Issues:
-  [producer-pal/issues](https://github.com/yourusername/producer-pal/issues)
-- Documentation: See project README and docs folder
+- Ask a question in
+  [the questions forum](https://github.com/adamjmurray/producer-pal/discussions/categories/questions)
+- Report bugs in
+  [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
+  or [issues list](https://github.com/adamjmurray/producer-pal/issues)
+- Documentation: See [the README](./README.md) and
+  [developer documentation](./DEVELOPERS.md).
