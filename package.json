@@ -41,7 +41,7 @@
     "release:prep": "node scripts/prepare-release.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.18.1",
+    "@modelcontextprotocol/sdk": "^1.18.2",
     "express": "^5.1.0",
     "zod": "^3.25.76"
   },
