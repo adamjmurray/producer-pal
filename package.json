@@ -21,6 +21,8 @@
     "build:all": "ENABLE_RAW_LIVE_API=true npm run build",
     "build:watch": "npm run build && rollup -c config/rollup.config.mjs -w",
     "dev": "ENABLE_RAW_LIVE_API=true rollup -c config/rollup.config.mjs -w",
+    "dev:ui": "vite --config config/vite.config.mjs",
+    "build:ui": "vite build --config config/vite.config.mjs",
     "test": "npm run test:setup && vitest run -c config/vitest.config.mjs",
     "test:watch": "npm run test:setup && vitest -c config/vitest.config.mjs",
     "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.mjs",
@@ -43,7 +45,9 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.18.1",
     "express": "^5.1.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "preact": "^10.19.0",
+    "marked": "^11.0.0"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^1.1.0",
@@ -61,6 +65,9 @@
     "prettier": "^3.6.2",
     "rollup": "^4.52.0",
     "rollup-plugin-copy": "^3.5.0",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "vite": "^5.0.0",
+    "@preact/preset-vite": "^2.5.0",
+    "tailwindcss": "^3.4.0"
   }
 }
