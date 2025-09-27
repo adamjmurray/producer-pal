@@ -34,7 +34,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       .min(0)
       .optional()
       .describe(
-        "Track index (0-based) - for regular or return tracks, not used for master",
+        "Track index (0-based) - for regular or return tracks, not used for master. In session view, providing both trackIndex and sceneIndex selects the clip slot.",
       ),
 
     // Scene selection
@@ -44,7 +44,9 @@ export const toolDefSelect = defineTool("ppal-select", {
       .int()
       .min(0)
       .optional()
-      .describe("Select scene by index (0-based)"),
+      .describe(
+        "Select scene by index (0-based). In session view, providing both trackIndex and sceneIndex selects the clip slot.",
+      ),
 
     // Clip selection
     clipId: z
@@ -61,15 +63,6 @@ export const toolDefSelect = defineTool("ppal-select", {
       .describe(
         "Select the instrument (or first device) on the selected track",
       ),
-
-    // Clip slot selection
-    clipSlot: z
-      .object({
-        trackIndex: z.number().int().min(0),
-        sceneIndex: z.number().int().min(0),
-      })
-      .optional()
-      .describe("Select a clip slot by track and scene indices"),
 
     // Detail view
     showDetail: z
