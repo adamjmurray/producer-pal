@@ -20,6 +20,26 @@ export class LiveAPI {
       : path?.replaceAll(/\s+/g, "/");
   }
 
+  static from(idOrPath) {
+    // Handle array format ["id", "123"] from Live API calls
+    if (Array.isArray(idOrPath)) {
+      if (idOrPath.length === 2 && idOrPath[0] === "id") {
+        return new LiveAPI(`id ${idOrPath[1]}`);
+      }
+      throw new Error(
+        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`,
+      );
+    }
+
+    if (
+      typeof idOrPath === "number" ||
+      (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))
+    ) {
+      return new LiveAPI(`id ${idOrPath}`);
+    }
+    return new LiveAPI(idOrPath);
+  }
+
   exists() {
     return this.id !== "id 0" && this.id !== "0";
   }

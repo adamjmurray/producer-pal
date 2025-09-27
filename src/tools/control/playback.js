@@ -2,7 +2,6 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
-import { parseCommaSeparatedIndices } from "../shared/utils.js";
 
 /**
  * Unified control for all playback functionality in both Arrangement and Session views.
@@ -15,9 +14,8 @@ import { parseCommaSeparatedIndices } from "../shared/utils.js";
  * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
  * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
  * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
- * @param {number} [args.sceneIndex] - Scene index for Session view operations (puts tracks into non-following state)
- * @param {string} [args.trackIndexes] - Comma-separated track indexes for Session view operations
- * @param {string} [args.clipSlotIndexes] - Comma-separated clip slot indexes for Session view operations
+ * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
+ * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
  * @returns {Object} Result with transport state
  */
 export function playback({
@@ -27,9 +25,8 @@ export function playback({
   loopStart,
   loopEnd,
   autoFollow = true,
-  sceneIndex,
-  trackIndexes,
-  clipSlotIndexes,
+  sceneId,
+  clipIds,
 } = {}) {
   if (!action) {
     throw new Error("playback failed: action is required");
@@ -103,15 +100,15 @@ export function playback({
       break;
 
     case "play-scene":
-      if (sceneIndex == null) {
+      if (sceneId == null) {
         throw new Error(
-          `playback failed: sceneIndex is required for action "play-scene"`,
+          `playback failed: sceneId is required for action "play-scene"`,
         );
       }
-      const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+      const scene = LiveAPI.from(sceneId);
       if (!scene.exists()) {
         throw new Error(
-          `playback play-session-scene action failed: scene at sceneIndex=${sceneIndex} does not exist`,
+          `playback play-session-scene action failed: scene with sceneId=${sceneId} does not exist`,
         );
       }
 
@@ -121,38 +118,36 @@ export function playback({
       break;
 
     case "play-session-clip":
-      if (!trackIndexes) {
+      if (!clipIds) {
         throw new Error(
-          `playback failed: trackIndexes is required for action "play-session-clip"`,
-        );
-      }
-      if (!clipSlotIndexes) {
-        throw new Error(
-          `playback failed: clipSlotIndexes is required for action "play-session-clip"`,
+          `playback failed: clipIds is required for action "play-session-clip"`,
         );
       }
 
-      const trackIndexList = parseCommaSeparatedIndices(trackIndexes);
-      const clipSlotIndexList = parseCommaSeparatedIndices(clipSlotIndexes);
+      const clipIdList = clipIds.split(",").map((id) => id.trim());
 
-      for (let i = 0; i < trackIndexList.length; i++) {
-        const trackIndex = trackIndexList[i];
-        const clipSlotIndex =
-          i < clipSlotIndexList.length
-            ? clipSlotIndexList[i]
-            : clipSlotIndexList[clipSlotIndexList.length - 1];
-
+      for (const clipId of clipIdList) {
+        const clip = LiveAPI.from(clipId);
+        if (!clip.exists()) {
+          throw new Error(
+            `playback play-session-clip action failed: clip with clipId=${clipId} does not exist`,
+          );
+        }
+        // For clips, we need to fire the clip slot, not the clip itself
+        // Extract track index and scene index from clip path or properties
+        const trackIndex = clip.trackIndex;
+        const sceneIndex = clip.sceneIndex;
+        if (trackIndex == null || sceneIndex == null) {
+          throw new Error(
+            `playback play-session-clip action failed: could not determine track/scene for clipId=${clipId}`,
+          );
+        }
         const clipSlot = new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`,
+          `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
         );
         if (!clipSlot.exists()) {
           throw new Error(
-            `playback play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`,
-          );
-        }
-        if (!clipSlot.getProperty("has_clip")) {
-          throw new Error(
-            `playback play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`,
+            `playback play-session-clip action failed: clip slot for clipId=${clipId} does not exist`,
           );
         }
         clipSlot.call("fire");
@@ -162,19 +157,38 @@ export function playback({
       break;
 
     case "stop-track-session-clip":
-      if (!trackIndexes) {
+      if (!clipIds) {
         throw new Error(
-          `playback failed: trackIndexes is required for action "stop-track-session-clip"`,
+          `playback failed: clipIds is required for action "stop-track-session-clip"`,
         );
       }
 
-      const stopTrackIndexList = parseCommaSeparatedIndices(trackIndexes);
+      const stopClipIdList = clipIds.split(",").map((id) => id.trim());
+      const tracksToStop = new Set();
 
-      for (const trackIndex of stopTrackIndexList) {
-        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+      for (const clipId of stopClipIdList) {
+        const clip = LiveAPI.from(clipId);
+        if (!clip.exists()) {
+          throw new Error(
+            `playback stop-track-session-clip action failed: clip with clipId=${clipId} does not exist`,
+          );
+        }
+        // Extract track index from clip and add to set to avoid duplicate calls
+        const trackIndex = clip.trackIndex;
+        if (trackIndex == null) {
+          throw new Error(
+            `playback stop-track-session-clip action failed: could not determine track for clipId=${clipId}`,
+          );
+        }
+        const trackPath = `live_set tracks ${trackIndex}`;
+        tracksToStop.add(trackPath);
+      }
+
+      for (const trackPath of tracksToStop) {
+        const track = new LiveAPI(trackPath);
         if (!track.exists()) {
           throw new Error(
-            `playback stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`,
+            `playback stop-track-session-clip action failed: track for clip path does not exist`,
           );
         }
         track.call("stop_all_clips");
@@ -239,9 +253,8 @@ export function playback({
       loopStart: loopStart ?? currentLoopStart,
       loopEnd: loopEnd ?? currentLoopEnd,
       autoFollow: action === "play-arrangement" ? autoFollow : undefined,
-      sceneIndex,
-      trackIndexes,
-      clipSlotIndexes,
+      sceneId,
+      clipIds,
       arrangementFollowerTrackIds,
       // and include some additional relevant state:
       isPlaying,

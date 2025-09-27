@@ -27,9 +27,9 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         `Transport action to perform:
 - "play-arrangement": Start Arrangement timeline playback from specified position. Tracks currently playing Session clips will stop playing them unless autoFollow is set to false. Consider using ppal-select to switch to Arrangement view if the user would benefit from seeing the arrangement.
 - "update-arrangement": Modify arrangement loop and follow settings without affecting playback state
-- "play-scene": Launch all clips in a Session scene (requires sceneIndex) - puts ALL tracks into non-following state, even tracks with empty clip slots in that scene. Consider using ppal-select to switch to Session view unless the user is actively working in Arrangement view.
-- "play-session-clip": Trigger clips in Session (requires trackIndexes and clipSlotIndexes) - puts these tracks into non-following state
-- "stop-track-session-clip": Stop Session clips playing in specific tracks (tracks remain in non-following state)
+- "play-scene": Launch all clips in a Session scene (requires sceneId) - puts ALL tracks into non-following state, even tracks with empty clip slots in that scene. Consider using ppal-select to switch to Session view unless the user is actively working in Arrangement view.
+- "play-session-clip": Trigger clips in Session (requires clipIds) - puts these tracks into non-following state
+- "stop-track-session-clip": Stop Session clips playing in specific tracks (requires clipIds) - tracks remain in non-following state
 - "stop-all-session-clips": Stop all Session clips in all tracks (tracks remain in non-following state)
 - "stop": Stop all playback: stop the transport, stop arrangement playback, stop session playback (but currently playing clips in Session view will retain their playing state and start playing again when the transport is started)`,
       ),
@@ -59,21 +59,13 @@ export const toolDefPlayback = defineTool("ppal-playback", {
       .describe(
         "For 'play-arrangement' action: when true (default), all tracks automatically follow the arrangement timeline. When false, tracks maintain their current following state.",
       ),
-    trackIndexes: z
+    clipIds: z
       .string()
       .optional()
-      .describe("Comma-separated list of track indexes (0-based)"),
-    clipSlotIndexes: z
+      .describe("Comma-separated list of clip IDs for Session view operations"),
+    sceneId: z
       .string()
       .optional()
-      .describe(
-        "Comma-separated list of clip slot indexes (0-based). If fewer indexes than trackIndexes, the last clipSlotIndex will be reused.",
-      ),
-    sceneIndex: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe("Scene index (0-based), required for play-scene"),
+      .describe("Scene ID, required for play-scene"),
   },
 });

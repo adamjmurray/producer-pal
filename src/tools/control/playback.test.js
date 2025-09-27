@@ -3,6 +3,7 @@ import {
   children,
   liveApiCall,
   liveApiId,
+  liveApiPath,
   liveApiSet,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
@@ -148,7 +149,7 @@ describe("transport", () => {
     expect(result.loopEnd).toBe("2|1"); // 3 beats = 1 bar in 3/4
   });
 
-  it("should handle play-session-clip action with single track and clip", () => {
+  it("should handle play-session-clip action with single clip", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
@@ -161,10 +162,17 @@ describe("transport", () => {
       },
     });
 
+    // Mock the clip to be a path that resolves to track 0, scene 0
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "clip1") {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      return this._path;
+    });
+
     const result = playback({
       action: "play-session-clip",
-      trackIndexes: "0",
-      clipSlotIndexes: "0",
+      clipIds: "clip1",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -178,13 +186,12 @@ describe("transport", () => {
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
-      trackIndexes: "0",
-      clipSlotIndexes: "0",
+      clipIds: "clip1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
-  it("should handle play-session-clip action with multiple tracks and clips", () => {
+  it("should handle play-session-clip action with multiple clips", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
@@ -197,10 +204,23 @@ describe("transport", () => {
       },
     });
 
+    // Mock the clips to be paths that resolve to different tracks/scenes
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "clip1") {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      if (this._path === "clip2") {
+        return "live_set tracks 1 clip_slots 1 clip";
+      }
+      if (this._path === "clip3") {
+        return "live_set tracks 2 clip_slots 2 clip";
+      }
+      return this._path;
+    });
+
     const result = playback({
       action: "play-session-clip",
-      trackIndexes: "0,1,2",
-      clipSlotIndexes: "0,1,2",
+      clipIds: "clip1,clip2,clip3",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -208,11 +228,10 @@ describe("transport", () => {
       "fire",
     );
     expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 fire calls
-    expect(result.trackIndexes).toBe("0,1,2");
-    expect(result.clipSlotIndexes).toBe("0,1,2");
+    expect(result.clipIds).toBe("clip1,clip2,clip3");
   });
 
-  it("should reuse last clipSlotIndex when fewer clipSlotIndexes than trackIndexes", () => {
+  it("should handle whitespace in clipIds", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
@@ -225,13 +244,26 @@ describe("transport", () => {
       },
     });
 
-    playback({
-      action: "play-session-clip",
-      trackIndexes: "0,1,2",
-      clipSlotIndexes: "0,1",
+    // Mock the clips to be paths that resolve to different tracks/scenes
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "clip1") {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      if (this._path === "clip2") {
+        return "live_set tracks 1 clip_slots 1 clip";
+      }
+      if (this._path === "clip3") {
+        return "live_set tracks 2 clip_slots 2 clip";
+      }
+      return this._path;
     });
 
-    // Should fire clips at (0,0), (1,1), and (2,1) - reusing clipSlotIndex 1 for track 2
+    playback({
+      action: "play-session-clip",
+      clipIds: "clip1, clip2 , clip3",
+    });
+
+    // Should fire all 3 clips despite whitespace
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
       "fire",
@@ -241,39 +273,45 @@ describe("transport", () => {
 
   it("should throw error when required parameters are missing for play-session-clip", () => {
     expect(() => playback({ action: "play-session-clip" })).toThrow(
-      'playback failed: trackIndexes is required for action "play-session-clip"',
-    );
-
-    expect(() =>
-      playback({ action: "play-session-clip", trackIndexes: "0" }),
-    ).toThrow(
-      'playback failed: clipSlotIndexes is required for action "play-session-clip"',
+      'playback failed: clipIds is required for action "play-session-clip"',
     );
   });
 
-  it("should throw error when clip slot doesn't exist for play-session-clip", () => {
+  it("should throw error when clip doesn't exist for play-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() =>
       playback({
         action: "play-session-clip",
-        trackIndexes: "99",
-        clipSlotIndexes: "0",
+        clipIds: "nonexistent_clip",
       }),
     ).toThrow(
-      "playback play-session-clip action failed: clip slot at trackIndex=99, clipSlotIndex=0 does not exist",
+      "playback play-session-clip action failed: clip with clipId=nonexistent_clip does not exist",
     );
   });
 
-  it("should throw error when clip slot is empty for play-session-clip", () => {
-    mockLiveApiGet({ ClipSlot: { has_clip: 0 } });
+  it("should throw error when clip slot doesn't exist for play-session-clip", () => {
+    // Mock a clip that exists but its slot doesn't
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "clip1") {
+        return "live_set tracks 99 clip_slots 0 clip"; // Track 99 doesn't exist
+      }
+      return this._path;
+    });
+
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set tracks 99 clip_slots 0") {
+        return "id 0"; // This makes the clip slot not exist
+      }
+      return "id clip1";
+    });
+
     expect(() =>
       playback({
         action: "play-session-clip",
-        trackIndexes: "0",
-        clipSlotIndexes: "0",
+        clipIds: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clip action failed: no clip at trackIndex=0, clipSlotIndex=0",
+      "playback play-session-clip action failed: clip slot for clipId=clip1 does not exist",
     );
   });
 
@@ -291,11 +329,11 @@ describe("transport", () => {
 
     const result = playback({
       action: "play-scene",
-      sceneIndex: 1,
+      sceneId: "scene1",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set scenes 1" }),
+      expect.objectContaining({ path: "scene1" }),
       "fire",
     );
     expect(result).toStrictEqual({
@@ -305,25 +343,27 @@ describe("transport", () => {
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
-      sceneIndex: 1,
+      sceneId: "scene1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
   it("should throw an error when required parameters are missing for play-scene", () => {
     expect(() => playback({ action: "play-scene" })).toThrow(
-      'playback failed: sceneIndex is required for action "play-scene"',
+      'playback failed: sceneId is required for action "play-scene"',
     );
   });
 
   it("should throw an error when scene doesn't exist for play-scene", () => {
     liveApiId.mockReturnValue("id 0");
-    expect(() => playback({ action: "play-scene", sceneIndex: 99 })).toThrow(
-      "playback play-session-scene action failed: scene at sceneIndex=99 does not exist",
+    expect(() =>
+      playback({ action: "play-scene", sceneId: "nonexistent_scene" }),
+    ).toThrow(
+      "playback play-session-scene action failed: scene with sceneId=nonexistent_scene does not exist",
     );
   });
 
-  it("should handle stop-track-session-clip action with single track", () => {
+  it("should handle stop-track-session-clip action with single clip", () => {
     mockLiveApiGet({
       LiveSet: {
         signature_numerator: 4,
@@ -336,13 +376,21 @@ describe("transport", () => {
       },
     });
 
+    // Mock the clip to be a path that resolves to track 0
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "clip1") {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      return this._path;
+    });
+
     const result = playback({
       action: "stop-track-session-clip",
-      trackIndexes: "1",
+      clipIds: "clip1",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 1" }),
+      expect.objectContaining({ path: "live_set tracks 0" }),
       "stop_all_clips",
     );
     expect(result).toStrictEqual({
@@ -352,12 +400,12 @@ describe("transport", () => {
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
-      trackIndexes: "1",
+      clipIds: "clip1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
-  it("should handle stop-track-session-clip action with multiple tracks", () => {
+  it("should handle stop-track-session-clip action with multiple clips", () => {
     mockLiveApiGet({
       LiveSet: {
         signature_numerator: 4,
@@ -370,9 +418,23 @@ describe("transport", () => {
       },
     });
 
+    // Mock the clips to be paths that resolve to different tracks
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "clip1") {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      if (this._path === "clip2") {
+        return "live_set tracks 1 clip_slots 1 clip";
+      }
+      if (this._path === "clip3") {
+        return "live_set tracks 2 clip_slots 2 clip";
+      }
+      return this._path;
+    });
+
     playback({
       action: "stop-track-session-clip",
-      trackIndexes: "0,1,2",
+      clipIds: "clip1,clip2,clip3",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -384,16 +446,19 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for stop-track-session-clip", () => {
     expect(() => playback({ action: "stop-track-session-clip" })).toThrow(
-      'playback failed: trackIndexes is required for action "stop-track-session-clip"',
+      'playback failed: clipIds is required for action "stop-track-session-clip"',
     );
   });
 
-  it("should throw an error when track doesn't exist for stop-track-session-clip", () => {
+  it("should throw an error when clip doesn't exist for stop-track-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() =>
-      playback({ action: "stop-track-session-clip", trackIndexes: "99" }),
+      playback({
+        action: "stop-track-session-clip",
+        clipIds: "nonexistent_clip",
+      }),
     ).toThrow(
-      "playback stop-track-session-clip action failed: track at trackIndex=99 does not exist",
+      "playback stop-track-session-clip action failed: clip with clipId=nonexistent_clip does not exist",
     );
   });
 
@@ -458,26 +523,6 @@ describe("transport", () => {
       loopStart: "1|1",
       arrangementFollowerTrackIds: "track1,track2",
     });
-  });
-
-  it("should throw error for invalid track indexes in trackIndexes", () => {
-    expect(() =>
-      playback({
-        action: "play-session-clip",
-        trackIndexes: "0,invalid,2",
-        clipSlotIndexes: "0",
-      }),
-    ).toThrow('Invalid index "invalid" - must be a valid integer');
-  });
-
-  it("should throw error for invalid clip slot indexes in clipSlotIndexes", () => {
-    expect(() =>
-      playback({
-        action: "play-session-clip",
-        trackIndexes: "0",
-        clipSlotIndexes: "0,invalid,2",
-      }),
-    ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 
   it("should handle loop end calculation correctly", () => {
@@ -699,14 +744,5 @@ describe("transport", () => {
         }),
       );
     });
-  });
-
-  it("should throw error for invalid track indexes in stop-track-session-clip", () => {
-    expect(() =>
-      playback({
-        action: "stop-track-session-clip",
-        trackIndexes: "0,invalid,2",
-      }),
-    ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
 });
