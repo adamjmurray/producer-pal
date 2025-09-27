@@ -89,7 +89,7 @@ function readViewState() {
   };
 }
 
-export function view({
+export function select({
   // Main view
   view,
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefReadSong = defineTool("ppal-read-song", {
-  title: "Read Live Set",
+  title: "Read Song",
   description: `Read details about the Ableton Live Set including global settings, tracks, scenes, devices, and clips.
 Use this for an overview of the state of Live and call again after any moves/deletes by the user.`,
   annotations: {

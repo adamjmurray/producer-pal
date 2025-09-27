@@ -13,7 +13,7 @@ WHEN TO SUGGEST routeToSource: When users ask about: layering MIDI, polyrhythms,
 When duplicating scenes or tracks, clips are duplicated by default but can be excluded with withoutClips:true. Use the duplicatedClips array in the response to identify which clip slots now contain clips that must be modified using update-clip rather than create-clip.
 IMPORTANT: For Arrangement clips, all timing is relative to each clip's start time, not the global arrangement timeline.
 IMPORTANT: Session clips take precedence over Arrangement clips. Duplicated Arrangement clips will only play if their tracks are currently in arrangement-following state (see transport tool).
-VIEW GUIDANCE: When duplicating to arrangement, consider using ppal-update-view to show the arrangement if the user wants to see the duplicated content.`;
+VIEW GUIDANCE: When duplicating to arrangement, consider using ppal-select to show the arrangement if the user wants to see the duplicated content.`;
 
 export const toolDefDuplicate = defineTool("ppal-duplicate", {
   title: "Duplicate Track/Scene/Clip",

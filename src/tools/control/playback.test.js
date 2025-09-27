@@ -6,7 +6,7 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
-import { transport } from "./transport";
+import { playback } from "./playback";
 
 describe("transport", () => {
   beforeEach(() => {
@@ -20,12 +20,12 @@ describe("transport", () => {
   });
 
   it("should throw an error when action is missing", () => {
-    expect(() => transport({})).toThrow("transport failed: action is required");
+    expect(() => playback({})).toThrow("playback failed: action is required");
   });
 
   it("should throw an error for unknown action", () => {
-    expect(() => transport({ action: "invalid-action" })).toThrow(
-      "transport failed: unknown action",
+    expect(() => playback({ action: "invalid-action" })).toThrow(
+      "playback failed: unknown action",
     );
   });
 
@@ -43,7 +43,7 @@ describe("transport", () => {
       track2: { back_to_arranger: 1 },
     });
 
-    const result = transport({
+    const result = playback({
       action: "play-arrangement",
       startTime: "5|1",
     });
@@ -87,7 +87,7 @@ describe("transport", () => {
       track3: { back_to_arranger: 0 },
     });
 
-    const result = transport({
+    const result = playback({
       action: "update-arrangement",
       loop: true,
       loopStart: "3|1",
@@ -134,7 +134,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "play-arrangement",
       startTime: "3|1",
     });
@@ -161,7 +161,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "play-session-clip",
       trackIndexes: "0",
       clipSlotIndexes: "0",
@@ -197,7 +197,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "play-session-clip",
       trackIndexes: "0,1,2",
       clipSlotIndexes: "0,1,2",
@@ -225,7 +225,7 @@ describe("transport", () => {
       },
     });
 
-    transport({
+    playback({
       action: "play-session-clip",
       trackIndexes: "0,1,2",
       clipSlotIndexes: "0,1",
@@ -240,40 +240,40 @@ describe("transport", () => {
   });
 
   it("should throw error when required parameters are missing for play-session-clip", () => {
-    expect(() => transport({ action: "play-session-clip" })).toThrow(
-      'transport failed: trackIndexes is required for action "play-session-clip"',
+    expect(() => playback({ action: "play-session-clip" })).toThrow(
+      'playback failed: trackIndexes is required for action "play-session-clip"',
     );
 
     expect(() =>
-      transport({ action: "play-session-clip", trackIndexes: "0" }),
+      playback({ action: "play-session-clip", trackIndexes: "0" }),
     ).toThrow(
-      'transport failed: clipSlotIndexes is required for action "play-session-clip"',
+      'playback failed: clipSlotIndexes is required for action "play-session-clip"',
     );
   });
 
   it("should throw error when clip slot doesn't exist for play-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() =>
-      transport({
+      playback({
         action: "play-session-clip",
         trackIndexes: "99",
         clipSlotIndexes: "0",
       }),
     ).toThrow(
-      "transport play-session-clip action failed: clip slot at trackIndex=99, clipSlotIndex=0 does not exist",
+      "playback play-session-clip action failed: clip slot at trackIndex=99, clipSlotIndex=0 does not exist",
     );
   });
 
   it("should throw error when clip slot is empty for play-session-clip", () => {
     mockLiveApiGet({ ClipSlot: { has_clip: 0 } });
     expect(() =>
-      transport({
+      playback({
         action: "play-session-clip",
         trackIndexes: "0",
         clipSlotIndexes: "0",
       }),
     ).toThrow(
-      "transport play-session-clip action failed: no clip at trackIndex=0, clipSlotIndex=0",
+      "playback play-session-clip action failed: no clip at trackIndex=0, clipSlotIndex=0",
     );
   });
 
@@ -289,7 +289,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "play-scene",
       sceneIndex: 1,
     });
@@ -311,15 +311,15 @@ describe("transport", () => {
   });
 
   it("should throw an error when required parameters are missing for play-scene", () => {
-    expect(() => transport({ action: "play-scene" })).toThrow(
-      'transport failed: sceneIndex is required for action "play-scene"',
+    expect(() => playback({ action: "play-scene" })).toThrow(
+      'playback failed: sceneIndex is required for action "play-scene"',
     );
   });
 
   it("should throw an error when scene doesn't exist for play-scene", () => {
     liveApiId.mockReturnValue("id 0");
-    expect(() => transport({ action: "play-scene", sceneIndex: 99 })).toThrow(
-      "transport play-session-scene action failed: scene at sceneIndex=99 does not exist",
+    expect(() => playback({ action: "play-scene", sceneIndex: 99 })).toThrow(
+      "playback play-session-scene action failed: scene at sceneIndex=99 does not exist",
     );
   });
 
@@ -336,7 +336,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "stop-track-session-clip",
       trackIndexes: "1",
     });
@@ -370,7 +370,7 @@ describe("transport", () => {
       },
     });
 
-    transport({
+    playback({
       action: "stop-track-session-clip",
       trackIndexes: "0,1,2",
     });
@@ -383,17 +383,17 @@ describe("transport", () => {
   });
 
   it("should throw an error when required parameters are missing for stop-track-session-clip", () => {
-    expect(() => transport({ action: "stop-track-session-clip" })).toThrow(
-      'transport failed: trackIndexes is required for action "stop-track-session-clip"',
+    expect(() => playback({ action: "stop-track-session-clip" })).toThrow(
+      'playback failed: trackIndexes is required for action "stop-track-session-clip"',
     );
   });
 
   it("should throw an error when track doesn't exist for stop-track-session-clip", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() =>
-      transport({ action: "stop-track-session-clip", trackIndexes: "99" }),
+      playback({ action: "stop-track-session-clip", trackIndexes: "99" }),
     ).toThrow(
-      "transport stop-track-session-clip action failed: track at trackIndex=99 does not exist",
+      "playback stop-track-session-clip action failed: track at trackIndex=99 does not exist",
     );
   });
 
@@ -410,7 +410,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({ action: "stop-all-session-clips" });
+    const result = playback({ action: "stop-all-session-clips" });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -438,7 +438,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({ action: "stop" });
+    const result = playback({ action: "stop" });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -462,7 +462,7 @@ describe("transport", () => {
 
   it("should throw error for invalid track indexes in trackIndexes", () => {
     expect(() =>
-      transport({
+      playback({
         action: "play-session-clip",
         trackIndexes: "0,invalid,2",
         clipSlotIndexes: "0",
@@ -472,7 +472,7 @@ describe("transport", () => {
 
   it("should throw error for invalid clip slot indexes in clipSlotIndexes", () => {
     expect(() =>
-      transport({
+      playback({
         action: "play-session-clip",
         trackIndexes: "0",
         clipSlotIndexes: "0,invalid,2",
@@ -491,7 +491,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "update-arrangement",
       loopEnd: "9|1",
     });
@@ -517,7 +517,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "play-arrangement",
       startTime: "2|1",
       loopStart: "1|1",
@@ -558,7 +558,7 @@ describe("transport", () => {
       },
     });
 
-    const result = transport({
+    const result = playback({
       action: "play-arrangement",
       // no startTime provided
     });
@@ -592,7 +592,7 @@ describe("transport", () => {
         track3: { back_to_arranger: 0 },
       });
 
-      const result = transport({
+      const result = playback({
         action: "play-arrangement",
         startTime: "1|1",
       });
@@ -627,7 +627,7 @@ describe("transport", () => {
         track2: { back_to_arranger: 1 }, // not following
       });
 
-      const result = transport({
+      const result = playback({
         action: "play-arrangement",
         autoFollow: true,
       });
@@ -660,7 +660,7 @@ describe("transport", () => {
         track2: { back_to_arranger: 0 }, // following
       });
 
-      const result = transport({
+      const result = playback({
         action: "play-arrangement",
         autoFollow: false,
       });
@@ -688,7 +688,7 @@ describe("transport", () => {
         track3: { back_to_arranger: 0 },
       });
 
-      const result = transport({
+      const result = playback({
         action: "stop",
       });
 
@@ -703,7 +703,7 @@ describe("transport", () => {
 
   it("should throw error for invalid track indexes in stop-track-session-clip", () => {
     expect(() =>
-      transport({
+      playback({
         action: "stop-track-session-clip",
         trackIndexes: "0,invalid,2",
       }),

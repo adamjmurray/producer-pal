@@ -7,7 +7,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
-import { init } from "./init.js";
+import { connect } from "./connect.js";
 
 // Mock the getHostTrackIndex function
 vi.mock(import("../shared/get-host-track-index.js"), () => ({
@@ -16,7 +16,7 @@ vi.mock(import("../shared/get-host-track-index.js"), () => ({
 
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 
-describe("init", () => {
+describe("connect", () => {
   it("returns basic Live Set information and connection status", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
@@ -71,7 +71,7 @@ describe("init", () => {
       },
     });
 
-    const result = init();
+    const result = connect();
 
     expect(result).toEqual({
       connected: true,
@@ -139,7 +139,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -206,7 +206,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(1); // Host track is track 1, synth is on track 0
 
-    const result = init();
+    const result = connect();
 
     expect(result.messagesForUser).toEqual(
       expect.stringContaining("* Ready to create"),
@@ -262,7 +262,7 @@ describe("init", () => {
 
   //   getHostTrackIndex.mockReturnValue(0); // Host track is track 0 with instrument
 
-  //   const result = init();
+  //   const result = connect();
 
   //   expect(result.messagesForUser).toEqual(
   //     expect.arrayContaining([
@@ -324,7 +324,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(1);
 
-    const result = init();
+    const result = connect();
 
     expect(result.messagesForUser).toEqual(
       expect.stringContaining("* No instruments found."),
@@ -371,7 +371,7 @@ describe("init", () => {
       },
     };
 
-    const result = init({}, context);
+    const result = connect({}, context);
 
     expect(result.projectNotes).toEqual(
       "Working on a house track with heavy bass",
@@ -423,7 +423,7 @@ describe("init", () => {
       },
     };
 
-    const result = init({}, context);
+    const result = connect({}, context);
 
     expect(result.projectNotes).toEqual(
       "Working on a house track with heavy bass",
@@ -477,7 +477,7 @@ describe("init", () => {
       },
     };
 
-    const result = init({}, context);
+    const result = connect({}, context);
 
     expect(result.projectNotes).toBeUndefined();
   });
@@ -515,7 +515,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result.projectNotes).toBeUndefined();
   });
@@ -564,7 +564,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(null); // Host track index not found
 
-    const result = init();
+    const result = connect();
 
     // Should still work - just won't find instruments on host track
     expect(result).toEqual(
@@ -616,7 +616,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(null);
 
-    const result = init();
+    const result = connect();
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -666,7 +666,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result.liveSet.scale).toBe("Eb Minor");
   });
@@ -707,7 +707,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result.liveSet.scale).toBeUndefined();
   });

@@ -160,7 +160,7 @@ encoding rules in JavaScript.
 
 Examples:
 
-- Welcome message in `ppal-init` tool description
+- Welcome message in `ppal-connect` tool description
 - Missing instrument detection in tool responses
 - Setup instructions in offline mode
 

@@ -13,13 +13,11 @@ import { VERSION } from "../shared/version";
 import { createClip } from "../tools/clip/create-clip";
 import { readClip } from "../tools/clip/read-clip";
 import { updateClip } from "../tools/clip/update-clip";
+import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
-import { transport } from "../tools/control/transport.js";
-import { view } from "../tools/control/view.js";
-import { readDevice } from "../tools/device/read-device";
+import { select } from "../tools/control/select.js";
 import { deleteObject } from "../tools/operations/delete";
 import { duplicate } from "../tools/operations/duplicate";
-import { captureScene } from "../tools/scene/capture-scene";
 import { createScene } from "../tools/scene/create-scene";
 import { readScene } from "../tools/scene/read-scene";
 import { updateScene } from "../tools/scene/update-scene";
@@ -28,7 +26,7 @@ import { updateSong } from "../tools/song/update-song";
 import { createTrack } from "../tools/track/create-track";
 import { readTrack } from "../tools/track/read-track";
 import { updateTrack } from "../tools/track/update-track";
-import { init } from "../tools/workflow/init.js";
+import { connect } from "../tools/workflow/connect.js";
 import { memory } from "../tools/workflow/memory.js";
 
 const userContext = {
@@ -44,24 +42,22 @@ const userContext = {
 Use the `(args) => toolFunction(args)` pattern, never just `() => toolFunction()`
 */
 const tools = {
-  "ppal-init": (args) => init(args, userContext),
+  "ppal-connect": (args) => connect(args, userContext),
   "ppal-read-song": (args) => readSong(args),
   "ppal-update-song": (args) => updateSong(args),
-  "ppal-create-scene": (args) => createScene(args),
-  "ppal-read-scene": (args) => readScene(args),
-  "ppal-update-scene": (args) => updateScene(args),
   "ppal-create-track": (args) => createTrack(args),
   "ppal-read-track": (args) => readTrack(args),
   "ppal-update-track": (args) => updateTrack(args),
-  "ppal-view": (args) => view(args),
+  "ppal-create-scene": (args) => createScene(args),
+  "ppal-read-scene": (args) => readScene(args),
+  "ppal-update-scene": (args) => updateScene(args),
   "ppal-create-clip": (args) => createClip(args),
   "ppal-read-clip": (args) => readClip(args),
-  "ppal-read-device": (args) => readDevice(args), // Keep implementation available but not exposed via MCP (see read-device.js for why)
   "ppal-update-clip": (args) => updateClip(args),
+  "ppal-playback": (args) => playback(args),
+  "ppal-select": (args) => select(args),
   "ppal-delete": (args) => deleteObject(args),
   "ppal-duplicate": (args) => duplicate(args),
-  "ppal-capture-scene": (args) => captureScene(args),
-  "ppal-transport": (args) => transport(args),
   "ppal-memory": (args) => memory(args, userContext),
 };
 

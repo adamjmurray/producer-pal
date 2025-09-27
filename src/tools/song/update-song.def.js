@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefUpdateSong = defineTool("ppal-update-song", {
-  title: "Update Live Set",
+  title: "Update Song",
   description:
     "Updates song properties in the Live Set including tempo, time signature, and scale.",
   annotations: {

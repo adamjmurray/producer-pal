@@ -8,7 +8,7 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
  * @param {Object} context - The userContext from main.js
  * @returns {Object} Connection status and basic Live Set info
  */
-export function init({} = {}, context) {
+export function connect({} = {}, context) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
 

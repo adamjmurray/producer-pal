@@ -20,7 +20,7 @@ import { parseCommaSeparatedIndices } from "../shared/utils.js";
  * @param {string} [args.clipSlotIndexes] - Comma-separated clip slot indexes for Session view operations
  * @returns {Object} Result with transport state
  */
-export function transport({
+export function playback({
   action,
   startTime,
   loop,
@@ -32,7 +32,7 @@ export function transport({
   clipSlotIndexes,
 } = {}) {
   if (!action) {
-    throw new Error("transport failed: action is required");
+    throw new Error("playback failed: action is required");
   }
   const liveSet = new LiveAPI("live_set");
 
@@ -105,13 +105,13 @@ export function transport({
     case "play-scene":
       if (sceneIndex == null) {
         throw new Error(
-          `transport failed: sceneIndex is required for action "play-scene"`,
+          `playback failed: sceneIndex is required for action "play-scene"`,
         );
       }
       const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
       if (!scene.exists()) {
         throw new Error(
-          `transport play-session-scene action failed: scene at sceneIndex=${sceneIndex} does not exist`,
+          `playback play-session-scene action failed: scene at sceneIndex=${sceneIndex} does not exist`,
         );
       }
 
@@ -123,12 +123,12 @@ export function transport({
     case "play-session-clip":
       if (!trackIndexes) {
         throw new Error(
-          `transport failed: trackIndexes is required for action "play-session-clip"`,
+          `playback failed: trackIndexes is required for action "play-session-clip"`,
         );
       }
       if (!clipSlotIndexes) {
         throw new Error(
-          `transport failed: clipSlotIndexes is required for action "play-session-clip"`,
+          `playback failed: clipSlotIndexes is required for action "play-session-clip"`,
         );
       }
 
@@ -147,12 +147,12 @@ export function transport({
         );
         if (!clipSlot.exists()) {
           throw new Error(
-            `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`,
+            `playback play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`,
           );
         }
         if (!clipSlot.getProperty("has_clip")) {
           throw new Error(
-            `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`,
+            `playback play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`,
           );
         }
         clipSlot.call("fire");
@@ -164,7 +164,7 @@ export function transport({
     case "stop-track-session-clip":
       if (!trackIndexes) {
         throw new Error(
-          `transport failed: trackIndexes is required for action "stop-track-session-clip"`,
+          `playback failed: trackIndexes is required for action "stop-track-session-clip"`,
         );
       }
 
@@ -174,7 +174,7 @@ export function transport({
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
         if (!track.exists()) {
           throw new Error(
-            `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`,
+            `playback stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`,
           );
         }
         track.call("stop_all_clips");
@@ -196,7 +196,7 @@ export function transport({
       break;
 
     default:
-      throw new Error(`transport failed: unknown action "${action}"`);
+      throw new Error(`playback failed: unknown action "${action}"`);
   }
 
   // Convert beats back to bar|beat for the response

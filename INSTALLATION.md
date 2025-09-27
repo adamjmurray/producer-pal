@@ -344,12 +344,12 @@ optimization to better support these smaller local AI models.
   size, but large context windows make the model run significantly slower.
   Therefore **it is recommended to disable some of the Producer Pal tools**. A
   reasonable minimal toolset for experimentation is:
-  - `ppal-init`
+  - `ppal-connect`
   - `ppal-read-song`
   - `ppal-create-clip`
   - `ppal-read-clip`
   - `ppal-update-clip`
-  - `ppal-transport`
+  - `ppal-playback`
 
   Try disabling all the other tools and using a 16k context window.
 
@@ -434,16 +434,16 @@ have no way of interacting with Ableton Live. If you can see the Producer Pal
 tools and they are enabled, try this:
 
 - Ask the AI "what tools do you have?"
-- Check the AI knows it has Producer Pal tools such as `ppal-init`
-- Say "call your ppal-init tool"
+- Check the AI knows it has Producer Pal tools such as `ppal-connect`
+- Say "call your ppal-connect tool"
 
-Once you trigger a `ppal-init` tool call, Producer Pal should work. If saying
+Once you trigger a `ppal-connect` tool call, Producer Pal should work. If saying
 "connect to ableton" doesn't achieve this, find a way to reliably trigger
-`ppal-init` with your AI. For example, "connect to ableton with your tools" or
-"connect to ableton with your ppal-init tool" might work more reliably.
+`ppal-connect` with your AI. For example, "connect to ableton with your tools" or
+"connect to ableton with your ppal-connect tool" might work more reliably.
 
 If you can see the Producer Pal tools but the AI cannot, or will not call
-`ppal-init` no matter what you try, check you are using an AI model that
+`ppal-connect` no matter what you try, check you are using an AI model that
 supports tools. Locally running models might not be compatible, for example,
 many models supported by [LM Studio](#lm-studio) can't use tools.
 

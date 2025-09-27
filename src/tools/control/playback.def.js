@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
-export const toolDefTransport = defineTool("ppal-transport", {
+export const toolDefPlayback = defineTool("ppal-playback", {
   title: "Playback Controls",
   description:
     "Controls the Arrangement and Session transport, including playback, position, and loop settings.\n" +
@@ -25,9 +25,9 @@ export const toolDefTransport = defineTool("ppal-transport", {
       ])
       .describe(
         `Transport action to perform:
-- "play-arrangement": Start Arrangement timeline playback from specified position. Tracks currently playing Session clips will stop playing them unless autoFollow is set to false. Consider using ppal-update-view to switch to Arrangement view if the user would benefit from seeing the arrangement.
+- "play-arrangement": Start Arrangement timeline playback from specified position. Tracks currently playing Session clips will stop playing them unless autoFollow is set to false. Consider using ppal-select to switch to Arrangement view if the user would benefit from seeing the arrangement.
 - "update-arrangement": Modify arrangement loop and follow settings without affecting playback state
-- "play-scene": Launch all clips in a Session scene (requires sceneIndex) - puts ALL tracks into non-following state, even tracks with empty clip slots in that scene. Consider using ppal-update-view to switch to Session view unless the user is actively working in Arrangement view.
+- "play-scene": Launch all clips in a Session scene (requires sceneIndex) - puts ALL tracks into non-following state, even tracks with empty clip slots in that scene. Consider using ppal-select to switch to Session view unless the user is actively working in Arrangement view.
 - "play-session-clip": Trigger clips in Session (requires trackIndexes and clipSlotIndexes) - puts these tracks into non-following state
 - "stop-track-session-clip": Stop Session clips playing in specific tracks (tracks remain in non-following state)
 - "stop-all-session-clips": Stop all Session clips in all tracks (tracks remain in non-following state)

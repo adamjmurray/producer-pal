@@ -6,7 +6,7 @@ create.
 
 ## Transport & Playback
 
-### Transport Control (`ppal-transport`)
+### Transport Control (`ppal-playback`)
 
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
@@ -18,7 +18,7 @@ create.
 
 ### Read Song (`ppal-read-song`)
 
-- Get complete Live Set overview
+- Get complete Live project overview
 - View all tracks, scenes, and clips at once
 - See tempo, time signature, and scale settings
 - Check what's playing and track states
@@ -27,7 +27,6 @@ create.
 
 - Change tempo (20-999 BPM)
 - Set time signature
-- Switch between Session and Arrangement views
 - Configure musical scales
 
 ## Scene Operations
@@ -50,10 +49,7 @@ create.
 - Modify scene tempo and time signature
 - Bulk update multiple scenes at once
 - Enable/disable scene-specific tempo
-
-### Capture Scene (`ppal-capture-scene`)
-
-- Capture currently playing clips into a new scene
+- Ability to capture currently playing clips into a new scene
 
 ## Track Management
 
@@ -134,14 +130,14 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 ## View Control
 
-### View (`ppal-view`)
+### View (`ppal-select`)
 
-- Read current view state (when no arguments)
-  - Check what's currently visible in Live
+- Read current selection and view state (when no arguments)
   - See selected track, scene, clip, and device
-- Update view state (when arguments provided)
-  - Switch between Session and Arrangement views
+  - Check what's currently visible in Live
+- Update selection and view state (when arguments provided)
   - Select specific tracks, scenes, or clips
+  - Switch between Session and Arrangement views
   - Show/hide browser and detail views
   - Focus on devices or clip details
 
@@ -152,11 +148,11 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - Store project-specific notes and context
 - Help Producer Pal understand your project goals
 - AI can read and update notes (when enabled)
-- Notes are saved with your Live Set
+- Notes are saved with your Live project and persist across AI conversations
 
 ## Connection & Setup
 
-### Initialize (`ppal-init`)
+### Initialize (`ppal-connect`)
 
 - Connects to Ableton Live and verifies everything is working
 - Shows Live Set name, tempo, and basic info
