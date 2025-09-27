@@ -22,13 +22,13 @@ export const toolDefSelect = defineTool("ppal-select", {
       .describe("Switch between Session and Arrangement views"),
 
     // Track selection
-    selectedTrackId: z.string().optional().describe("Select track by ID"),
-    selectedTrackType: z
+    trackId: z.string().optional().describe("Select track by ID"),
+    trackType: z
       .enum(["regular", "return", "master"])
       .optional()
       .default("regular")
       .describe("Type of track to select"),
-    selectedTrackIndex: z
+    trackIndex: z
       .number()
       .int()
       .min(0)
@@ -38,8 +38,8 @@ export const toolDefSelect = defineTool("ppal-select", {
       ),
 
     // Scene selection
-    selectedSceneId: z.string().optional().describe("Select scene by ID"),
-    selectedSceneIndex: z
+    sceneId: z.string().optional().describe("Select scene by ID"),
+    sceneIndex: z
       .number()
       .int()
       .min(0)
@@ -47,15 +47,15 @@ export const toolDefSelect = defineTool("ppal-select", {
       .describe("Select scene by index (0-based)"),
 
     // Clip selection
-    selectedClipId: z
+    clipId: z
       .string()
       .nullable()
       .optional()
       .describe("Select clip by ID, or pass null to deselect all clips"),
 
     // Device selection
-    selectedDeviceId: z.string().optional().describe("Select device by ID"),
-    selectInstrument: z
+    deviceId: z.string().optional().describe("Select device by ID"),
+    instrument: z
       .boolean()
       .optional()
       .describe(
@@ -63,7 +63,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       ),
 
     // Clip slot selection
-    selectedClipSlot: z
+    clipSlot: z
       .object({
         trackIndex: z.number().int().min(0),
         sceneIndex: z.number().int().min(0),
