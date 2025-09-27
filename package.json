@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://github.com/adamjmurray/producer-pal#readme",
   "repository": {
