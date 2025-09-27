@@ -78,5 +78,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
           "Effects: New track has no clips or devices, output routes to source track, source track is armed for input. " +
           "WARNING: Maintain unique track names to avoid routing issues.",
       ),
+    switchView: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "Automatically switch to the appropriate view based on destination (arrangement/session) or operation type",
+      ),
   },
 });

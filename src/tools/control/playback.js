@@ -2,6 +2,7 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
+import { select } from "./select.js";
 
 /**
  * Unified control for all playback functionality in both Arrangement and Session views.
@@ -16,6 +17,7 @@ import {
  * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
  * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
  * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
+ * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
  * @returns {Object} Result with transport state
  */
 export function playback({
@@ -27,6 +29,7 @@ export function playback({
   autoFollow = true,
   sceneId,
   clipIds,
+  switchView,
 } = {}) {
   if (!action) {
     throw new Error("playback failed: action is required");
@@ -234,6 +237,20 @@ export function playback({
     songTimeSigDenominator,
   );
 
+  // Handle view switching if requested
+  if (switchView) {
+    let targetView = null;
+    if (action === "play-arrangement") {
+      targetView = "arrangement";
+    } else if (action === "play-scene" || action === "play-session-clip") {
+      targetView = "session";
+    }
+
+    if (targetView) {
+      select({ view: targetView });
+    }
+  }
+
   // Get tracks that are currently following the arrangement
   const trackIds = liveSet.getChildIds("tracks");
   const arrangementFollowerTrackIds = trackIds
@@ -255,6 +272,7 @@ export function playback({
       autoFollow: action === "play-arrangement" ? autoFollow : undefined,
       sceneId,
       clipIds,
+      switchView: switchView != null ? switchView : undefined,
       arrangementFollowerTrackIds,
       // and include some additional relevant state:
       isPlaying,

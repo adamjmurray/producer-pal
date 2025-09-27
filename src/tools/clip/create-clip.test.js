@@ -993,4 +993,81 @@ describe("createClip", () => {
       2,
     );
   });
+
+  describe("switchView functionality", () => {
+    it("should switch to session view when creating session clips with switchView=true", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      const result = createClip({
+        view: "session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result).toMatchObject({
+        view: "session",
+      });
+    });
+
+    it("should switch to arrangement view when creating arrangement clips with switchView=true", () => {
+      mockLiveApiGet({
+        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      const result = createClip({
+        view: "arrangement",
+        trackIndex: 0,
+        arrangementStartTime: "1|1",
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(result).toMatchObject({
+        view: "arrangement",
+      });
+    });
+
+    it("should not switch views when switchView=false", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        switchView: false,
+      });
+
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "show_view",
+        expect.anything(),
+      );
+    });
+
+    it("should work with multiple clips when switchView=true", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      const result = createClip({
+        view: "session",
+        trackIndex: 0,
+        clipSlotIndex: 0,
+        count: 2,
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(2);
+    });
+  });
 });

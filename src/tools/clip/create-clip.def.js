@@ -101,5 +101,12 @@ Comments: // line, # hash, /* block */`,
       .describe(
         'Auto-play after creation: "play-scene" (sync with scene) or "play-clip" (solo). Session view only.',
       ),
+    switchView: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "Automatically switch to the appropriate view (session or arrangement) based on the clip view parameter",
+      ),
   },
 });

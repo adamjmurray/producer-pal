@@ -67,5 +67,12 @@ export const toolDefPlayback = defineTool("ppal-playback", {
       .string()
       .optional()
       .describe("Scene ID, required for play-scene"),
+    switchView: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "Automatically switch to the appropriate view for the operation (arrangement for play-arrangement, session for play-scene/play-session-clip)",
+      ),
   },
 });

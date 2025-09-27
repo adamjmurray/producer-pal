@@ -54,5 +54,12 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       .describe(
         'Time signature in format "n/m" (e.g. "4/4"). Pass "disabled" to disable the scene\'s time signature.',
       ),
+    switchView: z
+      .boolean()
+      .optional()
+      .default(false)
+      .describe(
+        "Automatically switch to session view (scenes are only available in session view)",
+      ),
   },
 });

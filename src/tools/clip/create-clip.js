@@ -7,6 +7,7 @@ import {
 import { parseNotation } from "../../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { parseTimeSignature, setAllNonNull } from "../shared/utils.js";
+import { select } from "../control/select.js";
 
 /**
  * Creates MIDI clips in Session or Arrangement view
@@ -25,6 +26,7 @@ import { parseTimeSignature, setAllNonNull } from "../shared/utils.js";
  * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only. Puts tracks into non-following state.
+ * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
  */
 export function createClip({
@@ -42,6 +44,7 @@ export function createClip({
   loop = null,
   loopStart = null,
   auto = null,
+  switchView,
 }) {
   // Validate parameters
   if (!view) {
@@ -333,6 +336,11 @@ export function createClip({
           `createClip failed: unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
         );
     }
+  }
+
+  // Handle view switching if requested
+  if (switchView) {
+    select({ view });
   }
 
   // Return single object if count=1, array if count>1

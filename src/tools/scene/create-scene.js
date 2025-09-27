@@ -1,6 +1,7 @@
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { parseTimeSignature } from "../shared/utils.js";
 import { captureScene } from "./capture-scene.js";
+import { select } from "../control/select.js";
 
 /**
  * Creates new scenes at the specified index or captures currently playing clips
@@ -12,6 +13,7 @@ import { captureScene } from "./capture-scene.js";
  * @param {string} [args.color] - Color for the scenes (CSS format: hex)
  * @param {number|null} [args.tempo] - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
+ * @param {boolean} [args.switchView=false] - Automatically switch to session view
  * @returns {Object|Array<Object>} Single scene object when count=1, array when count>1
  */
 export function createScene({
@@ -22,6 +24,7 @@ export function createScene({
   color,
   tempo,
   timeSignature,
+  switchView,
 } = {}) {
   // Handle capture mode
   if (capture) {
@@ -59,6 +62,11 @@ export function createScene({
         scene.set("time_signature_enabled", true);
         result.timeSignature = timeSignature;
       }
+    }
+
+    // Handle view switching if requested
+    if (switchView) {
+      select({ view: "session" });
     }
 
     return result;
@@ -159,6 +167,11 @@ export function createScene({
 
     // For subsequent scenes, increment the index since scenes shift down
     currentIndex++;
+  }
+
+  // Handle view switching if requested
+  if (switchView) {
+    select({ view: "session" });
   }
 
   // Return single object if count=1, array if count>1

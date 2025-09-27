@@ -745,4 +745,124 @@ describe("transport", () => {
       );
     });
   });
+
+  describe("switchView functionality", () => {
+    it("should switch to arrangement view for play-arrangement action when switchView is true", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+        },
+      });
+
+      const result = playback({
+        action: "play-arrangement",
+        switchView: true,
+      });
+
+      // Check that select was called with arrangement view
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(result.switchView).toBe(true);
+    });
+
+    it("should switch to session view for play-scene action when switchView is true", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+        },
+      });
+
+      const result = playback({
+        action: "play-scene",
+        sceneId: "scene1",
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.switchView).toBe(true);
+    });
+
+    it("should switch to session view for play-session-clip action when switchView is true", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+        },
+      });
+
+      // Mock clip path resolution
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+
+      const result = playback({
+        action: "play-session-clip",
+        clipIds: "clip1",
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.switchView).toBe(true);
+    });
+
+    it("should not switch views when switchView is false", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+        },
+      });
+
+      const result = playback({
+        action: "play-arrangement",
+        switchView: false,
+      });
+
+      // Check that show_view was NOT called for view switching
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "show_view",
+        expect.anything(),
+      );
+      expect(result.switchView).toBe(false);
+    });
+
+    it("should not switch views for actions that don't have a target view", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+        },
+      });
+
+      const result = playback({
+        action: "stop",
+        switchView: true,
+      });
+
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "show_view",
+        expect.anything(),
+      );
+      expect(result.switchView).toBe(true);
+    });
+  });
 });
