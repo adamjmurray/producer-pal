@@ -23,7 +23,7 @@ export function readSong(args = {}) {
     id: liveSet.id,
     abletonLiveVersion: liveApp.call("get_version_string"),
     name: liveSet.getProperty("name"),
-    followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
+    arrangementFollower: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
     scenes: includeFlags.includeScenes

@@ -430,4 +430,64 @@ describe("updateSong", () => {
       $meta: [scaleChangeNote],
     });
   });
+
+  it("should set arrangementFollower to true (all tracks follow arrangement)", () => {
+    const result = updateSong({ arrangementFollower: true });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "back_to_arranger",
+      0, // 0 = following arrangement
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      arrangementFollower: true,
+    });
+  });
+
+  it("should set arrangementFollower to false (tracks don't follow arrangement)", () => {
+    const result = updateSong({ arrangementFollower: false });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "back_to_arranger",
+      1, // 1 = not following arrangement
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      arrangementFollower: false,
+    });
+  });
+
+  it("should combine arrangementFollower with other parameters", () => {
+    const result = updateSong({
+      tempo: 130,
+      arrangementFollower: true,
+      timeSignature: "3/4",
+    });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "tempo",
+      130,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "back_to_arranger",
+      0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_numerator",
+      3,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_denominator",
+      4,
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      tempo: 130,
+      arrangementFollower: true,
+      timeSignature: "3/4",
+    });
+  });
 });

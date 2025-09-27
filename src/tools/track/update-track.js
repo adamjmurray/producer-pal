@@ -20,6 +20,7 @@ import { parseCommaSeparatedIds, withoutNulls } from "../shared/utils.js";
  * @param {string} [args.outputRoutingTypeId] - Optional output routing type identifier
  * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
  * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
+ * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
  * @returns {Object|Array<Object>} Single track object or array of track objects
  */
 export function updateTrack({
@@ -34,6 +35,7 @@ export function updateTrack({
   outputRoutingTypeId,
   outputRoutingChannelId,
   monitoringState,
+  arrangementFollower,
 } = {}) {
   if (!ids) {
     throw new Error("updateTrack failed: ids is required");
@@ -87,6 +89,11 @@ export function updateTrack({
       });
     }
 
+    // Handle arrangement follower
+    if (arrangementFollower != null) {
+      track.set("back_to_arranger", arrangementFollower ? 0 : 1);
+    }
+
     // Handle monitoring state
     if (monitoringState != null) {
       const monitoringValue = {
@@ -127,6 +134,7 @@ export function updateTrack({
         outputRoutingTypeId,
         outputRoutingChannelId,
         monitoringState,
+        arrangementFollower,
       }),
     );
   }

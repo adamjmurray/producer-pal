@@ -25,7 +25,7 @@ export const toolDefTransport = defineTool("ppal-transport", {
       ])
       .describe(
         `Transport action to perform:
-- "play-arrangement": Start Arrangement timeline playback from specified position. Tracks currently playing Session clips will continue playing them unless specified in followingTrackIndexes. Consider using ppal-update-view to switch to Arrangement view if the user would benefit from seeing the arrangement.
+- "play-arrangement": Start Arrangement timeline playback from specified position. Tracks currently playing Session clips will stop playing them unless autoFollow is set to false. Consider using ppal-update-view to switch to Arrangement view if the user would benefit from seeing the arrangement.
 - "update-arrangement": Modify arrangement loop and follow settings without affecting playback state
 - "play-scene": Launch all clips in a Session scene (requires sceneIndex) - puts ALL tracks into non-following state, even tracks with empty clip slots in that scene. Consider using ppal-update-view to switch to Session view unless the user is actively working in Arrangement view.
 - "play-session-clip": Trigger clips in Session (requires trackIndexes and clipSlotIndexes) - puts these tracks into non-following state
@@ -52,11 +52,12 @@ export const toolDefTransport = defineTool("ppal-transport", {
       .describe(
         "Arrangement loop end in bar|beat position format using pipe separator (e.g., '5|1' = first beat of fifth bar of the arrangement). Uses song's time signature.",
       ),
-    followingTrackIndexes: z
-      .string()
+    autoFollow: z
+      .boolean()
       .optional()
+      .default(true)
       .describe(
-        "Comma-separated list of track indexes (0-based) that should return to following the Arrangement timeline (like clicking their 'Back to Arrangement' buttons). Use when tracks are playing Session clips but you want them to switch back to playing Arrangement clips.",
+        "For 'play-arrangement' action: when true (default), all tracks automatically follow the arrangement timeline. When false, tracks maintain their current following state.",
       ),
     trackIndexes: z
       .string()

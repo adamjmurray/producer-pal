@@ -61,5 +61,9 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .describe(
         `Track monitoring state (${Object.values(MONITORING_STATE).join(", ")})`,
       ),
+    arrangementFollower: z
+      .boolean()
+      .optional()
+      .describe("Whether the track should follow the arrangement timeline"),
   },
 });

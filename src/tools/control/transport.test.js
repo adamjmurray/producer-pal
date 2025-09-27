@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  children,
   liveApiCall,
   liveApiId,
   liveApiSet,
@@ -36,7 +37,10 @@ describe("transport", () => {
         loop: 0,
         loop_start: 0,
         loop_length: 4,
+        tracks: children("track1", "track2"),
       },
+      track1: { back_to_arranger: 0 },
+      track2: { back_to_arranger: 1 },
     });
 
     const result = transport({
@@ -55,16 +59,18 @@ describe("transport", () => {
     ); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
       action: "play-arrangement",
+      autoFollow: true,
       currentTime: "5|1",
       isPlaying: true,
       loop: false,
       loopEnd: "2|1",
       loopStart: "1|1",
       startTime: "5|1",
+      arrangementFollowerTrackIds: "track1",
     });
   });
 
-  it("should handle update-arrangement action with followingTrackIndexes", () => {
+  it("should handle update-arrangement action with loop settings", () => {
     mockLiveApiGet({
       LiveSet: {
         signature_numerator: 4,
@@ -74,7 +80,11 @@ describe("transport", () => {
         loop: 0,
         loop_start: 0,
         loop_length: 4,
+        tracks: children("track1", "track2", "track3"),
       },
+      track1: { back_to_arranger: 0 },
+      track2: { back_to_arranger: 1 },
+      track3: { back_to_arranger: 0 },
     });
 
     const result = transport({
@@ -82,7 +92,6 @@ describe("transport", () => {
       loop: true,
       loopStart: "3|1",
       loopEnd: "7|1",
-      followingTrackIndexes: "0,2,3",
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -100,22 +109,8 @@ describe("transport", () => {
       "loop_length",
       16,
     ); // 24 - 8 = 16 beats (bar 7 - bar 3 = 4 bars)
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 0" }),
-      "back_to_arranger",
-      0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 2" }),
-      "back_to_arranger",
-      0,
-    );
-    expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "live_set tracks 3" }),
-      "back_to_arranger",
-      0,
-    );
-    expect(liveApiSet).toHaveBeenCalledTimes(6); // 3 for loop/start/length, 3 for back_to_arranger
+    // Only loop settings should be called - no back_to_arranger calls for update-arrangement
+    expect(liveApiSet).toHaveBeenCalledTimes(3); // 3 for loop/start/length only
 
     expect(result).toStrictEqual({
       action: "update-arrangement",
@@ -124,7 +119,7 @@ describe("transport", () => {
       loop: true,
       loopStart: "3|1",
       loopEnd: "7|1",
-      followingTrackIndexes: "0,2,3",
+      arrangementFollowerTrackIds: "track1,track3",
     });
   });
 
@@ -185,6 +180,7 @@ describe("transport", () => {
       loopEnd: "2|1",
       trackIndexes: "0",
       clipSlotIndexes: "0",
+      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -310,6 +306,7 @@ describe("transport", () => {
       loopStart: "1|1",
       loopEnd: "2|1",
       sceneIndex: 1,
+      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -356,6 +353,7 @@ describe("transport", () => {
       loopStart: "1|1",
       loopEnd: "2|1",
       trackIndexes: "1",
+      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -425,6 +423,7 @@ describe("transport", () => {
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
+      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -457,6 +456,7 @@ describe("transport", () => {
       loop: false,
       loopEnd: "2|1",
       loopStart: "1|1",
+      arrangementFollowerTrackIds: "track1,track2",
     });
   });
 
@@ -476,15 +476,6 @@ describe("transport", () => {
         action: "play-session-clip",
         trackIndexes: "0",
         clipSlotIndexes: "0,invalid,2",
-      }),
-    ).toThrow('Invalid index "invalid" - must be a valid integer');
-  });
-
-  it("should throw error for invalid track indexes in followingTrackIndexes", () => {
-    expect(() =>
-      transport({
-        action: "update-arrangement",
-        followingTrackIndexes: "0,invalid,2",
       }),
     ).toThrow('Invalid index "invalid" - must be a valid integer');
   });
@@ -583,6 +574,131 @@ describe("transport", () => {
     );
     expect(result.currentTime).toBe("1|1");
     expect(result.startTime).toBeUndefined();
+  });
+
+  describe("autoFollow behavior for play-arrangement", () => {
+    it("should set all tracks to follow arrangement when autoFollow is true (default)", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+          tracks: children("track1", "track2", "track3"),
+        },
+        track1: { back_to_arranger: 0 },
+        track2: { back_to_arranger: 1 },
+        track3: { back_to_arranger: 0 },
+      });
+
+      const result = transport({
+        action: "play-arrangement",
+        startTime: "1|1",
+      });
+
+      // Should call back_to_arranger on the song level (affects all tracks)
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "back_to_arranger",
+        0,
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          action: "play-arrangement",
+          autoFollow: true,
+          arrangementFollowerTrackIds: "track1,track3", // tracks currently following
+        }),
+      );
+    });
+
+    it("should set all tracks to follow arrangement when autoFollow is explicitly true", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+          tracks: children("track1", "track2"),
+        },
+        track1: { back_to_arranger: 1 }, // not following
+        track2: { back_to_arranger: 1 }, // not following
+      });
+
+      const result = transport({
+        action: "play-arrangement",
+        autoFollow: true,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "back_to_arranger",
+        0,
+      );
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          autoFollow: true,
+          arrangementFollowerTrackIds: "", // empty since tracks were not following before the call
+        }),
+      );
+    });
+
+    it("should NOT set tracks to follow when autoFollow is false", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 4,
+          tracks: children("track1", "track2"),
+        },
+        track1: { back_to_arranger: 1 }, // not following
+        track2: { back_to_arranger: 0 }, // following
+      });
+
+      const result = transport({
+        action: "play-arrangement",
+        autoFollow: false,
+      });
+
+      // Should NOT call back_to_arranger when autoFollow is false
+      expect(liveApiSet).not.toHaveBeenCalledWith("back_to_arranger", 0);
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          autoFollow: false,
+          arrangementFollowerTrackIds: "track2", // only track2 was following
+        }),
+      );
+    });
+
+    it("should include arrangementFollowerTrackIds for all transport actions", () => {
+      mockLiveApiGet({
+        LiveSet: {
+          signature_numerator: 4,
+          signature_denominator: 4,
+          tracks: children("track1", "track2", "track3"),
+        },
+        track1: { back_to_arranger: 0 },
+        track2: { back_to_arranger: 1 },
+        track3: { back_to_arranger: 0 },
+      });
+
+      const result = transport({
+        action: "stop",
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          action: "stop",
+          arrangementFollowerTrackIds: "track1,track3",
+        }),
+      );
+    });
   });
 
   it("should throw error for invalid track indexes in stop-track-session-clip", () => {
