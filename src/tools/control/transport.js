@@ -14,7 +14,7 @@ import { parseCommaSeparatedIndices } from "../shared/utils.js";
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
  * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
  * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
- * @param {string} [args.followingTrackIndexes] - Comma-separated track indexes that should return to following the arrangement (like clicking 'Back to Arrangement' buttons)
+ * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
  * @param {number} [args.sceneIndex] - Scene index for Session view operations (puts tracks into non-following state)
  * @param {string} [args.trackIndexes] - Comma-separated track indexes for Session view operations
  * @param {string} [args.clipSlotIndexes] - Comma-separated clip slot indexes for Session view operations
@@ -26,7 +26,7 @@ export function transport({
   loop,
   loopStart,
   loopEnd,
-  followingTrackIndexes,
+  autoFollow = true,
   sceneIndex,
   trackIndexes,
   clipSlotIndexes,
@@ -75,17 +75,6 @@ export function transport({
     liveSet.set("loop_length", loopLengthBeats);
   }
 
-  if (followingTrackIndexes) {
-    const trackIndexList = parseCommaSeparatedIndices(followingTrackIndexes);
-
-    for (const trackIndex of trackIndexList) {
-      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-      if (track.exists()) {
-        track.set("back_to_arranger", 0);
-      }
-    }
-  }
-
   // Default result values that will be overridden by specific actions
   // (for optimistic results to avoid a sleep() for playback state updates)
   let isPlaying = liveSet.getProperty("is_playing") > 0;
@@ -97,6 +86,12 @@ export function transport({
         liveSet.set("start_time", 0);
         startTimeBeats = 0;
       }
+
+      // Handle autoFollow for arrangement playback
+      if (autoFollow) {
+        liveSet.set("back_to_arranger", 0);
+      }
+
       liveSet.call("start_playing");
 
       isPlaying = true;
@@ -225,6 +220,16 @@ export function transport({
     songTimeSigDenominator,
   );
 
+  // Get tracks that are currently following the arrangement
+  const trackIds = liveSet.getChildIds("tracks");
+  const arrangementFollowerTrackIds = trackIds
+    .filter((trackId) => {
+      const track = LiveAPI.from(trackId);
+      return track.exists() && track.getProperty("back_to_arranger") === 0;
+    })
+    .map((trackId) => trackId.replace("id ", ""))
+    .join(",");
+
   return Object.fromEntries(
     Object.entries({
       // reflect the args back:
@@ -233,10 +238,11 @@ export function transport({
       loop: loop ?? liveSet.getProperty("loop") > 0,
       loopStart: loopStart ?? currentLoopStart,
       loopEnd: loopEnd ?? currentLoopEnd,
-      followingTrackIndexes,
+      autoFollow: action === "play-arrangement" ? autoFollow : undefined,
       sceneIndex,
       trackIndexes,
       clipSlotIndexes,
+      arrangementFollowerTrackIds,
       // and include some additional relevant state:
       isPlaying,
       currentTime,

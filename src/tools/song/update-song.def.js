@@ -26,5 +26,9 @@ export const toolDefUpdateSong = defineTool("ppal-update-song", {
       .describe(
         `Scale in format 'Root ScaleName' (e.g., 'C Major', 'F# Minor', 'Bb Dorian'). Empty string string disables the scale.`,
       ),
+    arrangementFollower: z
+      .boolean()
+      .optional()
+      .describe("Whether all tracks should follow the arrangement timeline"),
   },
 });

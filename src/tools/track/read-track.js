@@ -193,7 +193,7 @@ export function readTrackGeneric({
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
     color: track.getColor(),
-    followsArrangement: track.getProperty("back_to_arranger") === 0,
+    arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
 
   // Only include isArmed when true

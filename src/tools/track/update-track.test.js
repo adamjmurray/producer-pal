@@ -513,4 +513,108 @@ describe("updateTrack", () => {
       });
     });
   });
+
+  describe("arrangementFollower parameter", () => {
+    it("should set arrangementFollower to true (track follows arrangement)", () => {
+      const result = updateTrack({
+        ids: "123",
+        arrangementFollower: true,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "back_to_arranger",
+        0, // 0 = following arrangement
+      );
+
+      expect(result).toEqual({
+        id: "123",
+        trackIndex: 0,
+        arrangementFollower: true,
+      });
+    });
+
+    it("should set arrangementFollower to false (track doesn't follow arrangement)", () => {
+      const result = updateTrack({
+        ids: "123",
+        arrangementFollower: false,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "back_to_arranger",
+        1, // 1 = not following arrangement
+      );
+
+      expect(result).toEqual({
+        id: "123",
+        trackIndex: 0,
+        arrangementFollower: false,
+      });
+    });
+
+    it("should set arrangementFollower for multiple tracks", () => {
+      const result = updateTrack({
+        ids: "123,456",
+        arrangementFollower: true,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "back_to_arranger",
+        0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "456" }),
+        "back_to_arranger",
+        0,
+      );
+
+      expect(result).toEqual([
+        {
+          id: "123",
+          trackIndex: 0,
+          arrangementFollower: true,
+        },
+        {
+          id: "456",
+          trackIndex: 1,
+          arrangementFollower: true,
+        },
+      ]);
+    });
+
+    it("should combine arrangementFollower with other parameters", () => {
+      const result = updateTrack({
+        ids: "123",
+        name: "Updated Track",
+        mute: true,
+        arrangementFollower: false,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "name",
+        "Updated Track",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "mute",
+        true,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "back_to_arranger",
+        1,
+      );
+
+      expect(result).toEqual({
+        id: "123",
+        trackIndex: 0,
+        name: "Updated Track",
+        mute: true,
+        arrangementFollower: false,
+      });
+    });
+  });
 });

@@ -216,7 +216,7 @@ export const expectedTrack = (overrides = {}) => ({
   trackIndex: 0,
   color: "#FF0000",
   isArmed: true,
-  followsArrangement: true,
+  arrangementFollower: true,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
   arrangementClips: [],
