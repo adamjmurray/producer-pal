@@ -3,6 +3,7 @@ import {
   children,
   liveApiCall,
   liveApiId,
+  liveApiPath,
   liveApiSet,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
@@ -313,6 +314,125 @@ describe("createScene", () => {
       sceneIndex: 0,
       tempo: "disabled",
       timeSignature: "disabled",
+    });
+  });
+
+  describe("capture mode", () => {
+    beforeEach(() => {
+      // Reset liveApiId to use default path-based ID generation for capture tests
+      liveApiId.mockImplementation(function () {
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "live_set view selected_scene") {
+          return "live_set scenes 1";
+        }
+        return this._path;
+      });
+      mockLiveApiGet({
+        "live_set scenes 2": { name: "Captured Scene" },
+      });
+    });
+
+    it("should delegate to captureScene when capture=true", () => {
+      const result = createScene({ capture: true });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "capture_and_insert_scene",
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+      });
+    });
+
+    it("should delegate to captureScene with sceneIndex and name", () => {
+      const result = createScene({
+        capture: true,
+        sceneIndex: 1,
+        name: "Custom Capture",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set view" }),
+        "selected_scene",
+        "id live_set/scenes/1",
+      );
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set scenes 2" }),
+        "name",
+        "Custom Capture",
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        name: "Custom Capture",
+      });
+    });
+
+    it("should apply additional properties after capture", () => {
+      const result = createScene({
+        capture: true,
+        name: "Captured with Props",
+        color: "#FF0000",
+        tempo: 140,
+        timeSignature: "3/4",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "color",
+        16711680,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "tempo",
+        140,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "tempo_enabled",
+        true,
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        name: "Captured with Props",
+        color: "#FF0000",
+        tempo: 140,
+        timeSignature: "3/4",
+      });
+    });
+
+    it("should handle disabled tempo and timeSignature in capture mode", () => {
+      const result = createScene({
+        capture: true,
+        tempo: -1,
+        timeSignature: "disabled",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "tempo_enabled",
+        false,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "time_signature_enabled",
+        false,
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        tempo: "disabled",
+        timeSignature: "disabled",
+      });
     });
   });
 });

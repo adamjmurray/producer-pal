@@ -89,7 +89,6 @@ describe("MCP Express App", () => {
         "ppal-create-scene",
         "ppal-read-scene",
         "ppal-update-scene",
-        "ppal-capture-scene",
         "ppal-create-clip",
         "ppal-read-clip",
         "ppal-update-clip",

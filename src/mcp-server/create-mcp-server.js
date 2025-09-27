@@ -9,7 +9,6 @@ import { toolDefTransport } from "../tools/control/transport.def.js";
 import { toolDefView } from "../tools/control/view.def.js";
 import { toolDefDelete } from "../tools/operations/delete.def.js";
 import { toolDefDuplicate } from "../tools/operations/duplicate.def.js";
-import { toolDefCaptureScene } from "../tools/scene/capture-scene.def.js";
 import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
 import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
 import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
@@ -41,7 +40,6 @@ export function createMcpServer(callLiveApi) {
   addTool(toolDefCreateScene);
   addTool(toolDefReadScene);
   addTool(toolDefUpdateScene);
-  addTool(toolDefCaptureScene);
 
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
