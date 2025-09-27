@@ -161,14 +161,14 @@ export function updateClip({
 
     // Determine view and indices from clip path
     const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
-    let trackIndex, clipSlotIndex, arrangementStartTime;
+    let trackIndex, sceneIndex, arrangementStartTime;
 
     if (isArrangementClip) {
       trackIndex = clip.trackIndex;
       arrangementStartTime = clip.getProperty("start_time");
     } else {
       trackIndex = clip.trackIndex;
-      clipSlotIndex = clip.clipSlotIndex;
+      sceneIndex = clip.sceneIndex;
     }
 
     if (trackIndex == null) {
@@ -189,7 +189,7 @@ export function updateClip({
     if (isArrangementClip) {
       clipResult.arrangementStartTime = arrangementStartTime;
     } else {
-      clipResult.clipSlotIndex = clipSlotIndex;
+      clipResult.sceneIndex = sceneIndex;
     }
 
     // Only include properties that were actually set

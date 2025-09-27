@@ -15,8 +15,8 @@
   "newTrackId": "274",
   "newTrackIndex": 2,
   "duplicatedClips": [
-    { "id": "275", "view": "Session", "trackIndex": 2, "clipSlotIndex": 0 },
-    { "id": "276", "view": "Session", "trackIndex": 2, "clipSlotIndex": 1 }
+    { "id": "275", "view": "Session", "trackIndex": 2, "sceneIndex": 0 },
+    { "id": "276", "view": "Session", "trackIndex": 2, "sceneIndex": 1 }
   ]
 }
 ```
@@ -34,16 +34,16 @@
       "newTrackId": "294",
       "newTrackIndex": 1,
       "duplicatedClips": [
-        { "id": "295", "view": "Session", "trackIndex": 1, "clipSlotIndex": 0 },
-        { "id": "296", "view": "Session", "trackIndex": 1, "clipSlotIndex": 1 }
+        { "id": "295", "view": "Session", "trackIndex": 1, "sceneIndex": 0 },
+        { "id": "296", "view": "Session", "trackIndex": 1, "sceneIndex": 1 }
       ]
     },
     {
       "newTrackId": "310",
       "newTrackIndex": 2,
       "duplicatedClips": [
-        { "id": "311", "view": "Session", "trackIndex": 2, "clipSlotIndex": 0 },
-        { "id": "312", "view": "Session", "trackIndex": 2, "clipSlotIndex": 1 }
+        { "id": "311", "view": "Session", "trackIndex": 2, "sceneIndex": 0 },
+        { "id": "312", "view": "Session", "trackIndex": 2, "sceneIndex": 1 }
       ]
     }
   ]
@@ -66,7 +66,7 @@
     "id": "290",
     "view": "Session",
     "trackIndex": 2,
-    "clipSlotIndex": 2,
+    "sceneIndex": 2,
     "name": "DUPE"
   }
 }
@@ -88,7 +88,7 @@
         "id": "291",
         "view": "Session",
         "trackIndex": 2,
-        "clipSlotIndex": 2,
+        "sceneIndex": 2,
         "name": "DUPE"
       }
     },
@@ -97,7 +97,7 @@
         "id": "292",
         "view": "Session",
         "trackIndex": 2,
-        "clipSlotIndex": 3,
+        "sceneIndex": 3,
         "name": "DUPE 2"
       }
     },
@@ -106,7 +106,7 @@
         "id": "293",
         "view": "Session",
         "trackIndex": 2,
-        "clipSlotIndex": 4,
+        "sceneIndex": 4,
         "name": "DUPE 3"
       }
     }
@@ -246,16 +246,16 @@
       "id": "294",
       "trackIndex": 1,
       "clips": [
-        { "id": "295", "view": "Session", "trackIndex": 1, "clipSlotIndex": 0 },
-        { "id": "296", "view": "Session", "trackIndex": 1, "clipSlotIndex": 1 }
+        { "id": "295", "view": "Session", "trackIndex": 1, "sceneIndex": 0 },
+        { "id": "296", "view": "Session", "trackIndex": 1, "sceneIndex": 1 }
       ]
     },
     {
       "id": "310",
       "trackIndex": 2,
       "clips": [
-        { "id": "311", "view": "Session", "trackIndex": 2, "clipSlotIndex": 0 },
-        { "id": "312", "view": "Session", "trackIndex": 2, "clipSlotIndex": 1 }
+        { "id": "311", "view": "Session", "trackIndex": 2, "sceneIndex": 0 },
+        { "id": "312", "view": "Session", "trackIndex": 2, "sceneIndex": 1 }
       ]
     }
   ]
@@ -276,21 +276,21 @@
       "id": "291",
       "view": "Session",
       "trackIndex": 2,
-      "clipSlotIndex": 2,
+      "sceneIndex": 2,
       "name": "DUPE"
     },
     {
       "id": "292",
       "view": "Session",
       "trackIndex": 2,
-      "clipSlotIndex": 3,
+      "sceneIndex": 3,
       "name": "DUPE 2"
     },
     {
       "id": "293",
       "view": "Session",
       "trackIndex": 2,
-      "clipSlotIndex": 4,
+      "sceneIndex": 4,
       "name": "DUPE 3"
     }
   ]
@@ -356,16 +356,16 @@
       "id": "350",
       "sceneIndex": 5,
       "clips": [
-        { "id": "351", "view": "Session", "trackIndex": 0, "clipSlotIndex": 5 },
-        { "id": "352", "view": "Session", "trackIndex": 1, "clipSlotIndex": 5 }
+        { "id": "351", "view": "Session", "trackIndex": 0, "sceneIndex": 5 },
+        { "id": "352", "view": "Session", "trackIndex": 1, "sceneIndex": 5 }
       ]
     },
     {
       "id": "360",
       "sceneIndex": 6,
       "clips": [
-        { "id": "361", "view": "Session", "trackIndex": 0, "clipSlotIndex": 6 },
-        { "id": "362", "view": "Session", "trackIndex": 1, "clipSlotIndex": 6 }
+        { "id": "361", "view": "Session", "trackIndex": 0, "sceneIndex": 6 },
+        { "id": "362", "view": "Session", "trackIndex": 1, "sceneIndex": 6 }
       ]
     }
   ]

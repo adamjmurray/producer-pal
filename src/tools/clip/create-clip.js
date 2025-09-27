@@ -6,15 +6,15 @@ import {
 } from "../../notation/barbeat/barbeat-time";
 import { parseNotation } from "../../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
-import { parseTimeSignature, setAllNonNull } from "../shared/utils.js";
 import { select } from "../control/select.js";
+import { parseTimeSignature, setAllNonNull } from "../shared/utils.js";
 
 /**
  * Creates MIDI clips in Session or Arrangement view
  * @param {Object} args - The clip parameters
  * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
  * @param {number} args.trackIndex - Track index (0-based)
- * @param {number} [args.clipSlotIndex] - Clip slot index (0-based), required for Session view
+ * @param {number} [args.sceneIndex] - The scene/clip slot index (0-based), required for Session view
  * @param {string} [args.arrangementStartTime] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
@@ -32,7 +32,7 @@ import { select } from "../control/select.js";
 export function createClip({
   view,
   trackIndex,
-  clipSlotIndex = null,
+  sceneIndex = null,
   arrangementStartTime = null,
   count = 1,
   notes: notationString = null,
@@ -55,9 +55,9 @@ export function createClip({
     throw new Error("createClip failed: trackIndex is required");
   }
 
-  if (view === "session" && clipSlotIndex == null) {
+  if (view === "session" && sceneIndex == null) {
     throw new Error(
-      "createClip failed: clipSlotIndex is required when view is 'Session'",
+      "createClip failed: sceneIndex is required when view is 'Session'",
     );
   }
 
@@ -177,15 +177,15 @@ export function createClip({
         : undefined;
 
     let clip;
-    let currentClipSlotIndex, currentArrangementStartTimeBeats;
+    let currentSceneIndex, currentArrangementStartTimeBeats;
 
     if (view === "session") {
-      currentClipSlotIndex = clipSlotIndex + i;
+      currentSceneIndex = sceneIndex + i;
 
       // Auto-create scenes if needed
-      if (currentClipSlotIndex >= MAX_AUTO_CREATED_SCENES) {
+      if (currentSceneIndex >= MAX_AUTO_CREATED_SCENES) {
         throw new Error(
-          `createClip failed: clip slot index ${currentClipSlotIndex} exceeds the maximum allowed value of ${
+          `createClip failed: sceneIndex ${currentSceneIndex} exceeds the maximum allowed value of ${
             MAX_AUTO_CREATED_SCENES - 1
           }`,
         );
@@ -193,19 +193,19 @@ export function createClip({
 
       const currentSceneCount = liveSet.getChildIds("scenes").length;
 
-      if (currentClipSlotIndex >= currentSceneCount) {
-        const scenesToCreate = currentClipSlotIndex - currentSceneCount + 1;
+      if (currentSceneIndex >= currentSceneCount) {
+        const scenesToCreate = currentSceneIndex - currentSceneCount + 1;
         for (let j = 0; j < scenesToCreate; j++) {
           liveSet.call("create_scene", -1); // -1 means append at the end
         }
       }
 
       const clipSlot = new LiveAPI(
-        `live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`,
+        `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
       );
       if (clipSlot.getProperty("has_clip")) {
         throw new Error(
-          `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentClipSlotIndex}`,
+          `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentSceneIndex}`,
         );
       }
       clipSlot.call("create_clip", clipLength);
@@ -261,7 +261,7 @@ export function createClip({
 
     // Add view-specific properties
     if (view === "session") {
-      clipResult.clipSlotIndex = currentClipSlotIndex;
+      clipResult.sceneIndex = currentSceneIndex;
     } else {
       // Calculate bar|beat position for this clip
       if (i === 0) {
@@ -305,10 +305,10 @@ export function createClip({
     switch (auto) {
       case "play-scene":
         // Launch the entire scene for synchronization
-        const scene = new LiveAPI(`live_set scenes ${clipSlotIndex}`);
+        const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
         if (!scene.exists()) {
           throw new Error(
-            `createClip auto="play-scene" failed: scene at clipSlotIndex=${clipSlotIndex} does not exist`,
+            `createClip auto="play-scene" failed: scene at sceneIndex=${sceneIndex} does not exist`,
           );
         }
         scene.call("fire");
@@ -321,9 +321,9 @@ export function createClip({
       case "play-clip":
         // Fire individual clips (original autoplay behavior)
         for (let i = 0; i < count; i++) {
-          const currentClipSlotIndex = clipSlotIndex + i;
+          const currentSceneIndex = sceneIndex + i;
           const clipSlot = new LiveAPI(
-            `live_set tracks ${trackIndex} clip_slots ${currentClipSlotIndex}`,
+            `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
           );
           clipSlot.call("fire");
           // Mark as triggered in optimistic results

@@ -19,7 +19,7 @@ describe("createClip", () => {
       "createClip failed: trackIndex is required",
     );
     expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
-      "createClip failed: clipSlotIndex is required when view is 'Session'",
+      "createClip failed: sceneIndex is required when view is 'Session'",
     );
     expect(() => createClip({ view: "arrangement", trackIndex: 0 })).toThrow(
       "createClip failed: arrangementStartTime is required when view is 'Arrangement'",
@@ -31,7 +31,7 @@ describe("createClip", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         count: 0,
       }),
     ).toThrow("createClip failed: count must be at least 1");
@@ -42,7 +42,7 @@ describe("createClip", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         timeSignature: "invalid",
       }),
     ).toThrow("Time signature must be in format");
@@ -57,12 +57,12 @@ describe("createClip", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar from song
     });
 
     expect(result).toEqual({
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       id: "live_set/tracks/0/clip_slots/0/clip",
       notes: "1|1 C3 2|1 D3",
       timeSignature: "3/4",
@@ -106,7 +106,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       timeSignature: "3/4",
       notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar
     });
@@ -145,7 +145,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       timeSignature: "6/8",
       notes: "1|1 C3 2|1 D3",
     });
@@ -186,7 +186,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       length: "1:3",
       loop: false,
     });
@@ -207,7 +207,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       length: "2:0",
       loop: true,
     });
@@ -228,7 +228,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "1|1 t2 C3 1|4 t1.5 D3", // Notes end at beat 4.5, which should round up to 5
     });
 
@@ -248,7 +248,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "1|1 t2 C3 1|2 t1.5 D3", // Notes end at beat index 2.5, which should round up to 3
     });
 
@@ -292,7 +292,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -311,7 +311,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "",
     });
 
@@ -344,7 +344,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         notes: "1|1 C3 D3 E3",
         name: "New Clip",
         color: "#FF0000",
@@ -422,7 +422,7 @@ describe("createClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         name: "New Clip",
         color: "#FF0000",
         loop: true,
@@ -448,7 +448,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         notes: "1|1 C3",
         auto: "play-scene",
       });
@@ -477,7 +477,7 @@ describe("createClip", () => {
         createClip({
           view: "session",
           trackIndex: 0,
-          clipSlotIndex: 0,
+          sceneIndex: 0,
           auto: "invalid-value",
         }),
       ).toThrow('createClip failed: unknown auto value "invalid-value"');
@@ -507,7 +507,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 1,
+        sceneIndex: 1,
         count: 3,
         name: "Loop",
         color: "#00FF00",
@@ -573,7 +573,7 @@ describe("createClip", () => {
           type: "midi",
           view: "session",
           trackIndex: 0,
-          clipSlotIndex: 1,
+          sceneIndex: 1,
           name: "Loop",
           color: "#00FF00",
           timeSignature: "4/4",
@@ -583,7 +583,7 @@ describe("createClip", () => {
           type: "midi",
           view: "session",
           trackIndex: 0,
-          clipSlotIndex: 2,
+          sceneIndex: 2,
           name: "Loop 2",
           color: "#00FF00",
           timeSignature: "4/4",
@@ -593,7 +593,7 @@ describe("createClip", () => {
           type: "midi",
           view: "session",
           trackIndex: 0,
-          clipSlotIndex: 3,
+          sceneIndex: 3,
           name: "Loop 3",
           color: "#00FF00",
           timeSignature: "4/4",
@@ -601,7 +601,7 @@ describe("createClip", () => {
       ]);
     });
 
-    it("should auto-create scenes when clipSlotIndex exceeds existing scenes", () => {
+    it("should auto-create scenes when sceneIndex exceeds existing scenes", () => {
       mockLiveApiGet({
         LiveSet: {
           scenes: children("scene1", "scene2"), // 2 existing scenes
@@ -613,7 +613,7 @@ describe("createClip", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 4, // Needs scenes at indices 2, 3, 4
+        sceneIndex: 4, // Needs scenes at indices 2, 3, 4
         name: "Future Clip",
       });
 
@@ -650,7 +650,7 @@ describe("createClip", () => {
         createClip({
           view: "session",
           trackIndex: 0,
-          clipSlotIndex: 0,
+          sceneIndex: 0,
           name: "This Should Fail",
         }),
       ).toThrow(
@@ -658,12 +658,12 @@ describe("createClip", () => {
       );
     });
 
-    it("should throw error if clipSlotIndex exceeds maximum allowed scenes", () => {
+    it("should throw error if sceneIndex exceeds maximum allowed scenes", () => {
       expect(() =>
         createClip({
           view: "session",
           trackIndex: 0,
-          clipSlotIndex: MAX_AUTO_CREATED_SCENES,
+          sceneIndex: MAX_AUTO_CREATED_SCENES,
           name: "This Should Fail",
         }),
       ).toThrow(/exceeds the maximum allowed value/);
@@ -830,7 +830,7 @@ describe("createClip", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       timeSignature: "6/8",
     });
 
@@ -856,7 +856,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "1|1 t2 C3 1|3 t3 D3", // Notes at beats 0 and 2, with durations 2 and 3, so end at beat 5
     });
 
@@ -876,7 +876,7 @@ describe("createClip", () => {
     const singleResult = createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       count: 1,
       name: "Single",
     });
@@ -884,7 +884,7 @@ describe("createClip", () => {
     const arrayResult = createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 1,
+      sceneIndex: 1,
       count: 2,
       name: "Multiple",
     });
@@ -894,7 +894,7 @@ describe("createClip", () => {
       type: "midi",
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       name: "Single",
       timeSignature: "4/4",
     });
@@ -915,7 +915,7 @@ describe("createClip", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
     });
 
@@ -956,7 +956,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
     });
 
@@ -975,7 +975,7 @@ describe("createClip", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       name: "Test Clip",
       notes: "C3 D3",
       startMarker: "1|2",
@@ -1004,7 +1004,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         switchView: true,
       });
 
@@ -1041,7 +1041,7 @@ describe("createClip", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         switchView: false,
       });
 
@@ -1060,7 +1060,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         count: 2,
         switchView: true,
       });

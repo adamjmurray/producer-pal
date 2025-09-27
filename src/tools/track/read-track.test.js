@@ -266,8 +266,8 @@ describe("readTrack", () => {
       playingSlotIndex: 0,
       arrangementClips: [],
       sessionClips: [
-        expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
-        expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
+        expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),
+        expectedClip({ id: "clip2", trackIndex: 2, sceneIndex: 2 }),
       ],
       instruments: null,
     });
@@ -376,8 +376,8 @@ describe("readTrack", () => {
 
     // Since clips exist at slots 0 and 2, we should get minimal data for those slots
     expect(result.sessionClips).toEqual([
-      { id: "clip1", clipSlotIndex: 0 },
-      { id: "clip2", clipSlotIndex: 2 },
+      { id: "clip1", sceneIndex: 0 },
+      { id: "clip2", sceneIndex: 2 },
     ]);
   });
 

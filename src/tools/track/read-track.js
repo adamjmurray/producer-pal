@@ -231,23 +231,23 @@ export function readTrackGeneric({
     result.sessionClips = includeSessionClips
       ? track
           .getChildIds("clip_slots")
-          .map((_clipSlotId, clipSlotIndex) =>
+          .map((_clipSlotId, sceneIndex) =>
             readClip({
               trackIndex,
-              clipSlotIndex,
+              sceneIndex,
               include: include,
             }),
           )
           .filter((clip) => clip.id != null)
       : track
           .getChildren("clip_slots")
-          .map((clipSlot, clipSlotIndex) => {
+          .map((clipSlot, sceneIndex) => {
             const clipArray = clipSlot.get("clip");
             // avoid Live API warning trying to construct with "id 0" for empty slots:
             if (!clipArray || (Array.isArray(clipArray) && clipArray[1] === 0))
               return null;
             const clip = LiveAPI.from(clipArray);
-            return clip.exists() ? { id: clip.id, clipSlotIndex } : null;
+            return clip.exists() ? { id: clip.id, sceneIndex } : null;
           })
           .filter(Boolean);
   } else {

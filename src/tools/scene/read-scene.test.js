@@ -156,8 +156,8 @@ describe("readScene", () => {
       tempo: 120,
       timeSignature: "4/4",
       clips: [
-        expectedClip({ id: "clip_0_0", clipSlotIndex: 0, trackIndex: 0 }),
-        expectedClip({ id: "clip_1_0", clipSlotIndex: 0, trackIndex: 1 }),
+        expectedClip({ id: "clip_0_0", sceneIndex: 0, trackIndex: 0 }),
+        expectedClip({ id: "clip_1_0", sceneIndex: 0, trackIndex: 1 }),
       ],
     });
   });
@@ -327,8 +327,8 @@ describe("readScene", () => {
         tempo: 110,
         timeSignature: "4/4",
         clips: [
-          expectedClip({ id: "clip_0_2", clipSlotIndex: 2, trackIndex: 0 }),
-          expectedClip({ id: "clip_1_2", clipSlotIndex: 2, trackIndex: 1 }),
+          expectedClip({ id: "clip_0_2", sceneIndex: 2, trackIndex: 0 }),
+          expectedClip({ id: "clip_1_2", sceneIndex: 2, trackIndex: 1 }),
         ],
       });
     });

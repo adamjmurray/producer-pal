@@ -5,7 +5,7 @@ const description = `Creates MIDI clips in Live's Session or Arrangement.
 Time formats: bar|beat for positions (1|1 = first beat), bar:beat for durations (4:0 = 4 bars). Beats can be fractional.`;
 
 // TODO: move to error message in this scenario
-// Creating a clip in Session view fails if a clip already exists at the specified trackIndex/clipSlotIndex combination. For modifying clips in slots that already contain clips (e.g., after duplicating scenes), use update-clip instead.
+// Creating a clip in Session view fails if a clip already exists at the specified trackIndex/sceneIndex combination. For modifying clips in slots that already contain clips (e.g., after duplicating scenes), use update-clip instead.
 
 // Move to init response? Delete? Put in notes param description?
 // SCALE TIP: If the song has a scale enabled (see ppal-read-song), using notes from that scale helps create harmonically cohesive clips. The scale provides a solid foundation while still allowing chromatic notes for tension and expression.
@@ -23,15 +23,15 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     view: z
       .enum(["session", "arrangement"])
       .describe(
-        "Location of the clip. Session requires trackIndex and clipSlotIndex. Arrangement requires trackIndex and arrangementStartTime.",
+        "Location of the clip. Session requires trackIndex and sceneIndex. Arrangement requires trackIndex and arrangementStartTime.",
       ),
     trackIndex: z.number().int().min(0).describe("Track index (0-based)"),
-    clipSlotIndex: z
+    sceneIndex: z
       .number()
       .int()
       .min(0)
       .optional()
-      .describe("Clip slot index (0-based)"),
+      .describe("The scene/clip slot index (0-based)"),
     arrangementStartTime: z
       .string()
       .optional()

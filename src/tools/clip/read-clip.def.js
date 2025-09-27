@@ -14,7 +14,7 @@ Clip MIDI notes use bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] notes
   // "For MIDI clips, also returns noteCount and notes as a string in bar|beat notation format. " +
   // "For audio clips, notes and noteCount are null. Returns null values for all fields when the clip slot is empty. " +
   // "Understanding clip state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline. " +
-  // "Can be used to read clips by trackIndex and clipSlotIndex (for Session clips) or directly by clipId. " +
+  // "Can be used to read clips by trackIndex and sceneIndex (for Session clips) or directly by clipId. " +
   // "For complete bar|beat notation syntax reference, see the create-clip tool description.",
   annotations: {
     readOnlyHint: true,
@@ -27,21 +27,21 @@ Clip MIDI notes use bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] notes
       .min(0)
       .optional()
       .describe(
-        "Track index (0-based), used with clipSlotIndex for reading Session clips.",
+        "Track index (0-based), used with sceneIndex for reading Session clips.",
       ),
-    clipSlotIndex: z
+    sceneIndex: z
       .number()
       .int()
       .min(0)
       .optional()
       .describe(
-        "Clip slot index (0-based), used with trackIndex for reading Session clips. This is the sceneIndex of the containing scene.",
+        "Scene/clip slot index (0-based), used with trackIndex for reading Session clips. This is the sceneIndex of the containing scene.",
       ),
     clipId: z
       .string()
       .optional()
       .describe(
-        "Clip ID to directly access any clip without trackIndex + clipSlotIndex.",
+        "Clip ID to directly access any clip without trackIndex + sceneIndex.",
       ),
     include: z
       .array(z.enum(["*", "clip-notes"]))

@@ -12,22 +12,22 @@ import {
  * Read a MIDI clip from Ableton Live and return its notes as a notation string
  * @param {Object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
- * @param {number} [args.clipSlotIndex] - Clip slot index (0-based)
+ * @param {number} [args.sceneIndex] - Clip slot index (0-based)
  * @param {string} [args.clipId] - Clip ID to directly access any clip
  * @param {string[]} [args.include] - Array of data to include in response
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
  * @returns {Object} Result object with clip information
  */
 export function readClip(args = {}) {
-  const { trackIndex = null, clipSlotIndex = null, clipId = null } = args;
+  const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
   const { includeClipNotes } = parseIncludeArray(
     args.include,
     READ_CLIP_DEFAULTS,
   );
-  if (clipId === null && (trackIndex === null || clipSlotIndex === null)) {
+  if (clipId === null && (trackIndex === null || sceneIndex === null)) {
     throw new Error(
-      "Either clipId or both trackIndex and clipSlotIndex must be provided",
+      "Either clipId or both trackIndex and sceneIndex must be provided",
     );
   }
 
@@ -37,7 +37,7 @@ export function readClip(args = {}) {
     clipId != null
       ? LiveAPI.from(clipId)
       : new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`,
+          `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
         );
 
   if (!clip.exists()) {
@@ -48,7 +48,7 @@ export function readClip(args = {}) {
       type: null,
       name: null,
       trackIndex,
-      clipSlotIndex,
+      sceneIndex,
     };
   }
 
@@ -103,7 +103,7 @@ export function readClip(args = {}) {
     );
   } else {
     result.trackIndex = clip.trackIndex;
-    result.clipSlotIndex = clip.clipSlotIndex;
+    result.sceneIndex = clip.sceneIndex;
   }
 
   if (result.type === "midi") {

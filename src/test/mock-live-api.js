@@ -262,7 +262,7 @@ export const expectedClip = (overrides = {}) => ({
   type: "midi",
   view: "session",
   trackIndex: 2,
-  clipSlotIndex: 1,
+  sceneIndex: 1,
   name: "Test Clip",
   color: "#3DC300",
   length: "1:0", // 1 bar duration

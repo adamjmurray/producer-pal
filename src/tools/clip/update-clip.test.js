@@ -108,7 +108,7 @@ describe("updateClip", () => {
       type: "midi",
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       name: "Updated Clip",
       color: "#FF0000",
       loop: true,
@@ -234,7 +234,7 @@ describe("updateClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         color: "#00FF00",
         loop: false,
       },
@@ -243,7 +243,7 @@ describe("updateClip", () => {
         type: "audio",
         view: "session",
         trackIndex: 1,
-        clipSlotIndex: 1,
+        sceneIndex: 1,
         color: "#00FF00",
         loop: false,
       },
@@ -330,7 +330,7 @@ describe("updateClip", () => {
       type: "midi",
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
       noteUpdateMode: "replace",
     });
@@ -545,7 +545,7 @@ describe("updateClip", () => {
       type: "midi",
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       name: "Prefixed ID Clip",
     });
   });
@@ -584,7 +584,7 @@ describe("updateClip", () => {
       type: "midi",
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       name: "Only Name Update",
     });
   });
@@ -612,7 +612,7 @@ describe("updateClip", () => {
       type: "midi",
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       loop: false,
     });
   });
@@ -673,7 +673,7 @@ describe("updateClip", () => {
       type: "midi",
       view: "session",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       name: "Single",
     });
     expect(arrayResult).toEqual([
@@ -682,7 +682,7 @@ describe("updateClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         name: "Multiple",
       },
       {
@@ -690,7 +690,7 @@ describe("updateClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 1,
-        clipSlotIndex: 1,
+        sceneIndex: 1,
         name: "Multiple",
       },
     ]);
@@ -724,7 +724,7 @@ describe("updateClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         color: "#0000FF",
       },
       {
@@ -732,7 +732,7 @@ describe("updateClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 1,
-        clipSlotIndex: 1,
+        sceneIndex: 1,
         color: "#0000FF",
       },
       {
@@ -782,7 +782,7 @@ describe("updateClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 0,
-        clipSlotIndex: 0,
+        sceneIndex: 0,
         name: "Filtered",
       },
       {
@@ -790,7 +790,7 @@ describe("updateClip", () => {
         type: "midi",
         view: "session",
         trackIndex: 1,
-        clipSlotIndex: 1,
+        sceneIndex: 1,
         name: "Filtered",
       },
     ]);

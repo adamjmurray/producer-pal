@@ -165,8 +165,8 @@ describe("readSong", () => {
           firedSlotIndex: 3,
           arrangementClips: [],
           sessionClips: [
-            expectedClip({ id: "clip1", trackIndex: 0, clipSlotIndex: 0 }),
-            expectedClip({ id: "clip2", trackIndex: 0, clipSlotIndex: 2 }),
+            expectedClip({ id: "clip1", trackIndex: 0, sceneIndex: 0 }),
+            expectedClip({ id: "clip2", trackIndex: 0, sceneIndex: 2 }),
           ],
           instruments: null,
         },
@@ -184,7 +184,7 @@ describe("readSong", () => {
           firedSlotIndex: 3,
           arrangementClips: [],
           sessionClips: [
-            expectedClip({ id: "clip3", trackIndex: 1, clipSlotIndex: 0 }),
+            expectedClip({ id: "clip3", trackIndex: 1, sceneIndex: 0 }),
           ],
           instruments: null,
         },
@@ -626,7 +626,7 @@ describe("readSong", () => {
     });
 
     expect(result.tracks[0].sessionClips).toEqual([
-      { id: "clip1", clipSlotIndex: 0 },
+      { id: "clip1", sceneIndex: 0 },
     ]);
     expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
   });
@@ -672,7 +672,7 @@ describe("readSong", () => {
 
     // Verify default behavior: minimal clip data, no notes
     expect(result.tracks[0].sessionClips).toEqual([
-      { id: "clip1", clipSlotIndex: 0 },
+      { id: "clip1", sceneIndex: 0 },
     ]);
     expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
 
