@@ -100,7 +100,7 @@ system integration foundational for all advanced features.
    - Continue working with project context only
    - Log errors to Max console for debugging
 
-### ppal-read-song Response Enhancement
+### ppal-read-live-set Response Enhancement
 
 ```json
 {
@@ -274,14 +274,14 @@ variable to the MCP server.
 
 - Add `memory` tool for Claude to store observations and learnings
 - Per-project memory toggle
-- Return latest memory summary (5-10 key learnings) with `ppal-read-song`
+- Return latest memory summary (5-10 key learnings) with `ppal-read-live-set`
   response
 - Timestamped memory entries stored as JSON log
 - Memory summarization to condense older entries
 - Display memory summaries in UI (new tab)
 - Main UI tab indicates when memory is enabled
 
-### ppal-read-song Response Enhancement
+### ppal-read-live-set Response Enhancement
 
 ```json
 {
@@ -410,9 +410,9 @@ variable to the MCP server.
 - Fork existing personas to create variations
 - Per-project persona selection
 - Personas travel with shared Live Sets
-- Each persona returns its identity in `ppal-read-song` response
+- Each persona returns its identity in `ppal-read-live-set` response
 
-### ppal-read-song Response Enhancement
+### ppal-read-live-set Response Enhancement
 
 ```json
 {
@@ -474,18 +474,18 @@ variable to the MCP server.
 - Memory is data, not code - keeps tool descriptions stable
 - Breaking changes are okay - this is a creative tool, but use backups to
   protect valued memories and personas
-- Contexts and memories delivered via `ppal-read-song` response to avoid
+- Contexts and memories delivered via `ppal-read-live-set` response to avoid
   extension toggle requirements
 
-### Why Return Contexts in ppal-read-song
+### Why Return Contexts in ppal-read-live-set
 
-The approach of returning contexts in the `ppal-read-song` response rather than
-injecting them into tool descriptions solves several problems:
+The approach of returning contexts in the `ppal-read-live-set` response rather
+than injecting them into tool descriptions solves several problems:
 
 - No extension toggle needed when contexts change
 - Immediate effect when users update their contexts
 - Natural fit - contexts are "notes about your music"
-- Guaranteed visibility since Claude always calls `ppal-read-song` first
+- Guaranteed visibility since Claude always calls `ppal-read-live-set` first
 - Only power users modifying JSON tool descriptions need to toggle
 
 ### Memory vs Prompt Modification

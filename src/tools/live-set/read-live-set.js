@@ -10,7 +10,7 @@ import {
 } from "../shared/include-params.js";
 import { readTrack, readTrackGeneric } from "../track/read-track.js";
 
-export function readSong(args = {}) {
+export function readLiveSet(args = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
   const liveSet = new LiveAPI("live_set");

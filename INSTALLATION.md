@@ -345,7 +345,7 @@ optimization to better support these smaller local AI models.
   Therefore **it is recommended to disable some of the Producer Pal tools**. A
   reasonable minimal toolset for experimentation is:
   - `ppal-connect`
-  - `ppal-read-song`
+  - `ppal-read-live-set`
   - `ppal-create-clip`
   - `ppal-read-clip`
   - `ppal-update-clip`
@@ -439,8 +439,8 @@ tools and they are enabled, try this:
 
 Once you trigger a `ppal-connect` tool call, Producer Pal should work. If saying
 "connect to ableton" doesn't achieve this, find a way to reliably trigger
-`ppal-connect` with your AI. For example, "connect to ableton with your tools" or
-"connect to ableton with your ppal-connect tool" might work more reliably.
+`ppal-connect` with your AI. For example, "connect to ableton with your tools"
+or "connect to ableton with your ppal-connect tool" might work more reliably.
 
 If you can see the Producer Pal tools but the AI cannot, or will not call
 `ppal-connect` no matter what you try, check you are using an AI model that

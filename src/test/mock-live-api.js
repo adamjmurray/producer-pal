@@ -80,7 +80,7 @@ export class LiveAPI {
       return "LiveSet"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
     }
     if (this.path === "live_set view") {
-      return "SongView"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
+      return "SongView";
     }
     if (this.path === "live_app") {
       return "Application";

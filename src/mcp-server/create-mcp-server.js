@@ -7,13 +7,13 @@ import { toolDefUpdateClip } from "../tools/clip/update-clip.def.js";
 import { toolDefPlayback } from "../tools/control/playback.def.js";
 import { toolDefRawLiveApi } from "../tools/control/raw-live-api.def.js";
 import { toolDefSelect } from "../tools/control/select.def.js";
+import { toolDefReadLiveSet } from "../tools/live-set/read-live-set.def.js";
+import { toolDefUpdateLiveSet } from "../tools/live-set/update-live-set.def.js";
 import { toolDefDelete } from "../tools/operations/delete.def.js";
 import { toolDefDuplicate } from "../tools/operations/duplicate.def.js";
 import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
 import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
 import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
-import { toolDefReadSong } from "../tools/song/read-song.def.js";
-import { toolDefUpdateSong } from "../tools/song/update-song.def.js";
 import { toolDefCreateTrack } from "../tools/track/create-track.def.js";
 import { toolDefReadTrack } from "../tools/track/read-track.def.js";
 import { toolDefUpdateTrack } from "../tools/track/update-track.def.js";
@@ -30,8 +30,8 @@ export function createMcpServer(callLiveApi) {
 
   addTool(toolDefConnect);
 
-  addTool(toolDefReadSong);
-  addTool(toolDefUpdateSong);
+  addTool(toolDefReadLiveSet);
+  addTool(toolDefUpdateLiveSet);
 
   addTool(toolDefCreateTrack);
   addTool(toolDefReadTrack);

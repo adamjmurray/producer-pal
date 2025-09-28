@@ -88,7 +88,9 @@ describe("connect", () => {
         "Producer Pal 0.9.8 connected to Ableton Live 12.3",
       ),
       $reference: expect.stringContaining("Producer Pal Reference"),
-      $instructions: expect.stringContaining("To initialize Producer Pal:"),
+      $instructions: expect.stringContaining(
+        "complete Producer Pal initialization",
+      ),
     });
 
     expect(result.messagesForUser).toContain("Save often!");
@@ -97,9 +99,9 @@ describe("connect", () => {
     );
 
     expect(result.$instructions).toContain(
-      "Call ppal-read-song _with no arguments_",
+      "Call ppal-read-live-set _with no arguments_",
     );
-    expect(result.$instructions).toContain("Summarize the Live Set state");
+    expect(result.$instructions).toContain("Summarize the Live Set");
     expect(result.$instructions).toContain("Say the messagesForUser");
   });
 
@@ -379,7 +381,7 @@ describe("connect", () => {
     );
     expect(result.$instructions).toContain("Summarize the project notes");
     expect(result.$instructions).toContain(
-      "follow any instructions in project notes",
+      "follow instructions in project notes",
     );
   });
 
@@ -431,7 +433,7 @@ describe("connect", () => {
     );
     expect(result.$instructions).toContain("Summarize the project notes");
     expect(result.$instructions).toContain(
-      "follow any instructions in project notes",
+      "follow instructions in project notes",
     );
     expect(result.$instructions).toContain(
       "mention you can update the project notes",

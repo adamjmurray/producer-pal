@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
-export const toolDefReadSong = defineTool("ppal-read-song", {
+export const toolDefReadLiveSet = defineTool("ppal-read-live-set", {
   title: "Read Live Set",
   description: `Read Live Set global settings, tracks, scenes, devices, clips.
 Re-read after moves/deletes for updated state.`,

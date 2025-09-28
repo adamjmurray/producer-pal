@@ -39,8 +39,8 @@ vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
 
 const mockMcpServer = {
   _registeredTools: {
-    "ppal-read-song": {
-      title: "Read Song",
+    "ppal-read-live-set": {
+      title: "Read Live Set",
       description: "Read comprehensive information about the Live Set",
       inputSchema: { type: "object", properties: {} },
     },
@@ -124,13 +124,13 @@ describe("StdioHttpBridge", () => {
 
       // Check expected tools are present
       const toolNames = tools.map((t) => t.name);
-      expect(toolNames).toContain("ppal-read-song");
+      expect(toolNames).toContain("ppal-read-live-set");
       expect(toolNames).toContain("ppal-create-clip");
 
       // Verify tool structure
       expect(tools[0]).toEqual({
-        name: "ppal-read-song",
-        title: "Read Song",
+        name: "ppal-read-live-set",
+        title: "Read Live Set",
         description: "Read comprehensive information about the Live Set",
         inputSchema: { type: "object", properties: {} },
       });
@@ -409,7 +409,7 @@ describe("StdioHttpBridge", () => {
 
       const request = {
         params: {
-          name: "ppal-read-song",
+          name: "ppal-read-live-set",
           arguments: { trackIndex: 0 },
         },
       };
@@ -417,7 +417,7 @@ describe("StdioHttpBridge", () => {
       await callToolHandler(request);
 
       expect(logger.debug).toHaveBeenCalledWith(
-        '[Bridge] Tool call: ppal-read-song {"trackIndex":0}',
+        '[Bridge] Tool call: ppal-read-live-set {"trackIndex":0}',
       );
     });
   });

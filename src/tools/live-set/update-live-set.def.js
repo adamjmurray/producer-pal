@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
-export const toolDefUpdateSong = defineTool("ppal-update-song", {
+export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
   title: "Update Live Set",
   description: "Update Live Set global settings",
   annotations: {

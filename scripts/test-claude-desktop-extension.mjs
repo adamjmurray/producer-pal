@@ -33,7 +33,7 @@ if (process.argv.includes("--help") || process.argv.includes("-h")) {
     "  test-claude-desktop-extension.mjs http://localhost:3350/mcp          # Custom URL",
   );
   console.log(
-    "  test-claude-desktop-extension.mjs ppal-read-song                     # Test ppal-read-song tool",
+    "  test-claude-desktop-extension.mjs ppal-read-live-set                     # Test ppal-read-live-set tool",
   );
   console.log(
     "  test-claude-desktop-extension.mjs ppal-read-track '{\"trackIndex\": 0}' # Test with arguments",

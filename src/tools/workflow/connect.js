@@ -154,7 +154,7 @@ Actions that break arrangement following:
 Always set routing type BEFORE selecting channel - available channels depend on the type selected.
 
 Re-read after moving or deleting objects to stay in sync. 
-Use ppal-read-song for overview, ppal-read-track for track details, ppal-read-clip before v0 deletions.
+Use ppal-read-live-set for overview, ppal-read-track for track details, ppal-read-clip before v0 deletions.
 
 ## MIDI Layering
 When duplicating tracks with routeToSource=true, the new track routes to the source track's instrument.
@@ -164,17 +164,17 @@ This enables polyrhythms with different clip lengths and phasing patterns.
 Only switch views when user asks, after creating requested objects, or when context strongly suggests it would help.`;
 
   result.$instructions =
-    "To initialize Producer Pal:\n" +
+    "Do this now to complete Producer Pal initialization:\n" +
     [
-      "* Call ppal-read-song _with no arguments_ for the best overview of the Live Set",
-      "* Summarize the Live Set state (if ppal-read-song fails, say the error and don't try again)",
+      "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
+      "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
       ...(result.projectNotes
         ? [
             `* Summarize the project notes, ${
               context?.projectNotes?.writable
                 ? "mention you can update the project notes, "
                 : ""
-            }and verify you will follow any instructions in project notes if applicable.`,
+            }and verify you will follow instructions in project notes (if any).`,
           ]
         : []),
       "* Say the messagesForUser and wait for input",

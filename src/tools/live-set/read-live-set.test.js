@@ -13,9 +13,9 @@ import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "../constants.js";
-import { readSong } from "./read-song.js";
+import { readLiveSet } from "./read-live-set.js";
 
-describe("readSong", () => {
+describe("readLiveSet", () => {
   it("returns live set information including tracks and scenes", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {
@@ -129,7 +129,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({
+    const result = readLiveSet({
       include: [
         "regular-tracks",
         "instruments",
@@ -255,7 +255,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({
+    const result = readLiveSet({
       include: [
         "regular-tracks",
         "instruments",
@@ -331,7 +331,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({
+    const result = readLiveSet({
       include: [
         "regular-tracks",
         "instruments",
@@ -438,7 +438,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({
+    const result = readLiveSet({
       include: [
         "regular-tracks",
         "instruments",
@@ -518,7 +518,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({
+    const result = readLiveSet({
       include: ["regular-tracks", "instruments", "rack-chains", "routings"],
     });
 
@@ -533,7 +533,7 @@ describe("readSong", () => {
       }),
     );
 
-    // Verify that available routing properties are NOT included (read-song doesn't support them)
+    // Verify that available routing properties are NOT included (read-live-set doesn't support them)
     expect(result.tracks[0]).not.toHaveProperty(
       "availableInputRoutingChannels",
     );
@@ -563,7 +563,7 @@ describe("readSong", () => {
       },
     });
 
-    const result = readSong({
+    const result = readLiveSet({
       include: ["regular-tracks", "instruments", "rack-chains"],
     });
 
@@ -621,7 +621,7 @@ describe("readSong", () => {
     });
 
     // Test with minimal clip loading
-    const result = readSong({
+    const result = readLiveSet({
       include: ["regular-tracks", "instruments", "rack-chains"],
     });
 
@@ -667,8 +667,8 @@ describe("readSong", () => {
       },
     });
 
-    // Call readSong with no arguments to test defaults
-    const result = readSong();
+    // Call readLiveSet with no arguments to test defaults
+    const result = readLiveSet();
 
     // Verify default behavior: minimal clip data, no notes
     expect(result.tracks[0].sessionClips).toEqual([
@@ -740,7 +740,7 @@ describe("readSong", () => {
     });
 
     // Test with all track types included
-    const resultAll = readSong({
+    const resultAll = readLiveSet({
       include: [
         "regular-tracks",
         "return-tracks",
@@ -781,7 +781,7 @@ describe("readSong", () => {
     );
 
     // Test with only return tracks included
-    const resultReturnOnly = readSong({
+    const resultReturnOnly = readLiveSet({
       include: ["return-tracks", "instruments"],
     });
 
@@ -790,7 +790,7 @@ describe("readSong", () => {
     expect(resultReturnOnly.masterTrack).toBeUndefined();
 
     // Test with only master track included
-    const resultMasterOnly = readSong({
+    const resultMasterOnly = readLiveSet({
       include: ["master-track", "instruments"],
     });
 
@@ -799,7 +799,7 @@ describe("readSong", () => {
     expect(resultMasterOnly.masterTrack).toBeDefined();
 
     // Test default behavior (should include regular tracks by default)
-    const resultDefault = readSong();
+    const resultDefault = readLiveSet();
 
     expect(resultDefault.tracks).toHaveLength(1);
     expect(resultDefault.returnTracks).toBeUndefined();
@@ -897,12 +897,12 @@ describe("readSong", () => {
     });
 
     // Test with '*' - should include everything
-    const resultWildcard = readSong({
+    const resultWildcard = readLiveSet({
       include: ["*"],
     });
 
     // Test explicit list - should produce identical result
-    const resultExplicit = readSong({
+    const resultExplicit = readLiveSet({
       include: [
         "drum-chains",
         "clip-notes",
@@ -978,7 +978,7 @@ describe("readSong", () => {
     });
 
     // Call with default include (which doesn't include "scenes")
-    const result = readSong();
+    const result = readLiveSet();
 
     // Verify that scene IDs are clean numeric strings without "id " prefix
     expect(result.scenes).toEqual([
@@ -1021,7 +1021,7 @@ describe("readSong", () => {
       return null;
     });
 
-    const result = readSong({ include: [] });
+    const result = readLiveSet({ include: [] });
 
     // Should have basic song properties
     expect(result).toEqual(
@@ -1142,7 +1142,7 @@ describe("readSong", () => {
     });
 
     // Call with NO arguments - should use defaults (including drum-maps)
-    const result = readSong();
+    const result = readLiveSet();
 
     // Should have drumMap on the track
     expect(result.tracks[0].drumMap).toEqual({

@@ -16,13 +16,13 @@ import { updateClip } from "../tools/clip/update-clip";
 import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
 import { select } from "../tools/control/select.js";
+import { readLiveSet } from "../tools/live-set/read-live-set";
+import { updateLiveSet } from "../tools/live-set/update-live-set";
 import { deleteObject } from "../tools/operations/delete";
 import { duplicate } from "../tools/operations/duplicate";
 import { createScene } from "../tools/scene/create-scene";
 import { readScene } from "../tools/scene/read-scene";
 import { updateScene } from "../tools/scene/update-scene";
-import { readSong } from "../tools/song/read-song";
-import { updateSong } from "../tools/song/update-song";
 import { createTrack } from "../tools/track/create-track";
 import { readTrack } from "../tools/track/read-track";
 import { updateTrack } from "../tools/track/update-track";
@@ -43,8 +43,8 @@ Use the `(args) => toolFunction(args)` pattern, never just `() => toolFunction()
 */
 const tools = {
   "ppal-connect": (args) => connect(args, userContext),
-  "ppal-read-song": (args) => readSong(args),
-  "ppal-update-song": (args) => updateSong(args),
+  "ppal-read-live-set": (args) => readLiveSet(args),
+  "ppal-update-live-set": (args) => updateLiveSet(args),
   "ppal-create-track": (args) => createTrack(args),
   "ppal-read-track": (args) => readTrack(args),
   "ppal-update-track": (args) => updateTrack(args),
@@ -121,7 +121,7 @@ export async function mcp_request(requestId, tool, argsJSON) {
     const args = JSON.parse(argsJSON);
 
     const includeUserContext =
-      userContext.projectNotes.enabled && tool === "ppal-read-song";
+      userContext.projectNotes.enabled && tool === "ppal-read-live-set";
 
     try {
       result = formatSuccessResponse({

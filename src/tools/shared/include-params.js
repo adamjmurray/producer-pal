@@ -205,7 +205,7 @@ export function includeArrayFromFlags(includeFlags) {
 }
 
 /**
- * Default include parameters for read-song tool
+ * Default include parameters for read-live-set tool
  */
 export const READ_SONG_DEFAULTS = {
   includeDrumChains: false,

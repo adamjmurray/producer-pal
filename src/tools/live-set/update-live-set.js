@@ -70,7 +70,7 @@ function parseScale(scaleString) {
  * @param {boolean} [args.arrangementFollower] - Whether all tracks should follow the arrangement timeline
  * @returns {Object} Updated Live Set information
  */
-export function updateSong({
+export function updateLiveSet({
   tempo,
   timeSignature,
   scale,
