@@ -140,7 +140,7 @@ describe("view", () => {
   const getDefaultViewState = () => ({
     view: "session",
     detailView: null,
-    browserVisible: false,
+    showBrowser: false,
     selectedTrack: {
       trackId: null,
       trackType: null,
@@ -523,7 +523,7 @@ describe("view", () => {
 
   describe("detail view", () => {
     it("shows clip detail view", () => {
-      const result = select({ showDetail: "clip" });
+      const result = select({ detailView: "clip" });
 
       expect(liveApiCall).toHaveBeenCalledWith(
         "focus_view",
@@ -533,7 +533,7 @@ describe("view", () => {
     });
 
     it("shows device detail view", () => {
-      const result = select({ showDetail: "device" });
+      const result = select({ detailView: "device" });
 
       expect(liveApiCall).toHaveBeenCalledWith(
         "focus_view",
@@ -543,7 +543,7 @@ describe("view", () => {
     });
 
     it("hides detail view using hide_view API", () => {
-      const result = select({ showDetail: "none" });
+      const result = select({ detailView: "none" });
 
       expect(liveApiCall).toHaveBeenCalledWith(
         "hide_view",
@@ -574,23 +574,23 @@ describe("view", () => {
 
   describe("browser visibility", () => {
     it("shows browser", () => {
-      const result = select({ browserVisible: true });
+      const result = select({ showBrowser: true });
 
       expect(liveApiCall).toHaveBeenCalledWith(
         "focus_view",
         LIVE_API_VIEW_NAMES.BROWSER,
       );
-      expect(result).toEqual(expectViewState({ browserVisible: true }));
+      expect(result).toEqual(expectViewState({ showBrowser: true }));
     });
 
     it("hides browser using hide_view API", () => {
-      const result = select({ browserVisible: false });
+      const result = select({ showBrowser: false });
 
       expect(liveApiCall).toHaveBeenCalledWith(
         "hide_view",
         LIVE_API_VIEW_NAMES.BROWSER,
       );
-      expect(result).toEqual(expectViewState({ browserVisible: false }));
+      expect(result).toEqual(expectViewState({ showBrowser: false }));
     });
   });
 
@@ -646,8 +646,8 @@ describe("view", () => {
         trackIndex: 1,
         sceneIndex: 3,
         clipId: "id clip_456",
-        showDetail: "clip",
-        browserVisible: false,
+        detailView: "clip",
+        showBrowser: false,
       });
 
       // Verify all operations were called
@@ -671,7 +671,7 @@ describe("view", () => {
           selectedSceneIndex: 3,
           selectedClipId: "id clip_456",
           detailView: "clip",
-          browserVisible: false,
+          showBrowser: false,
         }),
       );
     });
@@ -795,7 +795,7 @@ describe("view", () => {
       expect(result).toEqual({
         view: "session",
         detailView: null,
-        browserVisible: false,
+        showBrowser: false,
         selectedTrack: {
           trackId: "id 789",
           trackType: "regular",
@@ -837,7 +837,7 @@ describe("view", () => {
       expect(result).toEqual({
         view: "arrangement",
         detailView: "clip",
-        browserVisible: false,
+        showBrowser: false,
         selectedTrack: {
           trackId: null,
           trackType: null,
@@ -868,7 +868,7 @@ describe("view", () => {
       expect(result).toEqual({
         view: "arrangement",
         detailView: null,
-        browserVisible: false,
+        showBrowser: false,
         selectedTrack: {
           trackId: null,
           trackType: null,

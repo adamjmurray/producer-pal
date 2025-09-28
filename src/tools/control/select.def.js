@@ -39,7 +39,7 @@ export const toolDefSelect = defineTool("ppal-select", {
       .boolean()
       .optional()
       .describe("select the track's instrument?"),
-    showDetail: z
+    detailView: z
       .enum(["clip", "device", "none"])
       .optional()
       .describe(
@@ -49,6 +49,6 @@ export const toolDefSelect = defineTool("ppal-select", {
       .boolean()
       .optional()
       .describe("show selected clip's loop view?"),
-    browserVisible: z.boolean().optional().describe("show browser view?"),
+    showBrowser: z.boolean().optional().describe("show browser view?"),
   },
 });

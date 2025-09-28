@@ -58,7 +58,7 @@ function readViewState() {
     detailView = "device";
   }
 
-  const browserVisible = Boolean(
+  const showBrowser = Boolean(
     appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
   );
 
@@ -77,7 +77,7 @@ function readViewState() {
   return {
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     detailView,
-    browserVisible,
+    showBrowser,
     selectedTrack: selectedTrackObject,
     selectedClipId,
     selectedDeviceId,
@@ -113,11 +113,11 @@ export function select({
   clipSlot,
 
   // Detail view
-  showDetail,
+  detailView,
   showLoop,
 
   // Browser
-  browserVisible,
+  showBrowser,
 } = {}) {
   // Validation - throw errors for conflicting parameters
   validateParameters({
@@ -180,12 +180,12 @@ export function select({
   });
 
   // Update detail view
-  if (showDetail !== undefined) {
-    if (showDetail === "clip") {
+  if (detailView !== undefined) {
+    if (detailView === "clip") {
       appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_CLIP);
-    } else if (showDetail === "device") {
+    } else if (detailView === "device") {
       appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN);
-    } else if (showDetail === "none") {
+    } else if (detailView === "none") {
       // Hide detail view by hiding the detail view directly
       appView.call("hide_view", LIVE_API_VIEW_NAMES.DETAIL);
     }
@@ -199,8 +199,8 @@ export function select({
   }
 
   // Update browser visibility
-  if (browserVisible !== undefined) {
-    if (browserVisible) {
+  if (showBrowser !== undefined) {
+    if (showBrowser) {
       appView.call("focus_view", LIVE_API_VIEW_NAMES.BROWSER);
     } else {
       // Hide browser using hide_view API
@@ -232,11 +232,11 @@ export function select({
   if (deviceId != null) result.selectedDeviceId = deviceId;
   if (instrument != null) result.instrument = instrument;
   if (clipSlot != null) result.selectedClipSlot = clipSlot;
-  if (showDetail !== undefined) {
-    result.detailView = showDetail === "none" ? null : showDetail;
+  if (detailView !== undefined) {
+    result.detailView = detailView === "none" ? null : detailView;
   }
   if (showLoop != null) result.showLoop = showLoop;
-  if (browserVisible != null) result.browserVisible = browserVisible;
+  if (showBrowser != null) result.showBrowser = showBrowser;
 
   return result;
 }
