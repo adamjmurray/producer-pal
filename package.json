@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^1.1.1",
+    "@google/genai": "^1.21.0",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -57,6 +58,7 @@
     "@types/node": "^24.5.2",
     "@vitest/coverage-v8": "^3.2.4",
     "chokidar-cli": "^3.0.0",
+    "commander": "^14.0.1",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
     "rollup": "^4.52.3",
