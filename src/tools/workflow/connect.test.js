@@ -87,7 +87,7 @@ describe("connect", () => {
       messagesForUser: expect.stringContaining(
         "Producer Pal 0.9.8 connected to Ableton Live 12.3",
       ),
-      $reference: expect.stringContaining("Producer Pal Reference"),
+      $system: expect.stringContaining("Producer Pal System Prompt"),
       $instructions: expect.stringContaining(
         "complete Producer Pal initialization",
       ),
@@ -95,7 +95,7 @@ describe("connect", () => {
 
     expect(result.messagesForUser).toContain("Save often!");
     expect(result.messagesForUser).toContain(
-      "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
+      "Tell me if you rearrange things so I stay in sync.",
     );
 
     expect(result.$instructions).toContain(
@@ -212,7 +212,7 @@ describe("connect", () => {
     const result = connect();
 
     expect(result.messagesForUser).toEqual(
-      expect.stringContaining("* Ready to create"),
+      expect.stringContaining("* Save often!"),
     );
   });
 

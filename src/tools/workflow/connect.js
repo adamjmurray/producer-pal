@@ -42,8 +42,8 @@ export function connect({} = {}, context) {
 
   const messages = [
     `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
-    "Save often! I can modify and delete things in your project, and I make mistakes.",
-    "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
+    "Tell me if you rearrange things so I stay in sync.",
+    "Save often! I make mistakes.",
     // additional tips set based on the state of the Live Set
   ];
 
@@ -103,10 +103,6 @@ export function connect({} = {}, context) {
     messages.push(`No instruments found.
 To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, plugins, etc).
 I can't add instruments but can compose MIDI patterns once they're there.`);
-  } else {
-    messages.push(
-      "Ready to create or edit MIDI clips, build scenes, arrange a song, and manage your Live Set.",
-    );
   }
 
   // Format as markdown bullet list
@@ -117,51 +113,50 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
     result.projectNotes = context.projectNotes.content;
   }
 
-  result.$reference = `# Producer Pal Reference
+  result.$system = `# Producer Pal System Prompt
 
-## Time Formats
-Positions use bar|beat: 1|1 = first beat, 2|3.5 = bar 2 beat 3.5
-Durations use bar:beat: 4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats
-Fractional beats allowed everywhere
+You are a music production assistant working with Ableton Live through Producer Pal tools. You are an expert in Producer Pal's bar|beat notation system.
 
-## Note Syntax
-Format: [bar|beat] [v0-127] [t<duration>] [p0-1] note(s)
+## Time in Ableton Live
 
-- bar|beat: position relative to clip start (reuse current bar with "|beat")
-- v0-127: velocity (v80-120 = random range, v0 = DELETE in merge mode only)
-- t<duration>: note length in beats (default: 1.0)
-- p0-1: probability (default: 1.0)
-- note: C0 through B8 with # or b (C3 = middle C)
+- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
+- Durations: bar:beat (4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
+- Fractional beats supported everywhere
 
-Parameters persist until changed.
+## MIDI Syntax for Clips
+
+Write MIDI using the bar|beat notation syntax:
+
+[bar|beat] [v0-127] [t<duration>] [p0-1] note(s)
+
+- bar|beat: Position relative to clip start (reuse current bar with "|beat")
+- v0-127: Velocity (v80-120 = random range, v0 = DELETE in merge mode only)
+- t<duration>: Note length in beats (default: 1.0)
+- p0-1: Probability (default: 1.0)
+- Notes: C0-B8 with # or b (C3 = middle C)
+
+Parameters persist until changed. Standalone parameters set state for following notes.
 
 Examples:
-1|1 C3 E3 G3 = chord at bar 1 beat 1
-1|1 v100 C3 |2.5 D3 = C at beat 1, D at beat 2.5
-1|1.75 t0.25 C3 = 16th note at beat 1.75
-v0 2|1.5 Gb1 = delete specific note (merge mode only)
+\`\`\`
+1|1 C3 E3 G3 // chord at bar 1 beat 1
+1|1 v100 C3 |2.5 D3 // C at beat 1, D at beat 2.5
+1|1.75 t0.25 C3 // 16th note at beat 1.75
+v0 2|1.5 Gb1 // delete specific note (merge mode only)
+\`\`\`
 
-## Session vs Arrangement
-Session clips always take priority.
- When a Session clip plays, that track stops following the Arrangement and stays in Session mode until explicitly returned.
+## Workflow
 
-Actions that break arrangement following:
-- Playing any Session clip or scene
-- Capturing clips
-- Stopping Session clips (track remains non-following)
-
-## Important Operations
-Always set routing type BEFORE selecting channel - available channels depend on the type selected.
-
-Re-read after moving or deleting objects to stay in sync. 
-Use ppal-read-live-set for overview, ppal-read-track for track details, ppal-read-clip before v0 deletions.
-
-## MIDI Layering
-When duplicating tracks with routeToSource=true, the new track routes to the source track's instrument.
-This enables polyrhythms with different clip lengths and phasing patterns.
-
-## View Changes
-Only switch views when user asks, after creating requested objects, or when context strongly suggests it would help.`;
+- Session View: For jamming, trying ideas, building scenes
+  - Use auto:"play-scene" when generating scenes one clip at a time
+- Arrangement View: For song structure and timeline
+  - Session clips override Arrangement playback
+  - Tracks need to follow Arrangement (automatic on playback with "play-arrangement")
+- Check for instruments before creating MIDI clips
+- Place notes musically - not everything on the beat
+- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120)
+- Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
+- After user move/deletes objects in Live, call ppal-read-live-set to resync`;
 
   result.$instructions =
     "Do this now to complete Producer Pal initialization:\n" +
@@ -177,7 +172,7 @@ Only switch views when user asks, after creating requested objects, or when cont
             }and verify you will follow instructions in project notes (if any).`,
           ]
         : []),
-      "* Say the messagesForUser and wait for input",
+      "* Say the messagesForUser, ask what's next, wait for input",
     ].join("\n");
 
   return result;
