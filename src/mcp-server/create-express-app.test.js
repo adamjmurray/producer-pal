@@ -125,7 +125,7 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-create-track",
       );
       expect(createTrackTool).toBeDefined();
-      expect(createTrackTool.description).toContain("Creates new tracks");
+      expect(createTrackTool.description).toContain("Create new track(s)");
       expect(createTrackTool.inputSchema.properties.trackIndex).toBeDefined();
       expect(createTrackTool.inputSchema.properties.count).toBeDefined();
 
