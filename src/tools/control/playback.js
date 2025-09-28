@@ -156,6 +156,13 @@ export function playback({
         clipSlot.call("fire");
       }
 
+      // Fix launch quantization: when playing multiple clips, stop and restart transport
+      // to ensure in-sync playback (clips fired after the first are subject to quantization)
+      if (clipIdList.length > 1) {
+        liveSet.call("stop_playing");
+        liveSet.call("start_playing");
+      }
+
       isPlaying = true;
       break;
 

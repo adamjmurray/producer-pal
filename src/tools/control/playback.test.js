@@ -179,6 +179,12 @@ describe("transport", () => {
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
       "fire",
     );
+    expect(liveApiCall).toHaveBeenCalledTimes(1); // Only 1 fire call, no stop/start for single clip
+
+    // Verify NO quantization fix for single clip (stop/start should NOT be called)
+    expect(liveApiCall).not.toHaveBeenCalledWith("stop_playing");
+    expect(liveApiCall).not.toHaveBeenCalledWith("start_playing");
+
     expect(result).toStrictEqual({
       action: "play-session-clips",
       currentTime: "2|2",
@@ -227,8 +233,18 @@ describe("transport", () => {
       expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
       "fire",
     );
-    expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 fire calls
+    expect(liveApiCall).toHaveBeenCalledTimes(5); // 3 fire calls + stop_playing + start_playing
     expect(result.clipIds).toBe("clip1,clip2,clip3");
+
+    // Verify quantization fix: stop_playing and start_playing should be called for multiple clips
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "stop_playing",
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_playing",
+    );
   });
 
   it("should handle whitespace in clipIds", () => {
@@ -268,7 +284,17 @@ describe("transport", () => {
       expect.objectContaining({ path: expect.stringContaining("clip_slots") }),
       "fire",
     );
-    expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 fire calls
+    expect(liveApiCall).toHaveBeenCalledTimes(5); // 3 fire calls + stop_playing + start_playing
+
+    // Verify quantization fix is applied for multiple clips
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "stop_playing",
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "start_playing",
+    );
   });
 
   it("should throw error when required parameters are missing for play-session-clips", () => {
