@@ -120,68 +120,48 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
   result.$reference = `# Producer Pal Reference
 
 ## Time Formats
-- bar|beat positions: 1|1 = first beat, 2|3.5 = bar 2 beat 3.5
-- bar:beat durations: 4:0 = exactly 4 bars, 1:2 = 1 bar + 2 beats
-- fractional beats allowed
+Positions use bar|beat: 1|1 = first beat, 2|3.5 = bar 2 beat 3.5
+Durations use bar:beat: 4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats
+Fractional beats allowed everywhere
 
-## Clip Note Syntax: bar|beat Notation
-\`\`\`
-[bar|beat] [v0-127] [t<duration>] [p0-1] note(s)
-\`\`\`
+## Note Syntax
+Format: [bar|beat] [v0-127] [t<duration>] [p0-1] note(s)
 
-- bar|beat position
-  - clip note timing is relative to clip start, not the arrangement's global timeline
-  - use the "|beat" shortcut to reuse the current bar
-- v0-127: velocity (v127 = loudest, v80 = medium, v80-120 = random range)
-  - v0: DELETE notes using ppal-update-clip with merge mode
-- t<duration>: note duration in beats (0.5 = half a beat, default: 1)
-- p0-1: probability (p0 = never, p0.5 = 50%, default: 1)
-- note: C0-B8 with #/b (C#3, Eb4, C3 = middle C)
+- bar|beat: position relative to clip start (reuse current bar with "|beat")
+- v0-127: velocity (v80-120 = random range, v0 = DELETE in merge mode only)
+- t<duration>: note length in beats (default: 1.0)
+- p0-1: probability (default: 1.0)
+- note: C0 through B8 with # or b (C3 = middle C)
 
-All parameters are stateful (persist until changed)
+Parameters persist until changed.
 
-### bar|beat Notation Examples
-\`\`\`
-1|1 C3 E3 G3          // Chord at bar 1 beat 1
-1|1 v100 C3 |2.5 D3   // C at beat 1, D at beat 2.5
-1|1.75 t0.25 C3       // 16th note at beat 1.75
-v0 2|1.5 Gb1          // Delete note (merge mode only)
-\`\`\`
+Examples:
+1|1 C3 E3 G3 = chord at bar 1 beat 1
+1|1 v100 C3 |2.5 D3 = C at beat 1, D at beat 2.5
+1|1.75 t0.25 C3 = 16th note at beat 1.75
+v0 2|1.5 Gb1 = delete specific note (merge mode only)
 
 ## Session vs Arrangement
+Session clips always take priority.
+ When a Session clip plays, that track stops following the Arrangement and stays in Session mode until explicitly returned.
 
-### Clip Precedence
-- Session clips always take priority over Arrangement clips
-- When a Session clip is playing, that track stops following the Arrangement until explicitly told to return
+Actions that break arrangement following:
+- Playing any Session clip or scene
+- Capturing clips
+- Stopping Session clips (track remains non-following)
 
-### Track Following States
-- Following: Track plays Arrangement clips
-- Not Following: Track plays Session clips or nothing
-- Actions that break following:
-  - Playing any Session clip/scene
-  - Capturing clips
-  - Stopping Session clips (track stays non-following)
+## Important Operations
+Always set routing type BEFORE selecting channel - available channels depend on the type selected.
 
-## Track Management
-- Keep track names unique to avoid routing ambiguity.
-- Always set routing type BEFORE channel. Available channels depend on the selected type.
+Re-read after moving or deleting objects to stay in sync. 
+Use ppal-read-song for overview, ppal-read-track for track details, ppal-read-clip before v0 deletions.
 
-### MIDI Layering (routeToSource)
-When duplicating tracks with \`routeToSource=true\`:
-- New track routes to source track's instrument
-- Enables polyrhythms (different clip lengths)
+## MIDI Layering
+When duplicating tracks with routeToSource=true, the new track routes to the source track's instrument.
+This enables polyrhythms with different clip lengths and phasing patterns.
 
-## Staying in Sync
-Always re-read after moves/deletes:
-- \`ppal-read-song\` for overview
-- \`ppal-read-track\` for track state
-- \`ppal-read-clip\` for precise note positions before v0 deletions
-
-## View Management
-Change views when:
-- User explicitly asks
-- After creating objects they requested
-- Context strongly suggests benefit`;
+## View Changes
+Only switch views when user asks, after creating requested objects, or when context strongly suggests it would help.`;
 
   result.$instructions =
     "To initialize Producer Pal:\n" +
