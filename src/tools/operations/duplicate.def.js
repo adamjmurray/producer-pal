@@ -33,12 +33,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .boolean()
       .optional()
       .describe(
-        "Route new track to source's instrument? (for MIDI layering/polyrhythms)",
+        "route new track to source's instrument? (for MIDI layering/polyrhythms)",
       ),
     switchView: z
       .boolean()
       .optional()
       .default(false)
-      .describe("Auto-switch view?"),
+      .describe("auto-switch view?"),
   },
 });

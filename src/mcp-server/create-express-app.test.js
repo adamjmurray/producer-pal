@@ -168,7 +168,7 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-create-clip",
       );
       expect(createClipTool).toBeDefined();
-      expect(createClipTool.description).toContain("Creates MIDI clips");
+      expect(createClipTool.description).toContain("Create MIDI clip(s)");
       expect(createClipTool.inputSchema.properties.view).toBeDefined();
       expect(createClipTool.inputSchema.properties.trackIndex).toBeDefined();
     });

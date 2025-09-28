@@ -87,6 +87,7 @@ describe("connect", () => {
       messagesForUser: expect.stringContaining(
         "Producer Pal 0.9.8 connected to Ableton Live 12.3",
       ),
+      $reference: expect.stringContaining("Producer Pal Reference"),
       $instructions: expect.stringContaining("To initialize Producer Pal:"),
     });
 
