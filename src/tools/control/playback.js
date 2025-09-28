@@ -120,10 +120,10 @@ export function playback({
       isPlaying = true;
       break;
 
-    case "play-session-clip":
+    case "play-session-clips":
       if (!clipIds) {
         throw new Error(
-          `playback failed: clipIds is required for action "play-session-clip"`,
+          `playback failed: clipIds is required for action "play-session-clips"`,
         );
       }
 
@@ -133,7 +133,7 @@ export function playback({
         const clip = LiveAPI.from(clipId);
         if (!clip.exists()) {
           throw new Error(
-            `playback play-session-clip action failed: clip with clipId=${clipId} does not exist`,
+            `playback play-session-clips action failed: clip with clipId=${clipId} does not exist`,
           );
         }
         // For clips, we need to fire the clip slot, not the clip itself
@@ -142,7 +142,7 @@ export function playback({
         const sceneIndex = clip.sceneIndex;
         if (trackIndex == null || sceneIndex == null) {
           throw new Error(
-            `playback play-session-clip action failed: could not determine track/scene for clipId=${clipId}`,
+            `playback play-session-clips action failed: could not determine track/scene for clipId=${clipId}`,
           );
         }
         const clipSlot = new LiveAPI(
@@ -150,7 +150,7 @@ export function playback({
         );
         if (!clipSlot.exists()) {
           throw new Error(
-            `playback play-session-clip action failed: clip slot for clipId=${clipId} does not exist`,
+            `playback play-session-clips action failed: clip slot for clipId=${clipId} does not exist`,
           );
         }
         clipSlot.call("fire");
@@ -159,10 +159,10 @@ export function playback({
       isPlaying = true;
       break;
 
-    case "stop-track-session-clip":
+    case "stop-session-clips":
       if (!clipIds) {
         throw new Error(
-          `playback failed: clipIds is required for action "stop-track-session-clip"`,
+          `playback failed: clipIds is required for action "stop-session-clips"`,
         );
       }
 
@@ -173,14 +173,14 @@ export function playback({
         const clip = LiveAPI.from(clipId);
         if (!clip.exists()) {
           throw new Error(
-            `playback stop-track-session-clip action failed: clip with clipId=${clipId} does not exist`,
+            `playback stop-session-clips action failed: clip with clipId=${clipId} does not exist`,
           );
         }
         // Extract track index from clip and add to set to avoid duplicate calls
         const trackIndex = clip.trackIndex;
         if (trackIndex == null) {
           throw new Error(
-            `playback stop-track-session-clip action failed: could not determine track for clipId=${clipId}`,
+            `playback stop-session-clips action failed: could not determine track for clipId=${clipId}`,
           );
         }
         const trackPath = `live_set tracks ${trackIndex}`;
@@ -191,7 +191,7 @@ export function playback({
         const track = new LiveAPI(trackPath);
         if (!track.exists()) {
           throw new Error(
-            `playback stop-track-session-clip action failed: track for clip path does not exist`,
+            `playback stop-session-clips action failed: track for clip path does not exist`,
           );
         }
         track.call("stop_all_clips");
@@ -242,7 +242,7 @@ export function playback({
     let targetView = null;
     if (action === "play-arrangement") {
       targetView = "arrangement";
-    } else if (action === "play-scene" || action === "play-session-clip") {
+    } else if (action === "play-scene" || action === "play-session-clips") {
       targetView = "session";
     }
 

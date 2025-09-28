@@ -14,8 +14,8 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         "play-arrangement",
         "update-arrangement",
         "play-scene",
-        "play-session-clip",
-        "stop-track-session-clip",
+        "play-session-clips",
+        "stop-session-clips",
         "stop-all-session-clips",
         "stop",
       ])
@@ -23,10 +23,10 @@ export const toolDefPlayback = defineTool("ppal-playback", {
         `play-arrangement: from startTime
 update-arrangement: modify loop
 play-scene: all clips in scene
-play-session-clip: by id(s)
-stop-track-session-clip: by id(s)
+play-session-clips: by id(s)
+stop-session-clips: by id(s)
 stop-all-session-clips: all
-stop: everything`,
+stop: session and arrangement`,
       ),
     startTime: z
       .string()

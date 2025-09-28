@@ -149,7 +149,7 @@ describe("transport", () => {
     expect(result.loopEnd).toBe("2|1"); // 3 beats = 1 bar in 3/4
   });
 
-  it("should handle play-session-clip action with single clip", () => {
+  it("should handle play-session-clips action with single clip", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
@@ -171,7 +171,7 @@ describe("transport", () => {
     });
 
     const result = playback({
-      action: "play-session-clip",
+      action: "play-session-clips",
       clipIds: "clip1",
     });
 
@@ -180,7 +180,7 @@ describe("transport", () => {
       "fire",
     );
     expect(result).toStrictEqual({
-      action: "play-session-clip",
+      action: "play-session-clips",
       currentTime: "2|2",
       isPlaying: true,
       loop: false,
@@ -191,7 +191,7 @@ describe("transport", () => {
     });
   });
 
-  it("should handle play-session-clip action with multiple clips", () => {
+  it("should handle play-session-clips action with multiple clips", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: {
@@ -219,7 +219,7 @@ describe("transport", () => {
     });
 
     const result = playback({
-      action: "play-session-clip",
+      action: "play-session-clips",
       clipIds: "clip1,clip2,clip3",
     });
 
@@ -259,7 +259,7 @@ describe("transport", () => {
     });
 
     playback({
-      action: "play-session-clip",
+      action: "play-session-clips",
       clipIds: "clip1, clip2 , clip3",
     });
 
@@ -271,25 +271,25 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 fire calls
   });
 
-  it("should throw error when required parameters are missing for play-session-clip", () => {
-    expect(() => playback({ action: "play-session-clip" })).toThrow(
-      'playback failed: clipIds is required for action "play-session-clip"',
+  it("should throw error when required parameters are missing for play-session-clips", () => {
+    expect(() => playback({ action: "play-session-clips" })).toThrow(
+      'playback failed: clipIds is required for action "play-session-clips"',
     );
   });
 
-  it("should throw error when clip doesn't exist for play-session-clip", () => {
+  it("should throw error when clip doesn't exist for play-session-clips", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() =>
       playback({
-        action: "play-session-clip",
+        action: "play-session-clips",
         clipIds: "nonexistent_clip",
       }),
     ).toThrow(
-      "playback play-session-clip action failed: clip with clipId=nonexistent_clip does not exist",
+      "playback play-session-clips action failed: clip with clipId=nonexistent_clip does not exist",
     );
   });
 
-  it("should throw error when clip slot doesn't exist for play-session-clip", () => {
+  it("should throw error when clip slot doesn't exist for play-session-clips", () => {
     // Mock a clip that exists but its slot doesn't
     liveApiPath.mockImplementation(function () {
       if (this._path === "clip1") {
@@ -307,11 +307,11 @@ describe("transport", () => {
 
     expect(() =>
       playback({
-        action: "play-session-clip",
+        action: "play-session-clips",
         clipIds: "clip1",
       }),
     ).toThrow(
-      "playback play-session-clip action failed: clip slot for clipId=clip1 does not exist",
+      "playback play-session-clips action failed: clip slot for clipId=clip1 does not exist",
     );
   });
 
@@ -363,7 +363,7 @@ describe("transport", () => {
     );
   });
 
-  it("should handle stop-track-session-clip action with single clip", () => {
+  it("should handle stop-session-clips action with single clip", () => {
     mockLiveApiGet({
       LiveSet: {
         signature_numerator: 4,
@@ -385,7 +385,7 @@ describe("transport", () => {
     });
 
     const result = playback({
-      action: "stop-track-session-clip",
+      action: "stop-session-clips",
       clipIds: "clip1",
     });
 
@@ -394,7 +394,7 @@ describe("transport", () => {
       "stop_all_clips",
     );
     expect(result).toStrictEqual({
-      action: "stop-track-session-clip",
+      action: "stop-session-clips",
       currentTime: "2|2",
       isPlaying: true, // transport/arrangement can still be playing
       loop: false,
@@ -405,7 +405,7 @@ describe("transport", () => {
     });
   });
 
-  it("should handle stop-track-session-clip action with multiple clips", () => {
+  it("should handle stop-session-clips action with multiple clips", () => {
     mockLiveApiGet({
       LiveSet: {
         signature_numerator: 4,
@@ -433,7 +433,7 @@ describe("transport", () => {
     });
 
     playback({
-      action: "stop-track-session-clip",
+      action: "stop-session-clips",
       clipIds: "clip1,clip2,clip3",
     });
 
@@ -444,21 +444,21 @@ describe("transport", () => {
     expect(liveApiCall).toHaveBeenCalledTimes(3); // 3 stop_all_clips calls
   });
 
-  it("should throw an error when required parameters are missing for stop-track-session-clip", () => {
-    expect(() => playback({ action: "stop-track-session-clip" })).toThrow(
-      'playback failed: clipIds is required for action "stop-track-session-clip"',
+  it("should throw an error when required parameters are missing for stop-session-clips", () => {
+    expect(() => playback({ action: "stop-session-clips" })).toThrow(
+      'playback failed: clipIds is required for action "stop-session-clips"',
     );
   });
 
-  it("should throw an error when clip doesn't exist for stop-track-session-clip", () => {
+  it("should throw an error when clip doesn't exist for stop-session-clips", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() =>
       playback({
-        action: "stop-track-session-clip",
+        action: "stop-session-clips",
         clipIds: "nonexistent_clip",
       }),
     ).toThrow(
-      "playback stop-track-session-clip action failed: clip with clipId=nonexistent_clip does not exist",
+      "playback stop-session-clips action failed: clip with clipId=nonexistent_clip does not exist",
     );
   });
 
@@ -789,7 +789,7 @@ describe("transport", () => {
       expect(result.switchView).toBe(true);
     });
 
-    it("should switch to session view for play-session-clip action when switchView is true", () => {
+    it("should switch to session view for play-session-clips action when switchView is true", () => {
       mockLiveApiGet({
         LiveSet: {
           signature_numerator: 4,
@@ -809,7 +809,7 @@ describe("transport", () => {
       });
 
       const result = playback({
-        action: "play-session-clip",
+        action: "play-session-clips",
         clipIds: "clip1",
         switchView: true,
       });
