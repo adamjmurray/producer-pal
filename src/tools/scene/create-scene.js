@@ -1,7 +1,7 @@
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
+import { select } from "../control/select.js";
 import { parseTimeSignature } from "../shared/utils.js";
 import { captureScene } from "./capture-scene.js";
-import { select } from "../control/select.js";
 
 /**
  * Creates new scenes at the specified index or captures currently playing clips

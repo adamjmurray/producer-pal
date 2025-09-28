@@ -38,7 +38,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     timeSignature: z
       .string()
       .optional()
-      .describe(`"N/D" ("4/4", default: global time signature)`),
+      .describe(`N/D (4/4), default: global time signature)`),
     startMarker: z.string().optional().describe("starting bar|beat position"),
     length: z
       .string()

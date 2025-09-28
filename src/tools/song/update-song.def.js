@@ -10,7 +10,7 @@ export const toolDefUpdateSong = defineTool("ppal-update-song", {
   },
   inputSchema: {
     tempo: z.number().min(20).max(999).optional().describe("BPM"),
-    timeSignature: z.string().optional().describe('"N/D" ("4/4")'),
+    timeSignature: z.string().optional().describe("N/D (4/4)"),
     scale: z
       .string()
       .optional()

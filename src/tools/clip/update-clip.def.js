@@ -12,7 +12,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     ids: z.string().describe("comma-separated clip ID(s) to update"),
     name: z.string().optional().describe("clip name"),
     color: z.string().optional().describe("#RRGGBB"),
-    timeSignature: z.string().optional().describe('"N/D" ("4/4")'),
+    timeSignature: z.string().optional().describe("N/D (4/4)"),
     startMarker: z.string().optional().describe("starting bar|beat position"),
     length: z
       .string()

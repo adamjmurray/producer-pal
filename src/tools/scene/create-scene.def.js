@@ -24,8 +24,11 @@ export const toolDefCreateScene = defineTool("ppal-create-scene", {
       .describe("copy playing session clips instead of creating empty?"),
     name: z.string().optional().describe("name (appended with counts > 1)"),
     color: z.string().optional().describe("#RRGGBB"),
-    tempo: z.number().optional().describe("BPM (-1 disables)"),
-    timeSignature: z.string().optional().describe('"N/D" ("4/4"'),
+    tempo: z.number().optional().describe("BPM (-1 disables when capturing)"),
+    timeSignature: z
+      .string()
+      .optional()
+      .describe('N/D (4/4) or "disabled" when capturing'),
     switchView: z
       .boolean()
       .optional()
