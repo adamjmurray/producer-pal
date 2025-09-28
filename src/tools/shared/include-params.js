@@ -19,6 +19,7 @@ const ALL_INCLUDE_OPTIONS = {
     "master-track",
     "all-tracks",
     "all-devices",
+    "all-clips",
   ],
   track: [
     "drum-chains",
@@ -34,6 +35,7 @@ const ALL_INCLUDE_OPTIONS = {
     "arrangement-clips",
     "all-devices",
     "all-routings",
+    "all-clips",
   ],
   scene: ["clips", "clip-notes"],
   clip: ["clip-notes"],
@@ -46,6 +48,7 @@ const SHORTCUT_MAPPINGS = {
   "all-tracks": ["regular-tracks", "return-tracks", "master-track"],
   "all-devices": ["midi-effects", "instruments", "audio-effects"],
   "all-routings": ["routings", "available-routings"],
+  "all-clips": ["session-clips", "arrangement-clips"],
 };
 
 /**
