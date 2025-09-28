@@ -1,80 +1,54 @@
 import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
-const description = `Reads or updates the view state in Ableton Live.
-
-When called with no arguments, returns the current view state including main view (session/arrangement), selected track/scene/clip/device, selected track type (regular/return/master), highlighted clip slot, detail view status (clip/device), and browser visibility.
-
-When called with arguments, updates the view and returns the full view state with updates optimistically applied. Use update functionality judiciously to avoid interrupting user workflow. Generally only change views when: 1) User explicitly asks to see something, 2) After creating/modifying objects the user specifically asked to work on, 3) Context strongly suggests the user would benefit from seeing the result. When in doubt, don't change views.`;
-
 export const toolDefSelect = defineTool("ppal-select", {
   title: "Selection Controls",
-  description,
+  description: "Read selection/view state (no args), or update it",
   annotations: {
     readOnlyHint: false,
     destructiveHint: false,
   },
   inputSchema: {
-    // Main view
-    view: z
-      .enum(["session", "arrangement"])
+    view: z.enum(["session", "arrangement"]).optional().describe("main view"),
+    trackId: z
+      .string()
       .optional()
-      .describe("Switch between Session and Arrangement views"),
-
-    // Track selection
-    trackId: z.string().optional().describe("Select track by ID"),
+      .describe("select a track with this or trackType/trackIndex"),
     trackType: z
       .enum(["regular", "return", "master"])
       .optional()
       .default("regular")
-      .describe("Type of track to select"),
-    trackIndex: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
       .describe(
-        "Track index (0-based) - for regular or return tracks, not used for master. In session view, providing both trackIndex and sceneIndex selects the clip slot.",
+        "regular and return tracks have independent trackIndexes, master has no index",
       ),
-
-    // Scene selection
-    sceneId: z.string().optional().describe("Select scene by ID"),
-    sceneIndex: z
-      .number()
-      .int()
-      .min(0)
+    trackIndex: z.number().int().min(0).optional().describe("0-based index"),
+    sceneId: z
+      .string()
       .optional()
-      .describe(
-        "Select scene by index (0-based). In session view, providing both trackIndex and sceneIndex selects the clip slot.",
-      ),
-
-    // Clip selection
+      .describe("select a scene with this or sceneIndex"),
+    sceneIndex: z.number().int().min(0).optional().describe("0-based index"),
     clipId: z
       .string()
       .nullable()
       .optional()
-      .describe("Select clip by ID, or pass null to deselect all clips"),
-
-    // Device selection
-    deviceId: z.string().optional().describe("Select device by ID"),
+      .describe(
+        "select a clip with this or trackIndex + sceneIndex, or null to deselect all clips",
+      ),
+    deviceId: z.string().optional().describe("select a device"),
     instrument: z
       .boolean()
       .optional()
-      .describe(
-        "Select the instrument (or first device) on the selected track",
-      ),
-
-    // Detail view
+      .describe("select the track's instrument?"),
     showDetail: z
       .enum(["clip", "device", "none"])
       .optional()
-      .describe("Show detail view - 'clip', 'device', or 'none' to hide"),
+      .describe(
+        `show the selected clip or device detail view, or "none" to hide`,
+      ),
     showLoop: z
       .boolean()
       .optional()
-      .describe("Show loop view for selected clip"),
-
-    // Browser
-    browserVisible: z.boolean().optional().describe("Show or hide the browser"),
+      .describe("show selected clip's loop view?"),
+    browserVisible: z.boolean().optional().describe("show browser view?"),
   },
 });
