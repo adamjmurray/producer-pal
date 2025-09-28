@@ -2,9 +2,8 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefConnect = defineTool("ppal-connect", {
   title: "Connect to Ableton",
-  description: `Initialize connection to Ableton Live.
-Call before other ppal-* tools when the user mentions Ableton/Producer Pal or open/connect to/play with ableton.
-Provides instructions to complete the initialization.`,
+  description: `Connect to Ableton Live and initialize Producer Pal.
+Call before other ppal-* tools when the user says use/connect to ableton.`,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,

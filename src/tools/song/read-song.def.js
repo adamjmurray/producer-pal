@@ -2,9 +2,9 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefReadSong = defineTool("ppal-read-song", {
-  title: "Read Song",
-  description: `Read details about the Ableton Live Set including global settings, tracks, scenes, devices, and clips.
-Use this for an overview of the state of Live and call again after any moves/deletes by the user.`,
+  title: "Read Live Set",
+  description: `Read Live Set global settings, tracks, scenes, devices, clips.
+Re-read after moves/deletes for updated state.`,
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -34,24 +34,7 @@ Use this for an overview of the state of Live and call again after any moves/del
       )
       .default(["regular-tracks", "instruments", "drum-maps"])
       .describe(
-        `Data to include. Options:
-- "regular-tracks"
-- "return-tracks"
-- "master-track"
-- "all-tracks" → regular + return + master tracks
-- "routings" → track input/output routings
-- "scenes"
-- "midi-effects"
-- "instruments"
-- "audio-effects"
-- "all-devices" → midi effects + instruments + audio effects
-- "rack-chains" → device chains in rack devices
-- "drum-chains" → drum pad and return chains in drum racks
-- "drum-maps" → drum pad mappings without chain data
-- "session-clips"
-- "arrangement-clips"
-- "clip-notes" → MIDI notes (slow with many clips)
-- "*" → everything (avoid unless simple Live Set)`,
+        'Data to include: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack/drum), drum-maps, clips (session/arrangement), clip-notes., "*" for everything (avoid in big sets).',
       ),
   },
 });

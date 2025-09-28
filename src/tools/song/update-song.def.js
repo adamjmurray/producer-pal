@@ -2,33 +2,24 @@ import { z } from "zod";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefUpdateSong = defineTool("ppal-update-song", {
-  title: "Update Song",
-  description:
-    "Updates song properties in the Live Set including tempo, time signature, and scale.",
+  title: "Update Live Set",
+  description: "Update Live Set global settings",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
   inputSchema: {
-    tempo: z
-      .number()
-      .min(20)
-      .max(999)
-      .optional()
-      .describe("Set tempo in BPM (20.0-999.0)"),
-    timeSignature: z
-      .string()
-      .optional()
-      .describe('Time signature in format "n/m" (e.g. "4/4")'),
+    tempo: z.number().min(20).max(999).optional().describe("BPM"),
+    timeSignature: z.string().optional().describe('"N/D" format ("4/4")'),
     scale: z
       .string()
       .optional()
       .describe(
-        `Scale in format 'Root ScaleName' (e.g., 'C Major', 'F# Minor', 'Bb Dorian'). Empty string string disables the scale.`,
+        '"Root ScaleName" format ("C Major", "F# Minor", "Bb Dorian"). Empty string disables scale',
       ),
     arrangementFollower: z
       .boolean()
       .optional()
-      .describe("Whether all tracks should follow the arrangement timeline"),
+      .describe("all tracks follow the arrangement"),
   },
 });
