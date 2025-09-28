@@ -21,9 +21,9 @@ import {
  * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
  * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
-function computeState(liveObject, trackType = "regular") {
+function computeState(liveObject, category = "regular") {
   // Master track doesn't have mute/solo/muted_via_solo properties
-  if (trackType === "master") {
+  if (category === "master") {
     return STATE.ACTIVE;
   }
 
@@ -119,7 +119,7 @@ function stripChains(device) {
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
  * @param {number} args.trackIndex - Track index (0-based). Also used as returnTrackIndex for return tracks. Ignored for master track.
- * @param {string} args.trackType - Type of track: "regular" (default), "return", or "master"
+ * @param {string} args.category - Category of track: "regular" (default), "return", or "master"
  * @param {Array} args.include - Array of data to include in the response
  * @returns {Object} Result object with track information
  */
@@ -128,7 +128,7 @@ function stripChains(device) {
  * @param {Object} args - The parameters
  * @param {Object} args.track - LiveAPI track object
  * @param {number|null} args.trackIndex - Track index (null for master track)
- * @param {string} args.trackType - Track type: "regular", "return", or "master"
+ * @param {string} args.category - Track category: "regular", "return", or "master"
  * @param {boolean} args.includeDrumChains - Include drum chains
  * @param {boolean} args.includeClipNotes - Include notes in clips
  * @param {boolean} args.includeRackChains - Include rack chains
@@ -144,7 +144,7 @@ function stripChains(device) {
 export function readTrackGeneric({
   track,
   trackIndex,
-  trackType = "regular",
+  category = "regular",
   include,
 }) {
   const {
@@ -166,12 +166,12 @@ export function readTrackGeneric({
       name: null,
     };
 
-    // Add appropriate index property based on track type
-    if (trackType === "regular") {
+    // Add appropriate index property based on track category
+    if (category === "regular") {
       result.trackIndex = trackIndex;
-    } else if (trackType === "return") {
+    } else if (category === "return") {
       result.returnTrackIndex = trackIndex;
-    } else if (trackType === "master") {
+    } else if (category === "master") {
       result.trackIndex = null;
     }
 
@@ -181,7 +181,7 @@ export function readTrackGeneric({
   const groupId = track.get("group_track")[1];
   const isMidiTrack = track.getProperty("has_midi_input") > 0;
   const isProducerPalHost =
-    trackType === "regular" && trackIndex === getHostTrackIndex();
+    category === "regular" && trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
 
   // Check track capabilities to avoid warnings
@@ -218,16 +218,16 @@ export function readTrackGeneric({
     result.groupId = `${groupId}`;
   }
 
-  // Add track index properties based on track type
-  if (trackType === "regular") {
+  // Add track index properties based on track category
+  if (category === "regular") {
     result.trackIndex = trackIndex;
-  } else if (trackType === "return") {
+  } else if (category === "return") {
     result.returnTrackIndex = trackIndex;
   }
   // Master track gets no index property
 
   // Session clips - only for regular tracks (return and master tracks don't have clip slots)
-  if (trackType === "regular") {
+  if (category === "regular") {
     result.sessionClips = includeSessionClips
       ? track
           .getChildIds("clip_slots")
@@ -257,8 +257,8 @@ export function readTrackGeneric({
 
   // Arrangement clips - group tracks, return tracks, and master track have no arrangement clips
   result.arrangementClips =
-    isGroup || trackType === "return" || trackType === "master"
-      ? [] // These track types have no arrangement clips
+    isGroup || category === "return" || category === "master"
+      ? [] // These track categories have no arrangement clips
       : includeArrangementClips
         ? track
             .getChildIds("arrangement_clips")
@@ -318,7 +318,7 @@ export function readTrackGeneric({
   }
 
   // Only include playingSlotIndex when >= 0 (only for regular tracks)
-  if (trackType === "regular") {
+  if (category === "regular") {
     const playingSlotIndex = track.getProperty("playing_slot_index");
     if (playingSlotIndex >= 0) {
       result.playingSlotIndex = playingSlotIndex;
@@ -332,7 +332,7 @@ export function readTrackGeneric({
   }
 
   // Add state property only if not default "active" state
-  const trackState = computeState(track, trackType);
+  const trackState = computeState(track, category);
   if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
   }
@@ -340,14 +340,14 @@ export function readTrackGeneric({
   // Handle current routing settings
   if (includeRoutings) {
     // Master track has no routing properties
-    if (trackType === "master") {
+    if (category === "master") {
       result.inputRoutingType = null;
       result.inputRoutingChannel = null;
       result.outputRoutingType = null;
       result.outputRoutingChannel = null;
     } else {
       // Transform current input routing settings - only for regular tracks (not return or group tracks)
-      if (!isGroup && trackType === "regular") {
+      if (!isGroup && category === "regular") {
         const inputType = track.getProperty("input_routing_type");
         result.inputRoutingType = inputType
           ? {
@@ -363,7 +363,7 @@ export function readTrackGeneric({
               inputId: String(inputChannel.identifier),
             }
           : null;
-      } else if (trackType === "return") {
+      } else if (category === "return") {
         // Return tracks don't have input routing - set null
         result.inputRoutingType = null;
         result.inputRoutingChannel = null;
@@ -404,14 +404,14 @@ export function readTrackGeneric({
   // Handle available routing options
   if (includeAvailableRoutings) {
     // Master track has no routing properties
-    if (trackType === "master") {
+    if (category === "master") {
       result.availableInputRoutingTypes = [];
       result.availableInputRoutingChannels = [];
       result.availableOutputRoutingTypes = [];
       result.availableOutputRoutingChannels = [];
     } else {
       // Transform available input routing types - only for regular tracks (not return or group tracks)
-      if (!isGroup && trackType === "regular") {
+      if (!isGroup && category === "regular") {
         const availableInputTypes =
           track.getProperty("available_input_routing_types") || [];
         result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
@@ -427,7 +427,7 @@ export function readTrackGeneric({
             inputId: String(ch.identifier),
           }),
         );
-      } else if (trackType === "return") {
+      } else if (category === "return") {
         // Return tracks don't have input routing - set empty arrays
         result.availableInputRoutingTypes = [];
         result.availableInputRoutingChannels = [];
@@ -461,16 +461,16 @@ export function readTrackGeneric({
 }
 
 export function readTrack(args = {}) {
-  const { trackIndex, trackId, trackType = "regular" } = args;
+  const { trackIndex, trackId, category = "regular" } = args;
 
   // Validate parameters
-  if (trackId == null && trackIndex == null && trackType !== "master") {
+  if (trackId == null && trackIndex == null && category !== "master") {
     throw new Error("Either trackId or trackIndex must be provided");
   }
 
   let track;
   let resolvedTrackIndex = trackIndex;
-  let resolvedTrackType = trackType;
+  let resolvedCategory = category;
 
   if (trackId != null) {
     // Use trackId to access track directly
@@ -479,21 +479,21 @@ export function readTrack(args = {}) {
       throw new Error(`No track exists for trackId "${trackId}"`);
     }
 
-    // Determine track type and index from the track's path
-    resolvedTrackType = track.trackType;
+    // Determine track category and index from the track's path
+    resolvedCategory = track.category;
     resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
   } else {
-    // Construct the appropriate Live API path based on track type
+    // Construct the appropriate Live API path based on track category
     let trackPath;
-    if (trackType === "regular") {
+    if (category === "regular") {
       trackPath = `live_set tracks ${trackIndex}`;
-    } else if (trackType === "return") {
+    } else if (category === "return") {
       trackPath = `live_set return_tracks ${trackIndex}`;
-    } else if (trackType === "master") {
+    } else if (category === "master") {
       trackPath = "live_set master_track";
     } else {
       throw new Error(
-        `Invalid trackType: ${trackType}. Must be "regular", "return", or "master".`,
+        `Invalid category: ${category}. Must be "regular", "return", or "master".`,
       );
     }
 
@@ -502,8 +502,8 @@ export function readTrack(args = {}) {
 
   return readTrackGeneric({
     track,
-    trackIndex: resolvedTrackType === "master" ? null : resolvedTrackIndex,
-    trackType: resolvedTrackType,
+    trackIndex: resolvedCategory === "master" ? null : resolvedTrackIndex,
+    category: resolvedCategory,
     include: args.include,
   });
 }

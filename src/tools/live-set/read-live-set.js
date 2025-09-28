@@ -58,7 +58,7 @@ export function readLiveSet(args = {}) {
         return readTrackGeneric({
           track: returnTrack,
           trackIndex: returnTrackIndex,
-          trackType: "return",
+          category: "return",
           include: includeArray,
         });
       },
@@ -70,7 +70,7 @@ export function readLiveSet(args = {}) {
     result.masterTrack = readTrackGeneric({
       track: masterTrack,
       trackIndex: null,
-      trackType: "master",
+      category: "master",
       include: includeArray,
     });
   }

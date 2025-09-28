@@ -13,13 +13,13 @@ export const toolDefSelect = defineTool("ppal-select", {
     trackId: z
       .string()
       .optional()
-      .describe("select a track with this or trackType/trackIndex"),
-    trackType: z
+      .describe("select a track with this or category/trackIndex"),
+    category: z
       .enum(["regular", "return", "master"])
       .optional()
       .default("regular")
       .describe(
-        "regular and return tracks have independent trackIndexes, master has no index",
+        "track category: regular and return tracks have independent trackIndexes, master has no index",
       ),
     trackIndex: z.number().int().min(0).optional().describe("0-based index"),
     sceneId: z

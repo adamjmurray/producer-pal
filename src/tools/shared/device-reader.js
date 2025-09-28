@@ -13,9 +13,9 @@ import {
  * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
  * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
-function computeState(liveObject, trackType = "regular") {
+function computeState(liveObject, category = "regular") {
   // Master track doesn't have mute/solo/muted_via_solo properties
-  if (trackType === "master") {
+  if (category === "master") {
     return STATE.ACTIVE;
   }
 

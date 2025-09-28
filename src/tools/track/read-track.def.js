@@ -12,8 +12,8 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
     trackId: z
       .string()
       .optional()
-      .describe("provide this or trackType/trackIndex"),
-    trackType: z // TODO: rename to category
+      .describe("provide this or category/trackIndex"),
+    category: z
       .enum(["regular", "return", "master"])
       .default("regular")
       .describe(

@@ -51,7 +51,7 @@ describe("view", () => {
 
     mockTrackAPI = {
       exists: vi.fn().mockReturnValue(true),
-      trackType: "regular",
+      category: "regular",
       trackIndex: 1,
       _id: "id track_id_123",
       _path: "live_set view selected_track",
@@ -90,7 +90,7 @@ describe("view", () => {
         this.exists.mockReturnValue(false); // Default to no track selected
         this.trackIndex = null;
         this.returnTrackIndex = null;
-        this.trackType = null;
+        this.category = null;
         this.id = null;
         this.path = null;
       } else if (path === "live_set view selected_scene") {
@@ -143,7 +143,7 @@ describe("view", () => {
     showBrowser: false,
     selectedTrack: {
       trackId: null,
-      trackType: null,
+      category: null,
     },
     selectedClipId: null,
     selectedDeviceId: null,
@@ -196,7 +196,7 @@ describe("view", () => {
 
     it("selects regular track by index", () => {
       const result = select({
-        trackType: "regular",
+        category: "regular",
         trackIndex: 2,
       });
 
@@ -208,7 +208,7 @@ describe("view", () => {
       expect(result).toEqual(
         expectViewState({
           selectedTrackId: "id track_id_123",
-          selectedTrackType: "regular",
+          selectedCategory: "regular",
           selectedTrackIndex: 2,
         }),
       );
@@ -216,7 +216,7 @@ describe("view", () => {
 
     it("selects return track by index", () => {
       const result = select({
-        trackType: "return",
+        category: "return",
         trackIndex: 1,
       });
 
@@ -228,14 +228,14 @@ describe("view", () => {
       expect(result).toEqual(
         expectViewState({
           selectedTrackId: "id track_id_123",
-          selectedTrackType: "return",
+          selectedCategory: "return",
           selectedTrackIndex: 1,
         }),
       );
     });
 
     it("selects master track", () => {
-      const result = select({ trackType: "master" });
+      const result = select({ category: "master" });
 
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set master_track");
       expect(liveApiSet).toHaveBeenCalledWith(
@@ -245,7 +245,7 @@ describe("view", () => {
       expect(result).toEqual(
         expectViewState({
           selectedTrackId: "id track_id_123",
-          selectedTrackType: "master",
+          selectedCategory: "master",
         }),
       );
     });
@@ -257,7 +257,7 @@ describe("view", () => {
       expect(result).toEqual(
         expectViewState({
           selectedTrackId: "id track_id_123",
-          selectedTrackType: "regular",
+          selectedCategory: "regular",
           selectedTrackIndex: 2,
         }),
       );
@@ -441,7 +441,7 @@ describe("view", () => {
 
     it("selects instrument on specified track", () => {
       const result = select({
-        trackType: "regular",
+        category: "regular",
         trackIndex: 0,
         instrument: true,
       });
@@ -463,7 +463,7 @@ describe("view", () => {
         if (path === "live_set view selected_track")
           return {
             exists: vi.fn().mockReturnValue(true),
-            trackType: "regular",
+            category: "regular",
             trackIndex: 1,
             id: "id track_123",
             path: "live_set tracks 1",
@@ -492,7 +492,7 @@ describe("view", () => {
           instrument: true,
           selectedTrack: {
             trackId: "id track_123",
-            trackType: "regular",
+            category: "regular",
             trackIndex: 1,
           },
         }),
@@ -598,12 +598,10 @@ describe("view", () => {
     it("throws error when master track type with index", () => {
       expect(() => {
         select({
-          trackType: "master",
+          category: "master",
           trackIndex: 0,
         });
-      }).toThrow(
-        "trackIndex should not be provided when trackType is 'master'",
-      );
+      }).toThrow("trackIndex should not be provided when category is 'master'");
     });
 
     it("throws error when both device ID and instrument", () => {
@@ -642,7 +640,7 @@ describe("view", () => {
     it("updates multiple properties at once", () => {
       const result = select({
         view: "arrangement",
-        trackType: "regular",
+        category: "regular",
         trackIndex: 1,
         sceneIndex: 3,
         clipId: "id clip_456",
@@ -665,7 +663,7 @@ describe("view", () => {
         expectViewState({
           view: "arrangement",
           selectedTrackId: "id track_id_123",
-          selectedTrackType: "regular",
+          selectedCategory: "regular",
           selectedTrackIndex: 1,
           selectedSceneId: "id scene_id_456",
           selectedSceneIndex: 3,
@@ -678,7 +676,7 @@ describe("view", () => {
 
     it("handles return track with device selection", () => {
       const result = select({
-        trackType: "return",
+        category: "return",
         trackIndex: 2,
         instrument: true,
       });
@@ -688,7 +686,7 @@ describe("view", () => {
         "live_set return_tracks 2 view",
       );
       expect(liveApiCall).toHaveBeenCalledWith("select_instrument");
-      expect(result.selectedTrackType).toBe("return");
+      expect(result.selectedCategory).toBe("return");
       expect(result.instrument).toBe(true);
     });
 
@@ -728,7 +726,7 @@ describe("view", () => {
         exists: vi.fn(),
         trackIndex: 0,
         returnTrackIndex: null,
-        trackType: "regular",
+        category: "regular",
         id: "id 789",
         path: "live_set tracks 0",
       };
@@ -798,7 +796,7 @@ describe("view", () => {
         showBrowser: false,
         selectedTrack: {
           trackId: "id 789",
-          trackType: "regular",
+          category: "regular",
           trackIndex: 0,
         },
         selectedClipId: "id 123",
@@ -840,7 +838,7 @@ describe("view", () => {
         showBrowser: false,
         selectedTrack: {
           trackId: null,
-          trackType: null,
+          category: null,
         },
         selectedClipId: null,
         selectedDeviceId: null,
@@ -871,7 +869,7 @@ describe("view", () => {
         showBrowser: false,
         selectedTrack: {
           trackId: null,
-          trackType: null,
+          category: null,
         },
         selectedClipId: null,
         selectedDeviceId: null,
