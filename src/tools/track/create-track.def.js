@@ -3,7 +3,7 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefCreateTrack = defineTool("ppal-create-track", {
   title: "Create Track",
-  description: `Create new track(s)`,
+  description: `Create track(s)`,
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
