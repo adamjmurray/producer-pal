@@ -11,8 +11,12 @@ program
   .description("Chat with Google Gemini API")
   .option("-m, --model <model>", "Gemini model to use", "gemini-2.5-flash-lite")
   .option("-d, --debug", "Debug mode (log all Gemini output)")
+  .option(
+    "-v, --verbose",
+    "Verbose mode (debug mode with http response details)",
+  )
   .argument("<text...>", "Text to send to the model")
-  .action(async (textArray, { model, debug }) => {
+  .action(async (textArray, { model, debug, verbose }) => {
     const apiKey = process.env.GEMINI_KEY;
 
     if (!apiKey) {
@@ -25,8 +29,8 @@ program
     try {
       const genAI = new GoogleGenAI({ apiKey });
 
-      console.log(`Using model: ${model}`);
-      console.log(`Input: ${text}\n`);
+      console.log(`Model: ${model}`);
+      console.log(`Input: ${text}`);
 
       const result = await genAI.models.generateContent({
         model,
@@ -34,11 +38,13 @@ program
       });
 
       console.log("Response:");
-      if (debug) {
-        // filter out the http response data and show the candidates info last
+      if (debug || verbose) {
         const { sdkHttpResponse, candidates, ...rest } = result;
         console.log(
-          inspect({ ...rest, candidates }, { depth: 5 }),
+          inspect(
+            { ...(verbose ? { sdkHttpResponse } : {}), ...rest, candidates },
+            { depth: 5 },
+          ),
           "\n" + "-".repeat(80),
         );
       }
