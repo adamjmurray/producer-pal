@@ -5,6 +5,8 @@ import { Command } from "commander";
 import { createInterface } from "node:readline";
 import { inspect } from "node:util";
 
+const debugSeparator = "\n" + "-".repeat(80);
+
 const program = new Command();
 program
   .name("chat")
@@ -23,15 +25,96 @@ program
     "Set thinkingBudget (0=disabled, -1=automatic)",
     parseInt,
   )
+  .option("-s, --stream", "Enable streaming mode")
   .argument("[text...]", "Optional text to start the conversation with")
   .action(chat);
 
 // Run the program:
 program.parse();
 
+async function streamGenerateContent(
+  genAI,
+  generateParams,
+  debug,
+  verbose,
+  turnCount,
+) {
+  const streamResponse =
+    await genAI.models.generateContentStream(generateParams);
+
+  console.log(`\n[Turn ${turnCount}] Assistant:`);
+
+  let fullResponse = "";
+  let thoughtBuffer = "";
+  let inThought = false;
+  let responseContent = null;
+
+  for await (const chunk of streamResponse) {
+    if (debug || verbose) {
+      console.log("Chunk:"); // , inspect(chunk, { depth: 5 }));
+      debugResult(chunk, verbose);
+    }
+
+    if (chunk.candidates?.[0]?.content?.parts) {
+      for (const part of chunk.candidates[0].content.parts) {
+        if (part.thought) {
+          inThought = true;
+          thoughtBuffer += part.text;
+        } else if (part.text) {
+          if (inThought) {
+            console.log(
+              `╔═══════════════════════════════════════════<THOUGHT>══════════════════════════════════════════\n${thoughtBuffer
+                .split("\n")
+                .map((line) => `║ ${line}`)
+                .join(
+                  "\n",
+                )}\n╚═══════════════════════════════════════════════════════════════════════════════════════════════════`,
+            );
+            thoughtBuffer = "";
+            inThought = false;
+          }
+          if (debug || verbose) {
+            console.log("Streamed: ", part.text);
+          } else {
+            process.stdout.write(part.text);
+          }
+          fullResponse += part.text;
+        }
+      }
+    }
+
+    responseContent = chunk.candidates?.[0]?.content || { parts: [] };
+  }
+
+  if (inThought && thoughtBuffer) {
+    console.log(
+      `╔═══════════════════════════════════════════<THOUGHT>══════════════════════════════════════════\n${thoughtBuffer
+        .split("\n")
+        .map((line) => `║ ${line}`)
+        .join(
+          "\n",
+        )}\n╚═══════════════════════════════════════════════════════════════════════════════════════════════════`,
+    );
+  }
+
+  return {
+    text: fullResponse,
+    content: responseContent,
+  };
+}
+
 async function chat(
   textArray,
-  { model, debug, verbose, thinking, randomness, outputTokens, thinkingBudget },
+  {
+    model,
+    debug,
+    verbose,
+    thinking,
+    randomness,
+    outputTokens,
+    thinkingBudget,
+    stream,
+  },
 ) {
   const apiKey = process.env.GEMINI_KEY;
 
@@ -104,16 +187,30 @@ async function chat(
         console.log(inspect(generateParams, { depth: 5 }), debugSeparator);
       }
 
-      const result = await genAI.models.generateContent(generateParams);
+      if (stream) {
+        const streamResult = await streamGenerateContent(
+          genAI,
+          generateParams,
+          debug,
+          verbose,
+          turnCount,
+        );
+        if (debug | verbose) debugResult(streamResult);
 
-      console.log(`\n[Turn ${turnCount}] Assistant:`);
-      if (debug || verbose) {
-        debugResult(result, verbose);
+        console.log();
+        contents.push(streamResult.content);
+      } else {
+        const result = await genAI.models.generateContent(generateParams);
+
+        console.log(`\n[Turn ${turnCount}] Assistant:`);
+        if (debug || verbose) {
+          debugResult(result, verbose);
+        }
+
+        console.log(formatResponse(result));
+
+        contents.push(result.candidates[0]?.content || { parts: [] });
       }
-
-      console.log(formatResponse(result));
-
-      contents.push(result.candidates[0]?.content || { parts: [] });
 
       currentInput = await new Promise((resolve) =>
         rl.question("\n> ", resolve),
@@ -148,8 +245,6 @@ function formatResponse(result) {
       .join("\n\n") ?? "<no content>"
   );
 }
-
-const debugSeparator = "\n" + "-".repeat(80);
 
 function debugResult(result, verbose) {
   const { sdkHttpResponse, candidates, ...rest } = result;
