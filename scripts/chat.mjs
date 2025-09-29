@@ -45,7 +45,6 @@ async function streamGenerateContent(
   console.log(`\n[Turn ${turnCount}] Assistant:`);
 
   let fullResponse = "";
-  let thoughtBuffer = "";
   let inThought = false;
   let responseContent = null;
 
@@ -58,19 +57,30 @@ async function streamGenerateContent(
     if (chunk.candidates?.[0]?.content?.parts) {
       for (const part of chunk.candidates[0].content.parts) {
         if (part.thought) {
+          if (!inThought) {
+            if (debug || verbose) {
+              console.log("Streamed: ", startThought(part.text));
+            } else {
+              process.stdout.write(`\n${startThought(part.text)}`);
+            }
+            fullResponse += `\n${startThought(part.text)}`;
+          } else {
+            if (debug || verbose) {
+              console.log("Streamed: ", continueThought(part.text));
+            } else {
+              process.stdout.write(`\n${continueThought(part.text)}`);
+            }
+            fullResponse += `\n${continueThought(part.text)}`;
+          }
           inThought = true;
-          thoughtBuffer += part.text;
         } else if (part.text) {
           if (inThought) {
-            console.log(
-              `╔═══════════════════════════════════════════<THOUGHT>══════════════════════════════════════════\n${thoughtBuffer
-                .split("\n")
-                .map((line) => `║ ${line}`)
-                .join(
-                  "\n",
-                )}\n╚═══════════════════════════════════════════════════════════════════════════════════════════════════`,
-            );
-            thoughtBuffer = "";
+            if (debug || verbose) {
+              console.log("Streamed: ", endThought());
+            } else {
+              process.stdout.write(`\n${endThought()}\n`);
+            }
+            fullResponse += `\n${endThought()}\n`;
             inThought = false;
           }
           if (debug || verbose) {
@@ -83,18 +93,8 @@ async function streamGenerateContent(
       }
     }
 
+    // TODO: this is wrong
     responseContent = chunk.candidates?.[0]?.content || { parts: [] };
-  }
-
-  if (inThought && thoughtBuffer) {
-    console.log(
-      `╔═══════════════════════════════════════════<THOUGHT>══════════════════════════════════════════\n${thoughtBuffer
-        .split("\n")
-        .map((line) => `║ ${line}`)
-        .join(
-          "\n",
-        )}\n╚═══════════════════════════════════════════════════════════════════════════════════════════════════`,
-    );
   }
 
   return {
@@ -233,16 +233,31 @@ function formatResponse(result) {
   return (
     result.candidates[0]?.content?.parts
       ?.map(({ thought, text }) =>
-        thought
-          ? `╔═══════════════════════════════════════════<THOUGHT>══════════════════════════════════════════\n${text
-              .split("\n")
-              .map((line) => `║ ${line}`)
-              .join(
-                "\n",
-              )}\n╚═══════════════════════════════════════════════════════════════════════════════════════════════════`
-          : text,
+        thought ? startThought(text) + endThought() : text,
       )
       .join("\n\n") ?? "<no content>"
+  );
+}
+
+function startThought(text) {
+  return (
+    "╔════════════════════════════════════════════════" +
+    "═<THOUGHT>════════════════════════════════════════════\n" +
+    continueThought(text)
+  );
+}
+
+function continueThought(text) {
+  return text
+    .split("\n")
+    .map((line) => `║ ${line}`)
+    .join("\n");
+}
+
+function endThought() {
+  return (
+    "\n╚═══════════════════════════════════════════════" +
+    "═<end_thought>════════════════════════════════════════════════\n"
   );
 }
 
