@@ -198,7 +198,7 @@ function formatResponse(
   { candidates, automaticFunctionCallingHistory: history },
   currentInput,
 ) {
-  const { calls, results } = history.reduce(
+  const { calls } = history.reduce(
     (result, { parts, role }) => {
       if (
         !result.pastInput &&
@@ -208,23 +208,26 @@ function formatResponse(
         result.pastInput = true;
       }
       if (result.pastInput) {
-        for (const part of parts) {
-          if (part.functionCall) result.calls.push(part.functionCall);
-          // TODO: find the corresponding function call and attach it to that
-          if (part.functionResponse) result.results.push(part.functionResponse);
+        for (const { functionCall, functionResponse } of parts) {
+          if (functionCall) result.calls.push(functionCall);
+          if (functionResponse) {
+            result.calls[result.responses.length].result =
+              functionResponse?.response?.content?.[0]?.text;
+            result.responses.push(functionResponse);
+          }
         }
       }
       return result;
     },
-    { pastInput: false, calls: [], results: [] },
+    { pastInput: false, calls: [], responses: [] },
   );
-  // debugLog({ calls, results });
+  // debugLog({ calls, responses });
 
   const output = [];
 
-  for (const functionCall of calls) {
+  for (const { name, args, result } of calls) {
     output.push(
-      `🔧 tool used: ${functionCall.name}(${inspect(functionCall.args, { compact: true, depth: 10 })})`,
+      `🔧 ${name}(${inspect(args, { compact: true })})\n   ↳ ${truncate(result, 160)}`,
     );
   }
   if (calls.length > 0) {
@@ -283,4 +286,10 @@ function debugLog(object) {
 
 function debugCall(funcName, args) {
   console.log(`${funcName}(${inspect(args, { depth: 10 })})`, debugSeparator);
+}
+
+function truncate(str, maxLength, suffix = "…") {
+  if (str.length <= maxLength) return str;
+  const cutoff = Math.max(0, maxLength - suffix.length);
+  return str.slice(0, cutoff) + suffix;
 }
