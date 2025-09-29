@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, mcpToTool } from "@google/genai";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Command } from "commander";
 import { createInterface } from "node:readline";
 import { inspect } from "node:util";
@@ -87,7 +89,25 @@ async function chat(
     output: process.stdout,
   });
 
-  if (debug || verbose) debugCall("ai.chats.create", { model, config });
+  const transport = new StreamableHTTPClientTransport(
+    "http://localhost:3350/mcp",
+  );
+  const client = new Client({
+    name: "producer-pal-chat-prototype",
+    version: "0.0.1",
+  });
+  await client.connect(transport);
+  config.tools = [mcpToTool(client)];
+  config.automaticFunctionCalling = {
+    // disable: true,
+    // ignoreCallHistory: true
+  };
+
+  if (debug || verbose)
+    debugCall("ai.chats.create", {
+      model,
+      config: { ...config, tools: config.tools ? "[...]" : undefined },
+    });
   const chat = ai.chats.create({ model, config });
 
   console.log(`Model: ${model}`);
@@ -211,20 +231,17 @@ function endThought() {
 
 function debugResult(result, verbose) {
   const { sdkHttpResponse, candidates, ...rest } = result;
-  debugLog(
-    {
-      ...(verbose ? { sdkHttpResponse } : {}),
-      ...rest,
-      candidates,
-    },
-    { depth: 5 },
-  );
+  debugLog({
+    ...(verbose ? { sdkHttpResponse } : {}),
+    ...rest,
+    candidates,
+  });
 }
 
 function debugLog(object) {
-  console.log(inspect(object, { depth: 5 }), debugSeparator);
+  console.log(inspect(object, { depth: 10 }), debugSeparator);
 }
 
 function debugCall(funcName, args) {
-  console.log(`${funcName}(${inspect(args, { depth: 5 })})`, debugSeparator);
+  console.log(`${funcName}(${inspect(args, { depth: 10 })})`, debugSeparator);
 }
