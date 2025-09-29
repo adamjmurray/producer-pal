@@ -100,7 +100,7 @@ async function chat(
   config.tools = [mcpToTool(client)];
   config.automaticFunctionCalling = {
     // disable: true,
-    // ignoreCallHistory: true
+    // ignoreCallHistory: true,
   };
 
   if (debug || verbose)
@@ -146,7 +146,7 @@ async function chat(
         if (debug || verbose) {
           debugResult(response, verbose);
         }
-        console.log(formatResponse(response));
+        console.log(formatResponse(response, currentInput));
       }
 
       currentInput = await new Promise((resolve) =>
@@ -194,14 +194,53 @@ function isExitCommand(input) {
   return trimmed === "exit" || trimmed === "quit" || trimmed === "bye";
 }
 
-function formatResponse(result) {
-  return (
-    result.candidates[0]?.content?.parts
+function formatResponse(
+  { candidates, automaticFunctionCallingHistory: history },
+  currentInput,
+) {
+  const { calls, results } = history.reduce(
+    (result, { parts, role }) => {
+      if (
+        !result.pastInput &&
+        role === "user" &&
+        parts?.[0]?.text === currentInput
+      ) {
+        result.pastInput = true;
+      }
+      if (result.pastInput) {
+        for (const part of parts) {
+          if (part.functionCall) result.calls.push(part.functionCall);
+          // TODO: find the corresponding function call and attach it to that
+          if (part.functionResponse) result.results.push(part.functionResponse);
+        }
+      }
+      return result;
+    },
+    { pastInput: false, calls: [], results: [] },
+  );
+  // debugLog({ calls, results });
+
+  const output = [];
+
+  for (const functionCall of calls) {
+    output.push(
+      `🔧 tool used: ${functionCall.name}(${inspect(functionCall.args, { compact: true, depth: 10 })})`,
+    );
+  }
+  if (calls.length > 0) {
+    output.push("");
+  }
+
+  const textResponse =
+    candidates?.[0]?.content?.parts
       ?.map(({ thought, text }) =>
         thought ? startThought(text) + endThought() : text,
       )
-      .join("\n") ?? "<no content>"
-  );
+      .join("\n") ?? "<no content>";
+
+  output.push(textResponse);
+
+  return output.join("\n");
 }
 
 function startThought(text) {
