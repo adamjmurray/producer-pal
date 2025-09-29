@@ -12,20 +12,21 @@ program
   .name("chat")
   .description("Chat with Google Gemini API")
   .option("-m, --model <model>", "Gemini model to use", "gemini-2.5-flash-lite")
+  .option("-s, --stream", "Enable streaming mode")
   .option("-d, --debug", "Debug mode (log all Gemini output)")
   .option(
     "-v, --verbose",
     "Verbose mode (debug mode with http response details)",
   )
   .option("-t, --thinking", "Enable includeThoughts")
-  .option("-r, --randomness <number>", "Set temperature (0.0-1.0)", parseFloat)
-  .option("-o, --output-tokens <number>", "Set maxOutputTokens", parseInt)
   .option(
     "-b, --thinking-budget <number>",
     "Set thinkingBudget (0=disabled, -1=automatic)",
     parseInt,
   )
-  .option("-s, --stream", "Enable streaming mode")
+  .option("-r, --randomness <number>", "Set temperature (0.0-1.0)", parseFloat)
+  .option("-o, --output-tokens <number>", "Set maxOutputTokens", parseInt)
+  .option("-p, --system-prompt <text>", "Set system instructions")
   .argument("[text...]", "Optional text to start the conversation with")
   .action(chat);
 
@@ -43,6 +44,7 @@ async function chat(
     outputTokens,
     thinkingBudget,
     stream,
+    systemPrompt,
   },
 ) {
   const apiKey = process.env.GEMINI_KEY;
@@ -73,6 +75,10 @@ async function chat(
     }
   }
 
+  if (systemPrompt != null) {
+    config.systemInstruction = systemPrompt;
+  }
+
   let turnCount = 0;
   const initialText = textArray.length > 0 ? textArray.join(" ") : "";
 
@@ -80,6 +86,8 @@ async function chat(
     input: process.stdin,
     output: process.stdout,
   });
+
+  if (debug || verbose) debugCall("ai.chats.create", { model, config });
   const chat = ai.chats.create({ model, config });
 
   console.log(`Model: ${model}`);
@@ -105,7 +113,7 @@ async function chat(
 
       if (stream) {
         const message = { message: currentInput };
-        // if (debug || verbose) debugLog(message);
+        if (debug || verbose) debugCall("chat.sendMessageStream", message);
         const stream = await chat.sendMessageStream(message);
         console.log(`\n[Turn ${turnCount}] Assistant:`);
         await printStream(stream, { debug, verbose });
