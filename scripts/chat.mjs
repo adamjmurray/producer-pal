@@ -183,6 +183,14 @@ async function printStream(stream, { debug, verbose }) {
           }
           process.stdout.write(part.text);
         }
+      } else if (part.functionCall) {
+        process.stdout.write(
+          `🔧 ${part.functionCall.name}(${inspect(part.functionCall.args, { compact: true, depth: 10 })})\n`,
+        );
+      } else if (part.functionResponse) {
+        process.stdout.write(
+          `   ↳ ${truncate(part.functionResponse?.response?.content?.[0]?.text, 160)}\n`,
+        );
       }
     }
   }
@@ -289,7 +297,7 @@ function debugCall(funcName, args) {
 }
 
 function truncate(str, maxLength, suffix = "…") {
-  if (str.length <= maxLength) return str;
+  if ((str?.length ?? 0) <= maxLength) return str;
   const cutoff = Math.max(0, maxLength - suffix.length);
   return str.slice(0, cutoff) + suffix;
 }
