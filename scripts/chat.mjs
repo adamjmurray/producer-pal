@@ -32,77 +32,6 @@ program
 // Run the program:
 program.parse();
 
-async function streamGenerateContent(
-  genAI,
-  generateParams,
-  debug,
-  verbose,
-  turnCount,
-) {
-  const streamResponse =
-    await genAI.models.generateContentStream(generateParams);
-
-  console.log(`\n[Turn ${turnCount}] Assistant:`);
-
-  let fullResponse = "";
-  let inThought = false;
-  let responseContent = null;
-
-  for await (const chunk of streamResponse) {
-    if (debug || verbose) {
-      console.log("Chunk:"); // , inspect(chunk, { depth: 5 }));
-      debugResult(chunk, verbose);
-    }
-
-    if (chunk.candidates?.[0]?.content?.parts) {
-      for (const part of chunk.candidates[0].content.parts) {
-        if (part.thought) {
-          if (!inThought) {
-            if (debug || verbose) {
-              console.log("Streamed: ", startThought(part.text));
-            } else {
-              process.stdout.write(`\n${startThought(part.text)}`);
-            }
-            fullResponse += `\n${startThought(part.text)}`;
-          } else {
-            if (debug || verbose) {
-              console.log("Streamed: ", continueThought(part.text));
-            } else {
-              process.stdout.write(`\n${continueThought(part.text)}`);
-            }
-            fullResponse += `\n${continueThought(part.text)}`;
-          }
-          inThought = true;
-        } else if (part.text) {
-          if (inThought) {
-            if (debug || verbose) {
-              console.log("Streamed: ", endThought());
-            } else {
-              process.stdout.write(`\n${endThought()}\n`);
-            }
-            fullResponse += `\n${endThought()}\n`;
-            inThought = false;
-          }
-          if (debug || verbose) {
-            console.log("Streamed: ", part.text);
-          } else {
-            process.stdout.write(part.text);
-          }
-          fullResponse += part.text;
-        }
-      }
-    }
-
-    // TODO: this is wrong
-    responseContent = chunk.candidates?.[0]?.content || { parts: [] };
-  }
-
-  return {
-    text: fullResponse,
-    content: responseContent,
-  };
-}
-
 async function chat(
   textArray,
   {
@@ -123,7 +52,7 @@ async function chat(
     process.exit(1);
   }
 
-  const genAI = new GoogleGenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey });
   const config = {};
 
   if (outputTokens != null) {
@@ -144,18 +73,17 @@ async function chat(
     }
   }
 
-  const contents = [];
+  let turnCount = 0;
   const initialText = textArray.length > 0 ? textArray.join(" ") : "";
-
-  console.log(`Model: ${model}`);
-  console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   const rl = createInterface({
     input: process.stdin,
     output: process.stdout,
   });
+  const chat = ai.chats.create({ model, config });
 
-  let turnCount = 0;
+  console.log(`Model: ${model}`);
+  console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   try {
     let currentInput = initialText;
@@ -175,41 +103,22 @@ async function chat(
       turnCount++;
       console.log(`\n[Turn ${turnCount}] User: ${currentInput}`);
 
-      contents.push({ role: "user", parts: [{ text: currentInput }] });
-
-      const generateParams = {
-        model,
-        contents,
-        config,
-      };
-
-      if (debug || verbose) {
-        console.log(inspect(generateParams, { depth: 5 }), debugSeparator);
-      }
-
       if (stream) {
-        const streamResult = await streamGenerateContent(
-          genAI,
-          generateParams,
-          debug,
-          verbose,
-          turnCount,
-        );
-        if (debug | verbose) debugResult(streamResult);
-
-        console.log();
-        contents.push(streamResult.content);
+        const message = { message: currentInput };
+        // if (debug || verbose) debugLog(message);
+        const stream = await chat.sendMessageStream(message);
+        console.log(`\n[Turn ${turnCount}] Assistant:`);
+        await printStream(stream, { debug, verbose });
       } else {
-        const result = await genAI.models.generateContent(generateParams);
+        const message = { message: currentInput };
+        if (debug || verbose) debugCall("chat.sendMessage", message);
+        const response = await chat.sendMessage(message);
 
         console.log(`\n[Turn ${turnCount}] Assistant:`);
         if (debug || verbose) {
-          debugResult(result, verbose);
+          debugResult(response, verbose);
         }
-
-        console.log(formatResponse(result));
-
-        contents.push(result.candidates[0]?.content || { parts: [] });
+        console.log(formatResponse(response));
       }
 
       currentInput = await new Promise((resolve) =>
@@ -224,6 +133,34 @@ async function chat(
   }
 }
 
+async function printStream(stream, { debug, verbose }) {
+  let inThought = false;
+  for await (const chunk of stream) {
+    if (debug || verbose) {
+      console.log(debugSeparator);
+      console.log("Stream chunk");
+      debugResult(chunk, verbose);
+    }
+    for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
+      if (part.text) {
+        if (part.thought) {
+          process.stdout.write(
+            inThought ? continueThought(part.text) : startThought(part.text),
+          );
+          inThought = true;
+        } else {
+          if (inThought) {
+            process.stdout.write(endThought());
+            inThought = false;
+          }
+          process.stdout.write(part.text);
+        }
+      }
+    }
+  }
+  console.log();
+}
+
 function isExitCommand(input) {
   const trimmed = input.trim().toLowerCase();
   return trimmed === "exit" || trimmed === "quit" || trimmed === "bye";
@@ -235,43 +172,51 @@ function formatResponse(result) {
       ?.map(({ thought, text }) =>
         thought ? startThought(text) + endThought() : text,
       )
-      .join("\n\n") ?? "<no content>"
+      .join("\n") ?? "<no content>"
   );
 }
 
 function startThought(text) {
   return (
-    "╔════════════════════════════════════════════════" +
-    "═<THOUGHT>════════════════════════════════════════════\n" +
+    "\n╔════════════════════════════════════════════════" +
+    "═<THOUGHT>════════════════════════════════════════════" +
     continueThought(text)
   );
 }
 
 function continueThought(text) {
-  return text
-    .split("\n")
-    .map((line) => `║ ${line}`)
-    .join("\n");
+  return (
+    "\n" +
+    text
+      .split("\n")
+      .map((line) => `║ ${line}`)
+      .join("\n")
+  );
 }
 
 function endThought() {
   return (
     "\n╚═══════════════════════════════════════════════" +
-    "═<end_thought>════════════════════════════════════════════════\n"
+    "═<end_thought>════════════════════════════════════════════\n\n"
   );
 }
 
 function debugResult(result, verbose) {
   const { sdkHttpResponse, candidates, ...rest } = result;
-  console.log(
-    inspect(
-      {
-        ...(verbose ? { sdkHttpResponse } : {}),
-        ...rest,
-        candidates,
-      },
-      { depth: 5 },
-    ),
-    debugSeparator,
+  debugLog(
+    {
+      ...(verbose ? { sdkHttpResponse } : {}),
+      ...rest,
+      candidates,
+    },
+    { depth: 5 },
   );
+}
+
+function debugLog(object) {
+  console.log(inspect(object, { depth: 5 }), debugSeparator);
+}
+
+function debugCall(funcName, args) {
+  console.log(`${funcName}(${inspect(args, { depth: 5 })})`, debugSeparator);
 }
