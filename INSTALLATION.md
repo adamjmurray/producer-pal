@@ -68,7 +68,7 @@ apps to Producer Pal. Technically, it proxies an
 [MCP stdio transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio)
 client to the
 [MCP server](https://modelcontextprotocol.io/docs/learn/server-concepts) running
-over inside the Producer Pal Max for Live device via HTTP.
+inside the Producer Pal Max for Live device via HTTP.
 
 Note: this option requires [Node.js](https://nodejs.org/) to be installed. If
 you don't want to install more stuff, try the HTTP connection method.
