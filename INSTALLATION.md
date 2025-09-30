@@ -288,11 +288,12 @@ To use Producer Pal through [the ChatGPT web interface](https://chatgpt.com/):
 
 Run AI models locally without an Internet connection.
 
-**This functionality is experimental.** It requires more technical prowess to
-setup and diagnose issues, the quality of results does not compare to the
-"frontier models" documented above (Claude, Gemini, OpenAI's "flagship" GPT
-models work _much_ better), it runs much slower, and Producer Pal needs more
-optimization to better support these smaller local AI models.
+**This functionality is experimental.** It only works on relatively new machines
+with decent specs (Apple Silicon with lots of RAM or PCs with Nvidia 4080+
+graphics cards). It requires more technical know-how to setup and debug. The
+online options documented above (Claude, Gemini, and OpenAI's commercial GPT
+models) work noticeably better and faster, however, completely offline and
+private usage is compelling.
 
 1. Download [LM Studio](https://lmstudio.ai/)
 2. Install a compatible model:
@@ -340,10 +341,14 @@ optimization to better support these smaller local AI models.
 - **You probably need at least 16k context window size** because Producer Pal
   currently requires a fairly large context window with respect to local models
   (this should improve soon). Larger context windows are slower, so experiment.
-- To use all Producer Pal tools, you probably need to max out the context window
-  size, but large context windows make the model run significantly slower.
-  Therefore **it is recommended to disable some of the Producer Pal tools**. A
-  reasonable minimal toolset for experimentation is:
+- You need a context length of around 8k (8000) to start a conversation with
+  Producer Pal, and that will only allow for a few messages before a new
+  conversation must be started.
+- A context length of 16k (16000) or higher is recommended for achieving useful
+  results, but higher context lengths can make the model run significantly
+  slower. Experiment to find the right balance.
+- To get more out of your context length, disable some of the Producer Pal
+  tools. A reasonable minimal toolset for experimentation is:
   - `ppal-connect`
   - `ppal-read-live-set`
   - `ppal-create-clip`
@@ -351,12 +356,16 @@ optimization to better support these smaller local AI models.
   - `ppal-update-clip`
   - `ppal-playback`
 
-  Try disabling all the other tools and using a 16k context window.
+  Try disabling all the other tools and add back ones whose features you miss.
 
+- If an AI mistake wastes your context length, don't hesitate to delete recent
+  messages from the chat, edit your last message to try to avoid the issue, and
+  try again. Don't waste tokens correcting the LLM, back up and avoid the issue
+  from happening.
 - When using a model with the GGUF engine, try enabling the
   advanced/experimental settings for Flash Attention and setting the K/V caches'
   quantization to Q8 or Q4.
-- Research how to optimize for your machine / GPU
+- Research how to optimize for your specific machine / GPU hardware
 
 ## Other MCP-compatible LLMs
 
