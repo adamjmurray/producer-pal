@@ -43,34 +43,35 @@ following connection methods:
 
 ### MCP Bundle
 
-MCP bundles are plugins for desktop apps in the
+The `Producer_Pal.mcpb` file
+[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+is an MCP bundle, which is an AI plugin for desktop apps in the
 [.mcbp format](https://github.com/anthropics/mcpb). It can be setup quickly in a
 few clicks with no special technical knowledge required.
 
-The `Producer_Pal.mcpb` file
-[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-is used to [install the Producer Pal Claude Desktop extension](#claude-desktop).
-Currently it is only compatible with Claude Desktop. If you
-[use Claude](#anthropic-claude-installation) this is the easiest way to start
-using Producer Pal.
+⭐️ If you [use Claude](#anthropic-claude-installation) this is the easiest way
+to start using Producer Pal. It is the same thing as
+[the Producer Pal Claude Desktop extension](#claude-desktop).
+
+Currently `Producer_Pal.mcpb` is only compatible with Claude Desktop.
 
 ### producer-pal-portal.js
 
-The `producer-pal-portal.js` script
+⭐️ `producer-pal-portal.js`
 [(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-can connect most local MCP-compatible AI apps to Producer Pal.
+is recommended over the HTTP connection method because it is more robust: it
+works even if Ableton Live / Producer Pal is not running and will help you debug
+connection issues.
 
-The script provides an
+The `producer-pal-portal.js` script can connect most local MCP-compatible AI
+apps to Producer Pal. Technically, it proxies an
 [MCP stdio transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio)
-connection to the Producer Pal
+client to the
 [MCP server](https://modelcontextprotocol.io/docs/learn/server-concepts) running
-inside its Max for Live device.
+over inside the Producer Pal Max for Live device via HTTP.
 
-⭐️ `producer-pal-portal.js` is recommended over the HTTP connection method
-because it is more robust: it works even if Ableton Live / Producer Pal is not
-running and will help you debug connection issues.
-
-Note: this option requires [Node.js](https://nodejs.org/) to be installed.
+Note: this option requires [Node.js](https://nodejs.org/) to be installed. If
+you don't want to install more stuff, try the HTTP connection method.
 
 ### HTTP
 
@@ -148,10 +149,10 @@ unrelated coding project.
 
 1. Install Claude Code: `npm install -g @anthropic/claude-code` (see
    [the official docs](https://www.anthropic.com/claude-code))
-2. Download `producer-pal-portal.js` from the release and note its full path
-3. Configure the MCP server via one of these
+2. Configure the MCP server via one of these
    [connection methods](#choosing-a-connection-method):
    - with producer-pal-portal.js
+     [(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
      ```bash
      claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
      ```
@@ -159,8 +160,8 @@ unrelated coding project.
      ```bash
      claude mcp add --transport http producer-pal http://localhost:3350/mcp
      ```
-4. Start Claude Code by runnning `claude` (ideally in an empty folder)
-5. Start a conversation with "connect to ableton"
+3. Start Claude Code by running `claude` (ideally in an empty folder)
+4. Start a conversation with "connect to ableton"
 
 ### claude.ai Web App
 
@@ -197,35 +198,34 @@ run the coding agent in an empty folder so it doesn't get distracted by an
 unrelated coding project.
 
 1. [Install Gemini CLI](https://github.com/google-gemini/gemini-cli?#-installation)
-2. Configure MCP in `~/.gemini/settings.json` to use one of these
+2. Configure MCP severs in `~/.gemini/settings.json` using one of the supported
    [connection methods](#choosing-a-connection-method):
+   - with producer-pal-portal.js
+     [(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
 
-   **Option A: Via producer-pal-portal.js**
-
-   ```json
-   {
-     "mcpServers": {
-       // ... other MCP server configs ...
-       "producer-pal": {
-         "command": "node",
-         "args": ["/absolute/path/to/producer-pal-portal.js"]
+     ```json
+     {
+       "mcpServers": {
+         // ... other MCP server configs ...
+         "producer-pal": {
+           "command": "node",
+           "args": ["/absolute/path/to/producer-pal-portal.js"]
+         }
        }
      }
-   }
-   ```
+     ```
 
-   **Option B: Direct HTTP connection**
-
-   ```json
-   {
-     "mcpServers": {
-       // ... other MCP server configs ...
-       "producer-pal": {
-         "httpUrl": "http://localhost:3350"
+   - with HTTP
+     ```json
+     {
+       "mcpServers": {
+         // ... other MCP server configs ...
+         "producer-pal": {
+           "httpUrl": "http://localhost:3350"
+         }
        }
      }
-   }
-   ```
+     ```
 
 3. Run `gemini` to start the Gemini CLI (ideally in an empty folder)
 4. Start a conversation with "connect to ableton"
@@ -245,7 +245,8 @@ run the coding agent in an empty folder so it doesn't get distracted by an
 unrelated coding project.
 
 1. [Install OpenAI Codex](https://github.com/openai/codex#quickstart)
-2. Edit `~/.codex/config.toml`:
+2. [Download `producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+3. Edit `~/.codex/config.toml`:
 
    ```toml
    [mcp_servers.producer-pal]
@@ -257,8 +258,8 @@ unrelated coding project.
    [connection method](#choosing-a-connection-method) that works with Codex CLI
    (HTTP is not supported).
 
-3. Run `codex` (ideally in an empty folder)
-4. Start a conversation with "connect to ableton"
+4. Run `codex` (ideally in an empty folder)
+5. Start a conversation with "connect to ableton"
 
 ### ChatGPT Web App
 
@@ -301,35 +302,35 @@ private usage is compelling.
    - OpenAI GPT-OSS (tested with the 20B model)
    - Mistral AI Magistral (tested with the small-2509 model)
 3. Configure MCP servers in LM Studio Settings → Program → Integrations → edit
-   mcp.json using one of these
+   mcp.json using one of the supported
    [connection methods](#choosing-a-connection-method):
+   - with producer-pal-portal.js
+     [(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
 
-   **Option A: Via producer-pal-portal.js**
-
-   ```json
-   {
-     "mcpServers": {
-       // ... other MCP server configs ...
-       "producer-pal": {
-         "command": "node",
-         "args": ["/absolute/path/to/producer-pal-portal.js"]
+     ```json
+     {
+       "mcpServers": {
+         // ... other MCP server configs ...
+         "producer-pal": {
+           "command": "node",
+           "args": ["/absolute/path/to/producer-pal-portal.js"]
+         }
        }
      }
-   }
-   ```
+     ```
 
-   **Option B: Direct HTTP connection**
+   - with HTTP
 
-   ```json
-   {
-     "mcpServers": {
-       // ... other MCP server configs ...
-       "producer-pal": {
-         "url": "http://localhost:3350/mcp"
+     ```json
+     {
+       "mcpServers": {
+         // ... other MCP server configs ...
+         "producer-pal": {
+           "url": "http://localhost:3350/mcp"
+         }
        }
      }
-   }
-   ```
+     ```
 
 4. Start a conversation with "connect to ableton"
 
@@ -372,11 +373,12 @@ private usage is compelling.
 Producer Pal works with any LLM that supports the Model Context Protocol.
 
 You can use the
-[STDIO or HTTP connection method](#choosing-a-connection-method).
+[stdio or HTTP connection method](#choosing-a-connection-method).
 
 ### Local MCP via stdio
 
-Configure your LLM to run:
+[Download `producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+and configure your LLM MCP to use:
 
 ```bash
 node /path/to/producer-pal-portal.js
@@ -384,7 +386,7 @@ node /path/to/producer-pal-portal.js
 
 ### Local MCP via HTTP
 
-Connect directly to the URL:
+Use the URL:
 
 ```
 http://localhost:3350/mcp
