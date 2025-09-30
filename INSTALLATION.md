@@ -1,36 +1,61 @@
 # <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal Installation Guide
 
-1. Download the
-   [Producer Pal Max for Live device (`Producer_Pal.amxd`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd).
+## Latest Version Downloads
 
-2. Add `Producer_Pal.amxd` to a MIDI track in
-   [Ableton Live 12.2+](https://www.ableton.com/live/) with
-   [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
-   Suite):
+Installation requires one or two files depending on your setup:
 
-   <img src="./doc/img/install-in-ableton.png" alt="install in Ableton" width="500">
+- [`Producer_Pal.amxd`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
+  is the Max for Live device **required to use Producer Pal**. This device _is_
+  Producer Pal. Everything else is an adapter.
+- Your installation method may need another file (see below for details):
+  - [`Producer_Pal.mcpb`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+    is required for Claude Desktop
+  - [`producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+    is recommended and sometimes required for most other installation methods
+    (it's optional for Gemini CLI, Claude Code, and LM Studio).
+  - The claude.ai and ChatGPT web apps connect to the Producer Pal Max for Live
+    device directly (they don't use the `.mcpb` or `.js` file), but they also
+    require [a web tunnel](#web-tunneling-options) to reach your computer
 
-   It should show "Producer Pal Running".
+Note: if your installation uses two of the above files, you should update both
+files whenever you update Producer Pal (don't use `Producer_Pal.amxd` version
+0.9.8 with `producer-pal-portal.js` version 0.9.7).
 
-3. Setup an AI model to use Producer Pal using one of the following guides (⭐️
-   indicates recommended options):
-   - [Anthropic Claude](#anthropic-claude-installation)
-     - [Claude Desktop](#claude-desktop) ⭐️
-     - [Claude Code](#claude-code) ⭐️
-     - [claude.ai Web App](#claudeai-web-app)
-   - [Google Gemini](#google-gemini)
-     - [Gemini CLI](#gemini-cli) ⭐️
-   - [OpenAI](#openai)
-     - [Codex CLI](#codex-cli)⭐️
-     - [ChatGPT web app](#chatgpt-web-app)
-   - [LM Studio](#lm-studio) for local models useable with no Internet,
-     including:
-     - Mistral AI Magistral
-     - Alibaba Qwen 3
-     - OpenAI GPT OSS
-   - [Other MCP-compatible LLMs](#other-mcp-compatible-llms)
+Read on for installation details.
 
-4. Start a conversation with "connect to ableton"
+## Installation
+
+1.  [Download `Producer_Pal.amxd`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+    the Producer Pal Max for Live device
+
+2.  Add `Producer_Pal.amxd` to a MIDI track in
+    [Ableton Live 12.2+](https://www.ableton.com/live/) with
+    [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton
+    Live Suite):
+
+    <img src="./doc/img/install-in-ableton.png" alt="install in Ableton" width="500">
+
+    It should show "Producer Pal Running".
+
+3.  Setup an AI model to use Producer Pal using one of the following guides (⭐️
+    indicates recommended options):
+    - [Anthropic Claude install guides](#anthropic-claude-installation)
+      - [Claude Desktop install guide](#claude-desktop) ⭐️
+      - [Claude Code install guide](#claude-code) ⭐️
+      - [claude.ai Web App install guide](#claudeai-web-app)
+    - [Google Gemini install guides](#google-gemini)
+      - [Gemini CLI install guide](#gemini-cli) ⭐️
+    - [OpenAI install guides](#openai)
+      - [Codex CLI install guide](#codex-cli)⭐️
+      - [ChatGPT web app install guide](#chatgpt-web-app)
+    - [LM Studio install guide](#lm-studio) for local models useable with no
+      Internet, including:
+      - Mistral AI Magistral
+      - Alibaba Qwen 3
+      - OpenAI GPT OSS
+    - [Installing with other MCP-compatible LLMs](#other-mcp-compatible-llms)
+
+4.  Start a conversation with "connect to ableton"
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -408,11 +433,15 @@ For cloud-hosted LLMs or remote access:
 
 ## Web Tunneling Options
 
-For remote access to Producer Pal, you'll need a tunneling service.
+For remote access to Producer Pal from the Internet, you'll need a tunneling
+service.
 
 _Note: Producer Pal performs no authentication, so anyone who knows your web
 tunnel address can connect and control Ableton Live. You should keep your web
 tunnel address secret._
+
+A web tunnel is _not_ needed to connect to Producer Pal to another computer on
+the local network.
 
 ### ngrok (Recommended)
 
