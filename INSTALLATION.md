@@ -361,19 +361,13 @@ private usage is compelling.
 
 ### Optimizing for Local Models
 
-- Shut down every other app you don't need to be running (e.g. your web browser
-  and chat apps)
-- Consider running Ableton Live on a different machine on the local network
-- **You probably need at least 16k context window size** because Producer Pal
-  currently requires a fairly large context window with respect to local models
-  (this should improve soon). Larger context windows are slower, so experiment.
-- You need a context length of around 8k (8000) to start a conversation with
-  Producer Pal, and that will only allow for a few messages before a new
-  conversation must be started.
-- A context length of 16k (16000) or higher is recommended for achieving useful
-  results, but higher context lengths can make the model run significantly
-  slower. Experiment to find the right balance.
-- To get more out of your context length, disable some of the Producer Pal
+- A **context length of about 8k (8000)** is needed to start a conversation with
+  Producer Pal and send a few messages.
+- A **context length of 16k (16000) or higher is recommended** for achieving
+  useful results, but higher context lengths can make the model run
+  significantly slower, especially as the conversation grows. Experiment to find
+  the right balance.
+- To get more out of a limited context length, disable some of the Producer Pal
   tools. A reasonable minimal toolset for experimentation is:
   - `ppal-connect`
   - `ppal-read-live-set`
@@ -382,12 +376,13 @@ private usage is compelling.
   - `ppal-update-clip`
   - `ppal-playback`
 
-  Try disabling all the other tools and add back ones whose features you miss.
+  Try disabling all the other tools and add back when you miss features.
 
-- If an AI mistake wastes your context length, don't hesitate to delete recent
-  messages from the chat, edit your last message to try to avoid the issue, and
-  try again. Don't waste tokens correcting the LLM, back up and avoid the issue
-  from happening.
+- If the AI struggles and makes mistakes, don't hesitate to delete recent
+  messages from the chat, edit your last message, and try again. Don't waste
+  tokens correcting the LLM. Back up and avoid the issue or try something else.
+- Shut down every other app you don't need to be running
+- Consider running Ableton Live on a different machine on the local network
 - When using a model with the GGUF engine, try enabling the
   advanced/experimental settings for Flash Attention and setting the K/V caches'
   quantization to Q8 or Q4.
