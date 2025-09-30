@@ -8,7 +8,7 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
  * @param {Object} context - The userContext from main.js
  * @returns {Object} Connection status and basic Live Set info
  */
-export function init({} = {}, context) {
+export function connect({} = {}, context) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
 
@@ -42,8 +42,8 @@ export function init({} = {}, context) {
 
   const messages = [
     `Producer Pal ${VERSION} connected to Ableton Live ${abletonLiveVersion}`,
-    "Save often! I can modify and delete things in your project, and I make mistakes.",
-    "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
+    "Tell me if you rearrange things so I stay in sync.",
+    "Save often! I make mistakes.",
     // additional tips set based on the state of the Live Set
   ];
 
@@ -103,10 +103,6 @@ export function init({} = {}, context) {
     messages.push(`No instruments found.
 To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, plugins, etc).
 I can't add instruments but can compose MIDI patterns once they're there.`);
-  } else {
-    messages.push(
-      "Ready to create or edit MIDI clips, build scenes, arrange a song, and manage your Live Set.",
-    );
   }
 
   // Format as markdown bullet list
@@ -117,21 +113,66 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
     result.projectNotes = context.projectNotes.content;
   }
 
+  result.$system = `# Producer Pal System Prompt
+
+You are a music production assistant working with Ableton Live through Producer Pal tools. You are an expert in Producer Pal's bar|beat notation system.
+
+## Time in Ableton Live
+
+- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
+- Durations: bar:beat (4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
+- Fractional beats supported everywhere
+
+## MIDI Syntax for Clips
+
+Write MIDI using the bar|beat notation syntax:
+
+[bar|beat] [v0-127] [t<duration>] [p0-1] note(s)
+
+- bar|beat: Position relative to clip start (reuse current bar with "|beat")
+- v0-127: Velocity (v80-120 = random range, v0 = DELETE in merge mode only)
+- t<duration>: Note length in beats (default: 1.0)
+- p0-1: Probability (default: 1.0)
+- Notes: C0-B8 with # or b (C3 = middle C)
+
+Parameters persist until changed. Standalone parameters set state for following notes.
+
+Examples:
+\`\`\`
+1|1 C3 E3 G3 // chord at bar 1 beat 1
+1|1 v100 C3 |2.5 D3 // C at beat 1, D at beat 2.5
+1|1.75 t0.25 C3 // 16th note at beat 1.75
+v0 2|1.5 Gb1 // delete specific note (merge mode only)
+\`\`\`
+
+## Workflow
+
+- Session View: For jamming, trying ideas, building scenes
+  - Use auto:"play-scene" when generating scenes one clip at a time
+- Arrangement View: For song structure and timeline
+  - Session clips override Arrangement playback
+  - Tracks need to follow Arrangement (automatic on playback with "play-arrangement")
+- Check for instruments before creating MIDI clips
+- Place notes musically - not everything on the beat
+- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120)
+- Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
+- After user move/deletes objects in Live, call ppal-read-live-set to resync`;
+
   result.$instructions =
-    "To initialize Producer Pal:\n" +
+    "Do this now to complete Producer Pal initialization:\n" +
     [
-      "* Call ppal-read-song _with no arguments_ for the best overview of the Live Set",
-      "* Summarize the Live Set state (if ppal-read-song fails, say the error and don't try again)",
+      "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
+      "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
       ...(result.projectNotes
         ? [
             `* Summarize the project notes, ${
               context?.projectNotes?.writable
                 ? "mention you can update the project notes, "
                 : ""
-            }and verify you will follow any instructions in project notes if applicable.`,
+            }and verify you will follow instructions in project notes (if any).`,
           ]
         : []),
-      "* Say the messagesForUser and wait for input",
+      "* Say the messagesForUser, ask what's next, wait for input",
     ].join("\n");
 
   return result;

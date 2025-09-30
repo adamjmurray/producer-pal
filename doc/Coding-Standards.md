@@ -84,12 +84,12 @@ All tool entries in `src/main.js` must use this pattern:
 // ✅ Correct - always pass args
 tools: {
   "ppal-create-clip": (args) => createClip(args),
-  "ppal-init": (args) => init(args),  // Even if currently unused
+  "ppal-connect": (args) => init(args),  // Even if currently unused
 }
 
 // ❌ Wrong - missing args will cause bugs
 tools: {
-  "ppal-init": () => init(),
+  "ppal-connect": () => init(),
 }
 ```
 
@@ -269,7 +269,7 @@ When providing contextual help or adaptive behavior, prefer tool description
 instructions over adding code complexity. Let Claude's intelligence handle
 context-aware responses.
 
-**Hybrid approach:** Some tools (like `ppal-init`) return dynamic guidance in
+**Hybrid approach:** Some tools (like `ppal-connect`) return dynamic guidance in
 their response data. This combines static tool instructions with
 context-specific messages, giving Claude both general patterns and specific
 situational guidance.
@@ -296,7 +296,7 @@ situational guidance.
 
 **Examples:**
 
-- Welcome message in `ppal-init` uses both: tool instructions for general
+- Welcome message in `ppal-connect` uses both: tool instructions for general
   behavior, dynamic response for specific messages
 - Missing instrument detection uses instructions, not data flags
 

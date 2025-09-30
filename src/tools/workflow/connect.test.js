@@ -7,7 +7,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
-import { init } from "./init.js";
+import { connect } from "./connect.js";
 
 // Mock the getHostTrackIndex function
 vi.mock(import("../shared/get-host-track-index.js"), () => ({
@@ -16,7 +16,7 @@ vi.mock(import("../shared/get-host-track-index.js"), () => ({
 
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 
-describe("init", () => {
+describe("connect", () => {
   it("returns basic Live Set information and connection status", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
@@ -71,11 +71,11 @@ describe("init", () => {
       },
     });
 
-    const result = init();
+    const result = connect();
 
     expect(result).toEqual({
       connected: true,
-      producerPalVersion: "0.9.7",
+      producerPalVersion: "0.9.8",
       abletonLiveVersion: "12.3",
       liveSet: {
         name: "Test Project",
@@ -85,20 +85,23 @@ describe("init", () => {
         timeSignature: "4/4",
       },
       messagesForUser: expect.stringContaining(
-        "Producer Pal 0.9.7 connected to Ableton Live 12.3",
+        "Producer Pal 0.9.8 connected to Ableton Live 12.3",
       ),
-      $instructions: expect.stringContaining("To initialize Producer Pal:"),
+      $system: expect.stringContaining("Producer Pal System Prompt"),
+      $instructions: expect.stringContaining(
+        "complete Producer Pal initialization",
+      ),
     });
 
     expect(result.messagesForUser).toContain("Save often!");
     expect(result.messagesForUser).toContain(
-      "If you rearrange tracks or scenes or clips, tell me so I stay in sync.",
+      "Tell me if you rearrange things so I stay in sync.",
     );
 
     expect(result.$instructions).toContain(
-      "Call ppal-read-song _with no arguments_",
+      "Call ppal-read-live-set _with no arguments_",
     );
-    expect(result.$instructions).toContain("Summarize the Live Set state");
+    expect(result.$instructions).toContain("Summarize the Live Set");
     expect(result.$instructions).toContain("Say the messagesForUser");
   });
 
@@ -139,7 +142,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -206,10 +209,10 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(1); // Host track is track 1, synth is on track 0
 
-    const result = init();
+    const result = connect();
 
     expect(result.messagesForUser).toEqual(
-      expect.stringContaining("* Ready to create"),
+      expect.stringContaining("* Save often!"),
     );
   });
 
@@ -262,7 +265,7 @@ describe("init", () => {
 
   //   getHostTrackIndex.mockReturnValue(0); // Host track is track 0 with instrument
 
-  //   const result = init();
+  //   const result = connect();
 
   //   expect(result.messagesForUser).toEqual(
   //     expect.arrayContaining([
@@ -324,7 +327,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(1);
 
-    const result = init();
+    const result = connect();
 
     expect(result.messagesForUser).toEqual(
       expect.stringContaining("* No instruments found."),
@@ -371,14 +374,14 @@ describe("init", () => {
       },
     };
 
-    const result = init({}, context);
+    const result = connect({}, context);
 
     expect(result.projectNotes).toEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");
     expect(result.$instructions).toContain(
-      "follow any instructions in project notes",
+      "follow instructions in project notes",
     );
   });
 
@@ -423,14 +426,14 @@ describe("init", () => {
       },
     };
 
-    const result = init({}, context);
+    const result = connect({}, context);
 
     expect(result.projectNotes).toEqual(
       "Working on a house track with heavy bass",
     );
     expect(result.$instructions).toContain("Summarize the project notes");
     expect(result.$instructions).toContain(
-      "follow any instructions in project notes",
+      "follow instructions in project notes",
     );
     expect(result.$instructions).toContain(
       "mention you can update the project notes",
@@ -477,7 +480,7 @@ describe("init", () => {
       },
     };
 
-    const result = init({}, context);
+    const result = connect({}, context);
 
     expect(result.projectNotes).toBeUndefined();
   });
@@ -515,7 +518,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result.projectNotes).toBeUndefined();
   });
@@ -564,7 +567,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(null); // Host track index not found
 
-    const result = init();
+    const result = connect();
 
     // Should still work - just won't find instruments on host track
     expect(result).toEqual(
@@ -616,7 +619,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(null);
 
-    const result = init();
+    const result = connect();
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -666,7 +669,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result.liveSet.scale).toBe("Eb Minor");
   });
@@ -707,7 +710,7 @@ describe("init", () => {
 
     getHostTrackIndex.mockReturnValue(0);
 
-    const result = init();
+    const result = connect();
 
     expect(result.liveSet.scale).toBeUndefined();
   });

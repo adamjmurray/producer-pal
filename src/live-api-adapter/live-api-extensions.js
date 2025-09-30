@@ -169,9 +169,9 @@ if (typeof LiveAPI !== "undefined") {
     });
   }
 
-  // Track type extension
-  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "trackType")) {
-    Object.defineProperty(LiveAPI.prototype, "trackType", {
+  // Track category extension
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "category")) {
+    Object.defineProperty(LiveAPI.prototype, "category", {
       get: function () {
         if (this.path.includes("live_set tracks")) {
           return "regular";

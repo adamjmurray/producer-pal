@@ -62,7 +62,7 @@ properties and considerations for potential future implementation.
 ### Option 1: Extend Existing Tools
 
 - Add fold operations to `ppal-update-track` (since it's a track property)
-- Add visibility info to `ppal-read-track` or `ppal-read-song`
+- Add visibility info to `ppal-read-track` or `ppal-read-live-set`
 
 ### Option 2: Dedicated Folding Tool
 

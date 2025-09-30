@@ -76,7 +76,7 @@ export function readScene(args = {}) {
       .map((_trackId, trackIndex) =>
         readClip({
           trackIndex,
-          clipSlotIndex: resolvedSceneIndex,
+          sceneIndex: resolvedSceneIndex,
           include: args.include,
         }),
       )

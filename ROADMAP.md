@@ -2,41 +2,46 @@
 
 Rough plans that are subject to change.
 
-## 1.0 Release
+## 1.0
 
 - Support Producer Pal with LLMs other than Claude
-- Optimize by reducing AI context window usage
+- Optimize performance by reducing AI context window usage
 
-## Likely
+## 1.x / 2.0
+
+In no particular order:
 
 ### General Features
 
 - Arrangement clip length modification support
+- Version update notifications in the UI
 
-### Persistent Global Context
+### Behavior Customization
 
-Beyond the ppal-memory tool and Live project-specific notes
-
-- Custom global Producer Pal prompt across all Live Sets using file storage
-  (e.g. ~/Documents/Producer Pal/settings)
+- Custom global Producer Pal prompt ("global notes"?) across all Live Sets using
+  file storage (e.g. ~/Documents/Producer Pal/settings) exposed via the
+  `ppal-connect` and `ppal-memory` tools. Can be AI-writable (e.g. ask AI to
+  remember a rule across all of your Live projects)
+- Large UI editor in a popup window for project and global notes. Markdown
+  support.
 - Tool/parameter description overrides to completely customize how Producer Pal
-  works
+  behaves, for R&D and tuning the behavior for specific AI models.
 
 ### Advanced MIDI Manipulation
 
-- Randomization of velocity and timing
-- Shuffle and groove features
-- Pattern generation algorithms
-- Ability to run sand-boxed JavaScript code to generate/modify MIDI clips
+- Randomize velocity and timing when creating and updating clips
+- Shuffle and groove support (non-random timing manipulation)
+- MIDI pattern generators and transformers (pre-defined algorithms the LLM can
+  use)
+- Run sand-boxed LLM-generated JavaScript code to generate and transform MIDI
+  (LLM-generated algorithms)
 
-### Installation & Setup
+## Maybe Later
 
-- Version update notifications in the UI
-- Automatic updates
-- Streamlined installation - Claude Desktop extension installs Max device
-  automatically
+### Built-in Chat UI
 
-## Maybe
+- Add e.g. a Gemini API key and start chatting directly from the Max for Live
+  device via a popup window.
 
 ### Device Control
 

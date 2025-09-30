@@ -5,6 +5,7 @@ import {
 } from "../../notation/barbeat/barbeat-time";
 import * as console from "../../shared/v8-max-console";
 import { MAX_CLIP_BEATS } from "../constants";
+import { select } from "../control/select.js";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -229,6 +230,8 @@ function copyClipProperties(sourceClip, destClip, name) {
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
  * @param {boolean} [args.withoutDevices] - Whether to exclude devices when duplicating tracks
+ * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering by routing the new track to the source track
+ * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
 export function duplicate({
@@ -242,6 +245,7 @@ export function duplicate({
   withoutClips,
   withoutDevices,
   routeToSource,
+  switchView,
 } = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -414,8 +418,8 @@ export function duplicate({
         );
       } else if (type === "clip") {
         const trackIndex = object.trackIndex;
-        const clipSlotIndex = object.clipSlotIndex;
-        if (trackIndex == null || clipSlotIndex == null) {
+        const sceneIndex = object.sceneIndex;
+        if (trackIndex == null || sceneIndex == null) {
           throw new Error(
             `duplicate failed: no track or clip slot index for clip id "${id}" (path="${object.path}")`,
           );
@@ -423,10 +427,10 @@ export function duplicate({
 
         // For session clips, duplicate_clip_slot always creates at source+1,
         // so we call it on the progressively increasing source index
-        const sourceClipSlotIndex = clipSlotIndex + i;
+        const sourceSceneIndex = sceneIndex + i;
         newObjectMetadata = duplicateClipSlot(
           trackIndex,
-          sourceClipSlotIndex,
+          sourceSceneIndex,
           objectName,
         );
       }
@@ -452,6 +456,25 @@ export function duplicate({
   if (withoutClips != null) result.withoutClips = withoutClips;
   if (withoutDevices != null) result.withoutDevices = withoutDevices;
   if (routeToSource != null) result.routeToSource = routeToSource;
+  if (switchView != null) result.switchView = switchView;
+
+  // Handle view switching if requested
+  if (switchView) {
+    let targetView = null;
+    if (destination === "arrangement") {
+      targetView = "arrangement";
+    } else if (
+      destination === "session" ||
+      type === "track" ||
+      type === "scene"
+    ) {
+      targetView = "session";
+    }
+
+    if (targetView) {
+      select({ view: targetView });
+    }
+  }
 
   // Add contextual tip after successful track duplication
   if (type === "track" && !routeToSource && !withoutDevices) {
@@ -505,11 +528,11 @@ function getMinimalClipInfo(clip) {
     };
   } else {
     const trackIndex = clip.trackIndex;
-    const clipSlotIndex = clip.clipSlotIndex;
+    const sceneIndex = clip.sceneIndex;
 
-    if (trackIndex == null || clipSlotIndex == null) {
+    if (trackIndex == null || sceneIndex == null) {
       throw new Error(
-        `getMinimalClipInfo failed: could not determine trackIndex/clipSlotIndex for clip (path="${clip.path}")`,
+        `getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip (path="${clip.path}")`,
       );
     }
 
@@ -517,7 +540,7 @@ function getMinimalClipInfo(clip) {
       id: clip.id,
       view: "session",
       trackIndex,
-      clipSlotIndex,
+      sceneIndex,
     };
   }
 }
@@ -573,8 +596,8 @@ function duplicateTrack(
     // Default behavior: collect info about duplicated clips
     // Session clips
     const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
-    //for (let clipSlotIndex = 0; clipSlotIndex < sessionClipSlotIds.length; clipSlotIndex++) {
-    //const clipSlot = new LiveAPI(`live_set tracks ${newTrackIndex} clip_slots ${clipSlotIndex}`);
+    //for (let sceneIndex = 0; sceneIndex < sessionClipSlotIds.length; sceneIndex++) {
+    //const clipSlot = new LiveAPI(`live_set tracks ${newTrackIndex} clip_slots ${sceneIndex}`);
     for (const clipSlotId of sessionClipSlotIds) {
       const clipSlot = new LiveAPI(clipSlotId);
       if (clipSlot.getProperty("has_clip")) {
@@ -846,7 +869,7 @@ function duplicateSceneToArrangement(
   return result;
 }
 
-function duplicateClipSlot(trackIndex, sourceClipSlotIndex, name) {
+function duplicateClipSlot(trackIndex, sourceSceneIndex, name) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
   if (!track.exists()) {
@@ -855,12 +878,12 @@ function duplicateClipSlot(trackIndex, sourceClipSlotIndex, name) {
     );
   }
 
-  // duplicate_clip_slot creates a new clip at sourceClipSlotIndex + 1
-  track.call("duplicate_clip_slot", sourceClipSlotIndex);
+  // duplicate_clip_slot creates a new clip at sourceSceneIndex + 1
+  track.call("duplicate_clip_slot", sourceSceneIndex);
 
-  const newClipSlotIndex = sourceClipSlotIndex + 1;
+  const newSceneIndex = sourceSceneIndex + 1;
   const newClip = new LiveAPI(
-    `live_set tracks ${trackIndex} clip_slots ${newClipSlotIndex} clip`,
+    `live_set tracks ${trackIndex} clip_slots ${newSceneIndex} clip`,
   );
 
   if (name != null) {

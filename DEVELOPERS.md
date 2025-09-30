@@ -109,7 +109,7 @@ node scripts/cli.mjs
 node scripts/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node scripts/cli.mjs tools/call ppal-read-song '{}'
+node scripts/cli.mjs tools/call ppal-read-live-set '{}'
 node scripts/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 
 # Use a different server URL

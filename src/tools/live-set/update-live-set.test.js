@@ -5,12 +5,12 @@ import {
   liveApiId,
   liveApiSet,
 } from "../../test/mock-live-api";
-import { updateSong } from "./update-song";
+import { updateLiveSet } from "./update-live-set";
 
 const scaleChangeNote =
   "Scale applied to selected clips and defaults for new clips.";
 
-describe("updateSong", () => {
+describe("updateLiveSet", () => {
   let mockRootNote = 0; // Track the root note state across tests
 
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe("updateSong", () => {
   });
 
   it("should update tempo", () => {
-    const result = updateSong({ tempo: 140 });
+    const result = updateLiveSet({ tempo: 140 });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "tempo",
@@ -52,12 +52,14 @@ describe("updateSong", () => {
   });
 
   it("should throw error for invalid tempo", () => {
-    expect(() => updateSong({ tempo: 10 })).toThrow("Tempo must be between");
-    expect(() => updateSong({ tempo: 1000 })).toThrow("Tempo must be between");
+    expect(() => updateLiveSet({ tempo: 10 })).toThrow("Tempo must be between");
+    expect(() => updateLiveSet({ tempo: 1000 })).toThrow(
+      "Tempo must be between",
+    );
   });
 
   it("should update time signature", () => {
-    const result = updateSong({ timeSignature: "3/4" });
+    const result = updateLiveSet({ timeSignature: "3/4" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "signature_numerator",
@@ -75,16 +77,16 @@ describe("updateSong", () => {
   });
 
   it("should throw error for invalid time signature format", () => {
-    expect(() => updateSong({ timeSignature: "invalid" })).toThrow(
+    expect(() => updateLiveSet({ timeSignature: "invalid" })).toThrow(
       "Time signature must be in format",
     );
-    expect(() => updateSong({ timeSignature: "3-4" })).toThrow(
+    expect(() => updateLiveSet({ timeSignature: "3-4" })).toThrow(
       "Time signature must be in format",
     );
   });
 
   it("should update multiple properties simultaneously", () => {
-    const result = updateSong({
+    const result = updateLiveSet({
       tempo: 125,
       timeSignature: "6/8",
     });
@@ -111,7 +113,7 @@ describe("updateSong", () => {
   });
 
   it("should update scale with combined scaleRoot + scaleName format", () => {
-    const result = updateSong({ scale: "D Major" });
+    const result = updateLiveSet({ scale: "D Major" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -131,20 +133,22 @@ describe("updateSong", () => {
   });
 
   it("should throw error for invalid scale format", () => {
-    expect(() => updateSong({ scale: "invalid" })).toThrow(
+    expect(() => updateLiveSet({ scale: "invalid" })).toThrow(
       "Scale must be in format",
     );
-    expect(() => updateSong({ scale: "H Major" })).toThrow(
+    expect(() => updateLiveSet({ scale: "H Major" })).toThrow(
       "Invalid scale root",
     );
-    expect(() => updateSong({ scale: "C Foo" })).toThrow("Invalid scale name");
-    expect(() => updateSong({ scale: "Major" })).toThrow(
+    expect(() => updateLiveSet({ scale: "C Foo" })).toThrow(
+      "Invalid scale name",
+    );
+    expect(() => updateLiveSet({ scale: "Major" })).toThrow(
       "Scale must be in format",
     );
   });
 
   it("should update scale with different root note", () => {
-    const result = updateSong({ scale: "C Dorian" });
+    const result = updateLiveSet({ scale: "C Dorian" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -164,15 +168,15 @@ describe("updateSong", () => {
   });
 
   it("should handle sharp and flat scale roots", () => {
-    const result1 = updateSong({ scale: "F# Minor" });
+    const result1 = updateLiveSet({ scale: "F# Minor" });
     expect(result1.scale).toBe("F# Minor");
 
-    const result2 = updateSong({ scale: "Bb Major" });
+    const result2 = updateLiveSet({ scale: "Bb Major" });
     expect(result2.scale).toBe("Bb Major");
   });
 
   it("should handle case insensitive scale input and normalize the output", () => {
-    const result1 = updateSong({ scale: "c major" });
+    const result1 = updateLiveSet({ scale: "c major" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -185,7 +189,7 @@ describe("updateSong", () => {
     );
     expect(result1.scale).toBe("C Major");
 
-    const result2 = updateSong({ scale: "D# MINOR" });
+    const result2 = updateLiveSet({ scale: "D# MINOR" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -198,7 +202,7 @@ describe("updateSong", () => {
     );
     expect(result2.scale).toBe("D# Minor");
 
-    const result3 = updateSong({ scale: "bB DoRiAn" });
+    const result3 = updateLiveSet({ scale: "bB DoRiAn" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -214,7 +218,7 @@ describe("updateSong", () => {
 
   it("should handle various whitespace formats in scale input and normalize the scale name in the output", () => {
     // Test with tab
-    const result1 = updateSong({ scale: "C\tMajor" });
+    const result1 = updateLiveSet({ scale: "C\tMajor" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -228,7 +232,7 @@ describe("updateSong", () => {
     expect(result1.scale).toBe("C Major");
 
     // Test with multiple spaces
-    const result2 = updateSong({ scale: "D   Minor" });
+    const result2 = updateLiveSet({ scale: "D   Minor" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -242,7 +246,7 @@ describe("updateSong", () => {
     expect(result2.scale).toBe("D Minor");
 
     // Test with mixed whitespace
-    const result3 = updateSong({ scale: "F# \t Dorian" });
+    const result3 = updateLiveSet({ scale: "F# \t Dorian" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -257,7 +261,7 @@ describe("updateSong", () => {
   });
 
   it("should disable scale when given empty string", () => {
-    const result = updateSong({ scale: "" });
+    const result = updateLiveSet({ scale: "" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "scale_mode",
@@ -271,7 +275,7 @@ describe("updateSong", () => {
   });
 
   it("should update complex scale names", () => {
-    const result = updateSong({ scale: "D Dorian" });
+    const result = updateLiveSet({ scale: "D Dorian" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -291,7 +295,7 @@ describe("updateSong", () => {
   });
 
   it("should update all properties simultaneously", () => {
-    const result = updateSong({
+    const result = updateLiveSet({
       tempo: 125,
       timeSignature: "6/8",
       scale: "G Mixolydian",
@@ -337,7 +341,7 @@ describe("updateSong", () => {
   });
 
   it("should return only song ID when no properties are updated", () => {
-    const result = updateSong({});
+    const result = updateLiveSet({});
     expect(liveApiSet).not.toHaveBeenCalled();
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result).toEqual({
@@ -346,7 +350,7 @@ describe("updateSong", () => {
   });
 
   it("should return scalePitches when scale is set", () => {
-    const result = updateSong({ scale: "C Major" });
+    const result = updateLiveSet({ scale: "C Major" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -370,7 +374,7 @@ describe("updateSong", () => {
   });
 
   it("should parse scale correctly for different roots", () => {
-    const result = updateSong({ scale: "D Major" });
+    const result = updateLiveSet({ scale: "D Major" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "root_note",
@@ -389,7 +393,7 @@ describe("updateSong", () => {
   });
 
   it("should handle minor scales correctly", () => {
-    const result = updateSong({ scale: "A Minor" });
+    const result = updateLiveSet({ scale: "A Minor" });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
       "scale_name",
@@ -413,7 +417,7 @@ describe("updateSong", () => {
   });
 
   it("should NOT return scalePitches when no scale-related parameters are set", () => {
-    const result = updateSong({ tempo: 140 });
+    const result = updateLiveSet({ tempo: 140 });
     expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
     expect(result).toEqual({
       id: "live_set_id",
@@ -422,12 +426,72 @@ describe("updateSong", () => {
   });
 
   it("should NOT return scalePitches when scale is disabled with empty string", () => {
-    const result = updateSong({ scale: "" });
+    const result = updateLiveSet({ scale: "" });
     expect(liveApiGet).not.toHaveBeenCalledWith("scale_intervals");
     expect(result).toEqual({
       id: "live_set_id",
       scale: "",
       $meta: [scaleChangeNote],
+    });
+  });
+
+  it("should set arrangementFollower to true (all tracks follow arrangement)", () => {
+    const result = updateLiveSet({ arrangementFollower: true });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "back_to_arranger",
+      0, // 0 = following arrangement
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      arrangementFollower: true,
+    });
+  });
+
+  it("should set arrangementFollower to false (tracks don't follow arrangement)", () => {
+    const result = updateLiveSet({ arrangementFollower: false });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "back_to_arranger",
+      1, // 1 = not following arrangement
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      arrangementFollower: false,
+    });
+  });
+
+  it("should combine arrangementFollower with other parameters", () => {
+    const result = updateLiveSet({
+      tempo: 130,
+      arrangementFollower: true,
+      timeSignature: "3/4",
+    });
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "tempo",
+      130,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "back_to_arranger",
+      0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_numerator",
+      3,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "signature_denominator",
+      4,
+    );
+    expect(result).toEqual({
+      id: "live_set_id",
+      tempo: 130,
+      arrangementFollower: true,
+      timeSignature: "3/4",
     });
   });
 });

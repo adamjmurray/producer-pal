@@ -661,13 +661,13 @@ describe("duplicate", () => {
             id: "live_set/tracks/0/clip_slots/1/clip",
             view: "session",
             trackIndex: 0,
-            clipSlotIndex: 1,
+            sceneIndex: 1,
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
             view: "session",
             trackIndex: 1,
-            clipSlotIndex: 1,
+            sceneIndex: 1,
           },
         ],
       });
@@ -721,13 +721,13 @@ describe("duplicate", () => {
                 id: "live_set/tracks/0/clip_slots/1/clip",
                 view: "session",
                 trackIndex: 0,
-                clipSlotIndex: 1,
+                sceneIndex: 1,
               },
               {
                 id: "live_set/tracks/1/clip_slots/1/clip",
                 view: "session",
                 trackIndex: 1,
-                clipSlotIndex: 1,
+                sceneIndex: 1,
               },
             ],
           },
@@ -740,13 +740,13 @@ describe("duplicate", () => {
                 id: "live_set/tracks/0/clip_slots/2/clip",
                 view: "session",
                 trackIndex: 0,
-                clipSlotIndex: 2,
+                sceneIndex: 2,
               },
               {
                 id: "live_set/tracks/1/clip_slots/2/clip",
                 view: "session",
                 trackIndex: 1,
-                clipSlotIndex: 2,
+                sceneIndex: 2,
               },
             ],
           },
@@ -1325,7 +1325,7 @@ describe("duplicate", () => {
             id: "live_set/tracks/0/clip_slots/1/clip",
             view: "session",
             trackIndex: 0,
-            clipSlotIndex: 1,
+            sceneIndex: 1,
           },
         });
       });
@@ -1359,7 +1359,7 @@ describe("duplicate", () => {
                 id: "live_set/tracks/0/clip_slots/1/clip",
                 view: "session",
                 trackIndex: 0,
-                clipSlotIndex: 1,
+                sceneIndex: 1,
                 name: "Custom Clip",
               },
             },
@@ -1368,7 +1368,7 @@ describe("duplicate", () => {
                 id: "live_set/tracks/0/clip_slots/2/clip",
                 view: "session",
                 trackIndex: 0,
-                clipSlotIndex: 2,
+                sceneIndex: 2,
                 name: "Custom Clip 2",
               },
             },
@@ -2390,6 +2390,162 @@ describe("duplicate", () => {
       );
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe("switchView functionality", () => {
+    it("should switch to arrangement view when duplicating to arrangement destination", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
+        return null;
+      });
+
+      const originalPath = liveApiPath.getMockImplementation();
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      mockLiveApiGet({
+        clip1: { exists: () => true, length: 4 },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 0,
+        },
+      });
+
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arrangement",
+        arrangementStartTime: "1|1",
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
+      expect(result.switchView).toBe(true);
+    });
+
+    it("should switch to session view when duplicating to session destination", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        return this._path;
+      });
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_slot") {
+          // Mock the clip slot duplication result
+          return null;
+        }
+        return null;
+      });
+
+      mockLiveApiGet({
+        clip1: { exists: () => true },
+        "live_set tracks 0 clip_slots 1 clip": {
+          is_arrangement_clip: 0,
+        },
+      });
+
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "session",
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.switchView).toBe(true);
+    });
+
+    it("should switch to session view when duplicating tracks", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.switchView).toBe(true);
+    });
+
+    it("should switch to session view when duplicating scenes", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "scene1") {
+          return "live_set scenes 0";
+        }
+        return this._path;
+      });
+
+      const result = duplicate({
+        type: "scene",
+        id: "scene1",
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.switchView).toBe(true);
+    });
+
+    it("should not switch views when switchView=false", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        switchView: false,
+      });
+
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "show_view",
+        expect.anything(),
+      );
+      expect(result.switchView).toBe(false);
+    });
+
+    it("should work with multiple duplicates when switchView=true", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        count: 2,
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result.switchView).toBe(true);
+      expect(result.objects).toHaveLength(2);
     });
   });
 });

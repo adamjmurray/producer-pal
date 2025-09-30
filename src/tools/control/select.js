@@ -25,7 +25,7 @@ function readViewState() {
 
   // Extract track info using Live API extensions
   const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
-  const trackType = selectedTrack.exists() ? selectedTrack.trackType : null;
+  const category = selectedTrack.exists() ? selectedTrack.category : null;
   const selectedSceneIndex = selectedScene.exists()
     ? selectedScene.sceneIndex
     : null;
@@ -58,18 +58,18 @@ function readViewState() {
     detailView = "device";
   }
 
-  const browserVisible = Boolean(
+  const showBrowser = Boolean(
     appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
   );
 
   const selectedTrackObject = {
     trackId: selectedTrackId,
-    trackType: trackType,
+    category: category,
   };
 
-  if (trackType === "regular" && selectedTrack.exists()) {
+  if (category === "regular" && selectedTrack.exists()) {
     selectedTrackObject.trackIndex = selectedTrack.trackIndex;
-  } else if (trackType === "return" && selectedTrack.exists()) {
+  } else if (category === "return" && selectedTrack.exists()) {
     selectedTrackObject.returnTrackIndex = selectedTrack.returnTrackIndex;
   }
   // master track gets no index property
@@ -77,7 +77,7 @@ function readViewState() {
   return {
     view: fromLiveApiView(appView.getProperty("focused_document_view")),
     detailView,
-    browserVisible,
+    showBrowser,
     selectedTrack: selectedTrackObject,
     selectedClipId,
     selectedDeviceId,
@@ -89,46 +89,46 @@ function readViewState() {
   };
 }
 
-export function view({
+export function select({
   // Main view
   view,
 
   // Track selection
-  selectedTrackId,
-  selectedTrackType,
-  selectedTrackIndex,
+  trackId,
+  category,
+  trackIndex,
 
   // Scene selection
-  selectedSceneId,
-  selectedSceneIndex,
+  sceneId,
+  sceneIndex,
 
   // Clip selection
-  selectedClipId,
+  clipId,
 
   // Device selection
-  selectedDeviceId,
-  selectInstrument,
+  deviceId,
+  instrument,
 
   // Highlighted clip slot
-  selectedClipSlot,
+  clipSlot,
 
   // Detail view
-  showDetail,
+  detailView,
   showLoop,
 
   // Browser
-  browserVisible,
+  showBrowser,
 } = {}) {
   // Validation - throw errors for conflicting parameters
   validateParameters({
-    selectedTrackId,
-    selectedTrackType,
-    selectedTrackIndex,
-    selectedSceneId,
-    selectedSceneIndex,
-    selectedDeviceId,
-    selectInstrument,
-    selectedClipSlot,
+    trackId,
+    category,
+    trackIndex,
+    sceneId,
+    sceneIndex,
+    deviceId,
+    instrument,
+    clipSlot,
   });
 
   const appView = new LiveAPI("live_app view");
@@ -142,65 +142,65 @@ export function view({
   // Update track selection
   const trackSelectionResult = updateTrackSelection({
     songView,
-    selectedTrackId,
-    selectedTrackType,
-    selectedTrackIndex,
+    trackId,
+    category,
+    trackIndex,
   });
 
   // Update scene selection
   const sceneSelectionResult = updateSceneSelection({
     songView,
-    selectedSceneId,
-    selectedSceneIndex,
+    sceneId,
+    sceneIndex,
   });
 
   // Update clip selection
-  if (selectedClipId !== undefined) {
-    if (selectedClipId === null) {
+  if (clipId !== undefined) {
+    if (clipId === null) {
       // Deselect all clips
       songView.set("detail_clip", "id 0");
     } else {
       // Select specific clip
-      const clipAPI = LiveAPI.from(selectedClipId);
+      const clipAPI = LiveAPI.from(clipId);
       songView.setProperty("detail_clip", clipAPI.id);
     }
   }
 
   // Update device selection
   updateDeviceSelection({
-    selectedDeviceId,
-    selectInstrument,
+    deviceId,
+    instrument,
     trackSelectionResult,
   });
 
   // Update highlighted clip slot
   updateHighlightedClipSlot({
     songView,
-    selectedClipSlot,
+    clipSlot,
   });
 
   // Update detail view
-  if (showDetail !== undefined) {
-    if (showDetail === "clip") {
+  if (detailView !== undefined) {
+    if (detailView === "clip") {
       appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_CLIP);
-    } else if (showDetail === "device") {
+    } else if (detailView === "device") {
       appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN);
-    } else if (showDetail === "none") {
+    } else if (detailView === "none") {
       // Hide detail view by hiding the detail view directly
       appView.call("hide_view", LIVE_API_VIEW_NAMES.DETAIL);
     }
   }
 
   // Show loop view for selected clip
-  if (showLoop === true && selectedClipId) {
+  if (showLoop === true && clipId) {
     appView.call("focus_view", LIVE_API_VIEW_NAMES.DETAIL_CLIP);
     // Note: There's no direct API to show loop view, but focusing on Detail/Clip
     // with a selected clip will show the clip editor where loop controls are visible
   }
 
   // Update browser visibility
-  if (browserVisible !== undefined) {
-    if (browserVisible) {
+  if (showBrowser !== undefined) {
+    if (showBrowser) {
       appView.call("focus_view", LIVE_API_VIEW_NAMES.BROWSER);
     } else {
       // Hide browser using hide_view API
@@ -228,109 +228,96 @@ export function view({
   // Add scene selection results
   Object.assign(result, sceneSelectionResult);
 
-  if (selectedClipId !== undefined) result.selectedClipId = selectedClipId;
-  if (selectedDeviceId != null) result.selectedDeviceId = selectedDeviceId;
-  if (selectInstrument != null) result.selectInstrument = selectInstrument;
-  if (selectedClipSlot != null) result.selectedClipSlot = selectedClipSlot;
-  if (showDetail !== undefined) {
-    result.detailView = showDetail === "none" ? null : showDetail;
+  if (clipId !== undefined) result.selectedClipId = clipId;
+  if (deviceId != null) result.selectedDeviceId = deviceId;
+  if (instrument != null) result.instrument = instrument;
+  if (clipSlot != null) result.selectedClipSlot = clipSlot;
+  if (detailView !== undefined) {
+    result.detailView = detailView === "none" ? null : detailView;
   }
   if (showLoop != null) result.showLoop = showLoop;
-  if (browserVisible != null) result.browserVisible = browserVisible;
+  if (showBrowser != null) result.showBrowser = showBrowser;
 
   return result;
 }
 
 function validateParameters({
-  selectedTrackId,
-  selectedTrackType,
-  selectedTrackIndex,
-  selectedSceneId,
-  selectedSceneIndex,
-  selectedDeviceId,
-  selectInstrument,
-  selectedClipSlot,
+  trackId,
+  category,
+  trackIndex,
+  sceneId,
+  sceneIndex,
+  deviceId,
+  instrument,
+  clipSlot,
 }) {
   // Track selection validation
-  if (selectedTrackType === "master" && selectedTrackIndex != null) {
+  if (category === "master" && trackIndex != null) {
     throw new Error(
-      "selectedTrackIndex should not be provided when selectedTrackType is 'master'",
+      "trackIndex should not be provided when category is 'master'",
     );
   }
 
   // Device selection validation
-  if (selectedDeviceId != null && selectInstrument != null) {
-    throw new Error(
-      "cannot specify both selectedDeviceId and selectInstrument",
-    );
+  if (deviceId != null && instrument != null) {
+    throw new Error("cannot specify both deviceId and instrument");
   }
 
   // Cross-validation for track ID vs index (requires Live API calls)
-  if (selectedTrackId != null && selectedTrackIndex != null) {
-    const trackType = selectedTrackType || "regular";
+  if (trackId != null && trackIndex != null) {
+    const finalCategory = category || "regular";
     let trackPath;
-    if (trackType === "regular") {
-      trackPath = `live_set tracks ${selectedTrackIndex}`;
-    } else if (trackType === "return") {
-      trackPath = `live_set return_tracks ${selectedTrackIndex}`;
-    } else if (trackType === "master") {
+    if (finalCategory === "regular") {
+      trackPath = `live_set tracks ${trackIndex}`;
+    } else if (finalCategory === "return") {
+      trackPath = `live_set return_tracks ${trackIndex}`;
+    } else if (finalCategory === "master") {
       trackPath = "live_set master_track";
     }
 
     if (trackPath) {
       const trackAPI = new LiveAPI(trackPath);
-      if (trackAPI.exists() && trackAPI.id !== selectedTrackId) {
-        throw new Error(
-          "selectedTrackId and selectedTrackIndex refer to different tracks",
-        );
+      if (trackAPI.exists() && trackAPI.id !== trackId) {
+        throw new Error("trackId and trackIndex refer to different tracks");
       }
     }
   }
 
   // Cross-validation for scene ID vs index
-  if (selectedSceneId != null && selectedSceneIndex != null) {
-    const sceneAPI = new LiveAPI(`live_set scenes ${selectedSceneIndex}`);
-    if (sceneAPI.exists() && sceneAPI.id !== selectedSceneId) {
-      throw new Error(
-        "selectedSceneId and selectedSceneIndex refer to different scenes",
-      );
+  if (sceneId != null && sceneIndex != null) {
+    const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
+    if (sceneAPI.exists() && sceneAPI.id !== sceneId) {
+      throw new Error("sceneId and sceneIndex refer to different scenes");
     }
   }
 }
 
-function updateTrackSelection({
-  songView,
-  selectedTrackId,
-  selectedTrackType,
-  selectedTrackIndex,
-}) {
+function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   const result = {};
 
   // Determine track selection approach
   let trackAPI = null;
-  let finalTrackId = selectedTrackId;
+  let finalTrackId = trackId;
 
-  if (selectedTrackId != null) {
+  if (trackId != null) {
     // Select by ID
-    trackAPI = LiveAPI.from(selectedTrackId);
+    trackAPI = LiveAPI.from(trackId);
     if (trackAPI.exists()) {
       songView.setProperty("selected_track", trackAPI.id);
-      result.selectedTrackId = selectedTrackId;
-      if (selectedTrackType != null)
-        result.selectedTrackType = selectedTrackType;
-      if (selectedTrackIndex != null)
-        result.selectedTrackIndex = selectedTrackIndex;
+      result.selectedTrackId = trackId;
+      if (category != null) result.selectedCategory = category;
+      if (trackIndex != null) result.selectedTrackIndex = trackIndex;
     }
-  } else if (selectedTrackType != null || selectedTrackIndex != null) {
-    // Select by type/index
-    const trackType = selectedTrackType || "regular";
+  } else if (category != null || trackIndex != null) {
+    // Select by category/index
+    const finalCategory = category || "regular";
     let trackPath;
 
-    if (trackType === "regular") {
-      trackPath = `live_set tracks ${selectedTrackIndex}`;
-    } else if (trackType === "return") {
-      trackPath = `live_set return_tracks ${selectedTrackIndex}`;
-    } else if (trackType === "master") {
+    if (finalCategory === "regular") {
+      trackPath = `live_set tracks ${trackIndex}`;
+    } else if (finalCategory === "return") {
+      trackPath = `live_set return_tracks ${trackIndex}`;
+    } else if (finalCategory === "master") {
       trackPath = "live_set master_track";
     }
 
@@ -340,9 +327,9 @@ function updateTrackSelection({
         finalTrackId = trackAPI.id;
         songView.setProperty("selected_track", trackAPI.id);
         result.selectedTrackId = finalTrackId;
-        result.selectedTrackType = trackType;
-        if (trackType !== "master" && selectedTrackIndex != null) {
-          result.selectedTrackIndex = selectedTrackIndex;
+        result.selectedCategory = finalCategory;
+        if (finalCategory !== "master" && trackIndex != null) {
+          result.selectedTrackIndex = trackIndex;
         }
       }
     }
@@ -351,73 +338,64 @@ function updateTrackSelection({
   return result;
 }
 
-function updateSceneSelection({
-  songView,
-  selectedSceneId,
-  selectedSceneIndex,
-}) {
+function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   const result = {};
 
-  if (selectedSceneId != null) {
+  if (sceneId != null) {
     // Select by ID
-    const sceneAPI = LiveAPI.from(selectedSceneId);
+    const sceneAPI = LiveAPI.from(sceneId);
     if (sceneAPI.exists()) {
-      songView.setProperty("selected_scene", sceneAPI.id);
-      result.selectedSceneId = selectedSceneId;
-      if (selectedSceneIndex != null)
-        result.selectedSceneIndex = selectedSceneIndex;
-    }
-  } else if (selectedSceneIndex != null) {
-    // Select by index
-    const sceneAPI = new LiveAPI(`live_set scenes ${selectedSceneIndex}`);
-    if (sceneAPI.exists()) {
-      const sceneId = sceneAPI.id;
       songView.setProperty("selected_scene", sceneAPI.id);
       result.selectedSceneId = sceneId;
-      result.selectedSceneIndex = selectedSceneIndex;
+      if (sceneIndex != null) result.selectedSceneIndex = sceneIndex;
+    }
+  } else if (sceneIndex != null) {
+    // Select by index
+    const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
+    if (sceneAPI.exists()) {
+      const finalSceneId = sceneAPI.id;
+      songView.setProperty("selected_scene", sceneAPI.id);
+      result.selectedSceneId = finalSceneId;
+      result.selectedSceneIndex = sceneIndex;
     }
   }
 
   return result;
 }
 
-function updateDeviceSelection({
-  selectedDeviceId,
-  selectInstrument,
-  trackSelectionResult,
-}) {
-  if (selectedDeviceId != null) {
+function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
+  if (deviceId != null) {
     // Select specific device by ID using the main song view
-    const deviceAPI = LiveAPI.from(selectedDeviceId);
+    const deviceAPI = LiveAPI.from(deviceId);
     if (deviceAPI.exists()) {
       const songView = new LiveAPI("live_set view");
       // Ensure proper "id X" format for select_device call
-      const deviceIdStr = selectedDeviceId.toString();
+      const deviceIdStr = deviceId.toString();
       const deviceIdForApi = deviceIdStr.startsWith("id ")
         ? deviceIdStr
         : `id ${deviceIdStr}`;
       songView.call("select_device", deviceIdForApi);
     }
-  } else if (selectInstrument === true) {
+  } else if (instrument === true) {
     // Select instrument on the currently selected or specified track
     let trackPath = null;
 
-    if (trackSelectionResult.selectedTrackType === "regular") {
+    if (trackSelectionResult.selectedCategory === "regular") {
       trackPath = `live_set tracks ${trackSelectionResult.selectedTrackIndex}`;
-    } else if (trackSelectionResult.selectedTrackType === "return") {
+    } else if (trackSelectionResult.selectedCategory === "return") {
       trackPath = `live_set return_tracks ${trackSelectionResult.selectedTrackIndex}`;
-    } else if (trackSelectionResult.selectedTrackType === "master") {
+    } else if (trackSelectionResult.selectedCategory === "master") {
       trackPath = "live_set master_track";
     } else {
       // Use currently selected track
       const selectedTrackAPI = new LiveAPI("live_set view selected_track");
       if (selectedTrackAPI.exists()) {
-        const trackType = selectedTrackAPI.trackType;
-        if (trackType === "regular") {
+        const category = selectedTrackAPI.category;
+        if (category === "regular") {
           trackPath = `live_set tracks ${selectedTrackAPI.trackIndex}`;
-        } else if (trackType === "return") {
+        } else if (category === "return") {
           trackPath = `live_set return_tracks ${selectedTrackAPI.returnTrackIndex}`;
-        } else if (trackType === "master") {
+        } else if (category === "master") {
           trackPath = "live_set master_track";
         }
       }
@@ -433,10 +411,10 @@ function updateDeviceSelection({
   }
 }
 
-function updateHighlightedClipSlot({ songView, selectedClipSlot }) {
-  if (selectedClipSlot != null) {
+function updateHighlightedClipSlot({ songView, clipSlot }) {
+  if (clipSlot != null) {
     // Set by indices
-    const { trackIndex, sceneIndex } = selectedClipSlot;
+    const { trackIndex, sceneIndex } = clipSlot;
     const clipSlotAPI = new LiveAPI(
       `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
     );

@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://github.com/adamjmurray/producer-pal#readme",
   "repository": {
@@ -41,12 +41,12 @@
     "release:prep": "node scripts/prepare-release.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.18.1",
+    "@modelcontextprotocol/sdk": "^1.18.2",
     "express": "^5.1.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@anthropic-ai/mcpb": "^1.1.0",
+    "@anthropic-ai/mcpb": "^1.1.1",
     "@rollup/plugin-commonjs": "^28.0.6",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.1",
@@ -54,12 +54,12 @@
     "@rollup/plugin-terser": "^0.4.4",
     "@types/express": "^5.0.3",
     "@types/max-api": "^2.0.3",
-    "@types/node": "^24.5.2",
+    "@types/node": "^24.6.0",
     "@vitest/coverage-v8": "^3.2.4",
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
-    "rollup": "^4.51.0",
+    "rollup": "^4.52.3",
     "rollup-plugin-copy": "^3.5.0",
     "vitest": "^3.2.4"
   }

@@ -10,7 +10,7 @@ import {
 } from "../shared/include-params.js";
 import { readTrack, readTrackGeneric } from "../track/read-track.js";
 
-export function readSong(args = {}) {
+export function readLiveSet(args = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
   const liveSet = new LiveAPI("live_set");
@@ -23,7 +23,7 @@ export function readSong(args = {}) {
     id: liveSet.id,
     abletonLiveVersion: liveApp.call("get_version_string"),
     name: liveSet.getProperty("name"),
-    followsArrangement: liveSet.getProperty("back_to_arranger") === 0,
+    arrangementFollower: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
     scenes: includeFlags.includeScenes
@@ -58,7 +58,7 @@ export function readSong(args = {}) {
         return readTrackGeneric({
           track: returnTrack,
           trackIndex: returnTrackIndex,
-          trackType: "return",
+          category: "return",
           include: includeArray,
         });
       },
@@ -70,7 +70,7 @@ export function readSong(args = {}) {
     result.masterTrack = readTrackGeneric({
       track: masterTrack,
       trackIndex: null,
-      trackType: "master",
+      category: "master",
       include: includeArray,
     });
   }

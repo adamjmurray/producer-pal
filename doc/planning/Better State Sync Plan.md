@@ -9,9 +9,9 @@ robust state synchronization.
 ## Problem Statement
 
 - Object IDs remain stable when tracks/clips move in Ableton Live
-- Object paths and indices (trackIndex, clipSlotIndex, sceneIndex) change when
-  moved
-- Current tools rely heavily on indices from the initial `ppal-read-song` state
+- Object paths and indices (trackIndex, sceneIndex) change when moved
+- Current tools rely heavily on indices from the initial `ppal-read-live-set`
+  state
 - No automatic re-sync mechanism exists, leading to operations on wrong objects
 
 ## Solution 1: ID-First Operations (High Priority)
@@ -24,7 +24,7 @@ Make all tools prioritize IDs over indices for reliability
 
 ```javascript
 // Phase out this pattern:
-updateClip({ trackIndex: 0, clipSlotIndex: 2, ... })
+updateClip({ trackIndex: 0, sceneIndex: 2, ... })
 
 // Enforce this pattern:
 updateClip({ clipId: "clip_12345", ... })
@@ -36,15 +36,15 @@ updateClip({ clipId: "clip_12345", ... })
 
    ```javascript
    // Example: update-clip.js
-   export function updateClip({ clipId, trackIndex, clipSlotIndex, ... }) {
+   export function updateClip({ clipId, trackIndex, sceneIndex, ... }) {
      if (clipId) {
        // Primary path: use ID directly
        clip = LiveAPI.from(clipId);
        if (!clip.exists()) throw new Error(`Clip ${clipId} not found`);
-     } else if (trackIndex != null && clipSlotIndex != null) {
+     } else if (trackIndex != null && sceneIndex != null) {
        // Legacy path: use indices with deprecation warning
        console.warn("Using indices is deprecated, prefer clipId");
-       clip = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`);
+       clip = new LiveAPI(`live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`);
      }
    }
    ```
@@ -66,7 +66,7 @@ updateClip({ clipId: "clip_12345", ... })
 
      if (type === "clip") {
        location.trackIndex = object.trackIndex;
-       location.clipSlotIndex = object.clipSlotIndex;
+       location.sceneIndex = object.sceneIndex;
        location.isArrangement = object.getProperty("is_arrangement_clip") > 0;
      }
      // Similar for tracks, scenes...
@@ -99,23 +99,23 @@ export function validateObjects({ clips = [], tracks = [], scenes = [] }) {
 
   // Check each clip
   for (const clipCheck of clips) {
-    const { id, expectedTrackIndex, expectedClipSlotIndex } = clipCheck;
+    const { id, expectedTrackIndex, expectedsceneIndex } = clipCheck;
     const clip = LiveAPI.from(id);
 
     if (!clip.exists()) {
       results.missing.push({ id, type: "clip" });
     } else if (
       clip.trackIndex !== expectedTrackIndex ||
-      clip.clipSlotIndex !== expectedClipSlotIndex
+      clip.sceneIndex !== expectedsceneIndex
     ) {
       results.moved.push({
         id,
         type: "clip",
         from: {
           trackIndex: expectedTrackIndex,
-          clipSlotIndex: expectedClipSlotIndex,
+          sceneIndex: expectedsceneIndex,
         },
-        to: { trackIndex: clip.trackIndex, clipSlotIndex: clip.clipSlotIndex },
+        to: { trackIndex: clip.trackIndex, sceneIndex: clip.sceneIndex },
       });
     } else {
       results.valid.push({ id, type: "clip" });
@@ -132,8 +132,8 @@ export function validateObjects({ clips = [], tracks = [], scenes = [] }) {
 // Before bulk operations
 const validation = validateObjects({
   clips: [
-    { id: "clip_123", expectedTrackIndex: 0, expectedClipSlotIndex: 2 },
-    { id: "clip_456", expectedTrackIndex: 1, expectedClipSlotIndex: 3 },
+    { id: "clip_123", expectedTrackIndex: 0, expectedsceneIndex: 2 },
+    { id: "clip_456", expectedTrackIndex: 1, expectedsceneIndex: 3 },
   ],
 });
 
@@ -142,7 +142,7 @@ if (validation.moved.length > 0) {
   return {
     error: "Objects have moved",
     details: validation,
-    suggestion: "Call ppal-read-song to refresh state",
+    suggestion: "Call ppal-read-live-set to refresh state",
   };
 }
 ```
@@ -157,12 +157,12 @@ Provide actionable error messages when objects have moved
 
 ```javascript
 // Enhanced error handling in tools
-export function updateClip({ trackIndex, clipSlotIndex, clipId, ...params }) {
+export function updateClip({ trackIndex, sceneIndex, clipId, ...params }) {
   let clip;
 
-  if (trackIndex != null && clipSlotIndex != null) {
+  if (trackIndex != null && sceneIndex != null) {
     clip = new LiveAPI(
-      `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex} clip`,
+      `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
     );
 
     if (!clip.exists() && clipId) {
@@ -171,9 +171,9 @@ export function updateClip({ trackIndex, clipSlotIndex, clipId, ...params }) {
       if (clipById.exists()) {
         // Provide detailed error with current location
         throw new Error(
-          `Clip "${clipId}" has moved from track ${trackIndex}, slot ${clipSlotIndex}. ` +
-            `It's now at track ${clipById.trackIndex}, slot ${clipById.clipSlotIndex}. ` +
-            `Use clipId directly or call ppal-read-song to refresh the state.`,
+          `Clip "${clipId}" has moved from track ${trackIndex}, slot ${sceneIndex}. ` +
+            `It's now at track ${clipById.trackIndex}, slot ${clipById.sceneIndex}. ` +
+            `Use clipId directly or call ppal-read-live-set to refresh the state.`,
         );
       }
     }
@@ -268,20 +268,20 @@ class SmartLiveAPI {
 // Test moved object handling
 describe("Moved Object Handling", () => {
   it("should find clip by ID after move", () => {
-    const clipId = createClip({ trackIndex: 0, clipSlotIndex: 0 });
+    const clipId = createClip({ trackIndex: 0, sceneIndex: 0 });
     moveClip(clipId, { toTrack: 2, toSlot: 3 });
 
     const result = updateClip({ clipId, name: "Moved Clip" });
     expect(result.trackIndex).toBe(2);
-    expect(result.clipSlotIndex).toBe(3);
+    expect(result.sceneIndex).toBe(3);
   });
 
   it("should provide helpful error when using stale indices", () => {
-    const clipId = createClip({ trackIndex: 0, clipSlotIndex: 0 });
+    const clipId = createClip({ trackIndex: 0, sceneIndex: 0 });
     moveClip(clipId, { toTrack: 2, toSlot: 3 });
 
     expect(() => {
-      updateClip({ trackIndex: 0, clipSlotIndex: 0, name: "Test" });
+      updateClip({ trackIndex: 0, sceneIndex: 0, name: "Test" });
     }).toThrow(/has moved from track 0, slot 0.*now at track 2, slot 3/);
   });
 });

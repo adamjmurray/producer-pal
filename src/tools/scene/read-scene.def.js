@@ -3,38 +3,17 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefReadScene = defineTool("ppal-read-scene", {
   title: "Read Scene",
-  description:
-    "Read details about a scene.\n" +
-    "When includeClips is true, returns clip objects with time-based properties in bar|beat format. " +
-    "Understanding scene state helps determine which clips are currently playing and whether tracks are following the Arrangement timeline.",
+  description: "Read scene settings, clips",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
   },
   inputSchema: {
-    sceneIndex: z
-      .number()
-      .int()
-      .min(0)
-      .optional()
-      .describe(
-        "Scene index (0-based). This is also the clipSlotIndex of every clip in this scene. Can be omitted only if sceneId is provided.",
-      ),
-    sceneId: z
-      .string()
-      .optional()
-      .describe(
-        "Scene ID to directly access any scene. Either this or sceneIndex must be provided.",
-      ),
+    sceneId: z.string().optional().describe("provide this or sceneIndex"),
+    sceneIndex: z.number().int().min(0).optional().describe("0-based index"),
     include: z
       .array(z.enum(["*", "clips", "clip-notes"]))
       .default([])
-      .describe(
-        "Array of data to include in the response. Available options: " +
-          "'*' (include all available options), " +
-          "'clips' (include clip information), " +
-          "'clip-notes' (include notes data in clip objects). " +
-          "Default: [] (no additional data included).",
-      ),
+      .describe('data: clips, clip-notes, "*" for all'),
   },
 });

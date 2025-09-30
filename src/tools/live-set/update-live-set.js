@@ -62,14 +62,20 @@ function parseScale(scaleString) {
 }
 
 /**
- * Updates Live Set parameters like tempo, time signature, scale, and playback state.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.
+ * Updates Live Set parameters like tempo, time signature, scale, and arrangement following state.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.
  * @param {Object} args - The parameters
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
+ * @param {boolean} [args.arrangementFollower] - Whether all tracks should follow the arrangement timeline
  * @returns {Object} Updated Live Set information
  */
-export function updateSong({ tempo, timeSignature, scale } = {}) {
+export function updateLiveSet({
+  tempo,
+  timeSignature,
+  scale,
+  arrangementFollower,
+} = {}) {
   const liveSet = new LiveAPI("live_set");
 
   // optimistic result object that only include properties that are actually set
@@ -115,7 +121,10 @@ export function updateSong({ tempo, timeSignature, scale } = {}) {
     );
   }
 
-  if (scale != null) {
+  if (arrangementFollower != null) {
+    liveSet.set("back_to_arranger", arrangementFollower ? 0 : 1);
+
+    result.arrangementFollower = arrangementFollower;
   }
 
   // Include scalePitches when scale is set to a non-empty value

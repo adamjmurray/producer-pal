@@ -97,13 +97,13 @@ Test the stdio-HTTP bridge without Claude Desktop:
 node scripts/test-claude-desktop-extension.mjs
 
 # Test specific tool
-node scripts/test-claude-desktop-extension.mjs ppal-read-song
+node scripts/test-claude-desktop-extension.mjs ppal-read-live-set
 
 # Test with arguments
 node scripts/test-claude-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
 
 # Custom URL
-node scripts/test-claude-desktop-extension.mjs http://localhost:3350/mcp ppal-read-song
+node scripts/test-claude-desktop-extension.mjs http://localhost:3350/mcp ppal-read-live-set
 ```
 
 The test script:
@@ -160,7 +160,7 @@ encoding rules in JavaScript.
 
 Examples:
 
-- Welcome message in `ppal-init` tool description
+- Welcome message in `ppal-connect` tool description
 - Missing instrument detection in tool responses
 - Setup instructions in offline mode
 

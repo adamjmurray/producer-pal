@@ -82,7 +82,7 @@ describe("readTrack", () => {
       color: "#FF0000",
       state: "soloed",
       isArmed: true,
-      followsArrangement: true,
+      arrangementFollower: true,
       playingSlotIndex: 2,
       firedSlotIndex: 3,
       arrangementClips: [],
@@ -117,7 +117,7 @@ describe("readTrack", () => {
       trackIndex: 1,
       color: "#00FF00",
       state: "muted",
-      followsArrangement: true,
+      arrangementFollower: true,
       arrangementClips: [],
       sessionClips: [],
       instruments: null,
@@ -162,7 +162,7 @@ describe("readTrack", () => {
       trackIndex: 0,
       color: "#FF0000",
       state: "soloed",
-      followsArrangement: true,
+      arrangementFollower: true,
       isGroup: true,
       isGroupMember: true,
       groupId: "456",
@@ -262,12 +262,12 @@ describe("readTrack", () => {
       name: "Track with Clips",
       trackIndex: 2,
       color: "#0000FF",
-      followsArrangement: false,
+      arrangementFollower: false,
       playingSlotIndex: 0,
       arrangementClips: [],
       sessionClips: [
-        expectedClip({ id: "clip1", trackIndex: 2, clipSlotIndex: 0 }),
-        expectedClip({ id: "clip2", trackIndex: 2, clipSlotIndex: 2 }),
+        expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),
+        expectedClip({ id: "clip2", trackIndex: 2, sceneIndex: 2 }),
       ],
       instruments: null,
     });
@@ -376,8 +376,8 @@ describe("readTrack", () => {
 
     // Since clips exist at slots 0 and 2, we should get minimal data for those slots
     expect(result.sessionClips).toEqual([
-      { id: "clip1", clipSlotIndex: 0 },
-      { id: "clip2", clipSlotIndex: 2 },
+      { id: "clip1", sceneIndex: 0 },
+      { id: "clip2", sceneIndex: 2 },
     ]);
   });
 
@@ -2476,9 +2476,9 @@ describe("readTrack", () => {
     });
   });
 
-  describe("trackType parameter", () => {
+  describe("category parameter", () => {
     describe("return tracks", () => {
-      it("reads return track when trackType is 'return'", () => {
+      it("reads return track when category is 'return'", () => {
         liveApiId.mockImplementation(function () {
           if (this.path === "live_set return_tracks 1") {
             return "return_track_1";
@@ -2508,7 +2508,7 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackIndex: 1, trackType: "return" });
+        const result = readTrack({ trackIndex: 1, category: "return" });
 
         expect(result).toEqual({
           id: "return_track_1",
@@ -2516,7 +2516,7 @@ describe("readTrack", () => {
           name: "Return B",
           color: "#00FF00",
           returnTrackIndex: 1,
-          followsArrangement: true,
+          arrangementFollower: true,
           sessionClips: [], // Return tracks have no session clips
           arrangementClips: [], // Return tracks have no arrangement clips
           instruments: null,
@@ -2526,7 +2526,7 @@ describe("readTrack", () => {
       it("returns null values when return track does not exist", () => {
         liveApiId.mockReturnValue("id 0");
 
-        const result = readTrack({ trackIndex: 99, trackType: "return" });
+        const result = readTrack({ trackIndex: 99, category: "return" });
 
         expect(result).toEqual({
           id: null,
@@ -2587,7 +2587,7 @@ describe("readTrack", () => {
 
         const result = readTrack({
           trackIndex: 0,
-          trackType: "return",
+          category: "return",
           include: ["routings", "available-routings"],
         });
 
@@ -2610,7 +2610,7 @@ describe("readTrack", () => {
     });
 
     describe("master track", () => {
-      it("reads master track when trackType is 'master'", () => {
+      it("reads master track when category is 'master'", () => {
         liveApiId.mockImplementation(function () {
           if (this.path === "live_set master_track") {
             return "master_track";
@@ -2649,14 +2649,14 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackIndex: 999, trackType: "master" }); // trackIndex should be ignored
+        const result = readTrack({ trackIndex: 999, category: "master" }); // trackIndex should be ignored
 
         expect(result).toEqual({
           id: "master_track",
           type: "audio",
           name: "Master",
           color: "#FFFFFF",
-          followsArrangement: true,
+          arrangementFollower: true,
           sessionClips: [], // Master track has no session clips
           arrangementClips: [], // Master track has no arrangement clips
           instruments: null,
@@ -2670,7 +2670,7 @@ describe("readTrack", () => {
       it("returns null values when master track does not exist", () => {
         liveApiId.mockReturnValue("id 0");
 
-        const result = readTrack({ trackIndex: 0, trackType: "master" });
+        const result = readTrack({ trackIndex: 0, category: "master" });
 
         expect(result).toEqual({
           id: null,
@@ -2736,7 +2736,7 @@ describe("readTrack", () => {
 
         const result = readTrack({
           trackIndex: 0,
-          trackType: "master",
+          category: "master",
           include: ["audio-effects"],
         });
 
@@ -2780,7 +2780,7 @@ describe("readTrack", () => {
 
         const result = readTrack({
           trackIndex: 0,
-          trackType: "master",
+          category: "master",
           include: ["routings", "available-routings"],
         });
 
@@ -2819,14 +2819,14 @@ describe("readTrack", () => {
           },
         });
 
-        const result = readTrack({ trackType: "master" });
+        const result = readTrack({ category: "master" });
 
         expect(result).toEqual({
           id: "master_track",
           type: "audio",
           name: "Master",
           color: "#FFFFFF",
-          followsArrangement: true,
+          arrangementFollower: true,
           sessionClips: [],
           arrangementClips: [],
           instruments: null,
@@ -2835,7 +2835,7 @@ describe("readTrack", () => {
     });
 
     describe("regular tracks (default behavior)", () => {
-      it("defaults to regular track when trackType is not specified", () => {
+      it("defaults to regular track when category is not specified", () => {
         liveApiId.mockReturnValue("track1");
         mockLiveApiGet({
           Track: mockTrackProperties({
@@ -2850,7 +2850,7 @@ describe("readTrack", () => {
         expect(result.id).toBe("track1");
       });
 
-      it("reads regular track when trackType is explicitly 'regular'", () => {
+      it("reads regular track when category is explicitly 'regular'", () => {
         liveApiId.mockReturnValue("track1");
         mockLiveApiGet({
           Track: mockTrackProperties({
@@ -2858,7 +2858,7 @@ describe("readTrack", () => {
           }),
         });
 
-        const result = readTrack({ trackIndex: 0, trackType: "regular" });
+        const result = readTrack({ trackIndex: 0, category: "regular" });
 
         expect(result.trackIndex).toBe(0);
         expect(result.returnTrackIndex).toBeUndefined();
@@ -2866,12 +2866,12 @@ describe("readTrack", () => {
       });
     });
 
-    describe("invalid trackType", () => {
-      it("throws error for invalid trackType", () => {
+    describe("invalid category", () => {
+      it("throws error for invalid category", () => {
         expect(() => {
-          readTrack({ trackIndex: 0, trackType: "invalid" });
+          readTrack({ trackIndex: 0, category: "invalid" });
         }).toThrow(
-          'Invalid trackType: invalid. Must be "regular", "return", or "master".',
+          'Invalid category: invalid. Must be "regular", "return", or "master".',
         );
       });
     });
@@ -2923,7 +2923,7 @@ describe("readTrack", () => {
         trackIndex: 2,
         color: "#FF0000",
         isArmed: true,
-        followsArrangement: true,
+        arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],
         instruments: null,
@@ -2974,7 +2974,7 @@ describe("readTrack", () => {
         name: "Return by ID",
         returnTrackIndex: 1,
         color: "#00FF00",
-        followsArrangement: true,
+        arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],
         instruments: null,
@@ -3024,7 +3024,7 @@ describe("readTrack", () => {
         type: "audio",
         name: "Master by ID",
         color: "#FFFFFF",
-        followsArrangement: true,
+        arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],
         instruments: null,
@@ -3045,7 +3045,7 @@ describe("readTrack", () => {
       }).toThrow("Either trackId or trackIndex must be provided");
     });
 
-    it("ignores trackType when trackId is provided", () => {
+    it("ignores category when trackId is provided", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "id 999") {
           return "999";
@@ -3081,8 +3081,8 @@ describe("readTrack", () => {
         },
       });
 
-      // trackType should be ignored when trackId is provided
-      const result = readTrack({ trackId: "999", trackType: "return" });
+      // category should be ignored when trackId is provided
+      const result = readTrack({ trackId: "999", category: "return" });
 
       // Should read as regular track (from path) not return track
       expect(result.trackIndex).toBe(0);

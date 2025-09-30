@@ -4,21 +4,20 @@ import { toolDefCreateClip } from "../tools/clip/create-clip.def.js";
 import { toolDefReadClip } from "../tools/clip/read-clip.def.js";
 import { toolDefUpdateClip } from "../tools/clip/update-clip.def.js";
 // import { toolDefReadDevice } from "./tool-def-read-device.js";  // UNUSED - see read-device.js for why
+import { toolDefPlayback } from "../tools/control/playback.def.js";
 import { toolDefRawLiveApi } from "../tools/control/raw-live-api.def.js";
-import { toolDefTransport } from "../tools/control/transport.def.js";
-import { toolDefView } from "../tools/control/view.def.js";
+import { toolDefSelect } from "../tools/control/select.def.js";
+import { toolDefReadLiveSet } from "../tools/live-set/read-live-set.def.js";
+import { toolDefUpdateLiveSet } from "../tools/live-set/update-live-set.def.js";
 import { toolDefDelete } from "../tools/operations/delete.def.js";
 import { toolDefDuplicate } from "../tools/operations/duplicate.def.js";
-import { toolDefCaptureScene } from "../tools/scene/capture-scene.def.js";
 import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
 import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
 import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
-import { toolDefReadSong } from "../tools/song/read-song.def.js";
-import { toolDefUpdateSong } from "../tools/song/update-song.def.js";
 import { toolDefCreateTrack } from "../tools/track/create-track.def.js";
 import { toolDefReadTrack } from "../tools/track/read-track.def.js";
 import { toolDefUpdateTrack } from "../tools/track/update-track.def.js";
-import { toolDefInit } from "../tools/workflow/init.def.js";
+import { toolDefConnect } from "../tools/workflow/connect.def.js";
 import { toolDefMemory } from "../tools/workflow/memory.def.js";
 
 export function createMcpServer(callLiveApi) {
@@ -29,10 +28,10 @@ export function createMcpServer(callLiveApi) {
 
   const addTool = (toolDef) => toolDef(server, callLiveApi);
 
-  addTool(toolDefInit);
+  addTool(toolDefConnect);
 
-  addTool(toolDefReadSong);
-  addTool(toolDefUpdateSong);
+  addTool(toolDefReadLiveSet);
+  addTool(toolDefUpdateLiveSet);
 
   addTool(toolDefCreateTrack);
   addTool(toolDefReadTrack);
@@ -41,7 +40,6 @@ export function createMcpServer(callLiveApi) {
   addTool(toolDefCreateScene);
   addTool(toolDefReadScene);
   addTool(toolDefUpdateScene);
-  addTool(toolDefCaptureScene);
 
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
@@ -51,8 +49,8 @@ export function createMcpServer(callLiveApi) {
   // See src/tools/read-device.js for historical context
   // addTool(toolDefReadDevice);
 
-  addTool(toolDefTransport);
-  addTool(toolDefView);
+  addTool(toolDefPlayback);
+  addTool(toolDefSelect);
   addTool(toolDefDelete);
   addTool(toolDefDuplicate);
   addTool(toolDefMemory);

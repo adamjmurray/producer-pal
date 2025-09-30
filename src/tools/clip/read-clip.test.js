@@ -58,7 +58,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 1, clipSlotIndex: 1 });
+    const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
@@ -73,7 +73,7 @@ describe("readClip", () => {
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
-      clipSlotIndex: 1,
+      sceneIndex: 1,
       trackIndex: 1,
       view: "session",
       color: "#3DC300",
@@ -137,7 +137,7 @@ describe("readClip", () => {
       },
     });
 
-    const result = readClip({ trackIndex: 1, clipSlotIndex: 1 });
+    const result = readClip({ trackIndex: 1, sceneIndex: 1 });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
@@ -152,7 +152,7 @@ describe("readClip", () => {
       id: "live_set/tracks/1/clip_slots/1/clip",
       name: "Test Clip",
       type: "midi",
-      clipSlotIndex: 1,
+      sceneIndex: 1,
       trackIndex: 1,
       view: "session",
       color: "#3DC300",
@@ -211,7 +211,7 @@ describe("readClip", () => {
       return null;
     });
 
-    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
@@ -272,7 +272,7 @@ describe("readClip", () => {
       return null;
     });
 
-    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
@@ -291,13 +291,13 @@ describe("readClip", () => {
 
   it("returns null values when no clip exists", () => {
     liveApiId.mockReturnValue("id 0");
-    const result = readClip({ trackIndex: 2, clipSlotIndex: 3 });
+    const result = readClip({ trackIndex: 2, sceneIndex: 3 });
     expect(result).toEqual({
       id: null,
       type: null,
       name: null,
       trackIndex: 2,
-      clipSlotIndex: 3,
+      sceneIndex: 3,
     });
   });
 
@@ -317,12 +317,12 @@ describe("readClip", () => {
         loop_end: 5,
       },
     });
-    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
     expect(result).toEqual({
       id: "live_set/tracks/0/clip_slots/0/clip",
       name: "Audio Sample",
       type: "audio",
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       trackIndex: 0,
       view: "session",
       color: "#3DC300",
@@ -359,7 +359,7 @@ describe("readClip", () => {
     const result = readClip({ clipId: "id session_clip_id" });
     expect(result.id).toBe("session_clip_id");
     expect(result.trackIndex).toBe(2);
-    expect(result.clipSlotIndex).toBe(4);
+    expect(result.sceneIndex).toBe(4);
     expect(result.view).toBe("session");
     expect(result.length).toBe("1:0");
     expect(result.startMarker).toBe("1|2");
@@ -395,7 +395,7 @@ describe("readClip", () => {
     expect(result.id).toBe("arrangement_clip_id");
     expect(result.view).toBe("arrangement");
     expect(result.trackIndex).toBe(3);
-    expect(result.clipSlotIndex).toBeUndefined();
+    expect(result.sceneIndex).toBeUndefined();
     // arrangementStartTime uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
     expect(result.arrangementStartTime).toBe("5|1");
     // But clip properties use clip time signature (6/8)
@@ -404,15 +404,15 @@ describe("readClip", () => {
     expect(result.startMarker).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
-  it("throws an error when neither clipId nor trackIndex+clipSlotIndex are provided", () => {
+  it("throws an error when neither clipId nor trackIndex+sceneIndex are provided", () => {
     expect(() => readClip({})).toThrow(
-      "Either clipId or both trackIndex and clipSlotIndex must be provided",
+      "Either clipId or both trackIndex and sceneIndex must be provided",
     );
     expect(() => readClip({ trackIndex: 1 })).toThrow(
-      "Either clipId or both trackIndex and clipSlotIndex must be provided",
+      "Either clipId or both trackIndex and sceneIndex must be provided",
     );
-    expect(() => readClip({ clipSlotIndex: 1 })).toThrow(
-      "Either clipId or both trackIndex and clipSlotIndex must be provided",
+    expect(() => readClip({ sceneIndex: 1 })).toThrow(
+      "Either clipId or both trackIndex and sceneIndex must be provided",
     );
   });
 
@@ -480,7 +480,7 @@ describe("readClip", () => {
       return null;
     });
 
-    const result = readClip({ trackIndex: 0, clipSlotIndex: 0 });
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
@@ -497,7 +497,7 @@ describe("readClip", () => {
       view: "session",
       name: "Test Clip",
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       color: "#3DC300",
       length: "1:0",
       startMarker: "1|2",
@@ -557,14 +557,14 @@ describe("readClip", () => {
     // Test with '*' - should include everything
     const resultWildcard = readClip({
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       include: ["*"],
     });
 
     // Test explicit list - should produce identical result
     const resultExplicit = readClip({
       trackIndex: 0,
-      clipSlotIndex: 0,
+      sceneIndex: 0,
       include: ["clip-notes"],
     });
 

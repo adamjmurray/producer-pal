@@ -2,7 +2,7 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
-import { parseCommaSeparatedIndices } from "../shared/utils.js";
+import { select } from "./select.js";
 
 /**
  * Unified control for all playback functionality in both Arrangement and Session views.
@@ -14,25 +14,25 @@ import { parseCommaSeparatedIndices } from "../shared/utils.js";
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
  * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
  * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
- * @param {string} [args.followingTrackIndexes] - Comma-separated track indexes that should return to following the arrangement (like clicking 'Back to Arrangement' buttons)
- * @param {number} [args.sceneIndex] - Scene index for Session view operations (puts tracks into non-following state)
- * @param {string} [args.trackIndexes] - Comma-separated track indexes for Session view operations
- * @param {string} [args.clipSlotIndexes] - Comma-separated clip slot indexes for Session view operations
+ * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
+ * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
+ * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
+ * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
  * @returns {Object} Result with transport state
  */
-export function transport({
+export function playback({
   action,
   startTime,
   loop,
   loopStart,
   loopEnd,
-  followingTrackIndexes,
-  sceneIndex,
-  trackIndexes,
-  clipSlotIndexes,
+  autoFollow = true,
+  sceneId,
+  clipIds,
+  switchView,
 } = {}) {
   if (!action) {
-    throw new Error("transport failed: action is required");
+    throw new Error("playback failed: action is required");
   }
   const liveSet = new LiveAPI("live_set");
 
@@ -75,17 +75,6 @@ export function transport({
     liveSet.set("loop_length", loopLengthBeats);
   }
 
-  if (followingTrackIndexes) {
-    const trackIndexList = parseCommaSeparatedIndices(followingTrackIndexes);
-
-    for (const trackIndex of trackIndexList) {
-      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-      if (track.exists()) {
-        track.set("back_to_arranger", 0);
-      }
-    }
-  }
-
   // Default result values that will be overridden by specific actions
   // (for optimistic results to avoid a sleep() for playback state updates)
   let isPlaying = liveSet.getProperty("is_playing") > 0;
@@ -97,6 +86,12 @@ export function transport({
         liveSet.set("start_time", 0);
         startTimeBeats = 0;
       }
+
+      // Handle autoFollow for arrangement playback
+      if (autoFollow) {
+        liveSet.set("back_to_arranger", 0);
+      }
+
       liveSet.call("start_playing");
 
       isPlaying = true;
@@ -108,15 +103,15 @@ export function transport({
       break;
 
     case "play-scene":
-      if (sceneIndex == null) {
+      if (sceneId == null) {
         throw new Error(
-          `transport failed: sceneIndex is required for action "play-scene"`,
+          `playback failed: sceneId is required for action "play-scene"`,
         );
       }
-      const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+      const scene = LiveAPI.from(sceneId);
       if (!scene.exists()) {
         throw new Error(
-          `transport play-session-scene action failed: scene at sceneIndex=${sceneIndex} does not exist`,
+          `playback play-session-scene action failed: scene with sceneId=${sceneId} does not exist`,
         );
       }
 
@@ -125,61 +120,85 @@ export function transport({
       isPlaying = true;
       break;
 
-    case "play-session-clip":
-      if (!trackIndexes) {
+    case "play-session-clips":
+      if (!clipIds) {
         throw new Error(
-          `transport failed: trackIndexes is required for action "play-session-clip"`,
-        );
-      }
-      if (!clipSlotIndexes) {
-        throw new Error(
-          `transport failed: clipSlotIndexes is required for action "play-session-clip"`,
+          `playback failed: clipIds is required for action "play-session-clips"`,
         );
       }
 
-      const trackIndexList = parseCommaSeparatedIndices(trackIndexes);
-      const clipSlotIndexList = parseCommaSeparatedIndices(clipSlotIndexes);
+      const clipIdList = clipIds.split(",").map((id) => id.trim());
 
-      for (let i = 0; i < trackIndexList.length; i++) {
-        const trackIndex = trackIndexList[i];
-        const clipSlotIndex =
-          i < clipSlotIndexList.length
-            ? clipSlotIndexList[i]
-            : clipSlotIndexList[clipSlotIndexList.length - 1];
-
+      for (const clipId of clipIdList) {
+        const clip = LiveAPI.from(clipId);
+        if (!clip.exists()) {
+          throw new Error(
+            `playback play-session-clips action failed: clip with clipId=${clipId} does not exist`,
+          );
+        }
+        // For clips, we need to fire the clip slot, not the clip itself
+        // Extract track index and scene index from clip path or properties
+        const trackIndex = clip.trackIndex;
+        const sceneIndex = clip.sceneIndex;
+        if (trackIndex == null || sceneIndex == null) {
+          throw new Error(
+            `playback play-session-clips action failed: could not determine track/scene for clipId=${clipId}`,
+          );
+        }
         const clipSlot = new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${clipSlotIndex}`,
+          `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
         );
         if (!clipSlot.exists()) {
           throw new Error(
-            `transport play-session-clip action failed: clip slot at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex} does not exist`,
-          );
-        }
-        if (!clipSlot.getProperty("has_clip")) {
-          throw new Error(
-            `transport play-session-clip action failed: no clip at trackIndex=${trackIndex}, clipSlotIndex=${clipSlotIndex}`,
+            `playback play-session-clips action failed: clip slot for clipId=${clipId} does not exist`,
           );
         }
         clipSlot.call("fire");
       }
 
+      // Fix launch quantization: when playing multiple clips, stop and restart transport
+      // to ensure in-sync playback (clips fired after the first are subject to quantization)
+      if (clipIdList.length > 1) {
+        liveSet.call("stop_playing");
+        liveSet.call("start_playing");
+      }
+
       isPlaying = true;
       break;
 
-    case "stop-track-session-clip":
-      if (!trackIndexes) {
+    case "stop-session-clips":
+      if (!clipIds) {
         throw new Error(
-          `transport failed: trackIndexes is required for action "stop-track-session-clip"`,
+          `playback failed: clipIds is required for action "stop-session-clips"`,
         );
       }
 
-      const stopTrackIndexList = parseCommaSeparatedIndices(trackIndexes);
+      const stopClipIdList = clipIds.split(",").map((id) => id.trim());
+      const tracksToStop = new Set();
 
-      for (const trackIndex of stopTrackIndexList) {
-        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+      for (const clipId of stopClipIdList) {
+        const clip = LiveAPI.from(clipId);
+        if (!clip.exists()) {
+          throw new Error(
+            `playback stop-session-clips action failed: clip with clipId=${clipId} does not exist`,
+          );
+        }
+        // Extract track index from clip and add to set to avoid duplicate calls
+        const trackIndex = clip.trackIndex;
+        if (trackIndex == null) {
+          throw new Error(
+            `playback stop-session-clips action failed: could not determine track for clipId=${clipId}`,
+          );
+        }
+        const trackPath = `live_set tracks ${trackIndex}`;
+        tracksToStop.add(trackPath);
+      }
+
+      for (const trackPath of tracksToStop) {
+        const track = new LiveAPI(trackPath);
         if (!track.exists()) {
           throw new Error(
-            `transport stop-track-session-clip action failed: track at trackIndex=${trackIndex} does not exist`,
+            `playback stop-session-clips action failed: track for clip path does not exist`,
           );
         }
         track.call("stop_all_clips");
@@ -201,7 +220,7 @@ export function transport({
       break;
 
     default:
-      throw new Error(`transport failed: unknown action "${action}"`);
+      throw new Error(`playback failed: unknown action "${action}"`);
   }
 
   // Convert beats back to bar|beat for the response
@@ -225,6 +244,30 @@ export function transport({
     songTimeSigDenominator,
   );
 
+  // Handle view switching if requested
+  if (switchView) {
+    let targetView = null;
+    if (action === "play-arrangement") {
+      targetView = "arrangement";
+    } else if (action === "play-scene" || action === "play-session-clips") {
+      targetView = "session";
+    }
+
+    if (targetView) {
+      select({ view: targetView });
+    }
+  }
+
+  // Get tracks that are currently following the arrangement
+  const trackIds = liveSet.getChildIds("tracks");
+  const arrangementFollowerTrackIds = trackIds
+    .filter((trackId) => {
+      const track = LiveAPI.from(trackId);
+      return track.exists() && track.getProperty("back_to_arranger") === 0;
+    })
+    .map((trackId) => trackId.replace("id ", ""))
+    .join(",");
+
   return Object.fromEntries(
     Object.entries({
       // reflect the args back:
@@ -233,10 +276,11 @@ export function transport({
       loop: loop ?? liveSet.getProperty("loop") > 0,
       loopStart: loopStart ?? currentLoopStart,
       loopEnd: loopEnd ?? currentLoopEnd,
-      followingTrackIndexes,
-      sceneIndex,
-      trackIndexes,
-      clipSlotIndexes,
+      autoFollow: action === "play-arrangement" ? autoFollow : undefined,
+      sceneId,
+      clipIds,
+      switchView: switchView != null ? switchView : undefined,
+      arrangementFollowerTrackIds,
       // and include some additional relevant state:
       isPlaying,
       currentTime,
