@@ -59,7 +59,7 @@ const itemsToCopy = [
   { src: "doc", isDir: true, exclude: ["img"] },
   { src: "licenses", isDir: true },
   { src: "scripts", isDir: true },
-  { src: "src", isDir: true, groupSubfolders: true },
+  { src: "src", isDir: true },
 
   // Individual files
   { src: ".gitignore", flatName: "gitignore" },
@@ -169,28 +169,9 @@ async function copyDirectoriesAndFilesConcatenated() {
         const files = await findAllFiles(sourcePath, item.exclude || []);
         const dirName = item.targetDirName || path.basename(item.src);
 
-        if (item.groupSubfolders) {
-          // Group by subfolder when groupSubfolders is enabled
-          for (const filePath of files) {
-            const relativePath = path.relative(sourcePath, filePath);
-            const parts = relativePath.split(path.sep);
-
-            if (parts.length === 1) {
-              // File directly in the directory
-              const groupName = `${dirName}--root`;
-              addToGroup(fileGroups, groupName, filePath);
-            } else {
-              // File in a subfolder
-              const subfolder = parts[0];
-              const groupName = `${dirName}--${subfolder}--all`;
-              addToGroup(fileGroups, groupName, filePath);
-            }
-          }
-        } else {
-          // Regular directory - all files go into one concatenated file
-          const groupName = `${dirName}--all`;
-          addToGroup(fileGroups, groupName, ...files);
-        }
+        // All files go into one concatenated file
+        const groupName = `${dirName}--all`;
+        addToGroup(fileGroups, groupName, ...files);
       } else if (stat.isFile()) {
         // Individual files - group by folder name
         const firstSlashIndex = item.src.indexOf("/");
