@@ -64,7 +64,19 @@ const itemsToCopy = [
     isDir: true,
     group: ({ relativePath }) => {
       if (relativePath.match(/\.test\.\w+$/)) {
-        return "test";
+        if (relativePath.startsWith("src/tools/")) {
+          return "src--tools--tests";
+        }
+        if (relativePath.startsWith("src/notation/")) {
+          return "src--notation--tests";
+        }
+        return "src--tests";
+      }
+      if (relativePath.startsWith("src/tools/")) {
+        return "src--tools";
+      }
+      if (relativePath.startsWith("src/notation/")) {
+        return "src--notation";
       }
       return "src";
     },
