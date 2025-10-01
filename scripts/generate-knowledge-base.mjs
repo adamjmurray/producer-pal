@@ -54,7 +54,7 @@ async function copyFile(sourcePath, targetPath) {
 
 const itemsToCopy = [
   // Directories (automatically get directory prefix)
-  { src: ".github", isDir: true, targetDirName: "_github" },
+  { src: ".github", isDir: true, targetDirName: "_github", group: "config" },
   { src: "config", isDir: true },
   { src: "doc", isDir: true, exclude: ["img"] },
   { src: "licenses", isDir: true },
@@ -62,24 +62,25 @@ const itemsToCopy = [
   { src: "src", isDir: true },
 
   // Individual files
-  { src: ".gitignore", flatName: "gitignore" },
-  { src: "AGENTS.md" },
-  { src: "CLAUDE.md" },
-  { src: "GEMINI.md" },
-  { src: "DEVELOPERS.md" },
-  { src: "FEATURES.md" },
-  { src: "INSTALLATION.md" },
-  { src: "LICENSE" },
-  { src: "package.json" },
-  { src: "README.md" },
-  { src: "ROADMAP.md" },
+  { src: ".gitignore", flatName: "gitignore", group: "config" },
+  { src: "AGENTS.md", group: "config" },
+  { src: "CLAUDE.md", group: "config" },
+  { src: "GEMINI.md", group: "config" },
+  { src: "DEVELOPERS.md", group: "doc" },
+  { src: "FEATURES.md", group: "doc" },
+  { src: "INSTALLATION.md", group: "doc" },
+  { src: "LICENSE", group: "licenses" },
+  { src: "package.json", group: "config" },
+  { src: "README.md", group: "doc" },
+  { src: "ROADMAP.md", group: "doc" },
   {
     src: "coverage/coverage-summary.txt",
     flatName: "test-coverage-summary.txt",
+    group: "test-coverage",
   },
-  { src: "claude-desktop-extension/.mcpbignore" },
-  { src: "claude-desktop-extension/manifest.template.json" },
-  { src: "claude-desktop-extension/package.json" },
+  { src: "claude-desktop-extension/.mcpbignore", group: "config" },
+  { src: "claude-desktop-extension/manifest.template.json", group: "config" },
+  { src: "claude-desktop-extension/package.json", group: "config" },
 ];
 
 async function copyDirectoriesAndFiles() {
@@ -169,24 +170,13 @@ async function copyDirectoriesAndFilesConcatenated() {
         const files = await findAllFiles(sourcePath, item.exclude || []);
         const dirName = item.targetDirName || path.basename(item.src);
 
-        // All files go into one concatenated file
-        const groupName = `${dirName}--all`;
-        addToGroup(fileGroups, groupName, ...files);
+        // Use explicit group, or default to directory name
+        const groupName = item.group || dirName;
+        addToGroup(fileGroups, `${groupName}`, ...files);
       } else if (stat.isFile()) {
-        // Individual files - group by folder name
-        const firstSlashIndex = item.src.indexOf("/");
-        let groupName;
-
-        if (firstSlashIndex === -1) {
-          // No folder, file is at root level
-          groupName = "root-files";
-        } else {
-          // Extract folder name (everything before first slash)
-          const folderName = item.src.substring(0, firstSlashIndex);
-          groupName = `${folderName}--all`;
-        }
-
-        addToGroup(fileGroups, groupName, sourcePath);
+        // Use explicit group, or default to "misc"
+        const groupName = item.group || "misc";
+        addToGroup(fileGroups, `${groupName}`, sourcePath);
       }
     } catch (error) {
       console.log(`  Skipping ${item.src} (not found)`);
