@@ -20,6 +20,19 @@ function addToGroup(groups, groupName, ...item) {
   groups.get(groupName).push(...item);
 }
 
+function computeGroupName(item, filePath) {
+  const itemGroup =
+    typeof item.group === "function"
+      ? item.group({
+          config: item,
+          file: filePath,
+          relativePath: path.relative(projectRoot, filePath),
+        })
+      : item.group;
+
+  return itemGroup || item.targetDirName || path.basename(item.src) || "misc";
+}
+
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
@@ -104,7 +117,7 @@ const itemsToCopy = [
   { src: "claude-desktop-extension/package.json", group: "config" },
 ];
 
-async function copyDirectoriesAndFiles() {
+async function copyDirectoriesAndFiles(excludeGroups) {
   console.log("Copying files...");
 
   for (const item of itemsToCopy) {
@@ -120,6 +133,12 @@ async function copyDirectoriesAndFiles() {
         const dirName = item.targetDirName || path.basename(item.src);
 
         for (const filePath of files) {
+          // Check if this file's group should be excluded
+          const groupName = computeGroupName(item, filePath);
+          if (excludeGroups.has(groupName)) {
+            continue;
+          }
+
           const relativePath = path.relative(sourcePath, filePath);
           const flatName = dirName + FLAT_SEP + flattenPath(relativePath);
           const targetPath = path.join(outputDir, flatName);
@@ -129,6 +148,12 @@ async function copyDirectoriesAndFiles() {
           );
         }
       } else if (stat.isFile()) {
+        // Check if this file's group should be excluded
+        const groupName = computeGroupName(item, sourcePath);
+        if (excludeGroups.has(groupName)) {
+          continue;
+        }
+
         // Copy single file
         const targetName = item.flatName || flattenPath(item.src);
         const targetPath = path.join(outputDir, targetName);
@@ -175,7 +200,7 @@ async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   return files;
 }
 
-async function copyDirectoriesAndFilesConcatenated() {
+async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
   console.log("Concatenating files into groups...");
 
   const fileGroups = new Map(); // Map of output filename -> array of source files
@@ -229,6 +254,14 @@ async function copyDirectoriesAndFilesConcatenated() {
   for (const [groupName, sourceFiles] of fileGroups) {
     if (sourceFiles.length === 0) continue;
 
+    // Skip excluded groups
+    if (excludeGroups.has(groupName)) {
+      console.log(
+        `  Skipping group: ${groupName} (${sourceFiles.length} files)`,
+      );
+      continue;
+    }
+
     let concatenatedContent = "";
     let fileCount = 0;
 
@@ -270,18 +303,36 @@ async function main() {
     const args = process.argv.slice(2);
     const isConcatMode = args.includes("--concat");
 
+    // Parse --exclude-groups argument
+    const excludeGroupsArg = args.find((arg) =>
+      arg.startsWith("--exclude-groups="),
+    );
+    const excludeGroups = excludeGroupsArg
+      ? new Set(
+          excludeGroupsArg
+            .split("=")[1]
+            .split(",")
+            .map((g) => g.trim())
+            .filter(Boolean),
+        )
+      : new Set();
+
     if (isConcatMode) {
       console.log("Generating knowledge base files in CONCAT mode...");
     } else {
       console.log("Generating knowledge base files...");
     }
 
+    if (excludeGroups.size > 0) {
+      console.log(`Excluding groups: ${Array.from(excludeGroups).join(", ")}`);
+    }
+
     await cleanAndCreateOutputDir();
 
     if (isConcatMode) {
-      await copyDirectoriesAndFilesConcatenated();
+      await copyDirectoriesAndFilesConcatenated(excludeGroups);
     } else {
-      await copyDirectoriesAndFiles();
+      await copyDirectoriesAndFiles(excludeGroups);
     }
 
     console.log(
