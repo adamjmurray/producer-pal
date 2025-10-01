@@ -59,7 +59,16 @@ const itemsToCopy = [
   { src: "doc", isDir: true, exclude: ["img"] },
   { src: "licenses", isDir: true },
   { src: "scripts", isDir: true },
-  { src: "src", isDir: true },
+  {
+    src: "src",
+    isDir: true,
+    group: ({ relativePath }) => {
+      if (relativePath.match(/\.test\.\w+$/)) {
+        return "test";
+      }
+      return "src";
+    },
+  },
 
   // Individual files
   { src: ".gitignore", flatName: "gitignore", group: "config" },
@@ -170,13 +179,34 @@ async function copyDirectoriesAndFilesConcatenated() {
         const files = await findAllFiles(sourcePath, item.exclude || []);
         const dirName = item.targetDirName || path.basename(item.src);
 
-        // Use explicit group, or default to directory name
-        const groupName = item.group || dirName;
-        addToGroup(fileGroups, `${groupName}`, ...files);
+        if (typeof item.group === "function") {
+          // Dynamic grouping - call function for each file
+          for (const filePath of files) {
+            const relativePath = path.relative(projectRoot, filePath);
+            const groupName =
+              item.group({
+                config: item,
+                file: filePath,
+                relativePath,
+              }) || dirName;
+            addToGroup(fileGroups, groupName, filePath);
+          }
+        } else {
+          // Static grouping - use string or default
+          const groupName = item.group || dirName;
+          addToGroup(fileGroups, groupName, ...files);
+        }
       } else if (stat.isFile()) {
-        // Use explicit group, or default to "misc"
-        const groupName = item.group || "misc";
-        addToGroup(fileGroups, `${groupName}`, sourcePath);
+        const relativePath = path.relative(projectRoot, sourcePath);
+        const groupName =
+          (typeof item.group === "function"
+            ? item.group({
+                config: item,
+                file: sourcePath,
+                relativePath,
+              })
+            : item.group) || "misc";
+        addToGroup(fileGroups, groupName, sourcePath);
       }
     } catch (error) {
       console.log(`  Skipping ${item.src} (not found)`);
