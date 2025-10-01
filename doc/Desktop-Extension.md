@@ -1,167 +1,59 @@
 # Desktop Extension
 
-## Overview
+The Producer Pal Desktop Extension (MCP Bundle) bridges Claude Desktop's stdio transport to the HTTP MCP server in Ableton Live.
 
-The Producer Pal Desktop Extension (MCP Bundle) provides the bridge between
-Claude Desktop's stdio transport and the HTTP MCP server running in Ableton
-Live.
-
-## Build Process
-
-### Manifest Generation
-
-The Desktop Extension manifest is generated from
-`claude-desktop-extension/manifest.template.json` during build:
+## Build
 
 ```bash
 npm run dxt:build
 ```
 
-This process:
+Generates `claude-desktop-extension/manifest.json` from template, extracts tool definitions, and bundles into `Producer_Pal.mcpb`.
 
-1. Extracts tool definitions from the MCP server
-2. Generates user-friendly tool descriptions
-3. Creates `claude-desktop-extension/manifest.json`
-4. Bundles everything into `Producer_Pal.mcpb`
+**Distribution**: Both `.mcpb` file AND frozen Max device required.
 
-### Distribution Requirements
+## Bridge Behavior
 
-When building a release:
+**File**: `src/claude-desktop-extension/main.js` (bundled as producer-pal-portal.js)
 
-- **Both** the `.mcpb` file AND the frozen Max for Live device are needed
-- The `.mcpb` includes the stdio-HTTP bridge bundled with all dependencies
-- User configuration (like port) is handled by Claude Desktop UI
+- **Online**: Forwards MCP requests to HTTP server
+- **Offline**: Returns static tool definitions + setup instructions (https://github.com/adamjmurray/producer-pal)
 
-## Extension Bridge Implementation
+### Implementation Requirements
 
-### File: `src/claude-desktop-extension/main.js` (producer-pal-portal.js in bundle)
+**Tool names**: Must match `^[a-zA-Z0-9_-]{1,64}$` (use `ppal-create-clip`, not "Create Clip")
 
-The bridge provides robust fallback behavior:
+**Schemas**: Fallback schemas must be JSON Schema (use `zodToJsonSchema()`)
 
-#### Online Mode
-
-When Producer Pal is running in Ableton Live:
-
-- Forwards all MCP requests to HTTP server
-- Full tool functionality available
-- Real-time Live Set manipulation
-
-#### Offline Mode
-
-When Producer Pal is not accessible:
-
-- Returns static tool definitions from `create-mcp-server`
-- Tool listing always works via fallback definitions
-- Tool calls return setup instructions pointing to
-  https://github.com/adamjmurray/producer-pal
-
-### Critical Implementation Details
-
-**Tool Name Requirements:**
-
-- Must match regex `^[a-zA-Z0-9_-]{1,64}$`
-- Use original `name`, not display name
-- Example: `ppal-create-clip` not "Create Clip"
-
-**Schema Conversion:**
-
-- Fallback schemas must be JSON Schema, not Zod objects
-- Use `zodToJsonSchema()` for conversion
-- Required for Claude Desktop compatibility
-
-**Zero Dependencies:**
-
-- All dependencies bundled during build
-- OAuth imports replaced with stub functions
-- No runtime npm dependencies needed
+**Dependencies**: Zero runtime dependencies (all bundled, OAuth stubbed)
 
 ## Testing
 
-### Manual Testing in Claude Desktop
-
+### Manual (Claude Desktop)
 After changing tool descriptions:
+1. Toggle Producer Pal extension OFF
+2. Toggle back ON (rebuild/restart NOT sufficient)
 
-1. Toggle Producer Pal extension OFF in Claude Desktop settings
-2. Toggle extension back ON
-3. Tool descriptions will refresh
-
-Simply rebuilding or restarting Claude Desktop is NOT sufficient - the extension
-must be disabled and re-enabled.
-
-### Automated Testing
-
-Test the stdio-HTTP bridge without Claude Desktop:
-
+### Automated
 ```bash
 # Basic test
 node scripts/test-claude-desktop-extension.mjs
 
-# Test specific tool
+# Specific tool
 node scripts/test-claude-desktop-extension.mjs ppal-read-live-set
 
-# Test with arguments
+# With arguments
 node scripts/test-claude-desktop-extension.mjs ppal-read-track '{"trackIndex": 0}'
 
 # Custom URL
 node scripts/test-claude-desktop-extension.mjs http://localhost:3350/mcp ppal-read-live-set
 ```
 
-The test script:
-
-1. Starts the stdio-HTTP bridge process
-2. Sends MCP protocol messages (initialize, tools/list, tools/call)
-3. Parses and validates responses
-4. Provides timing information
-
-## Error Handling
-
-### Connection Errors
-
-When Live isn't running or Producer Pal device isn't loaded:
-
-```
-❌ Cannot connect to Producer Pal in Ableton Live.
-[Setup instructions and requirements]
-```
-
-### Invalid URL Configuration
-
-When the configured URL is malformed:
-
-```
-❌ Invalid URL for the Producer Pal Desktop Extension.
-[Configuration instructions]
-```
-
 ## Logging
 
-When debugging is needed:
+Enable with `ENABLE_LOGGING=true` and `VERBOSE_LOGGING=true`
 
-**Enable logging:**
-
-```bash
-ENABLE_LOGGING=true
-VERBOSE_LOGGING=true
-```
-
-**Log locations:**
-
+**Locations**:
 - macOS: `~/Library/Logs/Producer Pal/`
 - Windows: `%LOCALAPPDATA%\ProducerPal\Logs\`
 - Linux: `~/.local/share/Producer Pal/logs/`
-
-## Design Principles
-
-### Adaptive Messaging
-
-The extension prefers adding instructions to tool descriptions over adding code
-complexity. Claude's intelligence handles context-aware responses rather than
-encoding rules in JavaScript.
-
-Examples:
-
-- Welcome message in `ppal-connect` tool description
-- Missing instrument detection in tool responses
-- Setup instructions in offline mode
-
-This pattern keeps the bridge simple while providing rich user guidance.
