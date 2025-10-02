@@ -13,6 +13,26 @@ function flattenPath(pathStr) {
   return pathStr.replace(/[/\\]/g, FLAT_SEP);
 }
 
+function addToGroup(groups, groupName, ...item) {
+  if (!groups.has(groupName)) {
+    groups.set(groupName, []);
+  }
+  groups.get(groupName).push(...item);
+}
+
+function computeGroupName(item, filePath) {
+  const itemGroup =
+    typeof item.group === "function"
+      ? item.group({
+          config: item,
+          file: filePath,
+          relativePath: path.relative(projectRoot, filePath),
+        })
+      : item.group;
+
+  return itemGroup || item.targetDirName || path.basename(item.src) || "misc";
+}
+
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
@@ -45,37 +65,59 @@ async function copyFile(sourcePath, targetPath) {
   }
 }
 
-async function copyDirectoriesAndFiles() {
-  const itemsToCopy = [
-    // Directories (automatically get directory prefix)
-    { src: ".github", isDir: true, targetDirName: "_github" },
-    { src: "config", isDir: true },
-    { src: "doc", isDir: true, exclude: ["img"] },
-    { src: "licenses", isDir: true },
-    { src: "scripts", isDir: true },
-    { src: "src", isDir: true },
-
-    // Individual files
-    { src: ".gitignore", flatName: "gitignore" },
-    { src: "AGENTS.md" },
-    { src: "CLAUDE.md" },
-    { src: "GEMINI.md" },
-    { src: "DEVELOPERS.md" },
-    { src: "FEATURES.md" },
-    { src: "INSTALLATION.md" },
-    { src: "LICENSE" },
-    { src: "package.json" },
-    { src: "README.md" },
-    { src: "ROADMAP.md" },
-    {
-      src: "coverage/coverage-summary.txt",
-      flatName: "test-coverage-summary.txt",
+const itemsToCopy = [
+  // Directories (automatically get directory prefix)
+  { src: ".github", isDir: true, targetDirName: "_github", group: "config" },
+  { src: "config", isDir: true },
+  { src: "doc", isDir: true, exclude: ["img"] },
+  { src: "licenses", isDir: true },
+  { src: "scripts", isDir: true },
+  {
+    src: "src",
+    isDir: true,
+    group: ({ relativePath }) => {
+      if (relativePath.match(/\.test\.\w+$/)) {
+        if (relativePath.startsWith("src/tools/")) {
+          return "src--tools--tests";
+        }
+        if (relativePath.startsWith("src/notation/")) {
+          return "src--notation--tests";
+        }
+        return "src--tests";
+      }
+      if (relativePath.startsWith("src/tools/")) {
+        return "src--tools";
+      }
+      if (relativePath.startsWith("src/notation/")) {
+        return "src--notation";
+      }
+      return "src";
     },
-    { src: "claude-desktop-extension/.mcpbignore" },
-    { src: "claude-desktop-extension/manifest.template.json" },
-    { src: "claude-desktop-extension/package.json" },
-  ];
+  },
 
+  // Individual files
+  { src: ".gitignore", flatName: "gitignore", group: "config" },
+  { src: "AGENTS.md", group: "config" },
+  { src: "CLAUDE.md", group: "config" },
+  { src: "GEMINI.md", group: "config" },
+  { src: "DEVELOPERS.md", group: "doc" },
+  { src: "FEATURES.md", group: "doc" },
+  { src: "INSTALLATION.md", group: "doc" },
+  { src: "LICENSE", group: "licenses" },
+  { src: "package.json", group: "config" },
+  { src: "README.md", group: "doc" },
+  { src: "ROADMAP.md", group: "doc" },
+  {
+    src: "coverage/coverage-summary.txt",
+    flatName: "test-coverage-summary.txt",
+    group: "test-coverage",
+  },
+  { src: "claude-desktop-extension/.mcpbignore", group: "config" },
+  { src: "claude-desktop-extension/manifest.template.json", group: "config" },
+  { src: "claude-desktop-extension/package.json", group: "config" },
+];
+
+async function copyDirectoriesAndFiles(excludeGroups) {
   console.log("Copying files...");
 
   for (const item of itemsToCopy) {
@@ -91,6 +133,12 @@ async function copyDirectoriesAndFiles() {
         const dirName = item.targetDirName || path.basename(item.src);
 
         for (const filePath of files) {
+          // Check if this file's group should be excluded
+          const groupName = computeGroupName(item, filePath);
+          if (excludeGroups.has(groupName)) {
+            continue;
+          }
+
           const relativePath = path.relative(sourcePath, filePath);
           const flatName = dirName + FLAT_SEP + flattenPath(relativePath);
           const targetPath = path.join(outputDir, flatName);
@@ -100,6 +148,12 @@ async function copyDirectoriesAndFiles() {
           );
         }
       } else if (stat.isFile()) {
+        // Check if this file's group should be excluded
+        const groupName = computeGroupName(item, sourcePath);
+        if (excludeGroups.has(groupName)) {
+          continue;
+        }
+
         // Copy single file
         const targetName = item.flatName || flattenPath(item.src);
         const targetPath = path.join(outputDir, targetName);
@@ -146,15 +200,143 @@ async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   return files;
 }
 
+async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
+  console.log("Concatenating files into groups...");
+
+  const fileGroups = new Map(); // Map of output filename -> array of source files
+
+  // Process each item to group files appropriately
+  for (const item of itemsToCopy) {
+    const sourcePath = path.join(projectRoot, item.src);
+
+    try {
+      const stat = await fs.stat(sourcePath);
+
+      if (item.isDir && stat.isDirectory()) {
+        const files = await findAllFiles(sourcePath, item.exclude || []);
+        const dirName = item.targetDirName || path.basename(item.src);
+
+        if (typeof item.group === "function") {
+          // Dynamic grouping - call function for each file
+          for (const filePath of files) {
+            const relativePath = path.relative(projectRoot, filePath);
+            const groupName =
+              item.group({
+                config: item,
+                file: filePath,
+                relativePath,
+              }) || dirName;
+            addToGroup(fileGroups, groupName, filePath);
+          }
+        } else {
+          // Static grouping - use string or default
+          const groupName = item.group || dirName;
+          addToGroup(fileGroups, groupName, ...files);
+        }
+      } else if (stat.isFile()) {
+        const relativePath = path.relative(projectRoot, sourcePath);
+        const groupName =
+          (typeof item.group === "function"
+            ? item.group({
+                config: item,
+                file: sourcePath,
+                relativePath,
+              })
+            : item.group) || "misc";
+        addToGroup(fileGroups, groupName, sourcePath);
+      }
+    } catch (error) {
+      console.log(`  Skipping ${item.src} (not found)`);
+    }
+  }
+
+  // Now write the concatenated files
+  for (const [groupName, sourceFiles] of fileGroups) {
+    if (sourceFiles.length === 0) continue;
+
+    // Skip excluded groups
+    if (excludeGroups.has(groupName)) {
+      console.log(
+        `  Skipping group: ${groupName} (${sourceFiles.length} files)`,
+      );
+      continue;
+    }
+
+    let concatenatedContent = "";
+    let fileCount = 0;
+
+    for (const sourcePath of sourceFiles) {
+      const relativePath = path.relative(projectRoot, sourcePath);
+      const fileContent = await fs.readFile(sourcePath, "utf8");
+
+      if (fileCount > 0) {
+        concatenatedContent += "\n\n";
+      }
+
+      concatenatedContent += `// ========================================\n`;
+      concatenatedContent += `// FILE: ${relativePath}\n`;
+      concatenatedContent += `// ----------------------------------------\n`;
+      concatenatedContent += fileContent;
+
+      fileCount++;
+    }
+
+    // Determine appropriate extension based on content
+    let outputFileName = groupName;
+    if (!outputFileName.includes(".")) {
+      // Add extension based on primary content type
+      const hasCodeFile = sourceFiles.some((f) =>
+        codeExts.includes(path.extname(f)),
+      );
+      outputFileName += hasCodeFile ? ".js" : ".md";
+    }
+
+    const targetPath = path.join(outputDir, outputFileName);
+    await fs.writeFile(targetPath, concatenatedContent, "utf8");
+    console.log(`  Created ${outputFileName} (${fileCount} files)`);
+  }
+}
+
 async function main() {
   try {
-    console.log("Generating knowledge base files...");
+    // Parse command line arguments
+    const args = process.argv.slice(2);
+    const isConcatMode = args.includes("--concat");
+
+    // Parse --exclude-groups argument
+    const excludeGroupsArg = args.find((arg) =>
+      arg.startsWith("--exclude-groups="),
+    );
+    const excludeGroups = excludeGroupsArg
+      ? new Set(
+          excludeGroupsArg
+            .split("=")[1]
+            .split(",")
+            .map((g) => g.trim())
+            .filter(Boolean),
+        )
+      : new Set();
+
+    if (isConcatMode) {
+      console.log("Generating knowledge base files in CONCAT mode...");
+    } else {
+      console.log("Generating knowledge base files...");
+    }
+
+    if (excludeGroups.size > 0) {
+      console.log(`Excluding groups: ${Array.from(excludeGroups).join(", ")}`);
+    }
 
     await cleanAndCreateOutputDir();
-    await copyDirectoriesAndFiles();
+
+    if (isConcatMode) {
+      await copyDirectoriesAndFilesConcatenated(excludeGroups);
+    } else {
+      await copyDirectoriesAndFiles(excludeGroups);
+    }
 
     console.log(
-      `\nComplete! Knowledge base files copied to: ${path.relative(projectRoot, outputDir)}`,
+      `\nComplete! Knowledge base files ${isConcatMode ? "concatenated" : "copied"} to: ${path.relative(projectRoot, outputDir)}`,
     );
 
     const files = await fs.readdir(outputDir);
