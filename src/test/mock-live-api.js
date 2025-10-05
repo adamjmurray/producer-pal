@@ -222,6 +222,12 @@ export function mockLiveApiGet(overrides = {}) {
             return [4];
           case "signature_denominator":
             return [4];
+          case "is_playing":
+          case "is_triggered":
+          case "is_recording":
+          case "is_overdubbing":
+          case "muted":
+            return [0];
         }
         break;
     }
@@ -268,8 +274,8 @@ export const expectedClip = (overrides = {}) => ({
   length: "1:0", // 1 bar duration
   startMarker: "1|2", // bar|beat format (1 Ableton beat = bar 1 beat 2)
   loop: false,
-  loopStart: "1|2", // bar|beat format
-  isPlaying: false,
+  // loopStart omitted when it equals startMarker
+  // playing, triggered, recording, overdubbing, muted omitted when false
   timeSignature: "4/4",
   noteCount: 0,
   notes: "",

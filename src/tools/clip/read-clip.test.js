@@ -80,8 +80,7 @@ describe("readClip", () => {
       length: "1:0", // 1 bar duration (from Live API)
       loop: false,
       startMarker: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
-      loopStart: "1|2",
-      isPlaying: false,
+      // loopStart omitted when it equals startMarker
       timeSignature: "4/4",
       notes: "1|1 C3 1|2 D3 1|3 E3", // Real bar|beat output
       noteCount: 3,
@@ -159,8 +158,7 @@ describe("readClip", () => {
       length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
       loop: false,
       startMarker: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
-      loopStart: "1|3",
-      isPlaying: false,
+      // loopStart omitted when it equals startMarker
       timeSignature: "6/8",
       notes: "1|1 C3 1|3 D3 1|5 E3", // Real bar|beat output in 6/8
       noteCount: 3,
@@ -329,8 +327,8 @@ describe("readClip", () => {
       length: "1:0", // 1 bar (from Live API)
       loop: true,
       startMarker: "1|2",
-      loopStart: "1|2",
-      isPlaying: true,
+      // loopStart omitted when it equals startMarker
+      playing: true,
       timeSignature: "4/4",
     });
   });
@@ -502,13 +500,124 @@ describe("readClip", () => {
       length: "1:0",
       startMarker: "1|2",
       loop: false,
-      loopStart: "1|2",
-      isPlaying: false,
+      // loopStart omitted when it equals startMarker
       triggered: true,
       timeSignature: "4/4",
       noteCount: 4,
       notes: "1|1 t0.25 C1 1|2 v90 D1 1|3 v100 C1 1|4 v90 D1",
     });
+  });
+
+  it("omits name when empty string", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        name: "",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        loop_start: 0,
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+
+    expect(result).toEqual({
+      id: "live_set/tracks/0/clip_slots/0/clip",
+      type: "midi",
+      // name omitted when empty
+      sceneIndex: 0,
+      trackIndex: 0,
+      view: "session",
+      color: "#3DC300",
+      length: "1:0",
+      // startMarker omitted when "1|1"
+      // loopStart omitted when it equals startMarker
+      loop: false,
+      timeSignature: "4/4",
+      noteCount: 0,
+    });
+  });
+
+  it("omits startMarker when 1|1", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 8,
+        start_marker: 0, // "1|1"
+        loop_start: 4,
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+
+    expect(result.startMarker).toBeUndefined(); // Omitted when "1|1"
+    expect(result.loopStart).toBe("2|1"); // Included because it differs from startMarker
+  });
+
+  it("includes startMarker when not 1|1", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 8,
+        start_marker: 4, // "2|1" - not the default
+        loop_start: 4,
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+
+    expect(result.startMarker).toBe("2|1"); // Included because it's not "1|1"
+    expect(result.loopStart).toBeUndefined(); // Omitted because it equals startMarker
+  });
+
+  it("includes recording, overdubbing, and muted when true", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        is_recording: 1,
+        is_overdubbing: 1,
+        muted: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        loop_start: 0,
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+
+    expect(result.recording).toBe(true);
+    expect(result.overdubbing).toBe(true);
+    expect(result.muted).toBe(true);
+  });
+
+  it("omits recording, overdubbing, and muted when false", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        is_recording: 0,
+        is_overdubbing: 0,
+        muted: 0,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        loop_start: 0,
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
+
+    expect(result.recording).toBeUndefined();
+    expect(result.overdubbing).toBeUndefined();
+    expect(result.muted).toBeUndefined();
   });
 
   it("includes all available options when '*' is used", () => {
