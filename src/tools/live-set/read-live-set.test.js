@@ -587,6 +587,8 @@ describe("readLiveSet", () => {
           return "live_set_id";
         case "live_set tracks 0":
           return "track1";
+        case "live_set tracks 0 clip_slots 0 clip": // Path-based access
+          return "clip1";
         case "id slot1 clip": // Direct access to slot1's clip
           return "clip1";
         case "clip1":
@@ -616,15 +618,14 @@ describe("readLiveSet", () => {
       },
     });
 
-    // Test with minimal clip loading
+    // Test with minimal clip loading (no session-clips or arrangement-clips in include)
     const result = readLiveSet({
       include: ["regular-tracks", "instruments", "rack-chains"],
     });
 
-    expect(result.tracks[0].sessionClips).toEqual([
-      { id: "clip1", sceneIndex: 0 },
-    ]);
-    expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
+    // When session-clips and arrangement-clips are not in include, we get counts instead of arrays
+    expect(result.tracks[0].sessionClipCount).toBe(1);
+    expect(result.tracks[0].arrangementClipCount).toBe(1);
   });
 
   it("uses default parameter values when no arguments provided", () => {
@@ -634,6 +635,8 @@ describe("readLiveSet", () => {
           return "live_set_id";
         case "live_set tracks 0":
           return "track1";
+        case "live_set tracks 0 clip_slots 0 clip": // Path-based access
+          return "clip1";
         case "id slot1 clip":
           return "clip1";
         case "clip1":
@@ -666,15 +669,9 @@ describe("readLiveSet", () => {
     // Call readLiveSet with no arguments to test defaults
     const result = readLiveSet();
 
-    // Verify default behavior: minimal clip data, no notes
-    expect(result.tracks[0].sessionClips).toEqual([
-      { id: "clip1", sceneIndex: 0 },
-    ]);
-    expect(result.tracks[0].arrangementClips).toEqual([{ id: "arr_clip1" }]);
-
-    // Verify that notes are not included (since includeNotes defaults to false)
-    expect(result.tracks[0].sessionClips[0].notes).toBeUndefined();
-    expect(result.tracks[0].arrangementClips[0].notes).toBeUndefined();
+    // Verify default behavior: clip counts only (defaults have session-clips and arrangement-clips false)
+    expect(result.tracks[0].sessionClipCount).toBe(1);
+    expect(result.tracks[0].arrangementClipCount).toBe(1);
 
     // Verify expensive Live API calls were not made due to default minimal behavior
     expect(liveApiCall).not.toHaveBeenCalledWith("get_notes_extended");
@@ -759,19 +756,22 @@ describe("readLiveSet", () => {
             id: "return1",
             name: "Return A",
             returnTrackIndex: 0,
-            sessionClips: [], // Return tracks don't have session clips
+            sessionClipCount: 0, // Return tracks don't have session clips
+            arrangementClipCount: 0, // Return tracks don't have arrangement clips
           }),
           expect.objectContaining({
             id: "return2",
             name: "Return B",
             returnTrackIndex: 1,
-            sessionClips: [], // Return tracks don't have session clips
+            sessionClipCount: 0, // Return tracks don't have session clips
+            arrangementClipCount: 0, // Return tracks don't have arrangement clips
           }),
         ],
         masterTrack: expect.objectContaining({
           id: "master1",
           name: "Master",
-          sessionClips: [], // Master track doesn't have session clips
+          sessionClipCount: 0, // Master track doesn't have session clips
+          arrangementClipCount: 0, // Master track doesn't have arrangement clips
         }),
       }),
     );

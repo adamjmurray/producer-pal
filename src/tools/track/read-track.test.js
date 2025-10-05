@@ -322,11 +322,17 @@ describe("readTrack", () => {
     expect(result.arrangementClips[1].id).toBe("arr_clip2");
   });
 
-  it("returns minimal session clip data when includeSessionClips is false", () => {
+  it("returns session clip count when includeSessionClips is false", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {
         case "live_set tracks 2":
           return "track3";
+        case "live_set tracks 2 clip_slots 0 clip": // Path-based access for slot 0
+          return "clip1";
+        case "live_set tracks 2 clip_slots 1 clip": // Path-based access for slot 1 (empty)
+          return "id 0";
+        case "live_set tracks 2 clip_slots 2 clip": // Path-based access for slot 2
+          return "clip2";
         case "id slot1 clip": // Direct access to slot1's clip
           return "clip1";
         case "id slot3 clip": // Direct access to slot3's clip
@@ -374,14 +380,11 @@ describe("readTrack", () => {
       include: ["clip-notes", "rack-chains", "instruments"],
     });
 
-    // Since clips exist at slots 0 and 2, we should get minimal data for those slots
-    expect(result.sessionClips).toEqual([
-      { id: "clip1", sceneIndex: 0 },
-      { id: "clip2", sceneIndex: 2 },
-    ]);
+    // Since clips exist at slots 0 and 2, we should get a count of 2
+    expect(result.sessionClipCount).toBe(2);
   });
 
-  it("returns minimal arrangement clip data when includeArrangementClips is false", () => {
+  it("returns arrangement clip count when includeArrangementClips is false", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 2":
@@ -407,13 +410,10 @@ describe("readTrack", () => {
       include: ["clip-notes", "rack-chains", "instruments"],
     });
 
-    expect(result.arrangementClips).toEqual([
-      { id: "arr_clip1" },
-      { id: "arr_clip2" },
-    ]);
+    expect(result.arrangementClipCount).toBe(2);
   });
 
-  it("returns arrangement clip IDs without 'id ' prefix when includeArrangementClips is false", () => {
+  it("returns arrangement clip count when includeArrangementClips is false (additional test)", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 1":
@@ -434,18 +434,14 @@ describe("readTrack", () => {
       },
     });
 
-    // Call with includeArrangementClips explicitly false to get minimal data
+    // Call with includeArrangementClips explicitly false to get count
     const result = readTrack({
       trackIndex: 1,
       include: ["clip-notes", "rack-chains", "instruments"], // excludes "arrangement-clips"
     });
 
-    // Verify that arrangement clip IDs are clean strings without "id " prefix
-    expect(result.arrangementClips).toEqual([
-      { id: "arr_clip3" },
-      { id: "arr_clip4" },
-      { id: "arr_clip5" },
-    ]);
+    // Verify that we get a count instead of clip details
+    expect(result.arrangementClipCount).toBe(3);
 
     // Verify consistency with track ID format
     expect(result.id).toBe("track2");

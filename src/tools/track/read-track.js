@@ -228,50 +228,63 @@ export function readTrackGeneric({
 
   // Session clips - only for regular tracks (return and master tracks don't have clip slots)
   if (category === "regular") {
-    result.sessionClips = includeSessionClips
-      ? track
-          .getChildIds("clip_slots")
-          .map((_clipSlotId, sceneIndex) =>
-            readClip({
-              trackIndex,
-              sceneIndex,
-              include: include,
-            }),
-          )
-          .filter((clip) => clip.id != null)
-      : track
-          .getChildren("clip_slots")
-          .map((clipSlot, sceneIndex) => {
-            const clipArray = clipSlot.get("clip");
-            // avoid Live API warning trying to construct with "id 0" for empty slots:
-            if (!clipArray || (Array.isArray(clipArray) && clipArray[1] === 0))
-              return null;
-            const clip = LiveAPI.from(clipArray);
-            return clip.exists() ? { id: clip.id, sceneIndex } : null;
-          })
-          .filter(Boolean);
+    if (includeSessionClips) {
+      result.sessionClips = track
+        .getChildIds("clip_slots")
+        .map((_clipSlotId, sceneIndex) =>
+          readClip({
+            trackIndex,
+            sceneIndex,
+            include: include,
+          }),
+        )
+        .filter((clip) => clip.id != null);
+    } else {
+      // When not including full clip details, just return the count
+      result.sessionClipCount = track
+        .getChildIds("clip_slots")
+        .map((_clipSlotId, sceneIndex) => {
+          const clip = new LiveAPI(
+            `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+          );
+          return clip.exists() ? clip : null;
+        })
+        .filter(Boolean).length;
+    }
   } else {
     // Return and master tracks don't have session clips
-    result.sessionClips = [];
+    if (includeSessionClips) {
+      result.sessionClips = [];
+    } else {
+      result.sessionClipCount = 0;
+    }
   }
 
   // Arrangement clips - group tracks, return tracks, and master track have no arrangement clips
-  result.arrangementClips =
-    isGroup || category === "return" || category === "master"
-      ? [] // These track categories have no arrangement clips
-      : includeArrangementClips
-        ? track
-            .getChildIds("arrangement_clips")
-            .map((clipId) =>
-              readClip({
-                clipId,
-                include: include,
-              }),
-            )
-            .filter((clip) => clip.id != null)
-        : track
-            .getChildIds("arrangement_clips")
-            .map((clipId) => ({ id: clipId.replace("id ", "") }));
+  if (isGroup || category === "return" || category === "master") {
+    // These track categories have no arrangement clips
+    if (includeArrangementClips) {
+      result.arrangementClips = [];
+    } else {
+      result.arrangementClipCount = 0;
+    }
+  } else {
+    if (includeArrangementClips) {
+      result.arrangementClips = track
+        .getChildIds("arrangement_clips")
+        .map((clipId) =>
+          readClip({
+            clipId,
+            include: include,
+          }),
+        )
+        .filter((clip) => clip.id != null);
+    } else {
+      // When not including full clip details, just return the count
+      const clipIds = track.getChildIds("arrangement_clips");
+      result.arrangementClipCount = clipIds.length;
+    }
+  }
 
   // Categorize devices into separate arrays
   // When includeDrumMaps is true but includeRackChains is false, we need to get chains
