@@ -25,7 +25,7 @@ export function connect({} = {}, context) {
     producerPalVersion: VERSION,
     abletonLiveVersion,
     liveSet: {
-      ...(liveSetName !== "" && { name: liveSetName }),
+      ...(liveSetName && { name: liveSetName }),
       trackCount: trackIds.length,
       sceneCount: sceneIds.length,
       tempo: liveSet.getProperty("tempo"),
