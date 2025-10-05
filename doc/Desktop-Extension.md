@@ -30,11 +30,14 @@ Generates `claude-desktop-extension/manifest.json` from template, extracts tool 
 ## Testing
 
 ### Manual (Claude Desktop)
+
 After changing tool descriptions:
+
 1. Toggle Producer Pal extension OFF
 2. Toggle back ON (rebuild/restart NOT sufficient)
 
 ### Automated
+
 ```bash
 # Basic test
 node scripts/test-claude-desktop-extension.mjs
@@ -54,6 +57,7 @@ node scripts/test-claude-desktop-extension.mjs http://localhost:3350/mcp ppal-re
 Enable with `ENABLE_LOGGING=true` and `VERBOSE_LOGGING=true`
 
 **Locations**:
+
 - macOS: `~/Library/Logs/Producer Pal/`
 - Windows: `%LOCALAPPDATA%\ProducerPal\Logs\`
 - Linux: `~/.local/share/Producer Pal/logs/`
