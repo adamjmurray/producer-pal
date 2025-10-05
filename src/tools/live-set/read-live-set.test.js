@@ -143,7 +143,6 @@ describe("readLiveSet", () => {
 
     expect(result).toEqual({
       id: "live_set_id",
-      abletonLiveVersion: "12.2",
       name: "Test Live Set",
       isPlaying: true,
       arrangementFollower: true,
@@ -268,7 +267,6 @@ describe("readLiveSet", () => {
 
     expect(result).toEqual({
       id: "live_set",
-      abletonLiveVersion: "12.2",
       name: "Empty Live Set",
       tempo: 100,
       timeSignature: "3/4",
@@ -1027,7 +1025,6 @@ describe("readLiveSet", () => {
     expect(result).toEqual(
       expect.objectContaining({
         id: "live_set",
-        abletonLiveVersion: "12.2",
         name: "Test Set",
         arrangementFollower: true,
         tempo: 120,
@@ -1165,5 +1162,30 @@ describe("readLiveSet", () => {
 
     // Critical: chains should be stripped due to drum-maps default
     expect(result.tracks[0].instruments.chains).toBeUndefined();
+  });
+
+  it("omits name property when Live Set name is empty string", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "live_set") return "live_set";
+      return "id 0";
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "", // Empty name
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        back_to_arranger: 1,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+    });
+
+    const result = readLiveSet();
+
+    expect(result.name).toBeUndefined();
+    expect(result).not.toHaveProperty("name");
   });
 });

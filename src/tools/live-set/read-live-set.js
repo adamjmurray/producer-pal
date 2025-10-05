@@ -14,15 +14,14 @@ export function readLiveSet(args = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
   const liveSet = new LiveAPI("live_set");
-  const liveApp = new LiveAPI("live_app");
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
+  const liveSetName = liveSet.getProperty("name");
   const result = {
     id: liveSet.id,
-    abletonLiveVersion: liveApp.call("get_version_string"),
-    name: liveSet.getProperty("name"),
+    ...(liveSetName !== "" && { name: liveSetName }),
     arrangementFollower: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,

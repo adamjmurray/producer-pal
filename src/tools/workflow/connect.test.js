@@ -714,4 +714,43 @@ describe("connect", () => {
 
     expect(result.liveSet.scale).toBeUndefined();
   });
+
+  it("omits name property when Live Set name is empty string", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "", // Empty name
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const result = connect();
+
+    expect(result.liveSet.name).toBeUndefined();
+    expect(result.liveSet).not.toHaveProperty("name");
+  });
 });
