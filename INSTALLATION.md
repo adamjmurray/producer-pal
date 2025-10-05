@@ -432,11 +432,18 @@ For remote access to Producer Pal from the Internet, you'll need a tunneling
 service.
 
 _Note: Producer Pal performs no authentication, so anyone who knows your web
-tunnel address can connect and control Ableton Live. You should keep your web
-tunnel address secret._
+tunnel address can connect and control Ableton Live. Keep your tunnel URL secret
+and only share with trusted collaborators. The tunnel URL acts as the password -
+if someone discovers it, restart your tunnel and get a new URL._
 
 A web tunnel is _not_ needed to connect to Producer Pal to another computer on
-the local network.
+the local network. When using Producer Pal on a local network (e.g., in a
+studio, classroom, or live performance), you can customize the port number in
+the Producer Pal Max for Live device settings (default: 3350) to prevent
+unauthorized access from other devices on the same network. Changing the port
+effectively "hides" Producer Pal from other users who might be scanning for it.
+If you change the port, update the :3350 in your Producer Pal connections
+settings for the AI.
 
 ### ngrok (Recommended)
 
