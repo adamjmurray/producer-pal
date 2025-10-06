@@ -75,7 +75,7 @@ describe("connect", () => {
 
     expect(result).toEqual({
       connected: true,
-      producerPalVersion: "0.9.8",
+      producerPalVersion: "0.9.9",
       abletonLiveVersion: "12.3",
       liveSet: {
         name: "Test Project",
@@ -85,7 +85,7 @@ describe("connect", () => {
         timeSignature: "4/4",
       },
       messagesForUser: expect.stringContaining(
-        "Producer Pal 0.9.8 connected to Ableton Live 12.3",
+        "Producer Pal 0.9.9 connected to Ableton Live 12.3",
       ),
       $system: expect.stringContaining("Producer Pal System Prompt"),
       $instructions: expect.stringContaining(
