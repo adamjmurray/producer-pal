@@ -294,7 +294,7 @@ export function createClip({
       length,
       loopStart,
       loop,
-      notes: notationString,
+      noteCount: notationString != null ? validNotes.length : null,
     });
 
     createdClips.push(clipResult);

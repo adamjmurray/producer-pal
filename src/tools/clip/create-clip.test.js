@@ -64,7 +64,7 @@ describe("createClip", () => {
     expect(result).toEqual({
       sceneIndex: 0,
       id: "live_set/tracks/0/clip_slots/0/clip",
-      notes: "1|1 C3 2|1 D3",
+      noteCount: 2,
       timeSignature: "3/4",
       trackIndex: 0,
       type: "midi",
@@ -426,7 +426,7 @@ describe("createClip", () => {
         name: "New Clip",
         color: "#FF0000",
         loop: true,
-        notes: "1|1 C3 D3 E3",
+        noteCount: 3,
         timeSignature: "4/4",
         triggered: true,
       });
@@ -720,7 +720,7 @@ describe("createClip", () => {
         trackIndex: 0,
         arrangementStartTime: "3|1",
         name: "Arrangement Clip",
-        notes: "1|1 C3 D3 E3",
+        noteCount: 3,
         timeSignature: "4/4",
       });
     });
@@ -780,7 +780,7 @@ describe("createClip", () => {
           arrangementStartTime: "3|1",
           name: "Sequence",
           timeSignature: "4/4",
-          notes: "C3 1|2 D3",
+          noteCount: 2,
         },
         {
           id: "arrangement_clip",
@@ -790,7 +790,7 @@ describe("createClip", () => {
           arrangementStartTime: "3|3",
           name: "Sequence 2",
           timeSignature: "4/4",
-          notes: "C3 1|2 D3",
+          noteCount: 2,
         },
         {
           id: "arrangement_clip",
@@ -800,7 +800,7 @@ describe("createClip", () => {
           arrangementStartTime: "4|1",
           name: "Sequence 3",
           timeSignature: "4/4",
-          notes: "C3 1|2 D3",
+          noteCount: 2,
         },
       ]);
     });
@@ -944,7 +944,7 @@ describe("createClip", () => {
       },
     );
 
-    expect(result.notes).toBe("1|1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
+    expect(result.noteCount).toBe(2); // C3 and E3, D3 filtered out
   });
 
   it("should handle clips with all v0 notes filtered out", () => {

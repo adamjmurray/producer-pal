@@ -61,6 +61,9 @@ export function updateClip({
       timeSigDenominator = clip.getProperty("signature_denominator");
     }
 
+    // Track final note count for response
+    let finalNoteCount = null;
+
     // Convert length parameter to end_marker and loop_end
     let endMarkerBeats = null;
     let loopEndBeats = null;
@@ -116,6 +119,7 @@ export function updateClip({
         if (regularNotes.length > 0) {
           clip.call("add_new_notes", { notes: regularNotes });
         }
+        finalNoteCount = regularNotes.length;
       } else {
         // When not clearing, handle v0 notes as deletions
         if (v0Notes.length > 0) {
@@ -150,11 +154,15 @@ export function updateClip({
           if (allNotesToAdd.length > 0) {
             clip.call("add_new_notes", { notes: allNotesToAdd });
           }
+          finalNoteCount = allNotesToAdd.length;
         } else {
           // No v0 notes, just add regular notes
           if (regularNotes.length > 0) {
             clip.call("add_new_notes", { notes: regularNotes });
           }
+          // For merge mode without deletions, we'd need to read existing notes to get total count
+          // Instead, just report the count of notes added in this operation
+          finalNoteCount = regularNotes.length;
         }
       }
     }
@@ -200,8 +208,7 @@ export function updateClip({
     if (length != null) clipResult.length = length;
     if (loopStart != null) clipResult.loopStart = loopStart;
     if (loop != null) clipResult.loop = loop;
-    if (notationString != null) clipResult.notes = notationString;
-    if (notationString != null) clipResult.noteUpdateMode = noteUpdateMode;
+    if (finalNoteCount != null) clipResult.noteCount = finalNoteCount;
 
     updatedClips.push(clipResult);
   }
