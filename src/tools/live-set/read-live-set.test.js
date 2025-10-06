@@ -281,7 +281,7 @@ describe("readLiveSet", () => {
       timeSignature: "3/4",
       arrangementFollower: false,
       tracks: [],
-      scenes: [],
+      sceneCount: 0,
     });
   });
 
@@ -953,7 +953,7 @@ describe("readLiveSet", () => {
     );
   });
 
-  it("returns scene IDs without 'id ' prefix when includeScenes is false", () => {
+  it("returns sceneCount when includeScenes is false", () => {
     liveApiId.mockImplementation(function () {
       switch (this.path) {
         case "live_set":
@@ -967,7 +967,7 @@ describe("readLiveSet", () => {
 
     mockLiveApiGet({
       LiveSet: {
-        name: "Scene ID Test Set",
+        name: "Scene Count Test Set",
         is_playing: 0,
         back_to_arranger: 1,
         scale_mode: 0,
@@ -989,15 +989,9 @@ describe("readLiveSet", () => {
     // Call with default include (which doesn't include "scenes")
     const result = readLiveSet();
 
-    // Verify that scene IDs are clean numeric strings without "id " prefix
-    expect(result.scenes).toEqual([
-      { id: "scene9" },
-      { id: "scene10" },
-      { id: "scene11" },
-    ]);
-
-    // Verify consistency with track IDs format
-    expect(result.tracks[0].id).toBe("track1");
+    // Verify that sceneCount is returned instead of scenes array
+    expect(result.sceneCount).toBe(3);
+    expect(result.scenes).toBeUndefined();
   });
 
   it("returns minimal data when include is an empty array", () => {
@@ -1040,7 +1034,7 @@ describe("readLiveSet", () => {
         arrangementFollower: true,
         tempo: 120,
         timeSignature: "4/4",
-        scenes: [], // Empty because no scenes exist in the Live Set
+        sceneCount: 0, // No scenes exist in the Live Set
       }),
     );
 
@@ -1048,6 +1042,7 @@ describe("readLiveSet", () => {
     expect(result).not.toHaveProperty("tracks");
     expect(result).not.toHaveProperty("returnTracks");
     expect(result).not.toHaveProperty("masterTrack");
+    expect(result).not.toHaveProperty("scenes");
   });
 
   it("uses drum-maps by default and strips chains", () => {

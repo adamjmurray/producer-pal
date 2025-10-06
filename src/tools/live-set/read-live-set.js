@@ -25,12 +25,16 @@ export function readLiveSet(args = {}) {
     arrangementFollower: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
-    scenes: includeFlags.includeScenes
-      ? sceneIds.map((_sceneId, sceneIndex) =>
-          readScene({ sceneIndex, include: includeArray }),
-        )
-      : sceneIds.map((sceneId) => ({ id: sceneId.replace("id ", "") })),
   };
+
+  // Include full scene details or just the count
+  if (includeFlags.includeScenes) {
+    result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
+      readScene({ sceneIndex, include: includeArray }),
+    );
+  } else {
+    result.sceneCount = sceneIds.length;
+  }
 
   // Only include isPlaying when true
   const isPlaying = liveSet.getProperty("is_playing") > 0;
