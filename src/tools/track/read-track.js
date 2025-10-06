@@ -76,19 +76,19 @@ function categorizeDevices(
     const deviceType = processedDevice.type;
 
     if (
-      deviceType === DEVICE_TYPE.MIDI_EFFECT ||
-      deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK
+      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||
+      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT_RACK)
     ) {
       midiEffects.push(processedDevice);
     } else if (
-      deviceType === DEVICE_TYPE.INSTRUMENT ||
-      deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
-      deviceType === DEVICE_TYPE.DRUM_RACK
+      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
+      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
+      deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
     ) {
       instruments.push(processedDevice);
     } else if (
-      deviceType === DEVICE_TYPE.AUDIO_EFFECT ||
-      deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK
+      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT) ||
+      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT_RACK)
     ) {
       audioEffects.push(processedDevice);
     }
@@ -308,7 +308,7 @@ export function readTrackGeneric({
     if (isProducerPalHost && categorizedDevices.instrument === null) {
       // Don't include instrument property at all
     } else {
-      result.instruments =
+      result.instrument =
         shouldFetchChainsForDrumMaps && categorizedDevices.instrument
           ? stripChains(categorizedDevices.instrument)
           : categorizedDevices.instrument;

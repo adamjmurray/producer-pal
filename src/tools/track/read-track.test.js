@@ -86,7 +86,7 @@ describe("readTrack", () => {
       firedSlotIndex: 3,
       arrangementClips: [],
       sessionClips: [],
-      instruments: null,
+      instrument: null,
     });
   });
 
@@ -118,7 +118,7 @@ describe("readTrack", () => {
       arrangementFollower: true,
       arrangementClips: [],
       sessionClips: [],
-      instruments: null,
+      instrument: null,
     });
   });
 
@@ -167,7 +167,7 @@ describe("readTrack", () => {
       firedSlotIndex: 3,
       arrangementClips: [],
       sessionClips: [],
-      instruments: null,
+      instrument: null,
     });
   });
 
@@ -211,13 +211,13 @@ describe("readTrack", () => {
     // Producer Pal host track with null instrument - should omit the property
     const hostResult = readTrack({ trackIndex: 1 });
     expect(hostResult.hasProducerPalDevice).toBe(true);
-    expect(hostResult).not.toHaveProperty("instruments");
+    expect(hostResult).not.toHaveProperty("instrument");
 
     // Regular track with null instrument - should include the property
     const regularResult = readTrack({ trackIndex: 0 });
     expect(regularResult.hasProducerPalDevice).toBeUndefined();
-    expect(regularResult).toHaveProperty("instruments");
-    expect(regularResult.instruments).toBe(null);
+    expect(regularResult).toHaveProperty("instrument");
+    expect(regularResult.instrument).toBe(null);
   });
 
   it("returns sessionClips information when the track has clips in Session view", () => {
@@ -271,7 +271,7 @@ describe("readTrack", () => {
           color: undefined,
         },
       ].map(({ color, ...clip }) => clip),
-      instruments: null,
+      instrument: null,
     });
   });
 
@@ -459,7 +459,7 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
-      expect(result.instruments).toBeNull();
+      expect(result.instrument).toBeNull();
       expect(result.midiEffects).toBeUndefined();
       expect(result.audioEffects).toBeUndefined();
     });
@@ -517,28 +517,22 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instruments).toEqual({
-        id: "device1",
-        name: "Analog",
-        displayName: "Custom Analog",
-        type: DEVICE_TYPE.INSTRUMENT,
+      expect(result.instrument).toEqual({
+        type: "instrument: Analog",
+        name: "Custom Analog",
       });
 
       expect(result.audioEffects).toEqual([
         {
-          id: "device2",
-          name: "Reverb",
-          displayName: "Custom Reverb",
-          type: DEVICE_TYPE.AUDIO_EFFECT,
+          type: "audio-effect: Reverb",
+          name: "Custom Reverb",
         },
       ]);
 
       expect(result.midiEffects).toEqual([
         {
-          id: "device3",
-          name: "Note Length",
-          displayName: "Custom Note Length",
-          type: DEVICE_TYPE.MIDI_EFFECT,
+          type: "midi-effect: Note Length",
+          name: "Custom Note Length",
           deactivated: true,
         },
       ]);
@@ -569,11 +563,9 @@ describe("readTrack", () => {
       });
 
       const result = readTrack({ trackIndex: 0 });
-      expect(result.instruments).toEqual({
-        id: "device1",
-        name: "Drum Rack",
-        displayName: "My Drums",
-        type: DEVICE_TYPE.DRUM_RACK,
+      expect(result.instrument).toEqual({
+        name: "My Drums",
+        type: "drum-rack",
         drumPads: [],
       });
     });
@@ -623,19 +615,15 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instruments).toEqual({
-        id: "device1",
-        name: "Drum Rack",
-        displayName: "My Drums",
-        type: DEVICE_TYPE.DRUM_RACK,
+      expect(result.instrument).toEqual({
+        type: "drum-rack",
+        name: "My Drums",
         drumPads: [],
       });
 
       expect(result.audioEffects).toHaveLength(1);
       expect(result.audioEffects[0]).toEqual({
-        id: "device2",
-        name: "Reverb",
-        type: DEVICE_TYPE.AUDIO_EFFECT,
+        type: "audio-effect: Reverb",
       });
     });
 
@@ -694,20 +682,16 @@ describe("readTrack", () => {
         include: ["instruments", "rack-chains"],
       });
 
-      expect(result.instruments).toEqual({
-        id: "rack1",
-        name: "Instrument Rack",
-        displayName: "My Custom Rack",
-        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      expect(result.instrument).toEqual({
+        type: "instrument-rack",
+        name: "My Custom Rack",
         chains: [
           {
             name: "Piano",
             devices: [
               {
-                id: "nested_device1",
-                name: "Operator",
-                displayName: "Lead Synth",
-                type: DEVICE_TYPE.INSTRUMENT,
+                type: "instrument: Operator",
+                name: "Lead Synth",
               },
             ],
           },
@@ -779,19 +763,15 @@ describe("readTrack", () => {
 
       expect(result.audioEffects).toHaveLength(1);
       expect(result.audioEffects[0]).toEqual({
-        id: "fx_rack1",
-        name: "Audio Effect Rack",
-        displayName: "Master FX",
-        type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        type: "audio-effect-rack",
+        name: "Master FX",
         chains: [
           {
             name: "Filter Chain",
             devices: [
               {
-                id: "nested_effect1",
-                name: "Auto Filter",
-                displayName: "Sweep Filter",
-                type: DEVICE_TYPE.AUDIO_EFFECT,
+                type: "audio-effect: Auto Filter",
+                name: "Sweep Filter",
               },
             ],
           },
@@ -877,30 +857,24 @@ describe("readTrack", () => {
         include: ["instruments", "rack-chains"],
       });
 
-      expect(result.instruments).toEqual({
-        id: "outer_rack",
-        name: "Instrument Rack",
-        displayName: "Master FX",
-        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      expect(result.instrument).toEqual({
+        type: "instrument-rack",
+        name: "Master FX",
         chains: [
           {
             name: "Wet",
             devices: [
               {
-                id: "inner_rack",
-                name: "Audio Effect Rack",
-                displayName: "Reverb Chain",
-                type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
+                type: "audio-effect-rack",
+                name: "Reverb Chain",
                 chains: [
                   {
                     name: "Hall",
                     state: "soloed",
                     devices: [
                       {
-                        id: "deep_device",
-                        name: "Reverb",
-                        displayName: "Big Hall",
-                        type: DEVICE_TYPE.AUDIO_EFFECT,
+                        type: "audio-effect: Reverb",
+                        name: "Big Hall",
                       },
                     ],
                   },
@@ -957,11 +931,9 @@ describe("readTrack", () => {
         include: ["instruments", "rack-chains"],
       });
 
-      expect(result.instruments).toEqual({
-        id: "rack1",
-        name: "Instrument Rack",
-        displayName: "My Empty Rack",
-        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      expect(result.instrument).toEqual({
+        name: "My Empty Rack",
+        type: "instrument-rack",
         chains: [
           {
             name: "Empty Chain",
@@ -1047,20 +1019,16 @@ describe("readTrack", () => {
         include: ["instruments", "rack-chains"],
       });
 
-      expect(result.instruments).toEqual({
-        id: "rack1",
-        name: "Instrument Rack",
-        displayName: "My Custom Rack",
-        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      expect(result.instrument).toEqual({
+        type: "instrument-rack",
+        name: "My Custom Rack",
         chains: [
           {
             name: "Piano",
             devices: [
               {
-                id: "device1",
-                name: "Operator",
-                displayName: "Lead Synth",
-                type: DEVICE_TYPE.INSTRUMENT,
+                type: "instrument: Operator",
+                name: "Lead Synth",
               },
             ],
           },
@@ -1069,10 +1037,8 @@ describe("readTrack", () => {
             state: "muted",
             devices: [
               {
-                id: "device2",
-                name: "Wavetable",
-                displayName: "Bass Synth",
-                type: DEVICE_TYPE.INSTRUMENT,
+                type: "instrument: Wavetable",
+                name: "Bass Synth",
               },
             ],
           },
@@ -1176,11 +1142,9 @@ describe("readTrack", () => {
           "drum-chains",
         ],
       });
-      expect(result.instruments).toEqual({
-        id: "drum_rack",
-        name: "Drum Rack",
-        displayName: "My Drums",
-        type: DEVICE_TYPE.DRUM_RACK,
+      expect(result.instrument).toEqual({
+        type: "drum-rack",
+        name: "My Drums",
         drumPads: [
           {
             name: "Kick",
@@ -1191,8 +1155,7 @@ describe("readTrack", () => {
               state: "muted-via-solo",
               devices: [
                 expect.objectContaining({
-                  name: "Simpler",
-                  type: DEVICE_TYPE.INSTRUMENT,
+                  type: "instrument: Simpler",
                 }),
               ],
             },
@@ -1206,8 +1169,7 @@ describe("readTrack", () => {
               state: "soloed",
               devices: [
                 expect.objectContaining({
-                  name: "Simpler",
-                  type: DEVICE_TYPE.INSTRUMENT,
+                  type: "instrument: Simpler",
                 }),
               ],
             },
@@ -1216,7 +1178,7 @@ describe("readTrack", () => {
       });
     });
 
-    it("only includes displayName when it differs from name", () => {
+    it("combines device name and preset name", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0") {
           return "track1";
@@ -1260,16 +1222,11 @@ describe("readTrack", () => {
       });
       expect(result.audioEffects).toEqual([
         {
-          id: "device1",
-          name: "Reverb",
-          type: DEVICE_TYPE.AUDIO_EFFECT,
-          // No displayName since it's the same as name
+          type: "audio-effect: Reverb",
         },
         {
-          id: "device2",
-          name: "Reverb",
-          displayName: "My Custom Reverb", // Included since it differs from name
-          type: DEVICE_TYPE.AUDIO_EFFECT,
+          type: "audio-effect: Reverb",
+          name: "My Custom Reverb",
         },
       ]);
     });
@@ -1856,7 +1813,7 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instruments.drumPads).toEqual([
+      expect(result.instrument.drumPads).toEqual([
         expect.objectContaining({
           name: "Kick",
           note: 36,
@@ -1870,11 +1827,9 @@ describe("readTrack", () => {
       ]);
 
       // The kick pad should not have hasInstrument property
-      expect(result.instruments.drumPads[0]).not.toHaveProperty(
-        "hasInstrument",
-      );
+      expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
       // The empty pad should have hasInstrument: false
-      expect(result.instruments.drumPads[1]).toHaveProperty(
+      expect(result.instrument.drumPads[1]).toHaveProperty(
         "hasInstrument",
         false,
       );
@@ -2089,9 +2044,7 @@ describe("readTrack", () => {
       });
 
       // Should detect the nested instrument and not add hasInstrument property
-      expect(result.instruments.drumPads[0]).not.toHaveProperty(
-        "hasInstrument",
-      );
+      expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
 
       // drumMap should include the drum pad since it has a nested instrument
       expect(result.drumMap).toEqual({
@@ -2462,7 +2415,7 @@ describe("readTrack", () => {
       // Verify key properties are included
       expect(resultWildcard).toEqual(
         expect.objectContaining({
-          instruments: expect.any(Object),
+          instrument: expect.any(Object),
           audioEffects: expect.any(Array),
           midiEffects: expect.any(Array),
           sessionClips: expect.any(Array),
@@ -2517,7 +2470,7 @@ describe("readTrack", () => {
           arrangementFollower: true,
           sessionClips: [], // Return tracks have no session clips
           arrangementClips: [], // Return tracks have no arrangement clips
-          instruments: null,
+          instrument: null,
         });
       });
 
@@ -2656,7 +2609,7 @@ describe("readTrack", () => {
           arrangementFollower: true,
           sessionClips: [], // Master track has no session clips
           arrangementClips: [], // Master track has no arrangement clips
-          instruments: null,
+          instrument: null,
         });
 
         // trackIndex should be ignored for master track
@@ -2739,14 +2692,10 @@ describe("readTrack", () => {
 
         expect(result.audioEffects).toEqual([
           {
-            id: "compressor1",
-            name: "Compressor",
-            type: DEVICE_TYPE.AUDIO_EFFECT,
+            type: "audio-effect: Compressor",
           },
           {
-            id: "limiter1",
-            name: "Limiter",
-            type: DEVICE_TYPE.AUDIO_EFFECT,
+            type: "audio-effect: Limiter",
           },
         ]);
       });
@@ -2825,7 +2774,7 @@ describe("readTrack", () => {
           arrangementFollower: true,
           sessionClips: [],
           arrangementClips: [],
-          instruments: null,
+          instrument: null,
         });
       });
     });
@@ -2921,7 +2870,7 @@ describe("readTrack", () => {
         arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],
-        instruments: null,
+        instrument: null,
       });
     });
 
@@ -2971,7 +2920,7 @@ describe("readTrack", () => {
         arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],
-        instruments: null,
+        instrument: null,
       });
     });
 
@@ -3020,7 +2969,7 @@ describe("readTrack", () => {
         arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],
-        instruments: null,
+        instrument: null,
       });
     });
 
@@ -3160,11 +3109,9 @@ describe("readTrack", () => {
       });
 
       // Should have instrument but NO chains
-      expect(result.instruments).toEqual({
-        id: "drumrack1",
-        name: "Drum Rack",
-        displayName: "Test Drum Rack",
-        type: DEVICE_TYPE.DRUM_RACK,
+      expect(result.instrument).toEqual({
+        name: "Test Drum Rack",
+        type: "drum-rack",
         drumPads: [
           {
             name: "Test Kick",
@@ -3174,7 +3121,7 @@ describe("readTrack", () => {
       });
 
       // Critical: chains should be stripped
-      expect(result.instruments.chains).toBeUndefined();
+      expect(result.instrument.chains).toBeUndefined();
     });
 
     it("drum racks don't have main chains even with rack-chains included", () => {
@@ -3253,11 +3200,9 @@ describe("readTrack", () => {
       });
 
       // Should have instrument WITHOUT chains (drum racks don't expose main chains)
-      expect(result.instruments).toEqual({
-        id: "drumrack1",
-        name: "Drum Rack",
-        displayName: "Test Drum Rack",
-        type: DEVICE_TYPE.DRUM_RACK,
+      expect(result.instrument).toEqual({
+        name: "Test Drum Rack",
+        type: "drum-rack",
         drumPads: [
           {
             name: "Test Kick",
@@ -3267,7 +3212,7 @@ describe("readTrack", () => {
       });
 
       // Critical: chains should NOT be present on drum racks
-      expect(result.instruments.chains).toBeUndefined();
+      expect(result.instrument.chains).toBeUndefined();
     });
 
     it("strips chains from all device types when using drum-maps", () => {
@@ -3363,23 +3308,17 @@ describe("readTrack", () => {
 
       // All devices should have chains stripped
       expect(result.midiEffects[0]).toEqual({
-        id: "midi_effect_rack",
-        name: "MIDI Effect Rack",
-        type: DEVICE_TYPE.MIDI_EFFECT_RACK,
+        type: "midi-effect-rack",
       });
       expect(result.midiEffects[0].chains).toBeUndefined();
 
-      expect(result.instruments).toEqual({
-        id: "instrument_rack",
-        name: "Instrument Rack",
-        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      expect(result.instrument).toEqual({
+        type: "instrument-rack",
       });
-      expect(result.instruments.chains).toBeUndefined();
+      expect(result.instrument.chains).toBeUndefined();
 
       expect(result.audioEffects[0]).toEqual({
-        id: "audio_effect_rack",
-        name: "Audio Effect Rack",
-        type: DEVICE_TYPE.AUDIO_EFFECT_RACK,
+        type: "audio-effect-rack",
       });
       expect(result.audioEffects[0].chains).toBeUndefined();
     });
@@ -3426,12 +3365,10 @@ describe("readTrack", () => {
       const result = readTrack({ trackIndex: 0 });
 
       // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
-      expect(result.instruments).toEqual({
-        id: "instrument_rack",
-        name: "Instrument Rack",
-        type: DEVICE_TYPE.INSTRUMENT_RACK,
+      expect(result.instrument).toEqual({
+        type: "instrument-rack",
       });
-      expect(result.instruments.chains).toBeUndefined();
+      expect(result.instrument.chains).toBeUndefined();
     });
 
     it("handles drum-maps with no drum racks gracefully", () => {
@@ -3456,13 +3393,11 @@ describe("readTrack", () => {
       });
 
       // Should have instrument but no drumMap
-      expect(result.instruments).toEqual({
-        id: "wavetable",
-        name: "Wavetable",
-        type: DEVICE_TYPE.INSTRUMENT,
+      expect(result.instrument).toEqual({
+        type: "instrument: Wavetable",
       });
       expect(result.drumMap).toBeUndefined();
-      expect(result.instruments.chains).toBeUndefined();
+      expect(result.instrument.chains).toBeUndefined();
     });
   });
 });

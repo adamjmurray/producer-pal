@@ -172,7 +172,7 @@ describe("readLiveSet", () => {
               color: undefined,
             },
           ].map(({ color, ...clip }) => clip),
-          instruments: null,
+          instrument: null,
         },
         {
           id: "track2",
@@ -192,7 +192,7 @@ describe("readLiveSet", () => {
               color: undefined,
             },
           ].map(({ color, ...clip }) => clip),
-          instruments: null,
+          instrument: null,
         },
         (() => {
           const { color, ...track } = expectedTrack({
@@ -352,24 +352,21 @@ describe("readLiveSet", () => {
     expect(result.tracks).toEqual([
       expect.objectContaining({
         name: "Synth Track",
-        instruments: expect.objectContaining({
-          name: "Analog",
-          type: DEVICE_TYPE.INSTRUMENT,
+        instrument: expect.objectContaining({
+          type: "instrument: Analog",
         }),
         audioEffects: [
           expect.objectContaining({
-            name: "EQ Eight",
-            type: DEVICE_TYPE.AUDIO_EFFECT,
+            type: "audio-effect: EQ Eight",
           }),
         ],
       }),
       expect.objectContaining({
         name: "Audio Track",
-        instruments: null,
+        instrument: null,
         audioEffects: [
           expect.objectContaining({
-            name: "Reverb",
-            type: DEVICE_TYPE.AUDIO_EFFECT,
+            type: "audio-effect: Reverb",
           }),
         ],
       }),
@@ -458,21 +455,20 @@ describe("readLiveSet", () => {
     });
 
     // Check that drum rack devices are included with drumPads but without devices in drumPad chains
-    expect(result.tracks[0].instruments).toEqual(
+    expect(result.tracks[0].instrument).toEqual(
       expect.objectContaining({
-        name: "Drum Rack",
-        type: DEVICE_TYPE.DRUM_RACK,
+        name: "My Drums",
+        type: "drum-rack",
         drumPads: expect.any(Array), // Should have drumPads property
       }),
     );
     expect(result.tracks[0].audioEffects).toEqual([
       expect.objectContaining({
-        name: "Reverb",
-        type: DEVICE_TYPE.AUDIO_EFFECT,
+        type: "audio-effect: Reverb",
       }),
     ]);
     // Drum rack device should be present with drumPads but drumPad chains should not have devices
-    const drumRack = result.tracks[0].instruments;
+    const drumRack = result.tracks[0].instrument;
     expect(drumRack).toBeDefined();
     expect(drumRack.drumPads).toBeDefined();
     // If drumPads exist, they should not have chain property when includeDrumChains=false
@@ -944,7 +940,7 @@ describe("readLiveSet", () => {
     // Verify track has all expected properties
     expect(resultWildcard.tracks[0]).toEqual(
       expect.objectContaining({
-        instruments: expect.any(Object),
+        instrument: expect.any(Object),
         inputRoutingChannel: expect.any(Object),
         sessionClips: expect.any(Array),
         arrangementClips: expect.any(Array),
@@ -1153,11 +1149,9 @@ describe("readLiveSet", () => {
     });
 
     // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
-    expect(result.tracks[0].instruments).toEqual({
-      id: "drumrack1",
-      name: "Drum Rack",
-      displayName: "Test Drum Rack",
-      type: DEVICE_TYPE.DRUM_RACK,
+    expect(result.tracks[0].instrument).toEqual({
+      name: "Test Drum Rack",
+      type: "drum-rack",
       drumPads: [
         {
           name: "Test Kick",
@@ -1167,7 +1161,7 @@ describe("readLiveSet", () => {
     });
 
     // Critical: chains should be stripped due to drum-maps default
-    expect(result.tracks[0].instruments.chains).toBeUndefined();
+    expect(result.tracks[0].instrument.chains).toBeUndefined();
   });
 
   it("omits name property when Live Set name is empty string", () => {

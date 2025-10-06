@@ -37,9 +37,7 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
-      id: "device-123",
-      name: "Operator",
-      type: "instrument",
+      type: "instrument: Operator",
     });
   });
 
@@ -90,8 +88,6 @@ describe("readDevice", () => {
     });
 
     expect(result).toEqual({
-      id: "rack-device-123",
-      name: "Instrument Rack",
       type: "instrument-rack",
       chains: [],
     });
@@ -137,8 +133,6 @@ describe("readDevice", () => {
     });
 
     expect(result).toEqual({
-      id: "drum-rack-123",
-      name: "Drum Rack",
       type: "drum-rack",
       drumPads: [],
     });
@@ -184,8 +178,6 @@ describe("readDevice", () => {
     });
 
     expect(result).toEqual({
-      id: "device-123",
-      name: "Audio Effect Rack",
       type: "audio-effect-rack",
       chains: [],
     });
@@ -217,9 +209,7 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
-      id: "device-123",
-      name: "EQ Eight",
-      type: "audio-effect",
+      type: "audio-effect: EQ Eight",
       deactivated: true,
     });
   });
@@ -250,10 +240,8 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
-      id: "device-123",
-      name: "Operator",
-      type: "instrument",
-      displayName: "My Custom Operator",
+      type: "instrument: Operator",
+      name: "My Custom Operator",
     });
   });
 
@@ -291,8 +279,6 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
-      id: "device-123",
-      name: "MIDI Effect Rack",
       type: "midi-effect-rack",
       chains: [],
     });
@@ -324,9 +310,7 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
-      id: "device-123",
-      name: "Arpeggiator",
-      type: "midi-effect",
+      type: "midi-effect: Arpeggiator",
     });
   });
 });

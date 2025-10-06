@@ -44,14 +44,14 @@ function computeState(liveObject, category = "regular") {
 
 /**
  * Check if device is an instrument type (instrument, instrument rack, or drum rack)
- * @param {string} deviceType - Device type string
+ * @param {string} deviceType - Device type string (may include className like "instrument (Analog)")
  * @returns {boolean} True if device is an instrument type
  */
 function isInstrumentDevice(deviceType) {
   return (
-    deviceType === DEVICE_TYPE.INSTRUMENT ||
-    deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
-    deviceType === DEVICE_TYPE.DRUM_RACK
+    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
+    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
+    deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
   );
 }
 
@@ -124,7 +124,7 @@ export function getDrumMap(devices) {
     const drumRacks = [];
 
     for (const device of deviceList) {
-      if (device.type === DEVICE_TYPE.DRUM_RACK && device.drumPads) {
+      if (device.type.startsWith(DEVICE_TYPE.DRUM_RACK) && device.drumPads) {
         drumRacks.push(device);
       }
 
@@ -191,21 +191,30 @@ export function readDevice(device, options = {}) {
   const className = device.getProperty("class_display_name");
   const userDisplayName = device.getProperty("name");
 
+  // Check if className is redundant (matches the rack type name)
+  const isRedundantClassName =
+    (deviceType === DEVICE_TYPE.INSTRUMENT_RACK &&
+      className === "Instrument Rack") ||
+    (deviceType === DEVICE_TYPE.DRUM_RACK && className === "Drum Rack") ||
+    (deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK &&
+      className === "Audio Effect Rack") ||
+    (deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK &&
+      className === "MIDI Effect Rack");
+
   const deviceInfo = {
-    id: device.id,
-    name: className, // Original device name
-    type: deviceType,
+    // Include className in type unless it's redundant
+    type: isRedundantClassName ? deviceType : `${deviceType}: ${className}`,
   };
+
+  // Only include name when userDisplayName differs from className
+  if (userDisplayName !== className) {
+    deviceInfo.name = userDisplayName;
+  }
 
   // Only include deactivated when device is inactive
   const isActive = device.getProperty("is_active") > 0;
   if (!isActive) {
     deviceInfo.deactivated = true;
-  }
-
-  // Only include displayName when it differs from name
-  if (userDisplayName !== className) {
-    deviceInfo.displayName = userDisplayName;
   }
 
   // Add chain information for rack devices
