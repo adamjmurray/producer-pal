@@ -149,7 +149,7 @@ describe("readLiveSet", () => {
       tempo: 120,
       timeSignature: "4/4",
       scale: "C Major",
-      scalePitches: ["C", "D", "E", "F", "G", "A", "B"],
+      scalePitches: "C,D,E,F,G,A,B",
       tracks: [
         {
           id: "track1",

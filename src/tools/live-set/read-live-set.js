@@ -86,7 +86,10 @@ export function readLiveSet(args = {}) {
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
     result.scale = `${scaleRoot} ${scaleName}`;
     const scaleIntervals = liveSet.getProperty("scale_intervals");
-    result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
+    result.scalePitches = intervalsToPitchClasses(
+      scaleIntervals,
+      rootNote,
+    ).join(",");
   }
 
   return result;
