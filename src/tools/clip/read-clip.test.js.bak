@@ -81,7 +81,7 @@ describe("readClip", () => {
       startMarker: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
       // loopStart omitted when it equals startMarker
       timeSignature: "4/4",
-      notes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
+      notes: "1|1 C3 1|2 D3 1|3 E3", // Real bar|beat output
       noteCount: 3,
     });
   });
@@ -158,7 +158,7 @@ describe("readClip", () => {
       startMarker: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
       // loopStart omitted when it equals startMarker
       timeSignature: "6/8",
-      notes: "C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8
+      notes: "1|1 C3 1|3 D3 1|5 E3", // Real bar|beat output in 6/8
       noteCount: 3,
     });
   });
@@ -219,7 +219,7 @@ describe("readClip", () => {
     );
 
     // In 3/4 time, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
+    expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
     expect(result.timeSignature).toBe("3/4");
     expect(result.length).toBe("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
   });
@@ -280,7 +280,7 @@ describe("readClip", () => {
     );
 
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
-    expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
+    expect(result.notes).toBe("1|1 C3 2|1 D3 2|2 E3");
     expect(result.timeSignature).toBe("6/8");
     expect(result.length).toBe("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
@@ -500,7 +500,7 @@ describe("readClip", () => {
       triggered: true,
       timeSignature: "4/4",
       noteCount: 4,
-      notes: "t0.25 C1 1|1 v90 D1 1|2 v100 C1 1|3 v90 D1 1|4",
+      notes: "1|1 t0.25 C1 1|2 v90 D1 1|3 v100 C1 1|4 v90 D1",
     });
   });
 
@@ -687,6 +687,6 @@ describe("readClip", () => {
     );
 
     // Verify notes are included
-    expect(resultWildcard.notes).toBe("C3 1|1 v80 E3 1|3");
+    expect(resultWildcard.notes).toBe("1|1 C3 1|3 v80 E3");
   });
 });

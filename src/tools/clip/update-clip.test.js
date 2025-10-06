@@ -288,7 +288,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
+      notes: "v80 t2 C4 1|1 v120 t1 D4 1|3",
       noteUpdateMode: "replace",
     });
 
@@ -346,7 +346,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       timeSignature: "6/8",
-      notes: "1|1 C3 2|1 D3",
+      notes: "C3 1|1 D3 2|1",
       noteUpdateMode: "replace",
     });
 
@@ -402,7 +402,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar
+      notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
       noteUpdateMode: "replace",
     });
 
@@ -447,7 +447,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes:
-        "1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1.0 D1 v100 p0.9 Gb1",
+        "v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
       noteUpdateMode: "replace",
     });
 
@@ -805,7 +805,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
+      notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
       noteUpdateMode: "replace",
     });
 
@@ -849,7 +849,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
+      notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
       noteUpdateMode: "replace",
     });
 
@@ -879,7 +879,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 C3",
+      notes: "C3 1|1",
       noteUpdateMode: "replace",
     });
 
@@ -923,7 +923,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 C3",
+      notes: "C3 1|1",
       noteUpdateMode: "merge",
     });
 
@@ -963,7 +963,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1|1 v0 C3", // All notes filtered out
+      notes: "v0 C3 1|1", // All notes filtered out
       noteUpdateMode: "merge",
     });
 
@@ -1046,7 +1046,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 v0 C3 v100 F3", // Delete C3 at 1|1, add F3 at 1|1
+      notes: "v0 C3 v100 F3 1|1", // Delete C3 at 1|1, add F3 at 1|1
       noteUpdateMode: "merge",
     });
 
@@ -1140,7 +1140,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1|1 v0 C3", // Try to delete C3 at 1|1 (doesn't exist)
+      notes: "v0 C3 1|1", // Try to delete C3 at 1|1 (doesn't exist)
       noteUpdateMode: "merge",
     });
 
@@ -1191,7 +1191,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1|1 v100 C3", // No v0 notes
+      notes: "v100 C3 1|1", // No v0 notes
       noteUpdateMode: "merge",
     });
 

@@ -39,7 +39,7 @@ export function parseNotation(barBeatExpression, options = {}) {
   try {
     const ast = parser.parse(barBeatExpression);
 
-    // Process AST maintaining state
+    // State variables
     let currentTime = DEFAULT_TIME;
     let currentVelocity = DEFAULT_VELOCITY;
     let currentDuration = DEFAULT_DURATION;
@@ -48,78 +48,180 @@ export function parseNotation(barBeatExpression, options = {}) {
     let currentVelocityMax = null;
     let hasExplicitBarNumber = false;
 
+    // New: Pitch buffering
+    let currentPitches = [];
+    let pitchGroupStarted = false;
+    let stateChangedSinceLastPitch = false;
+
     const events = [];
 
     for (const element of ast) {
       if (element.bar !== undefined && element.beat !== undefined) {
+        // TIME POSITION - emit notes
+
+        // Update current time
         if (element.bar === null) {
-          // |beat shortcut - keep current bar, update beat
           if (!hasExplicitBarNumber) {
-            // Assume bar 1 if no explicit bar number has been set
             currentTime = { bar: 1, beat: element.beat };
           } else {
             currentTime = { bar: currentTime.bar, beat: element.beat };
           }
         } else {
-          // Full bar|beat - update both
           currentTime = { bar: element.bar, beat: element.beat };
           hasExplicitBarNumber = true;
         }
+
+        // Warn if no pitches to emit
+        if (currentPitches.length === 0) {
+          console.error(
+            `Warning: Time position ${currentTime.bar}|${currentTime.beat} has no pitches`,
+          );
+        } else {
+          // Warn if state changed after pitch but before this time
+          if (stateChangedSinceLastPitch) {
+            console.error(
+              "Warning: state change after pitch(es) but before time position won't affect this group",
+            );
+          }
+
+          // Emit all buffered pitches at this time
+          for (const pitchState of currentPitches) {
+            // Convert bar|beat to absolute beats
+            const absoluteBeats =
+              (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
+
+            // Convert to Ableton beats
+            const abletonBeats =
+              timeSigDenominator != null
+                ? absoluteBeats * (4 / timeSigDenominator)
+                : absoluteBeats;
+
+            const abletonDuration =
+              timeSigDenominator != null
+                ? pitchState.duration * (4 / timeSigDenominator)
+                : pitchState.duration;
+
+            events.push({
+              pitch: pitchState.pitch,
+              start_time: abletonBeats,
+              duration: abletonDuration,
+              velocity: pitchState.velocity,
+              probability: pitchState.probability,
+              velocity_deviation: pitchState.velocityDeviation,
+            });
+          }
+        }
+
+        // Reset flags (but keep pitches for next time)
+        pitchGroupStarted = false;
+        stateChangedSinceLastPitch = false;
+      } else if (element.pitch !== undefined) {
+        // PITCH - buffer it
+
+        // First pitch after a time position clears the buffer
+        if (!pitchGroupStarted) {
+          currentPitches = [];
+          pitchGroupStarted = true;
+        }
+
+        // Capture current state with this pitch
+        let velocity, velocityDeviation;
+        if (currentVelocityMin !== null && currentVelocityMax !== null) {
+          velocity = currentVelocityMin;
+          velocityDeviation = currentVelocityMax - currentVelocityMin;
+        } else {
+          velocity = currentVelocity ?? DEFAULT_VELOCITY;
+          velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+        }
+
+        currentPitches.push({
+          pitch: element.pitch,
+          velocity: velocity,
+          velocityDeviation: velocityDeviation,
+          duration: currentDuration,
+          probability: currentProbability,
+        });
+
+        // Pitch consumed the state change
+        stateChangedSinceLastPitch = false;
       } else if (element.velocity !== undefined) {
+        // STATE UPDATE - velocity (single)
         currentVelocity = element.velocity;
-        // Clear velocity range when single velocity is set
         currentVelocityMin = null;
         currentVelocityMax = null;
+
+        // Track if state changed after pitch in current group
+        if (pitchGroupStarted && currentPitches.length > 0) {
+          stateChangedSinceLastPitch = true;
+        }
+
+        // Update buffered pitches if after time position
+        if (!pitchGroupStarted && currentPitches.length > 0) {
+          for (const pitchState of currentPitches) {
+            pitchState.velocity = element.velocity;
+            pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+          }
+        }
       } else if (
         element.velocityMin !== undefined &&
         element.velocityMax !== undefined
       ) {
+        // STATE UPDATE - velocity (range)
         currentVelocityMin = element.velocityMin;
         currentVelocityMax = element.velocityMax;
-        // Clear single velocity when range is set
         currentVelocity = null;
-      } else if (element.duration !== undefined) {
-        currentDuration = element.duration;
-      } else if (element.probability !== undefined) {
-        currentProbability = element.probability;
-      } else if (element.pitch !== undefined) {
-        // Convert bar|beat to absolute beats (in musical beats)
-        const absoluteBeats =
-          (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
 
-        // Convert from musical beats to Ableton beats if we have time signature
-        const abletonBeats =
-          timeSigDenominator != null
-            ? absoluteBeats * (4 / timeSigDenominator)
-            : absoluteBeats;
-
-        // Determine velocity and velocity_deviation
-        let velocity, velocity_deviation;
-        if (currentVelocityMin !== null && currentVelocityMax !== null) {
-          // Convert range to Live API format
-          velocity = currentVelocityMin;
-          velocity_deviation = currentVelocityMax - currentVelocityMin;
-        } else {
-          velocity = currentVelocity ?? DEFAULT_VELOCITY;
-          velocity_deviation = DEFAULT_VELOCITY_DEVIATION;
+        // Track if state changed after pitch in current group
+        if (pitchGroupStarted && currentPitches.length > 0) {
+          stateChangedSinceLastPitch = true;
         }
 
-        // Note: v0 notes are now preserved for deletion logic in update-clip
+        // Update buffered pitches if after time position
+        if (!pitchGroupStarted && currentPitches.length > 0) {
+          for (const pitchState of currentPitches) {
+            pitchState.velocity = element.velocityMin;
+            pitchState.velocityDeviation =
+              element.velocityMax - element.velocityMin;
+          }
+        }
+      } else if (element.duration !== undefined) {
+        // STATE UPDATE - duration
+        currentDuration = element.duration;
 
-        const abletonDuration =
-          timeSigDenominator != null
-            ? currentDuration * (4 / timeSigDenominator)
-            : currentDuration;
+        // Track if state changed after pitch in current group
+        if (pitchGroupStarted && currentPitches.length > 0) {
+          stateChangedSinceLastPitch = true;
+        }
 
-        events.push({
-          pitch: element.pitch,
-          start_time: abletonBeats,
-          duration: abletonDuration,
-          velocity: velocity,
-          probability: currentProbability,
-          velocity_deviation: velocity_deviation,
-        });
+        // Update buffered pitches if after time position
+        if (!pitchGroupStarted && currentPitches.length > 0) {
+          for (const pitchState of currentPitches) {
+            pitchState.duration = element.duration;
+          }
+        }
+      } else if (element.probability !== undefined) {
+        // STATE UPDATE - probability
+        currentProbability = element.probability;
+
+        // Track if state changed after pitch in current group
+        if (pitchGroupStarted && currentPitches.length > 0) {
+          stateChangedSinceLastPitch = true;
+        }
+
+        // Update buffered pitches if after time position
+        if (!pitchGroupStarted && currentPitches.length > 0) {
+          for (const pitchState of currentPitches) {
+            pitchState.probability = element.probability;
+          }
+        }
       }
+    }
+
+    // Warn if pitches buffered but never emitted
+    if (currentPitches.length > 0) {
+      console.error(
+        `Warning: ${currentPitches.length} pitch(es) buffered but no time position to emit them`,
+      );
     }
 
     return events;

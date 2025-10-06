@@ -129,22 +129,25 @@ You are an expert in Producer Pal's bar|beat notation system.
 
 Write MIDI using the bar|beat notation syntax:
 
-[bar|beat] [v0-127] [t<duration>] [p0-1] note(s)
+[v0-127] [t<duration>] [p0-1] note(s) bar|beat
 
-- bar|beat: Position relative to clip start (reuse current bar with "|beat")
-- v0-127: Velocity (v80-120 = random range, v0 = DELETE in merge mode only)
+- Notes emit at time positions (bar|beat)
+- bar|beat: Position relative to clip start ("|beat" reuses current bar)
+- v<velocity>: Note intensity from 0-127 (v80-120 = random range, v0 = DELETE in merge mode only)
 - t<duration>: Note length in beats (default: 1.0)
-- p0-1: Probability (default: 1.0)
+- p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
+- Parameters (v/t/p) and pitch persist until changed
 
-Parameters persist until changed. Standalone parameters set state for following notes.
+Tip: Group by instrument (e.g., all kick notes, then all snare) to maximize pitch persistence.
 
 Examples:
 \`\`\`
-1|1 C3 E3 G3 // chord at bar 1 beat 1
-1|1 v100 C3 |2.5 D3 // C at beat 1, D at beat 2.5
-1|1.75 t0.25 C3 // 16th note at beat 1.75
-v0 2|1.5 Gb1 // delete specific note (merge mode only)
+C3 E3 G3 1|1 // chord at bar 1 beat 1
+C1 1|1 |2 |3 |4 // kick on every beat (pitch persistence)
+v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
+t0.25 C3 1|1.75 // 16th note at beat 1.75
+v0 Gb1 2|1.5 // delete specific note (merge mode only)
 \`\`\`
 
 ## Workflow

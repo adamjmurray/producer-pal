@@ -9,7 +9,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("parses simple notes with defaults", () => {
-    const result = parseNotation("C3 D3 E3");
+    const result = parseNotation("C3 D3 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -39,7 +39,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles time state changes", () => {
-    const result = parseNotation("1|1 C3 1|2 D3 2|1 E3");
+    const result = parseNotation("C3 1|1 D3 1|2 E3 2|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -69,7 +69,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles velocity state changes", () => {
-    const result = parseNotation("v80 C3 v120 D3 E3");
+    const result = parseNotation("v80 C3 v120 D3 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -99,7 +99,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles velocity range state changes", () => {
-    const result = parseNotation("v80-120 C3 v60-100 D3 E3");
+    const result = parseNotation("v80-120 C3 v60-100 D3 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -129,7 +129,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles mixed velocity and velocity range", () => {
-    const result = parseNotation("v100 C3 v80-120 D3 v90 E3");
+    const result = parseNotation("v100 C3 v80-120 D3 v90 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -159,7 +159,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles probability state changes", () => {
-    const result = parseNotation("p0.8 C3 p0.5 D3 E3");
+    const result = parseNotation("p0.8 C3 p0.5 D3 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -189,7 +189,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles duration state changes", () => {
-    const result = parseNotation("t0.5 C3 t2.0 D3 E3");
+    const result = parseNotation("t0.5 C3 t2.0 D3 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -219,7 +219,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles sub-beat timing", () => {
-    const result = parseNotation("1|1.5 C3 1|2.25 D3");
+    const result = parseNotation("C3 1|1.5 D3 |2.25");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -242,7 +242,7 @@ describe("bar|beat parseNotation()", () => {
 
   it("handles complex state combinations", () => {
     const result = parseNotation(
-      "1|1 v100 t0.25 p0.9 C3 D3 1|2 v80-120 t1.0 p0.7 E3 F3",
+      "v100 t0.25 p0.9 C3 D3 1|1 v80-120 t1.0 p0.7 E3 F3 |2",
     );
     expect(result).toEqual([
       {
@@ -282,10 +282,9 @@ describe("bar|beat parseNotation()", () => {
 
   it("handles drum pattern example with probability and velocity range", () => {
     const result = parseNotation(`
-      1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1
-      1|1.5 p0.6 Gb1  
-      1|2 v90 p1.0 D1
-      v100 p0.9 Gb1
+      v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1
+      p0.6 Gb1 |1.5
+      v90 p1.0 D1 v100 p0.9 Gb1 |2
     `);
     expect(result).toEqual([
       {
@@ -332,7 +331,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("supports different time signatures via the beatsPerBar option (legacy)", () => {
-    const result = parseNotation("1|1 C3 2|1 D3", { beatsPerBar: 3 });
+    const result = parseNotation("C3 1|1 D3 2|1", { beatsPerBar: 3 });
     expect(result).toEqual([
       {
         pitch: 60,
@@ -354,7 +353,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("supports different time signatures via timeSigNumerator/timeSigDenominator", () => {
-    const result = parseNotation("1|1 C3 2|1 D3", {
+    const result = parseNotation("C3 1|1 D3 2|1", {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
@@ -380,7 +379,7 @@ describe("bar|beat parseNotation()", () => {
 
   it("converts time signatures with half-note denominators correctly", () => {
     // 2/2 time: 1 musical beat (half note) = 2 Ableton beats (quarter notes)
-    const result = parseNotation("1|1 C3 1|2 D3", {
+    const result = parseNotation("C3 1|1 D3 1|2", {
       timeSigNumerator: 2,
       timeSigDenominator: 2,
     });
@@ -405,7 +404,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("prefers timeSigNumerator/timeSigDenominator over beatsPerBar", () => {
-    const result = parseNotation("1|1 C3 2|1 D3", {
+    const result = parseNotation("C3 1|1 D3 2|1", {
       beatsPerBar: 4,
       timeSigNumerator: 3,
       timeSigDenominator: 4,
@@ -432,7 +431,7 @@ describe("bar|beat parseNotation()", () => {
 
   it("converts time signatures with different denominators correctly", () => {
     // 6/8 time: 1 Ableton beat = 2 musical beats
-    const result = parseNotation("1|1 C3 1|3 D3", {
+    const result = parseNotation("C3 1|1 D3 1|3", {
       timeSigNumerator: 6,
       timeSigDenominator: 8,
     });
@@ -469,7 +468,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("maintains state across multiple bar boundaries", () => {
-    const result = parseNotation("1|1 v80 t0.5 p0.8 C3 3|2 D3 5|1 E3");
+    const result = parseNotation("v80 t0.5 p0.8 C3 1|1 D3 3|2 E3 5|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -523,7 +522,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles mixed order of state changes", () => {
-    const result = parseNotation("t0.5 1|1 v80 p0.7 C3 v100 2|1 t1.0 p1.0 D3");
+    const result = parseNotation("t0.5 v80 p0.7 C3 1|1 v100 t1.0 p1.0 D3 2|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -545,7 +544,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("handles enharmonic equivalents", () => {
-    const result = parseNotation("C#3 Db3 F#3 Gb3");
+    const result = parseNotation("C#3 Db3 F#3 Gb3 1|1");
     expect(result).toEqual([
       {
         pitch: 61,
@@ -583,7 +582,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("preserves notes with velocity 0 for deletion logic", () => {
-    const result = parseNotation("1|1 v100 C3 v0 D3 v80 E3");
+    const result = parseNotation("v100 C3 v0 D3 v80 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -613,7 +612,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("preserves notes with velocity range starting at 0", () => {
-    const result = parseNotation("1|1 v0-50 C3 v50-100 D3");
+    const result = parseNotation("v0-50 C3 v50-100 D3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -635,7 +634,7 @@ describe("bar|beat parseNotation()", () => {
   });
 
   it("preserves all v0 notes for deletion logic", () => {
-    const result = parseNotation("1|1 v0 C3 D3 E3");
+    const result = parseNotation("v0 C3 D3 E3 1|1");
     expect(result).toEqual([
       {
         pitch: 60,
@@ -666,7 +665,7 @@ describe("bar|beat parseNotation()", () => {
 
   describe("comment support", () => {
     it("handles line comments with //", () => {
-      const result = parseNotation("1|1 C3 // this is a C major");
+      const result = parseNotation("C3 1|1 // this is a C major");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -680,7 +679,7 @@ describe("bar|beat parseNotation()", () => {
     });
 
     it("handles hash comments with #", () => {
-      const result = parseNotation("1|1 C1 # kick drum");
+      const result = parseNotation("C1 1|1 # kick drum");
       expect(result).toEqual([
         {
           pitch: 36,
@@ -694,7 +693,7 @@ describe("bar|beat parseNotation()", () => {
     });
 
     it("handles block comments", () => {
-      const result = parseNotation("1|1 /* velocity */ v100 C3");
+      const result = parseNotation("/* velocity */ v100 C3 1|1");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -708,8 +707,8 @@ describe("bar|beat parseNotation()", () => {
     });
 
     it("handles multi-line block comments", () => {
-      const result = parseNotation(`1|1 C3 /* this is a 
-multi-line comment */ D3`);
+      const result = parseNotation(`C3 /* this is a
+multi-line comment */ D3 1|1`);
       expect(result).toEqual([
         {
           pitch: 60,
@@ -731,7 +730,7 @@ multi-line comment */ D3`);
     });
 
     it("handles comments at the start of input", () => {
-      const result = parseNotation("// start comment\n1|1 C3");
+      const result = parseNotation("// start comment\nC3 1|1");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -745,7 +744,7 @@ multi-line comment */ D3`);
     });
 
     it("handles comments at the end of input", () => {
-      const result = parseNotation("1|1 C3 D3 // end comment");
+      const result = parseNotation("C3 D3 1|1 // end comment");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -767,7 +766,7 @@ multi-line comment */ D3`);
     });
 
     it("handles comments in the middle of tokens", () => {
-      const result = parseNotation("1|1 /* middle */ C3");
+      const result = parseNotation("/* middle */ C3 1|1");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -782,7 +781,7 @@ multi-line comment */ D3`);
 
     it("handles multiple comment styles in one line", () => {
       const result = parseNotation(
-        "1|1 C3 // major third /* mixed */ # styles",
+        "C3 1|1 // major third /* mixed */ # styles",
       );
       expect(result).toEqual([
         {
@@ -797,7 +796,7 @@ multi-line comment */ D3`);
     });
 
     it("handles empty comments", () => {
-      const result = parseNotation("1|1 C3 // \n1|2 D3 # \n1|3 /**/ E3");
+      const result = parseNotation("C3 1|1 // \nD3 1|2 # \n/**/ E3 1|3");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -828,7 +827,7 @@ multi-line comment */ D3`);
 
     it("handles comments between state changes", () => {
       const result = parseNotation(
-        "v100 // set velocity\nt0.5 // set duration\n1|1 C3 // play note",
+        "v100 // set velocity\nt0.5 // set duration\nC3 1|1 // play note",
       );
       expect(result).toEqual([
         {
@@ -843,7 +842,7 @@ multi-line comment */ D3`);
     });
 
     it("handles comments with special characters", () => {
-      const result = parseNotation("1|1 C3 // C major chord!@#$%^&*()");
+      const result = parseNotation("C3 1|1 // C major chord!@#$%^&*()");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -858,11 +857,11 @@ multi-line comment */ D3`);
 
     it("handles drum pattern with comments", () => {
       const result = parseNotation(`
-        1|1 v100 t0.25 p1.0 C1 // kick drum
-        v80-100 p0.8 Gb1 // hi-hat with variation
-        1|1.5 p0.6 Gb1 // ghost hi-hat
-        1|2 v90 p1.0 D1 // snare
-        v100 p0.9 Gb1 // another hi-hat
+        v100 t0.25 p1.0 C1 // kick drum
+        v80-100 p0.8 Gb1 1|1 // hi-hat with variation
+        p0.6 Gb1 |1.5 // ghost hi-hat
+        v90 p1.0 D1 // snare
+        v100 p0.9 Gb1 |2 // another hi-hat
       `);
       expect(result).toEqual([
         {
@@ -909,9 +908,197 @@ multi-line comment */ D3`);
     });
   });
 
+  describe("time-position-driven note emission", () => {
+    it("emits pitch at single time position", () => {
+      const result = parseNotation("C1 1|1");
+      expect(result).toEqual([
+        {
+          pitch: 36,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("emits same pitch at multiple times (pitch persistence)", () => {
+      const result = parseNotation("C1 1|1 |2 |3 |4");
+      expect(result).toHaveLength(4);
+      expect(result.every((n) => n.pitch === 36)).toBe(true);
+      expect(result[0].start_time).toBe(0);
+      expect(result[1].start_time).toBe(1);
+      expect(result[2].start_time).toBe(2);
+      expect(result[3].start_time).toBe(3);
+    });
+
+    it("clears pitch buffer on first pitch after time", () => {
+      const result = parseNotation("C1 1|1 D1 1|2");
+      expect(result).toHaveLength(2);
+      expect(result[0].pitch).toBe(36); // C1
+      expect(result[0].start_time).toBe(0);
+      expect(result[1].pitch).toBe(38); // D1
+      expect(result[1].start_time).toBe(1);
+    });
+
+    it("emits chord from buffered pitches", () => {
+      const result = parseNotation("C3 E3 G3 1|1");
+      expect(result).toHaveLength(3);
+      expect(result.every((n) => n.start_time === 0)).toBe(true);
+      expect(result[0].pitch).toBe(60); // C3
+      expect(result[1].pitch).toBe(64); // E3
+      expect(result[2].pitch).toBe(67); // G3
+    });
+
+    it("captures state with each pitch", () => {
+      const result = parseNotation("v100 C3 v80 E3 1|1");
+      expect(result).toHaveLength(2);
+      expect(result[0].pitch).toBe(60); // C3
+      expect(result[0].velocity).toBe(100);
+      expect(result[1].pitch).toBe(64); // E3
+      expect(result[1].velocity).toBe(80);
+    });
+
+    it("updates buffered pitches when state changes after time", () => {
+      const result = parseNotation("v100 C4 1|1 v90 |2");
+      expect(result).toHaveLength(2);
+      expect(result[0].pitch).toBe(72); // C4
+      expect(result[0].velocity).toBe(100);
+      expect(result[0].start_time).toBe(0);
+      expect(result[1].pitch).toBe(72); // C4
+      expect(result[1].velocity).toBe(90);
+      expect(result[1].start_time).toBe(1);
+    });
+
+    it("handles complex state updates with multiple pitches", () => {
+      const result = parseNotation("v80 C4 v90 G4 1|1 v100 |2");
+      expect(result).toHaveLength(4);
+      // At 1|1: C4@v80, G4@v90
+      expect(result[0].pitch).toBe(72);
+      expect(result[0].velocity).toBe(80);
+      expect(result[0].start_time).toBe(0);
+      expect(result[1].pitch).toBe(79);
+      expect(result[1].velocity).toBe(90);
+      expect(result[1].start_time).toBe(0);
+      // At 1|2: C4@v100, G4@v100 (buffer updated)
+      expect(result[2].pitch).toBe(72);
+      expect(result[2].velocity).toBe(100);
+      expect(result[2].start_time).toBe(1);
+      expect(result[3].pitch).toBe(79);
+      expect(result[3].velocity).toBe(100);
+      expect(result[3].start_time).toBe(1);
+    });
+
+    it("handles duration updates after time", () => {
+      const result = parseNotation("C4 1|1 t0.5 |2 t0.25 |3");
+      expect(result).toHaveLength(3);
+      expect(result[0].duration).toBe(1);
+      expect(result[1].duration).toBe(0.5);
+      expect(result[2].duration).toBe(0.25);
+    });
+
+    it("handles probability updates after time", () => {
+      const result = parseNotation("C4 1|1 p0.8 |2 p0.5 |3");
+      expect(result).toHaveLength(3);
+      expect(result[0].probability).toBe(1.0);
+      expect(result[1].probability).toBe(0.8);
+      expect(result[2].probability).toBe(0.5);
+    });
+
+    it("handles velocity range updates after time", () => {
+      const result = parseNotation("C4 1|1 v80-100 |2");
+      expect(result).toHaveLength(2);
+      expect(result[0].velocity).toBe(100);
+      expect(result[0].velocity_deviation).toBe(0);
+      expect(result[1].velocity).toBe(80);
+      expect(result[1].velocity_deviation).toBe(20);
+    });
+
+    it("supports drum patterns", () => {
+      const result = parseNotation("C1 1|1 |2 |3 |4");
+      expect(result).toHaveLength(4);
+      expect(result.every((n) => n.pitch === 36)).toBe(true);
+      expect(result.map((n) => n.start_time)).toEqual([0, 1, 2, 3]);
+    });
+
+    it("supports layered drum patterns", () => {
+      const result = parseNotation("C1 1|1 |3  D1 1|2 |4");
+      expect(result).toHaveLength(4);
+      expect(result[0].pitch).toBe(36); // C1 at 1|1
+      expect(result[0].start_time).toBe(0);
+      expect(result[1].pitch).toBe(36); // C1 at 1|3
+      expect(result[1].start_time).toBe(2);
+      expect(result[2].pitch).toBe(38); // D1 at 1|2
+      expect(result[2].start_time).toBe(1);
+      expect(result[3].pitch).toBe(38); // D1 at 1|4
+      expect(result[3].start_time).toBe(3);
+    });
+
+    it("handles state changes between pitches in chord", () => {
+      const result = parseNotation("v80 C4 v90 G4 1|1");
+      expect(result).toHaveLength(2);
+      expect(result[0].velocity).toBe(80);
+      expect(result[1].velocity).toBe(90);
+    });
+
+    it("warns when pitches buffered but no time position", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+      parseNotation("C3 E3 G3");
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("3 pitch(es) buffered but no time position"),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("warns when time position has no pitches", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+      parseNotation("1|1");
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("Time position 1|1 has no pitches"),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("warns when state changes after pitch but before time", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+      parseNotation("C4 v100 1|1");
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "state change after pitch(es) but before time position won't affect this group",
+        ),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("does not warn when state changes after pitch but before another pitch", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+      const result = parseNotation("v80 C4 v90 G4 1|1");
+      expect(result).toHaveLength(2);
+      // Should only warn about "state change won't affect group", not about it happening
+      const warningCalls = consoleSpy.mock.calls.filter(
+        (call) => !call[0].includes("buffered but no time position"),
+      );
+      expect(warningCalls).toHaveLength(0);
+      consoleSpy.mockRestore();
+    });
+
+    it("does not warn when state changes after time", () => {
+      const consoleSpy = vi.spyOn(console, "error").mockImplementation();
+      const result = parseNotation("C4 1|1 v90 |2");
+      expect(result).toHaveLength(2);
+      // Should only warn about "state change won't affect group", not about it happening
+      const warningCalls = consoleSpy.mock.calls.filter(
+        (call) => !call[0].includes("buffered but no time position"),
+      );
+      expect(warningCalls).toHaveLength(0);
+      consoleSpy.mockRestore();
+    });
+  });
+
   describe("|beat shortcut syntax", () => {
     it("uses |beat shortcut within same bar", () => {
-      const result = parseNotation("1|1 C3 |2 D3 |3 E3");
+      const result = parseNotation("C3 1|1 |2 |3");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -922,7 +1109,7 @@ multi-line comment */ D3`);
           velocity_deviation: 0,
         }, // bar 1, beat 1
         {
-          pitch: 62,
+          pitch: 60,
           start_time: 1,
           duration: 1,
           velocity: 100,
@@ -930,7 +1117,7 @@ multi-line comment */ D3`);
           velocity_deviation: 0,
         }, // bar 1, beat 2
         {
-          pitch: 64,
+          pitch: 60,
           start_time: 2,
           duration: 1,
           velocity: 100,
@@ -941,7 +1128,7 @@ multi-line comment */ D3`);
     });
 
     it("uses |beat shortcut after bar change", () => {
-      const result = parseNotation("1|1 C3 2|1 D3 |2 E3 |3 F3");
+      const result = parseNotation("C3 1|1 D3 2|1 E3 |2 F3 |3");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -979,7 +1166,7 @@ multi-line comment */ D3`);
     });
 
     it("mixes full bar|beat and |beat notation", () => {
-      const result = parseNotation("1|1 C3 |2 D3 3|1 E3 |4 F3 2|3 G3 |4 A3");
+      const result = parseNotation("C3 1|1 D3 |2 E3 3|1 F3 |4 G3 2|3 A3 |4");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -1033,7 +1220,7 @@ multi-line comment */ D3`);
     });
 
     it("handles |beat with sub-beat timing", () => {
-      const result = parseNotation("1|1.5 C3 |2.25 D3 |3.75 E3");
+      const result = parseNotation("C3 1|1.5 D3 |2.25 E3 |3.75");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -1063,7 +1250,7 @@ multi-line comment */ D3`);
     });
 
     it("preserves state across |beat shortcuts", () => {
-      const result = parseNotation("1|1 v80 t0.5 p0.8 C3 |2 D3 |3 v100 E3");
+      const result = parseNotation("v80 t0.5 p0.8 C3 1|1 D3 |2 v100 E3 |3");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -1093,7 +1280,7 @@ multi-line comment */ D3`);
     });
 
     it("works with different time signatures", () => {
-      const result = parseNotation("1|1 C3 |2 D3 |3 E3", {
+      const result = parseNotation("C3 1|1 D3 |2 E3 |3", {
         timeSigNumerator: 3,
         timeSigDenominator: 4,
       });
@@ -1126,7 +1313,7 @@ multi-line comment */ D3`);
     });
 
     it("assumes bar 1 when |beat is used at start without initial bar", () => {
-      const result = parseNotation("|2 C3");
+      const result = parseNotation("C3 |2");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -1140,7 +1327,7 @@ multi-line comment */ D3`);
     });
 
     it("assumes bar 1 when |beat is used without any prior bar number", () => {
-      const result = parseNotation("v100 t0.5 |2 C3");
+      const result = parseNotation("v100 t0.5 C3 |2");
       expect(result).toEqual([
         {
           pitch: 60,
@@ -1154,7 +1341,7 @@ multi-line comment */ D3`);
     });
 
     it("assumes bar 1 when |beat is used after state changes but before any bar number", () => {
-      const result = parseNotation("v100 |1 C3");
+      const result = parseNotation("v100 C3 |1");
       expect(result).toEqual([
         {
           pitch: 60,
