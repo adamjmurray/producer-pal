@@ -452,12 +452,12 @@ describe("readLiveSet", () => {
       ],
     });
 
-    // Check that drum rack devices are included with drumPads but without devices in drumPad chains
+    // Check that drum rack devices are included (drumPads hidden - drumMap provides the critical pitch-name mapping)
     expect(result.tracks[0].instrument).toEqual(
       expect.objectContaining({
         name: "My Drums",
         type: "drum-rack",
-        drumPads: expect.any(Array), // Should have drumPads property
+        // drumPads: expect.any(Array), // Hidden - drumMap provides the critical pitch-name mapping
       }),
     );
     expect(result.tracks[0].audioEffects).toEqual([
@@ -465,14 +465,15 @@ describe("readLiveSet", () => {
         type: "audio-effect: Reverb",
       }),
     ]);
-    // Drum rack device should be present with drumPads but drumPad chains should not have devices
+    // Drum rack device should be present (drumPads hidden)
     const drumRack = result.tracks[0].instrument;
     expect(drumRack).toBeDefined();
-    expect(drumRack.drumPads).toBeDefined();
-    // If drumPads exist, they should not have chain property when includeDrumChains=false
-    if (drumRack.drumPads && drumRack.drumPads.length > 0) {
-      expect(drumRack.drumPads[0].chain).toBeUndefined();
-    }
+    // drumPads hidden - drumMap provides the critical pitch-name mapping
+    // expect(drumRack.drumPads).toBeDefined();
+    // // If drumPads exist, they should not have chain property when includeDrumChains=false
+    // if (drumRack.drumPads && drumRack.drumPads.length > 0) {
+    //   expect(drumRack.drumPads[0].chain).toBeUndefined();
+    // }
   });
 
   it("includes routing information in tracks when includeRoutings is true", () => {
@@ -1149,12 +1150,12 @@ describe("readLiveSet", () => {
     expect(result.tracks[0].instrument).toEqual({
       name: "Test Drum Rack",
       type: "drum-rack",
-      drumPads: [
-        {
-          name: "Test Kick",
-          note: 60,
-        },
-      ],
+      // drumPads: [ // Hidden - drumMap provides the critical pitch-name mapping
+      //   {
+      //     name: "Test Kick",
+      //     note: 60,
+      //   },
+      // ],
     });
 
     // Critical: chains should be stripped due to drum-maps default

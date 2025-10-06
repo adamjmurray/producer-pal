@@ -115,6 +115,13 @@ function stripChains(device) {
   return rest;
 }
 
+// Helper function to strip drumPads from device objects (drumPads hidden - drumMap provides the critical pitch-name mapping)
+function stripDrumPads(device) {
+  if (!device || typeof device !== "object") return device;
+  const { drumPads, ...rest } = device;
+  return rest;
+}
+
 /**
  * Read comprehensive information about a track
  * @param {Object} args - The parameters
@@ -329,6 +336,17 @@ export function readTrackGeneric({
   const drumMap = getDrumMap(allDevices);
   if (drumMap != null) {
     result.drumMap = drumMap;
+  }
+
+  // Hide drumPads from API after drumMap extraction (drumPads is only needed internally)
+  if (result.midiEffects) {
+    result.midiEffects = result.midiEffects.map(stripDrumPads);
+  }
+  if (result.instrument) {
+    result.instrument = stripDrumPads(result.instrument);
+  }
+  if (result.audioEffects) {
+    result.audioEffects = result.audioEffects.map(stripDrumPads);
   }
 
   // Only include playingSlotIndex when >= 0 (only for regular tracks)

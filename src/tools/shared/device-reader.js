@@ -318,6 +318,7 @@ export function readDevice(device, options = {}) {
       }
 
       // Clean up temporary references and set final drum pads
+      // Note: drumPads is used internally for drumMap extraction but hidden from API
       deviceInfo.drumPads = processedDrumPads.map(
         ({ _originalPad, _originalChain, ...drumPadInfo }) => drumPadInfo,
       );

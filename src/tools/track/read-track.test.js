@@ -566,7 +566,7 @@ describe("readTrack", () => {
       expect(result.instrument).toEqual({
         name: "My Drums",
         type: "drum-rack",
-        drumPads: [],
+        // drumPads: [], // Hidden - drumMap provides the critical pitch-name mapping
       });
     });
 
@@ -618,7 +618,7 @@ describe("readTrack", () => {
       expect(result.instrument).toEqual({
         type: "drum-rack",
         name: "My Drums",
-        drumPads: [],
+        // drumPads: [], // Hidden - drumMap provides the critical pitch-name mapping
       });
 
       expect(result.audioEffects).toHaveLength(1);
@@ -1145,36 +1145,36 @@ describe("readTrack", () => {
       expect(result.instrument).toEqual({
         type: "drum-rack",
         name: "My Drums",
-        drumPads: [
-          {
-            name: "Kick",
-            note: 36, // C1
-            state: "muted-via-solo",
-            chain: {
-              name: "Kick",
-              state: "muted-via-solo",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
-          },
-          {
-            name: "Snare",
-            note: 38, // D1
-            state: "soloed",
-            chain: {
-              name: "Snare",
-              state: "soloed",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
-          },
-        ],
+        // drumPads: [ // Hidden - drumMap provides the critical pitch-name mapping
+        //   {
+        //     name: "Kick",
+        //     note: 36, // C1
+        //     state: "muted-via-solo",
+        //     chain: {
+        //       name: "Kick",
+        //       state: "muted-via-solo",
+        //       devices: [
+        //         expect.objectContaining({
+        //           type: "instrument: Simpler",
+        //         }),
+        //       ],
+        //     },
+        //   },
+        //   {
+        //     name: "Snare",
+        //     note: 38, // D1
+        //     state: "soloed",
+        //     chain: {
+        //       name: "Snare",
+        //       state: "soloed",
+        //       devices: [
+        //         expect.objectContaining({
+        //           type: "instrument: Simpler",
+        //         }),
+        //       ],
+        //     },
+        //   },
+        // ],
       });
     });
 
@@ -1813,26 +1813,27 @@ describe("readTrack", () => {
         ],
       });
 
-      expect(result.instrument.drumPads).toEqual([
-        expect.objectContaining({
-          name: "Kick",
-          note: 36,
-          // Should not have hasInstrument property when it has an instrument
-        }),
-        expect.objectContaining({
-          name: "Empty",
-          note: 37,
-          hasInstrument: false, // Should have hasInstrument: false when no instruments
-        }),
-      ]);
+      // drumPads hidden - drumMap provides the critical pitch-name mapping
+      // expect(result.instrument.drumPads).toEqual([
+      //   expect.objectContaining({
+      //     name: "Kick",
+      //     note: 36,
+      //     // Should not have hasInstrument property when it has an instrument
+      //   }),
+      //   expect.objectContaining({
+      //     name: "Empty",
+      //     note: 37,
+      //     hasInstrument: false, // Should have hasInstrument: false when no instruments
+      //   }),
+      // ]);
 
-      // The kick pad should not have hasInstrument property
-      expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
-      // The empty pad should have hasInstrument: false
-      expect(result.instrument.drumPads[1]).toHaveProperty(
-        "hasInstrument",
-        false,
-      );
+      // // The kick pad should not have hasInstrument property
+      // expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
+      // // The empty pad should have hasInstrument: false
+      // expect(result.instrument.drumPads[1]).toHaveProperty(
+      //   "hasInstrument",
+      //   false,
+      // );
     });
 
     it("excludes drum pads without instruments from drumMap", () => {
@@ -2043,8 +2044,9 @@ describe("readTrack", () => {
         ],
       });
 
+      // drumPads hidden - drumMap provides the critical pitch-name mapping
       // Should detect the nested instrument and not add hasInstrument property
-      expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
+      // expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
 
       // drumMap should include the drum pad since it has a nested instrument
       expect(result.drumMap).toEqual({
@@ -3112,12 +3114,12 @@ describe("readTrack", () => {
       expect(result.instrument).toEqual({
         name: "Test Drum Rack",
         type: "drum-rack",
-        drumPads: [
-          {
-            name: "Test Kick",
-            note: 60,
-          },
-        ],
+        // drumPads: [ // Hidden - drumMap provides the critical pitch-name mapping
+        //   {
+        //     name: "Test Kick",
+        //     note: 60,
+        //   },
+        // ],
       });
 
       // Critical: chains should be stripped
@@ -3203,12 +3205,12 @@ describe("readTrack", () => {
       expect(result.instrument).toEqual({
         name: "Test Drum Rack",
         type: "drum-rack",
-        drumPads: [
-          {
-            name: "Test Kick",
-            note: 60,
-          },
-        ],
+        // drumPads: [ // Hidden - drumMap provides the critical pitch-name mapping
+        //   {
+        //     name: "Test Kick",
+        //     note: 60,
+        //   },
+        // ],
       });
 
       // Critical: chains should NOT be present on drum racks
