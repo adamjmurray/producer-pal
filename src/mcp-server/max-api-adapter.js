@@ -67,10 +67,10 @@ function handleLiveApiResult(requestId, ...params) {
 
   if (pendingRequests.has(requestId)) {
     const { resolve, timeout } = pendingRequests.get(requestId);
-    pendingRequests.delete(requestId);
     if (timeout) {
       clearTimeout(timeout);
     }
+    pendingRequests.delete(requestId);
 
     try {
       // Find the delimiter
@@ -87,10 +87,26 @@ function handleLiveApiResult(requestId, ...params) {
       const resultJSON = chunks.join("");
       const result = JSON.parse(resultJSON);
 
+      const resultLength = result.content.reduce(
+        (sum, { text }) => sum + text.length,
+        0,
+      );
+      let errorMessageLength = 0;
+
       // Add any Max errors as warnings
       for (const error of maxErrors) {
-        result.content.push({ type: "text", text: `WARNING: ${error}` });
+        const errorText = `WARNING: ${error}`;
+        result.content.push({ type: "text", text: errorText });
+        errorMessageLength += errorText.length;
       }
+
+      console.info(
+        `Tool call result metrics: ${JSON.stringify({
+          resultLength,
+          errorCount: maxErrors.length,
+          errorMessageLength,
+        })}`,
+      );
 
       resolve(result);
     } catch (error) {

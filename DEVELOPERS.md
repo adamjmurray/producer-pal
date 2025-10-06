@@ -52,6 +52,13 @@ DANGEROUSLY_OMIT_AUTH=true npx @modelcontextprotocol/inspector
 and then open
 http://localhost:6274/?transport=streamable-http&serverUrl=http://localhost:3350/mcp
 
+Note: you can omit `DANGEROUSLY_OMIT_AUTH=true` but then you need to connect via
+proxy in the MCP inspector's settings, and the proxy session token needs to be
+set per the command line's output (it's randomly generated). Running
+`npx @modelcontextprotocol/inspector` will open a popup window with that so
+already configured, so you can use that window and then manually configure the
+streamable HTTP transport and URL.
+
 ## Manual Testing Notes
 
 **Important**: After changing tool descriptions in the Producer Pal code (like

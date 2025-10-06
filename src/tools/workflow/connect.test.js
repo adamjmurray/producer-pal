@@ -75,7 +75,7 @@ describe("connect", () => {
 
     expect(result).toEqual({
       connected: true,
-      producerPalVersion: "0.9.8",
+      producerPalVersion: "0.9.9",
       abletonLiveVersion: "12.3",
       liveSet: {
         name: "Test Project",
@@ -85,7 +85,7 @@ describe("connect", () => {
         timeSignature: "4/4",
       },
       messagesForUser: expect.stringContaining(
-        "Producer Pal 0.9.8 connected to Ableton Live 12.3",
+        "Producer Pal 0.9.9 connected to Ableton Live 12.3",
       ),
       $system: expect.stringContaining("Producer Pal System Prompt"),
       $instructions: expect.stringContaining(
@@ -713,5 +713,44 @@ describe("connect", () => {
     const result = connect();
 
     expect(result.liveSet.scale).toBeUndefined();
+  });
+
+  it("omits name property when Live Set name is empty string", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "", // Empty name
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const result = connect();
+
+    expect(result.liveSet.name).toBeUndefined();
+    expect(result.liveSet).not.toHaveProperty("name");
   });
 });

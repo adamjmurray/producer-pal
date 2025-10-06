@@ -20,7 +20,10 @@ export function readScene(args = {}) {
     throw new Error("Either sceneId or sceneIndex must be provided");
   }
 
-  const includeFlags = parseIncludeArray(args.include, READ_SCENE_DEFAULTS);
+  const { includeClips, includeColor } = parseIncludeArray(
+    args.include,
+    READ_SCENE_DEFAULTS,
+  );
   const liveSet = new LiveAPI(`live_set`);
 
   let scene;
@@ -58,11 +61,16 @@ export function readScene(args = {}) {
       ? `${sceneName} (${resolvedSceneIndex + 1})`
       : `${resolvedSceneIndex + 1}`,
     sceneIndex: resolvedSceneIndex,
-    color: scene.getColor(),
-    isEmpty: scene.getProperty("is_empty") > 0,
-    tempo: isTempoEnabled ? scene.getProperty("tempo") : "disabled",
-    timeSignature: isTimeSignatureEnabled ? scene.timeSignature : "disabled",
+    ...(includeColor && { color: scene.getColor() }),
   };
+
+  // Only include tempo/timeSignature when enabled
+  if (isTempoEnabled) {
+    result.tempo = scene.getProperty("tempo");
+  }
+  if (isTimeSignatureEnabled) {
+    result.timeSignature = scene.timeSignature;
+  }
 
   // Only include triggered when scene is triggered
   const isTriggered = scene.getProperty("is_triggered") > 0;
@@ -70,7 +78,7 @@ export function readScene(args = {}) {
     result.triggered = true;
   }
 
-  if (includeFlags.includeClips) {
+  if (includeClips) {
     result.clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>
@@ -81,6 +89,18 @@ export function readScene(args = {}) {
         }),
       )
       .filter((clip) => clip.id != null);
+  } else {
+    // When not including full clip details, just return the count
+    result.clipCount = liveSet
+      .getChildIds("tracks")
+      .map((_trackId, trackIndex) =>
+        readClip({
+          trackIndex,
+          sceneIndex: resolvedSceneIndex,
+          include: [],
+        }),
+      )
+      .filter((clip) => clip.id != null).length;
   }
 
   return result;

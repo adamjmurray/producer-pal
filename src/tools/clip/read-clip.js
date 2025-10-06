@@ -21,7 +21,7 @@ import {
 export function readClip(args = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const { includeClipNotes } = parseIncludeArray(
+  const { includeClipNotes, includeColor } = parseIncludeArray(
     args.include,
     READ_CLIP_DEFAULTS,
   );
@@ -59,36 +59,59 @@ export function readClip(args = {}) {
   const isLooping = clip.getProperty("looping") > 0;
   const lengthBeats = clip.getProperty("length"); // Live API already gives us the effective length!
 
+  const clipName = clip.getProperty("name");
+  const startMarker = abletonBeatsToBarBeat(
+    clip.getProperty("start_marker"),
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  const loopStart = abletonBeatsToBarBeat(
+    clip.getProperty("loop_start"),
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
   const result = {
     id: clip.id,
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
-    name: clip.getProperty("name"),
+    ...(clipName && { name: clipName }),
     view: isArrangementClip ? "arrangement" : "session",
-    color: clip.getColor(),
+    ...(includeColor && { color: clip.getColor() }),
     loop: isLooping,
     length: abletonBeatsToBarBeatDuration(
       lengthBeats,
       timeSigNumerator,
       timeSigDenominator,
     ),
-    startMarker: abletonBeatsToBarBeat(
-      clip.getProperty("start_marker"),
-      timeSigNumerator,
-      timeSigDenominator,
-    ),
-    loopStart: abletonBeatsToBarBeat(
-      clip.getProperty("loop_start"),
-      timeSigNumerator,
-      timeSigDenominator,
-    ),
-    isPlaying: clip.getProperty("is_playing") > 0,
+    ...(startMarker !== "1|1" && { startMarker }),
+    ...(loopStart !== startMarker && { loopStart }),
     timeSignature: clip.timeSignature,
   };
 
-  // Only include triggered when clip is triggered
-  const isTriggered = clip.getProperty("is_triggered") > 0;
-  if (isTriggered) {
+  // Only include these boolean properties when true
+  const playing = clip.getProperty("is_playing") > 0;
+  if (playing) {
+    result.playing = true;
+  }
+
+  const triggered = clip.getProperty("is_triggered") > 0;
+  if (triggered) {
     result.triggered = true;
+  }
+
+  const recording = clip.getProperty("is_recording") > 0;
+  if (recording) {
+    result.recording = true;
+  }
+
+  const overdubbing = clip.getProperty("is_overdubbing") > 0;
+  if (overdubbing) {
+    result.overdubbing = true;
+  }
+
+  const muted = clip.getProperty("muted") > 0;
+  if (muted) {
+    result.muted = true;
   }
 
   if (isArrangementClip) {

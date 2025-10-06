@@ -12,6 +12,9 @@ describe("readScene", () => {
   it("returns scene information when a valid scene exists", () => {
     liveApiId.mockReturnValue("scene1");
     mockLiveApiGet({
+      LiveSet: {
+        tracks: children(),
+      },
       Scene: {
         name: "Test Scene",
         color: 16711680, // Red
@@ -31,8 +34,7 @@ describe("readScene", () => {
       id: "scene1",
       name: "Test Scene (1)",
       sceneIndex: 0,
-      color: "#FF0000",
-      isEmpty: false,
+      clipCount: 0,
       tempo: 120,
       timeSignature: "4/4",
     });
@@ -53,6 +55,9 @@ describe("readScene", () => {
   it("handles disabled tempo and time signature", () => {
     liveApiId.mockReturnValue("scene2");
     mockLiveApiGet({
+      LiveSet: {
+        tracks: children(),
+      },
       Scene: {
         name: "Scene with Disabled Properties",
         color: 65280, // Green
@@ -72,17 +77,17 @@ describe("readScene", () => {
       id: "scene2",
       name: "Scene with Disabled Properties (2)",
       sceneIndex: 1,
-      color: "#00FF00",
-      isEmpty: true,
+      clipCount: 0,
       triggered: true,
-      tempo: "disabled",
-      timeSignature: "disabled",
     });
   });
 
   it("handles unnamed scenes by showing just the scene number", () => {
     liveApiId.mockReturnValue("scene3");
     mockLiveApiGet({
+      LiveSet: {
+        tracks: children(),
+      },
       Scene: {
         name: "",
         color: 0,
@@ -102,8 +107,54 @@ describe("readScene", () => {
       id: "scene3",
       name: "3",
       sceneIndex: 2,
-      color: "#000000",
-      isEmpty: false,
+      clipCount: 0,
+      tempo: 120,
+      timeSignature: "4/4",
+    });
+  });
+
+  it("returns clipCount when not including clip details", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set scenes 0":
+          return "scene_0";
+        case "live_set tracks 0 clip_slots 0 clip":
+          return "clip_0_0";
+        case "live_set tracks 1 clip_slots 0 clip":
+          return "clip_1_0";
+        case "live_set tracks 2 clip_slots 0 clip":
+          return "id 0"; // No clip in this slot
+        default:
+          return this._id;
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        tracks: children("track1", "track2", "track3"),
+      },
+      Scene: {
+        name: "Scene with 2 Clips",
+        color: 16711680,
+        is_empty: 0,
+        is_triggered: 0,
+        tempo: 120,
+        tempo_enabled: 1,
+        time_signature_numerator: 4,
+        time_signature_denominator: 4,
+        time_signature_enabled: 1,
+      },
+    });
+
+    const result = readScene({ sceneIndex: 0 });
+
+    expect(result).toEqual({
+      id: "scene_0",
+      name: "Scene with 2 Clips (1)",
+      sceneIndex: 0,
+      clipCount: 2,
       tempo: 120,
       timeSignature: "4/4",
     });
@@ -151,14 +202,18 @@ describe("readScene", () => {
       id: "scene_0",
       name: "Scene with Clips (1)",
       sceneIndex: 0,
-      color: "#FF0000",
-      isEmpty: false,
       tempo: 120,
       timeSignature: "4/4",
       clips: [
-        expectedClip({ id: "clip_0_0", sceneIndex: 0, trackIndex: 0 }),
-        expectedClip({ id: "clip_1_0", sceneIndex: 0, trackIndex: 1 }),
-      ],
+        {
+          ...expectedClip({ id: "clip_0_0", sceneIndex: 0, trackIndex: 0 }),
+          color: undefined,
+        },
+        {
+          ...expectedClip({ id: "clip_1_0", sceneIndex: 0, trackIndex: 1 }),
+          color: undefined,
+        },
+      ].map(({ color, ...clip }) => clip),
     });
   });
 
@@ -204,7 +259,7 @@ describe("readScene", () => {
     // Test explicit list - should produce identical result
     const resultExplicit = readScene({
       sceneIndex: 0,
-      include: ["clips", "clip-notes"],
+      include: ["clips", "clip-notes", "color"],
     });
 
     // Results should be identical
@@ -266,8 +321,7 @@ describe("readScene", () => {
         id: "123",
         name: "Scene by ID (6)",
         sceneIndex: 5,
-        color: "#0000FF",
-        isEmpty: false,
+        clipCount: 0,
         triggered: true,
         tempo: 128,
         timeSignature: "3/4",
@@ -322,14 +376,18 @@ describe("readScene", () => {
         id: "456",
         name: "Scene with Clips by ID (3)",
         sceneIndex: 2,
-        color: "#FFFF00",
-        isEmpty: false,
         tempo: 110,
         timeSignature: "4/4",
         clips: [
-          expectedClip({ id: "clip_0_2", sceneIndex: 2, trackIndex: 0 }),
-          expectedClip({ id: "clip_1_2", sceneIndex: 2, trackIndex: 1 }),
-        ],
+          {
+            ...expectedClip({ id: "clip_0_2", sceneIndex: 2, trackIndex: 0 }),
+            color: undefined,
+          },
+          {
+            ...expectedClip({ id: "clip_1_2", sceneIndex: 2, trackIndex: 1 }),
+            color: undefined,
+          },
+        ].map(({ color, ...clip }) => clip),
       });
     });
 

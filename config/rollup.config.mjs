@@ -99,6 +99,14 @@ export default [
       },
     ],
     plugins: [
+      resolve({
+        preferBuiltins: true,
+        browser: false,
+      }),
+      commonjs(),
+      json(),
+      terser(terserOptions),
+      addLicenseHeader({ includeThirdPartyLicenses: true }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
           process.env.ENABLE_RAW_LIVE_API,
@@ -108,14 +116,6 @@ export default [
           'const pkceChallenge = () => { throw new Error("Authorization not supported - Producer Pal uses local HTTP communication only"); };',
         preventAssignment: true,
       }),
-      resolve({
-        preferBuiltins: true,
-        browser: false,
-      }),
-      commonjs(),
-      json(),
-      terser(terserOptions),
-      addLicenseHeader({ includeThirdPartyLicenses: true }),
       copy({
         targets: [
           { src: licensePath, dest: "claude-desktop-extension" },

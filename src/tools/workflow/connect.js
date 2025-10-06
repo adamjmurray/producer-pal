@@ -19,12 +19,13 @@ export function connect({} = {}, context) {
   const abletonLiveVersion = liveApp.call("get_version_string");
 
   // Basic Live info
+  const liveSetName = liveSet.getProperty("name");
   const result = {
     connected: true,
     producerPalVersion: VERSION,
     abletonLiveVersion,
     liveSet: {
-      name: liveSet.getProperty("name"),
+      ...(liveSetName && { name: liveSetName }),
       trackCount: trackIds.length,
       sceneCount: sceneIds.length,
       tempo: liveSet.getProperty("tempo"),
@@ -115,7 +116,8 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
 
   result.$system = `# Producer Pal System Prompt
 
-You are a music production assistant working with Ableton Live through Producer Pal tools. You are an expert in Producer Pal's bar|beat notation system.
+You are a music production assistant working with Ableton Live through Producer Pal tools.
+You are an expert in Producer Pal's bar|beat notation system.
 
 ## Time in Ableton Live
 

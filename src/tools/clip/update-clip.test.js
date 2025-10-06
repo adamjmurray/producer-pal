@@ -331,8 +331,7 @@ describe("updateClip", () => {
       view: "session",
       trackIndex: 0,
       sceneIndex: 0,
-      notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
-      noteUpdateMode: "replace",
+      noteCount: 2,
     });
   });
 
@@ -388,7 +387,7 @@ describe("updateClip", () => {
       8,
     );
     expect(result.timeSignature).toBe("6/8");
-    expect(result.notes).toBe("1|1 C3 2|1 D3");
+    expect(result.noteCount).toBe(2);
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", () => {
@@ -432,7 +431,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.notes).toBe("1|1 C3 2|1 D3");
+    expect(result.noteCount).toBe(2);
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", () => {
@@ -501,9 +500,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.notes).toBe(
-      "1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1.0 D1 v100 p0.9 Gb1",
-    );
+    expect(result.noteCount).toBe(5);
   });
 
   it("should throw error for invalid time signature format", () => {
@@ -837,7 +834,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.notes).toBe("1|1 v100 C3 v0 D3 v80 E3"); // Original notation preserved in result
+    expect(result.noteCount).toBe(2); // C3 and E3, D3 filtered out
   });
 
   it("should handle clips with all v0 notes filtered out during update", () => {
@@ -911,7 +908,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteUpdateMode).toBe("replace");
+    expect(result.noteCount).toBe(1);
   });
 
   it("should add to existing notes when noteUpdateMode is 'merge'", () => {
@@ -951,7 +948,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteUpdateMode).toBe("merge");
+    expect(result.noteCount).toBe(1);
   });
 
   it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {
@@ -1109,7 +1106,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteUpdateMode).toBe("merge");
+    expect(result.noteCount).toBe(3); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
 
   it("should handle v0 notes when no existing notes match", () => {

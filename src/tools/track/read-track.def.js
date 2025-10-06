@@ -37,6 +37,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "routings",
           "available-routings",
           "all-routings",
+          "color",
           "*",
         ]),
       )

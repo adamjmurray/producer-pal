@@ -1,6 +1,7 @@
 // Entry point for the tool implementations with direct Live API access
 import "./live-api-extensions";
 
+import { toCompactJSLiteral } from "../shared/compact-serializer.js";
 import {
   formatErrorResponse,
   formatSuccessResponse,
@@ -71,6 +72,11 @@ function callTool(toolName, args) {
   return tool(args);
 }
 
+let isCompactOutputEnabled = true;
+export function compactOutput(enabled) {
+  isCompactOutputEnabled = !!enabled;
+}
+
 export function projectNotesEnabled(enabled) {
   userContext.projectNotes.enabled = !!enabled;
 }
@@ -124,10 +130,18 @@ export async function mcp_request(requestId, tool, argsJSON) {
       userContext.projectNotes.enabled && tool === "ppal-read-live-set";
 
     try {
-      result = formatSuccessResponse({
+      // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
+      // Compare this to the old way of passing the JS object directly here,
+      // which results in a JSON.stringify() call on the object inside formatSuccessResponse().
+      // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
+      // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
+      const output = {
         ...(await callTool(tool, args)),
         ...(includeUserContext ? { userContext } : {}),
-      });
+      };
+      result = formatSuccessResponse(
+        isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
+      );
     } catch (toolError) {
       result = formatErrorResponse(
         `Internal error calling tool '${tool}': ${toolError.message} - Ableton Live is connected but the tool encountered an error.`,
