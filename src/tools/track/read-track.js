@@ -158,6 +158,7 @@ export function readTrackGeneric({
     includeAvailableRoutings,
     includeSessionClips,
     includeArrangementClips,
+    includeColor,
   } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
   if (!track.exists()) {
     const result = {
@@ -192,7 +193,7 @@ export function readTrackGeneric({
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
-    color: track.getColor(),
+    ...(includeColor && { color: track.getColor() }),
     arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
 

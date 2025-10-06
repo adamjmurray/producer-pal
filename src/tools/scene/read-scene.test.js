@@ -34,7 +34,6 @@ describe("readScene", () => {
       id: "scene1",
       name: "Test Scene (1)",
       sceneIndex: 0,
-      color: "#FF0000",
       clipCount: 0,
       tempo: 120,
       timeSignature: "4/4",
@@ -78,7 +77,6 @@ describe("readScene", () => {
       id: "scene2",
       name: "Scene with Disabled Properties (2)",
       sceneIndex: 1,
-      color: "#00FF00",
       clipCount: 0,
       triggered: true,
     });
@@ -109,7 +107,6 @@ describe("readScene", () => {
       id: "scene3",
       name: "3",
       sceneIndex: 2,
-      color: "#000000",
       clipCount: 0,
       tempo: 120,
       timeSignature: "4/4",
@@ -157,7 +154,6 @@ describe("readScene", () => {
       id: "scene_0",
       name: "Scene with 2 Clips (1)",
       sceneIndex: 0,
-      color: "#FF0000",
       clipCount: 2,
       tempo: 120,
       timeSignature: "4/4",
@@ -206,13 +202,18 @@ describe("readScene", () => {
       id: "scene_0",
       name: "Scene with Clips (1)",
       sceneIndex: 0,
-      color: "#FF0000",
       tempo: 120,
       timeSignature: "4/4",
       clips: [
-        expectedClip({ id: "clip_0_0", sceneIndex: 0, trackIndex: 0 }),
-        expectedClip({ id: "clip_1_0", sceneIndex: 0, trackIndex: 1 }),
-      ],
+        {
+          ...expectedClip({ id: "clip_0_0", sceneIndex: 0, trackIndex: 0 }),
+          color: undefined,
+        },
+        {
+          ...expectedClip({ id: "clip_1_0", sceneIndex: 0, trackIndex: 1 }),
+          color: undefined,
+        },
+      ].map(({ color, ...clip }) => clip),
     });
   });
 
@@ -258,7 +259,7 @@ describe("readScene", () => {
     // Test explicit list - should produce identical result
     const resultExplicit = readScene({
       sceneIndex: 0,
-      include: ["clips", "clip-notes"],
+      include: ["clips", "clip-notes", "color"],
     });
 
     // Results should be identical
@@ -320,7 +321,6 @@ describe("readScene", () => {
         id: "123",
         name: "Scene by ID (6)",
         sceneIndex: 5,
-        color: "#0000FF",
         clipCount: 0,
         triggered: true,
         tempo: 128,
@@ -376,13 +376,18 @@ describe("readScene", () => {
         id: "456",
         name: "Scene with Clips by ID (3)",
         sceneIndex: 2,
-        color: "#FFFF00",
         tempo: 110,
         timeSignature: "4/4",
         clips: [
-          expectedClip({ id: "clip_0_2", sceneIndex: 2, trackIndex: 0 }),
-          expectedClip({ id: "clip_1_2", sceneIndex: 2, trackIndex: 1 }),
-        ],
+          {
+            ...expectedClip({ id: "clip_0_2", sceneIndex: 2, trackIndex: 0 }),
+            color: undefined,
+          },
+          {
+            ...expectedClip({ id: "clip_1_2", sceneIndex: 2, trackIndex: 1 }),
+            color: undefined,
+          },
+        ].map(({ color, ...clip }) => clip),
       });
     });
 

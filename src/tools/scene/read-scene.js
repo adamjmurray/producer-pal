@@ -20,7 +20,10 @@ export function readScene(args = {}) {
     throw new Error("Either sceneId or sceneIndex must be provided");
   }
 
-  const includeFlags = parseIncludeArray(args.include, READ_SCENE_DEFAULTS);
+  const { includeClips, includeColor } = parseIncludeArray(
+    args.include,
+    READ_SCENE_DEFAULTS,
+  );
   const liveSet = new LiveAPI(`live_set`);
 
   let scene;
@@ -58,7 +61,7 @@ export function readScene(args = {}) {
       ? `${sceneName} (${resolvedSceneIndex + 1})`
       : `${resolvedSceneIndex + 1}`,
     sceneIndex: resolvedSceneIndex,
-    color: scene.getColor(),
+    ...(includeColor && { color: scene.getColor() }),
   };
 
   // Only include tempo/timeSignature when enabled
@@ -75,7 +78,7 @@ export function readScene(args = {}) {
     result.triggered = true;
   }
 
-  if (includeFlags.includeClips) {
+  if (includeClips) {
     result.clips = liveSet
       .getChildIds("tracks")
       .map((_trackId, trackIndex) =>

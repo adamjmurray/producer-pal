@@ -79,7 +79,6 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track 1",
       trackIndex: 0,
-      color: "#FF0000",
       state: "soloed",
       isArmed: true,
       arrangementFollower: true,
@@ -115,7 +114,6 @@ describe("readTrack", () => {
       type: "audio",
       name: "Audio Track",
       trackIndex: 1,
-      color: "#00FF00",
       state: "muted",
       arrangementFollower: true,
       arrangementClips: [],
@@ -160,7 +158,6 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track 1",
       trackIndex: 0,
-      color: "#FF0000",
       state: "soloed",
       arrangementFollower: true,
       isGroup: true,
@@ -261,14 +258,19 @@ describe("readTrack", () => {
       type: "midi",
       name: "Track with Clips",
       trackIndex: 2,
-      color: "#0000FF",
       arrangementFollower: false,
       playingSlotIndex: 0,
       arrangementClips: [],
       sessionClips: [
-        expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),
-        expectedClip({ id: "clip2", trackIndex: 2, sceneIndex: 2 }),
-      ],
+        {
+          ...expectedClip({ id: "clip1", trackIndex: 2, sceneIndex: 0 }),
+          color: undefined,
+        },
+        {
+          ...expectedClip({ id: "clip2", trackIndex: 2, sceneIndex: 2 }),
+          color: undefined,
+        },
+      ].map(({ color, ...clip }) => clip),
       instruments: null,
     });
   });
@@ -2450,6 +2452,7 @@ describe("readTrack", () => {
           "arrangement-clips",
           "all-devices",
           "all-routings",
+          "color",
         ],
       });
 
@@ -2510,7 +2513,6 @@ describe("readTrack", () => {
           id: "return_track_1",
           type: "audio",
           name: "Return B",
-          color: "#00FF00",
           returnTrackIndex: 1,
           arrangementFollower: true,
           sessionClips: [], // Return tracks have no session clips
@@ -2651,7 +2653,6 @@ describe("readTrack", () => {
           id: "master_track",
           type: "audio",
           name: "Master",
-          color: "#FFFFFF",
           arrangementFollower: true,
           sessionClips: [], // Master track has no session clips
           arrangementClips: [], // Master track has no arrangement clips
@@ -2821,7 +2822,6 @@ describe("readTrack", () => {
           id: "master_track",
           type: "audio",
           name: "Master",
-          color: "#FFFFFF",
           arrangementFollower: true,
           sessionClips: [],
           arrangementClips: [],
@@ -2917,7 +2917,6 @@ describe("readTrack", () => {
         type: "midi",
         name: "Track by ID",
         trackIndex: 2,
-        color: "#FF0000",
         isArmed: true,
         arrangementFollower: true,
         sessionClips: [],
@@ -2969,7 +2968,6 @@ describe("readTrack", () => {
         type: "audio",
         name: "Return by ID",
         returnTrackIndex: 1,
-        color: "#00FF00",
         arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],
@@ -3019,7 +3017,6 @@ describe("readTrack", () => {
         id: "789",
         type: "audio",
         name: "Master by ID",
-        color: "#FFFFFF",
         arrangementFollower: true,
         sessionClips: [],
         arrangementClips: [],

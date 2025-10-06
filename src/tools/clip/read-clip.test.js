@@ -76,7 +76,6 @@ describe("readClip", () => {
       sceneIndex: 1,
       trackIndex: 1,
       view: "session",
-      color: "#3DC300",
       length: "1:0", // 1 bar duration (from Live API)
       loop: false,
       startMarker: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
@@ -154,7 +153,6 @@ describe("readClip", () => {
       sceneIndex: 1,
       trackIndex: 1,
       view: "session",
-      color: "#3DC300",
       length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
       loop: false,
       startMarker: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
@@ -323,7 +321,6 @@ describe("readClip", () => {
       sceneIndex: 0,
       trackIndex: 0,
       view: "session",
-      color: "#3DC300",
       length: "1:0", // 1 bar (from Live API)
       loop: true,
       startMarker: "1|2",
@@ -496,7 +493,6 @@ describe("readClip", () => {
       name: "Test Clip",
       trackIndex: 0,
       sceneIndex: 0,
-      color: "#3DC300",
       length: "1:0",
       startMarker: "1|2",
       loop: false,
@@ -530,7 +526,6 @@ describe("readClip", () => {
       sceneIndex: 0,
       trackIndex: 0,
       view: "session",
-      color: "#3DC300",
       length: "1:0",
       // startMarker omitted when "1|1"
       // loopStart omitted when it equals startMarker
@@ -670,11 +665,11 @@ describe("readClip", () => {
       include: ["*"],
     });
 
-    // Test explicit list - should produce identical result
+    // Test explicit list with color - should produce identical result
     const resultExplicit = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["clip-notes"],
+      include: ["clip-notes", "color"],
     });
 
     // Results should be identical

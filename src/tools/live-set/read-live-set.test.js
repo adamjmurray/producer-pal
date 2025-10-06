@@ -156,7 +156,6 @@ describe("readLiveSet", () => {
           type: "midi",
           name: "MIDI Track 1",
           trackIndex: 0,
-          color: "#FF0000",
           state: "soloed",
           arrangementFollower: true,
           isGroup: true,
@@ -164,9 +163,15 @@ describe("readLiveSet", () => {
           firedSlotIndex: 3,
           arrangementClips: [],
           sessionClips: [
-            expectedClip({ id: "clip1", trackIndex: 0, sceneIndex: 0 }),
-            expectedClip({ id: "clip2", trackIndex: 0, sceneIndex: 2 }),
-          ],
+            {
+              ...expectedClip({ id: "clip1", trackIndex: 0, sceneIndex: 0 }),
+              color: undefined,
+            },
+            {
+              ...expectedClip({ id: "clip2", trackIndex: 0, sceneIndex: 2 }),
+              color: undefined,
+            },
+          ].map(({ color, ...clip }) => clip),
           instruments: null,
         },
         {
@@ -174,7 +179,6 @@ describe("readLiveSet", () => {
           type: "audio",
           name: "Audio Track 2",
           trackIndex: 1,
-          color: "#00FF00",
           state: "muted",
           arrangementFollower: false,
           isGroupMember: true,
@@ -183,18 +187,26 @@ describe("readLiveSet", () => {
           firedSlotIndex: 3,
           arrangementClips: [],
           sessionClips: [
-            expectedClip({ id: "clip3", trackIndex: 1, sceneIndex: 0 }),
-          ],
+            {
+              ...expectedClip({ id: "clip3", trackIndex: 1, sceneIndex: 0 }),
+              color: undefined,
+            },
+          ].map(({ color, ...clip }) => clip),
           instruments: null,
         },
-        expectedTrack({ id: "track3", trackIndex: 2 }),
+        (() => {
+          const { color, ...track } = expectedTrack({
+            id: "track3",
+            trackIndex: 2,
+          });
+          return track;
+        })(),
       ],
       scenes: [
         {
           id: "scene1",
           name: "Scene 1 (1)",
           sceneIndex: 0,
-          color: "#FF0000",
           clipCount: 2,
           tempo: 120,
           timeSignature: "4/4",
@@ -203,7 +215,6 @@ describe("readLiveSet", () => {
           id: "scene2",
           name: "Scene 2 (2)",
           sceneIndex: 1,
-          color: "#00FF00",
           clipCount: 0,
           triggered: true,
         },
@@ -913,6 +924,7 @@ describe("readLiveSet", () => {
         "regular-tracks",
         "return-tracks",
         "master-track",
+        "color",
       ],
     });
 
@@ -936,6 +948,7 @@ describe("readLiveSet", () => {
         inputRoutingChannel: expect.any(Object),
         sessionClips: expect.any(Array),
         arrangementClips: expect.any(Array),
+        color: expect.any(String),
       }),
     );
   });

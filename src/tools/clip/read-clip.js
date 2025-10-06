@@ -21,7 +21,7 @@ import {
 export function readClip(args = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const { includeClipNotes } = parseIncludeArray(
+  const { includeClipNotes, includeColor } = parseIncludeArray(
     args.include,
     READ_CLIP_DEFAULTS,
   );
@@ -76,7 +76,7 @@ export function readClip(args = {}) {
     type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
     ...(clipName && { name: clipName }),
     view: isArrangementClip ? "arrangement" : "session",
-    color: clip.getColor(),
+    ...(includeColor && { color: clip.getColor() }),
     loop: isLooping,
     length: abletonBeatsToBarBeatDuration(
       lengthBeats,

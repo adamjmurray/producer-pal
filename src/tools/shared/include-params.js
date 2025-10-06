@@ -20,6 +20,7 @@ const ALL_INCLUDE_OPTIONS = {
     "all-tracks",
     "all-devices",
     "all-clips",
+    "color",
   ],
   track: [
     "drum-chains",
@@ -36,9 +37,10 @@ const ALL_INCLUDE_OPTIONS = {
     "all-devices",
     "all-routings",
     "all-clips",
+    "color",
   ],
-  scene: ["clips", "clip-notes"],
-  clip: ["clip-notes"],
+  scene: ["clips", "clip-notes", "color"],
+  clip: ["clip-notes", "color"],
 };
 
 /**
@@ -123,6 +125,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeRegularTracks: Boolean(defaults.includeRegularTracks),
       includeReturnTracks: Boolean(defaults.includeReturnTracks),
       includeMasterTrack: Boolean(defaults.includeMasterTrack),
+      includeColor: Boolean(defaults.includeColor),
     };
   }
 
@@ -151,6 +154,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeRegularTracks: false,
       includeReturnTracks: false,
       includeMasterTrack: false,
+      includeColor: false,
     };
   }
 
@@ -171,6 +175,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeRegularTracks: includeSet.has("regular-tracks"),
     includeReturnTracks: includeSet.has("return-tracks"),
     includeMasterTrack: includeSet.has("master-track"),
+    includeColor: includeSet.has("color"),
   };
   return result;
 }
@@ -200,6 +205,7 @@ export function includeArrayFromFlags(includeFlags) {
   if (includeFlags.includeRegularTracks) includes.push("regular-tracks");
   if (includeFlags.includeReturnTracks) includes.push("return-tracks");
   if (includeFlags.includeMasterTrack) includes.push("master-track");
+  if (includeFlags.includeColor) includes.push("color");
 
   return includes;
 }
@@ -222,6 +228,7 @@ export const READ_SONG_DEFAULTS = {
   includeRegularTracks: true,
   includeReturnTracks: false,
   includeMasterTrack: false,
+  includeColor: false,
 };
 
 /**
@@ -239,6 +246,7 @@ export const READ_TRACK_DEFAULTS = {
   includeAvailableRoutings: false,
   includeSessionClips: true,
   includeArrangementClips: true,
+  includeColor: false,
 };
 
 /**
@@ -247,6 +255,7 @@ export const READ_TRACK_DEFAULTS = {
 export const READ_SCENE_DEFAULTS = {
   includeClips: false,
   includeClipNotes: false,
+  includeColor: false,
 };
 
 /**
@@ -254,4 +263,5 @@ export const READ_SCENE_DEFAULTS = {
  */
 export const READ_CLIP_DEFAULTS = {
   includeClipNotes: true,
+  includeColor: false,
 };
