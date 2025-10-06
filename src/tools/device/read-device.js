@@ -1,4 +1,7 @@
-import { readDevice as readDeviceShared } from "../shared/device-reader.js";
+import {
+  cleanupInternalDrumChains,
+  readDevice as readDeviceShared,
+} from "../shared/device-reader.js";
 
 /**
  * Read information about a specific device by ID.
@@ -27,23 +30,6 @@ import { readDevice as readDeviceShared } from "../shared/device-reader.js";
  * @param {Array} args.include - Array of data to include in the response
  * @returns {Object} Device information
  */
-// Helper function to recursively strip drumPads from device objects
-// (drumPads hidden - drumMap provides the critical pitch-name mapping)
-function stripDrumPads(device) {
-  if (!device || typeof device !== "object") return device;
-  const { drumPads, ...rest } = device;
-
-  // Recursively strip from chains if present
-  if (rest.chains) {
-    rest.chains = rest.chains.map((chain) => ({
-      ...chain,
-      devices: chain.devices ? chain.devices.map(stripDrumPads) : chain.devices,
-    }));
-  }
-
-  return rest;
-}
-
 export function readDevice({ deviceId, include = ["chains"] }) {
   const device = new LiveAPI(`id ${deviceId}`);
 
@@ -60,6 +46,6 @@ export function readDevice({ deviceId, include = ["chains"] }) {
     includeDrumChains,
   });
 
-  // Hide drumPads from API (drumPads is only needed internally for drumMap extraction)
-  return stripDrumPads(deviceInfo);
+  // Clean up internal _processedDrumChains property
+  return cleanupInternalDrumChains(deviceInfo);
 }

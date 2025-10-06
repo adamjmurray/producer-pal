@@ -113,10 +113,40 @@ export function getDeviceType(device) {
 }
 
 /**
+ * Clean up internal _processedDrumChains property from device objects
+ * @param {Object|Array} obj - Device object or array of devices to clean
+ * @returns {Object|Array} Cleaned object/array
+ */
+export function cleanupInternalDrumChains(obj) {
+  if (!obj || typeof obj !== "object") return obj;
+
+  if (Array.isArray(obj)) {
+    return obj.map(cleanupInternalDrumChains);
+  }
+
+  const { _processedDrumChains, ...rest } = obj;
+
+  // Recursively clean chains
+  if (rest.chains) {
+    rest.chains = rest.chains.map((chain) => {
+      if (chain.devices) {
+        return {
+          ...chain,
+          devices: cleanupInternalDrumChains(chain.devices),
+        };
+      }
+      return chain;
+    });
+  }
+
+  return rest;
+}
+
+/**
  * Extract track-level drum map from the processed device structure
  * This maintains API compatibility while using the new device structure as the source of truth
  * @param {Array} devices - Array of processed device objects (output from readDevice)
- * @returns {Object|null} Object mapping pitch names to drum pad names, or null if none found
+ * @returns {Object|null} Object mapping pitch names to drum chain names, or null if none found
  */
 export function getDrumMap(devices) {
   // Recursively search for drum rack devices in the processed structure
@@ -124,7 +154,11 @@ export function getDrumMap(devices) {
     const drumRacks = [];
 
     for (const device of deviceList) {
-      if (device.type.startsWith(DEVICE_TYPE.DRUM_RACK) && device.drumPads) {
+      // Check for internal _processedDrumChains (used for drumMap extraction)
+      if (
+        device.type.startsWith(DEVICE_TYPE.DRUM_RACK) &&
+        device._processedDrumChains
+      ) {
         drumRacks.push(device);
       }
 
@@ -147,19 +181,19 @@ export function getDrumMap(devices) {
     return null;
   }
 
-  // Extract drum pads from the first found drum rack (matching original behavior)
-  // Include only drum pads that have instrument devices (exclude those with hasInstrument: false)
+  // Extract drum chains from the first found drum rack (matching original behavior)
+  // Include only drum chains that have instrument devices (exclude those with hasInstrument: false)
   const drumMap = {};
 
-  drumRacks[0].drumPads.forEach((drumPad) => {
-    // Only include drum pads that have instruments (exclude those with hasInstrument: false)
-    if (drumPad.hasInstrument !== false) {
-      const pitchName = midiPitchToName(drumPad.note);
-      drumMap[pitchName] = drumPad.name;
+  drumRacks[0]._processedDrumChains.forEach((drumChain) => {
+    // Only include drum chains that have instruments (exclude those with hasInstrument: false)
+    if (drumChain.hasInstrument !== false) {
+      const pitchName = drumChain.pitch;
+      drumMap[pitchName] = drumChain.name;
     }
   });
 
-  // Return empty object if drum rack exists but has no playable drum pads
+  // Return empty object if drum rack exists but has no playable drum chains
   // Return null only if no drum rack devices found at all
   return Object.keys(drumMap).length > 0 ? drumMap : {};
 }
@@ -220,20 +254,22 @@ export function readDevice(device, options = {}) {
   // Add chain information for rack devices
   if (deviceType.includes("rack") && (includeChains || includeDrumChains)) {
     if (deviceType === DEVICE_TYPE.DRUM_RACK) {
-      // Handle drum racks with drumPads structure
+      // Handle drum racks with drumChains structure
       const drumPads = device.getChildren("drum_pads");
 
-      // First pass: create drum pad info with basic state computation
-      const processedDrumPads = drumPads
+      // First pass: create drum chain info with basic state computation
+      const processedDrumChains = drumPads
         .filter((pad) => pad.getChildIds("chains").length > 0) // Only include pads with chains
         .map((pad) => {
           const chains = pad.getChildren("chains");
           const chain = chains[0]; // Each drum pad has exactly one chain
           const chainDevices = chain.getChildren("devices");
 
-          const drumPadInfo = {
+          const midiNote = pad.getProperty("note");
+          const drumChainInfo = {
             name: pad.getProperty("name"),
-            note: pad.getProperty("note"), // Always include raw MIDI note integer
+            note: midiNote, // Always include raw MIDI note integer
+            pitch: midiPitchToName(midiNote), // Add pitch name
             _originalPad: pad, // Keep reference for solo detection
             _originalChain: chain, // Keep reference for chain state
           };
@@ -243,9 +279,9 @@ export function readDevice(device, options = {}) {
           const isSoloed = pad.getProperty("solo") > 0;
 
           if (isSoloed) {
-            drumPadInfo.state = STATE.SOLOED;
+            drumChainInfo.state = STATE.SOLOED;
           } else if (isMuted) {
-            drumPadInfo.state = STATE.MUTED;
+            drumChainInfo.state = STATE.MUTED;
           }
           // No state property means "active" (will be post-processed if needed)
 
@@ -260,7 +296,7 @@ export function readDevice(device, options = {}) {
               }),
             );
 
-            drumPadInfo.chain = {
+            drumChainInfo.chain = {
               name: chain.getProperty("name"),
               devices: processedChainDevices,
             };
@@ -268,13 +304,13 @@ export function readDevice(device, options = {}) {
             // Add chain state property only if not default "active" state
             const chainState = computeState(chain);
             if (chainState !== STATE.ACTIVE) {
-              drumPadInfo.chain.state = chainState;
+              drumChainInfo.chain.state = chainState;
             }
 
-            // Check if this drum pad has instrument devices and add hasInstrument property only when false
+            // Check if this drum chain has instrument devices and add hasInstrument property only when false
             const hasInstrument = hasInstrumentInDevices(processedChainDevices);
             if (!hasInstrument) {
-              drumPadInfo.hasInstrument = false;
+              drumChainInfo.hasInstrument = false;
             }
           } else {
             // When not including drum chains, we still need to check for instruments
@@ -289,39 +325,44 @@ export function readDevice(device, options = {}) {
             );
             const hasInstrument = hasInstrumentInDevices(processedChainDevices);
             if (!hasInstrument) {
-              drumPadInfo.hasInstrument = false;
+              drumChainInfo.hasInstrument = false;
             }
           }
 
-          return drumPadInfo;
+          return drumChainInfo;
         });
 
-      // Check if any drum pads are soloed
-      const hasSoloedDrumPad = processedDrumPads.some(
-        (drumPadInfo) => drumPadInfo.state === STATE.SOLOED,
+      // Check if any drum chains are soloed
+      const hasSoloedDrumChain = processedDrumChains.some(
+        (drumChainInfo) => drumChainInfo.state === STATE.SOLOED,
       );
 
-      // Post-process drum pad states for solo behavior
-      if (hasSoloedDrumPad) {
-        processedDrumPads.forEach((drumPadInfo) => {
-          if (drumPadInfo.state === STATE.SOLOED) {
+      // Post-process drum chain states for solo behavior
+      if (hasSoloedDrumChain) {
+        processedDrumChains.forEach((drumChainInfo) => {
+          if (drumChainInfo.state === STATE.SOLOED) {
             // Keep soloed state as-is
             return;
-          } else if (drumPadInfo.state === STATE.MUTED) {
-            // Muted pad in solo context becomes muted-also-via-solo
-            drumPadInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
-          } else if (!drumPadInfo.state) {
-            // Playing pad in solo context becomes muted-via-solo
-            drumPadInfo.state = STATE.MUTED_VIA_SOLO;
+          } else if (drumChainInfo.state === STATE.MUTED) {
+            // Muted chain in solo context becomes muted-also-via-solo
+            drumChainInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
+          } else if (!drumChainInfo.state) {
+            // Playing chain in solo context becomes muted-via-solo
+            drumChainInfo.state = STATE.MUTED_VIA_SOLO;
           }
         });
       }
 
-      // Clean up temporary references and set final drum pads
-      // Note: drumPads is used internally for drumMap extraction but hidden from API
-      deviceInfo.drumPads = processedDrumPads.map(
-        ({ _originalPad, _originalChain, ...drumPadInfo }) => drumPadInfo,
-      );
+      // Clean up temporary references and set drumChains (only when includeDrumChains is true)
+      // Note: We need to keep a reference for drumMap extraction even when not including chains
+      if (includeDrumChains) {
+        deviceInfo.drumChains = processedDrumChains.map(
+          ({ _originalPad, _originalChain, ...drumChainInfo }) => drumChainInfo,
+        );
+      }
+
+      // Store processed chains internally for drumMap extraction (will be cleaned up later)
+      deviceInfo._processedDrumChains = processedDrumChains;
     } else {
       // Handle other rack devices (instrument racks, audio effect racks, etc.)
       const chains = device.getChildren("chains");

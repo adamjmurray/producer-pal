@@ -452,12 +452,12 @@ describe("readLiveSet", () => {
       ],
     });
 
-    // Check that drum rack devices are included (drumPads hidden - drumMap provides the critical pitch-name mapping)
+    // Check that drum rack devices are included (drumChains hidden - drumMap provides the critical pitch-name mapping)
     expect(result.tracks[0].instrument).toEqual(
       expect.objectContaining({
         name: "My Drums",
         type: "drum-rack",
-        // drumPads: expect.any(Array), // Hidden - drumMap provides the critical pitch-name mapping
+        // drumChains: expect.any(Array), // Only included when drum-chains is requested
       }),
     );
     expect(result.tracks[0].audioEffects).toEqual([
@@ -465,14 +465,14 @@ describe("readLiveSet", () => {
         type: "audio-effect: Reverb",
       }),
     ]);
-    // Drum rack device should be present (drumPads hidden)
+    // Drum rack device should be present (drumChains hidden)
     const drumRack = result.tracks[0].instrument;
     expect(drumRack).toBeDefined();
-    // drumPads hidden - drumMap provides the critical pitch-name mapping
-    // expect(drumRack.drumPads).toBeDefined();
-    // // If drumPads exist, they should not have chain property when includeDrumChains=false
-    // if (drumRack.drumPads && drumRack.drumPads.length > 0) {
-    //   expect(drumRack.drumPads[0].chain).toBeUndefined();
+    // drumChains hidden - drumMap provides the critical pitch-name mapping
+    // expect(drumRack.drumChains).toBeDefined();
+    // // If drumChains exist, they should not have chain property when includeDrumChains=false
+    // if (drumRack.drumChains && drumRack.drumChains.length > 0) {
+    //   expect(drumRack.drumChains[0].chain).toBeUndefined();
     // }
   });
 
@@ -1150,7 +1150,7 @@ describe("readLiveSet", () => {
     expect(result.tracks[0].instrument).toEqual({
       name: "Test Drum Rack",
       type: "drum-rack",
-      // drumPads: [ // Hidden - drumMap provides the critical pitch-name mapping
+      // drumChains: [ // Only included when drum-chains is requested
       //   {
       //     name: "Test Kick",
       //     note: 60,

@@ -9,7 +9,11 @@ import {
   MONITORING_STATE,
   STATE,
 } from "../constants.js";
-import { getDrumMap, readDevice } from "../shared/device-reader.js";
+import {
+  cleanupInternalDrumChains,
+  getDrumMap,
+  readDevice,
+} from "../shared/device-reader.js";
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 import {
   parseIncludeArray,
@@ -112,13 +116,6 @@ function categorizeDevices(
 function stripChains(device) {
   if (!device || typeof device !== "object") return device;
   const { chains, ...rest } = device;
-  return rest;
-}
-
-// Helper function to strip drumPads from device objects (drumPads hidden - drumMap provides the critical pitch-name mapping)
-function stripDrumPads(device) {
-  if (!device || typeof device !== "object") return device;
-  const { drumPads, ...rest } = device;
   return rest;
 }
 
@@ -327,26 +324,28 @@ export function readTrackGeneric({
       : categorizedDevices.audioEffects;
   }
 
-  // Extract drum map from all categorized devices (critical for drumMap preservation)
-  const allDevices = [
-    ...categorizedDevices.midiEffects,
-    ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
-    ...categorizedDevices.audioEffects,
-  ];
-  const drumMap = getDrumMap(allDevices);
-  if (drumMap != null) {
-    result.drumMap = drumMap;
+  // Extract drum map from all categorized devices when requested
+  if (includeDrumMaps) {
+    const allDevices = [
+      ...categorizedDevices.midiEffects,
+      ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
+      ...categorizedDevices.audioEffects,
+    ];
+    const drumMap = getDrumMap(allDevices);
+    if (drumMap != null) {
+      result.drumMap = drumMap;
+    }
   }
 
-  // Hide drumPads from API after drumMap extraction (drumPads is only needed internally)
+  // Clean up internal _processedDrumChains property after drumMap extraction
   if (result.midiEffects) {
-    result.midiEffects = result.midiEffects.map(stripDrumPads);
+    result.midiEffects = cleanupInternalDrumChains(result.midiEffects);
   }
   if (result.instrument) {
-    result.instrument = stripDrumPads(result.instrument);
+    result.instrument = cleanupInternalDrumChains(result.instrument);
   }
   if (result.audioEffects) {
-    result.audioEffects = result.audioEffects.map(stripDrumPads);
+    result.audioEffects = cleanupInternalDrumChains(result.audioEffects);
   }
 
   // Only include playingSlotIndex when >= 0 (only for regular tracks)

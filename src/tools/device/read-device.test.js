@@ -134,7 +134,7 @@ describe("readDevice", () => {
 
     expect(result).toEqual({
       type: "drum-rack",
-      // drumPads: [], // Hidden - drumMap provides the critical pitch-name mapping
+      drumChains: [], // Included because drum-chains was requested
     });
   });
 
