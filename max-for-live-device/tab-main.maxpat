@@ -15,6 +15,28 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"bgmode" : 0,
+					"border" : 0,
+					"clickthrough" : 1,
+					"enablehscroll" : 0,
+					"enablevscroll" : 0,
+					"id" : "obj-4",
+					"lockeddragscroll" : 0,
+					"lockedsize" : 0,
+					"maxclass" : "bpatcher",
+					"name" : "server-status.maxpat",
+					"numinlets" : 0,
+					"numoutlets" : 0,
+					"offset" : [ 0.0, 0.0 ],
+					"patching_rect" : [ 50.0, 127.0, 165.0, 23.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 31.0, 72.0, 213.0, 75.0 ],
+					"viewvisibility" : 1
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"autofit" : 1,
 					"forceaspect" : 1,
 					"id" : "obj-54",
@@ -53,7 +75,7 @@
 					"parameter_enable" : 0,
 					"patching_rect" : [ 46.0, 200.0, 138.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 56.0, 124.0, 138.0, 20.0 ],
+					"presentation_rect" : [ 56.0, 92.0, 138.0, 20.0 ],
 					"text" : "📚  Documentation 📖"
 				}
 
@@ -68,7 +90,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 48.0, 91.0, 129.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 57.0, 74.0, 137.0, 18.0 ],
+					"presentation_rect" : [ 57.0, 73.0, 137.0, 18.0 ],
 					"text" : "© 2025 Adam Murray",
 					"textjustification" : 1
 				}
@@ -107,31 +129,9 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 243.0, 202.0, 105.0, 21.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 78.0, 53.0, 95.0, 21.0 ],
+					"presentation_rect" : [ 78.0, 52.0, 95.0, 21.0 ],
 					"text" : "version X.Y.Z",
 					"textjustification" : 1
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"bgmode" : 0,
-					"border" : 0,
-					"clickthrough" : 1,
-					"enablehscroll" : 0,
-					"enablevscroll" : 0,
-					"id" : "obj-4",
-					"lockeddragscroll" : 0,
-					"lockedsize" : 0,
-					"maxclass" : "bpatcher",
-					"name" : "server-status.maxpat",
-					"numinlets" : 0,
-					"numoutlets" : 0,
-					"offset" : [ 0.0, 0.0 ],
-					"patching_rect" : [ 50.0, 127.0, 165.0, 23.0 ],
-					"presentation" : 1,
-					"presentation_rect" : [ 30.0, 50.0, 207.0, 78.0 ],
-					"viewvisibility" : 1
 				}
 
 			}
@@ -195,14 +195,14 @@
  ],
 		"dependency_cache" : [ 			{
 				"name" : "producer-pal-logo.svg",
-				"bootpath" : "~/workspace/producer-pal/device",
+				"bootpath" : "~/workspace/producer-pal/max-for-live-device",
 				"patcherrelativepath" : ".",
 				"type" : "svg",
 				"implicit" : 1
 			}
 , 			{
 				"name" : "server-status.maxpat",
-				"bootpath" : "~/workspace/producer-pal/device",
+				"bootpath" : "~/workspace/producer-pal/max-for-live-device",
 				"patcherrelativepath" : ".",
 				"type" : "JSON",
 				"implicit" : 1

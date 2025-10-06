@@ -72,6 +72,11 @@ function callTool(toolName, args) {
   return tool(args);
 }
 
+let isCompactOutputEnabled = true;
+export function compactOutput(enabled) {
+  isCompactOutputEnabled = !!enabled;
+}
+
 export function projectNotesEnabled(enabled) {
   userContext.projectNotes.enabled = !!enabled;
 }
@@ -130,11 +135,12 @@ export async function mcp_request(requestId, tool, argsJSON) {
       // which results in a JSON.stringify() call on the object inside formatSuccessResponse().
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
+      const output = {
+        ...(await callTool(tool, args)),
+        ...(includeUserContext ? { userContext } : {}),
+      };
       result = formatSuccessResponse(
-        toCompactJSLiteral({
-          ...(await callTool(tool, args)),
-          ...(includeUserContext ? { userContext } : {}),
-        }),
+        isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
       );
     } catch (toolError) {
       result = formatErrorResponse(
