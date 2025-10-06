@@ -22,7 +22,6 @@ export function readLiveSet(args = {}) {
   const result = {
     id: liveSet.id,
     ...(liveSetName && { name: liveSetName }),
-    arrangementFollower: liveSet.getProperty("back_to_arranger") === 0,
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
   };

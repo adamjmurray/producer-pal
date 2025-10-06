@@ -145,7 +145,6 @@ describe("readLiveSet", () => {
       id: "live_set_id",
       name: "Test Live Set",
       isPlaying: true,
-      arrangementFollower: true,
       tempo: 120,
       timeSignature: "4/4",
       scale: "C Major",
@@ -279,7 +278,6 @@ describe("readLiveSet", () => {
       name: "Empty Live Set",
       tempo: 100,
       timeSignature: "3/4",
-      arrangementFollower: false,
       tracks: [],
       sceneCount: 0,
     });
@@ -1027,7 +1025,6 @@ describe("readLiveSet", () => {
       expect.objectContaining({
         id: "live_set",
         name: "Test Set",
-        arrangementFollower: true,
         tempo: 120,
         timeSignature: "4/4",
         sceneCount: 0, // No scenes exist in the Live Set
