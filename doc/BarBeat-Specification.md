@@ -66,17 +66,21 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
 ## Note Emission Rules
 
-Notes are emitted ONLY at time positions (`bar|beat`). Pitches encountered before a time position are buffered and emitted together when a time is reached.
+Notes are emitted ONLY at time positions (`bar|beat`). Pitches encountered
+before a time position are buffered and emitted together when a time is reached.
 
 ### Pitch Buffering
 
-- **Consecutive pitches form chords:** `C3 E3 G3 1|1` emits all three notes at 1|1
-- **First pitch after time clears buffer:** `C1 1|1 D1 1|2` emits C1 at 1|1, then D1 at 1|2
+- **Consecutive pitches form chords:** `C3 E3 G3 1|1` emits all three notes at
+  1|1
+- **First pitch after time clears buffer:** `C1 1|1 D1 1|2` emits C1 at 1|1,
+  then D1 at 1|2
 - **Pitches persist until changed:** `C1 1|1 |2 |3` emits C1 at three positions
 
 ### State Capture
 
-State (velocity, duration, probability) is captured with each pitch when buffered:
+State (velocity, duration, probability) is captured with each pitch when
+buffered:
 
 ```
 v100 C3 v80 E3 1|1  // C3 has v100, E3 has v80
@@ -111,7 +115,8 @@ All components are stateful:
 
 ## Bar Copy
 
-Bar copy allows duplicating bars of MIDI notes using concise notation instead of rewriting patterns.
+Bar copy allows duplicating bars of MIDI notes using concise notation instead of
+rewriting patterns.
 
 ### Syntax
 
@@ -122,7 +127,8 @@ Bar copy allows duplicating bars of MIDI notes using concise notation instead of
 @=          # Clear the copy buffer (forget all bars)
 ```
 
-The `@` prefix distinguishes copy operations from time positions. All bar numbers are positive integers (1-based).
+The `@` prefix distinguishes copy operations from time positions. All bar
+numbers are positive integers (1-based).
 
 ### Examples
 
@@ -147,53 +153,101 @@ C1 1|1
 
 ### Behavior
 
-- **Copies ALL notes** from source bar(s)
-- Notes are shifted to destination bar(s) with correct time offsets
-- Overlays on existing notes in destination (like merge mode)
-- **Updates time position** to start of destination bar (N|1)
-- **Not a time position**: Does not emit buffered pitches
+Bar copy reads notes from the **copy buffer** (notes previously emitted at time
+positions) and creates new note events at the destination bar(s):
+
+- **Copies from copy buffer**: Uses notes stored in the parser's `notesByBar`
+  map (not from Ableton Live)
+- **Time shift**: Notes are shifted to destination bar(s) with correct time
+  offsets
+- **Creates new events**: Adds copied note events to the output (doesn't modify
+  existing notes)
+- **Not a time position**: Does not emit buffered pitches (clears pitch buffer
+  instead)
 
 ### State Handling
 
-- **Pitch buffer**: Cleared (but NOT emitted)
-- **State persists**: velocity, duration, probability unchanged
-- **Time**: Updates to bar N, beat 1
-- Can use beat shorthand after copy: `@2=1` then `|2` goes to 2|2
+When a bar copy operation executes:
+
+#### Pitch Buffer
+
+- **Cleared**: Any buffered pitches are discarded (NOT emitted)
+- **Warning issued**: If pitches were buffered without a time position
+
+#### Current State
+
+- **Velocity, duration, probability**: Unchanged
+- **Time position**:
+  - `@N=` operations: Updates to N|1
+  - `@=` operation: Stays at current position (does not update time)
+
+#### Beat Shorthand
+
+After `@N=` you can use beat shorthand: `@2=1` then `|2` goes to 2|2
 
 ### Composition
 
 ```
 C1 1|1 |2 |3 |4     # Define bar 1
 @2=1                # Copy to bar 2, time now at 2|1
-D1 |2 |4            # Add to bar 2 at beats 2 and 4 (overlay)
+D1 |2 |4            # Add notes to bar 2 at beats 2 and 4
 ```
 
-Bar 2 contains: C1 on all beats + D1 on beats 2 & 4
+**Result**: Bar 1 has C1 on all beats. Bar 2 has C1 on all beats + D1 on beats 2
+& 4.
 
-### Accumulation
+Copying a bar copies everything that was emitted to that bar. After copying, you
+can add more notes to the destination.
+
+### Buffer Behavior
+
+Bar copy operations interact with two distinct buffers in the parser:
+
+#### 1. Pitch Buffer
+
+**Purpose**: Staging area for pitches before they're emitted at time positions
+
+**Lifecycle**:
+
+- Pitches accumulate with their state (velocity, probability, duration) as
+  they're parsed
+- Emitted together when a time position (`bar|beat`) is encountered
+- Cleared (but NOT emitted) by bar copy operations (`@N=`, `@=`)
+
+**Example**:
 
 ```
-C1 1|1              # Bar 1: C1 on beat 1
-@2=                 # Bar 2: C1 on beat 1, time at 2|1
-D1 |2               # Bar 2: C1 on beat 1 + D1 on beat 2
-@3=                 # Bar 3: C1 on beat 1 + D1 on beat 2 (copies everything)
+v100 C3 E3 G3 @2=   # Warning: 3 pitches buffered but not emitted before bar copy
 ```
 
-Each copy includes all notes accumulated in the source bar.
+The pitches `C3 E3 G3` with velocity 100 are buffered but never reach a time
+position, so they're discarded by the `@2=` operation.
 
-### Auto-Clear
+#### 2. Copy Buffer (notesByBar)
 
-The copy buffer (bars available for copying) automatically clears after bar copy operations to prevent unintended accumulation:
+**Purpose**: Tracks already-emitted notes organized by bar number for copying
 
-- **After barCopy**: The first non-barCopy element (pitch, time, velocity, duration, probability) clears the buffer
-- **Consecutive barCopy**: No auto-clear between `@N=...` operations (e.g., `@2= @3= @4=` keeps all bars)
-- **Purpose**: Ensures each "section" of notation starts fresh without old bars lingering
+**Lifecycle**:
 
-Example:
+- Populated when notes are emitted at time positions
+- Used as source data for bar copy operations
+- Automatically cleared after bar copy to prevent unintended accumulation
+
+##### Auto-Clear Mechanism
+
+The copy buffer automatically clears after bar copy operations to ensure each
+"section" of notation starts fresh:
+
+**Trigger**: The first non-barCopy element after `@N=` or `@=` operations
+
+- Non-barCopy elements: pitch, time position, velocity, duration, probability
+- Does NOT clear between consecutive `@N=...` operations
+
+**Example**:
 
 ```
-C1 1|1 @2= @3=     # Bars 1-3 all contain C1
-E3 4|1             # Auto-clear triggered by E3, bars 1-3 forgotten
+C1 1|1 @2= @3=     # Bars 1-3 all contain C1 (copy buffer intact)
+E3 4|1             # E3 triggers auto-clear, bars 1-3 forgotten
 @5=1               # Warning: Bar 1 is empty (was auto-cleared)
 ```
 
@@ -201,28 +255,38 @@ E3 4|1             # Auto-clear triggered by E3, bars 1-3 forgotten
 
 Explicitly clear the copy buffer:
 
-- **Behavior**: Clears all bars from copy buffer, acts as a barCopy operation for auto-clear purposes
-- **Use case**: "Forget" preliminary bars and start fresh for next copyable section
+- **Behavior**: Clears all bars from copy buffer, acts as a barCopy operation
+  for auto-clear purposes
+- **Use case**: "Forget" preliminary bars and start fresh for next copyable
+  section
 - **Does not update time**: Unlike `@N=`, stays at current bar/beat position
+- **Clears pitch buffer**: Same as `@N=`
 
-Example:
+**Example**:
 
 ```
-C1 1|1 D1 1|2      # Bar 1 with C1 and D1
-@=                 # Explicitly forget bar 1
+C1 1|1 D1 1|2      # Bar 1 with C1 and D1 (in copy buffer)
+@=                 # Explicitly forget bar 1 (copy buffer cleared)
 E3 2|1             # Bar 2 with E3 (bar 1 not copyable)
 @3=1               # Warning: Bar 1 is empty (was cleared by @=)
 ```
 
 ### Warnings
 
-The parser warns about problematic bar copy usage:
+The parser warns about problematic buffer states:
+
+#### Pitch Buffer Warnings
+
+- **Dangling pitches**: `"N pitch(es) buffered but not emitted before bar copy"`
+  or `"before @="`
+- **Dangling state**: `"state change won't affect anything before bar copy"` or
+  `"before @="`
+
+#### Copy Buffer Warnings
 
 - **Empty source bar**: `"Bar N is empty, nothing to copy"`
 - **Invalid source bar**: `"Cannot copy from bar 0 (no such bar)"`
 - **Previous bar at bar 1**: `"Cannot copy from previous bar when at bar 1"`
-- **Dangling pitches**: `"N pitch(es) buffered but not emitted before bar copy"`
-- **Dangling state**: `"state change won't affect anything before bar copy"` or `"before @="`
 
 These are console warnings, not errors - parsing completes successfully.
 
@@ -266,44 +330,87 @@ v100 C4 G4 1|1 v90 |2 v80 |3 v70 |4
 
 ## Parsing Rules
 
-1. Notes are emitted ONLY at time positions - pitches buffer until `bar|beat` is encountered
-2. State is maintained throughout parsing - probability, velocity, and duration settings persist
-3. Probability (`p`), velocity (`v`), and duration (`t`) capture their values with each pitch
+1. Notes are emitted ONLY at time positions - pitches buffer until `bar|beat` is
+   encountered
+2. State is maintained throughout parsing - probability, velocity, and duration
+   settings persist
+3. Probability (`p`), velocity (`v`), and duration (`t`) capture their values
+   with each pitch
 4. State changes after time positions update all buffered pitches
 5. Multiple notes at same time are whitespace-separated
 6. No commas required between elements
-7. Whitespace required between time positions, probability, velocity, duration, and notes
+7. Whitespace required between time positions, probability, velocity, duration,
+   and notes
 8. Velocity ranges are auto-ordered: `v120-80` becomes `v80-120`
 9. First pitch after a time position clears the pitch buffer
-10. Subsequent time positions re-emit the last buffered pitches (pitch persistence)
+10. Subsequent time positions re-emit the last buffered pitches (pitch
+    persistence)
 
 ---
 
 ## AST Schema
 
-```ts
-NoteEvent[]
+The Peggy grammar (`barbeat-grammar.peggy`) returns an array of element objects:
 
-// Types
+```typescript
+Element[]
 
-type BarBeat = {
-  bar: number;    // e.g., 1
-  beat: number;   // e.g., 1.5 (supports floating point)
-};
-
-type Note = {
-  pitch: number;              // MIDI pitch (0–127)
-  name: string;               // Original pitch name (e.g. "C3", "F#4")
-  velocity: number;           // 0–127 (inherited from state)
-  velocity_deviation: number; // 0–127 (for velocity ranges)
-  probability: number;        // 0.0–1.0 (inherited from state)
-  duration: number;           // float, in beats (inherited from state)
-};
-
-type NoteEvent = Note & {
-  start: BarBeat;     // Absolute start time
-};
+type Element =
+  | { pitch: number }                                    // Note (0-127)
+  | { bar: number, beat: number }                        // Time with bar
+  | { bar: null, beat: number }                          // Time without bar (beat shorthand)
+  | { velocity: number }                                 // Single velocity (0-127)
+  | { velocityMin: number, velocityMax: number }         // Velocity range (0-127)
+  | { duration: number }                                 // Duration in beats
+  | { probability: number }                              // Probability (0.0-1.0)
+  | { barCopy: number, sourcePrevious: true }            // @N= (copy previous bar)
+  | { barCopy: number, sourceBar: number }               // @N=M (copy bar M)
+  | { barCopy: number, sourceRange: [number, number] }   // @N=M-P (copy range)
+  | { clearCopy: true }                                  // @= (clear copy buffer)
 ```
+
+### Notes
+
+- The grammar computes a `name` variable (e.g., "C3") but only uses it for error
+  messages - it's not included in the AST
+- Each element is a simple object with one or two properties
+- The AST is stateless - no context about what came before
+
+---
+
+## Parser Output
+
+The `parseNotation()` function processes the grammar AST and returns an array of
+note events:
+
+```javascript
+[
+  {
+    pitch: number, // MIDI pitch (0-127)
+    start_time: number, // Start time in Ableton beats (float)
+    duration: number, // Duration in Ableton beats (float)
+    velocity: number, // Base velocity (0-127)
+    probability: number, // Note probability (0.0-1.0)
+    velocity_deviation: number, // Velocity randomization range (0-127)
+  },
+  // ... more note events
+];
+```
+
+### Notes
+
+- **start_time**: Converted from `bar|beat` notation to Ableton beats (accounts
+  for time signature)
+  - Example: In 4/4, bar 2 beat 3 = `(2-1) * 4 + (3-1) = 6.0` beats
+  - Example: In 3/4, bar 2 beat 3 = `((2-1) * 3 + (3-1)) * (4/4) = 5.0` beats
+- **duration**: Converted from beat duration to Ableton beats (accounts for time
+  signature)
+- **velocity_deviation**: When velocity range is used (e.g., `v80-100`),
+  velocity is min value and velocity_deviation is the range (20)
+- **Precision**: Both start_time and duration support floating point for
+  sub-beat accuracy
+- **No bar/beat info**: The output only contains absolute Ableton beat
+  positions, not the original bar|beat notation
 
 ---
 
