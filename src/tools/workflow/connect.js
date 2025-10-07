@@ -148,7 +148,7 @@ C1 1|1 |2 |3 |4 // kick on every beat (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 v0 Gb1 2|1.5 // delete specific note (merge mode only)
-C1 1|1 @2= @3= @4= // bar copy: @N= (previous), @N=M (bar M), @N=M-P (range)
+C1 1|1 @2= @3= @4= // bar copy: @N= (previous), @N=M (bar M), @N=M-P (range), @= (clear), auto-clears on next non-@ element
 \`\`\`
 
 ## Workflow

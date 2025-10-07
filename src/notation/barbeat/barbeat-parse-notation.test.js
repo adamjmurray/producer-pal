@@ -1548,6 +1548,8 @@ multi-line comment */ D3 1|1`);
     });
 
     it("accumulates notes in chained copies", () => {
+      // Note: With auto-clear, D3 triggers clear after @2=
+      // So bar 3 only gets D3 (bar 2's only note after auto-clear)
       const result = parseNotation("C3 1|1 @2= D3 |2 @3=");
       expect(result).toEqual([
         // Bar 1
@@ -1568,7 +1570,7 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        // Bar 2 beat 2 (added D3)
+        // Bar 2 beat 2 (D3 triggers auto-clear, then adds D3)
         {
           pitch: 62,
           start_time: 5,
@@ -1577,15 +1579,7 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        // Bar 3 (copied both C3 and D3 from bar 2)
-        {
-          pitch: 60,
-          start_time: 8,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
+        // Bar 3 (copied D3 from bar 2 - bar was auto-cleared so only D3 remains)
         {
           pitch: 62,
           start_time: 9,
@@ -1846,6 +1840,284 @@ multi-line comment */ D3 1|1`);
           expect.stringContaining("Bar 3 is empty, nothing to copy"),
         );
         consoleErrorSpy.mockRestore();
+      });
+    });
+
+    describe("auto-clear after barCopy", () => {
+      it("auto-clears notesByBar when pitch follows barCopy", () => {
+        const result = parseNotation("C3 1|1 @2= E3 4|1 @5=1");
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+        parseNotation("C3 1|1 @2= E3 4|1 @5=1");
+        // Should warn that bar 1 is empty (auto-cleared by E3)
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 1 is empty, nothing to copy"),
+        );
+        consoleErrorSpy.mockRestore();
+
+        // Bar 4 should exist, bars 1-2 should not be copyable
+        expect(result).toEqual([
+          // Bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 2 (copied from bar 1)
+          {
+            pitch: 60,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 4 (E3, after auto-clear)
+          {
+            pitch: 64,
+            start_time: 12,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
+      });
+
+      it("auto-clears notesByBar when time follows barCopy", () => {
+        const result = parseNotation("C3 1|1 @2= 4|1 @5=1");
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+        parseNotation("C3 1|1 @2= 4|1 @5=1");
+        // Should warn that bar 1 is empty (auto-cleared by 4|1)
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 1 is empty, nothing to copy"),
+        );
+        consoleErrorSpy.mockRestore();
+
+        expect(result).toEqual([
+          // Bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 2 (copied from bar 1)
+          {
+            pitch: 60,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
+      });
+
+      it("auto-clears notesByBar when velocity follows barCopy", () => {
+        const result = parseNotation("C3 1|1 @2= v80 C3 4|1 @5=1");
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+        parseNotation("C3 1|1 @2= v80 C3 4|1 @5=1");
+        // Should warn that bar 1 is empty (auto-cleared by v80)
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 1 is empty, nothing to copy"),
+        );
+        consoleErrorSpy.mockRestore();
+
+        expect(result).toEqual([
+          // Bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 2 (copied from bar 1)
+          {
+            pitch: 60,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 4 (with v80)
+          {
+            pitch: 60,
+            start_time: 12,
+            duration: 1,
+            velocity: 80,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
+      });
+
+      it("does not auto-clear on consecutive barCopy operations", () => {
+        const result = parseNotation("C3 1|1 @2= @3= @4= D3 5|1");
+        expect(result).toEqual([
+          // Bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 2 (copied from bar 1)
+          {
+            pitch: 60,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 3 (copied from bar 2)
+          {
+            pitch: 60,
+            start_time: 8,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 4 (copied from bar 3)
+          {
+            pitch: 60,
+            start_time: 12,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 5 (D3, after auto-clear)
+          {
+            pitch: 62,
+            start_time: 16,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
+      });
+    });
+
+    describe("@= clear copy", () => {
+      it("@= sets postBarCopyState, actual clear happens on next element", () => {
+        const result = parseNotation("C3 1|1 @= E3 2|1 @3=1");
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+        parseNotation("C3 1|1 @= E3 2|1 @3=1");
+        // Should warn that bar 1 is empty (auto-cleared by E3, not immediately by @=)
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 1 is empty, nothing to copy"),
+        );
+        consoleErrorSpy.mockRestore();
+
+        expect(result).toEqual([
+          // Bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 2 (E3, after auto-clear triggered by E3)
+          {
+            pitch: 64,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
+      });
+
+      it("@= followed by barCopy does not auto-clear (both are barCopy)", () => {
+        // @= doesn't immediately clear, and @3= is also barCopy, so no auto-clear yet
+        const result = parseNotation("C3 1|1 @2= @= @3=");
+        expect(result).toEqual([
+          // Bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 2 (copied from bar 1)
+          {
+            pitch: 60,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 3 (copied from bar 2, buffer not cleared yet)
+          {
+            pitch: 60,
+            start_time: 8,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
+      });
+
+      it("@= acts as barCopy for postBarCopyState", () => {
+        const result = parseNotation("C3 1|1 @= E3 3|1 @4=1");
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+        parseNotation("C3 1|1 @= E3 3|1 @4=1");
+        // Bar 1 was auto-cleared by E3 (first non-barCopy after @=)
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 1 is empty, nothing to copy"),
+        );
+        consoleErrorSpy.mockRestore();
+
+        expect(result).toEqual([
+          // Bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+          // Bar 3 (E3)
+          {
+            pitch: 64,
+            start_time: 8,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
       });
     });
   });

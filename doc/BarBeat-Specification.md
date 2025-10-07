@@ -119,6 +119,7 @@ Bar copy allows duplicating bars of MIDI notes using concise notation instead of
 @N=         # Copy previous bar to bar N
 @N=M        # Copy bar M to bar N
 @N=M-P      # Copy bars M through P to bars N through N+(P-M)
+@=          # Clear the copy buffer (forget all bars)
 ```
 
 The `@` prefix distinguishes copy operations from time positions. All bar numbers are positive integers (1-based).
@@ -180,6 +181,39 @@ D1 |2               # Bar 2: C1 on beat 1 + D1 on beat 2
 
 Each copy includes all notes accumulated in the source bar.
 
+### Auto-Clear
+
+The copy buffer (bars available for copying) automatically clears after bar copy operations to prevent unintended accumulation:
+
+- **After barCopy**: The first non-barCopy element (pitch, time, velocity, duration, probability) clears the buffer
+- **Consecutive barCopy**: No auto-clear between `@N=...` operations (e.g., `@2= @3= @4=` keeps all bars)
+- **Purpose**: Ensures each "section" of notation starts fresh without old bars lingering
+
+Example:
+
+```
+C1 1|1 @2= @3=     # Bars 1-3 all contain C1
+E3 4|1             # Auto-clear triggered by E3, bars 1-3 forgotten
+@5=1               # Warning: Bar 1 is empty (was auto-cleared)
+```
+
+### Clear Copy (`@=`)
+
+Explicitly clear the copy buffer:
+
+- **Behavior**: Clears all bars from copy buffer, acts as a barCopy operation for auto-clear purposes
+- **Use case**: "Forget" preliminary bars and start fresh for next copyable section
+- **Does not update time**: Unlike `@N=`, stays at current bar/beat position
+
+Example:
+
+```
+C1 1|1 D1 1|2      # Bar 1 with C1 and D1
+@=                 # Explicitly forget bar 1
+E3 2|1             # Bar 2 with E3 (bar 1 not copyable)
+@3=1               # Warning: Bar 1 is empty (was cleared by @=)
+```
+
 ### Warnings
 
 The parser warns about problematic bar copy usage:
@@ -188,7 +222,7 @@ The parser warns about problematic bar copy usage:
 - **Invalid source bar**: `"Cannot copy from bar 0 (no such bar)"`
 - **Previous bar at bar 1**: `"Cannot copy from previous bar when at bar 1"`
 - **Dangling pitches**: `"N pitch(es) buffered but not emitted before bar copy"`
-- **Dangling state**: `"state change won't affect anything before bar copy"`
+- **Dangling state**: `"state change won't affect anything before bar copy"` or `"before @="`
 
 These are console warnings, not errors - parsing completes successfully.
 

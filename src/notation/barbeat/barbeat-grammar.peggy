@@ -25,7 +25,10 @@ element
   = barCopy / time / probability / velocity / duration / note
 
 barCopy
-  = '@' bar:positiveInt '=' range:barRange? {
+  = '@' '=' {
+    return { clearCopy: true };
+  }
+  / '@' bar:positiveInt '=' range:barRange? {
     if (range === null) {
       return { barCopy: bar, sourcePrevious: true };
     } else if (range.sourceRange !== undefined) {
