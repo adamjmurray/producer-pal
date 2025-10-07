@@ -70,16 +70,22 @@ tool descriptions.
 
 ## Coding Agents
 
-Claude Code assists with the development of this project. A `CLAUDE.md` is
-setup, and the `doc` folder contains content that may be worth referencing for
-some development tasks.
+Coding agents assist with development of this project. The primary agent is
+Claude Code, with Gemini CLI and OpenAI Codex CLI as supported alternatives. An
+`AGENTS.md` file provides coding standards, with `CLAUDE.md` and `GEMINI.md`
+triggering their respective agents to use it. The `doc` folder contains
+reference documentation for development tasks.
 
 Additionally, there is a feature `npm run knowledge-base` (or the shortcut
-`npm run kb`) which flattens out the contents of this project into a
-knowledge-base folder that can be drag and dropped in its entirety into a Claude
-Project (or ChatGPT or Gemini projects or whatever you prefer) for complex
-brainstorming and planning sessions. Then, those results can then be fed back
-into Claude Code (for example by generating a new file for the `doc` folder).
+`npm run kb`) which flattens the project contents into a `knowledge-base`
+folder. This can be imported into AI chat projects (Claude Projects, ChatGPT
+Projects, Gemini Projects, etc.) for complex brainstorming and planning
+sessions. Results can then be fed back into coding agents (for example by
+generating new files for the `doc` folder).
+
+When using a chat project, copy `doc/AI-Chat-Project-Instructions.md` into the
+project instructions for the AI chat app of choice. This file provides useful
+information similar to `AGENTS.md` but adapted for standalone chat apps.
 
 ## Development Testing
 
