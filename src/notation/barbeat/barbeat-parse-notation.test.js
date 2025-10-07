@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { parseNotation } from "./barbeat-parse-notation";
 
 describe("bar|beat parseNotation()", () => {
@@ -1352,6 +1352,501 @@ multi-line comment */ D3 1|1`);
           velocity_deviation: 0,
         }, // bar 1, beat 1 (assumed)
       ]);
+    });
+  });
+
+  describe("bar copy", () => {
+    it("copies a single bar to a different position", () => {
+      const result = parseNotation("C3 D3 E3 1|1 @2=1");
+      expect(result).toEqual([
+        // Bar 1
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 (copied)
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("copies previous bar with @N= syntax", () => {
+      const result = parseNotation("C3 1|1 @2=");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("copies a range of bars", () => {
+      const result = parseNotation("C3 1|1 D3 2|1 @5=1-2");
+      expect(result).toEqual([
+        // Bar 1
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2
+        {
+          pitch: 62,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 5 (copy of bar 1)
+        {
+          pitch: 60,
+          start_time: 16,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 6 (copy of bar 2)
+        {
+          pitch: 62,
+          start_time: 20,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("supports chained copies", () => {
+      const result = parseNotation("C3 1|1 @2= @3= @4=");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 8,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 12,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("overlays notes after copy", () => {
+      const result = parseNotation("C3 1|1 @2=1 D3 |2");
+      expect(result).toEqual([
+        // Bar 1
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 (copied C3)
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 beat 2 (added D3)
+        {
+          pitch: 62,
+          start_time: 5,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("accumulates notes in chained copies", () => {
+      const result = parseNotation("C3 1|1 @2= D3 |2 @3=");
+      expect(result).toEqual([
+        // Bar 1
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 (copied C3)
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 beat 2 (added D3)
+        {
+          pitch: 62,
+          start_time: 5,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 3 (copied both C3 and D3 from bar 2)
+        {
+          pitch: 60,
+          start_time: 8,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 9,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("preserves note properties (velocity, duration, probability)", () => {
+      const result = parseNotation("v80 t0.5 p0.7 C3 1|1 @2=1");
+      expect(result).toEqual([
+        // Bar 1
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 80,
+          probability: 0.7,
+          velocity_deviation: 0,
+        },
+        // Bar 2 (copied with same properties)
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 0.5,
+          velocity: 80,
+          probability: 0.7,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles different time signatures", () => {
+      const result = parseNotation("C3 1|1 @2=1", {
+        timeSigNumerator: 3,
+        timeSigDenominator: 4,
+      });
+      expect(result).toEqual([
+        // Bar 1 (3/4 time)
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 (3 beats later in 3/4)
+        {
+          pitch: 60,
+          start_time: 3,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles 6/8 time signature correctly", () => {
+      const result = parseNotation("C3 1|1 @2=1", {
+        timeSigNumerator: 6,
+        timeSigDenominator: 8,
+      });
+      expect(result).toEqual([
+        // Bar 1 (6/8 time = 3 quarter notes per bar)
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 (3 quarter notes later)
+        {
+          pitch: 60,
+          start_time: 3,
+          duration: 0.5,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles multiple notes at different beats", () => {
+      const result = parseNotation("C3 1|1 D3 1|2 E3 1|3 @2=1");
+      expect(result).toEqual([
+        // Bar 1
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 2,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2 (copied with correct offsets)
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 5,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 6,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("updates current time position after copy", () => {
+      const result = parseNotation("C3 1|1 @2=1 D3 |2");
+      // After @2=1, current time should be 2|1
+      // So |2 should mean 2|2
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 5,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    describe("warnings and errors", () => {
+      let consoleErrorSpy;
+
+      beforeEach(() => {
+        consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+      });
+
+      afterEach(() => {
+        consoleErrorSpy.mockRestore();
+      });
+
+      it("warns when copying from empty bar", () => {
+        parseNotation("C3 1|1 @3=2");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 2 is empty, nothing to copy"),
+        );
+      });
+
+      it("warns when copying previous bar at bar 1", () => {
+        parseNotation("@1=");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "Cannot copy from previous bar when at bar 1",
+          ),
+        );
+      });
+
+      it("warns when pitches are buffered before copy", () => {
+        parseNotation("C3 1|1 D3 @2=1");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "1 pitch(es) buffered but not emitted before bar copy",
+          ),
+        );
+      });
+
+      it("warns when state changed before copy", () => {
+        parseNotation("C3 1|1 v90 @2=1");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "state change won't affect anything before bar copy",
+          ),
+        );
+      });
+    });
+
+    describe("edge cases", () => {
+      it("rejects copying a bar to itself (prevents infinite loop)", () => {
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+        const result = parseNotation("C3 1|1 @1=1");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Cannot copy bar 1 to itself"),
+        );
+        // Should only have the original note, not a copy
+        expect(result).toEqual([
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1.0,
+            velocity_deviation: 0,
+          },
+        ]);
+        consoleErrorSpy.mockRestore();
+      });
+
+      it("handles empty source in range copy", () => {
+        const consoleErrorSpy = vi
+          .spyOn(console, "error")
+          .mockImplementation(() => {});
+        parseNotation("C3 1|1 @5=1-3");
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 2 is empty, nothing to copy"),
+        );
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+          expect.stringContaining("Bar 3 is empty, nothing to copy"),
+        );
+        consoleErrorSpy.mockRestore();
+      });
     });
   });
 });

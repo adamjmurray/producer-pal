@@ -22,7 +22,26 @@ start
   }
 
 element
-  = time / probability / velocity / duration / note
+  = barCopy / time / probability / velocity / duration / note
+
+barCopy
+  = '@' bar:positiveInt '=' range:barRange? {
+    if (range === null) {
+      return { barCopy: bar, sourcePrevious: true };
+    } else if (range.sourceRange !== undefined) {
+      return { barCopy: bar, sourceRange: range.sourceRange };
+    } else {
+      return { barCopy: bar, sourceBar: range.sourceBar };
+    }
+  }
+
+barRange
+  = start:positiveInt '-' end:positiveInt {
+    return { sourceRange: [start, end] };
+  }
+  / bar:positiveInt {
+    return { sourceBar: bar };
+  }
 
 time
   = bar:positiveInt "|" beat:positiveFloat {

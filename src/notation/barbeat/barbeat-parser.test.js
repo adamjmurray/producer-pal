@@ -371,4 +371,42 @@ describe("BarBeatScript Parser", () => {
       ]);
     });
   });
+
+  describe("bar copy", () => {
+    it("parses single bar copy", () => {
+      expect(parser.parse("@5=1")).toStrictEqual([
+        { barCopy: 5, sourceBar: 1 },
+      ]);
+    });
+
+    it("parses range copy", () => {
+      expect(parser.parse("@5=1-4")).toStrictEqual([
+        { barCopy: 5, sourceRange: [1, 4] },
+      ]);
+    });
+
+    it("parses previous bar copy", () => {
+      expect(parser.parse("@2=")).toStrictEqual([
+        { barCopy: 2, sourcePrevious: true },
+      ]);
+    });
+
+    it("parses chained copies", () => {
+      expect(parser.parse("@2= @3= @4=")).toStrictEqual([
+        { barCopy: 2, sourcePrevious: true },
+        { barCopy: 3, sourcePrevious: true },
+        { barCopy: 4, sourcePrevious: true },
+      ]);
+    });
+
+    it("parses mixed with notes and time", () => {
+      expect(parser.parse("C3 1|1 @2=1 D3 2|1")).toStrictEqual([
+        { pitch: 60 },
+        { bar: 1, beat: 1 },
+        { barCopy: 2, sourceBar: 1 },
+        { pitch: 62 },
+        { bar: 2, beat: 1 },
+      ]);
+    });
+  });
 });

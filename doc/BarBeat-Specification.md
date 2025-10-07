@@ -7,7 +7,7 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 ## Core Syntax
 
 ```
-[v<velocity>] [t<duration>] [p<probability>] note [note ...] bar|beat [bar|beat ...]
+[v<velocity>] [t<duration>] [p<probability>] note [note ...] bar|beat [bar|beat ...] [@<bar>=<source>]
 ```
 
 ### Components:
@@ -47,6 +47,15 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Octave is a signed integer (e.g., `C3`, `A#-1`)
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
   - Result must be in valid MIDI range: 0–127
+
+- **Bar Copy (`@N=`, `@N=M`, `@N=M-P`)**
+  - Duplicates bars of notes to other positions
+  - `@N=` copies previous bar to bar N
+  - `@N=M` copies bar M to bar N
+  - `@N=M-P` copies range of bars M through P to bars starting at N
+  - Updates current time position to N|1
+  - Does not emit buffered pitches (clears buffer instead)
+  - See Bar Copy section for detailed behavior
 
 - **Events**
   - Multiple notes at same time separated by whitespace
@@ -97,6 +106,91 @@ All components are stateful:
 - **Velocity**: Set with `v<value>` or `v<min>-<max>`, applies to following
   notes until changed
 - **Duration**: Set with `t<value>`, applies to following notes until changed
+
+---
+
+## Bar Copy
+
+Bar copy allows duplicating bars of MIDI notes using concise notation instead of rewriting patterns.
+
+### Syntax
+
+```
+@N=         # Copy previous bar to bar N
+@N=M        # Copy bar M to bar N
+@N=M-P      # Copy bars M through P to bars N through N+(P-M)
+```
+
+The `@` prefix distinguishes copy operations from time positions. All bar numbers are positive integers (1-based).
+
+### Examples
+
+```
+# Copy previous bar
+C1 1|1 |2 |3 |4     # Bar 1: kick pattern
+@2=                 # Bar 2: same kick pattern
+
+# Copy specific bar
+C1 1|1 |2 |3 |4
+@5=1                # Bar 5: copy bar 1
+
+# Copy range
+C1 1|1 |2 |3 |4
+D1 1|2 |4
+@5=1-2              # Bars 5-6: copy bars 1-2
+
+# Chain copies
+C1 1|1
+@2= @3= @4=         # Bars 2, 3, 4 each copy previous
+```
+
+### Behavior
+
+- **Copies ALL notes** from source bar(s)
+- Notes are shifted to destination bar(s) with correct time offsets
+- Overlays on existing notes in destination (like merge mode)
+- **Updates time position** to start of destination bar (N|1)
+- **Not a time position**: Does not emit buffered pitches
+
+### State Handling
+
+- **Pitch buffer**: Cleared (but NOT emitted)
+- **State persists**: velocity, duration, probability unchanged
+- **Time**: Updates to bar N, beat 1
+- Can use beat shorthand after copy: `@2=1` then `|2` goes to 2|2
+
+### Composition
+
+```
+C1 1|1 |2 |3 |4     # Define bar 1
+@2=1                # Copy to bar 2, time now at 2|1
+D1 |2 |4            # Add to bar 2 at beats 2 and 4 (overlay)
+```
+
+Bar 2 contains: C1 on all beats + D1 on beats 2 & 4
+
+### Accumulation
+
+```
+C1 1|1              # Bar 1: C1 on beat 1
+@2=                 # Bar 2: C1 on beat 1, time at 2|1
+D1 |2               # Bar 2: C1 on beat 1 + D1 on beat 2
+@3=                 # Bar 3: C1 on beat 1 + D1 on beat 2 (copies everything)
+```
+
+Each copy includes all notes accumulated in the source bar.
+
+### Warnings
+
+The parser warns about problematic bar copy usage:
+
+- **Empty source bar**: `"Bar N is empty, nothing to copy"`
+- **Invalid source bar**: `"Cannot copy from bar 0 (no such bar)"`
+- **Previous bar at bar 1**: `"Cannot copy from previous bar when at bar 1"`
+- **Dangling pitches**: `"N pitch(es) buffered but not emitted before bar copy"`
+- **Dangling state**: `"state change won't affect anything before bar copy"`
+
+These are console warnings, not errors - parsing completes successfully.
 
 ---
 
