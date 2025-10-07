@@ -18,7 +18,8 @@
 
 start
   = _ head:element? tail:(WS+ element)* _ {
-    return [head, ...tail.map(t => t[1])].filter(Boolean);
+    const elements = [head, ...tail.map(t => t[1])].filter(Boolean);
+    return elements.flat();
   }
 
 element
@@ -47,11 +48,16 @@ barRange
   }
 
 time
-  = bar:positiveInt "|" beat:positiveFloat {
-    return { bar, beat };
+  = bar:positiveInt "|" beats:beatList {
+    return beats.map(beat => ({ bar, beat }));
   }
-  / "|" beat:positiveFloat {
-    return { bar: null, beat };
+  / "|" beats:beatList {
+    return beats.map(beat => ({ bar: null, beat }));
+  }
+
+beatList
+  = head:positiveFloat tail:("," positiveFloat)* {
+    return [head, ...tail.map(t => t[1])];
   }
 
 probability

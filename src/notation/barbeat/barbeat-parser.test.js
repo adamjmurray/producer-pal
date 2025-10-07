@@ -413,4 +413,99 @@ describe("BarBeatScript Parser", () => {
       ]);
     });
   });
+
+  describe("comma-separated beat lists", () => {
+    it("parses beat list with explicit bar", () => {
+      expect(parser.parse("1|1,2,3,4")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 2 },
+        { bar: 1, beat: 3 },
+        { bar: 1, beat: 4 },
+      ]);
+    });
+
+    it("parses beat list with bar shorthand", () => {
+      expect(parser.parse("|1,2,3,4")).toStrictEqual([
+        { bar: null, beat: 1 },
+        { bar: null, beat: 2 },
+        { bar: null, beat: 3 },
+        { bar: null, beat: 4 },
+      ]);
+    });
+
+    it("parses beat list with floating point beats", () => {
+      expect(parser.parse("1|1,1.5,2,2.5")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 1.5 },
+        { bar: 1, beat: 2 },
+        { bar: 1, beat: 2.5 },
+      ]);
+    });
+
+    it("parses single beat (list of one)", () => {
+      expect(parser.parse("1|1")).toStrictEqual([{ bar: 1, beat: 1 }]);
+    });
+
+    it("parses beat list with two beats", () => {
+      expect(parser.parse("1|1,3")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 3 },
+      ]);
+    });
+
+    it("parses multiple beat lists in sequence", () => {
+      expect(parser.parse("1|1,3 2|1,3")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 3 },
+        { bar: 2, beat: 1 },
+        { bar: 2, beat: 3 },
+      ]);
+    });
+
+    it("parses beat lists mixed with single beats", () => {
+      expect(parser.parse("1|1,2 |3 |4")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 2 },
+        { bar: null, beat: 3 },
+        { bar: null, beat: 4 },
+      ]);
+    });
+
+    it("parses beat lists with notes", () => {
+      expect(parser.parse("C1 1|1,2,3,4")).toStrictEqual([
+        { pitch: 36 },
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 2 },
+        { bar: 1, beat: 3 },
+        { bar: 1, beat: 4 },
+      ]);
+    });
+
+    it("does not allow whitespace around commas", () => {
+      expect(() => parser.parse("1|1, 2, 3")).toThrow();
+      expect(() => parser.parse("1|1 ,2 ,3")).toThrow();
+    });
+
+    it("parses complex drum pattern with beat lists", () => {
+      expect(
+        parser.parse("C1 1|1,3 D1 |2,4 F#1 |1,1.5,2,2.5,3,3.5,4,4.5"),
+      ).toStrictEqual([
+        { pitch: 36 }, // C1 - kick
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 3 },
+        { pitch: 38 }, // D1 - snare
+        { bar: null, beat: 2 },
+        { bar: null, beat: 4 },
+        { pitch: 42 }, // F#1 - hi-hat
+        { bar: null, beat: 1 },
+        { bar: null, beat: 1.5 },
+        { bar: null, beat: 2 },
+        { bar: null, beat: 2.5 },
+        { bar: null, beat: 3 },
+        { bar: null, beat: 3.5 },
+        { bar: null, beat: 4 },
+        { bar: null, beat: 4.5 },
+      ]);
+    });
+  });
 });

@@ -132,7 +132,7 @@ Write MIDI using the bar|beat notation syntax:
 [v0-127] [t<duration>] [p0-1] note(s) bar|beat
 
 - Notes emit at time positions (bar|beat)
-- bar|beat: Position relative to clip start ("|beat" reuses current bar)
+- bar|beat: Position relative to clip start ("|beat" reuses current bar, beat can be a comma-separated list)
 - v<velocity>: Note intensity from 0-127 (v80-120 = random range, v0 = DELETE in merge mode only)
 - t<duration>: Note length in beats (default: 1.0)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
@@ -145,10 +145,16 @@ Tip: Group by instrument (e.g., all kick notes, then all snare) to maximize pitc
 Examples:
 \`\`\`
 C3 E3 G3 1|1 // chord at bar 1 beat 1
-C1 1|1 |2 |3 |4 // kick on every beat (pitch persistence)
+C1 1|1,2,3,4 // kick on every beat (comma-separated beats)
+C1 1|1 |2 |3 |4 // same as above (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 v0 Gb1 2|1.5 // delete specific note (merge mode only)
+\`\`\`
+
+Drum pattern shorthand with beat lists:
+\`\`\`
+C1 1|1,3 D1 |2,4 t.5 F#1 |1,1.5,2,2.5,3,3.5,4,4.5 // kick, snare, hi-hats
 \`\`\`
 
 Bar copy example:
