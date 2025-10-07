@@ -49,8 +49,14 @@ See `doc/Architecture.md` for detailed system design.
 
 - **Null checks**: Prefer `== null` over `=== null` or `=== undefined`
 
-- **Playback state**: Return optimistic results for playback operations (don't
-  rely on immediate state reads)
+- **Produce Pal System Prompt maintenance**: This is returned in the
+  ppal-connect tool in `src/tools/workflow/connect.js`. It needs to be adjusted
+  after changes to bar|beat notation and when changing behavior that invalidates
+  any of its instructions.
+
+- **Context window usage optimization**: The Producer Pal System Prompt, tool
+  and parameter descriptions in `.def.js` files, and tool results need to be
+  very short, clear, and focused on the most useful and relevant info.
 
 ## Testing After Changes
 
