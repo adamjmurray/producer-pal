@@ -138,6 +138,7 @@ Write MIDI using the bar|beat notation syntax:
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
+- @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range (copy buffer clears on next non-@ element)
 
 Tip: Group by instrument (e.g., all kick notes, then all snare) to maximize pitch persistence.
 
@@ -148,8 +149,15 @@ C1 1|1 |2 |3 |4 // kick on every beat (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 v0 Gb1 2|1.5 // delete specific note (merge mode only)
-C1 1|1 @2= @3= @4= // bar copy: @N= (previous), @N=M (bar M), @N=M-P (range), @= (clear), auto-clears on next non-@ element
 \`\`\`
+
+Bar copy example:
+\`\`\`
+C1 1|1 |2 |3 |4 @2= @3= // Kick pattern bar 1, copied to bars 2-3
+D1 1|2 |4 @3=1 // Snare pattern bar 1, copied (without kick) to bar 3
+\`\`\`
+
+Note: Use \`@=\` to explicitly clear the copy buffer
 
 ## Workflow
 
