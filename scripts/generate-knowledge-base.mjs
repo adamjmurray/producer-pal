@@ -7,6 +7,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 const outputDir = path.join(projectRoot, "knowledge-base");
 
+const IGNORE_PATTERNS = [/^\.DS_Store$/, /\.bak$/];
+
 const FLAT_SEP = "--";
 
 function flattenPath(pathStr) {
@@ -174,8 +176,8 @@ async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
     const fullPath = path.join(dir, entry.name);
     const relativePath = path.relative(baseDir, fullPath);
 
-    // Skip .DS_Store files
-    if (entry.name === ".DS_Store") {
+    // Skip files matching ignore patterns
+    if (IGNORE_PATTERNS.some((pattern) => pattern.test(entry.name))) {
       continue;
     }
 
