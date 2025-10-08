@@ -56,7 +56,6 @@ export function parseNotation(barBeatExpression, options = {}) {
 
     // Bar copy tracking: Map bar number -> array of note metadata
     const notesByBar = new Map();
-    let postBarCopyState = false; // Track if we're after barCopy operations
 
     const events = [];
 
@@ -133,7 +132,6 @@ export function parseNotation(barBeatExpression, options = {}) {
           pitchGroupStarted = false;
           stateChangedSinceLastPitch = false;
           stateChangedAfterEmission = false;
-          postBarCopyState = true;
           continue;
         }
 
@@ -194,7 +192,6 @@ export function parseNotation(barBeatExpression, options = {}) {
         pitchGroupStarted = false;
         stateChangedSinceLastPitch = false;
         stateChangedAfterEmission = false;
-        postBarCopyState = true;
       } else if (element.barCopy !== undefined) {
         // BAR COPY - copy notes from source bar(s) to destination
 
@@ -322,14 +319,13 @@ export function parseNotation(barBeatExpression, options = {}) {
         pitchGroupStarted = false;
         stateChangedSinceLastPitch = false;
         stateChangedAfterEmission = false;
-        postBarCopyState = true;
-      } else if (element.clearCopy) {
-        // CLEAR COPY - set flag for auto-clear on next non-barCopy element
+      } else if (element.clearBuffer) {
+        // CLEAR BUFFER - immediately clear the copy buffer
 
         // Warn if pitches or state buffered but not emitted
         if (currentPitches.length > 0) {
           console.error(
-            `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before @=`,
+            `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before @clear`,
           );
         }
         if (
@@ -337,24 +333,20 @@ export function parseNotation(barBeatExpression, options = {}) {
           stateChangedAfterEmission
         ) {
           console.error(
-            "Warning: state change won't affect anything before @=",
+            "Warning: state change won't affect anything before @clear",
           );
         }
+
+        // Clear the copy buffer immediately
+        notesByBar.clear();
 
         // Clear pitch buffer (don't emit) and reset flags
         currentPitches = [];
         pitchGroupStarted = false;
         stateChangedSinceLastPitch = false;
         stateChangedAfterEmission = false;
-        postBarCopyState = true;
       } else if (element.bar !== undefined && element.beat !== undefined) {
         // TIME POSITION - emit notes
-
-        // Auto-clear after bar copy
-        if (postBarCopyState) {
-          notesByBar.clear();
-          postBarCopyState = false;
-        }
 
         // Update current time
         if (element.bar === null) {
@@ -437,12 +429,6 @@ export function parseNotation(barBeatExpression, options = {}) {
       } else if (element.pitch !== undefined) {
         // PITCH - buffer it
 
-        // Auto-clear after bar copy
-        if (postBarCopyState) {
-          notesByBar.clear();
-          postBarCopyState = false;
-        }
-
         // First pitch after a time position clears the buffer
         if (!pitchGroupStarted) {
           currentPitches = [];
@@ -473,12 +459,6 @@ export function parseNotation(barBeatExpression, options = {}) {
       } else if (element.velocity !== undefined) {
         // STATE UPDATE - velocity (single)
 
-        // Auto-clear after bar copy
-        if (postBarCopyState) {
-          notesByBar.clear();
-          postBarCopyState = false;
-        }
-
         currentVelocity = element.velocity;
         currentVelocityMin = null;
         currentVelocityMax = null;
@@ -508,12 +488,6 @@ export function parseNotation(barBeatExpression, options = {}) {
       ) {
         // STATE UPDATE - velocity (range)
 
-        // Auto-clear after bar copy
-        if (postBarCopyState) {
-          notesByBar.clear();
-          postBarCopyState = false;
-        }
-
         currentVelocityMin = element.velocityMin;
         currentVelocityMax = element.velocityMax;
         currentVelocity = null;
@@ -541,12 +515,6 @@ export function parseNotation(barBeatExpression, options = {}) {
       } else if (element.duration !== undefined) {
         // STATE UPDATE - duration
 
-        // Auto-clear after bar copy
-        if (postBarCopyState) {
-          notesByBar.clear();
-          postBarCopyState = false;
-        }
-
         currentDuration = element.duration;
 
         // Track if state changed after pitch in current group
@@ -569,12 +537,6 @@ export function parseNotation(barBeatExpression, options = {}) {
         }
       } else if (element.probability !== undefined) {
         // STATE UPDATE - probability
-
-        // Auto-clear after bar copy
-        if (postBarCopyState) {
-          notesByBar.clear();
-          postBarCopyState = false;
-        }
 
         currentProbability = element.probability;
 

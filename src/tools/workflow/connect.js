@@ -144,7 +144,7 @@ Write MIDI using the bar|beat notation syntax:
 - copying bars:
   - @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range
   - @N-M= copies previous bar to range N-M; @N-M=P copies bar P to range N-M
-  - chain @ operations to reuse the same source; copy buffer clears on next non-@ element
+  - @clear clears the copy buffer for advanced layering use cases
 
 ## Examples
 
@@ -165,12 +165,11 @@ For repetitive patterns, use copy features and pitch persistence:
 - Add all notes/drums you want before copying the bar
 
 \`\`\`
-C1 1|1,2,3,4             // kick bar 1
-D1 |2,4                  // snare bar 1
-t.5 F#1 |1.5,2.5,3.5,4.5 // hats bar 1
-@2-3= @5-7=              // copies bar 1 to 2,3,5,6,7
-C1 4|3.5 D1 |4           // bar 4 fill (bar 1 buffer cleared)
-@8= @12=                 // copies bar 4 to 8,12
+C1 1|1,3 D1 |2,4 // bar 1
+@2-3=1           // bar 1 -> 2,3
+C1 4|1,3.5 D1 |4 // bar 4
+@5-7=1           // bar 1 -> 5,6,7
+@8=4             // bar 4 -> 8
 \`\`\`
 
 For multi-bar phrases, use cross-bar beat lists then copy the range:
@@ -191,7 +190,7 @@ D1 1|4,6           // snare accents across bars 1-2
   - Tracks need to follow Arrangement (automatic on playback with "play-arrangement")
 - Check for instruments before creating MIDI clips
 - Place notes musically - not everything on the beat
-- Use velocity dynamics (pp=v40, p=v60, mf=v80, f=v100, ff=v120) to avoid robotic repetition 
+- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) to avoid robotic repetition
 - Fills need rhythm and space, not machine-gun density - accent key hits with velocity
 - Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
 - After user move/deletes objects in Live, call ppal-read-live-set to resync

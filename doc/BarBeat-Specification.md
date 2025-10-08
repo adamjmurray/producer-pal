@@ -124,7 +124,7 @@ rewriting patterns.
 @N=         # Copy previous bar to bar N
 @N=M        # Copy bar M to bar N
 @N=M-P      # Copy bars M through P to bars N through N+(P-M)
-@=          # Clear the copy buffer (forget all bars)
+@clear      # Clear the copy buffer (forget all bars)
 ```
 
 The `@` prefix distinguishes copy operations from time positions. All bar
@@ -179,7 +179,7 @@ When a bar copy operation executes:
 - **Velocity, duration, probability**: Unchanged
 - **Time position**:
   - `@N=` operations: Updates to N|1
-  - `@=` operation: Stays at current position (does not update time)
+  - `@clear` operation: Stays at current position (does not update time)
 
 #### Beat Shorthand
 
@@ -212,7 +212,7 @@ Bar copy operations interact with two distinct buffers in the parser:
 - Pitches accumulate with their state (velocity, probability, duration) as
   they're parsed
 - Emitted together when a time position (`bar|beat`) is encountered
-- Cleared (but NOT emitted) by bar copy operations (`@N=`, `@=`)
+- Cleared (but NOT emitted) by bar copy operations (`@N=`, `@clear`)
 
 **Example**:
 
@@ -231,44 +231,34 @@ position, so they're discarded by the `@2=` operation.
 
 - Populated when notes are emitted at time positions
 - Used as source data for bar copy operations
-- Automatically cleared after bar copy to prevent unintended accumulation
+- Persists until explicitly cleared with `@clear`
 
-##### Auto-Clear Mechanism
-
-The copy buffer automatically clears after bar copy operations to ensure each
-"section" of notation starts fresh:
-
-**Trigger**: The first non-barCopy element after `@N=` or `@=` operations
-
-- Non-barCopy elements: pitch, time position, velocity, duration, probability
-- Does NOT clear between consecutive `@N=...` operations
-
-**Example**:
-
-```
-C1 1|1 @2= @3=     # Bars 1-3 all contain C1 (copy buffer intact)
-E3 4|1             # E3 triggers auto-clear, bars 1-3 forgotten
-@5=1               # Warning: Bar 1 is empty (was auto-cleared)
-```
-
-### Clear Copy (`@=`)
+### Clear Buffer (`@clear`)
 
 Explicitly clear the copy buffer:
 
-- **Behavior**: Clears all bars from copy buffer, acts as a barCopy operation
-  for auto-clear purposes
-- **Use case**: "Forget" preliminary bars and start fresh for next copyable
-  section
+- **Behavior**: Immediately clears all bars from copy buffer
+- **Use case**: "Forget" bars and start fresh for next copyable section
 - **Does not update time**: Unlike `@N=`, stays at current bar/beat position
 - **Clears pitch buffer**: Same as `@N=`
 
 **Example**:
 
 ```
+C1 1|1 @2=         # Bars 1-2 have C1 (both in copy buffer)
+E3 4|1             # Bar 4 has E3 (bars 1-2 still in buffer)
+@5=1               # Bar 5 copies C1 from bar 1 (still available)
+@clear             # Clear the copy buffer
+@6=1               # Warning: Bar 1 is empty (was cleared by @clear)
+```
+
+**Example with immediate clearing**:
+
+```
 C1 1|1 D1 1|2      # Bar 1 with C1 and D1 (in copy buffer)
-@=                 # Explicitly forget bar 1 (copy buffer cleared)
+@clear             # Immediately forget bar 1 (copy buffer cleared)
 E3 2|1             # Bar 2 with E3 (bar 1 not copyable)
-@3=1               # Warning: Bar 1 is empty (was cleared by @=)
+@3=1               # Warning: Bar 1 is empty (was cleared by @clear)
 ```
 
 ### Warnings
@@ -278,9 +268,9 @@ The parser warns about problematic buffer states:
 #### Pitch Buffer Warnings
 
 - **Dangling pitches**: `"N pitch(es) buffered but not emitted before bar copy"`
-  or `"before @="`
+  or `"before @clear"`
 - **Dangling state**: `"state change won't affect anything before bar copy"` or
-  `"before @="`
+  `"before @clear"`
 
 #### Copy Buffer Warnings
 

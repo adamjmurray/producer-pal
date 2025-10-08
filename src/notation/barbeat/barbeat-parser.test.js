@@ -391,8 +391,8 @@ describe("BarBeatScript Parser", () => {
       ]);
     });
 
-    it("parses clear copy", () => {
-      expect(parser.parse("@=")).toStrictEqual([{ clearCopy: true }]);
+    it("parses clear buffer", () => {
+      expect(parser.parse("@clear")).toStrictEqual([{ clearBuffer: true }]);
     });
 
     it("parses chained copies", () => {

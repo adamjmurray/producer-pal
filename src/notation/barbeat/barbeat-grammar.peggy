@@ -26,8 +26,8 @@ element
   = barCopy / time / probability / velocity / duration / note
 
 barCopy
-  = '@' '=' {
-    return { clearCopy: true };
+  = '@' 'clear' {
+    return { clearBuffer: true };
   }
   / '@' dest:barOrRange '=' source:barOrRange? {
     const result = {};
