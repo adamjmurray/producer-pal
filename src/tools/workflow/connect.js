@@ -144,6 +144,7 @@ Write MIDI using the bar|beat notation syntax:
 - copying bars:
   - @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range
   - @N-M= copies previous bar to range N-M; @N-M=P copies bar P to range N-M
+  - @N-M=P-Q tiles bars P-Q across range N-M (repeating multi-bar patterns)
   - @clear clears the copy buffer for advanced layering use cases
 
 ## Examples
@@ -172,13 +173,13 @@ C1 4|1,3.5 D1 |4 // bar 4
 @8=4             // bar 4 -> 8
 \`\`\`
 
-For multi-bar phrases, use cross-bar beat lists then copy the range:
+For multi-bar phrases, use cross-bar beat lists then tile the range:
 
 \`\`\`
 // 2-bar syncopated phrase
 C1 1|1,3.5,5,7.5,8 // kick pattern across bars 1-2
 D1 1|4,6           // snare accents across bars 1-2
-@3=1-2 @5=1-2      // copy 2-bar phrase to bars 3-4, 5-6
+@3-8=1-2           // tile 2-bar phrase across bars 3-8 (3 complete tiles)
 \`\`\`
 
 ## Workflow

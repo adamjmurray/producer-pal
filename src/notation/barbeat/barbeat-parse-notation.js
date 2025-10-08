@@ -79,13 +79,117 @@ export function parseNotation(barBeatExpression, options = {}) {
           continue;
         }
 
-        // Check if source is a range (phase 2 feature, not supported yet)
+        // Handle multi-bar source range tiling
         if (element.sourceRange !== undefined) {
-          const [srcStart, srcEnd] = element.sourceRange;
-          console.error(
-            `Warning: Multi-bar source ranges not supported yet: @${destStart}-${destEnd}=${srcStart}-${srcEnd}`,
-          );
-          continue;
+          const [sourceStart, sourceEnd] = element.sourceRange;
+
+          // Validate source range
+          if (sourceStart <= 0 || sourceEnd <= 0) {
+            console.error(
+              `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (invalid bar numbers)`,
+            );
+            continue;
+          }
+          if (sourceStart > sourceEnd) {
+            console.error(
+              `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (start > end)`,
+            );
+            continue;
+          }
+
+          // Warn if pitches or state buffered but not emitted
+          if (currentPitches.length > 0) {
+            console.error(
+              `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
+            );
+          }
+          if (
+            (stateChangedSinceLastPitch && pitchGroupStarted) ||
+            stateChangedAfterEmission
+          ) {
+            console.error(
+              "Warning: state change won't affect anything before bar copy",
+            );
+          }
+
+          // Tile source range across destination
+          const sourceCount = sourceEnd - sourceStart + 1;
+          const barDuration =
+            timeSigDenominator != null
+              ? beatsPerBar * (4 / timeSigDenominator)
+              : beatsPerBar;
+
+          let destBar = destStart;
+          let sourceOffset = 0;
+          let copiedAny = false;
+
+          while (destBar <= destEnd) {
+            const sourceBar = sourceStart + (sourceOffset % sourceCount);
+
+            // Skip copying a bar to itself
+            if (sourceBar === destBar) {
+              console.error(
+                `Warning: Skipping copy of bar ${sourceBar} to itself`,
+              );
+              destBar++;
+              sourceOffset++;
+              continue;
+            }
+
+            // Get source notes
+            const sourceNotes = notesByBar.get(sourceBar);
+            if (sourceNotes == null || sourceNotes.length === 0) {
+              console.error(
+                `Warning: Bar ${sourceBar} is empty, nothing to copy`,
+              );
+              destBar++;
+              sourceOffset++;
+              continue;
+            }
+
+            // Copy and shift notes
+            const destinationBarStart = (destBar - 1) * barDuration;
+
+            for (const sourceNote of sourceNotes) {
+              const copiedNote = {
+                pitch: sourceNote.pitch,
+                start_time: destinationBarStart + sourceNote.relativeTime,
+                duration: sourceNote.duration,
+                velocity: sourceNote.velocity,
+                probability: sourceNote.probability,
+                velocity_deviation: sourceNote.velocity_deviation,
+              };
+
+              events.push(copiedNote);
+
+              // Track copied note in destination bar
+              if (!notesByBar.has(destBar)) {
+                notesByBar.set(destBar, []);
+              }
+              notesByBar.get(destBar).push({
+                ...copiedNote,
+                relativeTime: sourceNote.relativeTime,
+                originalBar: destBar,
+              });
+            }
+
+            copiedAny = true;
+            destBar++;
+            sourceOffset++;
+          }
+
+          if (copiedAny) {
+            // Update current time to start of first destination bar
+            currentTime = { bar: destStart, beat: 1 };
+            hasExplicitBarNumber = true;
+          }
+
+          // Clear pitch buffer (don't emit) and reset flags
+          currentPitches = [];
+          pitchGroupStarted = false;
+          stateChangedSinceLastPitch = false;
+          stateChangedAfterEmission = false;
+          continue; // Skip single-source logic below
         }
 
         // Determine single source bar
