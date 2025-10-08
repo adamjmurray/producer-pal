@@ -48,12 +48,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - MIDI pitch is computed as `(octave + 2) * 12 + pitchClassValue`
   - Result must be in valid MIDI range: 0–127
 
-- **Bar Copy (`@N=`, `@N=M`, `@N=M-P`)**
+- **Bar Copy (`@N=`, `@N=M`, `@N=M-P`, `@N-M=`, `@N-M=P`, `@N-M=P-Q`)**
   - Duplicates bars of notes to other positions
-  - `@N=` copies previous bar to bar N
-  - `@N=M` copies bar M to bar N
-  - `@N=M-P` copies range of bars M through P to bars starting at N
-  - Updates current time position to N|1
+  - Single destination: `@N=` (previous), `@N=M` (specific bar), `@N=M-P` (source range)
+  - Range destination: `@N-M=` (previous), `@N-M=P` (single source), `@N-M=P-Q` (tiling)
+  - Updates current time position to destination start
   - Does not emit buffered pitches (clears buffer instead)
   - See Bar Copy section for detailed behavior
 
@@ -121,9 +120,17 @@ rewriting patterns.
 ### Syntax
 
 ```
+# Single destination
 @N=         # Copy previous bar to bar N
 @N=M        # Copy bar M to bar N
 @N=M-P      # Copy bars M through P to bars N through N+(P-M)
+
+# Range destination
+@N-M=       # Copy previous bar to range N-M
+@N-M=P      # Copy bar P to range N-M
+@N-M=P-Q    # Tile bars P-Q across range N-M (repeating pattern)
+
+# Clear buffer
 @clear      # Clear the copy buffer (forget all bars)
 ```
 
@@ -149,6 +156,18 @@ D1 1|2 |4
 # Chain copies
 C1 1|1
 @2= @3= @4=         # Bars 2, 3, 4 each copy previous
+
+# Copy to range (destination range)
+C1 1|1 |2 |3 |4
+@2-5=1              # Bars 2-5: all copy bar 1
+
+# Tile multi-bar pattern
+C1 1|1 D1 2|1
+@3-10=1-2           # Tile 2-bar pattern across bars 3-10 (4 complete tiles)
+
+# Partial tiling (uneven division)
+C1 1|1 D1 2|1 E1 3|1
+@4-10=1-3           # Tile 3-bar pattern: bars 4-6, 7-9, 10 (partial)
 ```
 
 ### Behavior
@@ -164,6 +183,21 @@ positions) and creates new note events at the destination bar(s):
   existing notes)
 - **Not a time position**: Does not emit buffered pitches (clears pitch buffer
   instead)
+
+#### Tiling Behavior (Multi-Bar Source Ranges)
+
+When the source is a multi-bar range (`@N-M=P-Q`), the pattern **tiles** across
+the destination range:
+
+- **Repeating pattern**: Source bars repeat using modulo wrapping
+  - Example: `@3-10=1-2` copies bar 1→3, bar 2→4, bar 1→5, bar 2→6, etc.
+- **Partial tiles**: When destination size is not evenly divisible by source size
+  - Example: `@3-9=1-2` tiles 3 complete times (bars 3-8), then partial (bar 9 gets bar 1 only)
+- **Self-copy prevention**: Skips copying when source bar equals destination bar
+  - Example: `@1-10=5-6` skips bars 5 and 6 when tiling reaches them
+  - Warning issued for each skipped self-copy
+- **Source truncation**: When destination is smaller than source
+  - Example: `@3-4=1-5` only copies bars 1-2 (destination has room for 2 bars)
 
 ### State Handling
 
@@ -346,17 +380,20 @@ The Peggy grammar (`barbeat-grammar.peggy`) returns an array of element objects:
 Element[]
 
 type Element =
-  | { pitch: number }                                    // Note (0-127)
-  | { bar: number, beat: number }                        // Time with bar
-  | { bar: null, beat: number }                          // Time without bar (beat shorthand)
-  | { velocity: number }                                 // Single velocity (0-127)
-  | { velocityMin: number, velocityMax: number }         // Velocity range (0-127)
-  | { duration: number }                                 // Duration in beats
-  | { probability: number }                              // Probability (0.0-1.0)
-  | { barCopy: number, sourcePrevious: true }            // @N= (copy previous bar)
-  | { barCopy: number, sourceBar: number }               // @N=M (copy bar M)
-  | { barCopy: number, sourceRange: [number, number] }   // @N=M-P (copy range)
-  | { clearCopy: true }                                  // @= (clear copy buffer)
+  | { pitch: number }                                                // Note (0-127)
+  | { bar: number, beat: number }                                    // Time with bar
+  | { bar: null, beat: number }                                      // Time without bar (beat shorthand)
+  | { velocity: number }                                             // Single velocity (0-127)
+  | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
+  | { duration: number }                                             // Duration in beats
+  | { probability: number }                                          // Probability (0.0-1.0)
+  | { barCopy: number, sourcePrevious: true }                        // @N= (copy previous)
+  | { barCopy: number, sourceBar: number }                           // @N=M (copy bar M)
+  | { barCopy: number, sourceRange: [number, number] }               // @N=M-P (copy source range)
+  | { barCopyRange: [number, number], sourcePrevious: true }         // @N-M= (copy previous to range)
+  | { barCopyRange: [number, number], sourceBar: number }            // @N-M=P (copy bar to range)
+  | { barCopyRange: [number, number], sourceRange: [number, number] } // @N-M=P-Q (tile pattern)
+  | { clearBuffer: true }                                            // @clear (clear copy buffer)
 ```
 
 ### Notes
