@@ -61,7 +61,141 @@ export function parseNotation(barBeatExpression, options = {}) {
     const events = [];
 
     for (const element of ast) {
-      if (element.barCopy !== undefined) {
+      if (element.barCopyRange !== undefined) {
+        // BAR COPY RANGE - copy notes from single source to multiple destinations
+
+        const [destStart, destEnd] = element.barCopyRange;
+
+        // Validate destination range
+        if (destStart <= 0 || destEnd <= 0) {
+          console.error(
+            `Warning: Invalid destination range @${destStart}-${destEnd}= (invalid bar numbers)`,
+          );
+          continue;
+        }
+        if (destStart > destEnd) {
+          console.error(
+            `Warning: Invalid destination range @${destStart}-${destEnd}= (start > end)`,
+          );
+          continue;
+        }
+
+        // Check if source is a range (phase 2 feature, not supported yet)
+        if (element.sourceRange !== undefined) {
+          const [srcStart, srcEnd] = element.sourceRange;
+          console.error(
+            `Warning: Multi-bar source ranges not supported yet: @${destStart}-${destEnd}=${srcStart}-${srcEnd}`,
+          );
+          continue;
+        }
+
+        // Determine single source bar
+        let sourceBar;
+        if (element.sourcePrevious) {
+          sourceBar = destStart - 1;
+          if (sourceBar <= 0) {
+            console.error(
+              `Warning: Cannot copy from previous bar when destination starts at bar ${destStart}`,
+            );
+            continue;
+          }
+        } else if (element.sourceBar !== undefined) {
+          sourceBar = element.sourceBar;
+          if (sourceBar <= 0) {
+            console.error(
+              `Warning: Cannot copy from bar ${sourceBar} (no such bar)`,
+            );
+            continue;
+          }
+        }
+
+        // Warn if pitches or state buffered but not emitted
+        if (currentPitches.length > 0) {
+          console.error(
+            `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
+          );
+        }
+        if (
+          (stateChangedSinceLastPitch && pitchGroupStarted) ||
+          stateChangedAfterEmission
+        ) {
+          console.error(
+            "Warning: state change won't affect anything before bar copy",
+          );
+        }
+
+        // Get source notes
+        const sourceNotes = notesByBar.get(sourceBar);
+        if (sourceNotes == null || sourceNotes.length === 0) {
+          console.error(`Warning: Bar ${sourceBar} is empty, nothing to copy`);
+          // Clear pitch buffer and continue
+          currentPitches = [];
+          pitchGroupStarted = false;
+          stateChangedSinceLastPitch = false;
+          stateChangedAfterEmission = false;
+          postBarCopyState = true;
+          continue;
+        }
+
+        // Copy to each destination bar
+        const barDuration =
+          timeSigDenominator != null
+            ? beatsPerBar * (4 / timeSigDenominator)
+            : beatsPerBar;
+
+        let copiedAny = false;
+
+        for (let destBar = destStart; destBar <= destEnd; destBar++) {
+          // Skip copying a bar to itself
+          if (sourceBar === destBar) {
+            console.error(
+              `Warning: Skipping copy of bar ${sourceBar} to itself`,
+            );
+            continue;
+          }
+
+          // Copy and shift notes
+          const destinationBarStart = (destBar - 1) * barDuration;
+
+          for (const sourceNote of sourceNotes) {
+            const copiedNote = {
+              pitch: sourceNote.pitch,
+              start_time: destinationBarStart + sourceNote.relativeTime,
+              duration: sourceNote.duration,
+              velocity: sourceNote.velocity,
+              probability: sourceNote.probability,
+              velocity_deviation: sourceNote.velocity_deviation,
+            };
+
+            events.push(copiedNote);
+
+            // Track copied note in destination bar
+            if (!notesByBar.has(destBar)) {
+              notesByBar.set(destBar, []);
+            }
+            notesByBar.get(destBar).push({
+              ...copiedNote,
+              relativeTime: sourceNote.relativeTime,
+              originalBar: destBar,
+            });
+          }
+
+          copiedAny = true;
+        }
+
+        if (copiedAny) {
+          // Update current time to start of first destination bar
+          currentTime = { bar: destStart, beat: 1 };
+          hasExplicitBarNumber = true;
+        }
+
+        // Clear pitch buffer (don't emit) and reset flags
+        currentPitches = [];
+        pitchGroupStarted = false;
+        stateChangedSinceLastPitch = false;
+        stateChangedAfterEmission = false;
+        postBarCopyState = true;
+      } else if (element.barCopy !== undefined) {
         // BAR COPY - copy notes from source bar(s) to destination
 
         // Determine source bar(s)

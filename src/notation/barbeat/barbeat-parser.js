@@ -247,20 +247,32 @@ function peg$parse(input, options) {
   function peg$f1() {
     return { clearCopy: true };
   }
-  function peg$f2(bar, range) {
-    if (range === null) {
-      return { barCopy: bar, sourcePrevious: true };
-    } else if (range.sourceRange !== undefined) {
-      return { barCopy: bar, sourceRange: range.sourceRange };
+  function peg$f2(dest, source) {
+    const result = {};
+
+    // Process destination
+    if (dest.range !== undefined) {
+      result.barCopyRange = dest.range;
     } else {
-      return { barCopy: bar, sourceBar: range.sourceBar };
+      result.barCopy = dest.bar;
     }
+
+    // Process source
+    if (source === null) {
+      result.sourcePrevious = true;
+    } else if (source.range !== undefined) {
+      result.sourceRange = source.range;
+    } else {
+      result.sourceBar = source.bar;
+    }
+
+    return result;
   }
   function peg$f3(start, end) {
-    return { sourceRange: [start, end] };
+    return { range: [start, end] };
   }
   function peg$f4(bar) {
-    return { sourceBar: bar };
+    return { bar: bar };
   }
   function peg$f5(bar, beats) {
     return beats.map(beat => ({ bar, beat }));
@@ -622,7 +634,7 @@ function peg$parse(input, options) {
         if (peg$silentFails === 0) { peg$fail(peg$e0); }
       }
       if (s1 !== peg$FAILED) {
-        s2 = peg$parsepositiveInt();
+        s2 = peg$parsebarOrRange();
         if (s2 !== peg$FAILED) {
           if (input.charCodeAt(peg$currPos) === 61) {
             s3 = peg$c1;
@@ -632,7 +644,7 @@ function peg$parse(input, options) {
             if (peg$silentFails === 0) { peg$fail(peg$e1); }
           }
           if (s3 !== peg$FAILED) {
-            s4 = peg$parsebarRange();
+            s4 = peg$parsebarOrRange();
             if (s4 === peg$FAILED) {
               s4 = null;
             }
@@ -655,7 +667,7 @@ function peg$parse(input, options) {
     return s0;
   }
 
-  function peg$parsebarRange() {
+  function peg$parsebarOrRange() {
     let s0, s1, s2, s3;
 
     s0 = peg$currPos;

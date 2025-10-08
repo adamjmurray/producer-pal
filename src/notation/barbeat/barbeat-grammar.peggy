@@ -29,22 +29,34 @@ barCopy
   = '@' '=' {
     return { clearCopy: true };
   }
-  / '@' bar:positiveInt '=' range:barRange? {
-    if (range === null) {
-      return { barCopy: bar, sourcePrevious: true };
-    } else if (range.sourceRange !== undefined) {
-      return { barCopy: bar, sourceRange: range.sourceRange };
+  / '@' dest:barOrRange '=' source:barOrRange? {
+    const result = {};
+
+    // Process destination
+    if (dest.range !== undefined) {
+      result.barCopyRange = dest.range;
     } else {
-      return { barCopy: bar, sourceBar: range.sourceBar };
+      result.barCopy = dest.bar;
     }
+
+    // Process source
+    if (source === null) {
+      result.sourcePrevious = true;
+    } else if (source.range !== undefined) {
+      result.sourceRange = source.range;
+    } else {
+      result.sourceBar = source.bar;
+    }
+
+    return result;
   }
 
-barRange
+barOrRange
   = start:positiveInt '-' end:positiveInt {
-    return { sourceRange: [start, end] };
+    return { range: [start, end] };
   }
   / bar:positiveInt {
-    return { sourceBar: bar };
+    return { bar: bar };
   }
 
 time
