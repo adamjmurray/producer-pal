@@ -275,20 +275,23 @@ export function parseNotation(barBeatExpression, options = {}) {
 
             events.push(noteEvent);
 
-            // Track for bar copy: store metadata including relative time
-            if (!notesByBar.has(currentTime.bar)) {
-              notesByBar.set(currentTime.bar, []);
-            }
-            const relativeBeats = currentTime.beat - 1;
-            const relativeAbletonBeats =
+            // Track for bar copy: calculate actual bar from note position
+            const barDuration =
               timeSigDenominator != null
-                ? relativeBeats * (4 / timeSigDenominator)
-                : relativeBeats;
+                ? beatsPerBar * (4 / timeSigDenominator)
+                : beatsPerBar;
+            const actualBar = Math.floor(abletonBeats / barDuration) + 1;
+            const barStartAbletonBeats = (actualBar - 1) * barDuration;
+            const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
 
-            notesByBar.get(currentTime.bar).push({
+            if (!notesByBar.has(actualBar)) {
+              notesByBar.set(actualBar, []);
+            }
+
+            notesByBar.get(actualBar).push({
               ...noteEvent,
               relativeTime: relativeAbletonBeats,
-              originalBar: currentTime.bar,
+              originalBar: actualBar,
             });
           }
         }

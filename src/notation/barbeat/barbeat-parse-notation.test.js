@@ -1757,6 +1757,133 @@ multi-line comment */ D3 1|1`);
       ]);
     });
 
+    it("only copies notes within bar time range, not all notes from multi-bar beat list", () => {
+      // Regression test for "copy bleeding" bug
+      // Multi-bar beat list creates notes across bars 1-8
+      // @16=1 should only copy bar 1's notes (beats 1 and 3), not all 16 notes
+      const result = parseNotation(
+        "C1 1|1,5,9,13,17,21,25,29 |3,7,11,15,19,23,27,31 @16=1",
+      );
+
+      // Should have 18 notes: 16 original (bars 1-8) + 2 copied (bar 16)
+      expect(result).toHaveLength(18);
+
+      // Verify bar 1 notes exist
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 0.0,
+        duration: 1,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 2.0,
+        duration: 1,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+
+      // Verify bar 16 has ONLY the 2 notes from bar 1
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 60.0, // Bar 16 beat 1
+        duration: 1,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 62.0, // Bar 16 beat 3
+        duration: 1,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+
+      // Verify bar 17 does NOT have notes (bug would copy bars 2-8 to bars 17-23)
+      const bar17Notes = result.filter(
+        (n) => n.start_time >= 64.0 && n.start_time < 68.0,
+      );
+      expect(bar17Notes).toHaveLength(0);
+    });
+
+    it("only copies notes within bar time range with 6/8 time signature", () => {
+      // Regression test for "copy bleeding" bug with different time signature
+      // In 6/8, each bar = 3.0 Ableton beats (6 beats * 4/8)
+      // Beat list 1|1,4,7,10 spans bars 1-2 (beats 7,10 overflow to bar 2)
+      const result = parseNotation("C1 1|1,4,7,10 @3=1", {
+        timeSigNumerator: 6,
+        timeSigDenominator: 8,
+      });
+
+      // Should have 6 notes: 4 original (bars 1-2) + 2 copied (bar 3)
+      expect(result).toHaveLength(6);
+
+      // Verify bar 1 notes (beats 1 and 4)
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 0.0, // Bar 1 beat 1
+        duration: 0.5, // 1 beat * (4/8) = 0.5 Ableton beats
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 1.5, // Bar 1 beat 4 = (4-1) * 0.5
+        duration: 0.5,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+
+      // Verify bar 2 notes (beats 7 and 10 overflow from bar 1)
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 3.0, // Bar 2 beat 1 (beat 7 overflowed)
+        duration: 0.5,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 4.5, // Bar 2 beat 4 (beat 10 overflowed)
+        duration: 0.5,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+
+      // Verify bar 3 has ONLY the 2 notes from bar 1
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 6.0, // Bar 3 beat 1
+        duration: 0.5,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+      expect(result).toContainEqual({
+        pitch: 36,
+        start_time: 7.5, // Bar 3 beat 4
+        duration: 0.5,
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+
+      // Verify bar 4 does NOT have notes (bug would copy bar 2's notes)
+      const bar4Notes = result.filter(
+        (n) => n.start_time >= 9.0 && n.start_time < 12.0,
+      );
+      expect(bar4Notes).toHaveLength(0);
+    });
+
     describe("warnings and errors", () => {
       let consoleErrorSpy;
 
