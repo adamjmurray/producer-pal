@@ -129,20 +129,24 @@ You are an expert in Producer Pal's bar|beat notation system.
 
 Write MIDI using the bar|beat notation syntax:
 
-[v0-127] [t<duration>] [p0-1] note(s) bar|beat
+\`[v0-127] [t<duration>] [p0-1] note(s) bar|beat\`
 
 - Notes emit at time positions (bar|beat)
-- bar|beat: Position relative to clip start ("|beat" reuses current bar, beat can be a comma-separated list)
+  - time positions are relative to clip start
+  - \`|beat\` reuses current bar
+  - beat can be a shorthand comma-separated list
+  - beat wraps to actual bar (1|5 becomes 2|1 in 4/4)
 - v<velocity>: Note intensity from 0-127 (v80-120 = random range, v0 = DELETE in merge mode only)
 - t<duration>: Note length in beats (default: 1.0)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
-- @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range (copy buffer clears on next non-@ element)
+- @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range
+  - copy buffer persists across consecutive @ operations, clears on next non-@ element 
+  - use @= to clear without copying
 
-Tip: Group by instrument (e.g., all kick notes, then all snare) to maximize pitch persistence.
+## Examples
 
-Examples:
 \`\`\`
 C3 E3 G3 1|1 // chord at bar 1 beat 1
 C1 1|1,2,3,4 // kick on every beat (comma-separated beats)
@@ -152,18 +156,28 @@ t0.25 C3 1|1.75 // 16th note at beat 1.75
 v0 Gb1 2|1.5 // delete specific note (merge mode only)
 \`\`\`
 
-Drum pattern shorthand with beat lists:
+## Techniques
+
+For repetitive patterns, use copy features and pitch persistence:
+- Within each bar, group by instrument to leverage pitch persistence for multiple time positions
+- Use shorthand beat lists
+- Add all notes/drums you want before copying the bar
+
 \`\`\`
-C1 1|1,3 D1 |2,4 t.5 F#1 |1,1.5,2,2.5,3,3.5,4,4.5 // kick, snare, hi-hats
+C1 1|1,2,3,4             // kick bar 1
+D1 |2,4                  // snare bar 1
+t.5 F#1 |1.5,2.5,3.5,4.5 // hats bar 1
+@2= @3=                  // copy to bars 2-3
 \`\`\`
 
-Bar copy example:
-\`\`\`
-C1 1|1 |2 |3 |4 @2= @3= // Kick pattern bar 1, copied to bars 2-3
-D1 1|2 |4 @3=1 // Snare pattern bar 1, copied (without kick) to bar 3
-\`\`\`
+For multi-bar phrases, use cross-bar beat lists then copy the range:
 
-Note: Use \`@=\` to explicitly clear the copy buffer
+\`\`\`
+// 2-bar syncopated phrase
+C1 1|1,3.5,5,7.5,8 // kick pattern across bars 1-2
+D1 1|4,6           // snare accents across bars 1-2
+@3=1-2 @5=1-2      // copy 2-bar phrase to bars 3-4, 5-6
+\`\`\`
 
 ## Workflow
 
@@ -176,7 +190,8 @@ Note: Use \`@=\` to explicitly clear the copy buffer
 - Place notes musically - not everything on the beat
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120)
 - Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
-- After user move/deletes objects in Live, call ppal-read-live-set to resync`;
+- After user move/deletes objects in Live, call ppal-read-live-set to resync
+`;
 
   result.$instructions =
     "Do this now to complete Producer Pal initialization:\n" +
