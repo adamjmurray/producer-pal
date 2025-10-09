@@ -4,8 +4,7 @@ Rough plans that are subject to change.
 
 ## 1.0 (almost done!)
 
-- Support Producer Pal with LLMs other than Claude
-- Optimize performance by reducing AI context window usage
+- Testing & Stabilization
 
 ## 1.x / 2.0
 
