@@ -1,5 +1,5 @@
 import { formatNotation } from "./barbeat-format-notation";
-import { parseNotation } from "./barbeat-parse-notation";
+import { interpretNotation } from "./barbeat-interpreter";
 
 describe("bar|beat formatNotation()", () => {
   it("returns empty string for empty input", () => {
@@ -418,18 +418,18 @@ describe("bar|beat formatNotation()", () => {
     expect(result).toBe("C3 D3 E3 1|1");
   });
 
-  it("creates roundtrip compatibility with parseNotation", () => {
+  it("creates roundtrip compatibility with interpretNotation", () => {
     const original = "1|1 p0.8 v80-120 t0.5 C3 D3 1|2.25 v120 p1.0 t2 E3 F3";
-    const parsed = parseNotation(original);
+    const parsed = interpretNotation(original);
     const formatted = formatNotation(parsed);
-    const reparsed = parseNotation(formatted);
+    const reparsed = interpretNotation(formatted);
 
     expect(parsed).toEqual(reparsed);
   });
 
-  it("creates roundtrip compatibility with parseNotation using time signatures", () => {
+  it("creates roundtrip compatibility with interpretNotation using time signatures", () => {
     const original = "1|1 p0.8 v80-120 t0.5 C3 D3 1|2.25 v120 p1.0 t2 E3 F3";
-    const parsed = parseNotation(original, {
+    const parsed = interpretNotation(original, {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
@@ -437,7 +437,7 @@ describe("bar|beat formatNotation()", () => {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });
-    const reparsed = parseNotation(formatted, {
+    const reparsed = interpretNotation(formatted, {
       timeSigNumerator: 3,
       timeSigDenominator: 4,
     });

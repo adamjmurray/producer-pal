@@ -9,7 +9,7 @@ import {
 import * as parser from "./barbeat-parser.js";
 
 /**
- * Convert bar|beat notation to note events
+ * Convert bar|beat notation into note events
  * @param {string} barBeatExpression - bar|beat notation string
  * @param {Object} options - Options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
@@ -17,7 +17,7 @@ import * as parser from "./barbeat-parser.js";
  * @param {number} [options.timeSigDenominator] - Time signature denominator
  * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>}
  */
-export function parseNotation(barBeatExpression, options = {}) {
+export function interpretNotation(barBeatExpression, options = {}) {
   if (!barBeatExpression) return [];
 
   const {

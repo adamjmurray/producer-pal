@@ -2,7 +2,7 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time";
-import { parseNotation } from "../../notation/notation";
+import { interpretNotation } from "../../notation/notation";
 import { MAX_CLIP_BEATS } from "../constants.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
@@ -104,7 +104,7 @@ export function updateClip({
     });
 
     if (notationString != null) {
-      const notes = parseNotation(notationString, {
+      const notes = interpretNotation(notationString, {
         timeSigNumerator,
         timeSigDenominator,
       });

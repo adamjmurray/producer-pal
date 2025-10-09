@@ -4,7 +4,7 @@ import {
   barBeatToBeats,
   beatsToBarBeat,
 } from "../../notation/barbeat/barbeat-time";
-import { parseNotation } from "../../notation/notation";
+import { interpretNotation } from "../../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { select } from "../control/select.js";
 import { parseTimeSignature, setAllNonNull } from "../shared/utils.js";
@@ -122,7 +122,7 @@ export function createClip({
 
   const notes =
     notationString != null
-      ? parseNotation(notationString, {
+      ? interpretNotation(notationString, {
           timeSigNumerator,
           timeSigDenominator,
         })

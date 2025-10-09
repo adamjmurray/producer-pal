@@ -50,8 +50,10 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
 - **Bar Copy (`@N=`, `@N=M`, `@N=M-P`, `@N-M=`, `@N-M=P`, `@N-M=P-Q`)**
   - Duplicates bars of notes to other positions
-  - Single destination: `@N=` (previous), `@N=M` (specific bar), `@N=M-P` (source range)
-  - Range destination: `@N-M=` (previous), `@N-M=P` (single source), `@N-M=P-Q` (tiling)
+  - Single destination: `@N=` (previous), `@N=M` (specific bar), `@N=M-P`
+    (source range)
+  - Range destination: `@N-M=` (previous), `@N-M=P` (single source), `@N-M=P-Q`
+    (tiling)
   - Updates current time position to destination start
   - Does not emit buffered pitches (clears buffer instead)
   - See Bar Copy section for detailed behavior
@@ -191,8 +193,10 @@ the destination range:
 
 - **Repeating pattern**: Source bars repeat using modulo wrapping
   - Example: `@3-10=1-2` copies bar 1→3, bar 2→4, bar 1→5, bar 2→6, etc.
-- **Partial tiles**: When destination size is not evenly divisible by source size
-  - Example: `@3-9=1-2` tiles 3 complete times (bars 3-8), then partial (bar 9 gets bar 1 only)
+- **Partial tiles**: When destination size is not evenly divisible by source
+  size
+  - Example: `@3-9=1-2` tiles 3 complete times (bars 3-8), then partial (bar 9
+    gets bar 1 only)
 - **Self-copy prevention**: Skips copying when source bar equals destination bar
   - Example: `@1-10=5-6` skips bars 5 and 6 when tiling reaches them
   - Warning issued for each skipped self-copy
@@ -405,10 +409,10 @@ type Element =
 
 ---
 
-## Parser Output
+## Interpreter Output
 
-The `parseNotation()` function processes the grammar AST and returns an array of
-note events:
+The `interpretNotation()` function parses the input and processes the resulting
+grammar AST to return an array of note events:
 
 ```javascript
 [
