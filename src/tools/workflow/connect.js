@@ -137,7 +137,7 @@ Write MIDI using the bar|beat notation syntax:
   - beat can be a shorthand comma-separated list
   - beat wraps to actual bar (1|5 becomes 2|1 in 4/4)
 - v<velocity>: Note intensity from 0-127 (v80-120 = random range)
-  - v0 deletes earlier notes at same pitch/time (serial order, works with bar copies)
+  - \`v0\` deletes earlier notes at same pitch/time
 - t<duration>: Note length in beats (default: 1.0)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
@@ -162,7 +162,9 @@ C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 
 ## Techniques
 
-For repetitive patterns, use copy features and pitch persistence:
+### Repeating Patterns
+
+Use copy features and pitch persistence:
 - Within each bar, group by instrument to leverage pitch persistence for multiple time positions
 - Use shorthand beat lists
 - Add all notes/drums you want before copying the bar
@@ -175,7 +177,26 @@ C1 4|1,3.5 D1 |4 // bar 4
 @8=4             // bar 4 -> 8
 \`\`\`
 
-For multi-bar phrases, use cross-bar beat lists then tile the range:
+### Repeats with Variations
+
+1. Copy full bars
+2. Delete specific notes with v0
+3. Add additional notes as desired
+
+Faster than writing each bar individually.
+
+\`\`\`
+C1 1|1,3 D1 |2,4         // bar 1 foundation
+Gb1 |1.5,2.5,3.5,4.5
+@2-8=1                   // copy to bars 2-8
+v0 Gb1 2|4.5 4|3.5 6|2.5 // skip different hats
+v0 C1 4|3                // drop kick for variation
+v0 C1 7|3 v100 D1 |3     // replace kick with snare
+\`\`\`
+
+### Multi-bar phrases
+
+Use cross-bar beat lists then tile the range:
 
 \`\`\`
 // 2-bar syncopated phrase
