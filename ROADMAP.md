@@ -33,8 +33,8 @@ In no particular order:
 
 ### Built-in Chat
 
-- Setup an API key or point at LM Studio and chat directly from the Max for Live
-  device via a popup window
+- Setup an API key or point at a local LM Studio server and chat directly from
+  the Max for Live device via a popup window
 
 ## Future Ideas
 
@@ -47,14 +47,8 @@ In no particular order:
 
 ### Microtonal support
 
-- Support working with scales with more than 12 notes per octave, such as 19-EDO
-
-### Enhanced Notation
-
-- Loop a bar|beat notation patterns to fill longer time spans
-- Percussion-specific notation (e.g., `X...x...` for 16th note patterns)
-- Chord progression notation (maybe easier for local LLMs than individual
-  notes?)
+- Support working with scales with other than 12 notes per octave, such as
+  19-EDO
 
 ### Adaptive Learning System
 
