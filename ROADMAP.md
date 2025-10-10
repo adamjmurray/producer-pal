@@ -13,6 +13,8 @@ In no particular order:
 ### General Features
 
 - Arrangement clip length modification support
+- Stop/restart MCP server when Producer Pal Max for Live device is
+  disabled/re-enabled (easy kill switch)
 - Version update notifications in the UI
 
 ### Behavior Customization
