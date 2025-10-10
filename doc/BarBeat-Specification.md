@@ -30,6 +30,8 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Single value: `v100` (fixed velocity)
   - Range: `v80-120` or `v120-80` (random velocity between min and max,
     auto-ordered)
+  - Special: `v0` deletes earlier notes with matching pitch and time (see Note
+    Deletion section)
   - Default: 100
   - Requires whitespace separation from following elements
 
@@ -102,6 +104,84 @@ The parser warns about incomplete or inefficient notation:
 - State changes after pitches but before time positions (wasted state)
 
 These are console warnings, not errors - parsing completes successfully.
+
+---
+
+## Note Deletion with v0
+
+Notes with velocity 0 (`v0`) delete earlier notes that match both pitch and
+time. This works in serial order during interpretation, making it useful for
+removing specific notes from patterns, including notes created by bar copy
+operations.
+
+### How v0 Deletion Works
+
+When a `v0` note is encountered during interpretation:
+
+1. **Matches earlier notes**: Removes any previously-processed notes that have
+   the same pitch AND time (within 0.001 beats tolerance)
+2. **Serial order**: Only affects notes that appear earlier in the notation
+   string
+3. **Kept in output**: The `v0` note itself remains in the interpreter output so
+   that tools such as update-clip can make use of the data (to delete notes in
+   existing clips, a separate process from notation interpretation)
+4. **Filtered by tools**: `create-clip` filters out v0 notes; `update-clip`
+   merge mode uses them to delete existing clip notes
+
+### Examples
+
+**Basic deletion:**
+
+```
+C3 D3 E3 1|1 v0 C3 1|1  // Result: D3 and E3 at 1|1 (C3 deleted)
+```
+
+**Order matters:**
+
+```
+v0 C3 1|1 v100 C3 1|1  // Result: both notes (v0 has nothing to delete)
+```
+
+**Deletion after bar copy:**
+
+```
+C3 D3 E3 1|1     // Bar 1: C3, D3, E3
+@2=1             // Bar 2: copy of bar 1
+v0 D3 2|1        // Delete D3 from bar 2
+                 // Result: Bar 1 has C3, D3, E3; Bar 2 has C3, E3
+```
+
+**Multiple deletions:**
+
+```
+C3 D3 E3 F3 1|1 v0 C3 D3 1|1  // Result: E3 and F3 at 1|1
+```
+
+**Different times not affected:**
+
+```
+C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
+```
+
+### Use Cases
+
+- **Refining copied patterns**: Copy a bar, then remove specific notes
+- **Creating variations**: Build on existing patterns by deleting and adding
+- **Merge mode editing**: In `update-clip` with `noteUpdateMode: "merge"`,
+  selectively delete notes from existing clips
+
+### Technical Details
+
+- **Time tolerance**: Notes within 0.001 beats are considered at the same time
+- **Processing order**: Applied as final step after all bar copy operations
+- **Output format**: v0 notes appear in interpreter output with `velocity: 0`
+- **Tool behavior**:
+  - `create-clip`: Filters out v0 notes (can't create v0 notes in Live)
+  - `update-clip` replace mode: Filters out v0 notes
+  - `update-clip` merge mode: Uses v0 notes to delete matching clip notes, then
+    filters them out
+
+---
 
 ## State Management
 
@@ -352,6 +432,12 @@ v127 C3 v100 E3 v80 G3 1|1
 
 // Same pitches with varying velocity (state updates after time)
 v100 C4 G4 1|1 v90 |2 v80 |3 v70 |4
+
+// Note deletion with v0
+C3 D3 E3 1|1 v0 C3 1|1  // D3 and E3 remain (C3 deleted)
+
+// Note deletion after bar copy
+C3 D3 E3 1|1  @2=1  v0 D3 2|1  // Bar 1: C3 D3 E3, Bar 2: C3 E3
 ```
 
 ---
@@ -436,6 +522,9 @@ grammar AST to return an array of note events:
   - Example: In 3/4, bar 2 beat 3 = `((2-1) * 3 + (3-1)) * (4/4) = 5.0` beats
 - **duration**: Converted from beat duration to Ableton beats (accounts for time
   signature)
+- **velocity**: Base velocity (0-127)
+  - `v0` notes appear in output with `velocity: 0` for deletion purposes
+  - Tools filter v0 notes before sending to Live API (see Note Deletion section)
 - **velocity_deviation**: When velocity range is used (e.g., `v80-100`),
   velocity is min value and velocity_deviation is the range (20)
 - **Precision**: Both start_time and duration support floating point for

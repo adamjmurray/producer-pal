@@ -3165,4 +3165,469 @@ multi-line comment */ D3 1|1`);
       ]);
     });
   });
+
+  describe("v0 deletions", () => {
+    it("deletes note with same pitch and time when v0 is encountered", () => {
+      const result = interpretNotation("C3 D3 1|1 v0 C3 1|1");
+      expect(result).toEqual([
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 note does not affect notes with different pitch", () => {
+      const result = interpretNotation("C3 D3 E3 1|1 v0 F3 1|2");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 65,
+          start_time: 1,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 note does not affect notes with different time", () => {
+      const result = interpretNotation("C3 1|1 C3 1|2 v0 C3 1|3");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 2,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("handles multiple v0 notes", () => {
+      const result = interpretNotation("C3 D3 E3 1|1 v0 C3 D3 1|1");
+      expect(result).toEqual([
+        {
+          pitch: 64,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 note followed by same note at same time works correctly", () => {
+      const result = interpretNotation("C3 1|1 v0 C3 1|1 v100 C3 1|1");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 deletions work after bar copy", () => {
+      const result = interpretNotation("C3 D3 E3 1|1 @2=1 v0 D3 2|1");
+      expect(result).toEqual([
+        // Bar 1: original notes
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2: copied notes (but D3 is deleted by v0)
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // v0 note
+        {
+          pitch: 62,
+          start_time: 4,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 deletions work after range copy", () => {
+      const result = interpretNotation("C3 D3 1|1 @2-3= v0 D3 2|1");
+      expect(result).toEqual([
+        // Bar 1: original
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2: copied, D3 deleted
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 3: copied
+        {
+          pitch: 60,
+          start_time: 8,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 8,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // v0 note
+        {
+          pitch: 62,
+          start_time: 4,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 deletions work after multi-bar source range tiling", () => {
+      const result = interpretNotation("C3 1|1 D3 2|1 @3-6=1-2 v0 C3 5|1");
+      expect(result).toEqual([
+        // Bar 1: original C3
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2: original D3
+        {
+          pitch: 62,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 3: tiled C3
+        {
+          pitch: 60,
+          start_time: 8,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 4: tiled D3
+        {
+          pitch: 62,
+          start_time: 12,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 5: tiled C3, but deleted by v0
+        // Bar 6: tiled D3
+        {
+          pitch: 62,
+          start_time: 20,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // v0 note
+        {
+          pitch: 60,
+          start_time: 16,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 deletions work with different time signatures", () => {
+      const result = interpretNotation("C3 D3 1|1 v0 C3 1|1", {
+        timeSigNumerator: 6,
+        timeSigDenominator: 8,
+      });
+      // In 6/8 time, each beat is an 8th note, so beats are 0.5 apart in Ableton beats
+      expect(result).toEqual([
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("complex scenario: v0 deletions with bar copies and multiple notes", () => {
+      const result = interpretNotation(
+        "C3 D3 E3 1|1 @2=1 v0 D3 1|1 v0 E3 2|1 v100 F3 2|2",
+      );
+      expect(result).toEqual([
+        // Bar 1: original notes, D3 deleted
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // Bar 2: copied notes, E3 deleted
+        {
+          pitch: 60,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 62,
+          start_time: 4,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // v0 notes
+        {
+          pitch: 62,
+          start_time: 0,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 64,
+          start_time: 4,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        // New F3 note
+        {
+          pitch: 65,
+          start_time: 5,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 notes are kept in the result for update-clip merge mode", () => {
+      const result = interpretNotation("C3 D3 1|1 v0 C3 1|2");
+      // Check that v0 note is in the result
+      const v0Notes = result.filter((note) => note.velocity === 0);
+      expect(v0Notes).toHaveLength(1);
+      expect(v0Notes[0]).toEqual({
+        pitch: 60,
+        start_time: 1,
+        duration: 1,
+        velocity: 0,
+        probability: 1.0,
+        velocity_deviation: 0,
+      });
+    });
+
+    it("v0 only deletes notes that appear before it in serial order", () => {
+      const result = interpretNotation("v0 C3 1|1 v100 C3 1|1");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("v0 preserves note properties like duration, probability", () => {
+      const result = interpretNotation("t2 p0.8 C3 1|1 t0.5 p1.0 v0 C3 1|1");
+      expect(result).toEqual([
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 0,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+  });
 });

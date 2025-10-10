@@ -7,6 +7,7 @@ import {
   DEFAULT_VELOCITY_DEVIATION,
 } from "./barbeat-config.js";
 import * as parser from "./barbeat-parser.js";
+import { applyV0Deletions } from "./barbeat-apply-v0-deletions.js";
 
 /**
  * Convert bar|beat notation into note events
@@ -672,7 +673,8 @@ export function interpretNotation(barBeatExpression, options = {}) {
       );
     }
 
-    return events;
+    // Apply v0 deletions as final post-processing step
+    return applyV0Deletions(events);
   } catch (error) {
     if (error.name === "SyntaxError") {
       const location = error.location || {};
