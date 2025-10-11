@@ -59,11 +59,8 @@ describe("transport", () => {
       16,
     ); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
-      isPlaying: true,
+      playing: true,
       currentTime: "5|1",
-      loop: false,
-      loopStart: "1|1",
-      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1",
     });
   });
@@ -111,11 +108,12 @@ describe("transport", () => {
     expect(liveApiSet).toHaveBeenCalledTimes(3); // 3 for loop/start/length only
 
     expect(result).toStrictEqual({
-      isPlaying: true,
+      playing: true,
       currentTime: "3|3",
-      loop: true,
-      loopStart: "3|1",
-      loopEnd: "7|1",
+      arrangementLoop: {
+        start: "3|1",
+        end: "7|1",
+      },
       arrangementFollowerTrackIds: "track1,track3",
     });
   });
@@ -142,7 +140,8 @@ describe("transport", () => {
       6,
     ); // bar 3 = 6 beats in 3/4
     expect(result.currentTime).toBe("3|1");
-    expect(result.loopEnd).toBe("2|1"); // 3 beats = 1 bar in 3/4
+    // Loop is off, so no arrangementLoop property
+    expect(result.arrangementLoop).toBeUndefined();
   });
 
   it("should handle play-session-clips action with single clip", () => {
@@ -182,11 +181,8 @@ describe("transport", () => {
     expect(liveApiCall).not.toHaveBeenCalledWith("start_playing");
 
     expect(result).toStrictEqual({
-      isPlaying: true,
+      playing: true,
       currentTime: "2|2",
-      loop: false,
-      loopStart: "1|1",
-      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -356,11 +352,8 @@ describe("transport", () => {
       "fire",
     );
     expect(result).toStrictEqual({
-      isPlaying: true,
+      playing: true,
       currentTime: "2|2",
-      loop: false,
-      loopStart: "1|1",
-      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -411,11 +404,8 @@ describe("transport", () => {
       "stop_all_clips",
     );
     expect(result).toStrictEqual({
-      isPlaying: true, // transport/arrangement can still be playing
+      playing: true, // transport/arrangement can still be playing
       currentTime: "2|2",
-      loop: false,
-      loopStart: "1|1",
-      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -497,11 +487,8 @@ describe("transport", () => {
       "stop_all_clips",
     );
     expect(result).toStrictEqual({
-      isPlaying: true, // transport/arrangement can still be playing
+      playing: true, // transport/arrangement can still be playing
       currentTime: "2|2",
-      loop: false,
-      loopStart: "1|1",
-      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -529,11 +516,8 @@ describe("transport", () => {
       0,
     );
     expect(result).toStrictEqual({
-      isPlaying: false,
+      playing: false,
       currentTime: "1|1",
-      loop: false,
-      loopStart: "1|1",
-      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -560,8 +544,8 @@ describe("transport", () => {
       "loop_length",
       24,
     );
-    expect(result.loopStart).toBe("3|1"); // 8 beats = bar 3
-    expect(result.loopEnd).toBe("9|1");
+    // Loop is off in the mock, so no arrangementLoop property
+    expect(result.arrangementLoop).toBeUndefined();
   });
 
   it("should handle 6/8 time signature conversions", () => {
@@ -600,8 +584,8 @@ describe("transport", () => {
     ); // 2 bars = 6 Ableton beats
 
     expect(result.currentTime).toBe("2|1");
-    expect(result.loopStart).toBe("1|1");
-    expect(result.loopEnd).toBe("3|1");
+    // Loop is off in the mock (loop: 0), so no arrangementLoop property
+    expect(result.arrangementLoop).toBeUndefined();
   });
 
   it("should handle play-arrangement action without startTime (defaults to 0)", () => {
@@ -661,11 +645,8 @@ describe("transport", () => {
       );
 
       expect(result).toStrictEqual({
-        isPlaying: true,
+        playing: true,
         currentTime: "1|1",
-        loop: false,
-        loopStart: "1|1",
-        loopEnd: "2|1",
         arrangementFollowerTrackIds: "track1,track3", // tracks currently following
       });
     });
@@ -696,11 +677,8 @@ describe("transport", () => {
       );
 
       expect(result).toStrictEqual({
-        isPlaying: true,
+        playing: true,
         currentTime: "1|1",
-        loop: false,
-        loopStart: "1|1",
-        loopEnd: "2|1",
         arrangementFollowerTrackIds: "", // empty since tracks were not following before the call
       });
     });
@@ -728,11 +706,8 @@ describe("transport", () => {
       expect(liveApiSet).not.toHaveBeenCalledWith("back_to_arranger", 0);
 
       expect(result).toStrictEqual({
-        isPlaying: true,
+        playing: true,
         currentTime: "1|1",
-        loop: false,
-        loopStart: "1|1",
-        loopEnd: "2|1",
         arrangementFollowerTrackIds: "track2", // only track2 was following
       });
     });
@@ -757,11 +732,8 @@ describe("transport", () => {
       });
 
       expect(result).toStrictEqual({
-        isPlaying: false,
+        playing: false,
         currentTime: "1|1",
-        loop: false,
-        loopStart: "1|1",
-        loopEnd: "1|1",
         arrangementFollowerTrackIds: "track1,track3",
       });
     });
