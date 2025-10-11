@@ -2,7 +2,7 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time";
-import { interpretNotation } from "../../notation/notation";
+import { interpretNotation, formatNotation } from "../../notation/notation";
 import { MAX_CLIP_BEATS } from "../constants.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
@@ -104,67 +104,35 @@ export function updateClip({
     });
 
     if (notationString != null) {
-      const notes = interpretNotation(notationString, {
+      let combinedNotationString = notationString;
+
+      if (noteUpdateMode === "merge") {
+        // In merge mode, prepend existing notes as bar|beat notation
+        const existingNotesResult = JSON.parse(
+          clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS),
+        );
+        const existingNotes = existingNotesResult?.notes || [];
+
+        if (existingNotes.length > 0) {
+          const existingNotationString = formatNotation(existingNotes, {
+            timeSigNumerator,
+            timeSigDenominator,
+          });
+          combinedNotationString = `${existingNotationString} ${notationString}`;
+        }
+      }
+
+      const notes = interpretNotation(combinedNotationString, {
         timeSigNumerator,
         timeSigDenominator,
       });
 
-      // Separate v0 notes (deletion requests) from regular notes
-      const v0Notes = notes.filter((note) => note.velocity === 0);
-      const regularNotes = notes.filter((note) => note.velocity > 0);
-
-      if (noteUpdateMode === "replace") {
-        clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
-        // Only add regular notes when clearing (v0 notes are filtered out for Live API)
-        if (regularNotes.length > 0) {
-          clip.call("add_new_notes", { notes: regularNotes });
-        }
-        finalNoteCount = regularNotes.length;
-      } else {
-        // When not clearing, handle v0 notes as deletions
-        if (v0Notes.length > 0) {
-          // Get existing notes and parse the JSON result
-          const existingNotesResult = JSON.parse(
-            clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS),
-          );
-          const existingNotes = existingNotesResult?.notes || [];
-
-          // Filter out notes that match v0 note pitch and start time
-          const filteredExistingNotes = existingNotes.filter((existingNote) => {
-            return !v0Notes.some(
-              (v0Note) =>
-                v0Note.pitch === existingNote.pitch &&
-                Math.abs(v0Note.start_time - existingNote.start_time) < 0.001,
-            );
-          });
-
-          // Clean up existing notes to only include properties that add_new_notes accepts
-          const cleanExistingNotes = filteredExistingNotes.map((note) => ({
-            pitch: note.pitch,
-            start_time: note.start_time,
-            duration: note.duration,
-            velocity: note.velocity,
-            probability: note.probability,
-            velocity_deviation: note.velocity_deviation,
-          }));
-
-          // Remove all notes and add back filtered existing notes plus new regular notes
-          clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
-          const allNotesToAdd = [...cleanExistingNotes, ...regularNotes];
-          if (allNotesToAdd.length > 0) {
-            clip.call("add_new_notes", { notes: allNotesToAdd });
-          }
-          finalNoteCount = allNotesToAdd.length;
-        } else {
-          // No v0 notes, just add regular notes
-          if (regularNotes.length > 0) {
-            clip.call("add_new_notes", { notes: regularNotes });
-          }
-          // For merge mode without deletions, we'd need to read existing notes to get total count
-          // Instead, just report the count of notes added in this operation
-          finalNoteCount = regularNotes.length;
-        }
+      // Remove all notes and add new notes (v0s already filtered by applyV0Deletions)
+      clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
+      if (notes.length > 0) {
+        clip.call("add_new_notes", { notes });
       }
+      finalNoteCount = notes.length;
     }
 
     // Determine view and indices from clip path

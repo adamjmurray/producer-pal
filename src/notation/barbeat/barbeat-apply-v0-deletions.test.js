@@ -24,7 +24,7 @@ describe("applyV0Deletions()", () => {
     const result = applyV0Deletions(notes);
     expect(result).toEqual([
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
-      { pitch: 60, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
+      // v0 note filtered out
     ]);
   });
 
@@ -38,7 +38,7 @@ describe("applyV0Deletions()", () => {
     expect(result).toEqual([
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
-      { pitch: 64, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
+      // v0 note filtered out
     ]);
   });
 
@@ -51,7 +51,7 @@ describe("applyV0Deletions()", () => {
     const result = applyV0Deletions(notes);
     expect(result).toEqual([
       { pitch: 60, start_time: 0.001, duration: 1, velocity: 100 }, // survives
-      { pitch: 60, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
+      // v0 note filtered out
     ]);
   });
 
@@ -63,7 +63,7 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
     expect(result).toEqual([
-      { pitch: 60, start_time: 0.0002, duration: 1, velocity: 0 }, // v0 note remains
+      // v0 note filtered out, all notes deleted
     ]);
   });
 
@@ -78,12 +78,11 @@ describe("applyV0Deletions()", () => {
     const result = applyV0Deletions(notes);
     expect(result).toEqual([
       { pitch: 64, start_time: 1, duration: 1, velocity: 100 }, // survives
-      { pitch: 60, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
-      { pitch: 62, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
+      // v0 notes filtered out
     ]);
   });
 
-  it("v0 note followed by same note keeps both", () => {
+  it("v0 note followed by same note keeps only the new note", () => {
     const notes = [
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
       { pitch: 60, start_time: 0, duration: 1, velocity: 0 }, // delete previous
@@ -91,12 +90,12 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
     expect(result).toEqual([
-      { pitch: 60, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 }, // new note
+      // v0 note filtered out
     ]);
   });
 
-  it("v0 notes remain in the result array", () => {
+  it("v0 notes are filtered out from the result array", () => {
     const notes = [
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 },
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 },
@@ -104,9 +103,9 @@ describe("applyV0Deletions()", () => {
       { pitch: 62, start_time: 0, duration: 1, velocity: 0 }, // v0
     ];
     const result = applyV0Deletions(notes);
-    // Both v0 notes should be in the result
-    expect(result.filter((n) => n.velocity === 0)).toHaveLength(2);
-    // And no regular notes should remain
+    // No v0 notes should be in the result
+    expect(result.filter((n) => n.velocity === 0)).toHaveLength(0);
+    // And no regular notes should remain (all were deleted by v0s)
     expect(result.filter((n) => n.velocity > 0)).toHaveLength(0);
   });
 
@@ -117,8 +116,8 @@ describe("applyV0Deletions()", () => {
     ];
     const result = applyV0Deletions(notes);
     expect(result).toEqual([
-      { pitch: 60, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
       { pitch: 60, start_time: 0, duration: 1, velocity: 100 }, // note remains
+      // v0 note filtered out
     ]);
   });
 
@@ -137,13 +136,12 @@ describe("applyV0Deletions()", () => {
     expect(result).toEqual([
       { pitch: 62, start_time: 0, duration: 1, velocity: 100 }, // survives
       { pitch: 60, start_time: 2, duration: 1, velocity: 100 }, // survives (different time)
-      { pitch: 60, start_time: 0, duration: 1, velocity: 0 }, // v0 note remains
-      { pitch: 64, start_time: 1, duration: 1, velocity: 0 }, // v0 note remains
       { pitch: 62, start_time: 3, duration: 1, velocity: 100 }, // survives
+      // v0 notes filtered out
     ]);
   });
 
-  it("preserves note properties other than velocity, pitch, and start_time", () => {
+  it("v0 note deletes note and is filtered out itself", () => {
     const notes = [
       {
         pitch: 60,
@@ -159,18 +157,10 @@ describe("applyV0Deletions()", () => {
         duration: 1,
         velocity: 0,
         probability: 1.0,
-        velocity_deviation: 0,
       },
     ];
     const result = applyV0Deletions(notes);
-    expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({
-      pitch: 60,
-      start_time: 0,
-      duration: 1,
-      velocity: 0,
-      probability: 1.0,
-      velocity_deviation: 0,
-    });
+    expect(result).toHaveLength(0);
+    // v0 note deleted the first note and was filtered out itself
   });
 });

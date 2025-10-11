@@ -519,6 +519,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
               notesByBar.set(actualBar, []);
             }
 
+            // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
             notesByBar.get(actualBar).push({
               ...noteEvent,
               relativeTime: relativeAbletonBeats,

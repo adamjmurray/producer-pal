@@ -137,9 +137,6 @@ export function createClip({
     // For non-looping clips, use endMarker
     clipLength = endMarkerBeats;
   } else if (notes.length > 0) {
-    // const lastNoteEndTime = Math.max(...notes.map((note) => note.start_time + note.duration));
-    // clipLength = Math.ceil(lastNoteEndTime);
-
     const lastNoteEndTimeAbletonBeats = Math.max(
       ...notes.map((note) => note.start_time + note.duration),
     );
@@ -245,10 +242,9 @@ export function createClip({
       looping: loop,
     });
 
-    // Filter out v0 notes for Live API (Live API can't handle velocity 0)
-    const validNotes = notes.filter((note) => note.velocity > 0);
-    if (validNotes.length > 0) {
-      clip.call("add_new_notes", { notes: validNotes });
+    // v0 notes already filtered by applyV0Deletions in interpretNotation
+    if (notes.length > 0) {
+      clip.call("add_new_notes", { notes });
     }
 
     // Build optimistic result object
@@ -294,7 +290,7 @@ export function createClip({
       length,
       loopStart,
       loop,
-      noteCount: notationString != null ? validNotes.length : null,
+      noteCount: notationString != null ? notes.length : null,
     });
 
     createdClips.push(clipResult);

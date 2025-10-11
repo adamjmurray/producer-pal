@@ -921,15 +921,29 @@ describe("updateClip", () => {
       },
     });
 
+    // Mock empty existing notes
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [],
+        });
+      }
+      return {};
+    });
+
     const result = updateClip({
       ids: "123",
       notes: "C3 1|1",
       noteUpdateMode: "merge",
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
@@ -961,15 +975,29 @@ describe("updateClip", () => {
       },
     });
 
+    // Mock empty existing notes
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [],
+        });
+      }
+      return {};
+    });
+
     updateClip({
       ids: "123",
       notes: "v0 C3 1|1", // All notes filtered out
       noteUpdateMode: "merge",
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
     expect(liveApiCall).not.toHaveBeenCalledWith(
       "add_new_notes",
@@ -1071,40 +1099,35 @@ describe("updateClip", () => {
     );
 
     // Should add back filtered existing notes plus new regular notes
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          // Existing notes minus the deleted C3 at 1|1 (cleaned for Live API)
-          {
-            pitch: 62,
-            start_time: 1,
-            duration: 1,
-            velocity: 80,
-            probability: 1,
-            velocity_deviation: 0,
-          }, // D3 at 1|2
-          {
-            pitch: 64,
-            start_time: 0,
-            duration: 1,
-            velocity: 90,
-            probability: 1,
-            velocity_deviation: 0,
-          }, // E3 at 1|1
-          // New F3 note
-          {
-            pitch: 65,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-        ],
-      },
+    const addNewNotesCall = liveApiCall.mock.calls.find(
+      (call) => call[0] === "add_new_notes",
     );
+    expect(addNewNotesCall).toBeDefined();
+    expect(addNewNotesCall[1].notes).toHaveLength(3);
+    expect(addNewNotesCall[1].notes).toContainEqual({
+      pitch: 62,
+      start_time: 1,
+      duration: 1,
+      velocity: 80,
+      probability: 1,
+      velocity_deviation: 0,
+    }); // D3 at 1|2
+    expect(addNewNotesCall[1].notes).toContainEqual({
+      pitch: 64,
+      start_time: 0,
+      duration: 1,
+      velocity: 90,
+      probability: 1,
+      velocity_deviation: 0,
+    }); // E3 at 1|1
+    expect(addNewNotesCall[1].notes).toContainEqual({
+      pitch: 65,
+      start_time: 0,
+      duration: 1,
+      velocity: 100,
+      probability: 1,
+      velocity_deviation: 0,
+    }); // New F3 note
 
     expect(result.noteCount).toBe(3); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
@@ -1179,7 +1202,7 @@ describe("updateClip", () => {
     );
   });
 
-  it("should not call get_notes_extended when noteUpdateMode is 'merge' but no v0 notes", () => {
+  it("should call get_notes_extended in merge mode to format existing notes", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -1189,20 +1212,38 @@ describe("updateClip", () => {
       },
     });
 
+    // Mock existing notes
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [],
+        });
+      }
+      return {};
+    });
+
     updateClip({
       ids: "123",
-      notes: "v100 C3 1|1", // No v0 notes
+      notes: "v100 C3 1|1",
       noteUpdateMode: "merge",
     });
 
-    // Should not call get_notes_extended since no v0 notes
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    // Should call get_notes_extended in merge mode
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "get_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
@@ -1220,5 +1261,169 @@ describe("updateClip", () => {
         ],
       },
     );
+  });
+
+  it("should support bar copy with existing notes in merge mode", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock existing notes in bar 1
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // C3 at 1|1
+            {
+              pitch: 64,
+              start_time: 1,
+              duration: 1,
+              velocity: 80,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // E3 at 1|2
+          ],
+        });
+      }
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      notes: "@2=1", // Copy bar 1 to bar 2
+      noteUpdateMode: "merge",
+    });
+
+    // Should add existing notes + copied notes
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          // Existing notes in bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 64,
+            start_time: 1,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          // Copied to bar 2 (starts at beat 4)
+          {
+            pitch: 60,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 64,
+            start_time: 5,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+        ],
+      },
+    );
+
+    expect(result.noteCount).toBe(4); // 2 existing + 2 copied
+  });
+
+  it("should support bar copy with v0 deletions in merge mode", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock existing notes in bar 1
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // C3 at 1|1
+            {
+              pitch: 64,
+              start_time: 1,
+              duration: 1,
+              velocity: 80,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // E3 at 1|2
+          ],
+        });
+      }
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      notes: "v0 C3 1|1 @2=1", // Delete C3 at 1|1, then copy bar 1 (now only E3) to bar 2
+      noteUpdateMode: "merge",
+    });
+
+    // Should have E3 in bar 1 and E3 copied to bar 2 (C3 deleted by v0)
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          // E3 remains in bar 1 (C3 deleted)
+          {
+            pitch: 64,
+            start_time: 1,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          // E3 copied to bar 2 (beat 5)
+          {
+            pitch: 64,
+            start_time: 5,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+        ],
+      },
+    );
+
+    expect(result.noteCount).toBe(2); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
 });

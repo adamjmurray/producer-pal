@@ -595,14 +595,6 @@ describe("bar|beat interpretNotation()", () => {
         velocity_deviation: 0,
       },
       {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 0,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
         pitch: 64,
         start_time: 0,
         duration: 1,
@@ -613,17 +605,10 @@ describe("bar|beat interpretNotation()", () => {
     ]);
   });
 
-  it("preserves notes with velocity range starting at 0", () => {
+  it("treats velocity range starting at 0 as v0 deletion", () => {
+    // Live API rejects velocity 0 even with deviation, so v0-50 becomes a deletion marker
     const result = interpretNotation("v0-50 C3 v50-100 D3 1|1");
     expect(result).toEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 0,
-        probability: 1.0,
-        velocity_deviation: 50,
-      },
       {
         pitch: 62,
         start_time: 0,
@@ -637,32 +622,7 @@ describe("bar|beat interpretNotation()", () => {
 
   it("preserves all v0 notes for deletion logic", () => {
     const result = interpretNotation("v0 C3 D3 E3 1|1");
-    expect(result).toEqual([
-      {
-        pitch: 60,
-        start_time: 0,
-        duration: 1,
-        velocity: 0,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 62,
-        start_time: 0,
-        duration: 1,
-        velocity: 0,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-      {
-        pitch: 64,
-        start_time: 0,
-        duration: 1,
-        velocity: 0,
-        probability: 1.0,
-        velocity_deviation: 0,
-      },
-    ]);
+    expect(result).toEqual([]);
   });
 
   describe("comment support", () => {
@@ -3178,14 +3138,6 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
       ]);
     });
 
@@ -3216,14 +3168,6 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        {
-          pitch: 65,
-          start_time: 1,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
       ]);
     });
 
@@ -3246,14 +3190,6 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        {
-          pitch: 60,
-          start_time: 2,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
       ]);
     });
 
@@ -3268,36 +3204,12 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 62,
-          start_time: 0,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
       ]);
     });
 
     it("v0 note followed by same note at same time works correctly", () => {
       const result = interpretNotation("C3 1|1 v0 C3 1|1 v100 C3 1|1");
       expect(result).toEqual([
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
         {
           pitch: 60,
           start_time: 0,
@@ -3354,15 +3266,6 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        // v0 note
-        {
-          pitch: 62,
-          start_time: 4,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
       ]);
     });
 
@@ -3409,15 +3312,6 @@ multi-line comment */ D3 1|1`);
           start_time: 8,
           duration: 1,
           velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        // v0 note
-        {
-          pitch: 62,
-          start_time: 4,
-          duration: 1,
-          velocity: 0,
           probability: 1.0,
           velocity_deviation: 0,
         },
@@ -3473,15 +3367,6 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        // v0 note
-        {
-          pitch: 60,
-          start_time: 16,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
       ]);
     });
 
@@ -3497,14 +3382,6 @@ multi-line comment */ D3 1|1`);
           start_time: 0,
           duration: 0.5,
           velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 0.5,
-          velocity: 0,
           probability: 1.0,
           velocity_deviation: 0,
         },
@@ -3550,23 +3427,6 @@ multi-line comment */ D3 1|1`);
           probability: 1.0,
           velocity_deviation: 0,
         },
-        // v0 notes
-        {
-          pitch: 62,
-          start_time: 0,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-        {
-          pitch: 64,
-          start_time: 4,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
         // New F3 note
         {
           pitch: 65,
@@ -3581,30 +3441,14 @@ multi-line comment */ D3 1|1`);
 
     it("v0 notes are kept in the result for update-clip merge mode", () => {
       const result = interpretNotation("C3 D3 1|1 v0 C3 1|2");
-      // Check that v0 note is in the result
+      // Check that v0 note is NOT in the result (filtered out by applyV0Deletions)
       const v0Notes = result.filter((note) => note.velocity === 0);
-      expect(v0Notes).toHaveLength(1);
-      expect(v0Notes[0]).toEqual({
-        pitch: 60,
-        start_time: 1,
-        duration: 1,
-        velocity: 0,
-        probability: 1.0,
-        velocity_deviation: 0,
-      });
+      expect(v0Notes).toHaveLength(0);
     });
 
     it("v0 only deletes notes that appear before it in serial order", () => {
       const result = interpretNotation("v0 C3 1|1 v100 C3 1|1");
       expect(result).toEqual([
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
         {
           pitch: 60,
           start_time: 0,
@@ -3618,16 +3462,7 @@ multi-line comment */ D3 1|1`);
 
     it("v0 preserves note properties like duration, probability", () => {
       const result = interpretNotation("t2 p0.8 C3 1|1 t0.5 p1.0 v0 C3 1|1");
-      expect(result).toEqual([
-        {
-          pitch: 60,
-          start_time: 0,
-          duration: 0.5,
-          velocity: 0,
-          probability: 1.0,
-          velocity_deviation: 0,
-        },
-      ]);
+      expect(result).toEqual([]);
     });
   });
 });
