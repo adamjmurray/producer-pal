@@ -1,5 +1,9 @@
 import { PITCH_CLASS_NAMES } from "../../notation/midi-pitch-to-name.js";
 import { VERSION } from "../../shared/version.js";
+import {
+  skills as basicSkills,
+  buildInstructions as buildBasicInstruction,
+} from "../../skills/basic.js";
 import { buildInstructions, skills } from "../../skills/standard.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 
@@ -70,6 +74,14 @@ To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum
 I can't add instruments but can compose MIDI patterns once they're there.`);
   }
 
+  if (context?.smallModelMode) {
+    result.$skills = basicSkills;
+    result.$instructions = buildBasicInstruction(context);
+  } else {
+    result.$skills = skills;
+    result.$instructions = buildInstructions(context);
+  }
+
   // Format as markdown bullet list
   result.messagesForUser = messages.map((msg) => `* ${msg}`).join("\n");
 
@@ -77,11 +89,6 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
   if (context?.projectNotes?.enabled && context.projectNotes.content) {
     result.projectNotes = context.projectNotes.content;
   }
-
-  // if (context.smallModelMode) post("TODO: use basic skills and instructions\n");
-
-  result.$skills = skills;
-  result.$instructions = buildInstructions(context);
 
   return result;
 }
