@@ -78,6 +78,8 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
     result.projectNotes = context.projectNotes.content;
   }
 
+  // if (context.smallModelMode) post("TODO: use basic skills and instructions\n");
+
   result.$skills = skills;
   result.$instructions = buildInstructions(context);
 

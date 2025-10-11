@@ -10,10 +10,83 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 166.0, 573.0, 605.0, 386.0 ],
+		"rect" : [ 156.0, 513.0, 757.0, 427.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-23",
+					"maxclass" : "newobj",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 598.0, 212.0, 61.0, 22.0 ],
+					"text" : "pipe 1000"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-25",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 598.0, 250.0, 116.0, 22.0 ],
+					"presentation_linecount" : 2,
+					"text" : "smallModelMode $1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Enable for smaller local LLMs. Simplifies features to reduce confusion.",
+					"annotation_name" : "Small model mode",
+					"id" : "obj-21",
+					"maxclass" : "live.toggle",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"parameter_enable" : 1,
+					"patching_rect" : [ 598.5, 185.0, 15.0, 15.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 124.0, 21.0, 15.0, 15.0 ],
+					"saved_attribute_attributes" : 					{
+						"valueof" : 						{
+							"parameter_annotation_name" : "Small model mode",
+							"parameter_enum" : [ "off", "on" ],
+							"parameter_info" : "Enable for smaller local LLMs. Simplifies features to reduce confusion.",
+							"parameter_initial" : [ 0 ],
+							"parameter_initial_enable" : 1,
+							"parameter_invisible" : 1,
+							"parameter_longname" : "small-model-mode",
+							"parameter_mmax" : 1,
+							"parameter_modmode" : 0,
+							"parameter_shortname" : "small-model-mode",
+							"parameter_type" : 2
+						}
+
+					}
+,
+					"varname" : "small-model-mode"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-22",
+					"maxclass" : "live.comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 590.0, 156.5, 88.0, 18.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 23.0, 20.0, 96.0, 18.0 ],
+					"text" : "Small model mode",
+					"textjustification" : 2
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-19",
 					"maxclass" : "newobj",
@@ -49,7 +122,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 458.0, 177.0, 15.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 124.0, 57.320873618125916, 15.0, 15.0 ],
+					"presentation_rect" : [ 124.0, 40.0, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Compact output",
@@ -58,29 +131,28 @@
 							"parameter_initial" : [ 1.0 ],
 							"parameter_initial_enable" : 1,
 							"parameter_invisible" : 1,
-							"parameter_longname" : "live.toggle[1]",
+							"parameter_longname" : "compact-output",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "live.toggle",
+							"parameter_shortname" : "compact-output",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "verbose-logging[1]"
+					"varname" : "compact-output"
 				}
 
 			}
 , 			{
 				"box" : 				{
 					"id" : "obj-18",
-					"linecount" : 2,
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 446.0, 137.0, 53.0, 29.0 ],
+					"patching_rect" : [ 444.5, 156.5, 86.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 39.517525151371956, 55.820873618125916, 78.976633131504059, 18.0 ],
+					"presentation_rect" : [ 40.0, 38.875, 78.976633131504059, 18.0 ],
 					"text" : "Compact output",
 					"textjustification" : 2
 				}
@@ -166,7 +238,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 119.5, 134.0, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 124.0, 77.160436809062958, 44.0, 15.0 ],
+					"presentation_rect" : [ 124.0, 78.0, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Timeout",
@@ -198,7 +270,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 114.5, 104.0, 54.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 69.0, 75.660436809062958, 50.0, 18.0 ],
+					"presentation_rect" : [ 69.0, 76.625, 50.0, 18.0 ],
 					"text" : "Timeout",
 					"textjustification" : 2
 				}
@@ -292,12 +364,12 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-15",
-					"linecount" : 6,
+					"linecount" : 7,
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 311.0, 189.0, 130.0, 87.0 ],
-					"text" : "Attempt to avoid a \"Node script not ready can't handle message verbose\" error.\nTODO: Needs a robust sotluion"
+					"patching_rect" : [ 311.0, 189.0, 130.0, 100.0 ],
+					"text" : "The [pipe]s attempt to avoid a \"Node script not ready can't handle message verbose\" error.\nTODO: Needs a robust sotluion"
 				}
 
 			}
@@ -348,7 +420,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 239.0, 176.0, 15.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 124.0, 37.481310427188873, 15.0, 15.0 ],
+					"presentation_rect" : [ 124.0, 59.0, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Verbose logging",
@@ -357,16 +429,16 @@
 							"parameter_initial" : [ 0.0 ],
 							"parameter_initial_enable" : 1,
 							"parameter_invisible" : 1,
-							"parameter_longname" : "live.toggle",
+							"parameter_longname" : "verbose-logs",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "live.toggle",
+							"parameter_shortname" : "verbose-logs",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "verbose-logging"
+					"varname" : "verbose-logs"
 				}
 
 			}
@@ -379,7 +451,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 261.0, 151.0, 45.0, 29.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 39.011683434247971, 35.981310427188873, 79.988316565752029, 18.0 ],
+					"presentation_rect" : [ 39.0, 57.75, 79.988316565752029, 18.0 ],
 					"text" : "Verbose logging",
 					"textjustification" : 2
 				}
@@ -478,15 +550,14 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-2",
-					"linecount" : 3,
+					"linecount" : 2,
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 52.0, 7.0, 150.0, 41.0 ],
+					"patching_rect" : [ 52.0, 7.0, 150.0, 29.0 ],
 					"presentation" : 1,
-					"presentation_linecount" : 2,
-					"presentation_rect" : [ 15.0, 4.0, 220.0, 29.0 ],
-					"text" : "Warning: Only change advanced settings if you know what you're doing or are experiencing issues",
+					"presentation_rect" : [ 15.0, 1.0, 220.0, 18.0 ],
+					"text" : "Warning: For advanced users or troubleshooting",
 					"textjustification" : 0
 				}
 
@@ -561,6 +632,27 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-23", 0 ],
+					"source" : [ "obj-21", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-25", 0 ],
+					"source" : [ "obj-23", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-12", 0 ],
+					"source" : [ "obj-25", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-13", 0 ],
 					"source" : [ "obj-3", 1 ]
 				}
@@ -617,12 +709,13 @@
 			}
  ],
 		"parameters" : 		{
-			"obj-17" : [ "live.toggle[1]", "live.toggle", 0 ],
+			"obj-17" : [ "compact-output", "compact-output", 0 ],
+			"obj-21" : [ "small-model-mode", "small-model-mode", 0 ],
 			"obj-64" : [ "port", "port", 0 ],
 			"obj-68" : [ "timeout", "timeout", 0 ],
 			"obj-69" : [ "live.text", "live.text", 0 ],
 			"obj-70" : [ "live.text[1]", "live.text", 0 ],
-			"obj-8" : [ "live.toggle", "live.toggle", 0 ],
+			"obj-8" : [ "verbose-logs", "verbose-logs", 0 ],
 			"parameterbanks" : 			{
 				"0" : 				{
 					"index" : 0,
