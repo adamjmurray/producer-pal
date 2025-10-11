@@ -3,6 +3,7 @@ import {
   barBeatToAbletonBeats,
   barBeatToBeats,
   beatsToBarBeat,
+  timeSigToAbletonBeatsPerBar,
 } from "../../notation/barbeat/barbeat-time";
 import { interpretNotation } from "../../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
@@ -137,27 +138,29 @@ export function createClip({
     // For non-looping clips, use endMarker
     clipLength = endMarkerBeats;
   } else if (notes.length > 0) {
-    const lastNoteEndTimeAbletonBeats = Math.max(
-      ...notes.map((note) => note.start_time + note.duration),
+    // Find the latest note start time (not end time)
+    const lastNoteStartTimeAbletonBeats = Math.max(
+      ...notes.map((note) => note.start_time),
     );
 
-    // Convert back to musical beats to round up conceptually
-    const lastNoteEndTimeMusicalBeats =
-      timeSigDenominator != null
-        ? lastNoteEndTimeAbletonBeats * (timeSigDenominator / 4)
-        : lastNoteEndTimeAbletonBeats;
+    // Calculate Ableton beats per bar for this time signature
+    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+      timeSigNumerator,
+      timeSigDenominator,
+    );
 
-    // Round up to whole musical beats
-    const clipLengthMusicalBeats = Math.ceil(lastNoteEndTimeMusicalBeats);
-
-    // Convert back to Ableton beats for the Live API
+    // Round up to the next full bar, ensuring at least 1 bar
+    // Add a small epsilon to handle the case where note starts exactly at bar boundary
     clipLength =
-      timeSigDenominator != null
-        ? clipLengthMusicalBeats * (4 / timeSigDenominator)
-        : clipLengthMusicalBeats;
+      Math.ceil((lastNoteStartTimeAbletonBeats + 0.0001) / abletonBeatsPerBar) *
+      abletonBeatsPerBar;
   } else {
-    // Empty clip, use 1 beat minimum
-    clipLength = 1;
+    // Empty clip, use 1 bar minimum
+    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+    clipLength = abletonBeatsPerBar;
   }
 
   const createdClips = [];
