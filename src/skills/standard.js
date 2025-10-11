@@ -20,7 +20,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - beat can be a shorthand comma-separated list
   - beat wraps to actual bar (1|5 becomes 2|1 in 4/4)
 - v<velocity>: Note intensity from 0-127 (v80-120 = random range)
-  - \`v0\` deletes earlier notes at same pitch/time (works with chords)
+  - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length in beats (default: 1.0)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
@@ -70,12 +70,12 @@ C1 4|1,3.5 D1 |4 // bar 4
 Faster than writing each bar individually.
 
 \`\`\`
-C1 1|1,3 D1 |2,4         // bar 1 foundation
+C1 1|1,3 D1 |2,4               // bar 1 foundation
 Gb1 |1.5,2.5,3.5,4.5
-@2-8=1                   // copy to bars 2-8
-v0 Gb1 2|4.5 4|3.5 6|2.5 // skip different hats
-v0 C1 4|3                // drop kick for variation
-v0 C1 7|3 v100 D1 |3     // replace kick with snare
+@2-8=1                         // copy to bars 2-8
+v0 Gb1 2|4.5 4|3.5 6|2.5 v100  // skip different hats, reset velocity
+v0 C1 4|3 v100                 // drop kick for variation, reset velocity
+v0 C1 7|3 v100 D1 |3           // replace kick with snare
 \`\`\`
 
 ### Multi-bar phrases
