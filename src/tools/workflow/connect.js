@@ -216,6 +216,7 @@ D1 1|4,6           // snare accents across bars 1-2
 - Place notes musically - not everything on the beat
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) to avoid robotic repetition
 - Fills need rhythm and space, not machine-gun density - accent key hits with velocity
+- Clip length parameter sets playback region; noteCount reflects only notes within that region
 - Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
 - After user move/deletes objects in Live, call ppal-read-live-set to resync
 `;

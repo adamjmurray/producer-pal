@@ -10,6 +10,9 @@ import { updateClip } from "./update-clip";
 
 describe("updateClip", () => {
   beforeEach(() => {
+    // Track added notes per clip ID for get_notes_extended mocking
+    const addedNotesByClipId = {};
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id 123":
@@ -38,6 +41,19 @@ describe("updateClip", () => {
         default:
           return this._path;
       }
+    });
+
+    // Mock liveApiCall to track added notes and return them for get_notes_extended
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        // Store the notes for this clip ID
+        addedNotesByClipId[this.id] = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        // Return the notes that were previously added for this clip
+        const notes = addedNotesByClipId[this.id] || [];
+        return JSON.stringify({ notes });
+      }
+      return undefined;
     });
   });
 
@@ -921,11 +937,14 @@ describe("updateClip", () => {
       },
     });
 
-    // Mock empty existing notes
+    // Mock empty existing notes, then return added notes on subsequent calls
+    let addedNotes = [];
     liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "get_notes_extended") {
+      if (method === "add_new_notes") {
+        addedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
         return JSON.stringify({
-          notes: [],
+          notes: addedNotes,
         });
       }
       return {};
@@ -1273,28 +1292,32 @@ describe("updateClip", () => {
       },
     });
 
-    // Mock existing notes in bar 1
+    // Mock existing notes in bar 1, then return added notes after add_new_notes
+    const existingNotes = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      }, // C3 at 1|1
+      {
+        pitch: 64,
+        start_time: 1,
+        duration: 1,
+        velocity: 80,
+        probability: 1,
+        velocity_deviation: 0,
+      }, // E3 at 1|2
+    ];
+    let addedNotes = existingNotes;
     liveApiCall.mockImplementation(function (method, ...args) {
-      if (method === "get_notes_extended") {
+      if (method === "add_new_notes") {
+        addedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
         return JSON.stringify({
-          notes: [
-            {
-              pitch: 60,
-              start_time: 0,
-              duration: 1,
-              velocity: 100,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // C3 at 1|1
-            {
-              pitch: 64,
-              start_time: 1,
-              duration: 1,
-              velocity: 80,
-              probability: 1,
-              velocity_deviation: 0,
-            }, // E3 at 1|2
-          ],
+          notes: addedNotes,
         });
       }
       return {};
@@ -1351,6 +1374,59 @@ describe("updateClip", () => {
     );
 
     expect(result.noteCount).toBe(4); // 2 existing + 2 copied
+  });
+
+  it("should report noteCount only for notes within clip playback region when length is set", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 8, // 2 bars
+      },
+    });
+
+    // Mock to track added notes and return subset based on length parameter
+    let allAddedNotes = [];
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        allAddedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        // First call returns empty (replace mode), second call filters by length
+        const startBeat = args[2] || 0;
+        const endBeat = args[3] || Infinity;
+        const notesInRange = allAddedNotes.filter(
+          (note) => note.start_time >= startBeat && note.start_time < endBeat,
+        );
+        return JSON.stringify({ notes: notesInRange });
+      }
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      notes: "C3 1|1 D3 2|1 E3 3|1", // Notes in bars 1, 2, 3
+      noteUpdateMode: "replace",
+      length: "2:0", // Clip length = 2 bars (8 beats)
+    });
+
+    // Should have added 3 notes total
+    expect(allAddedNotes.length).toBe(3);
+
+    // But noteCount should only include notes within the 2-bar playback region
+    // C3 at bar 1 (beat 0) and D3 at bar 2 (beat 4) are within 8 beats
+    // E3 at bar 3 (beat 8) is outside the playback region
+    expect(result.noteCount).toBe(2);
+
+    // Verify get_notes_extended was called with the clip's length (8 beats)
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      8,
+    );
   });
 
   it("should support bar copy with v0 deletions in merge mode", () => {

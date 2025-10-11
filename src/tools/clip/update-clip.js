@@ -132,7 +132,13 @@ export function updateClip({
       if (notes.length > 0) {
         clip.call("add_new_notes", { notes });
       }
-      finalNoteCount = notes.length;
+
+      // Query actual note count within playback region (consistent with read-clip)
+      const lengthBeats = clip.getProperty("length");
+      const actualNotesResult = JSON.parse(
+        clip.call("get_notes_extended", 0, 127, 0, lengthBeats),
+      );
+      finalNoteCount = actualNotesResult?.notes?.length || 0;
     }
 
     // Determine view and indices from clip path
