@@ -87,7 +87,7 @@ describe("connect", () => {
       messagesForUser: expect.stringContaining(
         "Producer Pal 0.9.10 connected to Ableton Live 12.3",
       ),
-      $system: expect.stringContaining("Producer Pal System Prompt"),
+      $skills: expect.stringContaining("Producer Pal Skills"),
       $instructions: expect.stringContaining(
         "complete Producer Pal initialization",
       ),
@@ -194,11 +194,11 @@ describe("connect", () => {
       AppView: {
         focused_document_view: "Session",
       },
-      "live_set tracks 0": {
+      track0: {
         has_midi_input: 1,
         devices: children("synth_device"),
       },
-      "live_set tracks 1": {
+      track1: {
         has_midi_input: 1,
         devices: [],
       },
@@ -214,6 +214,7 @@ describe("connect", () => {
     expect(result.messagesForUser).toEqual(
       expect.stringContaining("* Save often!"),
     );
+    expect(result.messagesForUser).not.toContain("No instruments found.");
   });
 
   // it("warns when instrument is on host track", () => {

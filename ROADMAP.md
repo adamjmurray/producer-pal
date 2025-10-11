@@ -19,10 +19,10 @@ In no particular order:
 
 ### Behavior Customization
 
-- Customizable "Producer Pal System Prompt" to adjust Producer Pal's behavior
+- Customizable "Producer Pal Skills" to adjust Producer Pal's behavior
   globally across all Live Sets
 - A large markdown-based UI editor in a popup window for project notes and the
-  system prompt
+  skills
 
 ### Advanced MIDI Manipulation
 
@@ -58,5 +58,5 @@ In no particular order:
   preferences and project goals
 - Completely open: rewrite or delete memories as you see fit
 - Create specialized personas (Jazz Producer, Techno Minimalist, etc.) with
-  independent memory systems (system prompt + memory?)
+  independent memory systems (skills + memory?)
 - Import/export personas for sharing or backup

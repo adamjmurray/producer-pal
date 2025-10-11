@@ -49,14 +49,14 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
 - Let AI intelligence handle contextual responses
 - Return optimistic results for playback operations
 
-## System Prompt & Context Management
+## Producer Pal Skills & Context Management
 
-- **System Prompt**: Returned by ppal-connect tool. Must be updated when:
+- **Producer Pal Skills**: Returned by ppal-connect tool. Must be updated when:
   - Bar|beat notation changes
   - Tool behavior changes that invalidate its instructions
 - **Context Window**: Keep all MCP-facing text minimal:
   - Tool/parameter descriptions in `.def.js` files
-  - System prompt content
+  - Producer Pal Skills content
   - Tool result messages
   - Focus on most useful/relevant info only
 

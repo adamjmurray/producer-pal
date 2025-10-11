@@ -1,5 +1,6 @@
 import { PITCH_CLASS_NAMES } from "../../notation/midi-pitch-to-name.js";
 import { VERSION } from "../../shared/version.js";
+import { buildInstructions, skills } from "../../skills/standard.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 
 /**
@@ -48,58 +49,21 @@ export function connect({} = {}, context) {
     // additional tips set based on the state of the Live Set
   ];
 
-  // Set additional tips based on findings
-
-  // TODO: relay this info in $meta response data when delete-track or duplicate (track) fails due to this:
-  // const hostTrackIndex = getHostTrackIndex();
-  // // First, check if host track has an instrument
-  // let instrumentOnHostTrack = false;
-  // const hostTrack = new LiveAPI(`live_set tracks ${hostTrackIndex}`);
-  // if (hostTrack.getProperty("has_midi_input") > 0) {
-  //   const deviceIds = hostTrack.getChildIds("devices");
-  //   for (const deviceId of deviceIds) {
-  //     const device = new LiveAPI(deviceId);
-  //     const type = device.getProperty("type");
-  //     if (type === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-  //       // instrument, instrument rack, or drum rack
-  //       instrumentOnHostTrack = true;
-  //       break;
-  //     }
-  //   }
-  // }
-  // if (instrumentOnHostTrack) {
-  //   result.messagesForUser.push(
-  //     "The Producer Pal device should be on its own track, but it's on a track with an instrument.",
-  //   );
-  // }
-
-  // Now check for any instruments in the project
-  // let foundAnyInstrument = instrumentOnHostTrack; // Start with host track result
   let foundAnyInstrument = false;
-  // if (!foundAnyInstrument) {
-  // Only search other tracks if we haven't found an instrument yet
-  for (let i = 0; i < trackIds.length; i++) {
-    // if (i === hostTrackIndex) continue; // Skip host track, already checked
-
-    const track = new LiveAPI(`live_set tracks ${i}`);
+  for (const trackId of trackIds) {
+    const track = LiveAPI.from(trackId);
     if (track.getProperty("has_midi_input") > 0) {
-      const deviceIds = track.getChildIds("devices");
-
-      for (const deviceId of deviceIds) {
-        const device = new LiveAPI(deviceId);
-        const type = device.getProperty("type");
-        if (type === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-          // instrument, instrument rack, or drum rack
+      for (const device of track.getChildren("devices")) {
+        const deviceType = device.getProperty("type");
+        if (deviceType === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
+          // it's an instrument, instrument rack, or drum rack
           foundAnyInstrument = true;
-          break; // Exit device loop
+          break;
         }
       }
-
-      if (foundAnyInstrument) break; // Exit track loop
+      if (foundAnyInstrument) break;
     }
   }
-  //}
-
   if (!foundAnyInstrument) {
     messages.push(`No instruments found.
 To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, plugins, etc).
@@ -114,131 +78,8 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
     result.projectNotes = context.projectNotes.content;
   }
 
-  result.$system = `# Producer Pal System Prompt
-
-You are a music production assistant working with Ableton Live through Producer Pal tools.
-You are an expert in Producer Pal's bar|beat notation system.
-
-## Time in Ableton Live
-
-- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
-- Durations: bar:beat (4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
-- Fractional beats supported everywhere
-
-## MIDI Syntax for Clips
-
-Write MIDI using the bar|beat notation syntax:
-
-\`[v0-127] [t<duration>] [p0-1] note(s) bar|beat\`
-
-- Notes emit at time positions (bar|beat)
-  - time positions are relative to clip start
-  - \`|beat\` reuses current bar
-  - beat can be a shorthand comma-separated list
-  - beat wraps to actual bar (1|5 becomes 2|1 in 4/4)
-- v<velocity>: Note intensity from 0-127 (v80-120 = random range)
-  - \`v0\` deletes earlier notes at same pitch/time (works with chords)
-- t<duration>: Note length in beats (default: 1.0)
-- p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
-- Notes: C0-B8 with # or b (C3 = middle C)
-- Parameters (v/t/p) and pitch persist until changed
-- copying bars:
-  - @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range
-  - @N-M= copies previous bar to range N-M; @N-M=P copies bar P to range N-M
-  - @N-M=P-Q tiles bars P-Q across range N-M (repeating multi-bar patterns)
-  - @clear clears the copy buffer for advanced layering use cases
-
-## Examples
-
-\`\`\`
-C3 E3 G3 1|1 // chord at bar 1 beat 1
-C1 1|1,2,3,4 // kick on every beat (comma-separated beats)
-C1 1|1 |2 |3 |4 // same as above (pitch persistence)
-v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
-t0.25 C3 1|1.75 // 16th note at beat 1.75
-C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
-C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
-C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
-\`\`\`
-
-## Techniques
-
-### Repeating Patterns
-
-Use copy features and pitch persistence:
-- Within each bar, group by instrument to leverage pitch persistence for multiple time positions
-- Use shorthand beat lists
-- Add all notes/drums you want before copying the bar
-
-\`\`\`
-C1 1|1,3 D1 |2,4 // bar 1
-@2-3=1           // bar 1 -> 2,3
-C1 4|1,3.5 D1 |4 // bar 4
-@5-7=1           // bar 1 -> 5,6,7
-@8=4             // bar 4 -> 8
-\`\`\`
-
-### Repeats with Variations
-
-1. Copy full bars
-2. Delete specific notes with v0
-3. Add additional notes as desired
-
-Faster than writing each bar individually.
-
-\`\`\`
-C1 1|1,3 D1 |2,4         // bar 1 foundation
-Gb1 |1.5,2.5,3.5,4.5
-@2-8=1                   // copy to bars 2-8
-v0 Gb1 2|4.5 4|3.5 6|2.5 // skip different hats
-v0 C1 4|3                // drop kick for variation
-v0 C1 7|3 v100 D1 |3     // replace kick with snare
-\`\`\`
-
-### Multi-bar phrases
-
-Use cross-bar beat lists then tile the range:
-
-\`\`\`
-// 2-bar syncopated phrase
-C1 1|1,3.5,5,7.5,8 // kick pattern across bars 1-2
-D1 1|4,6           // snare accents across bars 1-2
-@3-8=1-2           // tile 2-bar phrase across bars 3-8 (3 complete tiles)
-\`\`\`
-
-## Workflow
-
-- Session View: For jamming, trying ideas, building scenes
-  - Use auto:"play-scene" when generating scenes one clip at a time
-- Arrangement View: For song structure and timeline
-  - Session clips override Arrangement playback
-  - Tracks need to follow Arrangement (automatic on playback with "play-arrangement")
-- Check for instruments before creating MIDI clips
-- Place notes musically - not everything on the beat
-- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) to avoid robotic repetition
-- Fills need rhythm and space, not machine-gun density - accent key hits with velocity
-- Clip length parameter sets playback region; noteCount reflects only notes within that region
-- Set clip lengths explicitly to keep new clips in sync
-- Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
-- After user move/deletes objects in Live, call ppal-read-live-set to resync
-`;
-
-  result.$instructions =
-    "Do this now to complete Producer Pal initialization:\n" +
-    [
-      "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
-      "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
-      ...(result.projectNotes
-        ? [
-            `* Summarize the project notes, ${
-              context?.projectNotes?.writable
-                ? "mention you can update the project notes, "
-                : ""
-            }and verify you will follow instructions in project notes (if any).`,
-          ]
-        : []),
-      "* Say the messagesForUser, ask what's next, wait for input",
-    ].join("\n");
+  result.$skills = skills;
+  result.$instructions = buildInstructions(context);
 
   return result;
 }
