@@ -33,9 +33,26 @@ export function captureScene({ sceneIndex, name } = {}) {
     newScene.set("name", name);
   }
 
+  // Collect captured clips
+  const clips = [];
+  const trackIds = liveSet.getChildIds("tracks");
+
+  for (let trackIndex = 0; trackIndex < trackIds.length; trackIndex++) {
+    const clip = new LiveAPI(
+      `live_set tracks ${trackIndex} clip_slots ${newSceneIndex} clip`,
+    );
+    if (clip.exists()) {
+      clips.push({
+        id: clip.id,
+        trackIndex,
+      });
+    }
+  }
+
   // Build optimistic result object
   return {
     id: newScene.id,
     sceneIndex: newSceneIndex,
+    clips,
   };
 }
