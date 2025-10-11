@@ -1,6 +1,6 @@
 export const skills = `# Producer Pal Skills
 
-Expert knowledge of music production with Ableton Live through Producer Pal tools, with deep expertise in Producer Pal's bar|beat notation system.
+You can now compose music in Ableton Live using Producer Pal tools and the bar|beat notation system.
 
 ## Time in Ableton Live
 
@@ -8,9 +8,9 @@ Expert knowledge of music production with Ableton Live through Producer Pal tool
 - Durations: bar:beat (4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
 - Fractional beats supported everywhere
 
-## MIDI Syntax for Clips
+## MIDI Syntax
 
-Write MIDI using the bar|beat notation syntax:
+Create MIDI clips using the bar|beat notation syntax:
 
 \`[v0-127] [t<duration>] [p0-1] note(s) bar|beat\`
 
@@ -89,21 +89,26 @@ D1 1|4,6           // snare accents across bars 1-2
 @3-8=1-2           // tile 2-bar phrase across bars 3-8 (3 complete tiles)
 \`\`\`
 
-## Workflow
+## Working with Ableton Live
 
-- Session View: For jamming, trying ideas, building scenes
+**Views and Playback:**
+- Session View: Jam, try ideas, build scenes
   - Use auto:"play-scene" when generating scenes one clip at a time
-- Arrangement View: For song structure and timeline
+- Arrangement View: Structure songs on a timeline
   - Session clips override Arrangement playback
-  - Tracks need to follow Arrangement (automatic on playback with "play-arrangement")
+  - Tracks auto-follow Arrangement when you play with "play-arrangement"
+
+**Creating Music:**
 - Check for instruments before creating MIDI clips
-- Place notes musically - not everything on the beat
-- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) to avoid robotic repetition
-- Fills need rhythm and space, not machine-gun density - accent key hits with velocity
-- Clip length parameter sets playback region; noteCount reflects only notes within that region
-- Set clip lengths explicitly to keep new clips in sync
-- Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
-- After user move/deletes objects in Live, call ppal-read-live-set to resync
+- Place notes with musical timing - not just on the beat
+- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
+- Keep fills rhythmic with space - accent key hits, avoid machine-gun density
+
+**Tool Usage:**
+- Clip length sets playback region; noteCount shows notes within that region
+- Set clip lengths explicitly to keep clips in sync
+- Duplicate tracks with routeToSource=true to layer multiple MIDI patterns on one instrument (enables polyrhythms with different clip lengths)
+- After user rearranges anything in Live, call ppal-read-live-set to resync
 `;
 
 /**
