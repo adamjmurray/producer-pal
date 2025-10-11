@@ -211,16 +211,6 @@ sounds). Subsequent Drum Racks on the same track are ignored. To ensure
 predictable drum programming, avoid using multiple Drum Racks within a single
 track when working with Producer Pal.
 
-### Known Issues
-
-- Using the Producer Pal in an Ableton Live template may cause Ableton to crash
-  when loading that template. You may need to
-  [reset your default Live template](https://help.ableton.com/hc/en-us/articles/209773265-Troubleshooting-a-crash#h_01HCFQ56MG8QVWC78FWANX5KWP)
-  if you save Producer Pal into it. I will try to work with Ableton to get this
-  crash solved eventually, but in the meantime it's recommended you do not save
-  Producer Pal into Ableton Live templates. (Saving and opening normal projects
-  seems fine.)
-
 ### Advanced Examples
 
 Above are some basic ideas to get you started. For best results, be very

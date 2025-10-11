@@ -34,13 +34,8 @@ export function captureScene({ sceneIndex, name } = {}) {
   }
 
   // Build optimistic result object
-  const result = {
+  return {
     id: newScene.id,
     sceneIndex: newSceneIndex,
   };
-
-  // Only include properties that were actually set
-  if (name != null) result.name = name;
-
-  return result;
 }

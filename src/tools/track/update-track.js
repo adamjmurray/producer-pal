@@ -4,7 +4,7 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "../constants.js";
-import { parseCommaSeparatedIds, withoutNulls } from "../shared/utils.js";
+import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
  * Updates properties of existing tracks
@@ -111,32 +111,10 @@ export function updateTrack({
       track.set("current_monitoring_state", monitoringValue);
     }
 
-    // Find trackIndex for consistency with readTrack format
-    const trackIndex = Number(track.path.match(/live_set tracks (\d+)/)?.[1]);
-    if (Number.isNaN(trackIndex)) {
-      throw new Error(
-        `updateTrack failed: could not determine trackIndex for id "${id}" (path="${track.path}")`,
-      );
-    }
-
     // Build optimistic result object
-    updatedTracks.push(
-      withoutNulls({
-        id: track.id,
-        trackIndex,
-        name,
-        color,
-        mute,
-        solo,
-        arm,
-        inputRoutingTypeId,
-        inputRoutingChannelId,
-        outputRoutingTypeId,
-        outputRoutingChannelId,
-        monitoringState,
-        arrangementFollower,
-      }),
-    );
+    updatedTracks.push({
+      id: track.id,
+    });
   }
 
   // Return single object if single ID was provided, array if comma-separated IDs were provided

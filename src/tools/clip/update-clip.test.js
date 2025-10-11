@@ -10,6 +10,9 @@ import { updateClip } from "./update-clip";
 
 describe("updateClip", () => {
   beforeEach(() => {
+    // Track added notes per clip ID for get_notes_extended mocking
+    const addedNotesByClipId = {};
+
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id 123":
@@ -38,6 +41,19 @@ describe("updateClip", () => {
         default:
           return this._path;
       }
+    });
+
+    // Mock liveApiCall to track added notes and return them for get_notes_extended
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        // Store the notes for this clip ID
+        addedNotesByClipId[this.id] = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        // Return the notes that were previously added for this clip
+        const notes = addedNotesByClipId[this.id] || [];
+        return JSON.stringify({ notes });
+      }
+      return undefined;
     });
   });
 
@@ -103,16 +119,7 @@ describe("updateClip", () => {
       true,
     );
 
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Updated Clip",
-      color: "#FF0000",
-      loop: true,
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should update a single arrangement clip by ID", () => {
@@ -149,16 +156,7 @@ describe("updateClip", () => {
       6,
     ); // startMarker (2) + length (4) = 6 Ableton beats
 
-    expect(result).toEqual({
-      id: "789",
-      type: "midi",
-      view: "arrangement",
-      trackIndex: 2,
-      arrangementStartTime: 16.0,
-      name: "Arrangement Clip",
-      startMarker: "1|3",
-      length: "1:0",
-    });
+    expect(result).toEqual({ id: "789" });
   });
 
   it("should switch to Arranger view when updating arrangement clips", () => {
@@ -228,26 +226,7 @@ describe("updateClip", () => {
       false,
     );
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        color: "#00FF00",
-        loop: false,
-      },
-      {
-        id: "456",
-        type: "audio",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        color: "#00FF00",
-        loop: false,
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should update time signature when provided", () => {
@@ -273,7 +252,7 @@ describe("updateClip", () => {
       "signature_denominator",
       8,
     );
-    expect(result.timeSignature).toBe("6/8");
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should replace existing notes with real bar|beat parsing in 4/4 time", () => {
@@ -288,7 +267,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 v80 t2 C4 1|3 v120 t1 D4",
+      notes: "v80 t2 C4 1|1 v120 t1 D4 1|3",
       noteUpdateMode: "replace",
     });
 
@@ -325,14 +304,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      noteCount: 2,
-    });
+    expect(result).toEqual({ id: "123", noteCount: 2 });
   });
 
   it("should parse notes using provided time signature with real bar|beat parsing", () => {
@@ -346,7 +318,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       timeSignature: "6/8",
-      notes: "1|1 C3 2|1 D3",
+      notes: "C3 1|1 D3 2|1",
       noteUpdateMode: "replace",
     });
 
@@ -386,8 +358,7 @@ describe("updateClip", () => {
       "signature_denominator",
       8,
     );
-    expect(result.timeSignature).toBe("6/8");
-    expect(result.noteCount).toBe(2);
+    expect(result).toEqual({ id: "123", noteCount: 2 });
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", () => {
@@ -402,7 +373,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 C3 2|1 D3", // Should parse with 3 beats per bar
+      notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
       noteUpdateMode: "replace",
     });
 
@@ -431,7 +402,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(2);
+    expect(result).toEqual({ id: "123", noteCount: 2 });
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", () => {
@@ -447,7 +418,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123",
       notes:
-        "1|1 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1.5 p0.6 Gb1 1|2 v90 p1.0 D1 v100 p0.9 Gb1",
+        "v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1 p0.6 Gb1 1|1.5 v90 p1.0 D1 v100 p0.9 Gb1 1|2",
       noteUpdateMode: "replace",
     });
 
@@ -500,7 +471,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(5);
+    expect(result).toEqual({ id: "123", noteCount: 5 });
   });
 
   it("should throw error for invalid time signature format", () => {
@@ -537,14 +508,7 @@ describe("updateClip", () => {
       "name",
       "Prefixed ID Clip",
     );
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Prefixed ID Clip",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -576,14 +540,7 @@ describe("updateClip", () => {
       expect.anything(),
     );
 
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Only Name Update",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -604,14 +561,7 @@ describe("updateClip", () => {
       "looping",
       false,
     );
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      loop: false,
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should throw error when any clip ID in comma-separated list doesn't exist", () => {
@@ -632,24 +582,6 @@ describe("updateClip", () => {
     );
   });
 
-  it("should throw error when clip path cannot be parsed", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "123") return "invalid_path";
-      return this._path;
-    });
-
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
-
-    expect(() => updateClip({ ids: "123", name: "Test" })).toThrow(
-      'updateClip failed: could not determine trackIndex for id "123" (path="invalid_path")',
-    );
-  });
-
   it("should return single object for single ID and array for comma-separated IDs", () => {
     mockLiveApiGet({
       123: {
@@ -665,32 +597,8 @@ describe("updateClip", () => {
     const singleResult = updateClip({ ids: "123", name: "Single" });
     const arrayResult = updateClip({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Single",
-    });
-    expect(arrayResult).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        name: "Multiple",
-      },
-      {
-        id: "456",
-        type: "midi",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        name: "Multiple",
-      },
-    ]);
+    expect(singleResult).toEqual({ id: "123" });
+    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -715,32 +623,7 @@ describe("updateClip", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        color: "#0000FF",
-      },
-      {
-        id: "456",
-        type: "midi",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        color: "#0000FF",
-      },
-      {
-        id: "789",
-        type: "midi",
-        view: "arrangement",
-        trackIndex: 2,
-        arrangementStartTime: 8.0,
-        color: "#0000FF",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -773,24 +656,7 @@ describe("updateClip", () => {
       "Filtered",
     );
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        name: "Filtered",
-      },
-      {
-        id: "456",
-        type: "midi",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        name: "Filtered",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should filter out v0 notes when updating clips", () => {
@@ -805,7 +671,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 v100 C3 v0 D3 v80 E3", // D3 should be filtered out
+      notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
       noteUpdateMode: "replace",
     });
 
@@ -834,7 +700,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(2); // C3 and E3, D3 filtered out
+    expect(result).toEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
   });
 
   it("should handle clips with all v0 notes filtered out during update", () => {
@@ -849,7 +715,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1|1 v0 C3 D3 E3", // All notes should be filtered out
+      notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
       noteUpdateMode: "replace",
     });
 
@@ -879,7 +745,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 C3",
+      notes: "C3 1|1",
       noteUpdateMode: "replace",
     });
 
@@ -908,7 +774,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(1);
+    expect(result).toEqual({ id: "123", noteCount: 1 });
   });
 
   it("should add to existing notes when noteUpdateMode is 'merge'", () => {
@@ -921,15 +787,32 @@ describe("updateClip", () => {
       },
     });
 
+    // Mock empty existing notes, then return added notes on subsequent calls
+    let addedNotes = [];
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        addedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: addedNotes,
+        });
+      }
+      return {};
+    });
+
     const result = updateClip({
       ids: "123",
-      notes: "1|1 C3",
+      notes: "C3 1|1",
       noteUpdateMode: "merge",
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
@@ -948,7 +831,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(1);
+    expect(result).toEqual({ id: "123", noteCount: 1 });
   });
 
   it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {
@@ -961,15 +844,29 @@ describe("updateClip", () => {
       },
     });
 
+    // Mock empty existing notes
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [],
+        });
+      }
+      return {};
+    });
+
     updateClip({
       ids: "123",
-      notes: "1|1 v0 C3", // All notes filtered out
+      notes: "v0 C3 1|1", // All notes filtered out
       noteUpdateMode: "merge",
     });
 
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
     expect(liveApiCall).not.toHaveBeenCalledWith(
       "add_new_notes",
@@ -1046,7 +943,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      notes: "1|1 v0 C3 v100 F3", // Delete C3 at 1|1, add F3 at 1|1
+      notes: "v0 C3 v100 F3 1|1", // Delete C3 at 1|1, add F3 at 1|1
       noteUpdateMode: "merge",
     });
 
@@ -1071,42 +968,37 @@ describe("updateClip", () => {
     );
 
     // Should add back filtered existing notes plus new regular notes
-    expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "123" }),
-      "add_new_notes",
-      {
-        notes: [
-          // Existing notes minus the deleted C3 at 1|1 (cleaned for Live API)
-          {
-            pitch: 62,
-            start_time: 1,
-            duration: 1,
-            velocity: 80,
-            probability: 1,
-            velocity_deviation: 0,
-          }, // D3 at 1|2
-          {
-            pitch: 64,
-            start_time: 0,
-            duration: 1,
-            velocity: 90,
-            probability: 1,
-            velocity_deviation: 0,
-          }, // E3 at 1|1
-          // New F3 note
-          {
-            pitch: 65,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1,
-            velocity_deviation: 0,
-          },
-        ],
-      },
+    const addNewNotesCall = liveApiCall.mock.calls.find(
+      (call) => call[0] === "add_new_notes",
     );
+    expect(addNewNotesCall).toBeDefined();
+    expect(addNewNotesCall[1].notes).toHaveLength(3);
+    expect(addNewNotesCall[1].notes).toContainEqual({
+      pitch: 62,
+      start_time: 1,
+      duration: 1,
+      velocity: 80,
+      probability: 1,
+      velocity_deviation: 0,
+    }); // D3 at 1|2
+    expect(addNewNotesCall[1].notes).toContainEqual({
+      pitch: 64,
+      start_time: 0,
+      duration: 1,
+      velocity: 90,
+      probability: 1,
+      velocity_deviation: 0,
+    }); // E3 at 1|1
+    expect(addNewNotesCall[1].notes).toContainEqual({
+      pitch: 65,
+      start_time: 0,
+      duration: 1,
+      velocity: 100,
+      probability: 1,
+      velocity_deviation: 0,
+    }); // New F3 note
 
-    expect(result.noteCount).toBe(3); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
+    expect(result).toEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
 
   it("should handle v0 notes when no existing notes match", () => {
@@ -1140,7 +1032,7 @@ describe("updateClip", () => {
 
     updateClip({
       ids: "123",
-      notes: "1|1 v0 C3", // Try to delete C3 at 1|1 (doesn't exist)
+      notes: "v0 C3 1|1", // Try to delete C3 at 1|1 (doesn't exist)
       noteUpdateMode: "merge",
     });
 
@@ -1179,7 +1071,7 @@ describe("updateClip", () => {
     );
   });
 
-  it("should not call get_notes_extended when noteUpdateMode is 'merge' but no v0 notes", () => {
+  it("should call get_notes_extended in merge mode to format existing notes", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
@@ -1189,20 +1081,38 @@ describe("updateClip", () => {
       },
     });
 
+    // Mock existing notes
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [],
+        });
+      }
+      return {};
+    });
+
     updateClip({
       ids: "123",
-      notes: "1|1 v100 C3", // No v0 notes
+      notes: "v100 C3 1|1",
       noteUpdateMode: "merge",
     });
 
-    // Should not call get_notes_extended since no v0 notes
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    // Should call get_notes_extended in merge mode
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "get_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
-    expect(liveApiCall).not.toHaveBeenCalledWith(
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
-      expect.anything(),
+      0,
+      127,
+      0,
+      1000000,
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: "123" }),
@@ -1220,5 +1130,226 @@ describe("updateClip", () => {
         ],
       },
     );
+  });
+
+  it("should support bar copy with existing notes in merge mode", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock existing notes in bar 1, then return added notes after add_new_notes
+    const existingNotes = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      }, // C3 at 1|1
+      {
+        pitch: 64,
+        start_time: 1,
+        duration: 1,
+        velocity: 80,
+        probability: 1,
+        velocity_deviation: 0,
+      }, // E3 at 1|2
+    ];
+    let addedNotes = existingNotes;
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        addedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: addedNotes,
+        });
+      }
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      notes: "@2=1", // Copy bar 1 to bar 2
+      noteUpdateMode: "merge",
+    });
+
+    // Should add existing notes + copied notes
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          // Existing notes in bar 1
+          {
+            pitch: 60,
+            start_time: 0,
+            duration: 1,
+            velocity: 100,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 64,
+            start_time: 1,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          // Copied to bar 2 (starts at beat 4)
+          {
+            pitch: 60,
+            start_time: 4,
+            duration: 1,
+            velocity: 100,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          {
+            pitch: 64,
+            start_time: 5,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+        ],
+      },
+    );
+
+    expect(result).toEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
+  });
+
+  it("should report noteCount only for notes within clip playback region when length is set", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 8, // 2 bars
+      },
+    });
+
+    // Mock to track added notes and return subset based on length parameter
+    let allAddedNotes = [];
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        allAddedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        // First call returns empty (replace mode), second call filters by length
+        const startBeat = args[2] || 0;
+        const endBeat = args[3] || Infinity;
+        const notesInRange = allAddedNotes.filter(
+          (note) => note.start_time >= startBeat && note.start_time < endBeat,
+        );
+        return JSON.stringify({ notes: notesInRange });
+      }
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      notes: "C3 1|1 D3 2|1 E3 3|1", // Notes in bars 1, 2, 3
+      noteUpdateMode: "replace",
+      length: "2:0", // Clip length = 2 bars (8 beats)
+    });
+
+    // Should have added 3 notes total
+    expect(allAddedNotes.length).toBe(3);
+
+    // But noteCount should only include notes within the 2-bar playback region
+    // C3 at bar 1 (beat 0) and D3 at bar 2 (beat 4) are within 8 beats
+    // E3 at bar 3 (beat 8) is outside the playback region
+    expect(result).toEqual({ id: "123", noteCount: 2 });
+
+    // Verify get_notes_extended was called with the clip's length (8 beats)
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "get_notes_extended",
+      0,
+      127,
+      0,
+      8,
+    );
+  });
+
+  it("should support bar copy with v0 deletions in merge mode", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    // Mock existing notes in bar 1
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              pitch: 60,
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // C3 at 1|1
+            {
+              pitch: 64,
+              start_time: 1,
+              duration: 1,
+              velocity: 80,
+              probability: 1,
+              velocity_deviation: 0,
+            }, // E3 at 1|2
+          ],
+        });
+      }
+      return {};
+    });
+
+    const result = updateClip({
+      ids: "123",
+      notes: "v0 C3 1|1 @2=1", // Delete C3 at 1|1, then copy bar 1 (now only E3) to bar 2
+      noteUpdateMode: "merge",
+    });
+
+    // Should have E3 in bar 1 and E3 copied to bar 2 (C3 deleted by v0)
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "add_new_notes",
+      {
+        notes: [
+          // E3 remains in bar 1 (C3 deleted)
+          {
+            pitch: 64,
+            start_time: 1,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+          // E3 copied to bar 2 (beat 5)
+          {
+            pitch: 64,
+            start_time: 5,
+            duration: 1,
+            velocity: 80,
+            probability: 1,
+            velocity_deviation: 0,
+          },
+        ],
+      },
+    );
+
+    expect(result).toEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
 });

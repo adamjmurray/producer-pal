@@ -38,29 +38,24 @@ export function createScene({
 
       if (color != null) {
         scene.setColor(color);
-        result.color = color;
       }
 
       // Handle tempo - explicit -1 disables, non-null enables
       if (tempo === -1) {
         scene.set("tempo_enabled", false);
-        result.tempo = "disabled";
       } else if (tempo != null) {
         scene.set("tempo", tempo);
         scene.set("tempo_enabled", true);
-        result.tempo = tempo;
       }
 
       // Handle time signature - explicit "disabled" disables, non-null enables
       if (timeSignature === "disabled") {
         scene.set("time_signature_enabled", false);
-        result.timeSignature = "disabled";
       } else if (timeSignature != null) {
         const parsed = parseTimeSignature(timeSignature);
         scene.set("time_signature_numerator", parsed.numerator);
         scene.set("time_signature_denominator", parsed.denominator);
         scene.set("time_signature_enabled", true);
-        result.timeSignature = timeSignature;
       }
     }
 
@@ -144,26 +139,10 @@ export function createScene({
     }
 
     // Build optimistic result object
-    const sceneResult = {
+    createdScenes.push({
       id: scene.id,
       sceneIndex: currentIndex,
-    };
-
-    // Only include properties that were actually set
-    if (sceneName != null) sceneResult.name = sceneName;
-    if (color != null) sceneResult.color = color;
-    if (tempo === -1) {
-      sceneResult.tempo = "disabled";
-    } else if (tempo != null) {
-      sceneResult.tempo = tempo;
-    }
-    if (timeSignature === "disabled") {
-      sceneResult.timeSignature = "disabled";
-    } else if (timeSignature != null) {
-      sceneResult.timeSignature = timeSignature;
-    }
-
-    createdScenes.push(sceneResult);
+    });
 
     // For subsequent scenes, increment the index since scenes shift down
     currentIndex++;

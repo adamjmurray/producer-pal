@@ -75,14 +75,7 @@ describe("updateScene", () => {
       "time_signature_enabled",
       true,
     );
-    expect(result).toEqual({
-      id: "123",
-      sceneIndex: 0,
-      name: "Updated Scene",
-      color: "#FF0000",
-      tempo: 140,
-      timeSignature: "3/4",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should update multiple scenes by comma-separated IDs", () => {
@@ -124,20 +117,7 @@ describe("updateScene", () => {
       true,
     );
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        sceneIndex: 0,
-        color: "#00FF00",
-        tempo: 120,
-      },
-      {
-        id: "456",
-        sceneIndex: 1,
-        color: "#00FF00",
-        tempo: 120,
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle 'id ' prefixed scene IDs", () => {
@@ -151,11 +131,7 @@ describe("updateScene", () => {
       "name",
       "Prefixed ID Scene",
     );
-    expect(result).toEqual({
-      id: "123",
-      sceneIndex: 0,
-      name: "Prefixed ID Scene",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -170,11 +146,7 @@ describe("updateScene", () => {
       "Only Name Update",
     );
     expect(liveApiSet).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({
-      id: "123",
-      sceneIndex: 0,
-      name: "Only Name Update",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should disable tempo when -1 is passed", () => {
@@ -189,11 +161,7 @@ describe("updateScene", () => {
       false,
     );
     expect(liveApiSet).not.toHaveBeenCalledWith("tempo", expect.any(Number));
-    expect(result).toEqual({
-      id: "123",
-      sceneIndex: 0,
-      tempo: "disabled",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should disable time signature when 'disabled' is passed", () => {
@@ -215,11 +183,7 @@ describe("updateScene", () => {
       "time_signature_denominator",
       expect.any(Number),
     );
-    expect(result).toEqual({
-      id: "123",
-      sceneIndex: 0,
-      timeSignature: "disabled",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should throw error when ids is missing", () => {
@@ -256,17 +220,6 @@ describe("updateScene", () => {
     ).toThrow('updateScene failed: scene with id "nonexistent" does not exist');
   });
 
-  it("should throw error when scene path cannot be parsed", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "123") return "invalid_path";
-      return this._path;
-    });
-
-    expect(() => updateScene({ ids: "123", name: "Test" })).toThrow(
-      'updateScene failed: could not determine sceneIndex for id "123" (path="invalid_path")',
-    );
-  });
-
   it("should throw error for invalid time signature format", () => {
     expect(() => updateScene({ ids: "123", timeSignature: "invalid" })).toThrow(
       "Time signature must be in format",
@@ -280,23 +233,8 @@ describe("updateScene", () => {
     const singleResult = updateScene({ ids: "123", name: "Single" });
     const arrayResult = updateScene({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({
-      id: "123",
-      sceneIndex: 0,
-      name: "Single",
-    });
-    expect(arrayResult).toEqual([
-      {
-        id: "123",
-        sceneIndex: 0,
-        name: "Multiple",
-      },
-      {
-        id: "456",
-        sceneIndex: 1,
-        name: "Multiple",
-      },
-    ]);
+    expect(singleResult).toEqual({ id: "123" });
+    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -305,23 +243,7 @@ describe("updateScene", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        sceneIndex: 0,
-        color: "#0000FF",
-      },
-      {
-        id: "456",
-        sceneIndex: 1,
-        color: "#0000FF",
-      },
-      {
-        id: "789",
-        sceneIndex: 2,
-        color: "#0000FF",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -331,22 +253,6 @@ describe("updateScene", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
-    expect(result).toEqual([
-      {
-        id: "123",
-        sceneIndex: 0,
-        name: "Filtered",
-      },
-      {
-        id: "456",
-        sceneIndex: 1,
-        name: "Filtered",
-      },
-      {
-        id: "789",
-        sceneIndex: 2,
-        name: "Filtered",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 });
