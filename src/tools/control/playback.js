@@ -268,22 +268,12 @@ export function playback({
     .map((trackId) => trackId.replace("id ", ""))
     .join(",");
 
-  return Object.fromEntries(
-    Object.entries({
-      // reflect the args back:
-      action,
-      startTime,
-      loop: loop ?? liveSet.getProperty("loop") > 0,
-      loopStart: loopStart ?? currentLoopStart,
-      loopEnd: loopEnd ?? currentLoopEnd,
-      autoFollow: action === "play-arrangement" ? autoFollow : undefined,
-      sceneId,
-      clipIds,
-      switchView: switchView != null ? switchView : undefined,
-      arrangementFollowerTrackIds,
-      // and include some additional relevant state:
-      isPlaying,
-      currentTime,
-    }).filter(([_, v]) => v !== undefined), // remove any undefined args
-  );
+  return {
+    isPlaying,
+    currentTime,
+    loop: loop ?? liveSet.getProperty("loop") > 0,
+    loopStart: loopStart ?? currentLoopStart,
+    loopEnd: loopEnd ?? currentLoopEnd,
+    arrangementFollowerTrackIds,
+  };
 }

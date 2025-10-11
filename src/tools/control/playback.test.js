@@ -59,14 +59,11 @@ describe("transport", () => {
       16,
     ); // bar 5 = 16 beats in 4/4
     expect(result).toStrictEqual({
-      action: "play-arrangement",
-      autoFollow: true,
-      currentTime: "5|1",
       isPlaying: true,
+      currentTime: "5|1",
       loop: false,
-      loopEnd: "2|1",
       loopStart: "1|1",
-      startTime: "5|1",
+      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1",
     });
   });
@@ -114,9 +111,8 @@ describe("transport", () => {
     expect(liveApiSet).toHaveBeenCalledTimes(3); // 3 for loop/start/length only
 
     expect(result).toStrictEqual({
-      action: "update-arrangement",
-      currentTime: "3|3",
       isPlaying: true,
+      currentTime: "3|3",
       loop: true,
       loopStart: "3|1",
       loopEnd: "7|1",
@@ -186,13 +182,11 @@ describe("transport", () => {
     expect(liveApiCall).not.toHaveBeenCalledWith("start_playing");
 
     expect(result).toStrictEqual({
-      action: "play-session-clips",
-      currentTime: "2|2",
       isPlaying: true,
+      currentTime: "2|2",
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
-      clipIds: "clip1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -234,7 +228,6 @@ describe("transport", () => {
       "fire",
     );
     expect(liveApiCall).toHaveBeenCalledTimes(5); // 3 fire calls + stop_playing + start_playing
-    expect(result.clipIds).toBe("clip1,clip2,clip3");
 
     // Verify quantization fix: stop_playing and start_playing should be called for multiple clips
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -363,13 +356,11 @@ describe("transport", () => {
       "fire",
     );
     expect(result).toStrictEqual({
-      action: "play-scene",
-      currentTime: "2|2",
       isPlaying: true,
+      currentTime: "2|2",
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
-      sceneId: "scene1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -420,13 +411,11 @@ describe("transport", () => {
       "stop_all_clips",
     );
     expect(result).toStrictEqual({
-      action: "stop-session-clips",
-      currentTime: "2|2",
       isPlaying: true, // transport/arrangement can still be playing
+      currentTime: "2|2",
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
-      clipIds: "clip1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -508,9 +497,8 @@ describe("transport", () => {
       "stop_all_clips",
     );
     expect(result).toStrictEqual({
-      action: "stop-all-session-clips",
-      currentTime: "2|2",
       isPlaying: true, // transport/arrangement can still be playing
+      currentTime: "2|2",
       loop: false,
       loopStart: "1|1",
       loopEnd: "2|1",
@@ -541,12 +529,11 @@ describe("transport", () => {
       0,
     );
     expect(result).toStrictEqual({
-      action: "stop",
-      currentTime: "1|1",
       isPlaying: false,
+      currentTime: "1|1",
       loop: false,
-      loopEnd: "2|1",
       loopStart: "1|1",
+      loopEnd: "2|1",
       arrangementFollowerTrackIds: "track1,track2",
     });
   });
@@ -612,7 +599,6 @@ describe("transport", () => {
       6,
     ); // 2 bars = 6 Ableton beats
 
-    expect(result.startTime).toBe("2|1");
     expect(result.currentTime).toBe("2|1");
     expect(result.loopStart).toBe("1|1");
     expect(result.loopEnd).toBe("3|1");
@@ -644,7 +630,6 @@ describe("transport", () => {
       0,
     );
     expect(result.currentTime).toBe("1|1");
-    expect(result.startTime).toBeUndefined();
   });
 
   describe("autoFollow behavior for play-arrangement", () => {
@@ -675,13 +660,14 @@ describe("transport", () => {
         0,
       );
 
-      expect(result).toEqual(
-        expect.objectContaining({
-          action: "play-arrangement",
-          autoFollow: true,
-          arrangementFollowerTrackIds: "track1,track3", // tracks currently following
-        }),
-      );
+      expect(result).toStrictEqual({
+        isPlaying: true,
+        currentTime: "1|1",
+        loop: false,
+        loopStart: "1|1",
+        loopEnd: "2|1",
+        arrangementFollowerTrackIds: "track1,track3", // tracks currently following
+      });
     });
 
     it("should set all tracks to follow arrangement when autoFollow is explicitly true", () => {
@@ -709,12 +695,14 @@ describe("transport", () => {
         0,
       );
 
-      expect(result).toEqual(
-        expect.objectContaining({
-          autoFollow: true,
-          arrangementFollowerTrackIds: "", // empty since tracks were not following before the call
-        }),
-      );
+      expect(result).toStrictEqual({
+        isPlaying: true,
+        currentTime: "1|1",
+        loop: false,
+        loopStart: "1|1",
+        loopEnd: "2|1",
+        arrangementFollowerTrackIds: "", // empty since tracks were not following before the call
+      });
     });
 
     it("should NOT set tracks to follow when autoFollow is false", () => {
@@ -739,12 +727,14 @@ describe("transport", () => {
       // Should NOT call back_to_arranger when autoFollow is false
       expect(liveApiSet).not.toHaveBeenCalledWith("back_to_arranger", 0);
 
-      expect(result).toEqual(
-        expect.objectContaining({
-          autoFollow: false,
-          arrangementFollowerTrackIds: "track2", // only track2 was following
-        }),
-      );
+      expect(result).toStrictEqual({
+        isPlaying: true,
+        currentTime: "1|1",
+        loop: false,
+        loopStart: "1|1",
+        loopEnd: "2|1",
+        arrangementFollowerTrackIds: "track2", // only track2 was following
+      });
     });
 
     it("should include arrangementFollowerTrackIds for all transport actions", () => {
@@ -752,6 +742,9 @@ describe("transport", () => {
         LiveSet: {
           signature_numerator: 4,
           signature_denominator: 4,
+          loop: 0,
+          loop_start: 0,
+          loop_length: 0,
           tracks: children("track1", "track2", "track3"),
         },
         track1: { back_to_arranger: 0 },
@@ -763,12 +756,14 @@ describe("transport", () => {
         action: "stop",
       });
 
-      expect(result).toEqual(
-        expect.objectContaining({
-          action: "stop",
-          arrangementFollowerTrackIds: "track1,track3",
-        }),
-      );
+      expect(result).toStrictEqual({
+        isPlaying: false,
+        currentTime: "1|1",
+        loop: false,
+        loopStart: "1|1",
+        loopEnd: "1|1",
+        arrangementFollowerTrackIds: "track1,track3",
+      });
     });
   });
 
@@ -791,7 +786,6 @@ describe("transport", () => {
 
       // Check that select was called with arrangement view
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-      expect(result.switchView).toBe(true);
     });
 
     it("should switch to session view for play-scene action when switchView is true", () => {
@@ -812,7 +806,6 @@ describe("transport", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result.switchView).toBe(true);
     });
 
     it("should switch to session view for play-session-clips action when switchView is true", () => {
@@ -841,7 +834,6 @@ describe("transport", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result.switchView).toBe(true);
     });
 
     it("should not switch views when switchView is false", () => {
@@ -865,7 +857,6 @@ describe("transport", () => {
         "show_view",
         expect.anything(),
       );
-      expect(result.switchView).toBe(false);
     });
 
     it("should not switch views for actions that don't have a target view", () => {
@@ -888,7 +879,6 @@ describe("transport", () => {
         "show_view",
         expect.anything(),
       );
-      expect(result.switchView).toBe(true);
     });
   });
 });
