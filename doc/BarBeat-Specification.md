@@ -151,10 +151,16 @@ v0 D3 2|1        // Delete D3 from bar 2
                  // Result: Bar 1 has C3, D3, E3; Bar 2 has C3, E3
 ```
 
-**Multiple deletions:**
+**Deleting multiple notes (chord deletion):**
 
 ```
-C3 D3 E3 F3 1|1 v0 C3 D3 1|1  // Result: E3 and F3 at 1|1
+C3 D3 E3 F3 1|1 v0 C3 D3 1|1  // Result: E3 and F3 at 1|1 (deletes C3 and D3)
+```
+
+**Deleting complete chords:**
+
+```
+C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2  // Result: chord at beats 1, 3, 4 only (beat 2 deleted)
 ```
 
 **Different times not affected:**

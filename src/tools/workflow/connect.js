@@ -137,7 +137,7 @@ Write MIDI using the bar|beat notation syntax:
   - beat can be a shorthand comma-separated list
   - beat wraps to actual bar (1|5 becomes 2|1 in 4/4)
 - v<velocity>: Note intensity from 0-127 (v80-120 = random range)
-  - \`v0\` deletes earlier notes at same pitch/time
+  - \`v0\` deletes earlier notes at same pitch/time (works with chords)
 - t<duration>: Note length in beats (default: 1.0)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
@@ -157,6 +157,7 @@ C1 1|1 |2 |3 |4 // same as above (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
+C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 \`\`\`
 
