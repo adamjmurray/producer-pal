@@ -15,6 +15,18 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-26",
+					"maxclass" : "newobj",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "int" ],
+					"patching_rect" : [ 457.0, 157.0, 29.5, 22.0 ],
+					"text" : "!= 1"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-23",
 					"maxclass" : "newobj",
 					"numinlets" : 2,
@@ -33,7 +45,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 598.0, 250.0, 116.0, 22.0 ],
-					"presentation_linecount" : 2,
 					"text" : "smallModelMode $1"
 				}
 
@@ -112,35 +123,35 @@
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Use a compact output format to reduce LLM context window usage. Disabling this returns standard JSON, which can aid debugging and custom integrations.",
-					"annotation_name" : "Compact output",
+					"annotation" : "Return standard JSON for responses, which can aid debugging and custom integrations. This is more verbose than the default output format, which is designed to reduce LLM context window usage.",
+					"annotation_name" : "JSON output",
 					"id" : "obj-17",
 					"maxclass" : "live.toggle",
 					"numinlets" : 1,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 458.0, 177.0, 15.0, 15.0 ],
+					"patching_rect" : [ 457.5, 125.0, 15.0, 15.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 124.0, 40.0, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Compact output",
+							"parameter_annotation_name" : "JSON output",
 							"parameter_enum" : [ "off", "on" ],
-							"parameter_info" : "Use a compact output format to reduce LLM context window usage. Disabling this returns standard JSON, which can aid debugging and custom integrations.",
-							"parameter_initial" : [ 1.0 ],
+							"parameter_info" : "Return standard JSON for responses, which can aid debugging and custom integrations. This is more verbose than the default output format, which is designed to reduce LLM context window usage.",
+							"parameter_initial" : [ 0 ],
 							"parameter_initial_enable" : 1,
 							"parameter_invisible" : 1,
-							"parameter_longname" : "compact-output",
+							"parameter_longname" : "json-output",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "compact-output",
+							"parameter_shortname" : "json-output",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "compact-output"
+					"varname" : "json-output"
 				}
 
 			}
@@ -150,10 +161,10 @@
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 444.5, 156.5, 86.0, 18.0 ],
+					"patching_rect" : [ 444.5, 104.0, 86.0, 18.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 40.0, 38.875, 78.976633131504059, 18.0 ],
-					"text" : "Compact output",
+					"text" : "JSON output",
 					"textjustification" : 2
 				}
 
@@ -611,7 +622,7 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-19", 0 ],
+					"destination" : [ "obj-26", 0 ],
 					"source" : [ "obj-17", 0 ]
 				}
 
@@ -648,6 +659,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-12", 0 ],
 					"source" : [ "obj-25", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-19", 0 ],
+					"source" : [ "obj-26", 0 ]
 				}
 
 			}
@@ -709,7 +727,7 @@
 			}
  ],
 		"parameters" : 		{
-			"obj-17" : [ "compact-output", "compact-output", 0 ],
+			"obj-17" : [ "json-output", "json-output", 0 ],
 			"obj-21" : [ "small-model-mode", "small-model-mode", 0 ],
 			"obj-64" : [ "port", "port", 0 ],
 			"obj-68" : [ "timeout", "timeout", 0 ],
