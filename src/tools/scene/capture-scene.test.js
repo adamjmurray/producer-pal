@@ -85,7 +85,6 @@ describe("captureScene", () => {
     expect(result).toEqual({
       id: "live_set/scenes/2",
       sceneIndex: 2,
-      name: "Captured Custom Name",
     });
   });
 

@@ -1,4 +1,5 @@
 import {
+  abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
   barBeatToBeats,
@@ -8,7 +9,7 @@ import {
 import { interpretNotation } from "../../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { select } from "../control/select.js";
-import { parseTimeSignature, setAllNonNull } from "../shared/utils.js";
+import { parseTimeSignature } from "../shared/utils.js";
 
 /**
  * Creates MIDI clips in Session or Arrangement view
@@ -253,8 +254,6 @@ export function createClip({
     // Build optimistic result object
     const clipResult = {
       id: clip.id,
-      type: "midi",
-      view,
       trackIndex,
     };
 
@@ -282,19 +281,19 @@ export function createClip({
       }
     }
 
-    setAllNonNull(clipResult, {
-      name: clipName,
-      color,
-      timeSignature:
-        timeSigNumerator != null && timeSigDenominator != null
-          ? `${timeSigNumerator}/${timeSigDenominator}`
-          : null,
-      startMarker,
-      length,
-      loopStart,
-      loop,
-      noteCount: notationString != null ? notes.length : null,
-    });
+    // Only include noteCount if notes were provided
+    if (notationString != null) {
+      clipResult.noteCount = notes.length;
+
+      // Include calculated length if it wasn't provided as input parameter
+      if (length == null) {
+        clipResult.length = abletonBeatsToBarBeatDuration(
+          clipLength,
+          timeSigNumerator,
+          timeSigDenominator,
+        );
+      }
+    }
 
     createdClips.push(clipResult);
   }
@@ -311,10 +310,6 @@ export function createClip({
           );
         }
         scene.call("fire");
-        // Mark all created clips as triggered in optimistic results
-        for (let i = 0; i < count; i++) {
-          createdClips[i].triggered = true;
-        }
         break;
 
       case "play-clip":
@@ -325,8 +320,6 @@ export function createClip({
             `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
           );
           clipSlot.call("fire");
-          // Mark as triggered in optimistic results
-          createdClips[i].triggered = true;
         }
         break;
 

@@ -141,48 +141,15 @@ export function updateClip({
       finalNoteCount = actualNotesResult?.notes?.length || 0;
     }
 
-    // Determine view and indices from clip path
-    const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
-    let trackIndex, sceneIndex, arrangementStartTime;
-
-    if (isArrangementClip) {
-      trackIndex = clip.trackIndex;
-      arrangementStartTime = clip.getProperty("start_time");
-    } else {
-      trackIndex = clip.trackIndex;
-      sceneIndex = clip.sceneIndex;
-    }
-
-    if (trackIndex == null) {
-      throw new Error(
-        `updateClip failed: could not determine trackIndex for id "${id}" (path="${clip.path}")`,
-      );
-    }
-
     // Build optimistic result object
     const clipResult = {
       id: clip.id,
-      type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
-      view: isArrangementClip ? "arrangement" : "session",
-      trackIndex,
     };
 
-    // Add view-specific properties
-    if (isArrangementClip) {
-      clipResult.arrangementStartTime = arrangementStartTime;
-    } else {
-      clipResult.sceneIndex = sceneIndex;
+    // Only include noteCount if notes were modified
+    if (finalNoteCount != null) {
+      clipResult.noteCount = finalNoteCount;
     }
-
-    // Only include properties that were actually set
-    if (name != null) clipResult.name = name;
-    if (color != null) clipResult.color = color;
-    if (timeSignature != null) clipResult.timeSignature = timeSignature;
-    if (startMarker != null) clipResult.startMarker = startMarker;
-    if (length != null) clipResult.length = length;
-    if (loopStart != null) clipResult.loopStart = loopStart;
-    if (loop != null) clipResult.loop = loop;
-    if (finalNoteCount != null) clipResult.noteCount = finalNoteCount;
 
     updatedClips.push(clipResult);
   }

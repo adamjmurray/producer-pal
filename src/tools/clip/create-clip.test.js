@@ -62,13 +62,11 @@ describe("createClip", () => {
     });
 
     expect(result).toEqual({
-      sceneIndex: 0,
       id: "live_set/tracks/0/clip_slots/0/clip",
-      noteCount: 2,
-      timeSignature: "3/4",
       trackIndex: 0,
-      type: "midi",
-      view: "session",
+      sceneIndex: 0,
+      noteCount: 2,
+      length: "2:0",
     });
 
     // Verify the parsed notes were correctly added to the clip
@@ -498,16 +496,10 @@ describe("createClip", () => {
 
       expect(result).toEqual({
         id: "clip_0_0",
-        type: "midi",
-        view: "session",
         trackIndex: 0,
         sceneIndex: 0,
-        name: "New Clip",
-        color: "#FF0000",
-        loop: true,
         noteCount: 3,
-        timeSignature: "4/4",
-        triggered: true,
+        length: "1:0",
       });
     });
 
@@ -536,7 +528,13 @@ describe("createClip", () => {
         expect.objectContaining({ path: "live_set scenes 0" }),
         "fire",
       );
-      expect(result.triggered).toBe(true);
+      expect(result).toEqual({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+        trackIndex: 0,
+        sceneIndex: 0,
+        noteCount: 1,
+        length: "1:0",
+      });
     });
 
     it("should throw error for invalid auto value", () => {
@@ -647,36 +645,9 @@ describe("createClip", () => {
       );
 
       expect(result).toEqual([
-        {
-          id: "clip_0_1",
-          type: "midi",
-          view: "session",
-          trackIndex: 0,
-          sceneIndex: 1,
-          name: "Loop",
-          color: "#00FF00",
-          timeSignature: "4/4",
-        },
-        {
-          id: "clip_0_2",
-          type: "midi",
-          view: "session",
-          trackIndex: 0,
-          sceneIndex: 2,
-          name: "Loop 2",
-          color: "#00FF00",
-          timeSignature: "4/4",
-        },
-        {
-          id: "clip_0_3",
-          type: "midi",
-          view: "session",
-          trackIndex: 0,
-          sceneIndex: 3,
-          name: "Loop 3",
-          color: "#00FF00",
-          timeSignature: "4/4",
-        },
+        { id: "clip_0_1", trackIndex: 0, sceneIndex: 1 },
+        { id: "clip_0_2", trackIndex: 0, sceneIndex: 2 },
+        { id: "clip_0_3", trackIndex: 0, sceneIndex: 3 },
       ]);
     });
 
@@ -794,13 +765,10 @@ describe("createClip", () => {
 
       expect(result).toEqual({
         id: "arrangement_clip",
-        type: "midi",
-        view: "arrangement",
         trackIndex: 0,
         arrangementStartTime: "3|1",
-        name: "Arrangement Clip",
         noteCount: 3,
-        timeSignature: "4/4",
+        length: "1:0",
       });
     });
 
@@ -853,33 +821,24 @@ describe("createClip", () => {
       expect(result).toEqual([
         {
           id: "arrangement_clip",
-          type: "midi",
-          view: "arrangement",
           trackIndex: 0,
           arrangementStartTime: "3|1",
-          name: "Sequence",
-          timeSignature: "4/4",
           noteCount: 2,
+          length: "1:0",
         },
         {
           id: "arrangement_clip",
-          type: "midi",
-          view: "arrangement",
           trackIndex: 0,
           arrangementStartTime: "4|1",
-          name: "Sequence 2",
-          timeSignature: "4/4",
           noteCount: 2,
+          length: "1:0",
         },
         {
           id: "arrangement_clip",
-          type: "midi",
-          view: "arrangement",
           trackIndex: 0,
           arrangementStartTime: "5|1",
-          name: "Sequence 3",
-          timeSignature: "4/4",
           noteCount: 2,
+          length: "1:0",
         },
       ]);
     });
@@ -923,7 +882,11 @@ describe("createClip", () => {
       "signature_denominator",
       8,
     );
-    expect(result.timeSignature).toBe("6/8");
+    expect(result).toEqual({
+      id: "live_set/tracks/0/clip_slots/0/clip",
+      trackIndex: 0,
+      sceneIndex: 0,
+    });
   });
 
   it("should calculate correct clip length based on note start position", () => {
@@ -970,19 +933,23 @@ describe("createClip", () => {
 
     expect(singleResult).toMatchObject({
       id: expect.any(String),
-      type: "midi",
-      view: "session",
       trackIndex: 0,
       sceneIndex: 0,
-      name: "Single",
-      timeSignature: "4/4",
     });
     expect(singleResult.length).toBeUndefined();
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0].name).toBe("Multiple");
-    expect(arrayResult[1].name).toBe("Multiple 2");
+    expect(arrayResult[0]).toEqual({
+      id: expect.any(String),
+      trackIndex: 0,
+      sceneIndex: 1,
+    });
+    expect(arrayResult[1]).toEqual({
+      id: expect.any(String),
+      trackIndex: 0,
+      sceneIndex: 2,
+    });
   });
 
   it("should filter out v0 notes when creating clips", () => {
@@ -1023,7 +990,13 @@ describe("createClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(2); // C3 and E3, D3 filtered out
+    expect(result).toEqual({
+      id: "live_set/tracks/0/clip_slots/0/clip",
+      trackIndex: 0,
+      sceneIndex: 0,
+      noteCount: 2,
+      length: "1:0",
+    }); // C3 and E3, D3 filtered out
   });
 
   it("should handle clips with all v0 notes filtered out", () => {
@@ -1088,14 +1061,29 @@ describe("createClip", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result).toMatchObject({
-        view: "session",
+      expect(result).toEqual({
+        id: "live_set/tracks/0/clip_slots/0/clip",
+        trackIndex: 0,
+        sceneIndex: 0,
       });
     });
 
     it("should switch to arrangement view when creating arrangement clips with switchView=true", () => {
       mockLiveApiGet({
+        Track: { exists: () => true },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      });
+
+      liveApiCall.mockImplementation((method) => {
+        if (method === "create_midi_clip") {
+          return ["id", "arrangement_clip"];
+        }
+        return null;
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id arrangement_clip") return "arrangement_clip";
+        return this._id;
       });
 
       const result = createClip({
@@ -1106,8 +1094,10 @@ describe("createClip", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-      expect(result).toMatchObject({
-        view: "arrangement",
+      expect(result).toEqual({
+        id: "arrangement_clip",
+        trackIndex: 0,
+        arrangementStartTime: "1|1",
       });
     });
 

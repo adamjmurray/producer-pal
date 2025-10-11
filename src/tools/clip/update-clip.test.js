@@ -119,16 +119,7 @@ describe("updateClip", () => {
       true,
     );
 
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Updated Clip",
-      color: "#FF0000",
-      loop: true,
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should update a single arrangement clip by ID", () => {
@@ -165,16 +156,7 @@ describe("updateClip", () => {
       6,
     ); // startMarker (2) + length (4) = 6 Ableton beats
 
-    expect(result).toEqual({
-      id: "789",
-      type: "midi",
-      view: "arrangement",
-      trackIndex: 2,
-      arrangementStartTime: 16.0,
-      name: "Arrangement Clip",
-      startMarker: "1|3",
-      length: "1:0",
-    });
+    expect(result).toEqual({ id: "789" });
   });
 
   it("should switch to Arranger view when updating arrangement clips", () => {
@@ -244,26 +226,7 @@ describe("updateClip", () => {
       false,
     );
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        color: "#00FF00",
-        loop: false,
-      },
-      {
-        id: "456",
-        type: "audio",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        color: "#00FF00",
-        loop: false,
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should update time signature when provided", () => {
@@ -289,7 +252,7 @@ describe("updateClip", () => {
       "signature_denominator",
       8,
     );
-    expect(result.timeSignature).toBe("6/8");
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should replace existing notes with real bar|beat parsing in 4/4 time", () => {
@@ -341,14 +304,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      noteCount: 2,
-    });
+    expect(result).toEqual({ id: "123", noteCount: 2 });
   });
 
   it("should parse notes using provided time signature with real bar|beat parsing", () => {
@@ -402,8 +358,7 @@ describe("updateClip", () => {
       "signature_denominator",
       8,
     );
-    expect(result.timeSignature).toBe("6/8");
-    expect(result.noteCount).toBe(2);
+    expect(result).toEqual({ id: "123", noteCount: 2 });
   });
 
   it("should parse notes using clip's current time signature when timeSignature not provided", () => {
@@ -447,7 +402,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(2);
+    expect(result).toEqual({ id: "123", noteCount: 2 });
   });
 
   it("should handle complex drum pattern with real bar|beat parsing", () => {
@@ -516,7 +471,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(5);
+    expect(result).toEqual({ id: "123", noteCount: 5 });
   });
 
   it("should throw error for invalid time signature format", () => {
@@ -553,14 +508,7 @@ describe("updateClip", () => {
       "name",
       "Prefixed ID Clip",
     );
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Prefixed ID Clip",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -592,14 +540,7 @@ describe("updateClip", () => {
       expect.anything(),
     );
 
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Only Name Update",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -620,14 +561,7 @@ describe("updateClip", () => {
       "looping",
       false,
     );
-    expect(result).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      loop: false,
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should throw error when any clip ID in comma-separated list doesn't exist", () => {
@@ -648,24 +582,6 @@ describe("updateClip", () => {
     );
   });
 
-  it("should throw error when clip path cannot be parsed", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "123") return "invalid_path";
-      return this._path;
-    });
-
-    mockLiveApiGet({
-      123: {
-        is_arrangement_clip: 0,
-        is_midi_clip: 1,
-      },
-    });
-
-    expect(() => updateClip({ ids: "123", name: "Test" })).toThrow(
-      'updateClip failed: could not determine trackIndex for id "123" (path="invalid_path")',
-    );
-  });
-
   it("should return single object for single ID and array for comma-separated IDs", () => {
     mockLiveApiGet({
       123: {
@@ -681,32 +597,8 @@ describe("updateClip", () => {
     const singleResult = updateClip({ ids: "123", name: "Single" });
     const arrayResult = updateClip({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({
-      id: "123",
-      type: "midi",
-      view: "session",
-      trackIndex: 0,
-      sceneIndex: 0,
-      name: "Single",
-    });
-    expect(arrayResult).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        name: "Multiple",
-      },
-      {
-        id: "456",
-        type: "midi",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        name: "Multiple",
-      },
-    ]);
+    expect(singleResult).toEqual({ id: "123" });
+    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -731,32 +623,7 @@ describe("updateClip", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        color: "#0000FF",
-      },
-      {
-        id: "456",
-        type: "midi",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        color: "#0000FF",
-      },
-      {
-        id: "789",
-        type: "midi",
-        view: "arrangement",
-        trackIndex: 2,
-        arrangementStartTime: 8.0,
-        color: "#0000FF",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -789,24 +656,7 @@ describe("updateClip", () => {
       "Filtered",
     );
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        type: "midi",
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        name: "Filtered",
-      },
-      {
-        id: "456",
-        type: "midi",
-        view: "session",
-        trackIndex: 1,
-        sceneIndex: 1,
-        name: "Filtered",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should filter out v0 notes when updating clips", () => {
@@ -850,7 +700,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(2); // C3 and E3, D3 filtered out
+    expect(result).toEqual({ id: "123", noteCount: 2 }); // C3 and E3, D3 filtered out
   });
 
   it("should handle clips with all v0 notes filtered out during update", () => {
@@ -924,7 +774,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(1);
+    expect(result).toEqual({ id: "123", noteCount: 1 });
   });
 
   it("should add to existing notes when noteUpdateMode is 'merge'", () => {
@@ -981,7 +831,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(1);
+    expect(result).toEqual({ id: "123", noteCount: 1 });
   });
 
   it("should not call add_new_notes when noteUpdateMode is 'merge' and notes array is empty", () => {
@@ -1148,7 +998,7 @@ describe("updateClip", () => {
       velocity_deviation: 0,
     }); // New F3 note
 
-    expect(result.noteCount).toBe(3); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
+    expect(result).toEqual({ id: "123", noteCount: 3 }); // 2 existing (D3, E3) + 1 new (F3), C3 deleted
   });
 
   it("should handle v0 notes when no existing notes match", () => {
@@ -1373,7 +1223,7 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(4); // 2 existing + 2 copied
+    expect(result).toEqual({ id: "123", noteCount: 4 }); // 2 existing + 2 copied
   });
 
   it("should report noteCount only for notes within clip playback region when length is set", () => {
@@ -1417,7 +1267,7 @@ describe("updateClip", () => {
     // But noteCount should only include notes within the 2-bar playback region
     // C3 at bar 1 (beat 0) and D3 at bar 2 (beat 4) are within 8 beats
     // E3 at bar 3 (beat 8) is outside the playback region
-    expect(result.noteCount).toBe(2);
+    expect(result).toEqual({ id: "123", noteCount: 2 });
 
     // Verify get_notes_extended was called with the clip's length (8 beats)
     expect(liveApiCall).toHaveBeenCalledWith(
@@ -1500,6 +1350,6 @@ describe("updateClip", () => {
       },
     );
 
-    expect(result.noteCount).toBe(2); // E3 in bar 1 + E3 in bar 2, C3 deleted
+    expect(result).toEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
 });
