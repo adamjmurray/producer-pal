@@ -19,8 +19,8 @@ In no particular order:
 
 ### Behavior Customization
 
-- Customizable "Producer Pal Skills" to adjust Producer Pal's behavior
-  globally across all Live Sets
+- Customizable "Producer Pal Skills" to adjust Producer Pal's behavior globally
+  across all Live Sets
 - A large markdown-based UI editor in a popup window for project notes and the
   skills
 
