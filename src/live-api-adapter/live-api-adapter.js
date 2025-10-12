@@ -143,7 +143,7 @@ export async function mcp_request(requestId, tool, argsJSON) {
       );
     } catch (toolError) {
       result = formatErrorResponse(
-        `Internal error calling tool '${tool}': ${toolError.message} - Ableton Live is connected but the tool encountered an error.`,
+        `Error executing tool '${tool}': ${toolError.message}`,
       );
     }
   } catch (error) {
