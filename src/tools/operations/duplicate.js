@@ -439,25 +439,6 @@ export function duplicate({
     createdObjects.push(newObjectMetadata);
   }
 
-  // Build optimistic result object reflecting the input parameters
-  const result = {
-    type,
-    id,
-    count,
-    duplicated: true,
-  };
-
-  // Add optional parameters that were provided
-  if (destination != null) result.destination = destination;
-  if (arrangementStartTime != null)
-    result.arrangementStartTime = arrangementStartTime;
-  if (arrangementLength != null) result.arrangementLength = arrangementLength;
-  if (name != null) result.name = name;
-  if (withoutClips != null) result.withoutClips = withoutClips;
-  if (withoutDevices != null) result.withoutDevices = withoutDevices;
-  if (routeToSource != null) result.routeToSource = routeToSource;
-  if (switchView != null) result.switchView = switchView;
-
   // Handle view switching if requested
   if (switchView) {
     let targetView = null;
@@ -476,19 +457,11 @@ export function duplicate({
     }
   }
 
-  // Add contextual tip after successful track duplication
-  if (type === "track" && !routeToSource && !withoutDevices) {
-    result.tip =
-      "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.";
-  }
-
   // Return appropriate format based on count
   if (count === 1) {
-    // For single duplicate, include the new object metadata directly
-    return { ...result, ...createdObjects[0] };
+    return createdObjects[0];
   } else {
-    // For multiple duplicates, include objects array
-    return { ...result, objects: createdObjects };
+    return createdObjects;
   }
 }
 
@@ -522,7 +495,6 @@ function getMinimalClipInfo(clip) {
 
     return {
       id: clip.id,
-      view: "arrangement",
       trackIndex,
       arrangementStartTime,
     };
@@ -538,7 +510,6 @@ function getMinimalClipInfo(clip) {
 
     return {
       id: clip.id,
-      view: "session",
       trackIndex,
       sceneIndex,
     };
@@ -699,12 +670,11 @@ function duplicateTrack(
 
   // Return optimistic metadata
   const result = {
-    newTrackId: newTrack.id,
-    newTrackIndex,
-    duplicatedClips,
+    id: newTrack.id,
+    trackIndex: newTrackIndex,
+    clips: duplicatedClips,
   };
 
-  if (name != null) result.name = name;
   return result;
 }
 
@@ -750,12 +720,11 @@ function duplicateScene(sceneIndex, name, withoutClips) {
 
   // Return optimistic metadata
   const result = {
-    newSceneId: newScene.id,
-    newSceneIndex,
-    duplicatedClips,
+    id: newScene.id,
+    sceneIndex: newSceneIndex,
+    clips: duplicatedClips,
   };
 
-  if (name != null) result.name = name;
   return result;
 }
 
@@ -855,18 +824,9 @@ function duplicateSceneToArrangement(
     }
   }
 
-  const result = {
-    arrangementStartTime: abletonBeatsToBarBeat(
-      arrangementStartTimeBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    ),
-    duplicatedClips,
+  return {
+    clips: duplicatedClips,
   };
-
-  if (name != null) result.name = name;
-  if (arrangementLength != null) result.arrangementLength = arrangementLength;
-  return result;
 }
 
 function duplicateClipSlot(trackIndex, sourceSceneIndex, name) {
@@ -890,13 +850,8 @@ function duplicateClipSlot(trackIndex, sourceSceneIndex, name) {
     newClip.set("name", name);
   }
 
-  // Return optimistic metadata
-  const result = {
-    duplicatedClip: getMinimalClipInfo(newClip),
-  };
-
-  if (name != null) result.duplicatedClip.name = name;
-  return result;
+  // Return the new clip info directly
+  return getMinimalClipInfo(newClip);
 }
 
 function duplicateClipToArrangement(
@@ -957,17 +912,12 @@ function duplicateClipToArrangement(
     duplicatedClips.push(getMinimalClipInfo(newClip));
   }
 
-  const result = {
-    arrangementStartTime: abletonBeatsToBarBeat(
-      arrangementStartTimeBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    ),
-    duplicatedClip:
-      duplicatedClips.length === 1 ? duplicatedClips[0] : duplicatedClips,
-  };
-
-  if (name != null) result.name = name;
-  if (arrangementLength != null) result.arrangementLength = arrangementLength;
-  return result;
+  // Return single clip info directly, or clips array for multiple
+  if (duplicatedClips.length === 1) {
+    return duplicatedClips[0];
+  } else {
+    return {
+      clips: duplicatedClips,
+    };
+  }
 }
