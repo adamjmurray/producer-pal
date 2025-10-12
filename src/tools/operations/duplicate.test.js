@@ -330,6 +330,94 @@ describe("duplicate", () => {
       );
     });
 
+    it("should remove Producer Pal device when duplicating host track", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        if (this._id === "this_device") {
+          return "live_set tracks 0 devices 1";
+        }
+        return this._path;
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "this_device") {
+          return "id device1";
+        }
+        return this._id;
+      });
+
+      // Mock track with devices including Producer Pal device
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1", "device2"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+      });
+
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was called to remove Producer Pal device
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        1, // Index 1 where the Producer Pal device is
+      );
+    });
+
+    it("should not remove Producer Pal device when withoutDevices is true", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        if (this._id === "this_device") {
+          return "live_set tracks 0 devices 1";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1", "device2"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        withoutDevices: true,
+      });
+
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
+      });
+
+      // Verify delete_device was called 3 times (once for each device)
+      // but NOT specifically for Producer Pal before the withoutDevices logic
+      const deleteDeviceCalls = liveApiCall.mock.calls.filter(
+        (call) => call[0] === "delete_device",
+      );
+      expect(deleteDeviceCalls).toHaveLength(3);
+    });
+
     describe("routeToSource functionality", () => {
       it("should throw an error when routeToSource is used with non-track type", () => {
         expect(() =>

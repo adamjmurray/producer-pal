@@ -6,6 +6,7 @@ import {
 import * as console from "../../shared/v8-max-console";
 import { MAX_CLIP_BEATS } from "../constants";
 import { select } from "../control/select.js";
+import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -551,6 +552,30 @@ function duplicateTrack(
     newTrack.set("name", name);
   }
 
+  // Check if we're duplicating the Producer Pal host track and remove the device
+  const hostTrackIndex = getHostTrackIndex();
+  if (trackIndex === hostTrackIndex && withoutDevices !== true) {
+    try {
+      const thisDevice = new LiveAPI("this_device");
+      const thisDevicePath = thisDevice.path;
+
+      // Extract device index from path like "live_set tracks 1 devices 0"
+      const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
+      if (deviceIndexMatch) {
+        const deviceIndex = parseInt(deviceIndexMatch[1]);
+        newTrack.call("delete_device", deviceIndex);
+        console.error(
+          "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
+        );
+      }
+    } catch (error) {
+      // If we can't access this_device, just continue without removing anything
+      console.error(
+        "Warning: Could not check for Producer Pal device in duplicated track",
+      );
+    }
+  }
+
   // Delete devices if withoutDevices is true
   if (withoutDevices === true) {
     const deviceIds = newTrack.getChildIds("devices");
@@ -685,14 +710,11 @@ function duplicateTrack(
     }
   }
 
-  // Return optimistic metadata
-  const result = {
+  return {
     id: newTrack.id,
     trackIndex: newTrackIndex,
     clips: duplicatedClips,
   };
-
-  return result;
 }
 
 function duplicateScene(sceneIndex, name, withoutClips) {
