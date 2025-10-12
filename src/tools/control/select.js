@@ -148,7 +148,7 @@ export function select({
   });
 
   // Update scene selection
-  const sceneSelectionResult = updateSceneSelection({
+  updateSceneSelection({
     songView,
     sceneId,
     sceneIndex,
@@ -208,37 +208,8 @@ export function select({
     }
   }
 
-  // Get current view state as base
-  const result = readViewState();
-
-  // If no arguments provided, return current state only
-  const hasArgs = Object.values(arguments[0] || {}).some(
-    (val) => val !== undefined,
-  );
-  if (!hasArgs) {
-    return result;
-  }
-
-  // Apply optimistic updates on top of current state
-  if (view != null) result.view = view;
-
-  // Add track selection results
-  Object.assign(result, trackSelectionResult);
-
-  // Add scene selection results
-  Object.assign(result, sceneSelectionResult);
-
-  if (clipId !== undefined) result.selectedClipId = clipId;
-  if (deviceId != null) result.selectedDeviceId = deviceId;
-  if (instrument != null) result.instrument = instrument;
-  if (clipSlot != null) result.selectedClipSlot = clipSlot;
-  if (detailView !== undefined) {
-    result.detailView = detailView === "none" ? null : detailView;
-  }
-  if (showLoop != null) result.showLoop = showLoop;
-  if (showBrowser != null) result.showBrowser = showBrowser;
-
-  return result;
+  // Get current view state after applying updates
+  return readViewState();
 }
 
 function validateParameters({
