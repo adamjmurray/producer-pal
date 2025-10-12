@@ -1,5 +1,10 @@
 import { PITCH_CLASS_NAMES } from "../../notation/midi-pitch-to-name.js";
 import { VERSION } from "../../shared/version.js";
+import {
+  skills as basicSkills,
+  buildInstructions as buildBasicInstruction,
+} from "../../skills/basic.js";
+import { buildInstructions, skills } from "../../skills/standard.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 
 /**
@@ -48,62 +53,33 @@ export function connect({} = {}, context) {
     // additional tips set based on the state of the Live Set
   ];
 
-  // Set additional tips based on findings
-
-  // TODO: relay this info in $meta response data when delete-track or duplicate (track) fails due to this:
-  // const hostTrackIndex = getHostTrackIndex();
-  // // First, check if host track has an instrument
-  // let instrumentOnHostTrack = false;
-  // const hostTrack = new LiveAPI(`live_set tracks ${hostTrackIndex}`);
-  // if (hostTrack.getProperty("has_midi_input") > 0) {
-  //   const deviceIds = hostTrack.getChildIds("devices");
-  //   for (const deviceId of deviceIds) {
-  //     const device = new LiveAPI(deviceId);
-  //     const type = device.getProperty("type");
-  //     if (type === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-  //       // instrument, instrument rack, or drum rack
-  //       instrumentOnHostTrack = true;
-  //       break;
-  //     }
-  //   }
-  // }
-  // if (instrumentOnHostTrack) {
-  //   result.messagesForUser.push(
-  //     "The Producer Pal device should be on its own track, but it's on a track with an instrument.",
-  //   );
-  // }
-
-  // Now check for any instruments in the project
-  // let foundAnyInstrument = instrumentOnHostTrack; // Start with host track result
   let foundAnyInstrument = false;
-  // if (!foundAnyInstrument) {
-  // Only search other tracks if we haven't found an instrument yet
-  for (let i = 0; i < trackIds.length; i++) {
-    // if (i === hostTrackIndex) continue; // Skip host track, already checked
-
-    const track = new LiveAPI(`live_set tracks ${i}`);
+  for (const trackId of trackIds) {
+    const track = LiveAPI.from(trackId);
     if (track.getProperty("has_midi_input") > 0) {
-      const deviceIds = track.getChildIds("devices");
-
-      for (const deviceId of deviceIds) {
-        const device = new LiveAPI(deviceId);
-        const type = device.getProperty("type");
-        if (type === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-          // instrument, instrument rack, or drum rack
+      for (const device of track.getChildren("devices")) {
+        const deviceType = device.getProperty("type");
+        if (deviceType === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
+          // it's an instrument, instrument rack, or drum rack
           foundAnyInstrument = true;
-          break; // Exit device loop
+          break;
         }
       }
-
-      if (foundAnyInstrument) break; // Exit track loop
+      if (foundAnyInstrument) break;
     }
   }
-  //}
-
   if (!foundAnyInstrument) {
     messages.push(`No instruments found.
 To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, plugins, etc).
 I can't add instruments but can compose MIDI patterns once they're there.`);
+  }
+
+  if (context?.smallModelMode) {
+    result.$skills = basicSkills;
+    result.$instructions = buildBasicInstruction(context);
+  } else {
+    result.$skills = skills;
+    result.$instructions = buildInstructions(context);
   }
 
   // Format as markdown bullet list
@@ -113,69 +89,6 @@ I can't add instruments but can compose MIDI patterns once they're there.`);
   if (context?.projectNotes?.enabled && context.projectNotes.content) {
     result.projectNotes = context.projectNotes.content;
   }
-
-  result.$system = `# Producer Pal System Prompt
-
-You are a music production assistant working with Ableton Live through Producer Pal tools.
-You are an expert in Producer Pal's bar|beat notation system.
-
-## Time in Ableton Live
-
-- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
-- Durations: bar:beat (4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
-- Fractional beats supported everywhere
-
-## MIDI Syntax for Clips
-
-Write MIDI using the bar|beat notation syntax:
-
-[bar|beat] [v0-127] [t<duration>] [p0-1] note(s)
-
-- bar|beat: Position relative to clip start (reuse current bar with "|beat")
-- v0-127: Velocity (v80-120 = random range, v0 = DELETE in merge mode only)
-- t<duration>: Note length in beats (default: 1.0)
-- p0-1: Probability (default: 1.0)
-- Notes: C0-B8 with # or b (C3 = middle C)
-
-Parameters persist until changed. Standalone parameters set state for following notes.
-
-Examples:
-\`\`\`
-1|1 C3 E3 G3 // chord at bar 1 beat 1
-1|1 v100 C3 |2.5 D3 // C at beat 1, D at beat 2.5
-1|1.75 t0.25 C3 // 16th note at beat 1.75
-v0 2|1.5 Gb1 // delete specific note (merge mode only)
-\`\`\`
-
-## Workflow
-
-- Session View: For jamming, trying ideas, building scenes
-  - Use auto:"play-scene" when generating scenes one clip at a time
-- Arrangement View: For song structure and timeline
-  - Session clips override Arrangement playback
-  - Tracks need to follow Arrangement (automatic on playback with "play-arrangement")
-- Check for instruments before creating MIDI clips
-- Place notes musically - not everything on the beat
-- Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120)
-- Duplicate tracks with routeToSource=true to route multiple MIDI tracks to one instrument for layered polyrhythms (different clip lengths)
-- After user move/deletes objects in Live, call ppal-read-live-set to resync`;
-
-  result.$instructions =
-    "Do this now to complete Producer Pal initialization:\n" +
-    [
-      "* Call ppal-read-live-set _with no arguments_ to sync with the state of Ableton Live",
-      "* Summarize the Live Set (if ppal-read-live-set fails, say the error and summarize what you can, don't try again)",
-      ...(result.projectNotes
-        ? [
-            `* Summarize the project notes, ${
-              context?.projectNotes?.writable
-                ? "mention you can update the project notes, "
-                : ""
-            }and verify you will follow instructions in project notes (if any).`,
-          ]
-        : []),
-      "* Say the messagesForUser, ask what's next, wait for input",
-    ].join("\n");
 
   return result;
 }

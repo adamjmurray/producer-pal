@@ -43,7 +43,9 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
     length: z
       .string()
       .optional()
-      .describe("bar:beat duration relative to startMarker"),
+      .describe(
+        "bar:beat duration relative to startMarker. Defaults to next full bar after latest note start.",
+      ),
     loop: z.boolean().optional().describe("looping?"),
     loopStart: z
       .string()

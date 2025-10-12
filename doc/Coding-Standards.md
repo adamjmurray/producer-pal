@@ -45,4 +45,5 @@ Use `expect.objectContaining()` for assertions.
 
 ## Design
 
-Prefer tool description instructions over code complexity for contextual guidance.
+Prefer tool description instructions over code complexity for contextual
+guidance.

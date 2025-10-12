@@ -57,35 +57,10 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
       scene.set("time_signature_enabled", true);
     }
 
-    // Find sceneIndex for consistency with readScene format
-    const sceneIndex = Number(scene.path.match(/live_set scenes (\d+)/)?.[1]);
-    if (Number.isNaN(sceneIndex)) {
-      throw new Error(
-        `updateScene failed: could not determine sceneIndex for id "${id}" (path="${scene.path}")`,
-      );
-    }
-
     // Build optimistic result object
-    const sceneResult = {
+    updatedScenes.push({
       id: scene.id,
-      sceneIndex,
-    };
-
-    // Only include properties that were actually set
-    if (name != null) sceneResult.name = name;
-    if (color != null) sceneResult.color = color;
-    if (tempo === -1) {
-      sceneResult.tempo = "disabled";
-    } else if (tempo != null) {
-      sceneResult.tempo = tempo;
-    }
-    if (timeSignature === "disabled") {
-      sceneResult.timeSignature = "disabled";
-    } else if (timeSignature != null) {
-      sceneResult.timeSignature = timeSignature;
-    }
-
-    updatedScenes.push(sceneResult);
+    });
   }
 
   // Return single object if single ID was provided, array if comma-separated IDs were provided

@@ -1,6 +1,7 @@
 # Desktop Extension
 
-The Producer Pal Desktop Extension (MCP Bundle) bridges Claude Desktop's stdio transport to the HTTP MCP server in Ableton Live.
+The Producer Pal Desktop Extension (MCP Bundle) bridges Claude Desktop's stdio
+transport to the HTTP MCP server in Ableton Live.
 
 ## Build
 
@@ -8,20 +9,24 @@ The Producer Pal Desktop Extension (MCP Bundle) bridges Claude Desktop's stdio t
 npm run dxt:build
 ```
 
-Generates `claude-desktop-extension/manifest.json` from template, extracts tool definitions, and bundles into `Producer_Pal.mcpb`.
+Generates `claude-desktop-extension/manifest.json` from template, extracts tool
+definitions, and bundles into `Producer_Pal.mcpb`.
 
 **Distribution**: Both `.mcpb` file AND frozen Max device required.
 
 ## Bridge Behavior
 
-**File**: `src/claude-desktop-extension/main.js` (bundled as producer-pal-portal.js)
+**File**: `src/claude-desktop-extension/main.js` (bundled as
+producer-pal-portal.js)
 
 - **Online**: Forwards MCP requests to HTTP server
-- **Offline**: Returns static tool definitions + setup instructions (https://github.com/adamjmurray/producer-pal)
+- **Offline**: Returns static tool definitions + setup instructions
+  (https://github.com/adamjmurray/producer-pal)
 
 ### Implementation Requirements
 
-**Tool names**: Must match `^[a-zA-Z0-9_-]{1,64}$` (use `ppal-create-clip`, not "Create Clip")
+**Tool names**: Must match `^[a-zA-Z0-9_-]{1,64}$` (use `ppal-create-clip`, not
+"Create Clip")
 
 **Schemas**: Fallback schemas must be JSON Schema (use `zodToJsonSchema()`)
 

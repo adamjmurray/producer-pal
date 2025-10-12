@@ -75,7 +75,7 @@ describe("connect", () => {
 
     expect(result).toEqual({
       connected: true,
-      producerPalVersion: "0.9.9",
+      producerPalVersion: "0.9.10",
       abletonLiveVersion: "12.3",
       liveSet: {
         name: "Test Project",
@@ -85,9 +85,9 @@ describe("connect", () => {
         timeSignature: "4/4",
       },
       messagesForUser: expect.stringContaining(
-        "Producer Pal 0.9.9 connected to Ableton Live 12.3",
+        "Producer Pal 0.9.10 connected to Ableton Live 12.3",
       ),
-      $system: expect.stringContaining("Producer Pal System Prompt"),
+      $skills: expect.stringContaining("Producer Pal Skills"),
       $instructions: expect.stringContaining(
         "complete Producer Pal initialization",
       ),
@@ -194,11 +194,11 @@ describe("connect", () => {
       AppView: {
         focused_document_view: "Session",
       },
-      "live_set tracks 0": {
+      track0: {
         has_midi_input: 1,
         devices: children("synth_device"),
       },
-      "live_set tracks 1": {
+      track1: {
         has_midi_input: 1,
         devices: [],
       },
@@ -214,6 +214,7 @@ describe("connect", () => {
     expect(result.messagesForUser).toEqual(
       expect.stringContaining("* Save often!"),
     );
+    expect(result.messagesForUser).not.toContain("No instruments found.");
   });
 
   // it("warns when instrument is on host track", () => {
@@ -752,5 +753,199 @@ describe("connect", () => {
 
     expect(result.liveSet.name).toBeUndefined();
     expect(result.liveSet).not.toHaveProperty("name");
+  });
+
+  it("returns standard skills and instructions by default", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Test Project",
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const result = connect();
+
+    expect(result.$skills).toContain("Producer Pal Skills");
+    expect(result.$skills).toContain("## Techniques");
+    expect(result.$instructions).toContain(
+      "Call ppal-read-live-set _with no arguments_",
+    );
+  });
+
+  it("returns basic skills and instructions when smallModelMode is enabled", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Small Model Project",
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const context = {
+      smallModelMode: true,
+    };
+
+    const result = connect({}, context);
+
+    expect(result.$skills).toContain("Producer Pal Skills");
+    expect(result.$skills).not.toContain("## Techniques");
+    expect(result.$instructions).not.toContain("Call ppal-read-live-set");
+    expect(result.$instructions).toContain("Summarize the Live Set");
+  });
+
+  it("standard skills include advanced features that basic skills omit", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Test Project",
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const standardResult = connect({}, {});
+    const basicResult = connect({}, { smallModelMode: true });
+
+    // Standard includes advanced features
+    expect(standardResult.$skills).toContain("@N="); // bar copying
+    expect(standardResult.$skills).toContain("v0 C3 1|1"); // v0 deletion
+    expect(standardResult.$skills).toContain("## Techniques");
+    expect(standardResult.$skills).toContain("**Creating Music:**");
+    expect(standardResult.$skills).toContain("velocity dynamics");
+    expect(standardResult.$skills).toContain("routeToSource");
+
+    // Basic omits advanced features
+    expect(basicResult.$skills).not.toContain("@N=");
+    expect(basicResult.$skills).not.toContain("v0 C3 1|1");
+    expect(basicResult.$skills).not.toContain("## Techniques");
+    expect(basicResult.$skills).not.toContain("**Creating Music:**");
+    expect(basicResult.$skills).not.toContain("velocity dynamics");
+    expect(basicResult.$skills).not.toContain("routeToSource");
+  });
+
+  it("standard instructions include ppal-read-live-set call", () => {
+    liveApiId.mockImplementation(function () {
+      return this._id;
+    });
+
+    liveApiPath.mockImplementation(function () {
+      return this._path;
+    });
+
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_version_string") {
+        return "12.2";
+      }
+      return null;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Test Project",
+        tempo: 120,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        is_playing: 0,
+        tracks: [],
+        scenes: [],
+      },
+      AppView: {
+        focused_document_view: "Session",
+      },
+    });
+
+    getHostTrackIndex.mockReturnValue(0);
+
+    const standardResult = connect({}, {});
+    const basicResult = connect({}, { smallModelMode: true });
+
+    // Standard includes explicit call to ppal-read-live-set
+    expect(standardResult.$instructions).toContain(
+      "Call ppal-read-live-set _with no arguments_",
+    );
+    expect(standardResult.$instructions).toContain(
+      "if ppal-read-live-set fails",
+    );
+
+    // Basic omits ppal-read-live-set call
+    expect(basicResult.$instructions).not.toContain("ppal-read-live-set");
+
+    // Both include common instructions
+    expect(standardResult.$instructions).toContain("Summarize the Live Set");
+    expect(standardResult.$instructions).toContain("messagesForUser");
+    expect(basicResult.$instructions).toContain("Summarize the Live Set");
+    expect(basicResult.$instructions).toContain("messagesForUser");
   });
 });

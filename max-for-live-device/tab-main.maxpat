@@ -76,7 +76,8 @@
 					"patching_rect" : [ 46.0, 200.0, 138.0, 20.0 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 56.0, 92.0, 138.0, 20.0 ],
-					"text" : "📚  Documentation 📖"
+					"text" : "📚  Documentation 📖",
+					"varname" : "Producer Pal Documentation"
 				}
 
 			}

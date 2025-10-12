@@ -67,15 +67,7 @@ describe("updateTrack", () => {
       "arm",
       true,
     );
-    expect(result).toEqual({
-      id: "123",
-      trackIndex: 0,
-      name: "Updated Track",
-      color: "#FF0000",
-      mute: true,
-      solo: false,
-      arm: true,
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should update multiple tracks by comma-separated IDs", () => {
@@ -97,20 +89,7 @@ describe("updateTrack", () => {
     );
     expect(liveApiSet).toHaveBeenCalledTimes(4); // 2 calls per track
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        trackIndex: 0,
-        color: "#00FF00",
-        mute: true,
-      },
-      {
-        id: "456",
-        trackIndex: 1,
-        color: "#00FF00",
-        mute: true,
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle 'id ' prefixed track IDs", () => {
@@ -124,11 +103,7 @@ describe("updateTrack", () => {
       "name",
       "Prefixed ID Track",
     );
-    expect(result).toEqual({
-      id: "123",
-      trackIndex: 0,
-      name: "Prefixed ID Track",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should not update properties when not provided", () => {
@@ -143,11 +118,7 @@ describe("updateTrack", () => {
       "Only Name Update",
     );
     expect(liveApiSet).toHaveBeenCalledTimes(1);
-    expect(result).toEqual({
-      id: "123",
-      trackIndex: 0,
-      name: "Only Name Update",
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should handle boolean false values correctly", () => {
@@ -173,13 +144,7 @@ describe("updateTrack", () => {
       "arm",
       false,
     );
-    expect(result).toEqual({
-      id: "123",
-      trackIndex: 0,
-      mute: false,
-      solo: false,
-      arm: false,
-    });
+    expect(result).toEqual({ id: "123" });
   });
 
   it("should throw error when ids is missing", () => {
@@ -216,38 +181,12 @@ describe("updateTrack", () => {
     ).toThrow('updateTrack failed: track with id "nonexistent" does not exist');
   });
 
-  it("should throw error when track path cannot be parsed", () => {
-    liveApiPath.mockImplementation(function () {
-      if (this._id === "123") return "invalid_path";
-      return this._path;
-    });
-
-    expect(() => updateTrack({ ids: "123", name: "Test" })).toThrow(
-      'updateTrack failed: could not determine trackIndex for id "123" (path="invalid_path")',
-    );
-  });
-
   it("should return single object for single ID and array for comma-separated IDs", () => {
     const singleResult = updateTrack({ ids: "123", name: "Single" });
     const arrayResult = updateTrack({ ids: "123, 456", name: "Multiple" });
 
-    expect(singleResult).toEqual({
-      id: "123",
-      trackIndex: 0,
-      name: "Single",
-    });
-    expect(arrayResult).toEqual([
-      {
-        id: "123",
-        trackIndex: 0,
-        name: "Multiple",
-      },
-      {
-        id: "456",
-        trackIndex: 1,
-        name: "Multiple",
-      },
-    ]);
+    expect(singleResult).toEqual({ id: "123" });
+    expect(arrayResult).toEqual([{ id: "123" }, { id: "456" }]);
   });
 
   it("should handle whitespace in comma-separated IDs", () => {
@@ -256,23 +195,7 @@ describe("updateTrack", () => {
       color: "#0000FF",
     });
 
-    expect(result).toEqual([
-      {
-        id: "123",
-        trackIndex: 0,
-        color: "#0000FF",
-      },
-      {
-        id: "456",
-        trackIndex: 1,
-        color: "#0000FF",
-      },
-      {
-        id: "789",
-        trackIndex: 2,
-        color: "#0000FF",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   it("should filter out empty IDs from comma-separated list", () => {
@@ -282,23 +205,7 @@ describe("updateTrack", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
-    expect(result).toEqual([
-      {
-        id: "123",
-        trackIndex: 0,
-        name: "Filtered",
-      },
-      {
-        id: "456",
-        trackIndex: 1,
-        name: "Filtered",
-      },
-      {
-        id: "789",
-        trackIndex: 2,
-        name: "Filtered",
-      },
-    ]);
+    expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
   });
 
   describe("routing properties", () => {
@@ -333,14 +240,7 @@ describe("updateTrack", () => {
         '{"output_routing_channel":{"identifier":26}}',
       );
 
-      expect(result).toEqual({
-        id: "123",
-        trackIndex: 0,
-        inputRoutingTypeId: "17",
-        inputRoutingChannelId: "1",
-        outputRoutingTypeId: "25",
-        outputRoutingChannelId: "26",
-      });
+      expect(result).toEqual({ id: "123" });
     });
 
     it("should update monitoring state when provided", () => {
@@ -355,11 +255,7 @@ describe("updateTrack", () => {
         1, // LIVE_API_MONITORING_STATE_AUTO
       );
 
-      expect(result).toEqual({
-        id: "123",
-        trackIndex: 0,
-        monitoringState: "auto",
-      });
+      expect(result).toEqual({ id: "123" });
     });
 
     it("should update monitoring state for all valid values", () => {
@@ -436,15 +332,7 @@ describe("updateTrack", () => {
         0,
       );
 
-      expect(result).toEqual({
-        id: "123",
-        trackIndex: 0,
-        name: "Test Track",
-        color: "#FF0000",
-        mute: true,
-        inputRoutingTypeId: "17",
-        monitoringState: "in",
-      });
+      expect(result).toEqual({ id: "123" });
     });
 
     it("should handle routing properties in bulk operations", () => {
@@ -476,20 +364,7 @@ describe("updateTrack", () => {
         1,
       );
 
-      expect(result).toEqual([
-        {
-          id: "123",
-          trackIndex: 0,
-          outputRoutingTypeId: "25",
-          monitoringState: "auto",
-        },
-        {
-          id: "456",
-          trackIndex: 1,
-          outputRoutingTypeId: "25",
-          monitoringState: "auto",
-        },
-      ]);
+      expect(result).toEqual([{ id: "123" }, { id: "456" }]);
     });
 
     it("should not update routing properties when not provided", () => {
@@ -506,11 +381,7 @@ describe("updateTrack", () => {
         "Only Name Update",
       );
 
-      expect(result).toEqual({
-        id: "123",
-        trackIndex: 0,
-        name: "Only Name Update",
-      });
+      expect(result).toEqual({ id: "123" });
     });
   });
 
@@ -527,11 +398,7 @@ describe("updateTrack", () => {
         0, // 0 = following arrangement
       );
 
-      expect(result).toEqual({
-        id: "123",
-        trackIndex: 0,
-        arrangementFollower: true,
-      });
+      expect(result).toEqual({ id: "123" });
     });
 
     it("should set arrangementFollower to false (track doesn't follow arrangement)", () => {
@@ -546,11 +413,7 @@ describe("updateTrack", () => {
         1, // 1 = not following arrangement
       );
 
-      expect(result).toEqual({
-        id: "123",
-        trackIndex: 0,
-        arrangementFollower: false,
-      });
+      expect(result).toEqual({ id: "123" });
     });
 
     it("should set arrangementFollower for multiple tracks", () => {
@@ -570,18 +433,7 @@ describe("updateTrack", () => {
         0,
       );
 
-      expect(result).toEqual([
-        {
-          id: "123",
-          trackIndex: 0,
-          arrangementFollower: true,
-        },
-        {
-          id: "456",
-          trackIndex: 1,
-          arrangementFollower: true,
-        },
-      ]);
+      expect(result).toEqual([{ id: "123" }, { id: "456" }]);
     });
 
     it("should combine arrangementFollower with other parameters", () => {
@@ -608,13 +460,7 @@ describe("updateTrack", () => {
         1,
       );
 
-      expect(result).toEqual({
-        id: "123",
-        trackIndex: 0,
-        name: "Updated Track",
-        mute: true,
-        arrangementFollower: false,
-      });
+      expect(result).toEqual({ id: "123" });
     });
   });
 });

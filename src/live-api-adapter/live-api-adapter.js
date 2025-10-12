@@ -30,12 +30,13 @@ import { updateTrack } from "../tools/track/update-track";
 import { connect } from "../tools/workflow/connect.js";
 import { memory } from "../tools/workflow/memory.js";
 
-const userContext = {
+const context = {
   projectNotes: {
     enabled: false,
     writable: false,
     content: "",
   },
+  smallModelMode: false,
 };
 
 /*
@@ -43,7 +44,7 @@ const userContext = {
 Use the `(args) => toolFunction(args)` pattern, never just `() => toolFunction()`
 */
 const tools = {
-  "ppal-connect": (args) => connect(args, userContext),
+  "ppal-connect": (args) => connect(args, context),
   "ppal-read-live-set": (args) => readLiveSet(args),
   "ppal-update-live-set": (args) => updateLiveSet(args),
   "ppal-create-track": (args) => createTrack(args),
@@ -59,7 +60,7 @@ const tools = {
   "ppal-select": (args) => select(args),
   "ppal-delete": (args) => deleteObject(args),
   "ppal-duplicate": (args) => duplicate(args),
-  "ppal-memory": (args) => memory(args, userContext),
+  "ppal-memory": (args) => memory(args, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
@@ -77,16 +78,20 @@ export function compactOutput(enabled) {
   isCompactOutputEnabled = !!enabled;
 }
 
+export function smallModelMode(enabled) {
+  context.smallModelMode = !!enabled;
+}
+
 export function projectNotesEnabled(enabled) {
-  userContext.projectNotes.enabled = !!enabled;
+  context.projectNotes.enabled = !!enabled;
 }
 
 export function projectNotesWritable(writable) {
-  userContext.projectNotes.writable = !!writable;
+  context.projectNotes.writable = !!writable;
 }
 
 export function projectNotes(_text, content) {
-  userContext.projectNotes.content = content ?? "";
+  context.projectNotes.content = content ?? "";
 }
 
 function sendResponse(requestId, result) {
@@ -126,19 +131,13 @@ export async function mcp_request(requestId, tool, argsJSON) {
   try {
     const args = JSON.parse(argsJSON);
 
-    const includeUserContext =
-      userContext.projectNotes.enabled && tool === "ppal-read-live-set";
-
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
       // Compare this to the old way of passing the JS object directly here,
       // which results in a JSON.stringify() call on the object inside formatSuccessResponse().
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
-      const output = {
-        ...(await callTool(tool, args)),
-        ...(includeUserContext ? { userContext } : {}),
-      };
+      const output = await callTool(tool, args);
       result = formatSuccessResponse(
         isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
       );
