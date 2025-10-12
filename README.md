@@ -9,7 +9,7 @@ Works with any LLM that supports MCP tools, including:
 - **ChatGPT** (Codex CLI, Web)
 - **Local models** (LM Studio - completely offline)
 
-See the [Installation Guide](./INSTALLATION.md) for setup instructions.
+See the [Installation Guide](./INSTALLATION.md#) for setup instructions.
 
 Find out what's new in
 [the latest releases](https://github.com/adamjmurray/producer-pal/releases/).
@@ -37,18 +37,18 @@ to jump to the music-making:
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton Live
   Suite edition)
-- A compatible AI app (see the [Installation Guide](./INSTALLATION.md) for
+- A compatible AI app (see the [Installation Guide](./INSTALLATION.md#) for
   details)
 
 ## Installation
 
-Follow the [Installation Guide](./INSTALLATION.md) to connect Producer Pal to
+Follow the [Installation Guide](./INSTALLATION.md#) to connect Producer Pal to
 your AI:
 
 - [Claude Desktop](./INSTALLATION.md#claude-desktop)
 - [Claude Code](./INSTALLATION.md#claude-code)
 - [Gemini CLI](./INSTALLATION.md#gemini-cli)
-- [More options...](./INSTALLATION.md)
+- [More options...](./INSTALLATION.md#)
 
 Then, see the [Usage Guide](#usage) for help getting started.
 
