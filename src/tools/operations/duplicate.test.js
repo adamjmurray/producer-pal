@@ -616,12 +616,10 @@ describe("duplicate", () => {
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
             trackIndex: 0,
-            sceneIndex: 1,
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
             trackIndex: 1,
-            sceneIndex: 1,
           },
         ],
       });
@@ -667,12 +665,10 @@ describe("duplicate", () => {
             {
               id: "live_set/tracks/0/clip_slots/1/clip",
               trackIndex: 0,
-              sceneIndex: 1,
             },
             {
               id: "live_set/tracks/1/clip_slots/1/clip",
               trackIndex: 1,
-              sceneIndex: 1,
             },
           ],
         },
@@ -683,12 +679,10 @@ describe("duplicate", () => {
             {
               id: "live_set/tracks/0/clip_slots/2/clip",
               trackIndex: 0,
-              sceneIndex: 2,
             },
             {
               id: "live_set/tracks/1/clip_slots/2/clip",
               trackIndex: 1,
-              sceneIndex: 2,
             },
           ],
         },
@@ -920,16 +914,15 @@ describe("duplicate", () => {
         );
 
         expect(result).toStrictEqual({
+          arrangementStartTime: "5|1",
           clips: [
             {
               id: "live_set tracks 0 arrangement_clips 0",
               trackIndex: 0,
-              arrangementStartTime: "5|1",
             },
             {
               id: "live_set tracks 2 arrangement_clips 0",
               trackIndex: 2,
-              arrangementStartTime: "5|1",
             },
           ],
         });
@@ -1056,31 +1049,31 @@ describe("duplicate", () => {
 
         expect(result).toStrictEqual([
           {
+            arrangementStartTime: "5|1",
             clips: [
               {
                 id: "live_set tracks 0 arrangement_clips 0",
                 trackIndex: 0,
-                arrangementStartTime: "5|1",
                 name: "Scene Copy",
               },
             ],
           },
           {
+            arrangementStartTime: "7|1",
             clips: [
               {
                 id: "live_set tracks 0 arrangement_clips 1",
                 trackIndex: 0,
-                arrangementStartTime: "7|1",
                 name: "Scene Copy 2",
               },
             ],
           },
           {
+            arrangementStartTime: "9|1",
             clips: [
               {
                 id: "live_set tracks 0 arrangement_clips 2",
                 trackIndex: 0,
-                arrangementStartTime: "9|1",
                 name: "Scene Copy 3",
               },
             ],
@@ -1113,6 +1106,7 @@ describe("duplicate", () => {
         });
 
         expect(result).toStrictEqual({
+          arrangementStartTime: "5|1",
           clips: [],
         });
       });
@@ -1155,6 +1149,7 @@ describe("duplicate", () => {
         // Verify that show_view was still called
 
         expect(result).toStrictEqual({
+          arrangementStartTime: "5|1",
           clips: [],
         });
       });
@@ -1532,7 +1527,6 @@ describe("duplicate", () => {
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        trackIndex: 0,
         arrangementStartTime: "5|1",
       });
 
@@ -1722,7 +1716,6 @@ describe("duplicate", () => {
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        trackIndex: 0,
         arrangementStartTime: "5|1",
       });
     });
@@ -1807,7 +1800,6 @@ describe("duplicate", () => {
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        trackIndex: 0,
         arrangementStartTime: "1|1",
       });
     });
@@ -1887,7 +1879,6 @@ describe("duplicate", () => {
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        trackIndex: 0,
         arrangementStartTime: "1|1",
       });
     });

@@ -53,6 +53,7 @@ function parseArrangementLength(
  * @param {number} arrangementStartTimeBeats - Start time in beats  (TODO: clarify if this is ableton beats or musical beats)
  * @param {number} arrangementLengthBeats - Total length to fill in beats (TODO: clarify if this is ableton beats or musical beats)
  * @param {string} [name] - Optional name for the clips
+ * @param {Array<string>} [omitFields] - Optional fields to omit from clip info
  * @returns {Array<Object>} Array of minimal clip info objects
  */
 function createClipsForLength(
@@ -61,6 +62,7 @@ function createClipsForLength(
   arrangementStartTimeBeats,
   arrangementLengthBeats,
   name,
+  omitFields = [],
 ) {
   const originalClipLength = sourceClip.getProperty("length");
   const isLooping = sourceClip.getProperty("looping") > 0;
@@ -78,7 +80,7 @@ function createClipsForLength(
     // Copy all properties from the original clip
     copyClipProperties(sourceClip, newClip, name);
 
-    duplicatedClips.push(getMinimalClipInfo(newClip));
+    duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else if (isLooping) {
     // Case 2: Longer than clip length and clip is looping - create multiple clips
     let currentStartBeats = arrangementStartTimeBeats;
@@ -96,7 +98,7 @@ function createClipsForLength(
       // Copy all properties from the original clip
       copyClipProperties(sourceClip, newClip, name);
 
-      duplicatedClips.push(getMinimalClipInfo(newClip));
+      duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
 
       remainingLength -= clipLength;
       currentStartBeats += clipLength;
@@ -114,7 +116,7 @@ function createClipsForLength(
       name: name,
     });
 
-    duplicatedClips.push(getMinimalClipInfo(newClip));
+    duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   }
 
   return duplicatedClips;
@@ -468,9 +470,10 @@ export function duplicate({
 /**
  * Get minimal information about a clip for duplication results
  * @param {LiveAPI} clip - The clip to get info from
- * @returns {Object} Minimal clip info with id, trackIndex, and location
+ * @param {Array<string>} [omitFields] - Optional fields to omit from the result
+ * @returns {Object} Minimal clip info with id and location
  */
-function getMinimalClipInfo(clip) {
+function getMinimalClipInfo(clip, omitFields = []) {
   const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
 
   if (isArrangementClip) {
@@ -493,11 +496,18 @@ function getMinimalClipInfo(clip) {
       songTimeSigDenominator,
     );
 
-    return {
+    const result = {
       id: clip.id,
-      trackIndex,
-      arrangementStartTime,
     };
+
+    if (!omitFields.includes("trackIndex")) {
+      result.trackIndex = trackIndex;
+    }
+    if (!omitFields.includes("arrangementStartTime")) {
+      result.arrangementStartTime = arrangementStartTime;
+    }
+
+    return result;
   } else {
     const trackIndex = clip.trackIndex;
     const sceneIndex = clip.sceneIndex;
@@ -508,11 +518,18 @@ function getMinimalClipInfo(clip) {
       );
     }
 
-    return {
+    const result = {
       id: clip.id,
-      trackIndex,
-      sceneIndex,
     };
+
+    if (!omitFields.includes("trackIndex")) {
+      result.trackIndex = trackIndex;
+    }
+    if (!omitFields.includes("sceneIndex")) {
+      result.sceneIndex = sceneIndex;
+    }
+
+    return result;
   }
 }
 
@@ -573,7 +590,7 @@ function duplicateTrack(
       const clipSlot = new LiveAPI(clipSlotId);
       if (clipSlot.getProperty("has_clip")) {
         const clip = new LiveAPI(`${clipSlot.path} clip`);
-        duplicatedClips.push(getMinimalClipInfo(clip));
+        duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
       }
     }
 
@@ -582,7 +599,7 @@ function duplicateTrack(
     for (const clipId of arrangementClipIds) {
       const clip = new LiveAPI(clipId);
       if (clip.exists()) {
-        duplicatedClips.push(getMinimalClipInfo(clip));
+        duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
       }
     }
   }
@@ -712,7 +729,7 @@ function duplicateScene(sceneIndex, name, withoutClips) {
       if (clipSlot.exists() && clipSlot.getProperty("has_clip")) {
         const clip = new LiveAPI(`${clipSlot.path} clip`);
         if (clip.exists()) {
-          duplicatedClips.push(getMinimalClipInfo(clip));
+          duplicatedClips.push(getMinimalClipInfo(clip, ["sceneIndex"]));
         }
       }
     }
@@ -804,12 +821,14 @@ function duplicateSceneToArrangement(
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
         // Use the new length-aware clip creation logic
+        // Omit arrangementStartTime since all clips share the same start time
         const clipsForTrack = createClipsForLength(
           clip,
           track,
           arrangementStartTimeBeats,
           arrangementLengthBeats,
           name,
+          ["arrangementStartTime"],
         );
 
         // Add the scene name to each clip result if provided
@@ -825,6 +844,11 @@ function duplicateSceneToArrangement(
   }
 
   return {
+    arrangementStartTime: abletonBeatsToBarBeat(
+      arrangementStartTimeBeats,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    ),
     clips: duplicatedClips,
   };
 }
@@ -888,12 +912,14 @@ function duplicateClipToArrangement(
       clipTimeSigNumerator,
       clipTimeSigDenominator,
     );
+    // When creating multiple clips, omit trackIndex since they all share the same track
     const clipsCreated = createClipsForLength(
       clip,
       track,
       arrangementStartTimeBeats,
       arrangementLengthBeats,
       name,
+      ["trackIndex"],
     );
     duplicatedClips.push(...clipsCreated);
   } else {
@@ -912,11 +938,12 @@ function duplicateClipToArrangement(
     duplicatedClips.push(getMinimalClipInfo(newClip));
   }
 
-  // Return single clip info directly, or clips array for multiple
+  // Return single clip info directly, or clips array with trackIndex for multiple
   if (duplicatedClips.length === 1) {
     return duplicatedClips[0];
   } else {
     return {
+      trackIndex,
       clips: duplicatedClips,
     };
   }
