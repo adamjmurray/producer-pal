@@ -1,132 +1,43 @@
 # <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal Installation Guide
 
-## Latest Version Downloads
+Choose your AI for installation steps:
 
-Installation requires one or two files depending on your setup:
+- ⭐️ [Claude Desktop](#claude-desktop) - Anthropic's desktop GUI - easiest
+  setup
+- ⭐️ [Gemini CLI](#gemini-cli) - Google's command line agent - generous free
+  tier
+- [Codex CLI](#codex-cli) - OpenAI's command line agent
+- [Claude Code](#claude-code) - Anthropic's command line agent
+- [claude.ai Web App](#claudeai-web-app) - Anthropic's web app
+- [ChatGPT Web App](#chatgpt-web-app) - OpenAI's web app
+- [LM Studio](#lm-studio) - Run models completely offline
+- [Other MCP-compatible LLMs](#other-mcp-compatible-llms)
 
-- [`Producer_Pal.amxd`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-  is the Max for Live device **required to use Producer Pal**. This device _is_
-  Producer Pal. Everything else is an adapter.
-- Your installation method may need another file (see below for details):
-  - [`Producer_Pal.mcpb`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-    is required for Claude Desktop
-  - [`producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-    is recommended and sometimes required for most other installation methods
-    (it's optional for Gemini CLI, Claude Code, and LM Studio).
-  - The claude.ai and ChatGPT web apps connect to the Producer Pal Max for Live
-    device directly (they don't use the `.mcpb` or `.js` file), but they also
-    require [a web tunnel](#web-tunneling-options) to reach your computer
+_⭐️ indicates recommended options_
 
-Note: if your installation uses two of the above files, you should update both
-files whenever you update Producer Pal (don't use `Producer_Pal.amxd` version
-0.9.8 with `producer-pal-portal.js` version 0.9.7).
+<br>
 
-Read on for installation details.
+## Claude Desktop
 
-## Installation
+Anthropic's Claude Desktop app is the easiest, recommended way to use Producer
+Pal.
 
-1.  [Download `Producer_Pal.amxd`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
-    the Producer Pal Max for Live device
+### Requirements
 
-2.  Add `Producer_Pal.amxd` to a MIDI track in
-    [Ableton Live 12.2+](https://www.ableton.com/live/) with
-    [Max for Live](https://www.ableton.com/live/max-for-live/) (e.g. Ableton
-    Live Suite):
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- [Claude Desktop](https://claude.ai/download) (requires Anthropic account)
 
-    <img src="./doc/img/install-in-ableton.png" alt="install in Ableton" width="500">
+### Installation
 
-    It should show "Producer Pal Running".
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
 
-3.  Setup an AI model to use Producer Pal using one of the following guides (⭐️
-    indicates recommended options):
-    - [Anthropic Claude install guides](#anthropic-claude-installation)
-      - [Claude Desktop install guide](#claude-desktop) ⭐️
-      - [Claude Code install guide](#claude-code) ⭐️
-      - [claude.ai Web App install guide](#claudeai-web-app)
-    - [Google Gemini install guides](#google-gemini)
-      - [Gemini CLI install guide](#gemini-cli) ⭐️
-    - [OpenAI install guides](#openai)
-      - [Codex CLI install guide](#codex-cli)⭐️
-      - [ChatGPT web app install guide](#chatgpt-web-app)
-    - [LM Studio install guide](#lm-studio) for local models useable with no
-      Internet, including:
-      - Mistral AI Magistral
-      - Alibaba Qwen 3
-      - OpenAI GPT OSS
-    - [Installing with other MCP-compatible LLMs](#other-mcp-compatible-llms)
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
 
-4.  Start a conversation with "connect to ableton"
-
-If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
-
-See the [Usage Guide](./README.md#usage) for ideas on how to use Producer Pal.
-
-## Choosing a Connection Method
-
-Depending on the AI model you want to use, you may have choices between the
-following connection methods:
-
-### MCP Bundle
-
-The `Producer_Pal.mcpb` file
-[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-is an MCP bundle, which is an AI plugin for desktop apps in the
-[.mcbp format](https://github.com/anthropics/mcpb). It can be setup quickly in a
-few clicks with no special technical knowledge required.
-
-⭐️ If you [use Claude](#anthropic-claude-installation) this is the easiest way
-to start using Producer Pal. It is the same thing as
-[the Producer Pal Claude Desktop extension](#claude-desktop).
-
-Currently `Producer_Pal.mcpb` is only compatible with Claude Desktop.
-
-### producer-pal-portal.js
-
-⭐️ `producer-pal-portal.js`
-[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-is recommended over the HTTP connection method because it is more robust: it
-works even if Ableton Live / Producer Pal is not running and will help you debug
-connection issues.
-
-The `producer-pal-portal.js` script can connect most local MCP-compatible AI
-apps to Producer Pal. Technically, it proxies an
-[MCP stdio transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio)
-client to the
-[MCP server](https://modelcontextprotocol.io/docs/learn/server-concepts) running
-inside the Producer Pal Max for Live device via HTTP.
-
-Note: this option requires [Node.js](https://nodejs.org/) to be installed. If
-you don't want to install more stuff, try the HTTP connection method.
-
-### HTTP
-
-This is the most minimal install method. You only need the Producer Pal Max for
-Live device and an MCP/HTTP-compatible AI app.
-
-HTTP is the fastest way to try [Gemini CLI](#gemini-cli) and
-[Claude Code](#claude-code) with Producer Pal.
-
-HTTP is the only option for connecting remote clients like the
-[claude.ai Web App](#claudeai-web-app) and [ChatGPT web app](#chatgpt-web-app),
-but this also requires a [web tunnel](#web-tunneling-options). Note: You can
-access Producer Pal from another computer on your local network without using a
-web tunnel.
-
-A downside compared to the `producer-pal-portal.js` script is you may need to
-restart your AI app or refresh MCP servers if you forgot to run Ableton Live
-with the Producer Pal Max for Live device first.
-
-## Anthropic Claude Installation
-
-No subscription is required to use Claude, but you must register an Anthropic
-account and
-[verify the account with a phone number](https://support.anthropic.com/en/articles/8287232-why-do-i-need-to-verify-my-phone-number).
-
-### Claude Desktop
-
-Claude Desktop is the easiest way to use Producer Pal with Claude.
-
-1. Install [Claude Desktop](https://claude.ai/download)
+   _It should display "Producer Pal Running" or something isn't working._
 
 2. Download the
    [Producer Pal Claude Desktop Extension (`Producer_Pal.mcpb`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
@@ -163,113 +74,101 @@ Claude Desktop is the easiest way to use Producer Pal with Claude.
 
    <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
 
-### Claude Code
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
-[Claude Code](https://claude.com/product/claude-code) is a command line
-interface for Claude.
+<br><br>
 
-Note: When using Producer Pal with coding tools such as Claude Code, it's best
-to run the coding agent in an empty folder so it doesn't get distracted by an
-unrelated coding project.
+## Gemini CLI
 
-1. Install Claude Code: `npm install -g @anthropic/claude-code` (see
-   [the official docs](https://www.anthropic.com/claude-code))
-2. Configure the MCP server via one of these
-   [connection methods](#choosing-a-connection-method):
-   - with producer-pal-portal.js
-     [(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-     ```bash
-     claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
-     ```
-   - or via HTTP
-     ```bash
-     claude mcp add --transport http producer-pal http://localhost:3350/mcp
-     ```
-3. Start Claude Code by running `claude` (ideally in an empty folder)
-4. Start a conversation with "connect to ableton"
+Use Producer Pal with Google's command line coding assistant. No subscription
+needed.
 
-### claude.ai Web App
+### Requirements
 
-To use Producer Pal through [the Claude web interface](https://claude.ai/new):
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- [Node.js 20+](https://nodejs.org/en/download)
+- [Gemini CLI](https://github.com/google-gemini/gemini-cli?#-installation)
+  (requires Google account)
 
-1. Set up [a web tunnel](#web-tunneling-options) to expose your local Producer
-   Pal server, for example:
+### Installation
 
-   ```bash
-   ngrok http http://localhost:3350
-   ```
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
 
-   This gives you a public URL like `https://1234abcd.ngrok-free.app`
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" height="200">
 
-2. Go to [claude.ai settings](https://claude.ai/settings/connectors)
-3. Add a Custom Connector with your tunnel URL + `/mcp`:
-   ```
-   https://1234abcd.ngrok-free.app/mcp
-   ```
-4. Start a conversation with "connect to ableton"
+   _It should display "Producer Pal Running" or something isn't working._
 
-## Google Gemini
+2. Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
 
-If you have a Google account, you can use Gemini for free with generous usage
-limits that reset daily.
+   **Option A: With producer-pal-portal.js (recommended)**:
 
-### Gemini CLI
+   Download
+   [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+   and configure:
 
-[Gemini CLI](https://developers.google.com/gemini-code-assist/docs/gemini-cli)
-is a command line interface for Google Gemini.
-
-Note: When using Producer Pal with coding tools such as Gemini CLI, it's best to
-run the coding agent in an empty folder so it doesn't get distracted by an
-unrelated coding project.
-
-1. [Install Gemini CLI](https://github.com/google-gemini/gemini-cli?#-installation)
-2. Configure MCP severs in `~/.gemini/settings.json` using one of the supported
-   [connection methods](#choosing-a-connection-method):
-   - with producer-pal-portal.js
-     [(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-
-     ```json
-     {
-       "mcpServers": {
-         // ... other MCP server configs ...
-         "producer-pal": {
-           "command": "node",
-           "args": ["/absolute/path/to/producer-pal-portal.js"]
-         }
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "command": "node",
+         "args": ["/absolute/path/to/producer-pal-portal.js"]
        }
      }
-     ```
+   }
+   ```
 
-   - with HTTP
-     ```json
-     {
-       "mcpServers": {
-         // ... other MCP server configs ...
-         "producer-pal": {
-           "httpUrl": "http://localhost:3350"
-         }
+   **Option B: Direct HTTP**
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "httpUrl": "http://localhost:3350"
        }
      }
-     ```
+   }
+   ```
 
-3. Run `gemini` to start the Gemini CLI (ideally in an empty folder)
+   _When using direct HTTP, start Ableton Live with Producer Pal before Gemini
+   CLI._
+
+3. Run `gemini` to start the Gemini CLI in an empty folder (so it can focus on
+   Producer Pal instead of coding)
 4. Start a conversation with "connect to ableton"
 
-## OpenAI
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
-### Codex CLI
+<br><br>
 
-[Codex CLI](https://developers.openai.com/codex/cli) is a command line interface
-for OpenAI models.
+## Codex CLI
 
-At the time of writing, a paid OpenAI subscription is needed to use Codex CLI.
-This may change later.
+Use Producer Pal with OpenAI's command line coding assistant.
 
-Note: When using Producer Pal with coding tools such as Codex CLI, it's best to
-run the coding agent in an empty folder so it doesn't get distracted by an
-unrelated coding project.
+### Requirements
 
-1. [Install OpenAI Codex](https://github.com/openai/codex#quickstart)
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- [Node.js 22+](https://nodejs.org/en/download)
+- [OpenAI Codex](https://github.com/openai/codex#quickstart) (requires OpenAI
+  account, and a paid subscription at time of writing)
+
+### Installation
+
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
+
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" height="200">
+
+   _It should display "Producer Pal Running" or something isn't working._
+
 2. [Download `producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
 3. Edit `~/.codex/config.toml`:
 
@@ -279,18 +178,133 @@ unrelated coding project.
    args = ["/absolute/path/to/producer-pal-portal.js"]
    ```
 
-   Note: at the time of writing, `producer-pal-portal.js`is the only
-   [connection method](#choosing-a-connection-method) that works with Codex CLI
-   (HTTP is not supported).
-
-4. Run `codex` (ideally in an empty folder)
+4. Run `codex` in an empty folder (so it can focus on Producer Pal instead of
+   coding)
 5. Start a conversation with "connect to ableton"
 
-### ChatGPT Web App
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
-To use Producer Pal through [the ChatGPT web interface](https://chatgpt.com/):
+<br><br>
 
-1. Set up [a web tunnel](#web-tunneling-options) to expose your local Producer
+## Claude Code
+
+Use Producer Pal with Anthropic's command line coding assistant.
+
+### Requirements
+
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- [Node.js 18+](https://nodejs.org/en/download)
+- [Claude Code](https://www.anthropic.com/claude-code) (requires Anthropic
+  account, and a paid subscription at time of writing)
+
+### Installation
+
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
+
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" height="200">
+
+   _It should display "Producer Pal Running" or something isn't working._
+
+2. Configure Claude Code to use Producer Pal:
+
+   **Option A: With producer-pal-portal.js (recommended)**:
+
+   Download
+   [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+   and run:
+
+   ```bash
+   claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
+   ```
+
+   **Option B: Direct HTTP**
+
+   ```bash
+   claude mcp add --transport http producer-pal http://localhost:3350/mcp
+   ```
+
+   _When using direct HTTP, start Ableton Live with Producer Pal before Claude
+   Code._
+
+3. Start Claude Code by running `claude` in an empty folder (so it can focus on
+   Producer Pal instead of coding)
+4. Start a conversation with "connect to ableton"
+
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+<br><br>
+
+## claude.ai Web App
+
+Use Producer Pal in your web browser with Anthropic's chat web app.
+
+### Requirements
+
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- [Claude account](https://claude.ai)
+- [Web tunnel](#web-tunneling-option) (e.g., ngrok or Pinggy)
+
+### Installation
+
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
+
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" height="200">
+
+   _It should display "Producer Pal Running" or something isn't working._
+
+2. Set up [a web tunnel](#web-tunneling-options) to expose your local Producer
+   Pal server, for example:
+
+   ```bash
+   ngrok http http://localhost:3350
+   ```
+
+   This gives you a public URL like `https://1234abcd.ngrok-free.app`
+
+3. Go to [claude.ai settings](https://claude.ai/settings/connectors)
+4. Add a Custom Connector with your tunnel URL + `/mcp`:
+   ```
+   https://1234abcd.ngrok-free.app/mcp
+   ```
+5. Start a conversation with "connect to ableton"
+
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+<br><br>
+
+## ChatGPT Web App
+
+Use Producer Pal in your web browser with OpenAI's chat web app.
+
+### Requirements
+
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- [ChatGPT account](https://chatgpt.com) (at the time of writing, a paid
+  subscription is required to access the advanced settings needed for this to
+  work)
+- [Web tunnel](#web-tunneling-option) (e.g., ngrok or Pinggy)
+
+### Installation
+
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
+
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" height="200">
+
+   _It should display "Producer Pal Running" or something isn't working._
+
+2. Set up [a web tunnel](#web-tunneling-options) to expose your local Producer
    Pal server, for example:
 
    ```bash
@@ -299,16 +313,20 @@ To use Producer Pal through [the ChatGPT web interface](https://chatgpt.com/):
 
    Note your public URL (e.g., `https://1234abcd.ngrok-free.app`)
 
-2. Go to [ChatGPT](https://chatgpt.com) → Settings
-3. Enable Developer Mode. _Note: At the time of writing, a paid OpenAI
-   subscription is needed to enable Developer Mode. This may change later._
-4. Add a Custom Connector:
+3. Go to [ChatGPT](https://chatgpt.com) → Settings
+4. Enable Developer Mode. _Note: At the time of writing, a paid OpenAI
+   subscription is needed to enable Developer Mode._
+5. Add a Custom Connector:
    - URL: Your tunnel URL + `/mcp` (e.g., `https://1234abcd.ngrok-free.app/mcp`)
    - No authentication required
    - Trust the connector
-5. IMPORTANT: Start a new chat with Developer Mode and Producer Pal explicitly
+6. IMPORTANT: Start a new chat with Developer Mode and Producer Pal explicitly
    enabled
-6. Start a conversation with "connect to ableton"
+7. Start a conversation with "connect to ableton"
+
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+<br><br>
 
 ## LM Studio
 
@@ -359,6 +377,8 @@ private usage is compelling.
 
 4. Start a conversation with "connect to ableton"
 
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
 ### Optimizing for Local Models
 
 - A **context length of about 8k (8000)** is needed to start a conversation with
@@ -387,6 +407,8 @@ private usage is compelling.
   advanced/experimental settings for Flash Attention and setting the K/V caches'
   quantization to Q8 or Q4.
 - Research how to optimize for your specific machine / GPU hardware
+
+<br><br>
 
 ## Other MCP-compatible LLMs
 
@@ -457,6 +479,61 @@ settings for the AI.
 - No installation required on macOS
 - Run: `ssh -R 80:localhost:3350 a.pinggy.io`
 - Free tier limited to 60 minutes
+
+## Choosing a Connection Method
+
+Depending on the AI model you want to use, you may have choices between the
+following connection methods:
+
+### MCP Bundle
+
+The `Producer_Pal.mcpb` file
+[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+is an MCP bundle, which is an AI plugin for desktop apps in the
+[.mcbp format](https://github.com/anthropics/mcpb). It can be setup quickly in a
+few clicks with no special technical knowledge required.
+
+⭐️ If you [use Claude](#anthropic-claude-installation) this is the easiest way
+to start using Producer Pal. It is the same thing as
+[the Producer Pal Claude Desktop extension](#claude-desktop).
+
+Currently `Producer_Pal.mcpb` is only compatible with Claude Desktop.
+
+### producer-pal-portal.js
+
+⭐️ `producer-pal-portal.js`
+[(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+is recommended over the HTTP connection method because it is more robust: it
+works even if Ableton Live / Producer Pal is not running and will help you debug
+connection issues.
+
+The `producer-pal-portal.js` script can connect most local MCP-compatible AI
+apps to Producer Pal. Technically, it proxies an
+[MCP stdio transport](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#stdio)
+client to the
+[MCP server](https://modelcontextprotocol.io/docs/learn/server-concepts) running
+inside the Producer Pal Max for Live device via HTTP.
+
+Note: this option requires [Node.js](https://nodejs.org/) to be installed. If
+you don't want to install more stuff, try the HTTP connection method.
+
+### HTTP
+
+This is the most minimal install method. You only need the Producer Pal Max for
+Live device and an MCP/HTTP-compatible AI app.
+
+HTTP is the fastest way to try [Gemini CLI](#gemini-cli) and
+[Claude Code](#claude-code) with Producer Pal.
+
+HTTP is the only option for connecting remote clients like the
+[claude.ai Web App](#claudeai-web-app) and [ChatGPT web app](#chatgpt-web-app),
+but this also requires a [web tunnel](#web-tunneling-options). Note: You can
+access Producer Pal from another computer on your local network without using a
+web tunnel.
+
+A downside compared to the `producer-pal-portal.js` script is you may need to
+restart your AI app or refresh MCP servers if you forgot to run Ableton Live
+with the Producer Pal Max for Live device first.
 
 ## Troubleshooting
 
