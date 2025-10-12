@@ -105,7 +105,7 @@ D1 1|4,6           // snare accents across bars 1-2
 - Keep fills rhythmic with space - accent key hits, avoid machine-gun density
 - Keep scenes' harmonic rhythm in sync across tracks
 - Beat numbers beyond the time signature wrap to the next bar (e.g., in 4/4, 1|5 wraps to 2|1) - careful, this can cause unintended overlaps, especially when copying bars
-- Bass needs monophonic lines - one note at a time, tend towards shorter durations
+- Bass needs monophonic lines, one note at a time
 
 **Tool Usage:**
 - Clip length sets playback region; noteCount shows notes within that region
