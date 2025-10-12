@@ -17,8 +17,7 @@ Create MIDI clips using the bar|beat notation syntax:
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
   - \`|beat\` reuses current bar
-  - beat can be a shorthand comma-separated list
-  - beat wraps to actual bar (1|5 becomes 2|1 in 4/4)
+  - beat can be a comma-separated (no whitespace) list
 - v<velocity>: Note intensity from 0-127 (v80-120 = random range)
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length in beats (default: 1.0)
@@ -51,7 +50,7 @@ C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
 Use copy features and pitch persistence:
 - Within each bar, group by instrument to leverage pitch persistence for multiple time positions
 - Use shorthand beat lists
-- Add all notes/drums you want before copying the bar
+- Think it through: Complete the full bar first, then copy
 
 \`\`\`
 C1 1|1,3 D1 |2,4 // bar 1
@@ -94,6 +93,7 @@ D1 1|4,6           // snare accents across bars 1-2
 **Views and Playback:**
 - Session View: Jam, try ideas, build scenes
   - Use auto:"play-scene" when generating scenes one clip at a time
+    - Warn the user about seemingly random clip restarts as you finish each clip when auto-playing scenes
 - Arrangement View: Structure songs on a timeline
   - Session clips override Arrangement playback
   - Tracks auto-follow Arrangement when you play with "play-arrangement"
@@ -103,6 +103,9 @@ D1 1|4,6           // snare accents across bars 1-2
 - Place notes with musical timing - not just on the beat
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
 - Keep fills rhythmic with space - accent key hits, avoid machine-gun density
+- Keep scenes' harmonic rhythm in sync across tracks
+- Beat numbers beyond the time signature wrap to the next bar (e.g., in 4/4, 1|5 wraps to 2|1) - careful, this can cause unintended overlaps, especially when copying bars
+- Bass needs monophonic lines - one note at a time, tend towards shorter durations
 
 **Tool Usage:**
 - Clip length sets playback region; noteCount shows notes within that region
