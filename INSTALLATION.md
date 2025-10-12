@@ -194,7 +194,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/)
-- [Node.js 18+](https://nodejs.org/en/download)
+- [Node.js 20+](https://nodejs.org/en/download)
 - [Claude Code](https://www.anthropic.com/claude-code) (requires Anthropic
   account, and a paid subscription at time of writing)
 
@@ -330,52 +330,75 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
 ## LM Studio
 
-Run AI models locally without an Internet connection.
+Use Producer Pal completely offline without an Internet connection.
 
-**This functionality is experimental.** It only works on relatively new machines
-with decent specs (Apple Silicon with lots of RAM or PCs with Nvidia 4080+
-graphics cards). It requires more technical know-how to setup and debug. The
-online options documented above (Claude, Gemini, and OpenAI's commercial GPT
-models) work noticeably better and faster, however, completely offline and
-private usage is compelling.
+### Requirements
 
-1. Download [LM Studio](https://lmstudio.ai/)
-2. Install a compatible model:
-   - Qwen 3+ (tested with the 4b-2507 and 4b-thinking-2507 models)
-   - OpenAI GPT-OSS (tested with the 20B model)
-   - Mistral AI Magistral (tested with the small-2509 model)
-3. Configure MCP servers in LM Studio Settings → Program → Integrations → edit
-   mcp.json using one of the supported
-   [connection methods](#choosing-a-connection-method):
-   - with producer-pal-portal.js
-     [(download latest version here)](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- [LM Studio](https://lmstudio.ai/)
 
-     ```json
-     {
-       "mcpServers": {
-         // ... other MCP server configs ...
-         "producer-pal": {
-           "command": "node",
-           "args": ["/absolute/path/to/producer-pal-portal.js"]
-         }
+**⚠️ Experimental:** This requires a relatively new machine with decent specs
+(Apple Silicon with lots of RAM or PCs with Nvidia 4080+ graphics cards). It
+requires more technical know-how to setup and debug. The online options
+documented above work significantly better and faster at the time of writing.
+However, completely offline and private usage is compelling.
+
+### Installation
+
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
+
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" height="200">
+
+   _It should display "Producer Pal Running" or something isn't working._
+
+2. Install a compatible model in LM Studio, such as:
+   - Qwen 3+ (4b-2507, 4b-thinking-2507)
+   - OpenAI GPT-OSS (20B)
+   - Mistral AI Magistral (small-2509)
+   - Granite 4+ (4.0-h-tiny)
+3. Setup Producer Pal in LM Studio Settings → Program → Integrations → edit
+   mcp.json:
+
+   **Option A: With producer-pal-portal.js (recommended)**:
+
+   Download
+   [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+   and configure:
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "command": "node",
+         "args": ["/absolute/path/to/producer-pal-portal.js"]
        }
      }
-     ```
+   }
+   ```
 
-   - with HTTP
+   **Option B: Direct HTTP**
 
-     ```json
-     {
-       "mcpServers": {
-         // ... other MCP server configs ...
-         "producer-pal": {
-           "url": "http://localhost:3350/mcp"
-         }
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "url": "http://localhost:3350/mcp"
        }
      }
-     ```
+   }
+   ```
 
-4. Start a conversation with "connect to ableton"
+   _When using direct HTTP, start Ableton Live with the Producer Pal device
+   before enabling the Producer Pal MCP server inside LM Studio._
+
+4. Start a conversation with Producer Pal MCP active and say "connect to
+   ableton"
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -412,12 +435,30 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
 ## Other MCP-compatible LLMs
 
-Producer Pal works with any LLM that supports the Model Context Protocol.
+Producer Pal works with any LLM that supports the Model Context Protocol (MCP).
 
-You can use the
-[stdio or HTTP connection method](#choosing-a-connection-method).
+### Requirements
 
-### Local MCP via stdio
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- AI that supports [MCP](https://modelcontextprotocol.io)
+- Potentially: [Node.js 20+](https://nodejs.org/en/download)
+
+### Installation
+
+Download
+[Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+Live:
+
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" height="200">
+
+_It should display "Producer Pal Running" or something isn't working._
+
+Then, configure your AI to connect to Producer Pal using one of the following
+methods.
+
+#### Option A: Local MCP via stdio (recommended)
 
 [Download `producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
 and configure your LLM MCP to use:
@@ -426,7 +467,9 @@ and configure your LLM MCP to use:
 node /path/to/producer-pal-portal.js
 ```
 
-### Local MCP via HTTP
+This option requires [Node.js 20+](https://nodejs.org/en/download).
+
+#### Option B: Local MCP via HTTP
 
 Use the URL:
 
@@ -434,19 +477,27 @@ Use the URL:
 http://localhost:3350/mcp
 ```
 
-Note: Sometimes an additional setting is needed for HTTP connections. For
-example, [Cline](https://cline.bot/) requires `"type": "streamableHttp"` to be
-configured along with the `url`.
+Sometimes an additional setting is needed for HTTP connections. For example,
+[Cline](https://cline.bot/) requires `"type": "streamableHttp"` to be configured
+along with the `url`.
 
-In some apps, the `/mcp` path might be omitted from the URL. It is typically
-present.
+In some apps, the `/mcp` path might need to be omitted from the URL. It is
+typically present.
 
-### Remote MCP via HTTP tunnel
+You may need to restart your AI app or refresh MCP servers if you forgot to run
+Ableton Live with Producer Pal Max first.
+
+#### Option C: Remote MCP via HTTP tunnel
 
 For cloud-hosted LLMs or remote access:
 
-1. Set up a tunnel (e.g., ngrok, Pinggy)
+1. Set up a [web tunnel](#web-tunneling-options) (e.g., ngrok, Pinggy)
 2. Configure your LLM with the public URL + `/mcp`
+
+In some apps, the `/mcp` path might need to be omitted from the URL. It is
+typically present.
+
+<br><br>
 
 ## Web Tunneling Options
 
@@ -479,6 +530,8 @@ settings for the AI.
 - No installation required on macOS
 - Run: `ssh -R 80:localhost:3350 a.pinggy.io`
 - Free tier limited to 60 minutes
+
+<br><br>
 
 ## Choosing a Connection Method
 
@@ -535,6 +588,8 @@ A downside compared to the `producer-pal-portal.js` script is you may need to
 restart your AI app or refresh MCP servers if you forgot to run Ableton Live
 with the Producer Pal Max for Live device first.
 
+<br><br>
+
 ## Troubleshooting
 
 ### AI won't use Producer Pal
@@ -583,9 +638,7 @@ many models supported by [LM Studio](#lm-studio) can't use tools.
 - Restart your AI interface
 - Check the Max console for error messages
 
-## Support
-
-For issues and questions:
+### Getting Support
 
 - Ask a question in
   [the questions forum](https://github.com/adamjmurray/producer-pal/discussions/categories/questions)
