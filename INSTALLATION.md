@@ -132,7 +132,7 @@ needed.
      "mcpServers": {
        // ... other MCP server configs ...
        "producer-pal": {
-         "httpUrl": "http://localhost:3350"
+         "httpUrl": "http://localhost:3350/mcp"
        }
      }
    }
@@ -154,6 +154,8 @@ needed.
 6. Allow Producer Pal tools to be used when Gemini tries to use them:
 
    <img src="./doc/img/gemini-tool-permissions.png" alt="install in Ableton" width="700">
+
+   <br>
 
    <img src="./doc/img/gemini-success.png" alt="install in Ableton" width="700">
 
