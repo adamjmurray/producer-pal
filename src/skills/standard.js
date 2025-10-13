@@ -18,7 +18,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - time positions are relative to clip start
   - \`|beat\` reuses current bar
   - beat can be a comma-separated (no whitespace) list
-- v<velocity>: Note intensity from 0-127 (v80-120 = random range)
+- v<velocity>: Note intensity from 0-127 (default: v100; v80-120 = random range)
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length in beats (default: 1.0)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
