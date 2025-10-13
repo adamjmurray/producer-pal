@@ -18,6 +18,43 @@ _⭐️ indicates recommended options_
 Already installed and it doesn't work? Try the
 [Troubleshooting Guide](#troubleshooting).
 
+## Upgrading
+
+When installing a new version of Producer Pal:
+
+1. **Download all new files:** Get the latest
+   [`Producer_Pal.amxd`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
+   Max for Live device, and (if applicable) either
+   [`Producer_Pal.mcpb`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
+   (for Claude Desktop) or
+   [`producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+
+2. **Replace the Max device:** Replace `Producer_Pal.amxd` in the location where
+   you originally saved it (e.g. in your Live User Library). Live projects
+   referencing this location will automatically use the new version.
+
+   **Exception:** If you saved projects with "Collect All and Save" (with device
+   files included), those have their own copy of Producer Pal. For those
+   projects, drag the new `.amxd` into Live to replace the old version.
+
+   Check the version number in the device UI to confirm you're running the
+   latest version.
+
+3. **For Claude Desktop users:**
+   - Go to Settings → Extensions
+   - Click the `...` menu on the old Producer Pal extension and select
+     "Uninstall"
+   - Install the new `Producer_Pal.mcpb` file (see
+     [Claude Desktop installation](#claude-desktop))
+
+4. **For other setups:** Replace the old `producer-pal-portal.js` with the new
+   one at the same file path (so your configuration doesn't need updating)
+
+5. **Restart your AI app** to ensure it picks up the changes
+
+If you have issues after upgrading, see the
+[Troubleshooting Guide](#troubleshooting).
+
 <br>
 
 ## Claude Desktop
@@ -660,6 +697,18 @@ support tools.
 - Toggle the Producer Pal device off and on in Live
 - Restart your AI interface
 - Check the Max console for error messages
+
+### After Upgrading
+
+If Producer Pal stops working after installing a new version:
+
+- **Claude Desktop users:** Make sure you uninstalled the old extension before
+  installing the new one
+- **All users:** Verify you replaced both the `.amxd` device AND the portal/mcpb
+  files (if applicable for your installation)
+- Try deleting and re-adding the Producer Pal device in Ableton Live
+- Restart your AI app completely
+- Start a fresh conversation
 
 ### Getting Support
 
