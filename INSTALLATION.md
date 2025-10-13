@@ -502,19 +502,15 @@ typically present.
 For remote access to Producer Pal from the Internet, you'll need a tunneling
 service.
 
-_Note: Producer Pal performs no authentication, so anyone who knows your web
-tunnel address can connect and control Ableton Live. Keep your tunnel URL secret
-and only share with trusted collaborators. The tunnel URL acts as the password -
-if someone discovers it, restart your tunnel and get a new URL._
+**⚠️ Security:** Producer Pal has no authentication. Anyone with your tunnel URL
+can control Ableton Live. Keep the URL secret and only share with trusted
+collaborators. If someone discovers it, restart your tunnel to get a new URL.
 
-A web tunnel is _not_ needed to connect to Producer Pal to another computer on
-the local network. When using Producer Pal on a local network (e.g., in a
-studio, classroom, or live performance), you can customize the port number in
-the Producer Pal Max for Live device settings (default: 3350) to prevent
-unauthorized access from other devices on the same network. Changing the port
-effectively "hides" Producer Pal from other users who might be scanning for it.
-If you change the port, update the :3350 in your Producer Pal connections
-settings for the AI.
+**For local networks** (studios, classrooms, performances): You don't need a
+tunnel. Customize the port number in the Producer Pal device settings
+(default: 3350) to prevent unauthorized access from other devices on the same
+network. Update the `:3350` in your AI connection settings if you change it in
+the Producer Pal Max for Live device.
 
 ### ngrok (Recommended)
 
@@ -535,32 +531,30 @@ settings for the AI.
 
 ### AI won't use Producer Pal
 
-Things to check:
+Verify your setup:
 
-- The Producer Pal Max for Live device has been added to Ableton Live and says
+- Producer Pal Max for Live device is running in Ableton Live and displays
   "Producer Pal Running"
-- The Producer Pal tools are enabled for the AI. AI apps let you disable tools
-  and it's a good idea to disable tools you aren't using
-- If the Producer Pal device was not running in Live, or the Producer Pal tools
-  were not enabled, you may need to start a new conversation
+- Producer Pal tools are enabled in your AI app (most apps let you view
+  available MCP tools/extensions)
+- If either was missing, start a new conversation. If that doesn't work, restart
+  your AI app completely.
 
-Some AIs won't respond to "connect to ableton". Some may incorrectly claim they
-have no way of interacting with Ableton Live. If you can see the Producer Pal
-tools and they are enabled, try this:
+If the AI claims it can't interact with Ableton Live:
 
-- Ask the AI "what tools do you have?"
-- Check the AI knows it has Producer Pal tools such as `ppal-connect`
-- Say "call your ppal-connect tool"
+1. Ask "what tools do you have?"
+2. Verify it lists Producer Pal tools like `ppal-connect`
+3. Say "call your ppal-connect tool"
 
-Once you trigger a `ppal-connect` tool call, Producer Pal should work. If saying
-"connect to ableton" doesn't achieve this, find a way to reliably trigger
-`ppal-connect` with your AI. For example, "connect to ableton with your tools"
-or "connect to ableton with your ppal-connect tool" might work more reliably.
+Once ppal-connect is called, Producer Pal should work. If "connect to ableton"
+doesn't trigger it, try:
 
-If you can see the Producer Pal tools but the AI cannot, or will not call
-`ppal-connect` no matter what you try, check you are using an AI model that
-supports tools. Locally running models might not be compatible, for example,
-many models supported by [LM Studio](#lm-studio) can't use tools.
+- "connect to ableton with your tools"
+- "connect to ableton with your ppal-connect tool"
+
+If tools are visible but the AI won't call them, check you're using a model that
+supports tool calling. Many local models (including some in LM Studio) don't
+support tools.
 
 ### Connection Issues
 
