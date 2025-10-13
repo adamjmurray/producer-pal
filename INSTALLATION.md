@@ -155,8 +155,6 @@ needed.
 
    <img src="./doc/img/gemini-tool-permissions.png" alt="install in Ableton" width="700">
 
-   <br>
-
    <img src="./doc/img/gemini-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
@@ -186,9 +184,13 @@ Use Producer Pal with OpenAI's command line coding assistant.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Download
+2. Add Producer Pal to Codex's settings in `~/.codex/config.toml`:
+
+   **Option A: With producer-pal-portal.js (recommended)**:
+
+   Download
    [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-3. Edit `~/.codex/config.toml`:
+   and configure:
 
    ```toml
    [mcp_servers.producer-pal]
@@ -196,9 +198,26 @@ Use Producer Pal with OpenAI's command line coding assistant.
    args = ["/absolute/path/to/producer-pal-portal.js"]
    ```
 
-4. Run `codex` in an empty folder (so it can focus on Producer Pal instead of
+   **Option B: Direct HTTP**
+
+   ```toml
+   [mcp_servers.producer-pal]
+   url = "http://localhost:3350/mcp"
+   ```
+
+   _When using direct HTTP, start Ableton Live with Producer Pal before Codex
+   CLI._
+
+3. Run `codex` in an empty folder (so it can focus on Producer Pal instead of
    coding)
+
+4. Run `/mcp` in the Codex CLI to confirm the Producer Pal tools are available:
+
+   <img src="./doc/img/codex-tool-list.png" alt="install in Ableton" width="700">
+
 5. Start a conversation with "connect to ableton"
+
+   <img src="./doc/img/codex-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
