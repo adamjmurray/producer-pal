@@ -71,11 +71,11 @@ Pal.
 
 6. Start a conversation with "connect to ableton"
 
-   ![Producer Pal start a conversation](./doc/img/screenshot.png)
-
-7. In order for Producer Pal to work, you need to allow the tools to be used:
+7. Allow Producer Pal tools to be used when Claude tries to use them:
 
    <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
+
+   ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -143,7 +143,19 @@ needed.
 
 3. Run `gemini` to start the Gemini CLI in an empty folder (so it can focus on
    Producer Pal instead of coding)
-4. Start a conversation with "connect to ableton"
+
+4. Run `/mcp list` in the Gemini CLI to confirm the Producer Pal tools are
+   available:
+
+   <img src="./doc/img/gemini-tool-list.png" alt="install in Ableton" width="500">
+
+5. Start a conversation with "connect to ableton"
+
+6. Allow Producer Pal tools to be used when Gemini tries to use them:
+
+   <img src="./doc/img/gemini-tool-permissions.png" alt="install in Ableton" width="500">
+
+   <img src="./doc/img/gemini-success.png" alt="install in Ableton" width="500">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
