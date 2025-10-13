@@ -15,6 +15,9 @@ Choose your AI for installation steps:
 
 _⭐️ indicates recommended options_
 
+Already installed and it doesn't work? Try the
+[Troubleshooting Guide](#troubleshooting).
+
 <br>
 
 ## Claude Desktop
