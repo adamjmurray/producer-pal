@@ -2,16 +2,10 @@
 
 Collaboratively make music in Ableton Live with an AI assistant.
 
-Works with any LLM that supports MCP tools, including:
+Works with most AI that support tools, including Claude, Gemini, OpenAI GPT, and
+local models.
 
-- Claude (Desktop, Claude Code, Web)
-- Gemini (CLI)
-- OpenAI GPT (Codex CLI, ChatGPT Web)
-- Local models (LM Studio - completely offline)
-
-See the [Installation Guide](./INSTALLATION.md) for setup instructions.
-
-Find out what's new in
+**→ [Install it now](./INSTALLATION.md)** or see what's new in
 [the latest releases](https://github.com/adamjmurray/producer-pal/releases/).
 
 ## Demo
