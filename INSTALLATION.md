@@ -515,16 +515,18 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
   significantly slower, especially as the conversation grows. Experiment to find
   the right balance.
 - To get more out of a limited context length, disable some of the Producer Pal
-  tools. A reasonable minimal toolset for experimentation is:
+  tools. To focus on MIDI clip generation and manipulation, a good minimal
+  toolset for experimentation is:
   - `ppal-connect`
   - `ppal-read-live-set`
   - `ppal-create-clip`
   - `ppal-read-clip`
   - `ppal-update-clip`
-  - `ppal-playback`
+  - optional: `ppal-playback`
 
   Try disabling all the other tools and add back when you miss features.
 
+- Experiment with empty or extremely simple Live projects
 - If the AI struggles and makes mistakes, don't hesitate to delete recent
   messages from the chat, edit your last message, and try again. Don't waste
   tokens correcting the LLM. Back up and avoid the issue or try something else.
