@@ -56,8 +56,10 @@ Then, see the [Usage Guide](#usage) for help getting started.
 ## Data Privacy
 
 When using online AI services, your musical data (MIDI notes, track names,
-tempo, etc.) is sent to that service for processing. For sensitive work, use
-offline models like LM Studio.
+tempo, etc.) is sent to that service for processing. Most services offer options
+to opt out of training on your data. Check your AI provider's privacy policy and
+account settings. Avoid online services for highly confidential or commercially
+sensitive work.
 
 ## Usage
 
