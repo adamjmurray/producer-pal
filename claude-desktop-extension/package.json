@@ -1,6 +1,6 @@
 {
   "name": "producer-pal-mcp-bundle",
-  "version": "0.9.11",
+  "version": "1.0.0",
   "description": "MCP bundle for Ableton Producer Pal",
   "type": "module",
   "main": "producer-pal-portal.js",
