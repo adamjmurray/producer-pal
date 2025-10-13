@@ -121,30 +121,14 @@ function stripChains(device) {
 }
 
 /**
- * Read comprehensive information about a track
+ * Generic track reader that works with any track type. This is an internal helper function
+ * used by readTrack to read comprehensive information about tracks.
  * @param {Object} args - The parameters
- * @param {number} args.trackIndex - Track index (0-based). Also used as returnTrackIndex for return tracks. Ignored for master track.
- * @param {string} args.category - Category of track: "regular" (default), "return", or "master"
- * @param {Array} args.include - Array of data to include in the response
- * @returns {Object} Result object with track information
- */
-/**
- * Generic track reader that works with any track type
- * @param {Object} args - The parameters
- * @param {Object} args.track - LiveAPI track object
+ * @param {LiveAPI} args.track - LiveAPI track object
  * @param {number|null} args.trackIndex - Track index (null for master track)
- * @param {string} args.category - Track category: "regular", "return", or "master"
- * @param {boolean} args.includeDrumChains - Include drum chains
- * @param {boolean} args.includeClipNotes - Include notes in clips
- * @param {boolean} args.includeRackChains - Include rack chains
- * @param {boolean} args.includeMidiEffects - Include MIDI effects
- * @param {boolean} args.includeInstruments - Include instruments
- * @param {boolean} args.includeAudioEffects - Include audio effects
- * @param {boolean} args.includeRoutings - Include current routing settings
- * @param {boolean} args.includeAvailableRoutings - Include available routing options
- * @param {boolean} args.includeSessionClips - Include session clips
- * @param {boolean} args.includeArrangementClips - Include arrangement clips
- * @returns {Object} Track information
+ * @param {string} [args.category="regular"] - Track category: "regular", "return", or "master"
+ * @param {Array<string>} [args.include] - Array of data to include in the response
+ * @returns {Object} Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
   track,

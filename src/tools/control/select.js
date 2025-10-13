@@ -90,6 +90,35 @@ function readViewState() {
   };
 }
 
+/**
+ * Reads or updates the view state and selection in Ableton Live.
+ *
+ * When called with no arguments (or empty object), returns the current view state.
+ * When called with arguments, updates the view/selection and returns the full view state
+ * with updates optimistically applied.
+ *
+ * Use update functionality judiciously to avoid interrupting user workflow.
+ * Generally only change views when: 1) User explicitly asks to see something,
+ * 2) After creating/modifying objects the user specifically asked to work on,
+ * 3) Context strongly suggests the user would benefit from seeing the result.
+ * When in doubt, don't change views.
+ *
+ * @param {Object} args - The parameters
+ * @param {string} [args.view] - Main view to switch to ('session' or 'arrangement')
+ * @param {string} [args.trackId] - Track ID to select
+ * @param {string} [args.category] - Track category ('regular', 'return', or 'master')
+ * @param {number} [args.trackIndex] - Track index (0-based)
+ * @param {string} [args.sceneId] - Scene ID to select
+ * @param {number} [args.sceneIndex] - Scene index (0-based)
+ * @param {string|null} [args.clipId] - Clip ID to select (null to deselect all clips)
+ * @param {string} [args.deviceId] - Device ID to select
+ * @param {boolean} [args.instrument] - Select the track's instrument
+ * @param {Object} [args.clipSlot] - Clip slot to highlight {trackIndex, sceneIndex}
+ * @param {string} [args.detailView] - Detail view to show ('clip', 'device', or 'none')
+ * @param {boolean} [args.showLoop] - Show loop view for selected clip
+ * @param {boolean} [args.showBrowser] - Show browser view
+ * @returns {Object} Current view state with selection information
+ */
 export function select({
   // Main view
   view,

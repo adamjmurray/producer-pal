@@ -10,6 +10,12 @@ import {
 } from "../shared/include-params.js";
 import { readTrack, readTrackGeneric } from "../track/read-track.js";
 
+/**
+ * Read comprehensive information about the Live Set
+ * @param {Object} args - The parameters
+ * @param {Array<string>} [args.include] - Array of data to include in the response
+ * @returns {Object} Live Set information including tracks, scenes, tempo, time signature, and scale
+ */
 export function readLiveSet(args = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
