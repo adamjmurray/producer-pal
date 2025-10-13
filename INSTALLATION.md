@@ -648,10 +648,7 @@ http://localhost:3350/mcp
 
 Sometimes an additional setting is needed for HTTP connections. For example,
 [Cline](https://cline.bot/) requires `"type": "streamableHttp"` to be configured
-along with the `url`.
-
-In some apps, the `/mcp` path might need to be omitted from the URL. It is
-typically present.
+along with the `url` (see example below).
 
 You may need to restart your AI app or refresh MCP servers if you forgot to run
 Ableton Live with Producer Pal Max first.
@@ -663,8 +660,35 @@ For cloud-hosted LLMs or remote access:
 1. Set up a [web tunnel](#web-tunnels) (e.g., ngrok, Pinggy)
 2. Configure your LLM with the public URL + `/mcp`
 
-In some apps, the `/mcp` path might need to be omitted from the URL. It is
-typically present.
+#### Example: Configuring Cline
+
+[Cline](https://cline.bot/) is an IDE plugin for AI that can be configured to
+use Producer Pal in its `cline_mcp_settings.json` config file:
+
+```json
+{
+  "mcpServers": {
+    // ... other MCP server configs ...
+    "producer-pal": {
+      "command": "node",
+      "args": ["/absolute/path/to/producer-pal-portal.js"]
+    },
+    // OR
+    "producer-pal-http": {
+      "type": "streamableHttp",
+      "url": "http://localhost:3350/mcp"
+    }
+  }
+}
+```
+
+Once Producer Pal is configured, start a new chat with Producer Pal tools
+enabled, say "connect to ableton" or "connect to ableton with your producer pal
+tools", and allow the tools to be used:
+
+<img src="./doc/img/cline-success.png" alt="using Producer Pal with Cline" width="450">
+
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
 <br><br>
 
