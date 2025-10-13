@@ -506,7 +506,7 @@ However, completely offline and private usage is compelling.
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
-### Optimizing for Local Models
+### Local Model Tips
 
 - A **context length of about 8k (8000)** is needed to start a conversation with
   Producer Pal and send a few messages.
@@ -535,7 +535,7 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
   quantization to Q8 or Q4.
 - Research how to optimize for your specific machine / GPU hardware
 
-### Advanced: Customizing for Your Model
+#### Advanced: Customizing Skills
 
 Local models vary widely in capabilities. **First, try enabling "Small Model
 Mode" in Producer Pal's Advanced tab** (see LM Studio installation step 2
@@ -551,7 +551,13 @@ further, you can customize Producer Pal's behavior for your specific model:
 3. Experiment with instruction wording, remove features your model struggles
    with, or adjust the guidance
 4. Rebuild with `npm run build`
-5. Reload your Producer Pal MCP server in LM Studio and start a new conversation
+5. Use the development version of `Producer_pal.amxd` in Ableton Live
+6. Reload your Producer Pal MCP server in LM Studio and start a new conversation
+
+**Share your findings:** If you discover configurations that work well for
+specific models, please share in
+[GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
+The community benefits from learning what works with different local models.
 
 <br><br>
 
