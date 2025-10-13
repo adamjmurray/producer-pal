@@ -52,9 +52,11 @@ Gb1 2|1.5,2.5,3.5,4.5 # hats on bar 2, off-beats
 \`\`\`
 
 ## Rules
-- Always call ppal-read-live-set before creating or updating anything.
-- If the user references a track, get its trackIndex and id - never guess.
-- Set clip lengths explicitly (use bar:beat durations like 4:0 for 4 bars).
+- Use only the notation features shown in the examples above
+- Set clip lengths explicitly (use bar:beat durations like 4:0 for 4 bars)
+- To remove notes from a clip, delete the clip and create a new one
+- Always call ppal-read-live-set before creating or updating anything
+- If the user references a track, get its trackIndex and id - never guess
 `;
 
 /**
