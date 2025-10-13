@@ -455,7 +455,7 @@ However, completely offline and private usage is compelling.
 
 5. Confirm the Producer Pal tools are listed under Settings → Program:
 
-  <img src="./doc/img/lm-studio-tool-list.png" alt="install in Ableton" width="200">
+   <img src="./doc/img/lm-studio-tool-list.png" alt="install in Ableton" width="250">
 
 6. Start a conversation with Producer Pal MCP active and say "connect to
    ableton"
@@ -463,9 +463,9 @@ However, completely offline and private usage is compelling.
 7. If you didn't enable "Allow all" under Settings → Program, then allow
    Producer Pal tools in the conversation:
 
-  <img src="./doc/img/lm-studio-permissions.png" alt="install in Ableton" width="700">
+   <img src="./doc/img/lm-studio-permissions.png" alt="install in Ableton" width="700">
 
-  <img src="./doc/img/lm-studio-success.png" alt="install in Ableton" width="700">
+   <img src="./doc/img/lm-studio-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
