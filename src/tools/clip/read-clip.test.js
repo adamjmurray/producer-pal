@@ -4,6 +4,7 @@ import {
   liveApiCall,
   liveApiId,
   liveApiPath,
+  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
 import { readClip } from "./read-clip";
@@ -384,6 +385,13 @@ describe("readClip", () => {
         return "live_set tracks 3 arrangement_clips 2";
       }
       return this._path;
+    });
+
+    liveApiType.mockImplementation(function () {
+      if (this._id === "arrangement_clip_id") {
+        return "Clip";
+      }
+      return this._type;
     });
 
     const result = readClip({ clipId: "id arrangement_clip_id" });

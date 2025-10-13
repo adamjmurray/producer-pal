@@ -4,6 +4,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
+  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
 import { updateClip } from "./update-clip";
@@ -81,10 +82,19 @@ describe("updateClip", () => {
     // This will be caught by the zod schema validation in the MCP server
   });
 
-  it("should throw error when clip ID doesn't exist", () => {
-    liveApiId.mockReturnValue("0");
-    expect(() => updateClip({ ids: "nonexistent" })).toThrow(
-      'updateClip failed: clip with id "nonexistent" does not exist',
+  it("should log warning when clip ID doesn't exist", () => {
+    liveApiId.mockReturnValue("id 0");
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = updateClip({
+      ids: "nonexistent",
+      notes: "1|1 60",
+      noteUpdateMode: "replace",
+    });
+
+    expect(result).toEqual([]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'updateClip: id "nonexistent" does not exist',
     );
   });
 
@@ -564,22 +574,40 @@ describe("updateClip", () => {
     expect(result).toEqual({ id: "123" });
   });
 
-  it("should throw error when any clip ID in comma-separated list doesn't exist", () => {
+  it("should skip invalid clip IDs in comma-separated list and update valid ones", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id 123":
           return "123";
         case "id nonexistent":
-          return "0";
+          return "id 0";
         default:
-          // make default mocks appear to not exist:
-          return "0";
+          return "id 0";
       }
     });
+    liveApiType.mockReturnValue("Clip");
+    const consoleErrorSpy = vi.spyOn(console, "error");
 
-    expect(() => updateClip({ ids: "123, nonexistent", name: "Test" })).toThrow(
-      'updateClip failed: clip with id "nonexistent" does not exist',
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "123, nonexistent",
+      name: "Test",
+      noteUpdateMode: "replace",
+    });
+
+    expect(result).toEqual({ id: "123" });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'updateClip: id "nonexistent" does not exist',
     );
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {

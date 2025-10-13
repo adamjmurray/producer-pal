@@ -1,4 +1,5 @@
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
+import { validateIdType } from "../shared/id-validation.js";
 import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
 
 /**
@@ -160,8 +161,8 @@ export function select({
       // Deselect all clips
       songView.set("detail_clip", "id 0");
     } else {
-      // Select specific clip
-      const clipAPI = LiveAPI.from(clipId);
+      // Select specific clip and validate it's a clip
+      const clipAPI = validateIdType(clipId, "clip", "select");
       songView.setProperty("detail_clip", clipAPI.id);
     }
   }
@@ -271,14 +272,12 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   let finalTrackId = trackId;
 
   if (trackId != null) {
-    // Select by ID
-    trackAPI = LiveAPI.from(trackId);
-    if (trackAPI.exists()) {
-      songView.setProperty("selected_track", trackAPI.id);
-      result.selectedTrackId = trackId;
-      if (category != null) result.selectedCategory = category;
-      if (trackIndex != null) result.selectedTrackIndex = trackIndex;
-    }
+    // Select by ID and validate it's a track
+    trackAPI = validateIdType(trackId, "track", "select");
+    songView.setProperty("selected_track", trackAPI.id);
+    result.selectedTrackId = trackId;
+    if (category != null) result.selectedCategory = category;
+    if (trackIndex != null) result.selectedTrackIndex = trackIndex;
   } else if (category != null || trackIndex != null) {
     // Select by category/index
     const finalCategory = category || "regular";
@@ -313,13 +312,11 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   const result = {};
 
   if (sceneId != null) {
-    // Select by ID
-    const sceneAPI = LiveAPI.from(sceneId);
-    if (sceneAPI.exists()) {
-      songView.setProperty("selected_scene", sceneAPI.id);
-      result.selectedSceneId = sceneId;
-      if (sceneIndex != null) result.selectedSceneIndex = sceneIndex;
-    }
+    // Select by ID and validate it's a scene
+    const sceneAPI = validateIdType(sceneId, "scene", "select");
+    songView.setProperty("selected_scene", sceneAPI.id);
+    result.selectedSceneId = sceneId;
+    if (sceneIndex != null) result.selectedSceneIndex = sceneIndex;
   } else if (sceneIndex != null) {
     // Select by index
     const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
@@ -336,17 +333,15 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
 
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
-    // Select specific device by ID using the main song view
-    const deviceAPI = LiveAPI.from(deviceId);
-    if (deviceAPI.exists()) {
-      const songView = new LiveAPI("live_set view");
-      // Ensure proper "id X" format for select_device call
-      const deviceIdStr = deviceId.toString();
-      const deviceIdForApi = deviceIdStr.startsWith("id ")
-        ? deviceIdStr
-        : `id ${deviceIdStr}`;
-      songView.call("select_device", deviceIdForApi);
-    }
+    // Select specific device by ID and validate it's a device
+    const deviceAPI = validateIdType(deviceId, "device", "select");
+    const songView = new LiveAPI("live_set view");
+    // Ensure proper "id X" format for select_device call
+    const deviceIdStr = deviceId.toString();
+    const deviceIdForApi = deviceIdStr.startsWith("id ")
+      ? deviceIdStr
+      : `id ${deviceIdStr}`;
+    songView.call("select_device", deviceIdForApi);
   } else if (instrument === true) {
     // Select instrument on the currently selected or specified track
     let trackPath = null;

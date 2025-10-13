@@ -4,6 +4,7 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "../constants.js";
+import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
@@ -44,18 +45,14 @@ export function updateTrack({
   // Parse comma-separated string into array
   const trackIds = parseCommaSeparatedIds(ids);
 
+  // Validate all IDs are tracks, skip invalid ones
+  const tracks = validateIdTypes(trackIds, "track", "updateTrack", {
+    skipInvalid: true,
+  });
+
   const updatedTracks = [];
 
-  for (const id of trackIds) {
-    // Convert string ID to LiveAPI path if needed
-    const track = LiveAPI.from(id);
-
-    if (!track.exists()) {
-      throw new Error(
-        `updateTrack failed: track with id "${id}" does not exist`,
-      );
-    }
-
+  for (const track of tracks) {
     track.setAll({
       name,
       color,
@@ -117,6 +114,9 @@ export function updateTrack({
     });
   }
 
-  // Return single object if single ID was provided, array if comma-separated IDs were provided
-  return trackIds.length > 1 ? updatedTracks : updatedTracks[0];
+  // Return single object if one valid result, array for multiple results or empty array for none
+  if (updatedTracks.length === 0) {
+    return [];
+  }
+  return updatedTracks.length === 1 ? updatedTracks[0] : updatedTracks;
 }

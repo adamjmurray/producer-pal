@@ -5,6 +5,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
+  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
 import { playback } from "./playback";
@@ -292,16 +293,19 @@ describe("transport", () => {
     );
   });
 
-  it("should throw error when clip doesn't exist for play-session-clips", () => {
+  it("should log warning when clip doesn't exist for play-session-clips", () => {
     liveApiId.mockReturnValue("id 0");
-    expect(() =>
-      playback({
-        action: "play-session-clips",
-        clipIds: "nonexistent_clip",
-      }),
-    ).toThrow(
-      "playback play-session-clips action failed: clip with clipId=nonexistent_clip does not exist",
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = playback({
+      action: "play-session-clips",
+      clipIds: "nonexistent_clip",
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'playback: id "nonexistent_clip" does not exist',
     );
+    expect(result).toBeDefined(); // Operation continues but with no clips played
   });
 
   it("should throw error when clip slot doesn't exist for play-session-clips", () => {
@@ -339,7 +343,18 @@ describe("transport", () => {
         loop: 0,
         loop_start: 0,
         loop_length: 4,
+        tracks: children("track1", "track2"),
       },
+      Track: {
+        back_to_arranger: 0, // 0 means following arrangement
+      },
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._path === "live_set") return "LiveSet";
+      if (this._path === "scene1") return "Scene";
+      if (this._path === "id track1" || this._path === "id track2")
+        return "Track";
+      return this._type; // Fall back to default MockLiveAPI logic
     });
 
     const result = playback({
@@ -368,9 +383,7 @@ describe("transport", () => {
     liveApiId.mockReturnValue("id 0");
     expect(() =>
       playback({ action: "play-scene", sceneId: "nonexistent_scene" }),
-    ).toThrow(
-      "playback play-session-scene action failed: scene with sceneId=nonexistent_scene does not exist",
-    );
+    ).toThrow('playback failed: id "nonexistent_scene" does not exist');
   });
 
   it("should handle stop-session-clips action with single clip", () => {
@@ -455,16 +468,19 @@ describe("transport", () => {
     );
   });
 
-  it("should throw an error when clip doesn't exist for stop-session-clips", () => {
+  it("should log warning when clip doesn't exist for stop-session-clips", () => {
     liveApiId.mockReturnValue("id 0");
-    expect(() =>
-      playback({
-        action: "stop-session-clips",
-        clipIds: "nonexistent_clip",
-      }),
-    ).toThrow(
-      "playback stop-session-clips action failed: clip with clipId=nonexistent_clip does not exist",
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = playback({
+      action: "stop-session-clips",
+      clipIds: "nonexistent_clip",
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'playback: id "nonexistent_clip" does not exist',
     );
+    expect(result).toBeDefined(); // Operation continues but with no clips stopped
   });
 
   it("should handle stop-all-clips action", () => {
@@ -768,7 +784,22 @@ describe("transport", () => {
           loop: 0,
           loop_start: 0,
           loop_length: 4,
+          tracks: children("track1", "track2"),
         },
+        Track: {
+          back_to_arranger: 0,
+        },
+        AppView: {
+          focused_document_view: "Session",
+        },
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._path === "live_set") return "LiveSet";
+        if (this._path === "live_app view") return "AppView";
+        if (this._path === "scene1") return "Scene";
+        if (this._path === "id track1" || this._path === "id track2")
+          return "Track";
+        return this._type; // Fall back to default MockLiveAPI logic
       });
 
       const result = playback({

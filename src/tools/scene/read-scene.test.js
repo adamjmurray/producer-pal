@@ -4,6 +4,7 @@ import {
   expectedClip,
   liveApiId,
   liveApiPath,
+  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
 import { readScene } from "./read-scene";
@@ -396,7 +397,7 @@ describe("readScene", () => {
 
       expect(() => {
         readScene({ sceneId: "nonexistent" });
-      }).toThrow('No scene exists for sceneId "nonexistent"');
+      }).toThrow('readScene failed: id "nonexistent" does not exist');
     });
 
     it("throws error when neither sceneId nor sceneIndex provided", () => {

@@ -5,6 +5,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
+  liveApiType,
 } from "../../test/mock-live-api.js";
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { select } from "./select.js";
@@ -133,6 +134,9 @@ describe("view", () => {
     global.LiveAPI.from = vi.fn((id) => ({
       exists: vi.fn().mockReturnValue(true),
       id: id.toString().startsWith("id ") ? id : `id ${id}`,
+      get type() {
+        return liveApiType.apply(this);
+      },
     }));
   });
 
@@ -187,6 +191,7 @@ describe("view", () => {
 
   describe("track selection", () => {
     it("selects track by ID", () => {
+      liveApiType.mockReturnValue("Track");
       const result = select({ trackId: "id track_123" });
 
       expect(liveApiSet).toHaveBeenCalledWith("selected_track", "id track_123");
@@ -286,6 +291,7 @@ describe("view", () => {
 
   describe("scene selection", () => {
     it("selects scene by ID", () => {
+      liveApiType.mockReturnValue("Scene");
       const result = select({ sceneId: "id scene_123" });
 
       expect(liveApiSet).toHaveBeenCalledWith("selected_scene", "id scene_123");
@@ -343,6 +349,7 @@ describe("view", () => {
 
   describe("clip selection", () => {
     it("selects clip by ID", () => {
+      liveApiType.mockReturnValue("Clip");
       const result = select({ clipId: "id clip_123" });
 
       expect(liveApiSet).toHaveBeenCalledWith("detail_clip", "id clip_123");
@@ -403,6 +410,7 @@ describe("view", () => {
         return {};
       });
 
+      liveApiType.mockReturnValue("Device");
       const result = select({ deviceId: "id device_123" });
 
       expect(global.LiveAPI).toHaveBeenCalledWith("live_set view");
@@ -529,6 +537,7 @@ describe("view", () => {
     });
 
     it("shows loop view by focusing on clip detail", () => {
+      liveApiType.mockReturnValue("Clip");
       const result = select({
         clipId: "id clip_123",
         showLoop: true,
@@ -613,6 +622,7 @@ describe("view", () => {
 
   describe("complex scenarios", () => {
     it("updates multiple properties at once", () => {
+      liveApiType.mockReturnValue("Clip");
       const result = select({
         view: "arrangement",
         category: "regular",
@@ -656,6 +666,7 @@ describe("view", () => {
 
     it("validates matching track ID and index are accepted", () => {
       liveApiId.mockReturnValue("id track_id_123");
+      liveApiType.mockReturnValue("Track");
 
       const result = select({
         trackId: "id track_id_123",

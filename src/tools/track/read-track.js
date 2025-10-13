@@ -15,6 +15,7 @@ import {
   readDevice,
 } from "../shared/device-reader.js";
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
+import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
@@ -504,11 +505,8 @@ export function readTrack(args = {}) {
   let resolvedCategory = category;
 
   if (trackId != null) {
-    // Use trackId to access track directly
-    track = LiveAPI.from(trackId);
-    if (!track.exists()) {
-      throw new Error(`No track exists for trackId "${trackId}"`);
-    }
+    // Use trackId to access track directly and validate it's a track
+    track = validateIdType(trackId, "track", "readTrack");
 
     // Determine track category and index from the track's path
     resolvedCategory = track.category;

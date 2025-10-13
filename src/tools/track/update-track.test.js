@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { liveApiId, liveApiPath, liveApiSet } from "../../test/mock-live-api";
+import {
+  liveApiId,
+  liveApiPath,
+  liveApiSet,
+  liveApiType,
+} from "../../test/mock-live-api";
 import { MONITORING_STATE } from "../constants";
 import { updateTrack } from "./update-track";
 
@@ -156,29 +161,40 @@ describe("updateTrack", () => {
     );
   });
 
-  it("should throw error when track ID doesn't exist", () => {
-    liveApiId.mockReturnValue("0");
-    expect(() => updateTrack({ ids: "nonexistent" })).toThrow(
-      'updateTrack failed: track with id "nonexistent" does not exist',
+  it("should log warning when track ID doesn't exist", () => {
+    liveApiId.mockReturnValue("id 0"); // non-existent
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = updateTrack({ ids: "nonexistent" });
+
+    expect(result).toEqual([]); // Empty array, no valid tracks
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'updateTrack: id "nonexistent" does not exist',
     );
   });
 
-  it("should throw error when any track ID in comma-separated list doesn't exist", () => {
+  it("should skip invalid track IDs in comma-separated list and update valid ones", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id 123":
           return "123";
         case "id nonexistent":
-          return "0";
+          return "id 0"; // non-existent
         default:
-          // make default mocks appear to not exist:
-          return "0";
+          return "id 0";
       }
     });
+    liveApiType.mockReturnValue("Track");
 
-    expect(() =>
-      updateTrack({ ids: "123, nonexistent", name: "Test" }),
-    ).toThrow('updateTrack failed: track with id "nonexistent" does not exist');
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = updateTrack({ ids: "123, nonexistent", name: "Test" });
+
+    expect(result).toEqual({ id: "123" }); // Only valid track updated
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'updateTrack: id "nonexistent" does not exist',
+    );
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
   });
 
   it("should return single object for single ID and array for comma-separated IDs", () => {

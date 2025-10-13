@@ -7,6 +7,7 @@ import * as console from "../../shared/v8-max-console";
 import { MAX_CLIP_BEATS } from "../constants";
 import { select } from "../control/select.js";
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
+import { validateIdType } from "../shared/id-validation.js";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
@@ -293,12 +294,8 @@ export function duplicate({
     withoutDevices = true;
   }
 
-  // Convert string ID to LiveAPI path if needed
-  const object = LiveAPI.from(id);
-
-  if (!object.exists()) {
-    throw new Error(`duplicate failed: id "${id}" does not exist`);
-  }
+  // Validate the ID exists and matches the expected type
+  const object = validateIdType(id, type, "duplicate");
 
   // Validate clip-specific and scene+arrangement parameters once
   if (type === "clip") {

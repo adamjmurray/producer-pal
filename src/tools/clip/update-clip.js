@@ -4,6 +4,7 @@ import {
 } from "../../notation/barbeat/barbeat-time";
 import { interpretNotation, formatNotation } from "../../notation/notation";
 import { MAX_CLIP_BEATS } from "../constants.js";
+import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**
@@ -40,16 +41,14 @@ export function updateClip({
   // Parse comma-separated string into array
   const clipIds = parseCommaSeparatedIds(ids);
 
+  // Validate all IDs are clips, skip invalid ones
+  const clips = validateIdTypes(clipIds, "clip", "updateClip", {
+    skipInvalid: true,
+  });
+
   const updatedClips = [];
 
-  for (const id of clipIds) {
-    // Convert string ID to LiveAPI path if needed
-    const clip = LiveAPI.from(id);
-
-    if (!clip.exists()) {
-      throw new Error(`updateClip failed: clip with id "${id}" does not exist`);
-    }
-
+  for (const clip of clips) {
     // Parse time signature if provided to get numerator/denominator
     let timeSigNumerator, timeSigDenominator;
     if (timeSignature != null) {
@@ -154,6 +153,9 @@ export function updateClip({
     updatedClips.push(clipResult);
   }
 
-  // Return single object if single ID was provided, array if comma-separated IDs were provided
-  return clipIds.length > 1 ? updatedClips : updatedClips[0];
+  // Return single object if one valid result, array for multiple results or empty array for none
+  if (updatedClips.length === 0) {
+    return [];
+  }
+  return updatedClips.length === 1 ? updatedClips[0] : updatedClips;
 }
