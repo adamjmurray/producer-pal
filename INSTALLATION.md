@@ -347,21 +347,38 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Set up [a web tunnel](#web-tunnels) to expose your local Producer Pal server,
-   for example:
+2. Set up [a web tunnel](#web-tunnels) to expose your local Producer Pal server.
+
+   For example:
 
    ```bash
    ngrok http http://localhost:3350
    ```
 
-   This gives you a public URL like `https://1234abcd.ngrok-free.app`
+   will give you a public URL such as `https://abc-xyz.ngrok-free.dev`:
 
-3. Go to [claude.ai settings](https://claude.ai/settings/connectors)
-4. Add a Custom Connector with your tunnel URL + `/mcp`:
-   ```
-   https://1234abcd.ngrok-free.app/mcp
-   ```
-5. Start a conversation with "connect to ableton"
+   <img src="./doc/img/ngrok-tunnel.png" alt="install in Ableton" width="700">
+
+3. Go to
+   [claude.ai settings &rarr; connectors](https://claude.ai/settings/connectors)
+4. Add a custom connector with your tunnel URL + `/mcp`
+
+   (e.g. `https://abc-xyz.ngrok-free.dev/mcp`):
+
+   <img src="./doc/img/claude-web-setup.png" alt="install in Ableton" width="700">
+
+5. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
+   sure it's enabled when starting a conversation):
+
+   <img src="./doc/img/claude-web-tool-list.png" alt="install in Ableton" width="700">
+
+6. Start a conversation with "connect to ableton"
+
+7. Allow Producer Pal tools to be used when Claude tries to use them:
+
+   <img src="./doc/img/claude-web-permissions.png" alt="install in Ableton" width="700">
+
+   <img src="./doc/img/claude-web-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
