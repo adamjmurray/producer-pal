@@ -73,7 +73,7 @@ Pal.
 
 7. Allow Producer Pal tools to be used when Claude tries to use them:
 
-   <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="450"/>
+   <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="700"/>
 
    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
