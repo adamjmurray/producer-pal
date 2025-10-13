@@ -532,6 +532,8 @@ However, completely offline and private usage is compelling.
 
    <img src="./doc/img/lm-studio-tool-list.png" alt="Producer Pal tools listed in LM Studio" width="250">
 
+   _See below for tips on a subset of tools to use._
+
 6. Start a conversation with Producer Pal MCP active and say "connect to
    ableton"
 
@@ -552,19 +554,23 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
   useful results, but higher context lengths can make the model run
   significantly slower, especially as the conversation grows. Experiment to find
   the right balance.
-- To get more out of a limited context length, disable some of the Producer Pal
-  tools. To focus on MIDI clip generation and manipulation, a good minimal
-  toolset for experimentation is:
+- To help the model make good tool choices and get more out of the limited
+  context length, disable some of the Producer Pal tools. To focus on MIDI clip
+  generation, a good minimal toolset for experimentation is:
   - `ppal-connect`
   - `ppal-read-live-set`
+  - `ppal-read-track`
   - `ppal-create-clip`
-  - `ppal-read-clip`
-  - `ppal-update-clip`
-  - optional: `ppal-playback`
+  - `ppal-delete`
+  - `ppal-playback`
 
   Try disabling all the other tools and add back when you miss features.
 
 - Experiment with empty or extremely simple Live projects
+- Only work with very simple material (e.g. basic MIDI patterns in clips 4 bars
+  or shorter)
+- Note that small models are guided to delete and start over rather make edits
+  (other than simple additions)
 - If the AI struggles and makes mistakes, don't hesitate to delete recent
   messages from the chat, edit your last message, and try again. Don't waste
   tokens correcting the LLM. Back up and avoid the issue or try something else.
