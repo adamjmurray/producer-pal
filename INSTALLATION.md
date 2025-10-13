@@ -462,16 +462,14 @@ above) - this uses a simplified instruction set designed for smaller models.
 If Small Model Mode isn't working well for you, or you want to experiment
 further, you can customize Producer Pal's behavior for your specific model:
 
-1. Follow the build instructions in [DEVELOPERS.md](./DEVELOPERS.md)
-2. Edit `src/skills/basic.js` - the skills file used by Small Model Mode
+1. Download this repository and follow the dev setup and build instructions in
+   [DEVELOPERS.md](./DEVELOPERS.md)
+2. Edit `src/skills/basic.js` - the skills file used by Small Model Mode (or
+   edit `src/skills/standard.js` to adjust regular mode)
 3. Experiment with instruction wording, remove features your model struggles
    with, or adjust the guidance
-4. Test with `npm run build:all` and reload your LM Studio MCP connection
-
-**Share your findings:** If you discover configurations that work well for
-specific models, please share them in
-[GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
-The community benefits from learning what works with different local models.
+4. Rebuild with `npm run build`
+5. Reload your Producer Pal MCP server in LM Studio and start a new conversation
 
 <br><br>
 
