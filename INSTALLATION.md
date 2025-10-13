@@ -82,7 +82,7 @@ Pal.
 2. Download the
    [Producer Pal Claude Desktop Extension (`Producer_Pal.mcpb`)](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
 
-3. Go to Claude Desktop &rarr; Settings &rarr; Extensions and:
+3. Go to Claude Desktop → Settings → Extensions and:
 
    3a. If you already have extensions installed, drag and drop
    `Producer_Pal.mcpb` into the Extensions screen:
@@ -357,10 +357,10 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 
    will give you a public URL such as `https://abc-xyz.ngrok-free.dev`:
 
-   <img src="./doc/img/ngrok-tunnel.png" alt="install in Ableton" width="700">
+   <img src="./doc/img/ngrok-tunnel.png" alt="ngrok web tunnel" width="700">
 
 3. Go to
-   [claude.ai settings &rarr; connectors](https://claude.ai/settings/connectors)
+   [claude.ai settings → connectors](https://claude.ai/settings/connectors)
 4. Add a custom connector with your tunnel URL + `/mcp`
 
    (e.g. `https://abc-xyz.ngrok-free.dev/mcp`):
@@ -408,23 +408,44 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Set up [a web tunnel](#web-tunnels) to expose your local Producer Pal server,
-   for example:
+2. Set up [a web tunnel](#web-tunnels) to expose your local Producer Pal server.
+
+   For example:
 
    ```bash
    ngrok http http://localhost:3350
    ```
 
-   Note your public URL (e.g., `https://1234abcd.ngrok-free.app`)
+   will give you a public URL such as `https://abc-xyz.ngrok-free.dev`:
 
-3. Go to [ChatGPT](https://chatgpt.com) → Settings
-4. Enable Developer Mode
-5. Add a Custom Connector:
-   - URL: Your tunnel URL + `/mcp` (e.g., `https://1234abcd.ngrok-free.app/mcp`)
-   - No authentication required
-   - Trust the connector
-6. Start a new chat with Developer Mode and Producer Pal explicitly enabled and
-   say "connect to ableton"
+   <img src="./doc/img/ngrok-tunnel.png" alt="ngrok web tunnel" width="700">
+
+3. Go to
+   [ChatGPT → Settings → Apps & Connectors → Advanced](https://chatgpt.com/#settings/Connectors/Advanced)
+   and enable Developer Mode (this option might not appear for free accounts):
+
+   <img src="./doc/img/chatgpt-setup.png" alt="install in Ableton" width="700">
+
+4. In the [Apps & Connectors](https://chatgpt.com/#settings/Connectors)
+   settings, create a custom connector:
+   - URL: Your tunnel URL + `/mcp`
+
+     (e.g., `https://abc-xyz.ngrok-free.dev/mcp`)
+
+   - No authentication
+   - Trust the app
+
+   <img src="./doc/img/chatgpt-setup2.png" alt="install in Ableton" width="700">
+
+5. Explicitly enable the Producer Pal tools for each conversation where you want
+   to use them:
+
+   <img src="./doc/img/chatgpt-enable-tools.png" alt="install in Ableton" width="700">
+
+6. Start a new chat "connect to ableton with your producer pal tools" (note that
+   ChatGPT tends to need more nudging than "connect to ableton"):
+
+   <img src="./doc/img/chatgpt-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
