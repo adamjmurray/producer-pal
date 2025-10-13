@@ -1,8 +1,8 @@
 # Producer Pal Development Info
 
 This is a personal project with a focused roadmap. While the code is open source
-for learning and forking, I'm not accepting contributions to keep the project
-aligned with my specific workflow needs.
+for learning and forking, I'm not accepting contributions at this time to keep
+the project aligned with my specific needs.
 
 Feel free to:
 

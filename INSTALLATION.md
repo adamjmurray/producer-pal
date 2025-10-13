@@ -369,12 +369,20 @@ However, completely offline and private usage is compelling.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Install a compatible model in LM Studio, such as:
+2. Optional / Recommended: In Producer Pal's "Advanced" tab, enable "Small Model
+   Mode":
+
+   <img src="./doc/img/small-model-mode.png" alt="small model mode setting" width="300">
+
+   _This option is disabled by default and must be enabled each time you add
+   Producer Pal to Live._
+
+3. Install a compatible model in LM Studio, such as:
    - Qwen 3+ (4b-2507, 4b-thinking-2507)
    - OpenAI GPT-OSS (20B)
    - Mistral AI Magistral (small-2509)
    - Granite 4+ (4.0-h-tiny)
-3. Setup Producer Pal in LM Studio Settings → Program → Integrations → edit
+4. Setup Producer Pal in LM Studio Settings → Program → Integrations → edit
    mcp.json:
 
    **Option A: With producer-pal-portal.js (recommended)**:
@@ -411,7 +419,7 @@ However, completely offline and private usage is compelling.
    _When using direct HTTP, start Ableton Live with the Producer Pal device
    before enabling the Producer Pal MCP server inside LM Studio._
 
-4. Start a conversation with Producer Pal MCP active and say "connect to
+5. Start a conversation with Producer Pal MCP active and say "connect to
    ableton"
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
@@ -444,6 +452,26 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
   advanced/experimental settings for Flash Attention and setting the K/V caches'
   quantization to Q8 or Q4.
 - Research how to optimize for your specific machine / GPU hardware
+
+### Advanced: Customizing for Your Model
+
+Local models vary widely in capabilities. **First, try enabling "Small Model
+Mode" in Producer Pal's Advanced tab** (see LM Studio installation step 2
+above) - this uses a simplified instruction set designed for smaller models.
+
+If Small Model Mode isn't working well for you, or you want to experiment
+further, you can customize Producer Pal's behavior for your specific model:
+
+1. Follow the build instructions in [DEVELOPERS.md](./DEVELOPERS.md)
+2. Edit `src/skills/basic.js` - the skills file used by Small Model Mode
+3. Experiment with instruction wording, remove features your model struggles
+   with, or adjust the guidance
+4. Test with `npm run build:all` and reload your LM Studio MCP connection
+
+**Share your findings:** If you discover configurations that work well for
+specific models, please share them in
+[GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
+The community benefits from learning what works with different local models.
 
 <br><br>
 
