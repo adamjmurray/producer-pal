@@ -269,7 +269,20 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 3. Start Claude Code by running `claude` in an empty folder (so it can focus on
    Producer Pal instead of coding)
-4. Start a conversation with "connect to ableton"
+
+4. Run `/mcp` in Claude Code to confirm the Producer Pal tools are available:
+
+   <img src="./doc/img/claude-code-tool-list.png" alt="install in Ableton" width="700">
+
+   <img src="./doc/img/claude-code-tool-list2.png" alt="install in Ableton" width="700">
+
+5. Start a conversation with "connect to ableton"
+
+6. Allow Producer Pal tools to be used when Claude tries to use them:
+
+   <img src="./doc/img/claude-code-permissions.png" alt="install in Ableton" width="700">
+
+   <img src="./doc/img/claude-code-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
