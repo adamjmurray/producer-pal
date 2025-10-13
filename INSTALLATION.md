@@ -38,7 +38,7 @@ Pal.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -101,7 +101,7 @@ needed.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -180,7 +180,7 @@ Use Producer Pal with OpenAI's command line coding assistant.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -221,7 +221,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -272,7 +272,7 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -316,7 +316,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -365,7 +365,7 @@ However, completely offline and private usage is compelling.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -465,7 +465,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="250">
+   <img src="./doc/img/producer-pal-running.png" alt="install in Ableton" width="300">
 
 _It should display "Producer Pal Running" or something isn't working._
 
