@@ -4,67 +4,57 @@ You can now compose music in Ableton Live using Producer Pal tools and the bar|b
 
 ## Time in Ableton Live
 
-- Positions: bar|beat (1-indexed: 1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
-- Durations: bar:beat (0-indexed: 4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
-- Fractional beats supported everywhere
+- **Positions** use bar|beat (1-indexed: 1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
+- **Durations** use bar:beat (0-indexed: 4:0 = exactly 4 bars, 1:2 = 1 bar + 2 beats)
+- Fractional beats supported
 
-## MIDI Syntax
+## MIDI Notation
 
-Create MIDI clips using the bar|beat notation syntax. A note or chord looks like:
-
-\`[v0-127] [t<duration>] [pitch(es)] bar|beat ...\`
-
-- v<velocity>: Note intensity from 0-127 (default: v100)
-- t<duration>: Note length in beats (default: 1.0)
-- pitch: C0-B8 with # or b (C3 = middle C)
-- velocity, duration, and pitch persist until changed: set once and create notes at multiple bar|beat positions
-
-Repeat as needed (whitespace separated).
-
-Set clip lengths explicitly to keep clips in sync.
+Pitches: C3, C#3, Db3, F#2, Bb4 (range: C0-B8, middle C = C3)
+Format: pitch(es) bar|beat
 
 ## Examples
 
+### Melodies and Bass Lines
 \`\`\`
-// C major scale with quarter note rhythm in 4/4:
-C3 1|1 D3 1|2 E3 1|3 F3 1|4 G3 2|1 A3 2|2 B3 2|3 C4 2|4
-\`\`\`
-
-\`\`\`
-// C major scale with eighth note rhythm in 4/4:
-t0.5 C3 1|1 D3 1|1.5 E3 1|2 F3 1|2.5 G3 2|3 A3 2|3.5 B3 2|5 C4 2|4.5
-\`\`\`
-
-\`\`\`
-// quiet C at beat 1, quiet D at beat 2.5:
-v50 C3 1|1 D3 1|2.5
+C3 1|1
+D3 1|2
+E3 1|3
+F3 1|4
+G3 2|1
+A3 2|2
+B3 2|3
+C4 2|4
 \`\`\`
 
+### Sustained Chord Progressions (4/4 time)
+Use t4 for full-bar chords in 4/4 (t3 in 3/4, t6 in 6/8):
 \`\`\`
-// chord at bar 1 beat 1:
+t4
 C3 E3 G3 1|1
+D3 F3 A3 2|1
+E3 G3 B3 3|1
+F3 A3 C4 4|1
 \`\`\`
 
 
+### Drum Patterns (plan one bar at a time)
+After bar|beat, use commas for additional beats in the same bar (no bar| prefix):
 \`\`\`
-// basic drum pattern:
-C1 1|1 1|2 1|3 1|4 // kick on every beat
-D1 1|2 1|4 // snare on back beats
-t0.5 Gb1 1|1.5 1|2.5 1|3.5 1|4.5 // hats on off beats
+// bar 1
+C1 1|1,3              # kick on bar 1, beats 1 and 3
+D1 1|2,4              # snare on bar 1, beats 2 and 4
+Gb1 1|1.5,2.5,3.5,4.5 # hats on bar 1, off-beats
+// bar 2
+C1 2|1,2,3,4          # kick on bar 2, beats 1, 2, 3, and 4
+D1 2|2,4              # snare on bar 2, beats 2 and 4
+Gb1 2|1.5,2.5,3.5,4.5 # hats on bar 2, off-beats
 \`\`\`
 
-## Working with Ableton Live
-
-Call ppal-read-live-set with no arguments to quickly sync with the state of Ableton Live.
-
-Always sync the state before calling any create or update tool.
-If the user references a particular track, find out the trackIndex and id.
-Never guess or assume indexes or ids.
-
-**Views and Playback:**
-- Session View: Jam, try ideas, build scenes
-  - Use auto:"play-scene" when generating scenes one clip at a time
-- Arrangement View: Structure songs on a timeline
+## Rules
+- Always call ppal-read-live-set before creating or updating anything.
+- If the user references a track, get its trackIndex and id - never guess.
+- Set clip lengths explicitly (use bar:beat durations like 4:0 for 4 bars).
 `;
 
 /**
@@ -87,7 +77,7 @@ export function buildInstructions(context) {
           ]
         : []),
       "* Say the messagesForUser",
-      "* Ask if you should read the state of Ableton Live or what's next?",
+      "* Ask what they'd like to create",
     ].join("\n")
   );
 }
