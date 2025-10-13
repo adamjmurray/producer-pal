@@ -1,6 +1,6 @@
 # <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
-Collaboratively make music in Ableton Live with an AI assistant.
+AI music production assistant for Ableton Live.
 
 Works with most AI that support tools, including Claude, Gemini, OpenAI GPT, and
 local models.
