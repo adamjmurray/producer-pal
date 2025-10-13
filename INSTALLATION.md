@@ -172,7 +172,8 @@ Use Producer Pal with OpenAI's command line coding assistant.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. [Download `producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+2. Download
+   [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
 3. Edit `~/.codex/config.toml`:
 
    ```toml
@@ -461,7 +462,8 @@ methods.
 
 #### Option A: Local MCP via stdio (recommended)
 
-[Download `producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+Download
+[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
 and configure your LLM MCP to use:
 
 ```bash
