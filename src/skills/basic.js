@@ -1,56 +1,106 @@
 export const skills = `# Producer Pal Skills
 
-You can now compose music in Ableton Live using Producer Pal tools and the bar|beat notation system.
+You can now compose music in Ableton Live using Producer Pal tools and the Stark Notation system.
 
-## Time in Ableton Live
+## Stark Notation
 
-- Positions: bar|beat (1-indexed: 1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
-- Durations: bar:beat (0-indexed: 4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
-- Fractional beats supported everywhere
+Ultra-minimal music notation for quick composition.
 
-## MIDI Syntax
+### Format
 
-Create MIDI clips using the bar|beat notation syntax. A note or chord looks like:
+\`type: content\`
 
-\`[v0-127] [t<duration>] [pitch(es)] bar|beat ...\`
+**Types:**
+- Drum names (\`kick\`, \`snare\`, \`hihat\`, etc.) → drums mode
+- \`bass\` → bass mode, lower register
+- \`melody\` → melody mode, higher register
+- \`chords\` → chord mode, harmonic progressions
 
-- v<velocity>: Note intensity from 0-127 (default: v100)
-- t<duration>: Note length in beats (default: 1.0)
-- pitch: C0-B8 with # or b (C3 = middle C)
-- velocity, duration, and pitch persist until changed: set once and create notes at multiple bar|beat positions
+### Core Rule: Spacing = Timing
 
-Repeat as needed (whitespace separated).
+- **Whitespace between tokens** = quarter notes
+- **No whitespace** = 16th notes
 
-Set clip lengths explicitly to keep clips in sync.
+### Drums Mode
+
+\`\`\`
+kick: X x X x
+snare: . X . X
+hihat: x x x x
+\`\`\`
+
+**Tokens:** \`X\`=loud, \`x\`=soft, \`^\`=accent, \`.\`=rest, \`-\`=sustain, \`/\`=next bar
+
+**Drums:** \`kick\`, \`snare\`, \`hihat\`, \`open\`, \`tom1\`, \`tom2\`, \`tom3\`, \`ride\`, \`crash\`, \`clap\`, \`rimshot\`
+
+### Bass/Melody Mode
+
+\`\`\`
+bass: C D E F G / G F E D C
+melody: E G A / A G E
+\`\`\`
+
+**Tokens:** \`A-G\` (uppercase=loud, lowercase=soft), \`.\`=rest, \`-\`=sustain, \`/\`=next bar
+
+**Scale adherence:** Letters auto-apply scale accidentals. No chromatic notes.
+- In C Major: C D E F G A B
+- In Ab Major: A→Ab, B→Bb, D→Db, E→Eb
+
+**Octave handling:** Notes choose closest interval to previous note within range.
+
+### Chords Mode
+
+\`\`\`
+chords: C F G C
+chords: C7 D7 G7 C
+\`\`\`
+
+**Tokens:** \`A-G\` root (case=dynamics), optional \`7\` suffix, \`/\`=next bar
+
+**Chord quality:** Inferred from scale degree
+- In C Major: C=major, D=minor, E=minor, F=major, G=major, A=minor, B=diminished
 
 ## Examples
 
+### Quarter note drums
 \`\`\`
-// C major scale with quarter note rhythm in 4/4:
-C3 1|1 D3 1|2 E3 1|3 F3 1|4 G3 2|1 A3 2|2 B3 2|3 C4 2|4
-\`\`\`
-
-\`\`\`
-// C major scale with eighth note rhythm in 4/4:
-t0.5 C3 1|1 D3 1|1.5 E3 1|2 F3 1|2.5 G3 2|3 A3 2|3.5 B3 2|5 C4 2|4.5
+kick: X x X x
+snare: . X . X
+hihat: x x x x
 \`\`\`
 
+### 16th note hihat pattern
 \`\`\`
-// quiet C at beat 1, quiet D at beat 2.5:
-v50 C3 1|1 D3 1|2.5
-\`\`\`
-
-\`\`\`
-// chord at bar 1 beat 1:
-C3 E3 G3 1|1
+kick: X . X .
+snare: . X . X
+hihat: xXxXxXxXxXxXxXx^
 \`\`\`
 
-
+### Bass line
 \`\`\`
-// basic drum pattern:
-C1 1|1 1|2 1|3 1|4 // kick on every beat
-D1 1|2 1|4 // snare on back beats
-t0.5 Gb1 1|1.5 1|2.5 1|3.5 1|4.5 // hats on off beats
+bass: C E G C / C D E F
+\`\`\`
+
+### Melody with dynamics
+\`\`\`
+melody: C d e F / G a b C
+\`\`\`
+
+### Sustained chord progression
+\`\`\`
+chords: C - - - / F - - - / G - - - / C - - - 
+\`\`\`
+
+### Rhythmic chord progression
+\`\`\`
+chords: C C C C / F F F F / G G G G / C C C - 
+\`\`\`
+
+### Multi-bar patterns
+\`\`\`
+kick: X . x . / X . x . / X . x . / X . x . 
+bass: C - / E - / G - / C - - - 
+melody: E G A / A G E / C E G / G E C - 
 \`\`\`
 
 ## Working with Ableton Live

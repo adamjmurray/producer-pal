@@ -18,7 +18,7 @@ import {
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
  * @returns {Object} Result object with clip information
  */
-export function readClip(args = {}) {
+export function readClip(args = {}, context) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
   const { includeClipNotes, includeColor } = parseIncludeArray(
@@ -144,6 +144,7 @@ export function readClip(args = {}) {
       result.notes = formatNotation(notes, {
         timeSigNumerator,
         timeSigDenominator,
+        context,
       });
     }
   }

@@ -3,3 +3,4 @@
 ../coverage
 ../knowledge-base
 ../src/**/barbeat-parser.js
+../src/**/stark-parser.js

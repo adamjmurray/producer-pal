@@ -21,18 +21,21 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
-export function updateClip({
-  ids,
-  notes: notationString,
-  noteUpdateMode,
-  name,
-  color,
-  timeSignature,
-  startMarker,
-  length,
-  loop,
-  loopStart,
-} = {}) {
+export function updateClip(
+  {
+    ids,
+    notes: notationString,
+    noteUpdateMode,
+    name,
+    color,
+    timeSignature,
+    startMarker,
+    length,
+    loop,
+    loopStart,
+  } = {},
+  context,
+) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
   }
@@ -117,6 +120,7 @@ export function updateClip({
           const existingNotationString = formatNotation(existingNotes, {
             timeSigNumerator,
             timeSigDenominator,
+            context,
           });
           combinedNotationString = `${existingNotationString} ${notationString}`;
         }
@@ -125,6 +129,7 @@ export function updateClip({
       const notes = interpretNotation(combinedNotationString, {
         timeSigNumerator,
         timeSigDenominator,
+        context,
       });
 
       // Remove all notes and add new notes (v0s already filtered by applyV0Deletions)

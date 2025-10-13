@@ -55,7 +55,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s)",
+        "MIDI in Producer Pal notation syntax (see Producer Pal Skills for notation details)",
       ),
     auto: z
       .enum(["play-scene", "play-clip"])

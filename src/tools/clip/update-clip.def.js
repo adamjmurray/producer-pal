@@ -27,7 +27,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s)",
+        "MIDI notes in Producer Pal notation syntax (see Producer Pal Skills for notation details)",
       ),
     noteUpdateMode: z
       .enum(["replace", "merge"])
