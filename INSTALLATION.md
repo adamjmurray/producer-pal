@@ -147,15 +147,15 @@ needed.
 4. Run `/mcp list` in the Gemini CLI to confirm the Producer Pal tools are
    available:
 
-   <img src="./doc/img/gemini-tool-list.png" alt="install in Ableton" width="500">
+   <img src="./doc/img/gemini-tool-list.png" alt="install in Ableton" width="700">
 
 5. Start a conversation with "connect to ableton"
 
 6. Allow Producer Pal tools to be used when Gemini tries to use them:
 
-   <img src="./doc/img/gemini-tool-permissions.png" alt="install in Ableton" width="500">
+   <img src="./doc/img/gemini-tool-permissions.png" alt="install in Ableton" width="700">
 
-   <img src="./doc/img/gemini-success.png" alt="install in Ableton" width="500">
+   <img src="./doc/img/gemini-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
