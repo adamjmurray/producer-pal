@@ -453,8 +453,19 @@ However, completely offline and private usage is compelling.
    _When using direct HTTP, start Ableton Live with the Producer Pal device
    before enabling the Producer Pal MCP server inside LM Studio._
 
-5. Start a conversation with Producer Pal MCP active and say "connect to
+5. Confirm the Producer Pal tools are listed under Settings → Program:
+
+  <img src="./doc/img/lm-studio-tool-list.png" alt="install in Ableton" width="200">
+
+6. Start a conversation with Producer Pal MCP active and say "connect to
    ableton"
+
+7. If you didn't enable "Allow all" under Settings → Program, then allow
+   Producer Pal tools in the conversation:
+
+  <img src="./doc/img/lm-studio-permissions.png" alt="install in Ableton" width="700">
+
+  <img src="./doc/img/lm-studio-success.png" alt="install in Ableton" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
