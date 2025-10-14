@@ -334,7 +334,7 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/)
 - [Claude account](https://claude.ai)
-- [Web tunnel](#web-tunnels) (e.g., ngrok or Pinggy)
+- [Web tunnel](#web-tunnels) (e.g. Cloudflare or Pinggy)
 
 ### Installation
 
@@ -357,7 +357,7 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 
    will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-   <img src="./doc/img/cloudflare-tunnel.png" alt="ngrok web tunnel" width="700">
+   <img src="./doc/img/cloudflare-tunnel.png" alt="Cloudflare web tunnel" width="700">
 
 3. Go to
    [claude.ai settings → connectors](https://claude.ai/settings/connectors)
@@ -395,7 +395,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 - [ChatGPT account](https://chatgpt.com) (at the time of writing, a paid
   subscription is required to access the advanced settings needed for this to
   work)
-- [Web tunnel](#web-tunnels) (e.g., ngrok or Pinggy)
+- [Web tunnel](#web-tunnels) (e.g. Cloudflare or Pinggy)
 
 ### Installation
 
@@ -418,7 +418,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 
    will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-   <img src="./doc/img/cloudflare-tunnel.png" alt="ngrok web tunnel" width="700">
+   <img src="./doc/img/cloudflare-tunnel.png" alt="Cloudflare web tunnel" width="700">
 
 3. Go to
    [ChatGPT → Settings → Apps & Connectors → Advanced](https://chatgpt.com/#settings/Connectors/Advanced)
@@ -663,7 +663,7 @@ Ableton Live with Producer Pal Max first.
 
 For cloud-hosted LLMs or remote access:
 
-1. Set up a [web tunnel](#web-tunnels) (e.g., ngrok, Pinggy)
+1. Set up a [web tunnel](#web-tunnels) (e.g. Cloudflare or Pinggy)
 2. Configure your LLM with the public URL + `/mcp`
 
 #### Example: Configuring Cline
@@ -727,7 +727,7 @@ the Producer Pal Max for Live device.
 - No installation required on macOS
 - Run: `ssh -R 80:localhost:3350 a.pinggy.io`
 - Free tier limited to 60 minutes,
-  [check the website for more info](https://pinggy.io/])
+  [check the website for more info](https://pinggy.io/)
 
 ### ngrok
 
