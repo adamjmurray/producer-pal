@@ -352,18 +352,18 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
    For example:
 
    ```bash
-   ngrok http http://localhost:3350
+   cloudflared tunnel --url http://localhost:3350
    ```
 
-   will give you a public URL such as `https://abc-xyz.ngrok-free.dev`:
+   will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-   <img src="./doc/img/ngrok-tunnel.png" alt="ngrok web tunnel" width="700">
+   <img src="./doc/img/cloudflare-tunnel.png" alt="ngrok web tunnel" width="700">
 
 3. Go to
    [claude.ai settings → connectors](https://claude.ai/settings/connectors)
 4. Add a custom connector with your tunnel URL + `/mcp`
 
-   (e.g. `https://abc-xyz.ngrok-free.dev/mcp`):
+   (e.g. `https://abc-xyz.trycloudflare.com/mcp`):
 
    <img src="./doc/img/claude-web-setup.png" alt="Claude web connector setup" width="700">
 
@@ -413,12 +413,12 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
    For example:
 
    ```bash
-   ngrok http http://localhost:3350
+   cloudflared tunnel --url http://localhost:3350
    ```
 
-   will give you a public URL such as `https://abc-xyz.ngrok-free.dev`:
+   will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-   <img src="./doc/img/ngrok-tunnel.png" alt="ngrok web tunnel" width="700">
+   <img src="./doc/img/cloudflare-tunnel.png" alt="ngrok web tunnel" width="700">
 
 3. Go to
    [ChatGPT → Settings → Apps & Connectors → Advanced](https://chatgpt.com/#settings/Connectors/Advanced)
@@ -430,7 +430,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
    settings, create a custom connector:
    - URL: Your tunnel URL + `/mcp`
 
-     (e.g., `https://abc-xyz.ngrok-free.dev/mcp`)
+     (e.g., `https://abc-xyz.trycloudflare.com/mcp`)
 
    - No authentication
    - Trust the app
@@ -713,18 +713,29 @@ tunnel. Customize the port number in the Producer Pal device settings
 network. Update the `:3350` in your AI connection settings if you change it in
 the Producer Pal Max for Live device.
 
-### ngrok (Recommended)
+### Cloudflare Quick Tunnels (Recommended)
 
-- [Sign up](https://ngrok.com) for persistent URLs (paid) or use free tier with
-  changing URLs
-- Install: `brew install ngrok` (macOS) or download from website
-- Run: `ngrok http http://localhost:3350`
+- No account needed to get started
+- Randomized domains so you can restart if one leaks (see security warning
+  above)
+- Install: `brew install cloudflared` (macOS) or
+  [check the website for install instructions](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/do-more-with-tunnels/trycloudflare/)
+- Run: `cloudflared tunnel --url http://localhost:3350`
 
 ### Pinggy
 
 - No installation required on macOS
 - Run: `ssh -R 80:localhost:3350 a.pinggy.io`
-- Free tier limited to 60 minutes
+- Free tier limited to 60 minutes,
+  [check the website for more info](https://pinggy.io/])
+
+### ngrok
+
+- ⚠️ Gives a single persistent domain to all free accounts on sign-up, which, if
+  leaked, can't be changed
+- Install: `brew install ngrok` (macOS) or
+  [check the website for install instructions](https://ngrok.com)
+- Run: `ngrok http http://localhost:3350`
 
 <br><br>
 
