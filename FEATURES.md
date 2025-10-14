@@ -110,6 +110,9 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - **Durations**: bar:beat format (4:0 = 4 bars, 1:2 = 1 bar + 2 beats)
 - **Velocity**: Values from 1-127 (or ranges like 80-100)
 - **Probability**: 0.0 to 1.0 (1.0 = always plays)
+- **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
+  1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
+  bars 3-10)
 - **Comments**: Include commentary using // for single lines, # for inline, or
   /\* \*/ for blocks
 

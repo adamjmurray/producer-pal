@@ -3,6 +3,7 @@ import {
   abletonBeatsToBarBeatDuration,
 } from "../../notation/barbeat/barbeat-time.js";
 import { formatNotation } from "../../notation/notation.js";
+import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
@@ -32,24 +33,24 @@ export function readClip(args = {}) {
   }
 
   // Support "id {id}" (such as returned by childIds()) and id values directly
-  // TODO: Need test coverage of this logic
-  const clip =
-    clipId != null
-      ? LiveAPI.from(clipId)
-      : new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-        );
+  let clip;
+  if (clipId != null) {
+    // Validate the clip ID is actually a clip
+    clip = validateIdType(clipId, "clip", "readClip");
+  } else {
+    clip = new LiveAPI(
+      `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+    );
 
-  if (!clip.exists()) {
-    if (clipId != null)
-      throw new Error(`No clip exists for clipId "${clipId}"`);
-    return {
-      id: null,
-      type: null,
-      name: null,
-      trackIndex,
-      sceneIndex,
-    };
+    if (!clip.exists()) {
+      return {
+        id: null,
+        type: null,
+        name: null,
+        trackIndex,
+        sceneIndex,
+      };
+    }
   }
 
   const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;

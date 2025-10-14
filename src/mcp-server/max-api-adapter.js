@@ -95,9 +95,15 @@ function handleLiveApiResult(requestId, ...params) {
 
       // Add any Max errors as warnings
       for (const error of maxErrors) {
-        const errorText = `WARNING: ${error}`;
-        result.content.push({ type: "text", text: errorText });
-        errorMessageLength += errorText.length;
+        let msg = `${error}`;
+        // Remove v8: prefix and trim whitespace
+        if (msg.startsWith("v8:")) msg = msg.slice(3).trim();
+        // Only add if there's actual content after cleaning
+        if (msg.length > 0) {
+          const errorText = `WARNING: ${msg}`;
+          result.content.push({ type: "text", text: errorText });
+          errorMessageLength += errorText.length;
+        }
       }
 
       console.info(

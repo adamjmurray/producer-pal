@@ -5,6 +5,7 @@ import {
   expectedClip,
   liveApiId,
   liveApiPath,
+  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import {
@@ -2330,6 +2331,14 @@ describe("readTrack", () => {
         }
       });
 
+      liveApiType.mockImplementation(function () {
+        if (this._path === "id arr_clip1") return "Clip";
+        if (this._path === "id clip1") return "Clip";
+        if (this._path === "id synth1") return "Device";
+        if (this._path === "id effect1") return "Device";
+        return this._type; // Fall back to default MockLiveAPI logic
+      });
+
       mockLiveApiGet({
         Track: mockTrackProperties({
           name: "Wildcard Test Track",
@@ -2892,6 +2901,7 @@ describe("readTrack", () => {
         }
         return this._path;
       });
+      liveApiType.mockReturnValue("Track");
 
       mockLiveApiGet({
         "live_set return_tracks 1": {
@@ -2942,6 +2952,7 @@ describe("readTrack", () => {
         }
         return this._path;
       });
+      liveApiType.mockReturnValue("Track");
 
       mockLiveApiGet({
         "live_set master_track": {
@@ -2983,7 +2994,7 @@ describe("readTrack", () => {
 
       expect(() => {
         readTrack({ trackId: "nonexistent" });
-      }).toThrow('No track exists for trackId "nonexistent"');
+      }).toThrow('readTrack failed: id "nonexistent" does not exist');
     });
 
     it("throws error when neither trackId nor trackIndex provided", () => {

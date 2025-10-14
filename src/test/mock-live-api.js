@@ -100,6 +100,9 @@ export class LiveAPI {
     if (/^live_set tracks \d+ clip_slots \d+ clip$/.test(this.path)) {
       return "Clip";
     }
+    if (/^live_set tracks \d+ arrangement_clips \d+$/.test(this.path)) {
+      return "Clip";
+    }
     return `TODO: Unknown type for path: "${this.path}"`;
   }
 }

@@ -18,7 +18,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - time positions are relative to clip start
   - \`|beat\` reuses current bar
   - beat can be a comma-separated (no whitespace) list
-- v<velocity>: Note intensity from 0-127 (v80-120 = random range)
+- v<velocity>: Note intensity from 0-127 (default: v100; v80-120 = random range)
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length in beats (default: 1.0)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
@@ -101,16 +101,21 @@ D1 1|4,6           // snare accents across bars 1-2
 **Creating Music:**
 - Check for instruments before creating MIDI clips
 - Place notes with musical timing - not just on the beat
+- Clip length sets playback region; noteCount shows notes within that region
 - Use velocity dynamics (pp=40, p=60, mf=80, f=100, ff=120) for expression
 - Keep fills rhythmic with space - accent key hits, avoid machine-gun density
 - Keep scenes' harmonic rhythm in sync across tracks
 - Beat numbers beyond the time signature wrap to the next bar (e.g., in 4/4, 1|5 wraps to 2|1) - careful, this can cause unintended overlaps, especially when copying bars
 - Bass needs monophonic lines, one note at a time
 
-**Tool Usage:**
-- Clip length sets playback region; noteCount shows notes within that region
+**Layering Multiple MIDI Tracks on One Instrument:**
+- When user says "layer another track/pattern onto [track/instrument name]", duplicate the track with routeToSource=true
+- Other patterns to recognize: "add a layer to [track]", "add a polyrhythm to [track]", "route another track to [instrument]"
+- Use cases: polyrhythms with different clip lengths, complex drums from simple parts, evolving phasing patterns
+- After duplicating, the new track controls the same instrument as the original
+
+**Staying in Sync:**
 - Set clip lengths explicitly to keep clips in sync
-- Duplicate tracks with routeToSource=true to layer multiple MIDI patterns on one instrument (enables polyrhythms with different clip lengths)
 - After user rearranges anything in Live, call ppal-read-live-set to resync
 `;
 

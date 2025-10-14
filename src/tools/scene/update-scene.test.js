@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { liveApiId, liveApiPath, liveApiSet } from "../../test/mock-live-api";
+import {
+  liveApiId,
+  liveApiPath,
+  liveApiSet,
+  liveApiType,
+} from "../../test/mock-live-api";
 import { updateScene } from "./update-scene";
 
 describe("updateScene", () => {
@@ -195,14 +200,19 @@ describe("updateScene", () => {
     );
   });
 
-  it("should throw error when scene ID doesn't exist", () => {
+  it("should log warning when scene ID doesn't exist", () => {
     liveApiId.mockReturnValue("id 0");
-    expect(() => updateScene({ ids: "nonexistent" })).toThrow(
-      'updateScene failed: scene with id "nonexistent" does not exist',
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = updateScene({ ids: "nonexistent" });
+
+    expect(result).toEqual([]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'updateScene: id "nonexistent" does not exist',
     );
   });
 
-  it("should throw error when any scene ID in comma-separated list doesn't exist", () => {
+  it("should skip invalid scene IDs in comma-separated list and update valid ones", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id 123":
@@ -210,14 +220,19 @@ describe("updateScene", () => {
         case "id nonexistent":
           return "id 0";
         default:
-          // make default mocks appear to not exist:
-          return "0";
+          return "id 0";
       }
     });
+    liveApiType.mockReturnValue("Scene");
+    const consoleErrorSpy = vi.spyOn(console, "error");
 
-    expect(() =>
-      updateScene({ ids: "123, nonexistent", name: "Test" }),
-    ).toThrow('updateScene failed: scene with id "nonexistent" does not exist');
+    const result = updateScene({ ids: "123, nonexistent", name: "Test" });
+
+    expect(result).toEqual({ id: "123" });
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'updateScene: id "nonexistent" does not exist',
+    );
+    expect(liveApiSet).toHaveBeenCalledWith("name", "Test");
   });
 
   it("should throw error for invalid time signature format", () => {

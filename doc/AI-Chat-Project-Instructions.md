@@ -17,7 +17,7 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
 
 - **Language**: JavaScript only (embedded environment constraint)
 - **Platform**: Live 12.2, Max 9, Node.js 20
-- **Repository**: `/Users/adammurray/workspace/producer-pal`
+- **Repository**: https://github.com/adamjmurray/producer-pal
 - **Documentation**: See AGENTS.md in project resources for coding standards
 
 ## Critical Rules

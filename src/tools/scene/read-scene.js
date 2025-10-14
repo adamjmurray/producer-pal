@@ -1,4 +1,5 @@
 import { readClip } from "../clip/read-clip";
+import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
@@ -30,11 +31,8 @@ export function readScene(args = {}) {
   let resolvedSceneIndex = sceneIndex;
 
   if (sceneId != null) {
-    // Use sceneId to access scene directly
-    scene = LiveAPI.from(sceneId);
-    if (!scene.exists()) {
-      throw new Error(`No scene exists for sceneId "${sceneId}"`);
-    }
+    // Use sceneId to access scene directly and validate it's a scene
+    scene = validateIdType(sceneId, "scene", "readScene");
 
     // Determine scene index from the scene's path
     resolvedSceneIndex = scene.sceneIndex;

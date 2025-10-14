@@ -47,7 +47,7 @@
 					"patching_rect" : [ 196.0, 321.0, 100.0, 70.0 ],
 					"pic" : "producer-pal-logo.svg",
 					"presentation" : 1,
-					"presentation_rect" : [ 42.0, 8.0, 49.999999344348907, 34.999999541044232 ]
+					"presentation_rect" : [ 42.0, 4.0, 49.999999344348907, 34.999999541044232 ]
 				}
 
 			}
@@ -75,7 +75,7 @@
 					"parameter_enable" : 0,
 					"patching_rect" : [ 46.0, 200.0, 138.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 56.0, 92.0, 138.0, 20.0 ],
+					"presentation_rect" : [ 56.0, 90.0, 138.0, 20.0 ],
 					"text" : "📚  Documentation 📖",
 					"varname" : "Producer Pal Documentation"
 				}
@@ -91,7 +91,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 48.0, 91.0, 129.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 57.0, 73.0, 137.0, 18.0 ],
+					"presentation_rect" : [ 57.0, 69.0, 137.0, 18.0 ],
 					"text" : "© 2025 Adam Murray",
 					"textjustification" : 1
 				}
@@ -130,7 +130,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 243.0, 202.0, 105.0, 21.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 78.0, 52.0, 95.0, 21.0 ],
+					"presentation_rect" : [ 78.0, 47.0, 95.0, 21.0 ],
 					"text" : "version X.Y.Z",
 					"textjustification" : 1
 				}
@@ -147,7 +147,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 31.0, 37.0, 163.0, 35.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 54.0, 19.0, 177.0, 35.0 ],
+					"presentation_rect" : [ 54.0, 15.0, 177.0, 35.0 ],
 					"text" : "roducer Pal",
 					"textjustification" : 1
 				}

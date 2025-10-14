@@ -1,3 +1,4 @@
+import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**
@@ -18,18 +19,14 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
   // Parse comma-separated string into array
   const sceneIds = parseCommaSeparatedIds(ids);
 
+  // Validate all IDs are scenes, skip invalid ones
+  const scenes = validateIdTypes(sceneIds, "scene", "updateScene", {
+    skipInvalid: true,
+  });
+
   const updatedScenes = [];
 
-  for (const id of sceneIds) {
-    // Convert string ID to LiveAPI path if needed
-    const scene = LiveAPI.from(id);
-
-    if (!scene.exists()) {
-      throw new Error(
-        `updateScene failed: scene with id "${id}" does not exist`,
-      );
-    }
-
+  for (const scene of scenes) {
     // Update properties if provided
     if (name != null) {
       scene.set("name", name);
@@ -63,6 +60,9 @@ export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
     });
   }
 
-  // Return single object if single ID was provided, array if comma-separated IDs were provided
-  return sceneIds.length > 1 ? updatedScenes : updatedScenes[0];
+  // Return single object if one valid result, array for multiple results or empty array for none
+  if (updatedScenes.length === 0) {
+    return [];
+  }
+  return updatedScenes.length === 1 ? updatedScenes[0] : updatedScenes;
 }
