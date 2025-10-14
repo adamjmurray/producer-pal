@@ -10,15 +10,15 @@ local models.
 
 ## Demo
 
-Watch
-[how to install and use Producer Pal with Claude Desktop](https://www.youtube.com/watch?v=ypZBVI0Ncso)
-(_3⅓ minutes long, no sound for the first 90 seconds_), or click the thumbnail
-to jump to the music-making:
+Watch the Producer Pal 1.0 walkthrough video:
+* 0:00: [Installation with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU)
+* 2:29: [Connecting the AI to Ableton](https://www.youtube.com/watch?v=IB19LqTZQDU&t=149s)
+* 3:23 [Generating a 4-part, 8-bar loop from scratch](https://www.youtube.com/watch?v=IB19LqTZQDU&t=202s)
 
-<a href="https://www.youtube.com/watch?v=ypZBVI0Ncso&t=86s">
+<a href="https://www.youtube.com/watch?v=IB19LqTZQDU&t=202s">
 <figure>
     <img
-    src="https://img.youtube.com/vi/ypZBVI0Ncso/0.jpg"
+    src="https://img.youtube.com/vi/IB19LqTZQDU/0.jpg"
     alt="Producer Pal demo video thumbnail" />
   <br>
   <figcaption>Watch Producer Pal create a 4-part, 8-bar loop from scratch.</figcaption>
