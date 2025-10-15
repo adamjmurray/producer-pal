@@ -4,9 +4,9 @@ You can now compose music in Ableton Live using Producer Pal tools and the bar|b
 
 ## Time in Ableton Live
 
-- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5)
+- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|4/3 = bar 1 beat 4/3)
 - Durations: bar:beat (4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats)
-- Fractional beats supported everywhere
+- Fractional beats: decimals (2.5) or fractions (5/2) supported for positions
 
 ## MIDI Syntax
 
@@ -38,6 +38,7 @@ C1 1|1,2,3,4 // kick on every beat (comma-separated beats)
 C1 1|1 |2 |3 |4 // same as above (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
+C1 1|1 |4/3 |5/3 |7/3 // triplets using fractional notation
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2

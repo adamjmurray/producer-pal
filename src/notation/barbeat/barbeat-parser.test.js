@@ -48,6 +48,30 @@ describe("BarBeatScript Parser", () => {
         { pitch: 64 },
       ]);
     });
+
+    it("parses fractional beats", () => {
+      expect(parser.parse("1|4/3 C3 1|5/3 D3 1|7/3 E3")).toStrictEqual([
+        { bar: 1, beat: 4 / 3 },
+        { pitch: 60 },
+        { bar: 1, beat: 5 / 3 },
+        { pitch: 62 },
+        { bar: 1, beat: 7 / 3 },
+        { pitch: 64 },
+      ]);
+    });
+
+    it("parses mixed decimal and fractional beats", () => {
+      expect(parser.parse("1|1 C3 1|4/3 D3 1|1.5 E3 1|5/3 F3")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { pitch: 60 },
+        { bar: 1, beat: 4 / 3 },
+        { pitch: 62 },
+        { bar: 1, beat: 1.5 },
+        { pitch: 64 },
+        { bar: 1, beat: 5 / 3 },
+        { pitch: 65 },
+      ]);
+    });
   });
 
   describe("probability", () => {
@@ -415,6 +439,23 @@ describe("BarBeatScript Parser", () => {
   });
 
   describe("comma-separated beat lists", () => {
+    it("parses fractional beats in comma-separated lists", () => {
+      expect(parser.parse("1|4/3,5/3,7/3")).toStrictEqual([
+        { bar: 1, beat: 4 / 3 },
+        { bar: 1, beat: 5 / 3 },
+        { bar: 1, beat: 7 / 3 },
+      ]);
+    });
+
+    it("parses mixed decimal and fractional in comma-separated lists", () => {
+      expect(parser.parse("1|1,4/3,1.5,5/3")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 4 / 3 },
+        { bar: 1, beat: 1.5 },
+        { bar: 1, beat: 5 / 3 },
+      ]);
+    });
+
     it("parses beat list with explicit bar", () => {
       expect(parser.parse("1|1,2,3,4")).toStrictEqual([
         { bar: 1, beat: 1 },

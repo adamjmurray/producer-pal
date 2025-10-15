@@ -18,19 +18,28 @@ export function beatsToBarBeat(beats, beatsPerBar) {
 
 /**
  * Convert bar|beat format to beats
- * @param {string} barBeat - bar|beat format (e.g., "2|3.5")
+ * @param {string} barBeat - bar|beat format (e.g., "2|3.5" or "1|4/3")
  * @param {number} beatsPerBar - Beats per bar from time signature
  * @returns {number} Absolute beats (0-based)
  */
 export function barBeatToBeats(barBeat, beatsPerBar) {
-  const match = barBeat.match(/^(-?\d+)\|(-?\d+(?:\.\d+)?)$/);
+  const match = barBeat.match(/^(-?\d+)\|((-?\d+)(?:\.\d+|\/\d+)?)$/);
   if (!match) {
     throw new Error(
-      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{float}" like "1|2" or "2|3.5"`,
+      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{float}" like "1|2" or "2|3.5" or "{int}|{int}/{int}" like "1|4/3"`,
     );
   }
   const bar = Number.parseInt(match[1]);
-  const beat = Number.parseFloat(match[2]);
+
+  // Parse beat as either decimal or fraction
+  const beatStr = match[2];
+  let beat;
+  if (beatStr.includes("/")) {
+    const [numerator, denominator] = beatStr.split("/");
+    beat = Number.parseInt(numerator) / Number.parseInt(denominator);
+  } else {
+    beat = Number.parseFloat(beatStr);
+  }
 
   if (bar < 1) throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
   if (beat < 1) throw new Error(`Beat must be 1 or greater, got: ${beat}`);

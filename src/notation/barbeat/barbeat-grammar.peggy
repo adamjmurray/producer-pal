@@ -140,7 +140,11 @@ unsignedFloat
   }
 
 positiveFloat
-  = [1-9] [0-9]* ("." [0-9]*)? {
+  = [1-9] [0-9]* "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    return Number.parseInt(num) / Number.parseInt(den);
+  }
+  / [1-9] [0-9]* ("." [0-9]*)? {
     return Number.parseFloat(text());
   }
 
