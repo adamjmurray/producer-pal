@@ -13,13 +13,13 @@ local models.
 Watch the Producer Pal 1.0 walkthrough video:
 
 - 0:00:
-  [Installation with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU)
+  [Installation with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - 2:29:
-  [Connecting the AI to Ableton](https://www.youtube.com/watch?v=IB19LqTZQDU&t=149s)
+  [Connecting the AI to Ableton](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=149s)
 - 3:23
-  [Generating a 4-part, 8-bar loop from scratch](https://www.youtube.com/watch?v=IB19LqTZQDU&t=202s)
+  [Generating a 4-part, 8-bar loop from scratch](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s)
 
-<a href="https://www.youtube.com/watch?v=IB19LqTZQDU&t=202s">
+<a href="https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s">
 <figure>
     <img
     src="https://img.youtube.com/vi/IB19LqTZQDU/0.jpg"
@@ -29,6 +29,10 @@ Watch the Producer Pal 1.0 walkthrough video:
   <br>
 </figure>
 </a>
+<br>
+
+Or
+[watch how to setup Producer Pal with Gemini CLI.](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 
 ## Installation
 
@@ -43,13 +47,18 @@ Then, see the [Usage Guide](#usage) for help getting started.
 
 ## Support
 
-- **Bug Reports**:
-  [GitHub Issues](https://github.com/adamjmurray/producer-pal/issues)
+- **Feedback, Feature Ideas, General Discussion**:
+  [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
+- **Bugs & Problems**: Report in
+  [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
+  or [issues list](https://github.com/adamjmurray/producer-pal/issues)
 - **Documentation**:
   [GitHub Homepage (this page)](https://github.com/adamjmurray/producer-pal/#readme)
   and [the dedicated area of my website](https://adammurray.link/producer-pal/)
-- **Community**:
-  [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
+
+If you want to support Producer Pal development, ⭐️ star
+[the GitHub repository](https://github.com/adamjmurray/producer-pal) to help
+others discover the project.
 
 ## Data Privacy
 
