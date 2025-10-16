@@ -20,7 +20,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - beat can be a comma-separated (no whitespace) list
 - v<velocity>: Note intensity from 0-127 (default: v100; v80-120 = random range)
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- t<duration>: Note length in beats (default: 1.0)
+- t<duration>: Note length in beats (default: 1.0; supports decimals or fractions like t1/3)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
@@ -38,7 +38,7 @@ C1 1|1,2,3,4 // kick on every beat (comma-separated beats)
 C1 1|1 |2 |3 |4 // same as above (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
-C1 1|1 |4/3 |5/3 |7/3 // triplets using fractional notation
+t1/3 C3 1|1,4/3,5/3 // triplet eighth notes using fractional notation
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2

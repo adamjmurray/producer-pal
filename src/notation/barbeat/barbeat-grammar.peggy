@@ -98,7 +98,7 @@ velocity
   }
 
 duration
-  = "t" val:unsignedFloat {
+  = "t" val:unsignedFloatOrFraction {
     return { duration: val };
   }
 
@@ -138,6 +138,13 @@ unsignedFloat
   = ([0-9]+ ("." [0-9]*)? / "." [0-9]+) {
     return Number.parseFloat(text());
   }
+
+unsignedFloatOrFraction
+  = [0-9]+ "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    return Number.parseInt(num) / Number.parseInt(den);
+  }
+  / unsignedFloat
 
 positiveFloat
   = [1-9] [0-9]* "/" [1-9] [0-9]* {
