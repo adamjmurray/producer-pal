@@ -18,7 +18,10 @@ Create MIDI clips using the bar|beat notation syntax:
   - time positions are relative to clip start
   - \`|beat\` reuses current bar
   - beat can be a comma-separated (no whitespace) list
-- v<velocity>: Note intensity from 0-127 (default: v100; v80-120 = random range)
+- v<velocity>: Note intensity from 0-127 (default: v100)
+  - Single value: v100 (all notes at velocity 100)
+  - Random range: v80-120 (each note gets random velocity between 80-120)
+  - Use ranges for humanization, natural dynamics, and groove feel
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length in beats (default: 1.0; supports decimals or fractions like t1/3)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
@@ -42,6 +45,8 @@ t1/3 C3 1|1,4/3,5/3 // triplet eighth notes using fractional notation
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2
+v90-110 C1 1|1,3 D1 |2,4 // humanized drum pattern
+v60-80 Gb1 1|1.5,2.5,3.5,4.5 // natural hi-hat feel
 \`\`\`
 
 ## Techniques
