@@ -19,7 +19,7 @@ Watch the Producer Pal 1.0 walkthrough video:
 - 3:23
   [Generating a 4-part, 8-bar loop from scratch](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s)
 
-<a href="https://www.youtube.com/watch?v=IB19LqTZQDU&t=202s">
+<a href="https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s">
 <figure>
     <img
     src="https://img.youtube.com/vi/IB19LqTZQDU/0.jpg"
