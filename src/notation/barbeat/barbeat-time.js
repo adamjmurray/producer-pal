@@ -132,7 +132,7 @@ export function abletonBeatsToBarBeatDuration(
 
 /**
  * Convert bar:beat duration format to Ableton beats (quarter notes) using musical beats
- * @param {string} barBeatDuration - bar:beat duration format (e.g., "2:1.5")
+ * @param {string} barBeatDuration - bar:beat duration format (e.g., "2:1.5" or "0:4/3")
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} Quarter note beats (duration)
@@ -142,15 +142,24 @@ export function barBeatDurationToAbletonBeats(
   timeSigNumerator,
   timeSigDenominator,
 ) {
-  const match = barBeatDuration.match(/^(-?\d+):(-?\d+(?:\.\d+)?)$/);
+  const match = barBeatDuration.match(/^(-?\d+):((-?\d+)(?:\.\d+|\/\d+)?)$/);
   if (!match) {
     throw new Error(
-      `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5"`,
+      `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5" or "{int}:{int}/{int}" like "0:4/3"`,
     );
   }
 
   const bars = Number.parseInt(match[1]);
-  const beats = Number.parseFloat(match[2]);
+
+  // Parse beats as either decimal or fraction
+  const beatsStr = match[2];
+  let beats;
+  if (beatsStr.includes("/")) {
+    const [numerator, denominator] = beatsStr.split("/");
+    beats = Number.parseInt(numerator) / Number.parseInt(denominator);
+  } else {
+    beats = Number.parseFloat(beatsStr);
+  }
 
   if (bars < 0)
     throw new Error(`Bars in duration must be 0 or greater, got: ${bars}`);

@@ -580,15 +580,53 @@ describe("barBeatDurationToAbletonBeats", () => {
     });
   });
 
+  it("handles fractional beat notation", () => {
+    // Triplet durations in 4/4
+    expect(barBeatDurationToAbletonBeats("0:1/3", 4, 4)).toBeCloseTo(1 / 3, 10);
+    expect(barBeatDurationToAbletonBeats("0:2/3", 4, 4)).toBeCloseTo(2 / 3, 10);
+    expect(barBeatDurationToAbletonBeats("0:4/3", 4, 4)).toBeCloseTo(4 / 3, 10);
+
+    // Bar + fractional beats
+    expect(barBeatDurationToAbletonBeats("1:1/2", 4, 4)).toBe(4.5);
+    expect(barBeatDurationToAbletonBeats("1:3/4", 4, 4)).toBe(4.75);
+    expect(barBeatDurationToAbletonBeats("2:5/3", 4, 4)).toBeCloseTo(
+      8 + 5 / 3,
+      10,
+    );
+
+    // Quintuplet durations
+    expect(barBeatDurationToAbletonBeats("0:1/5", 4, 4)).toBeCloseTo(0.2, 10);
+    expect(barBeatDurationToAbletonBeats("0:2/5", 4, 4)).toBeCloseTo(0.4, 10);
+  });
+
+  it("handles fractional durations in different time signatures", () => {
+    // Triplets in 3/4
+    expect(barBeatDurationToAbletonBeats("0:1/3", 3, 4)).toBeCloseTo(1 / 3, 10);
+    expect(barBeatDurationToAbletonBeats("1:2/3", 3, 4)).toBeCloseTo(
+      3 + 2 / 3,
+      10,
+    );
+
+    // Triplets in 6/8 (1 musical beat = 0.5 Ableton beats)
+    expect(barBeatDurationToAbletonBeats("0:1/3", 6, 8)).toBeCloseTo(1 / 6, 10);
+    expect(barBeatDurationToAbletonBeats("0:2/3", 6, 8)).toBeCloseTo(1 / 3, 10);
+  });
+
   it("throws error for invalid format", () => {
     expect(() => barBeatDurationToAbletonBeats("1|2", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1|2". Expected "{int}:{float}" like "1:2" or "2:1.5"',
+      "Invalid bar:beat duration format",
     );
     expect(() => barBeatDurationToAbletonBeats("1", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1". Expected "{int}:{float}" like "1:2" or "2:1.5"',
+      "Invalid bar:beat duration format",
     );
     expect(() => barBeatDurationToAbletonBeats("1:", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1:". Expected "{int}:{float}" like "1:2" or "2:1.5"',
+      "Invalid bar:beat duration format",
+    );
+    expect(() => barBeatDurationToAbletonBeats("0:/3", 4, 4)).toThrow(
+      "Invalid bar:beat duration format",
+    );
+    expect(() => barBeatDurationToAbletonBeats("0:1/", 4, 4)).toThrow(
+      "Invalid bar:beat duration format",
     );
   });
 
@@ -598,6 +636,9 @@ describe("barBeatDurationToAbletonBeats", () => {
     );
     expect(() => barBeatDurationToAbletonBeats("0:-1", 4, 4)).toThrow(
       "Beats in duration must be 0 or greater, got: -1",
+    );
+    expect(() => barBeatDurationToAbletonBeats("0:-1/3", 4, 4)).toThrow(
+      "Beats in duration must be 0 or greater",
     );
   });
 });
