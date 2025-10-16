@@ -29,6 +29,7 @@ Watch the Producer Pal 1.0 walkthrough video:
   <br>
 </figure>
 </a>
+<br>
 
 Or
 [watch how to setup Producer Pal with Gemini CLI.](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
