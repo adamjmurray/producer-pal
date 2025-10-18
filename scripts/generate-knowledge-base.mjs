@@ -74,6 +74,7 @@ const itemsToCopy = [
   { src: "doc", isDir: true, exclude: ["img"] },
   { src: "licenses", isDir: true },
   { src: "scripts", isDir: true },
+  { src: "webui", isDir: true },
   {
     src: "src",
     isDir: true,
