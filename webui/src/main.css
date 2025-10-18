@@ -1,8 +1,2 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
-
-@theme {
-  --color-dark: #1e1e1e;
-  --color-darker: #252526;
-  --color-border: #3e3e42;
-}
