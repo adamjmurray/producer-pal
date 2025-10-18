@@ -48,6 +48,30 @@ describe("BarBeatScript Parser", () => {
         { pitch: 64 },
       ]);
     });
+
+    it("parses fractional beats", () => {
+      expect(parser.parse("1|4/3 C3 1|5/3 D3 1|7/3 E3")).toStrictEqual([
+        { bar: 1, beat: 4 / 3 },
+        { pitch: 60 },
+        { bar: 1, beat: 5 / 3 },
+        { pitch: 62 },
+        { bar: 1, beat: 7 / 3 },
+        { pitch: 64 },
+      ]);
+    });
+
+    it("parses mixed decimal and fractional beats", () => {
+      expect(parser.parse("1|1 C3 1|4/3 D3 1|1.5 E3 1|5/3 F3")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { pitch: 60 },
+        { bar: 1, beat: 4 / 3 },
+        { pitch: 62 },
+        { bar: 1, beat: 1.5 },
+        { pitch: 64 },
+        { bar: 1, beat: 5 / 3 },
+        { pitch: 65 },
+      ]);
+    });
   });
 
   describe("probability", () => {
@@ -117,6 +141,85 @@ describe("BarBeatScript Parser", () => {
         { pitch: 60 },
         { duration: 1.0 },
         { pitch: 62 },
+      ]);
+    });
+
+    it("parses fractional durations", () => {
+      expect(parser.parse("t1/3 C3 t2/3 D3 t4/3 E3")).toStrictEqual([
+        { duration: 1 / 3 },
+        { pitch: 60 },
+        { duration: 2 / 3 },
+        { pitch: 62 },
+        { duration: 4 / 3 },
+        { pitch: 64 },
+      ]);
+    });
+
+    it("parses mixed decimal and fractional durations", () => {
+      expect(parser.parse("t0.5 C3 t1/2 D3 t1.5 E3 t3/2 F3")).toStrictEqual([
+        { duration: 0.5 },
+        { pitch: 60 },
+        { duration: 1 / 2 },
+        { pitch: 62 },
+        { duration: 1.5 },
+        { pitch: 64 },
+        { duration: 3 / 2 },
+        { pitch: 65 },
+      ]);
+    });
+
+    it("parses quintuplet durations", () => {
+      expect(parser.parse("t1/5 C3 t2/5 D3")).toStrictEqual([
+        { duration: 1 / 5 },
+        { pitch: 60 },
+        { duration: 2 / 5 },
+        { pitch: 62 },
+      ]);
+    });
+
+    it("parses zero duration with fraction notation", () => {
+      expect(parser.parse("t0/1 C3")).toStrictEqual([
+        { duration: 0 },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("parses bar:beat duration format (NEW)", () => {
+      expect(parser.parse("t2:1.5 C3")).toStrictEqual([
+        { duration: "2:1.5" },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t1:0 C3")).toStrictEqual([
+        { duration: "1:0" },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t0:2 C3")).toStrictEqual([
+        { duration: "0:2" },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("parses bar:beat duration with fractions (NEW)", () => {
+      expect(parser.parse("t1:3/4 C3")).toStrictEqual([
+        { duration: "1:0.75" },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t2:1/3 C3")).toStrictEqual([
+        { duration: `2:${1 / 3}` },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("distinguishes between beat-only and bar:beat formats", () => {
+      // Beat-only: number
+      expect(parser.parse("t2.5 C3")).toStrictEqual([
+        { duration: 2.5 },
+        { pitch: 60 },
+      ]);
+      // Bar:beat: string
+      expect(parser.parse("t2:0.5 C3")).toStrictEqual([
+        { duration: "2:0.5" },
+        { pitch: 60 },
       ]);
     });
   });
@@ -415,6 +518,23 @@ describe("BarBeatScript Parser", () => {
   });
 
   describe("comma-separated beat lists", () => {
+    it("parses fractional beats in comma-separated lists", () => {
+      expect(parser.parse("1|4/3,5/3,7/3")).toStrictEqual([
+        { bar: 1, beat: 4 / 3 },
+        { bar: 1, beat: 5 / 3 },
+        { bar: 1, beat: 7 / 3 },
+      ]);
+    });
+
+    it("parses mixed decimal and fractional in comma-separated lists", () => {
+      expect(parser.parse("1|1,4/3,1.5,5/3")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 4 / 3 },
+        { bar: 1, beat: 1.5 },
+        { bar: 1, beat: 5 / 3 },
+      ]);
+    });
+
     it("parses beat list with explicit bar", () => {
       expect(parser.parse("1|1,2,3,4")).toStrictEqual([
         { bar: 1, beat: 1 },
@@ -484,6 +604,53 @@ describe("BarBeatScript Parser", () => {
     it("does not allow whitespace around commas", () => {
       expect(() => parser.parse("1|1, 2, 3")).toThrow();
       expect(() => parser.parse("1|1 ,2 ,3")).toThrow();
+    });
+
+    it("parses fractional durations with fractional beat positions", () => {
+      expect(parser.parse("t1/3 C3 1|1,4/3,5/3")).toStrictEqual([
+        { duration: 1 / 3 },
+        { pitch: 60 },
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 4 / 3 },
+        { bar: 1, beat: 5 / 3 },
+      ]);
+    });
+  });
+
+  describe("integration - fractional notation", () => {
+    it("parses triplet pattern with fractional durations and positions", () => {
+      expect(
+        parser.parse("t1/3 C3 1|1 1|4/3 1|5/3 D3 1|2 1|7/3 1|8/3"),
+      ).toStrictEqual([
+        { duration: 1 / 3 },
+        { pitch: 60 },
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 4 / 3 },
+        { bar: 1, beat: 5 / 3 },
+        { pitch: 62 },
+        { bar: 1, beat: 2 },
+        { bar: 1, beat: 7 / 3 },
+        { bar: 1, beat: 8 / 3 },
+      ]);
+    });
+
+    it("parses mixed fractional and decimal notation throughout", () => {
+      expect(
+        parser.parse("t1/4 C3 1|1,5/4,3/2,7/4 t0.5 D3 1|2,2.5,3,3.5"),
+      ).toStrictEqual([
+        { duration: 1 / 4 },
+        { pitch: 60 },
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 5 / 4 },
+        { bar: 1, beat: 3 / 2 },
+        { bar: 1, beat: 7 / 4 },
+        { duration: 0.5 },
+        { pitch: 62 },
+        { bar: 1, beat: 2 },
+        { bar: 1, beat: 2.5 },
+        { bar: 1, beat: 3 },
+        { bar: 1, beat: 3.5 },
+      ]);
     });
 
     it("parses complex drum pattern with beat lists", () => {

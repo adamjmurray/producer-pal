@@ -8,6 +8,7 @@ import {
 } from "./barbeat-config.js";
 import * as parser from "./barbeat-parser.js";
 import { applyV0Deletions } from "./barbeat-apply-v0-deletions.js";
+import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
 
 /**
  * Convert bar|beat notation into note events
@@ -621,7 +622,16 @@ export function interpretNotation(barBeatExpression, options = {}) {
       } else if (element.duration !== undefined) {
         // STATE UPDATE - duration
 
-        currentDuration = element.duration;
+        // Handle both string (bar:beat) and number (beat-only) formats
+        if (typeof element.duration === "string") {
+          currentDuration = barBeatDurationToMusicalBeats(
+            element.duration,
+            timeSigNumerator,
+            timeSigDenominator,
+          );
+        } else {
+          currentDuration = element.duration; // Already in musical beats
+        }
 
         // Track if state changed after pitch in current group
         if (pitchGroupStarted && currentPitches.length > 0) {
@@ -631,7 +641,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         // Update buffered pitches if after time position
         if (!pitchGroupStarted && currentPitches.length > 0) {
           for (const pitchState of currentPitches) {
-            pitchState.duration = element.duration;
+            pitchState.duration = currentDuration; // Use converted value
           }
           // State changes applied to buffered pitches could be wasted if bar copy occurs
           stateChangedAfterEmission = true;

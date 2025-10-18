@@ -218,6 +218,101 @@ describe("bar|beat interpretNotation()", () => {
     ]);
   });
 
+  it("handles bar:beat duration format in 4/4 (NEW)", () => {
+    const result = interpretNotation("t2:1.5 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result).toEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 9.5, // 2 bars (8 beats) + 1.5 beats = 9.5 Ableton beats in 4/4
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+
+  it("handles bar:beat duration with fractions (NEW)", () => {
+    const result = interpretNotation("t1:3/4 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result).toEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 4.75, // 1 bar (4 beats) + 0.75 beats = 4.75 Ableton beats
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+
+  it("handles beat-only decimal duration (NEW)", () => {
+    const result = interpretNotation("t2.5 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result).toEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 2.5, // 2.5 beats in 4/4 = 2.5 Ableton beats
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+
+  it("handles beat-only fractional duration (NEW)", () => {
+    const result = interpretNotation("t3/4 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result).toEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 0.75, // 3/4 beats in 4/4 = 0.75 Ableton beats
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+
+  it("handles bar:beat duration in 6/8 time (NEW)", () => {
+    const result = interpretNotation("t1:2 C3 1|1", {
+      timeSigNumerator: 6,
+      timeSigDenominator: 8,
+    });
+    expect(result).toEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 4.0, // 1 bar (6 eighth notes) + 2 eighth notes = 8 eighth notes = 4 quarter notes
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+
+  it("handles mixed duration formats (NEW)", () => {
+    const result = interpretNotation("t2:0 C3 1|1 t1.5 D3 1|2 t3/4 E3 1|3", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result[0].duration).toBe(8); // 2 bars = 8 beats
+    expect(result[1].duration).toBe(1.5); // 1.5 beats
+    expect(result[2].duration).toBe(0.75); // 3/4 beats
+  });
+
   it("handles sub-beat timing", () => {
     const result = interpretNotation("C3 1|1.5 D3 |2.25");
     expect(result).toEqual([
