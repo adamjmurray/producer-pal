@@ -21,8 +21,6 @@
     "build:all": "ENABLE_RAW_LIVE_API=true npm run build",
     "build:watch": "npm run build && rollup -c config/rollup.config.mjs -w",
     "dev": "ENABLE_RAW_LIVE_API=true rollup -c config/rollup.config.mjs -w",
-    "dev:ui": "vite --config config/vite.config.mjs",
-    "build:ui": "vite build --config config/vite.config.mjs",
     "test": "npm run test:setup && vitest run -c config/vitest.config.mjs",
     "test:watch": "npm run test:setup && vitest -c config/vitest.config.mjs",
     "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.mjs",
@@ -42,7 +40,9 @@
     "version:bump:minor": "node scripts/bump-version.mjs minor",
     "version:bump:major": "node scripts/bump-version.mjs major",
     "release:prepare": "node scripts/prepare-release.mjs",
-    "release:prep": "node scripts/prepare-release.mjs"
+    "release:prep": "node scripts/prepare-release.mjs",
+    "ui:build": "vite build --config config/vite.config.mjs",
+    "ui:dev": "vite --config config/vite.config.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.20.1",
