@@ -23,12 +23,11 @@ export function App() {
 
   // Auto-save: send updates to Max or simulate save in dev mode
   useEffect(() => {
-    if (!content) return;
     const timer = setTimeout(() => {
       setSaving(true);
       if (window.max) {
         // Send update to Max
-        window.max.outlet("v8", "projectNotes", content);
+        window.max.outlet("v8", "projectNotes", "text", content);
       } else {
         // Mock save for browser dev mode
         console.log("Mock save:", content.slice(0, 50));
