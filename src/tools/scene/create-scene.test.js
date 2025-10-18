@@ -3,6 +3,7 @@ import {
   children,
   liveApiCall,
   liveApiId,
+  liveApiPath,
   liveApiSet,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
@@ -66,14 +67,7 @@ describe("createScene", () => {
       "time_signature_enabled",
       true,
     );
-    expect(result).toEqual({
-      id: "scene1",
-      sceneIndex: 1,
-      name: "New Scene",
-      color: "#FF0000",
-      tempo: 120,
-      timeSignature: "3/4",
-    });
+    expect(result).toEqual({ id: "scene1", sceneIndex: 1 });
   });
 
   it("should create multiple scenes with auto-incrementing names", () => {
@@ -120,24 +114,9 @@ describe("createScene", () => {
     );
 
     expect(result).toEqual([
-      {
-        id: "scene1",
-        sceneIndex: 0,
-        name: "Verse",
-        color: "#00FF00",
-      },
-      {
-        id: "scene1",
-        sceneIndex: 1,
-        name: "Verse 2",
-        color: "#00FF00",
-      },
-      {
-        id: "scene1",
-        sceneIndex: 2,
-        name: "Verse 3",
-        color: "#00FF00",
-      },
+      { id: "scene1", sceneIndex: 0 },
+      { id: "scene1", sceneIndex: 1 },
+      { id: "scene1", sceneIndex: 2 },
     ]);
   });
 
@@ -150,10 +129,7 @@ describe("createScene", () => {
       0,
     );
     expect(liveApiSet).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      id: "scene1",
-      sceneIndex: 0,
-    });
+    expect(result).toEqual({ id: "scene1", sceneIndex: 0 });
   });
 
   it("should pad with empty scenes when sceneIndex exceeds current count", () => {
@@ -274,16 +250,12 @@ describe("createScene", () => {
       name: "Multiple",
     });
 
-    expect(singleResult).toEqual({
-      id: "scene1",
-      sceneIndex: 0,
-      name: "Single",
-    });
+    expect(singleResult).toEqual({ id: "scene1", sceneIndex: 0 });
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0].name).toBe("Multiple");
-    expect(arrayResult[1].name).toBe("Multiple 2");
+    expect(arrayResult[0]).toEqual({ id: "scene1", sceneIndex: 1 });
+    expect(arrayResult[1]).toEqual({ id: "scene1", sceneIndex: 2 });
   });
 
   it("should handle single scene name without incrementing", () => {
@@ -298,7 +270,7 @@ describe("createScene", () => {
       "name",
       "Solo Scene",
     );
-    expect(result.name).toBe("Solo Scene");
+    expect(result).toEqual({ id: "scene1", sceneIndex: 0 });
   });
 
   it("should include disabled tempo and timeSignature in result", () => {
@@ -308,11 +280,218 @@ describe("createScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(result).toEqual({
-      id: "scene1",
-      sceneIndex: 0,
-      tempo: "disabled",
-      timeSignature: "disabled",
+    expect(result).toEqual({ id: "scene1", sceneIndex: 0 });
+  });
+
+  describe("capture mode", () => {
+    beforeEach(() => {
+      // Reset liveApiId to use default path-based ID generation for capture tests
+      liveApiId.mockImplementation(function () {
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "live_set view selected_scene") {
+          return "live_set scenes 1";
+        }
+        return this._path;
+      });
+      mockLiveApiGet({
+        "live_set scenes 2": { name: "Captured Scene" },
+        LiveSet: { tracks: [] }, // No tracks means no clips
+      });
+    });
+
+    it("should delegate to captureScene when capture=true", () => {
+      const result = createScene({ capture: true });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "capture_and_insert_scene",
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        clips: [],
+      });
+    });
+
+    it("should delegate to captureScene with sceneIndex and name", () => {
+      const result = createScene({
+        capture: true,
+        sceneIndex: 1,
+        name: "Custom Capture",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set view" }),
+        "selected_scene",
+        "id live_set/scenes/1",
+      );
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set scenes 2" }),
+        "name",
+        "Custom Capture",
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        clips: [],
+      });
+    });
+
+    it("should apply additional properties after capture", () => {
+      const result = createScene({
+        capture: true,
+        name: "Captured with Props",
+        color: "#FF0000",
+        tempo: 140,
+        timeSignature: "3/4",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "color",
+        16711680,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "tempo",
+        140,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "tempo_enabled",
+        true,
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        clips: [],
+      });
+    });
+
+    it("should handle disabled tempo and timeSignature in capture mode", () => {
+      const result = createScene({
+        capture: true,
+        tempo: -1,
+        timeSignature: "disabled",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "tempo_enabled",
+        false,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "live_set/scenes/2" }),
+        "time_signature_enabled",
+        false,
+      );
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        clips: [],
+      });
+    });
+
+    it("should return clips when capturing with existing clips", () => {
+      liveApiId.mockImplementation(function () {
+        // Mock clips at track 0 and 2 to exist, track 1 to not exist (id 0)
+        if (this._path === "live_set tracks 1 clip_slots 2 clip") {
+          return "0";
+        }
+        return this._id;
+      });
+      mockLiveApiGet({
+        "live_set scenes 2": { name: "Captured Scene" },
+        LiveSet: {
+          tracks: ["id", "1", "id", "2", "id", "3"],
+        },
+      });
+
+      const result = createScene({
+        capture: true,
+        name: "With Clips",
+      });
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        clips: [
+          { id: "live_set/tracks/0/clip_slots/2/clip", trackIndex: 0 },
+          { id: "live_set/tracks/2/clip_slots/2/clip", trackIndex: 2 },
+        ],
+      });
+    });
+  });
+
+  describe("switchView functionality", () => {
+    it("should switch to session view when creating scenes with switchView=true", () => {
+      const result = createScene({
+        sceneIndex: 0,
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result).toEqual({
+        id: "scene1",
+        sceneIndex: 0,
+      });
+    });
+
+    it("should switch to session view when capturing scenes with switchView=true", () => {
+      // Mock the selected scene path for capture functionality
+      liveApiPath.mockImplementation(function () {
+        if (this._path === "live_set view selected_scene") {
+          return "live_set scenes 1";
+        }
+        return this._path;
+      });
+      mockLiveApiGet({
+        "live_set scenes 2": { name: "Captured Scene" },
+        LiveSet: { tracks: [] }, // No tracks means no clips
+      });
+
+      const result = createScene({
+        capture: true,
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(result).toEqual({
+        id: "scene1",
+        sceneIndex: 2,
+        clips: [],
+      });
+    });
+
+    it("should not switch views when switchView=false", () => {
+      createScene({
+        sceneIndex: 0,
+        switchView: false,
+      });
+
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "show_view",
+        expect.anything(),
+      );
+    });
+
+    it("should work with multiple scenes when switchView=true", () => {
+      const result = createScene({
+        sceneIndex: 0,
+        count: 3,
+        switchView: true,
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(3);
     });
   });
 });

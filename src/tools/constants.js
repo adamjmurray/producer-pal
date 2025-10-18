@@ -93,3 +93,11 @@ export const VALID_SCALE_NAMES = [
   "Messiaen 6",
   "Messiaen 7",
 ];
+
+// Live API object type names (from LiveAPI.type property)
+export const LIVE_API_TYPE = {
+  TRACK: "Track",
+  SCENE: "Scene",
+  CLIP: "Clip",
+  DEVICE: "Device",
+};

@@ -20,7 +20,7 @@ node scripts/cli.mjs
 node scripts/cli.mjs tools/list
 
 # Call a tool with JSON arguments
-node scripts/cli.mjs tools/call ppal-read-song '{}'
+node scripts/cli.mjs tools/call ppal-read-live-set '{}'
 node scripts/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
 
 # Use a different server URL
@@ -173,7 +173,7 @@ npm run dev
 npm run test:watch
 
 # Terminal 3: Test specific functionality
-node scripts/cli.mjs tools/call ppal-read-song '{}'
+node scripts/cli.mjs tools/call ppal-read-live-set '{}'
 ```
 
 ### Full Validation
@@ -239,6 +239,6 @@ In Ableton Live, open Max window to see:
 
 **State sync issues:**
 
-- Use `ppal-read-song` to refresh state
+- Use `ppal-read-live-set` to refresh state
 - Check for timing-sensitive operations
 - Consider optimistic updates for playback

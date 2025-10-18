@@ -53,9 +53,6 @@ describe("createTrack", () => {
     expect(result).toEqual({
       id: "midi_track_1",
       trackIndex: 1,
-      type: "midi",
-      name: "New MIDI Track",
-      color: "#FF0000",
     });
   });
 
@@ -79,8 +76,6 @@ describe("createTrack", () => {
     expect(result).toEqual({
       id: "audio_track_0",
       trackIndex: 0,
-      type: "audio",
-      name: "New Audio Track",
     });
   });
 
@@ -131,23 +126,14 @@ describe("createTrack", () => {
       {
         id: "midi_track_2",
         trackIndex: 2,
-        type: "midi",
-        name: "Drum",
-        color: "#00FF00",
       },
       {
         id: "midi_track_3",
         trackIndex: 3,
-        type: "midi",
-        name: "Drum 2",
-        color: "#00FF00",
       },
       {
         id: "midi_track_4",
         trackIndex: 4,
-        type: "midi",
-        name: "Drum 3",
-        color: "#00FF00",
       },
     ]);
   });
@@ -164,7 +150,6 @@ describe("createTrack", () => {
     expect(result).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
-      type: "midi",
     });
   });
 
@@ -200,11 +185,6 @@ describe("createTrack", () => {
     expect(result).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
-      type: "midi",
-      name: "Armed Track",
-      mute: true,
-      solo: false,
-      arm: true,
     });
   });
 
@@ -234,10 +214,6 @@ describe("createTrack", () => {
     expect(result).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
-      type: "midi",
-      mute: false,
-      solo: false,
-      arm: false,
     });
   });
 
@@ -286,7 +262,10 @@ describe("createTrack", () => {
       "name",
       "Solo Track",
     );
-    expect(result.name).toBe("Solo Track");
+    expect(result).toEqual({
+      id: "midi_track_0",
+      trackIndex: 0,
+    });
   });
 
   it("should create tracks of mixed types", () => {
@@ -320,13 +299,17 @@ describe("createTrack", () => {
     expect(singleResult).toEqual({
       id: "midi_track_0",
       trackIndex: 0,
-      type: "midi",
-      name: "Single",
     });
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0].name).toBe("Multiple");
-    expect(arrayResult[1].name).toBe("Multiple 2");
+    expect(arrayResult[0]).toEqual({
+      id: "midi_track_1",
+      trackIndex: 1,
+    });
+    expect(arrayResult[1]).toEqual({
+      id: "midi_track_2",
+      trackIndex: 2,
+    });
   });
 });

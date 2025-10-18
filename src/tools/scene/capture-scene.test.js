@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   liveApiCall,
+  liveApiId,
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
@@ -17,6 +18,7 @@ describe("captureScene", () => {
     });
     mockLiveApiGet({
       "live_set scenes 2": { name: "Captured Scene" },
+      LiveSet: { tracks: [] }, // No tracks means no clips
     });
 
     const result = captureScene();
@@ -29,6 +31,7 @@ describe("captureScene", () => {
     expect(result).toEqual({
       id: "live_set/scenes/2",
       sceneIndex: 2,
+      clips: [],
     });
   });
 
@@ -41,6 +44,7 @@ describe("captureScene", () => {
     });
     mockLiveApiGet({
       "live_set scenes 3": { name: "Captured Scene after select" },
+      LiveSet: { tracks: [] }, // No tracks means no clips
     });
 
     const result = captureScene({ sceneIndex: 2 });
@@ -48,6 +52,7 @@ describe("captureScene", () => {
     expect(result).toEqual({
       id: "live_set/scenes/3",
       sceneIndex: 3,
+      clips: [],
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -68,6 +73,9 @@ describe("captureScene", () => {
         return "live_set scenes 1";
       return this._path;
     });
+    mockLiveApiGet({
+      LiveSet: { tracks: [] }, // No tracks means no clips
+    });
 
     const result = captureScene({ name: "Captured Custom Name" });
 
@@ -85,7 +93,7 @@ describe("captureScene", () => {
     expect(result).toEqual({
       id: "live_set/scenes/2",
       sceneIndex: 2,
-      name: "Captured Custom Name",
+      clips: [],
     });
   });
 
@@ -94,5 +102,38 @@ describe("captureScene", () => {
     expect(() => captureScene()).toThrow(
       "capture-scene failed: couldn't determine selected scene index",
     );
+  });
+
+  it("should return captured clips with their IDs and track indices", () => {
+    liveApiPath.mockImplementation(function () {
+      if (this._path === "live_set view selected_scene") {
+        return "live_set scenes 0";
+      }
+      return this._path;
+    });
+    liveApiId.mockImplementation(function () {
+      // Mock clips at track 0 and 2 to exist, track 1 to not exist (id 0)
+      if (this._path === "live_set tracks 1 clip_slots 1 clip") {
+        return "0";
+      }
+      return this._id;
+    });
+    mockLiveApiGet({
+      "live_set scenes 1": { name: "Captured Scene" },
+      LiveSet: {
+        tracks: ["id", "1", "id", "2", "id", "3"],
+      },
+    });
+
+    const result = captureScene();
+
+    expect(result).toEqual({
+      id: "live_set/scenes/1",
+      sceneIndex: 1,
+      clips: [
+        { id: "live_set/tracks/0/clip_slots/1/clip", trackIndex: 0 },
+        { id: "live_set/tracks/2/clip_slots/1/clip", trackIndex: 2 },
+      ],
+    });
   });
 });

@@ -3,32 +3,16 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefUpdateScene = defineTool("ppal-update-scene", {
   title: "Update Scene",
-  description:
-    "Updates properties of existing scenes.\n" +
-    "Supports bulk operations when provided with comma-separated scene IDs. " +
-    "Note: This only modifies scene properties - does not affect playback or launch scenes. " +
-    "All properties except ids are optional.",
+  description: "Updates scene(s)",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
   inputSchema: {
-    ids: z
-      .string()
-      .describe("Scene ID or comma-separated list of scene IDs to update"),
-    name: z.string().optional().describe("Name for the scene"),
-    color: z.string().optional().describe("Color in #RRGGBB hex format"),
-    tempo: z
-      .number()
-      .optional()
-      .describe(
-        "Tempo in BPM for the scene. Pass -1 to disable the scene's tempo.",
-      ),
-    timeSignature: z
-      .string()
-      .optional()
-      .describe(
-        'Time signature in format "n/m" (e.g. "4/4"). Pass "disabled" to disable the scene\'s time signature.',
-      ),
+    ids: z.string().describe("comma-separated scene ID(s) to update"),
+    name: z.string().optional().describe("name"),
+    color: z.string().optional().describe("#RRGGBB"),
+    tempo: z.number().optional().describe("BPM (-1 disables)"),
+    timeSignature: z.string().optional().describe('N/D (4/4) or "disabled"'),
   },
 });

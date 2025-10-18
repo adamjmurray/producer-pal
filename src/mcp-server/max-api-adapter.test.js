@@ -189,6 +189,73 @@ describe("Max API Adapter", () => {
       });
     });
 
+    it("should strip v8: prefix from error messages", async () => {
+      Max.outlet = vi.fn();
+      const promise = callLiveApi("test-tool", {});
+      const requestId = Max.outlet.mock.calls[0][1];
+
+      const mockResult = { content: [{ type: "text", text: "success" }] };
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
+        "v8: Error message",
+      );
+
+      const result = await promise;
+      expect(result.content).toHaveLength(2);
+      expect(result.content[1]).toEqual({
+        type: "text",
+        text: "WARNING: Error message", // v8: prefix removed
+      });
+    });
+
+    it("should filter out empty v8: messages", async () => {
+      Max.outlet = vi.fn();
+      const promise = callLiveApi("test-tool", {});
+      const requestId = Max.outlet.mock.calls[0][1];
+
+      const mockResult = { content: [{ type: "text", text: "success" }] };
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
+        "v8: Real error",
+        "v8:", // Empty after stripping
+        "v8: ", // Just whitespace after stripping
+        "v8:\n", // Just newline after stripping
+      );
+
+      const result = await promise;
+      // Should only have original content + 1 real error (not 4 errors)
+      expect(result.content).toHaveLength(2);
+      expect(result.content[1]).toEqual({
+        type: "text",
+        text: "WARNING: Real error",
+      });
+    });
+
+    it("should handle error messages without v8: prefix", async () => {
+      Max.outlet = vi.fn();
+      const promise = callLiveApi("test-tool", {});
+      const requestId = Max.outlet.mock.calls[0][1];
+
+      const mockResult = { content: [{ type: "text", text: "success" }] };
+      handleLiveApiResult(
+        requestId,
+        JSON.stringify(mockResult),
+        MAX_ERROR_DELIMITER,
+        "Regular error without prefix",
+      );
+
+      const result = await promise;
+      expect(result.content).toHaveLength(2);
+      expect(result.content[1]).toEqual({
+        type: "text",
+        text: "WARNING: Regular error without prefix",
+      });
+    });
+
     it("should handle unknown request ID", async () => {
       // Call with unknown request ID
       handleLiveApiResult(

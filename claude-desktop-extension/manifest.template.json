@@ -1,5 +1,5 @@
 {
-  "dxt_version": "0.1",
+  "manifest_version": "0.2",
   "name": "Producer Pal",
   "version": "{{version}}",
   "description": "AI music production assistant for Ableton Live. Generate and edit MIDI clips, control playback, manage tracks, scenes, and the arrangement.",

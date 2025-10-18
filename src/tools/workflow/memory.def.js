@@ -4,23 +4,17 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefMemory = defineTool("ppal-memory", {
   title: "Project Notes",
   description:
-    "Manages user-defined project notes that help Producer Pal understand project-specific goals and preferences.\n" +
-    "The project notes are stored in the Live project and can be enabled and made writable through the Producer Pal device UI. " +
-    "Use this tool to read current project notes or update them when allowed.",
+    "Read or write project notes (if enabled in Producer Pal device)",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
   inputSchema: {
-    action: z
-      .enum(["read", "write"])
-      .describe(
-        "Action to perform: read current project notes or write new content",
-      ),
+    action: z.enum(["read", "write"]).describe("read/write"),
     content: z
       .string()
       .max(10_000)
       .optional()
-      .describe("Content to write (required when action is 'write')"),
+      .describe("content to write (required for write)"),
   },
 });

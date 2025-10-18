@@ -1,4 +1,5 @@
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
+import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 /**
  * Deletes objects by ids
@@ -26,22 +27,9 @@ export function deleteObject({ ids, type } = {}) {
   const deletedObjects = [];
 
   // Validate all objects exist and are the correct type before deleting any
-  const objectsToDelete = [];
-  for (const id of objectIds) {
-    const object = LiveAPI.from(id);
-
-    if (!object.exists()) {
-      throw new Error(`delete failed: id "${id}" does not exist`);
-    }
-
-    if (object.type.toLowerCase() !== type) {
-      throw new Error(
-        `delete failed: id "${id}" is not a ${type} (type=${object.type})`,
-      );
-    }
-
-    objectsToDelete.push({ id, object });
-  }
+  const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
+    skipInvalid: true,
+  }).map((object) => ({ id: object.id, object }));
 
   // Now delete all objects (in reverse order for tracks/scenes to maintain indices)
   if (type === "track" || type === "scene") {
@@ -100,6 +88,9 @@ export function deleteObject({ ids, type } = {}) {
     deletedObjects.push({ id, type, deleted: true });
   }
 
-  // Return single object if single ID was provided, array if comma-separated IDs were provided
-  return objectIds.length > 1 ? deletedObjects : deletedObjects[0];
+  // Return single object if one valid result, array for multiple results or empty array for none
+  if (deletedObjects.length === 0) {
+    return [];
+  }
+  return deletedObjects.length === 1 ? deletedObjects[0] : deletedObjects;
 }

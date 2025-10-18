@@ -1,4 +1,6 @@
 .DS_Store
+.env
+*.bak
 node_modules
 knowledge-base
 coverage

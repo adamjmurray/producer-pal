@@ -248,13 +248,13 @@ describe("deleteObject", () => {
     );
   });
 
-  it("should throw an error when any object doesn't exist", () => {
+  it("should log warning when object doesn't exist", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id 123":
           return "123";
         case "id 999":
-          return "0";
+          return "id 0";
         default:
           return this._id;
       }
@@ -263,12 +263,17 @@ describe("deleteObject", () => {
       if (this._id === "123") return "Track";
     });
 
-    expect(() => deleteObject({ ids: "123, 999", type: "track" })).toThrow(
-      'delete failed: id "999" does not exist',
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = deleteObject({ ids: "999", type: "track" });
+
+    expect(result).toEqual([]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'delete: id "999" does not exist',
     );
   });
 
-  it("should throw an error when any object is not of the expected type", () => {
+  it("should log warning when object is wrong type", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "id track_1":
@@ -284,9 +289,93 @@ describe("deleteObject", () => {
       if (this._id === "scene_1") return "Scene";
     });
 
-    expect(() =>
-      deleteObject({ ids: "track_1, scene_1", type: "track" }),
-    ).toThrow('delete failed: id "scene_1" is not a track (type=Scene)');
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = deleteObject({ ids: "scene_1", type: "track" });
+
+    expect(result).toEqual([]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'delete: id "scene_1" is not a track (found Scene)',
+    );
+  });
+
+  it("should skip invalid IDs in comma-separated list and delete valid ones", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "live_set tracks 0":
+          return "track_0";
+        case "live_set tracks 2":
+          return "track_2";
+        case "id track_0":
+          return "track_0";
+        case "nonexistent": // LiveAPI.from("nonexistent") creates path="nonexistent"
+          return "id 0"; // non-existent
+        case "id track_2":
+          return "track_2";
+        default:
+          return this._id;
+      }
+    });
+    liveApiPath.mockImplementation(function () {
+      switch (this._id) {
+        case "track_0":
+          return "live_set tracks 0";
+        case "track_2":
+          return "live_set tracks 2";
+        default:
+          return this._path;
+      }
+    });
+    liveApiType.mockImplementation(function () {
+      if (["track_0", "track_2"].includes(this._id)) return "Track";
+    });
+
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = deleteObject({
+      ids: "track_0, nonexistent, track_2",
+      type: "track",
+    });
+
+    // Should delete valid tracks in descending order (track_2, then track_0)
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "delete_track",
+      2,
+    );
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "delete_track",
+      0,
+    );
+
+    expect(result).toEqual([
+      { id: "track_2", type: "track", deleted: true },
+      { id: "track_0", type: "track", deleted: true },
+    ]);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'delete: id "nonexistent" does not exist',
+    );
+  });
+
+  it("should return empty array when all IDs are invalid", () => {
+    liveApiId.mockReturnValue("id 0"); // All non-existent
+
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    const result = deleteObject({
+      ids: "nonexistent1, nonexistent2",
+      type: "track",
+    });
+
+    expect(result).toEqual([]);
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'delete: id "nonexistent1" does not exist',
+    );
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'delete: id "nonexistent2" does not exist',
+    );
   });
 
   it("should throw error when trying to delete Producer Pal host track", () => {

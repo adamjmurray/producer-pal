@@ -45,13 +45,9 @@ export function formatNotation(clipNotes, options = {}) {
     return a.pitch - b.pitch;
   });
 
-  // Process each note individually to track state changes
-  const elements = [];
-  let currentTime = null;
-  let currentVelocity = DEFAULT_VELOCITY;
-  let currentDuration = DEFAULT_DURATION;
-  let currentProbability = DEFAULT_PROBABILITY;
-  let currentVelocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+  // Group notes by time position
+  const timeGroups = [];
+  let currentGroup = null;
 
   for (const note of sortedNotes) {
     // Convert absolute beats to bar|beat
@@ -63,78 +59,94 @@ export function formatNotation(clipNotes, options = {}) {
     const bar = Math.floor(startTime / beatsPerBar) + 1;
     const beat = (startTime % beatsPerBar) + 1;
 
-    // Check if we need to output time change
-    const newTime = { bar, beat };
+    // Check if this note is at the same time as current group
     if (
-      !currentTime ||
-      currentTime.bar !== newTime.bar ||
-      Math.abs(currentTime.beat - newTime.beat) > 0.001
+      !currentGroup ||
+      currentGroup.bar !== bar ||
+      Math.abs(currentGroup.beat - beat) > 0.001
     ) {
-      // Format beat - avoid unnecessary decimals
-      const beatFormatted =
-        beat % 1 === 0
-          ? beat.toString()
-          : beat.toFixed(3).replace(/\.?0+$/, "");
-      elements.push(`${bar}|${beatFormatted}`);
-      currentTime = newTime;
+      // Start new time group
+      currentGroup = { bar, beat, notes: [] };
+      timeGroups.push(currentGroup);
     }
 
-    // Check velocity/velocity range change
-    const noteVelocity = Math.round(note.velocity);
-    const noteVelocityDeviation = Math.round(
-      note.velocity_deviation ?? DEFAULT_VELOCITY_DEVIATION,
-    );
+    currentGroup.notes.push(note);
+  }
 
-    if (noteVelocityDeviation > 0) {
-      // Output velocity range if deviation is present
-      const velocityMin = noteVelocity;
-      const velocityMax = noteVelocity + noteVelocityDeviation;
-      const currentVelocityMin = currentVelocity;
-      const currentVelocityMax = currentVelocity + currentVelocityDeviation;
+  // Generate output in pitch-first format
+  const elements = [];
+  let currentVelocity = DEFAULT_VELOCITY;
+  let currentDuration = DEFAULT_DURATION;
+  let currentProbability = DEFAULT_PROBABILITY;
+  let currentVelocityDeviation = DEFAULT_VELOCITY_DEVIATION;
 
-      if (
-        velocityMin !== currentVelocityMin ||
-        velocityMax !== currentVelocityMax
-      ) {
-        elements.push(`v${velocityMin}-${velocityMax}`);
-        currentVelocity = velocityMin;
-        currentVelocityDeviation = noteVelocityDeviation;
+  for (const group of timeGroups) {
+    // Output state changes and notes for this time position
+    for (const note of group.notes) {
+      // Check velocity/velocity range change
+      const noteVelocity = Math.round(note.velocity);
+      const noteVelocityDeviation = Math.round(
+        note.velocity_deviation ?? DEFAULT_VELOCITY_DEVIATION,
+      );
+
+      if (noteVelocityDeviation > 0) {
+        // Output velocity range if deviation is present
+        const velocityMin = noteVelocity;
+        const velocityMax = noteVelocity + noteVelocityDeviation;
+        const currentVelocityMin = currentVelocity;
+        const currentVelocityMax = currentVelocity + currentVelocityDeviation;
+
+        if (
+          velocityMin !== currentVelocityMin ||
+          velocityMax !== currentVelocityMax
+        ) {
+          elements.push(`v${velocityMin}-${velocityMax}`);
+          currentVelocity = velocityMin;
+          currentVelocityDeviation = noteVelocityDeviation;
+        }
+      } else {
+        // Output single velocity if no deviation
+        if (noteVelocity !== currentVelocity || currentVelocityDeviation > 0) {
+          elements.push(`v${noteVelocity}`);
+          currentVelocity = noteVelocity;
+          currentVelocityDeviation = 0;
+        }
       }
-    } else {
-      // Output single velocity if no deviation
-      if (noteVelocity !== currentVelocity || currentVelocityDeviation > 0) {
-        elements.push(`v${noteVelocity}`);
-        currentVelocity = noteVelocity;
-        currentVelocityDeviation = 0;
+
+      // Check duration change
+      const noteDuration = note.duration;
+      if (Math.abs(noteDuration - currentDuration) > 0.001) {
+        // Format duration - avoid unnecessary decimals
+        const durationFormatted =
+          noteDuration % 1 === 0
+            ? noteDuration.toString()
+            : noteDuration.toFixed(3).replace(/\.?0+$/, "");
+        elements.push(`t${durationFormatted}`);
+        currentDuration = noteDuration;
       }
+
+      // Check probability change
+      const noteProbability = note.probability ?? DEFAULT_PROBABILITY;
+      if (Math.abs(noteProbability - currentProbability) > 0.001) {
+        // Format probability - avoid unnecessary decimals
+        const probabilityFormatted =
+          noteProbability % 1 === 0
+            ? noteProbability.toString()
+            : noteProbability.toFixed(3).replace(/\.?0+$/, "");
+        elements.push(`p${probabilityFormatted}`);
+        currentProbability = noteProbability;
+      }
+
+      // Add note name
+      elements.push(midiPitchToName(note.pitch));
     }
 
-    // Check duration change
-    const noteDuration = note.duration;
-    if (Math.abs(noteDuration - currentDuration) > 0.001) {
-      // Format duration - avoid unnecessary decimals
-      const durationFormatted =
-        noteDuration % 1 === 0
-          ? noteDuration.toString()
-          : noteDuration.toFixed(3).replace(/\.?0+$/, "");
-      elements.push(`t${durationFormatted}`);
-      currentDuration = noteDuration;
-    }
-
-    // Check probability change
-    const noteProbability = note.probability ?? DEFAULT_PROBABILITY;
-    if (Math.abs(noteProbability - currentProbability) > 0.001) {
-      // Format probability - avoid unnecessary decimals
-      const probabilityFormatted =
-        noteProbability % 1 === 0
-          ? noteProbability.toString()
-          : noteProbability.toFixed(3).replace(/\.?0+$/, "");
-      elements.push(`p${probabilityFormatted}`);
-      currentProbability = noteProbability;
-    }
-
-    // Add note name
-    elements.push(midiPitchToName(note.pitch));
+    // Output time position after all notes for this time
+    const beatFormatted =
+      group.beat % 1 === 0
+        ? group.beat.toString()
+        : group.beat.toFixed(3).replace(/\.?0+$/, "");
+    elements.push(`${group.bar}|${beatFormatted}`);
   }
 
   return elements.join(" ");

@@ -20,6 +20,26 @@ export class LiveAPI {
       : path?.replaceAll(/\s+/g, "/");
   }
 
+  static from(idOrPath) {
+    // Handle array format ["id", "123"] from Live API calls
+    if (Array.isArray(idOrPath)) {
+      if (idOrPath.length === 2 && idOrPath[0] === "id") {
+        return new LiveAPI(`id ${idOrPath[1]}`);
+      }
+      throw new Error(
+        `Invalid array format for LiveAPI.from(): expected ["id", value], got [${idOrPath}]`,
+      );
+    }
+
+    if (
+      typeof idOrPath === "number" ||
+      (typeof idOrPath === "string" && /^\d+$/.test(idOrPath))
+    ) {
+      return new LiveAPI(`id ${idOrPath}`);
+    }
+    return new LiveAPI(idOrPath);
+  }
+
   exists() {
     return this.id !== "id 0" && this.id !== "0";
   }
@@ -60,7 +80,7 @@ export class LiveAPI {
       return "LiveSet"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
     }
     if (this.path === "live_set view") {
-      return "SongView"; // AKA the Song. TODO: This should be "Song" to reflect how LiveAPI actually behaves
+      return "SongView";
     }
     if (this.path === "live_app") {
       return "Application";
@@ -78,6 +98,9 @@ export class LiveAPI {
       return "ClipSlot";
     }
     if (/^live_set tracks \d+ clip_slots \d+ clip$/.test(this.path)) {
+      return "Clip";
+    }
+    if (/^live_set tracks \d+ arrangement_clips \d+$/.test(this.path)) {
       return "Clip";
     }
     return `TODO: Unknown type for path: "${this.path}"`;
@@ -202,6 +225,12 @@ export function mockLiveApiGet(overrides = {}) {
             return [4];
           case "signature_denominator":
             return [4];
+          case "is_playing":
+          case "is_triggered":
+          case "is_recording":
+          case "is_overdubbing":
+          case "muted":
+            return [0];
         }
         break;
     }
@@ -216,12 +245,12 @@ export const expectedTrack = (overrides = {}) => ({
   trackIndex: 0,
   color: "#FF0000",
   isArmed: true,
-  followsArrangement: true,
+  arrangementFollower: true,
   playingSlotIndex: 2,
   firedSlotIndex: 3,
   arrangementClips: [],
   sessionClips: [],
-  instruments: null,
+  instrument: null,
   ...overrides,
 });
 
@@ -242,14 +271,14 @@ export const expectedClip = (overrides = {}) => ({
   type: "midi",
   view: "session",
   trackIndex: 2,
-  clipSlotIndex: 1,
+  sceneIndex: 1,
   name: "Test Clip",
   color: "#3DC300",
   length: "1:0", // 1 bar duration
   startMarker: "1|2", // bar|beat format (1 Ableton beat = bar 1 beat 2)
   loop: false,
-  loopStart: "1|2", // bar|beat format
-  isPlaying: false,
+  // loopStart omitted when it equals startMarker
+  // playing, triggered, recording, overdubbing, muted omitted when false
   timeSignature: "4/4",
   noteCount: 0,
   notes: "",

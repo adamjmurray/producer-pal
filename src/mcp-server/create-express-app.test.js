@@ -80,22 +80,21 @@ describe("MCP Express App", () => {
       expect(Array.isArray(result.tools)).toBe(true);
       const toolNames = result.tools.map((tool) => tool.name);
       expect(toolNames).toEqual([
-        "ppal-init",
-        "ppal-read-song",
-        "ppal-update-song",
+        "ppal-connect",
+        "ppal-read-live-set",
+        "ppal-update-live-set",
         "ppal-create-track",
         "ppal-read-track",
         "ppal-update-track",
         "ppal-create-scene",
         "ppal-read-scene",
         "ppal-update-scene",
-        "ppal-capture-scene",
         "ppal-create-clip",
         "ppal-read-clip",
         "ppal-update-clip",
         // "ppal-read-device",
-        "ppal-transport",
-        "ppal-view",
+        "ppal-playback",
+        "ppal-select",
         "ppal-delete",
         "ppal-duplicate",
         "ppal-memory",
@@ -106,13 +105,13 @@ describe("MCP Express App", () => {
     it("should provide tool schemas with correct names and descriptions", async () => {
       const result = await client.listTools();
 
-      const readSongTool = result.tools.find(
-        (tool) => tool.name === "ppal-read-song",
+      const readLiveSetTool = result.tools.find(
+        (tool) => tool.name === "ppal-read-live-set",
       );
-      expect(readSongTool).toBeDefined();
-      expect(readSongTool.description).toContain("Ableton Live Set");
-      expect(readSongTool.description).toContain("global settings");
-      expect(readSongTool.description).toContain("tracks, scenes, devices");
+      expect(readLiveSetTool).toBeDefined();
+      expect(readLiveSetTool.description).toContain("Read Live Set");
+      expect(readLiveSetTool.description).toContain("global settings");
+      expect(readLiveSetTool.description).toContain("tracks, scenes, devices");
 
       const updateClipTool = result.tools.find(
         (tool) => tool.name === "ppal-update-clip",
@@ -126,7 +125,7 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-create-track",
       );
       expect(createTrackTool).toBeDefined();
-      expect(createTrackTool.description).toContain("Creates new tracks");
+      expect(createTrackTool.description).toContain("Create track(s)");
       expect(createTrackTool.inputSchema.properties.trackIndex).toBeDefined();
       expect(createTrackTool.inputSchema.properties.count).toBeDefined();
 
@@ -134,7 +133,7 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-update-track",
       );
       expect(updateTrackTool).toBeDefined();
-      expect(updateTrackTool.description).toContain("Updates properties");
+      expect(updateTrackTool.description).toContain("Update track(s)");
       expect(updateTrackTool.inputSchema.properties.ids).toBeDefined();
     });
 
@@ -169,7 +168,7 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-create-clip",
       );
       expect(createClipTool).toBeDefined();
-      expect(createClipTool.description).toContain("Creates MIDI clips");
+      expect(createClipTool.description).toContain("Create MIDI clip(s)");
       expect(createClipTool.inputSchema.properties.view).toBeDefined();
       expect(createClipTool.inputSchema.properties.trackIndex).toBeDefined();
     });
@@ -235,7 +234,7 @@ describe("MCP Express App", () => {
         "mcp_request",
         expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
-        '{"trackType":"regular","trackIndex":1,"include":["session-clips","arrangement-clips","clip-notes","instruments","drum-maps"]}', // argsJSON
+        '{"category":"regular","trackIndex":1,"include":["session-clips","arrangement-clips","clip-notes","instruments","drum-maps"]}', // argsJSON
       );
     });
 
@@ -252,7 +251,7 @@ describe("MCP Express App", () => {
       Max.outlet = vi.fn();
 
       const result = await client.callTool({
-        name: "ppal-read-song",
+        name: "ppal-read-live-set",
         arguments: {},
       });
 
@@ -262,7 +261,7 @@ describe("MCP Express App", () => {
       expect(result.content).toBeDefined();
       expect(result.content[0].type).toBe("text");
       expect(result.content[0].text).toContain(
-        "Tool call 'ppal-read-song' timed out after 2ms",
+        "Tool call 'ppal-read-live-set' timed out after 2ms",
       );
     });
 

@@ -1,5 +1,4 @@
 import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
-import { withoutNulls } from "../shared/utils.js";
 
 /**
  * Creates new tracks at the specified index
@@ -76,18 +75,10 @@ export function createTrack({
     });
 
     // Build optimistic result object
-    createdTracks.push(
-      withoutNulls({
-        id: trackId,
-        trackIndex: currentIndex,
-        type,
-        name: trackName,
-        color,
-        mute,
-        solo,
-        arm,
-      }),
-    );
+    createdTracks.push({
+      id: trackId,
+      trackIndex: currentIndex,
+    });
 
     // For subsequent tracks, increment the index since tracks shift right
     currentIndex++;

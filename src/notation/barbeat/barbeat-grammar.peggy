@@ -18,18 +18,58 @@
 
 start
   = _ head:element? tail:(WS+ element)* _ {
-    return [head, ...tail.map(t => t[1])].filter(Boolean);
+    const elements = [head, ...tail.map(t => t[1])].filter(Boolean);
+    return elements.flat();
   }
 
 element
-  = time / probability / velocity / duration / note
+  = barCopy / time / probability / velocity / duration / note
+
+barCopy
+  = '@' 'clear' {
+    return { clearBuffer: true };
+  }
+  / '@' dest:barOrRange '=' source:barOrRange? {
+    const result = {};
+
+    // Process destination
+    if (dest.range !== undefined) {
+      result.barCopyRange = dest.range;
+    } else {
+      result.barCopy = dest.bar;
+    }
+
+    // Process source
+    if (source === null) {
+      result.sourcePrevious = true;
+    } else if (source.range !== undefined) {
+      result.sourceRange = source.range;
+    } else {
+      result.sourceBar = source.bar;
+    }
+
+    return result;
+  }
+
+barOrRange
+  = start:positiveInt '-' end:positiveInt {
+    return { range: [start, end] };
+  }
+  / bar:positiveInt {
+    return { bar: bar };
+  }
 
 time
-  = bar:positiveInt "|" beat:positiveFloat {
-    return { bar, beat };
+  = bar:positiveInt "|" beats:beatList {
+    return beats.map(beat => ({ bar, beat }));
   }
-  / "|" beat:positiveFloat {
-    return { bar: null, beat };
+  / "|" beats:beatList {
+    return beats.map(beat => ({ bar: null, beat }));
+  }
+
+beatList
+  = head:positiveFloat tail:("," positiveFloat)* {
+    return [head, ...tail.map(t => t[1])];
   }
 
 probability
@@ -58,7 +98,7 @@ velocity
   }
 
 duration
-  = "t" val:unsignedFloat {
+  = "t" val:unsignedFloatOrFraction {
     return { duration: val };
   }
 
@@ -99,8 +139,19 @@ unsignedFloat
     return Number.parseFloat(text());
   }
 
+unsignedFloatOrFraction
+  = [0-9]+ "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    return Number.parseInt(num) / Number.parseInt(den);
+  }
+  / unsignedFloat
+
 positiveFloat
-  = [1-9] [0-9]* ("." [0-9]*)? {
+  = [1-9] [0-9]* "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    return Number.parseInt(num) / Number.parseInt(den);
+  }
+  / [1-9] [0-9]* ("." [0-9]*)? {
     return Number.parseFloat(text());
   }
 
