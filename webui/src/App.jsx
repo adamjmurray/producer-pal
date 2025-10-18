@@ -8,16 +8,32 @@ export function App() {
 
   // Load initial content
   useEffect(() => {
-    setContent(window.mockData?.notes || "");
+    // Check if running in Max/jweb context
+    if (window.max) {
+      // Bind inlet to receive notes from Max
+      // Max should send: "setNotes <content>" to the jweb object
+      window.max.bindInlet("setNotes", (notes) => {
+        setContent(notes || "");
+      });
+    } else {
+      // Fallback for browser dev mode
+      setContent(window.mockData?.notes || "");
+    }
   }, []);
 
-  // Auto-save simulation
+  // Auto-save: send updates to Max or simulate save in dev mode
   useEffect(() => {
     if (!content) return;
     const timer = setTimeout(() => {
       setSaving(true);
+      if (window.max) {
+        // Send update to Max
+        window.max.outlet("v8", "projectNotes", content);
+      } else {
+        // Mock save for browser dev mode
+        console.log("Mock save:", content.slice(0, 50));
+      }
       setTimeout(() => setSaving(false), 500);
-      console.log("Mock save:", content.slice(0, 50));
     }, 500);
     return () => clearTimeout(timer);
   }, [content]);

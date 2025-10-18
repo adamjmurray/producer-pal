@@ -10,10 +10,59 @@
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 226.0, 324.0, 579.0, 521.0 ],
+		"rect" : [ 111.0, 363.0, 579.0, 521.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
+				"box" : 				{
+					"id" : "obj-24",
+					"linecount" : 2,
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 395.0, 133.5, 140.0, 35.0 ],
+					"text" : "\"Produce Pal - Project Notes.maxpat\""
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Open the project notes editor in a popup window",
+					"annotation_name" : "Open Notes Editor",
+					"appearance" : 2,
+					"automation" : "edit",
+					"automationon" : "edit",
+					"fontsize" : 16.0,
+					"id" : "obj-15",
+					"maxclass" : "live.text",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"parameter_enable" : 1,
+					"patching_rect" : [ 395.0, 92.5, 37.0, 30.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 225.704148411750793, 0.0, 24.0, 24.0 ],
+					"saved_attribute_attributes" : 					{
+						"valueof" : 						{
+							"parameter_annotation_name" : "Open Notes Editor",
+							"parameter_enum" : [ "edit", "edit" ],
+							"parameter_info" : "Open the project notes editor in a popup window",
+							"parameter_longname" : "live.text",
+							"parameter_mmax" : 1,
+							"parameter_modmode" : 0,
+							"parameter_shortname" : "live.text",
+							"parameter_type" : 2
+						}
+
+					}
+,
+					"text" : "⧉ ",
+					"varname" : "live.text"
+				}
+
+			}
+, 			{
 				"box" : 				{
 					"id" : "obj-20",
 					"maxclass" : "newobj",
@@ -90,14 +139,13 @@
 			}
 , 			{
 				"box" : 				{
-					"hidden" : 1,
 					"id" : "obj-9",
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
 					"patching_rect" : [ 399.0, 214.5, 84.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 139.0, 3.0, 84.0, 18.0 ],
+					"presentation_rect" : [ 124.0, 3.0, 84.0, 18.0 ],
 					"text" : "AI can edit notes",
 					"textjustification" : 0,
 					"varname" : "projectNotesWritableLabel"
@@ -108,7 +156,6 @@
 				"box" : 				{
 					"annotation" : "Allow AI to update the project notes and remember important details about your project.",
 					"annotation_name" : "AI can edit notes",
-					"hidden" : 1,
 					"id" : "obj-7",
 					"maxclass" : "live.toggle",
 					"numinlets" : 1,
@@ -117,7 +164,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 376.5, 216.0, 15.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 124.0, 3.0, 15.286624431610107, 17.363057315349579 ],
+					"presentation_rect" : [ 109.0, 3.0, 15.286624431610107, 17.363057315349579 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "AI can edit notes",
@@ -326,7 +373,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 304.5, 36.5, 45.0, 35.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 15.0, 2.0, 250.0, 150.0 ],
+					"presentation_rect" : [ 15.0, 2.0, 232.910828053951263, 150.0 ],
 					"proportion" : 0.39,
 					"rounded" : 0
 				}
@@ -370,6 +417,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-2", 0 ],
 					"source" : [ "obj-13", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-24", 0 ],
+					"source" : [ "obj-15", 0 ]
 				}
 
 			}
@@ -479,6 +533,7 @@
 			}
  ],
 		"parameters" : 		{
+			"obj-15" : [ "live.text", "live.text", 0 ],
 			"obj-2" : [ "projectNotes", "projectNotes", 0 ],
 			"obj-4" : [ "projectNotesEnabled", "projectNotesEnabled", 0 ],
 			"obj-7" : [ "projectNotesWritable", "projectNotesWritable", 0 ],
@@ -494,7 +549,14 @@
 			"inherited_shortname" : 1
 		}
 ,
-		"dependency_cache" : [  ],
+		"dependency_cache" : [ 			{
+				"name" : "Produce Pal - Project Notes.maxpat",
+				"bootpath" : "~/workspace/producer-pal/max-for-live-device",
+				"patcherrelativepath" : ".",
+				"type" : "JSON",
+				"implicit" : 1
+			}
+ ],
 		"autosave" : 0
 	}
 
