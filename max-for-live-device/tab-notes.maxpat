@@ -15,6 +15,17 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-21",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 24.0, 390.0, 131.0, 22.0 ],
+					"text" : "s ---notes-popup-editor"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-24",
 					"linecount" : 2,
 					"maxclass" : "newobj",
@@ -394,7 +405,16 @@
  ],
 		"lines" : [ 			{
 				"patchline" : 				{
+					"destination" : [ "obj-21", 0 ],
+					"order" : 1,
+					"source" : [ "obj-10", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-6", 0 ],
+					"order" : 0,
 					"source" : [ "obj-10", 0 ]
 				}
 

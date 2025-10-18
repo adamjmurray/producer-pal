@@ -15,6 +15,18 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-11",
+					"maxclass" : "newobj",
+					"numinlets" : 0,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 380.0, 173.0, 129.0, 22.0 ],
+					"text" : "r ---notes-popup-editor"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-8",
 					"maxclass" : "newobj",
 					"numinlets" : 2,
@@ -78,7 +90,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 195.0, 184.0, 160.0, 22.0 ],
+					"patching_rect" : [ 195.0, 173.0, 160.0, 22.0 ],
 					"text" : "readfile project-notes-ui.html"
 				}
 
@@ -120,7 +132,7 @@
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 72.0, 131.0, 597.0, 22.0 ],
+					"patching_rect" : [ 72.0, 123.0, 597.0, 22.0 ],
 					"text" : "window flags nomenu, window flags float, window size 250 250 900 600 window flags grow, window exec, front"
 				}
 
@@ -132,7 +144,7 @@
 					"numinlets" : 1,
 					"numoutlets" : 2,
 					"outlettype" : [ "", "" ],
-					"patching_rect" : [ 72.0, 239.0, 67.0, 22.0 ],
+					"patching_rect" : [ 72.0, 173.0, 67.0, 22.0 ],
 					"save" : [ "#N", "thispatcher", ";", "#Q", "end", ";" ],
 					"text" : "thispatcher"
 				}
@@ -156,6 +168,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-3", 0 ],
 					"source" : [ "obj-1", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-5", 0 ],
+					"source" : [ "obj-11", 0 ]
 				}
 
 			}

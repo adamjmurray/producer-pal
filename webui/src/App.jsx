@@ -11,8 +11,8 @@ export function App() {
     // Check if running in Max/jweb context
     if (window.max) {
       // Bind inlet to receive notes from Max
-      // Max should send: "setNotes <content>" to the jweb object
-      window.max.bindInlet("setNotes", (notes) => {
+      // Max should send: "projectNotes text <content>" to the jweb object
+      window.max.bindInlet("projectNotes", (_text, notes) => {
         setContent(notes || "");
       });
     } else {
