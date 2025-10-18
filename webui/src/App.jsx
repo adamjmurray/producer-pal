@@ -26,7 +26,7 @@ export function App() {
     <div className="flex flex-col h-screen">
       {/* Header */}
       <header className="bg-darker px-4 py-2 border-b border-border flex items-center">
-        <h1 className="text-sm font-semibold">Producer Pal</h1>
+        <h1 className="text-lg font-semibold">Producer Pal</h1>
         <span className="ml-2 text-xs opacity-60">Project Notes</span>
         <span className="ml-auto text-xs opacity-40">
           {saving ? "Saving..." : ""}
