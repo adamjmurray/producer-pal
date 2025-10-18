@@ -16,3 +16,4 @@ max-for-live-device/Ableton Folder Info/
 *.afdesign~lock~
 release
 scratchpad
+webui/dist
