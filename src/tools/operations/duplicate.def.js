@@ -25,7 +25,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     arrangementLength: z
       .string()
       .optional()
-      .describe("bar:beat duration in arrangement, auto-fills with loops"),
+      .describe(
+        "duration (beats or bar:beat) in arrangement, auto-fills with loops",
+      ),
     name: z.string().optional().describe("name (appended with counts > 1)"),
     withoutClips: z.boolean().default(false).describe("exclude clips?"),
     withoutDevices: z.boolean().default(false).describe("exclude devices?"),

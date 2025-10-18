@@ -35,8 +35,11 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Default: 100
   - Requires whitespace separation from following elements
 
-- **Duration (`t<float>`)**
-  - Sets duration in beats for following notes until changed
+- **Duration (`t`)**
+  - Sets duration for following notes until changed
+  - Beat-only format: `t2.5` (2.5 beats), `t3/4` (0.75 beats)
+  - Bar:beat format: `t2:1.5` (2 bars + 1.5 beats), `t1:3/4` (1 bar + 0.75
+    beats)
   - Default: 1.0
   - Requires whitespace separation from following elements
 
@@ -424,6 +427,17 @@ v80 t2.0 G3 2|1
 
 // Sub-beat timing with floating points
 v100 t0.25 C3 1|1 D3 1|1.5 E3 1|2.25 F3 1|3.75
+
+// Duration examples - beat-only format
+t2.5 C3 1|1    // 2.5 beats duration (decimal)
+t3/4 C3 1|1    // 0.75 beats duration (fraction)
+t1/3 C3 1|1,4/3,5/3  // Triplet eighth notes
+
+// Duration examples - bar:beat format
+t2:0 C3 1|1    // 2 bar duration (whole note in 4/4)
+t1:0 C3 1|1    // 1 bar duration (half note in 4/4)
+t2:1.5 C3 1|1  // 2 bars + 1.5 beats
+t1:3/4 C3 1|1  // 1 bar + 0.75 beats
 
 // Drum pattern with probability and velocity variation
 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1

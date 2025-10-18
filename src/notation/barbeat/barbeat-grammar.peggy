@@ -98,8 +98,11 @@ velocity
   }
 
 duration
-  = "t" val:unsignedFloatOrFraction {
-    return { duration: val };
+  = "t" bars:unsignedInt ":" beats:unsignedFloatOrFraction {
+    return { duration: `${bars}:${beats}` };  // String for bar:beat format
+  }
+  / "t" val:unsignedFloatOrFraction {
+    return { duration: val };  // Number for beat-only (existing)
   }
 
 note

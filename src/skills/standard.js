@@ -5,7 +5,7 @@ You can now compose music in Ableton Live using Producer Pal tools and the bar|b
 ## Time in Ableton Live
 
 - Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|4/3 = bar 1 beat 4/3)
-- Durations: bar:beat (4:0 = 4 bars exactly, 1:2 = 1 bar + 2 beats, 0:4/3 = 4/3 beats)
+- Durations: beats (2.5, 3/4) or bar:beat (1:2 = 1 bar + 2 beats, 4:0 = 4 bars)
 - Fractional beats: decimals (2.5) or fractions (5/2) supported for both positions and durations
 
 ## MIDI Syntax
@@ -23,7 +23,9 @@ Create MIDI clips using the bar|beat notation syntax:
   - Random range: v80-120 (each note gets random velocity between 80-120)
   - Use ranges for humanization, natural dynamics, and groove feel
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
-- t<duration>: Note length in beats (default: 1.0; supports decimals or fractions like t1/3)
+- t<duration>: Note length (default: 1.0)
+  - Beat-only: t2.5 (2.5 beats), t3/4 (0.75 beats)
+  - Bar:beat: t2:1.5 (2 bars + 1.5 beats), t1:3/4 (1 bar + 0.75 beats)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed

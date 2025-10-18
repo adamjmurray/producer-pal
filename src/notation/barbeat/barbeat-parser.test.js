@@ -183,6 +183,45 @@ describe("BarBeatScript Parser", () => {
         { pitch: 60 },
       ]);
     });
+
+    it("parses bar:beat duration format (NEW)", () => {
+      expect(parser.parse("t2:1.5 C3")).toStrictEqual([
+        { duration: "2:1.5" },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t1:0 C3")).toStrictEqual([
+        { duration: "1:0" },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t0:2 C3")).toStrictEqual([
+        { duration: "0:2" },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("parses bar:beat duration with fractions (NEW)", () => {
+      expect(parser.parse("t1:3/4 C3")).toStrictEqual([
+        { duration: "1:0.75" },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t2:1/3 C3")).toStrictEqual([
+        { duration: `2:${1 / 3}` },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("distinguishes between beat-only and bar:beat formats", () => {
+      // Beat-only: number
+      expect(parser.parse("t2.5 C3")).toStrictEqual([
+        { duration: 2.5 },
+        { pitch: 60 },
+      ]);
+      // Bar:beat: string
+      expect(parser.parse("t2:0.5 C3")).toStrictEqual([
+        { duration: "2:0.5" },
+        { pitch: 60 },
+      ]);
+    });
   });
 
   describe("pitch", () => {
