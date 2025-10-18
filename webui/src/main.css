@@ -1,4 +1,8 @@
 /* webui/src/main.css */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-dark: #1e1e1e;
+  --color-darker: #252526;
+  --color-border: #3e3e42;
+}
