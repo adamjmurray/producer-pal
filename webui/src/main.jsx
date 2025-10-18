@@ -1,7 +1,6 @@
-// webui/src/main.jsx
 import { render } from "preact";
-import "./main.css";
 import { App } from "./App";
+import "./main.css";
 
 // Mock API for development
 window.mockData = {

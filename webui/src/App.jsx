@@ -1,6 +1,5 @@
-// webui/src/App.jsx
-import { useState, useEffect } from "preact/hooks";
 import { marked } from "marked";
+import { useEffect, useState } from "preact/hooks";
 
 export function App() {
   const [content, setContent] = useState("");
