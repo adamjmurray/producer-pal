@@ -2,32 +2,11 @@
 
 Rough plans that are subject to change.
 
-## 1.0
-
-- Support Producer Pal with LLMs other than Claude
-- Optimize performance by reducing AI context window usage
-
 ## 1.x / 2.0
 
 In no particular order:
 
-### General Features
-
-- Arrangement clip length modification support
-- Version update notifications in the UI
-
-### Behavior Customization
-
-- Custom global Producer Pal prompt ("global notes"?) across all Live Sets using
-  file storage (e.g. ~/Documents/Producer Pal/settings) exposed via the
-  `ppal-connect` and `ppal-memory` tools. Can be AI-writable (e.g. ask AI to
-  remember a rule across all of your Live projects)
-- Large UI editor in a popup window for project and global notes. Markdown
-  support.
-- Tool/parameter description overrides to completely customize how Producer Pal
-  behaves, for R&D and tuning the behavior for specific AI models.
-
-### Advanced MIDI Manipulation
+### MIDI Manipulation
 
 - Randomize velocity and timing when creating and updating clips
 - Shuffle and groove support (non-random timing manipulation)
@@ -36,12 +15,26 @@ In no particular order:
 - Run sand-boxed LLM-generated JavaScript code to generate and transform MIDI
   (LLM-generated algorithms)
 
-## Maybe Later
+### Built-in Chat
 
-### Built-in Chat UI
+- Setup an API key or point at a local LM Studio server and chat directly from
+  the Max for Live device via a popup window
 
-- Add e.g. a Gemini API key and start chatting directly from the Max for Live
-  device via a popup window.
+### Behavior Customization
+
+- Customizable "Producer Pal Skills" to adjust Producer Pal's behavior globally
+  across all Live Sets
+- A large markdown-based UI editor in a popup window for project notes and the
+  skills
+
+### General Features
+
+- Arrangement clip length modification support
+- Stop/restart MCP server when Producer Pal Max for Live device is
+  disabled/re-enabled (easy kill switch)
+- Version update notifications in the UI
+
+## Future Ideas
 
 ### Device Control
 
@@ -50,24 +43,16 @@ In no particular order:
 - Store and recall rack variations
 - Insert devices into tracks whenever the Live API supports it
 
-### Adaptive Learning System
-
-- AI learns from your production patterns to remember your preferences and past
-  corrections
-- Create specialized personas (Jazz Producer, Techno Minimalist, etc.) with
-  independent memory and preferences
-- Import/export memory/personas for sharing or backup
-
-### Enhanced Notation
-
-- Percussion-specific notation (e.g., `X...x...` for 16th note patterns)
-- Chord progression notation
-
 ### Microtonal support
 
-- Support working with scales with more than 12 notes per octave, such as 19-EDO
+- Support working with scales with other than 12 notes per octave, such as
+  19-EDO
 
-## Version History
+### Adaptive Learning System
 
-See [Releases](https://github.com/adamjmurray/producer-pal/releases) for
-detailed changelog of past versions.
+- AI (optionally) automatically learns from your conversations to remember your
+  preferences and project goals
+- Completely open: rewrite or delete memories as you see fit
+- Create specialized personas (Jazz Producer, Techno Minimalist, etc.) with
+  independent memory systems (skills + memory?)
+- Import/export personas for sharing or backup

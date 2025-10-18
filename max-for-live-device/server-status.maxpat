@@ -15,6 +15,25 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"angle" : 270.0,
+					"annotation" : "Displays the current status of the Producer Pal server that AI uses to control Live. If it says anything other than \"Producer Pal Running\", AI will not be able to connect. Click the \"start\" button in the \"Advanced\" tab to manually start the server.",
+					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
+					"id" : "obj-2",
+					"ignoreclick" : 0,
+					"maxclass" : "panel",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 146.0, 218.0, 128.0, 128.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 6.0, 45.0, 176.0, 26.0 ],
+					"proportion" : 0.39,
+					"varname" : "Producer Pal Status"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-11",
 					"maxclass" : "message",
 					"numinlets" : 2,

@@ -1,4 +1,7 @@
-import { readDevice as readDeviceShared } from "../shared/device-reader.js";
+import {
+  cleanupInternalDrumChains,
+  readDevice as readDeviceShared,
+} from "../shared/device-reader.js";
 
 /**
  * Read information about a specific device by ID.
@@ -38,8 +41,11 @@ export function readDevice({ deviceId, include = ["chains"] }) {
   const includeDrumChains =
     include.includes("*") || include.includes("drum-chains");
 
-  return readDeviceShared(device, {
+  const deviceInfo = readDeviceShared(device, {
     includeChains,
     includeDrumChains,
   });
+
+  // Clean up internal _processedDrumChains property
+  return cleanupInternalDrumChains(deviceInfo);
 }

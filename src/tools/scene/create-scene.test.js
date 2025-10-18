@@ -67,14 +67,7 @@ describe("createScene", () => {
       "time_signature_enabled",
       true,
     );
-    expect(result).toEqual({
-      id: "scene1",
-      sceneIndex: 1,
-      name: "New Scene",
-      color: "#FF0000",
-      tempo: 120,
-      timeSignature: "3/4",
-    });
+    expect(result).toEqual({ id: "scene1", sceneIndex: 1 });
   });
 
   it("should create multiple scenes with auto-incrementing names", () => {
@@ -121,24 +114,9 @@ describe("createScene", () => {
     );
 
     expect(result).toEqual([
-      {
-        id: "scene1",
-        sceneIndex: 0,
-        name: "Verse",
-        color: "#00FF00",
-      },
-      {
-        id: "scene1",
-        sceneIndex: 1,
-        name: "Verse 2",
-        color: "#00FF00",
-      },
-      {
-        id: "scene1",
-        sceneIndex: 2,
-        name: "Verse 3",
-        color: "#00FF00",
-      },
+      { id: "scene1", sceneIndex: 0 },
+      { id: "scene1", sceneIndex: 1 },
+      { id: "scene1", sceneIndex: 2 },
     ]);
   });
 
@@ -151,10 +129,7 @@ describe("createScene", () => {
       0,
     );
     expect(liveApiSet).not.toHaveBeenCalled();
-    expect(result).toEqual({
-      id: "scene1",
-      sceneIndex: 0,
-    });
+    expect(result).toEqual({ id: "scene1", sceneIndex: 0 });
   });
 
   it("should pad with empty scenes when sceneIndex exceeds current count", () => {
@@ -275,16 +250,12 @@ describe("createScene", () => {
       name: "Multiple",
     });
 
-    expect(singleResult).toEqual({
-      id: "scene1",
-      sceneIndex: 0,
-      name: "Single",
-    });
+    expect(singleResult).toEqual({ id: "scene1", sceneIndex: 0 });
 
     expect(Array.isArray(arrayResult)).toBe(true);
     expect(arrayResult).toHaveLength(2);
-    expect(arrayResult[0].name).toBe("Multiple");
-    expect(arrayResult[1].name).toBe("Multiple 2");
+    expect(arrayResult[0]).toEqual({ id: "scene1", sceneIndex: 1 });
+    expect(arrayResult[1]).toEqual({ id: "scene1", sceneIndex: 2 });
   });
 
   it("should handle single scene name without incrementing", () => {
@@ -299,7 +270,7 @@ describe("createScene", () => {
       "name",
       "Solo Scene",
     );
-    expect(result.name).toBe("Solo Scene");
+    expect(result).toEqual({ id: "scene1", sceneIndex: 0 });
   });
 
   it("should include disabled tempo and timeSignature in result", () => {
@@ -309,12 +280,7 @@ describe("createScene", () => {
       timeSignature: "disabled",
     });
 
-    expect(result).toEqual({
-      id: "scene1",
-      sceneIndex: 0,
-      tempo: "disabled",
-      timeSignature: "disabled",
-    });
+    expect(result).toEqual({ id: "scene1", sceneIndex: 0 });
   });
 
   describe("capture mode", () => {
@@ -331,6 +297,7 @@ describe("createScene", () => {
       });
       mockLiveApiGet({
         "live_set scenes 2": { name: "Captured Scene" },
+        LiveSet: { tracks: [] }, // No tracks means no clips
       });
     });
 
@@ -345,6 +312,7 @@ describe("createScene", () => {
       expect(result).toEqual({
         id: "live_set/scenes/2",
         sceneIndex: 2,
+        clips: [],
       });
     });
 
@@ -370,7 +338,7 @@ describe("createScene", () => {
       expect(result).toEqual({
         id: "live_set/scenes/2",
         sceneIndex: 2,
-        name: "Custom Capture",
+        clips: [],
       });
     });
 
@@ -402,10 +370,7 @@ describe("createScene", () => {
       expect(result).toEqual({
         id: "live_set/scenes/2",
         sceneIndex: 2,
-        name: "Captured with Props",
-        color: "#FF0000",
-        tempo: 140,
-        timeSignature: "3/4",
+        clips: [],
       });
     });
 
@@ -430,8 +395,37 @@ describe("createScene", () => {
       expect(result).toEqual({
         id: "live_set/scenes/2",
         sceneIndex: 2,
-        tempo: "disabled",
-        timeSignature: "disabled",
+        clips: [],
+      });
+    });
+
+    it("should return clips when capturing with existing clips", () => {
+      liveApiId.mockImplementation(function () {
+        // Mock clips at track 0 and 2 to exist, track 1 to not exist (id 0)
+        if (this._path === "live_set tracks 1 clip_slots 2 clip") {
+          return "0";
+        }
+        return this._id;
+      });
+      mockLiveApiGet({
+        "live_set scenes 2": { name: "Captured Scene" },
+        LiveSet: {
+          tracks: ["id", "1", "id", "2", "id", "3"],
+        },
+      });
+
+      const result = createScene({
+        capture: true,
+        name: "With Clips",
+      });
+
+      expect(result).toEqual({
+        id: "live_set/scenes/2",
+        sceneIndex: 2,
+        clips: [
+          { id: "live_set/tracks/0/clip_slots/2/clip", trackIndex: 0 },
+          { id: "live_set/tracks/2/clip_slots/2/clip", trackIndex: 2 },
+        ],
       });
     });
   });
@@ -444,7 +438,8 @@ describe("createScene", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result).toMatchObject({
+      expect(result).toEqual({
+        id: "scene1",
         sceneIndex: 0,
       });
     });
@@ -459,6 +454,7 @@ describe("createScene", () => {
       });
       mockLiveApiGet({
         "live_set scenes 2": { name: "Captured Scene" },
+        LiveSet: { tracks: [] }, // No tracks means no clips
       });
 
       const result = createScene({
@@ -467,8 +463,10 @@ describe("createScene", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result).toMatchObject({
+      expect(result).toEqual({
+        id: "scene1",
         sceneIndex: 2,
+        clips: [],
       });
     });
 

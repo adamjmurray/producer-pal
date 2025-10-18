@@ -10,28 +10,36 @@ import {
 } from "../shared/include-params.js";
 import { readTrack, readTrackGeneric } from "../track/read-track.js";
 
+/**
+ * Read comprehensive information about the Live Set
+ * @param {Object} args - The parameters
+ * @param {Array<string>} [args.include] - Array of data to include in the response
+ * @returns {Object} Live Set information including tracks, scenes, tempo, time signature, and scale
+ */
 export function readLiveSet(args = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
   const liveSet = new LiveAPI("live_set");
-  const liveApp = new LiveAPI("live_app");
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
 
+  const liveSetName = liveSet.getProperty("name");
   const result = {
     id: liveSet.id,
-    abletonLiveVersion: liveApp.call("get_version_string"),
-    name: liveSet.getProperty("name"),
-    arrangementFollower: liveSet.getProperty("back_to_arranger") === 0,
+    ...(liveSetName && { name: liveSetName }),
     tempo: liveSet.getProperty("tempo"),
     timeSignature: liveSet.timeSignature,
-    scenes: includeFlags.includeScenes
-      ? sceneIds.map((_sceneId, sceneIndex) =>
-          readScene({ sceneIndex, include: includeArray }),
-        )
-      : sceneIds.map((sceneId) => ({ id: sceneId.replace("id ", "") })),
   };
+
+  // Include full scene details or just the count
+  if (includeFlags.includeScenes) {
+    result.scenes = sceneIds.map((_sceneId, sceneIndex) =>
+      readScene({ sceneIndex, include: includeArray }),
+    );
+  } else {
+    result.sceneCount = sceneIds.length;
+  }
 
   // Only include isPlaying when true
   const isPlaying = liveSet.getProperty("is_playing") > 0;
@@ -83,7 +91,10 @@ export function readLiveSet(args = {}) {
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
     result.scale = `${scaleRoot} ${scaleName}`;
     const scaleIntervals = liveSet.getProperty("scale_intervals");
-    result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
+    result.scalePitches = intervalsToPitchClasses(
+      scaleIntervals,
+      rootNote,
+    ).join(",");
   }
 
   return result;

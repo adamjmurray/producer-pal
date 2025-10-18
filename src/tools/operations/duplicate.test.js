@@ -54,14 +54,9 @@ describe("duplicate", () => {
       const result = duplicate({ type: "track", id: "track1" });
 
       expect(result).toStrictEqual({
-        type: "track",
-        id: "track1",
-        count: 1,
-        duplicated: true,
-        newTrackId: "live_set/tracks/1",
-        newTrackIndex: 1,
-        duplicatedClips: [],
-        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -86,34 +81,23 @@ describe("duplicate", () => {
         name: "Custom Track",
       });
 
-      expect(result).toStrictEqual({
-        type: "track",
-        id: "track1",
-        count: 3,
-        name: "Custom Track",
-        duplicated: true,
-        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
-        objects: [
-          {
-            newTrackId: "live_set/tracks/1",
-            newTrackIndex: 1,
-            name: "Custom Track",
-            duplicatedClips: [],
-          },
-          {
-            newTrackId: "live_set/tracks/2",
-            newTrackIndex: 2,
-            name: "Custom Track 2",
-            duplicatedClips: [],
-          },
-          {
-            newTrackId: "live_set/tracks/3",
-            newTrackIndex: 3,
-            name: "Custom Track 3",
-            duplicatedClips: [],
-          },
-        ],
-      });
+      expect(result).toStrictEqual([
+        {
+          id: "live_set/tracks/1",
+          trackIndex: 1,
+          clips: [],
+        },
+        {
+          id: "live_set/tracks/2",
+          trackIndex: 2,
+          clips: [],
+        },
+        {
+          id: "live_set/tracks/3",
+          trackIndex: 3,
+          clips: [],
+        },
+      ]);
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set" }),
@@ -174,15 +158,9 @@ describe("duplicate", () => {
       });
 
       expect(result).toStrictEqual({
-        type: "track",
-        id: "track1",
-        count: 1,
-        withoutClips: true,
-        duplicated: true,
-        newTrackId: "live_set/tracks/1",
-        newTrackIndex: 1,
-        duplicatedClips: [],
-        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -244,14 +222,9 @@ describe("duplicate", () => {
       });
 
       expect(result).toStrictEqual({
-        type: "track",
-        id: "track1",
-        count: 1,
-        withoutDevices: true,
-        duplicated: true,
-        newTrackId: "live_set/tracks/1",
-        newTrackIndex: 1,
-        duplicatedClips: [],
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -299,14 +272,9 @@ describe("duplicate", () => {
       });
 
       expect(result).toStrictEqual({
-        type: "track",
-        id: "track1",
-        count: 1,
-        duplicated: true,
-        newTrackId: "live_set/tracks/1",
-        newTrackIndex: 1,
-        duplicatedClips: [],
-        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -344,17 +312,10 @@ describe("duplicate", () => {
       });
 
       expect(result).toStrictEqual({
-        type: "track",
-        id: "track1",
-        count: 1,
-        withoutDevices: false,
-        duplicated: true,
-        newTrackId: "live_set/tracks/1",
-        newTrackIndex: 1,
-        duplicatedClips: [],
-        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
       });
-      // withoutDevices should not appear in result when false (default)
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set" }),
@@ -367,6 +328,94 @@ describe("duplicate", () => {
         "delete_device",
         expect.anything(),
       );
+    });
+
+    it("should remove Producer Pal device when duplicating host track", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        if (this._id === "this_device") {
+          return "live_set tracks 0 devices 1";
+        }
+        return this._path;
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "this_device") {
+          return "id device1";
+        }
+        return this._id;
+      });
+
+      // Mock track with devices including Producer Pal device
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1", "device2"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+      });
+
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "duplicate_track",
+        0,
+      );
+
+      // Verify delete_device was called to remove Producer Pal device
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 1" }),
+        "delete_device",
+        1, // Index 1 where the Producer Pal device is
+      );
+    });
+
+    it("should not remove Producer Pal device when withoutDevices is true", () => {
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track1") {
+          return "live_set tracks 0";
+        }
+        if (this._id === "this_device") {
+          return "live_set tracks 0 devices 1";
+        }
+        return this._path;
+      });
+
+      // Mock track with devices
+      mockLiveApiGet({
+        "live_set tracks 1": {
+          devices: children("device0", "device1", "device2"),
+        },
+      });
+
+      const result = duplicate({
+        type: "track",
+        id: "track1",
+        withoutDevices: true,
+      });
+
+      expect(result).toStrictEqual({
+        id: "live_set/tracks/1",
+        trackIndex: 1,
+        clips: [],
+      });
+
+      // Verify delete_device was called 3 times (once for each device)
+      // but NOT specifically for Producer Pal before the withoutDevices logic
+      const deleteDeviceCalls = liveApiCall.mock.calls.filter(
+        (call) => call[0] === "delete_device",
+      );
+      expect(deleteDeviceCalls).toHaveLength(3);
     });
 
     describe("routeToSource functionality", () => {
@@ -412,16 +461,9 @@ describe("duplicate", () => {
         });
 
         expect(result).toStrictEqual({
-          type: "track",
-          id: "track1",
-          count: 1,
-          routeToSource: true,
-          withoutClips: true,
-          withoutDevices: true,
-          duplicated: true,
-          newTrackId: "live_set/tracks/1",
-          newTrackIndex: 1,
-          duplicatedClips: [],
+          id: "live_set/tracks/1",
+          trackIndex: 1,
+          clips: [],
         });
 
         // Test currently simplified to verify basic functionality
@@ -514,8 +556,11 @@ describe("duplicate", () => {
           withoutClips: false, // This should be overridden
         });
 
-        expect(result.withoutClips).toBe(true);
-        expect(result.routeToSource).toBe(true);
+        expect(result).toMatchObject({
+          id: expect.any(String),
+          trackIndex: expect.any(Number),
+          clips: [],
+        });
       });
 
       it("should override withoutDevices to true when routeToSource is true", () => {
@@ -533,8 +578,11 @@ describe("duplicate", () => {
           withoutDevices: false, // This should be overridden
         });
 
-        expect(result.withoutDevices).toBe(true);
-        expect(result.routeToSource).toBe(true);
+        expect(result).toMatchObject({
+          id: expect.any(String),
+          trackIndex: expect.any(Number),
+          clips: [],
+        });
       });
 
       it("should arm the source track when routeToSource is true", () => {
@@ -650,24 +698,16 @@ describe("duplicate", () => {
       const result = duplicate({ type: "scene", id: "scene1" });
 
       expect(result).toStrictEqual({
-        type: "scene",
-        id: "scene1",
-        count: 1,
-        duplicated: true,
-        newSceneId: "live_set/scenes/1",
-        newSceneIndex: 1,
-        duplicatedClips: [
+        id: "live_set/scenes/1",
+        sceneIndex: 1,
+        clips: [
           {
             id: "live_set/tracks/0/clip_slots/1/clip",
-            view: "session",
             trackIndex: 0,
-            sceneIndex: 1,
           },
           {
             id: "live_set/tracks/1/clip_slots/1/clip",
-            view: "session",
             trackIndex: 1,
-            sceneIndex: 1,
           },
         ],
       });
@@ -705,53 +745,36 @@ describe("duplicate", () => {
         name: "Custom Scene",
       });
 
-      expect(result).toStrictEqual({
-        type: "scene",
-        id: "scene1",
-        count: 2,
-        name: "Custom Scene",
-        duplicated: true,
-        objects: [
-          {
-            newSceneId: "live_set/scenes/1",
-            newSceneIndex: 1,
-            name: "Custom Scene",
-            duplicatedClips: [
-              {
-                id: "live_set/tracks/0/clip_slots/1/clip",
-                view: "session",
-                trackIndex: 0,
-                sceneIndex: 1,
-              },
-              {
-                id: "live_set/tracks/1/clip_slots/1/clip",
-                view: "session",
-                trackIndex: 1,
-                sceneIndex: 1,
-              },
-            ],
-          },
-          {
-            newSceneId: "live_set/scenes/2",
-            newSceneIndex: 2,
-            name: "Custom Scene 2",
-            duplicatedClips: [
-              {
-                id: "live_set/tracks/0/clip_slots/2/clip",
-                view: "session",
-                trackIndex: 0,
-                sceneIndex: 2,
-              },
-              {
-                id: "live_set/tracks/1/clip_slots/2/clip",
-                view: "session",
-                trackIndex: 1,
-                sceneIndex: 2,
-              },
-            ],
-          },
-        ],
-      });
+      expect(result).toStrictEqual([
+        {
+          id: "live_set/scenes/1",
+          sceneIndex: 1,
+          clips: [
+            {
+              id: "live_set/tracks/0/clip_slots/1/clip",
+              trackIndex: 0,
+            },
+            {
+              id: "live_set/tracks/1/clip_slots/1/clip",
+              trackIndex: 1,
+            },
+          ],
+        },
+        {
+          id: "live_set/scenes/2",
+          sceneIndex: 2,
+          clips: [
+            {
+              id: "live_set/tracks/0/clip_slots/2/clip",
+              trackIndex: 0,
+            },
+            {
+              id: "live_set/tracks/1/clip_slots/2/clip",
+              trackIndex: 1,
+            },
+          ],
+        },
+      ]);
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set" }),
@@ -801,14 +824,9 @@ describe("duplicate", () => {
       });
 
       expect(result).toStrictEqual({
-        type: "scene",
-        id: "scene1",
-        count: 1,
-        withoutClips: true,
-        duplicated: true,
-        newSceneId: "live_set/scenes/1",
-        newSceneIndex: 1,
-        duplicatedClips: [],
+        id: "live_set/scenes/1",
+        sceneIndex: 1,
+        clips: [],
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -984,25 +1002,15 @@ describe("duplicate", () => {
         );
 
         expect(result).toStrictEqual({
-          type: "scene",
-          id: "scene1",
-          count: 1,
-          destination: "arrangement",
           arrangementStartTime: "5|1",
-          duplicated: true,
-          arrangementStartTime: "5|1",
-          duplicatedClips: [
+          clips: [
             {
               id: "live_set tracks 0 arrangement_clips 0",
-              view: "arrangement",
               trackIndex: 0,
-              arrangementStartTime: "5|1",
             },
             {
               id: "live_set tracks 2 arrangement_clips 0",
-              view: "arrangement",
               trackIndex: 2,
-              arrangementStartTime: "5|1",
             },
           ],
         });
@@ -1127,56 +1135,38 @@ describe("duplicate", () => {
           8,
         );
 
-        expect(result).toStrictEqual({
-          type: "scene",
-          id: "scene1",
-          count: 3,
-          destination: "arrangement",
-          arrangementStartTime: "5|1",
-          name: "Scene Copy",
-          duplicated: true,
-          objects: [
-            {
-              arrangementStartTime: "5|1",
-              name: "Scene Copy",
-              duplicatedClips: [
-                {
-                  id: "live_set tracks 0 arrangement_clips 0",
-                  view: "arrangement",
-                  trackIndex: 0,
-                  arrangementStartTime: "5|1",
-                  name: "Scene Copy",
-                },
-              ],
-            },
-            {
-              arrangementStartTime: "7|1",
-              name: "Scene Copy 2",
-              duplicatedClips: [
-                {
-                  id: "live_set tracks 0 arrangement_clips 1",
-                  view: "arrangement",
-                  trackIndex: 0,
-                  arrangementStartTime: "7|1",
-                  name: "Scene Copy 2",
-                },
-              ],
-            },
-            {
-              arrangementStartTime: "9|1",
-              name: "Scene Copy 3",
-              duplicatedClips: [
-                {
-                  id: "live_set tracks 0 arrangement_clips 2",
-                  view: "arrangement",
-                  trackIndex: 0,
-                  arrangementStartTime: "9|1",
-                  name: "Scene Copy 3",
-                },
-              ],
-            },
-          ],
-        });
+        expect(result).toStrictEqual([
+          {
+            arrangementStartTime: "5|1",
+            clips: [
+              {
+                id: "live_set tracks 0 arrangement_clips 0",
+                trackIndex: 0,
+                name: "Scene Copy",
+              },
+            ],
+          },
+          {
+            arrangementStartTime: "7|1",
+            clips: [
+              {
+                id: "live_set tracks 0 arrangement_clips 1",
+                trackIndex: 0,
+                name: "Scene Copy 2",
+              },
+            ],
+          },
+          {
+            arrangementStartTime: "9|1",
+            clips: [
+              {
+                id: "live_set tracks 0 arrangement_clips 2",
+                trackIndex: 0,
+                name: "Scene Copy 3",
+              },
+            ],
+          },
+        ]);
       });
 
       it("should handle empty scenes gracefully", () => {
@@ -1204,14 +1194,8 @@ describe("duplicate", () => {
         });
 
         expect(result).toStrictEqual({
-          type: "scene",
-          id: "scene1",
-          count: 1,
-          destination: "arrangement",
           arrangementStartTime: "5|1",
-          duplicated: true,
-          arrangementStartTime: "5|1",
-          duplicatedClips: [],
+          clips: [],
         });
       });
 
@@ -1253,15 +1237,8 @@ describe("duplicate", () => {
         // Verify that show_view was still called
 
         expect(result).toStrictEqual({
-          type: "scene",
-          id: "scene1",
-          count: 1,
-          destination: "arrangement",
           arrangementStartTime: "5|1",
-          withoutClips: true,
-          duplicated: true,
-          arrangementStartTime: "5|1",
-          duplicatedClips: [],
+          clips: [],
         });
       });
     });
@@ -1316,17 +1293,9 @@ describe("duplicate", () => {
         );
 
         expect(result).toStrictEqual({
-          type: "clip",
-          id: "clip1",
-          count: 1,
-          destination: "session",
-          duplicated: true,
-          duplicatedClip: {
-            id: "live_set/tracks/0/clip_slots/1/clip",
-            view: "session",
-            trackIndex: 0,
-            sceneIndex: 1,
-          },
+          id: "live_set/tracks/0/clip_slots/1/clip",
+          trackIndex: 0,
+          sceneIndex: 1,
         });
       });
 
@@ -1346,34 +1315,18 @@ describe("duplicate", () => {
           name: "Custom Clip",
         });
 
-        expect(result).toStrictEqual({
-          type: "clip",
-          id: "clip1",
-          count: 2,
-          destination: "session",
-          name: "Custom Clip",
-          duplicated: true,
-          objects: [
-            {
-              duplicatedClip: {
-                id: "live_set/tracks/0/clip_slots/1/clip",
-                view: "session",
-                trackIndex: 0,
-                sceneIndex: 1,
-                name: "Custom Clip",
-              },
-            },
-            {
-              duplicatedClip: {
-                id: "live_set/tracks/0/clip_slots/2/clip",
-                view: "session",
-                trackIndex: 0,
-                sceneIndex: 2,
-                name: "Custom Clip 2",
-              },
-            },
-          ],
-        });
+        expect(result).toStrictEqual([
+          {
+            id: "live_set/tracks/0/clip_slots/1/clip",
+            trackIndex: 0,
+            sceneIndex: 1,
+          },
+          {
+            id: "live_set/tracks/0/clip_slots/2/clip",
+            trackIndex: 0,
+            sceneIndex: 2,
+          },
+        ]);
 
         expect(liveApiCall).toHaveBeenCalledWithThis(
           expect.objectContaining({ path: "live_set tracks 0" }),
@@ -1466,19 +1419,9 @@ describe("duplicate", () => {
         );
 
         expect(result).toStrictEqual({
-          type: "clip",
-          id: "clip1",
-          count: 1,
-          destination: "arrangement",
+          id: "live_set tracks 0 arrangement_clips 0",
+          trackIndex: 0,
           arrangementStartTime: "3|1",
-          duplicated: true,
-          arrangementStartTime: "3|1",
-          duplicatedClip: {
-            id: "live_set tracks 0 arrangement_clips 0",
-            view: "arrangement",
-            trackIndex: 0,
-            arrangementStartTime: "3|1",
-          },
         });
       });
 
@@ -1536,47 +1479,23 @@ describe("duplicate", () => {
           name: "Custom Clip",
         });
 
-        expect(result).toStrictEqual({
-          type: "clip",
-          id: "clip1",
-          count: 3,
-          destination: "arrangement",
-          arrangementStartTime: "3|1",
-          name: "Custom Clip",
-          duplicated: true,
-          objects: [
-            {
-              arrangementStartTime: "3|1",
-              name: "Custom Clip",
-              duplicatedClip: {
-                id: "live_set tracks 0 arrangement_clips 0",
-                view: "arrangement",
-                trackIndex: 0,
-                arrangementStartTime: "3|1",
-              },
-            },
-            {
-              arrangementStartTime: "4|1",
-              name: "Custom Clip 2",
-              duplicatedClip: {
-                id: "live_set tracks 0 arrangement_clips 1",
-                view: "arrangement",
-                trackIndex: 0,
-                arrangementStartTime: "4|1",
-              },
-            },
-            {
-              arrangementStartTime: "5|1",
-              name: "Custom Clip 3",
-              duplicatedClip: {
-                id: "live_set tracks 0 arrangement_clips 2",
-                view: "arrangement",
-                trackIndex: 0,
-                arrangementStartTime: "5|1",
-              },
-            },
-          ],
-        });
+        expect(result).toStrictEqual([
+          {
+            id: "live_set tracks 0 arrangement_clips 0",
+            trackIndex: 0,
+            arrangementStartTime: "3|1",
+          },
+          {
+            id: "live_set tracks 0 arrangement_clips 1",
+            trackIndex: 0,
+            arrangementStartTime: "4|1",
+          },
+          {
+            id: "live_set tracks 0 arrangement_clips 2",
+            trackIndex: 0,
+            arrangementStartTime: "5|1",
+          },
+        ]);
 
         // Clips should be placed at sequential positions
         expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -1614,16 +1533,10 @@ describe("duplicate", () => {
       const result = duplicate({ type: "track", id: "track1", count: 1 });
 
       expect(result).toStrictEqual({
-        type: "track",
-        id: "track1",
-        count: 1,
-        duplicated: true,
-        newTrackId: expect.any(String),
-        newTrackIndex: expect.any(Number),
-        duplicatedClips: [],
-        tip: "TIP: Use routeToSource=true to create layered MIDI setups where multiple tracks control this instrument.",
+        id: expect.any(String),
+        trackIndex: expect.any(Number),
+        clips: [],
       });
-      expect(result.objects).toBeUndefined();
     });
 
     it("should return objects array format when count>1", () => {
@@ -1636,17 +1549,10 @@ describe("duplicate", () => {
 
       const result = duplicate({ type: "track", id: "track1", count: 2 });
 
-      expect(result).toMatchObject({
-        type: "track",
-        id: "track1",
-        count: 2,
-        duplicated: true,
-        objects: expect.arrayContaining([
-          expect.objectContaining({ newTrackIndex: expect.any(Number) }),
-          expect.objectContaining({ newTrackIndex: expect.any(Number) }),
-        ]),
-      });
-      expect(result.newTrackIndex).toBeUndefined();
+      expect(result).toMatchObject([
+        expect.objectContaining({ trackIndex: expect.any(Number) }),
+        expect.objectContaining({ trackIndex: expect.any(Number) }),
+      ]);
     });
   });
 
@@ -1708,19 +1614,8 @@ describe("duplicate", () => {
       });
 
       expect(result).toStrictEqual({
-        type: "clip",
-        id: "clip1",
-        count: 1,
-        destination: "arrangement",
+        id: "live_set tracks 0 arrangement_clips 0",
         arrangementStartTime: "5|1",
-        arrangementLength: "1:0",
-        duplicated: true,
-        duplicatedClip: {
-          id: "live_set tracks 0 arrangement_clips 0",
-          view: "arrangement",
-          trackIndex: 0,
-          arrangementStartTime: "5|1",
-        },
       });
 
       // Should create clip with exact length instead of duplicating and shortening
@@ -1849,7 +1744,7 @@ describe("duplicate", () => {
         4047616,
       ); // setColor converts hex to integer
 
-      expect(result.duplicatedClip).toHaveLength(2);
+      expect(result.clips).toHaveLength(2);
     });
 
     it("should duplicate a non-looping clip at original length when requested length is longer", () => {
@@ -1908,19 +1803,8 @@ describe("duplicate", () => {
       );
 
       expect(result).toStrictEqual({
-        type: "clip",
-        id: "clip1",
-        count: 1,
-        destination: "arrangement",
+        id: "live_set tracks 0 arrangement_clips 0",
         arrangementStartTime: "5|1",
-        arrangementLength: "2:0",
-        duplicated: true,
-        duplicatedClip: {
-          id: "live_set tracks 0 arrangement_clips 0",
-          view: "arrangement",
-          trackIndex: 0,
-          arrangementStartTime: "5|1",
-        },
       });
     });
 
@@ -2003,19 +1887,8 @@ describe("duplicate", () => {
       );
 
       expect(result).toStrictEqual({
-        type: "clip",
-        id: "clip1",
-        count: 1,
-        destination: "arrangement",
+        id: "live_set tracks 0 arrangement_clips 0",
         arrangementStartTime: "1|1",
-        arrangementLength: "1:0",
-        duplicated: true,
-        duplicatedClip: {
-          id: "live_set tracks 0 arrangement_clips 0",
-          view: "arrangement",
-          trackIndex: 0,
-          arrangementStartTime: "1|1",
-        },
       });
     });
 
@@ -2093,19 +1966,8 @@ describe("duplicate", () => {
       );
 
       expect(result).toStrictEqual({
-        type: "clip",
-        id: "clip1",
-        count: 1,
-        destination: "arrangement",
+        id: "live_set tracks 0 arrangement_clips 0",
         arrangementStartTime: "1|1",
-        arrangementLength: "1:0",
-        duplicated: true,
-        duplicatedClip: {
-          id: "live_set tracks 0 arrangement_clips 0",
-          view: "arrangement",
-          trackIndex: 0,
-          arrangementStartTime: "1|1",
-        },
       });
     });
 
@@ -2194,7 +2056,11 @@ describe("duplicate", () => {
         expect.anything(),
       );
 
-      expect(result.arrangementLength).toBeUndefined();
+      expect(result).toMatchObject({
+        id: expect.any(String),
+        trackIndex: expect.any(Number),
+        arrangementStartTime: expect.any(String),
+      });
     });
   });
 
@@ -2269,10 +2135,9 @@ describe("duplicate", () => {
 
       // Just verify it completed without crashing
       expect(result).toMatchObject({
-        type: "track",
-        id: "track2",
-        routeToSource: true,
-        duplicated: true,
+        id: expect.any(String),
+        trackIndex: expect.any(Number),
+        clips: expect.any(Array),
       });
     });
 
@@ -2322,10 +2187,9 @@ describe("duplicate", () => {
 
       // Just verify it completed without crashing
       expect(result).toMatchObject({
-        type: "track",
-        id: "track1",
-        routeToSource: true,
-        duplicated: true,
+        id: expect.any(String),
+        trackIndex: expect.any(Number),
+        clips: expect.any(Array),
       });
     });
 
@@ -2434,7 +2298,6 @@ describe("duplicate", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Arranger");
-      expect(result.switchView).toBe(true);
     });
 
     it("should switch to session view when duplicating to session destination", () => {
@@ -2468,7 +2331,6 @@ describe("duplicate", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result.switchView).toBe(true);
     });
 
     it("should switch to session view when duplicating tracks", () => {
@@ -2486,7 +2348,6 @@ describe("duplicate", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result.switchView).toBe(true);
     });
 
     it("should switch to session view when duplicating scenes", () => {
@@ -2504,7 +2365,6 @@ describe("duplicate", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result.switchView).toBe(true);
     });
 
     it("should not switch views when switchView=false", () => {
@@ -2525,7 +2385,6 @@ describe("duplicate", () => {
         "show_view",
         expect.anything(),
       );
-      expect(result.switchView).toBe(false);
     });
 
     it("should work with multiple duplicates when switchView=true", () => {
@@ -2544,8 +2403,7 @@ describe("duplicate", () => {
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
-      expect(result.switchView).toBe(true);
-      expect(result.objects).toHaveLength(2);
+      expect(result).toHaveLength(2);
     });
   });
 });

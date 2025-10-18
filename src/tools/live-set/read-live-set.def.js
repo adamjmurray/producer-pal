@@ -30,6 +30,7 @@ Re-read after moves/deletes for updated state.`,
           "arrangement-clips",
           "all-clips",
           "clip-notes",
+          "color",
           "*",
         ]),
       )

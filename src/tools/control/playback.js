@@ -2,6 +2,8 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
+import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
+import { parseCommaSeparatedIds } from "../shared/utils.js";
 import { select } from "./select.js";
 
 /**
@@ -108,12 +110,7 @@ export function playback({
           `playback failed: sceneId is required for action "play-scene"`,
         );
       }
-      const scene = LiveAPI.from(sceneId);
-      if (!scene.exists()) {
-        throw new Error(
-          `playback play-session-scene action failed: scene with sceneId=${sceneId} does not exist`,
-        );
-      }
+      const scene = validateIdType(sceneId, "scene", "playback");
 
       scene.call("fire");
 
@@ -127,22 +124,19 @@ export function playback({
         );
       }
 
-      const clipIdList = clipIds.split(",").map((id) => id.trim());
+      const clipIdList = parseCommaSeparatedIds(clipIds);
+      const clips = validateIdTypes(clipIdList, "clip", "playback", {
+        skipInvalid: true,
+      });
 
-      for (const clipId of clipIdList) {
-        const clip = LiveAPI.from(clipId);
-        if (!clip.exists()) {
-          throw new Error(
-            `playback play-session-clips action failed: clip with clipId=${clipId} does not exist`,
-          );
-        }
+      for (const clip of clips) {
         // For clips, we need to fire the clip slot, not the clip itself
         // Extract track index and scene index from clip path or properties
         const trackIndex = clip.trackIndex;
         const sceneIndex = clip.sceneIndex;
         if (trackIndex == null || sceneIndex == null) {
           throw new Error(
-            `playback play-session-clips action failed: could not determine track/scene for clipId=${clipId}`,
+            `playback play-session-clips action failed: could not determine track/scene for clipId=${clip.id}`,
           );
         }
         const clipSlot = new LiveAPI(
@@ -150,7 +144,7 @@ export function playback({
         );
         if (!clipSlot.exists()) {
           throw new Error(
-            `playback play-session-clips action failed: clip slot for clipId=${clipId} does not exist`,
+            `playback play-session-clips action failed: clip slot for clipId=${clip.id.replace(/^id /, "")} does not exist`,
           );
         }
         clipSlot.call("fire");
@@ -158,7 +152,7 @@ export function playback({
 
       // Fix launch quantization: when playing multiple clips, stop and restart transport
       // to ensure in-sync playback (clips fired after the first are subject to quantization)
-      if (clipIdList.length > 1) {
+      if (clips.length > 1) {
         liveSet.call("stop_playing");
         liveSet.call("start_playing");
       }
@@ -173,21 +167,18 @@ export function playback({
         );
       }
 
-      const stopClipIdList = clipIds.split(",").map((id) => id.trim());
+      const stopClipIdList = parseCommaSeparatedIds(clipIds);
+      const stopClips = validateIdTypes(stopClipIdList, "clip", "playback", {
+        skipInvalid: true,
+      });
       const tracksToStop = new Set();
 
-      for (const clipId of stopClipIdList) {
-        const clip = LiveAPI.from(clipId);
-        if (!clip.exists()) {
-          throw new Error(
-            `playback stop-session-clips action failed: clip with clipId=${clipId} does not exist`,
-          );
-        }
+      for (const clip of stopClips) {
         // Extract track index from clip and add to set to avoid duplicate calls
         const trackIndex = clip.trackIndex;
         if (trackIndex == null) {
           throw new Error(
-            `playback stop-session-clips action failed: could not determine track for clipId=${clipId}`,
+            `playback stop-session-clips action failed: could not determine track for clipId=${clip.id}`,
           );
         }
         const trackPath = `live_set tracks ${trackIndex}`;
@@ -268,22 +259,22 @@ export function playback({
     .map((trackId) => trackId.replace("id ", ""))
     .join(",");
 
-  return Object.fromEntries(
-    Object.entries({
-      // reflect the args back:
-      action,
-      startTime,
-      loop: loop ?? liveSet.getProperty("loop") > 0,
-      loopStart: loopStart ?? currentLoopStart,
-      loopEnd: loopEnd ?? currentLoopEnd,
-      autoFollow: action === "play-arrangement" ? autoFollow : undefined,
-      sceneId,
-      clipIds,
-      switchView: switchView != null ? switchView : undefined,
-      arrangementFollowerTrackIds,
-      // and include some additional relevant state:
-      isPlaying,
-      currentTime,
-    }).filter(([_, v]) => v !== undefined), // remove any undefined args
-  );
+  // Build result object conditionally
+  const result = {
+    playing: isPlaying,
+    currentTime,
+  };
+
+  // Only include arrangementLoop if loop is enabled
+  const loopEnabled = loop ?? liveSet.getProperty("loop") > 0;
+  if (loopEnabled) {
+    result.arrangementLoop = {
+      start: loopStart ?? currentLoopStart,
+      end: loopEnd ?? currentLoopEnd,
+    };
+  }
+
+  result.arrangementFollowerTrackIds = arrangementFollowerTrackIds;
+
+  return result;
 }

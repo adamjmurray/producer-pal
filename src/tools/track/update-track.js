@@ -4,7 +4,8 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "../constants.js";
-import { parseCommaSeparatedIds, withoutNulls } from "../shared/utils.js";
+import { validateIdTypes } from "../shared/id-validation.js";
+import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
  * Updates properties of existing tracks
@@ -44,18 +45,14 @@ export function updateTrack({
   // Parse comma-separated string into array
   const trackIds = parseCommaSeparatedIds(ids);
 
+  // Validate all IDs are tracks, skip invalid ones
+  const tracks = validateIdTypes(trackIds, "track", "updateTrack", {
+    skipInvalid: true,
+  });
+
   const updatedTracks = [];
 
-  for (const id of trackIds) {
-    // Convert string ID to LiveAPI path if needed
-    const track = LiveAPI.from(id);
-
-    if (!track.exists()) {
-      throw new Error(
-        `updateTrack failed: track with id "${id}" does not exist`,
-      );
-    }
-
+  for (const track of tracks) {
     track.setAll({
       name,
       color,
@@ -111,34 +108,15 @@ export function updateTrack({
       track.set("current_monitoring_state", monitoringValue);
     }
 
-    // Find trackIndex for consistency with readTrack format
-    const trackIndex = Number(track.path.match(/live_set tracks (\d+)/)?.[1]);
-    if (Number.isNaN(trackIndex)) {
-      throw new Error(
-        `updateTrack failed: could not determine trackIndex for id "${id}" (path="${track.path}")`,
-      );
-    }
-
     // Build optimistic result object
-    updatedTracks.push(
-      withoutNulls({
-        id: track.id,
-        trackIndex,
-        name,
-        color,
-        mute,
-        solo,
-        arm,
-        inputRoutingTypeId,
-        inputRoutingChannelId,
-        outputRoutingTypeId,
-        outputRoutingChannelId,
-        monitoringState,
-        arrangementFollower,
-      }),
-    );
+    updatedTracks.push({
+      id: track.id,
+    });
   }
 
-  // Return single object if single ID was provided, array if comma-separated IDs were provided
-  return trackIds.length > 1 ? updatedTracks : updatedTracks[0];
+  // Return single object if one valid result, array for multiple results or empty array for none
+  if (updatedTracks.length === 0) {
+    return [];
+  }
+  return updatedTracks.length === 1 ? updatedTracks[0] : updatedTracks;
 }

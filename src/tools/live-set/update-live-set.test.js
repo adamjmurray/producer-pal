@@ -435,7 +435,7 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should set arrangementFollower to true (all tracks follow arrangement)", () => {
+  it("should set arrangementFollower to true (all tracks follow arrangement) - hidden from interface but implementation remains", () => {
     const result = updateLiveSet({ arrangementFollower: true });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -448,7 +448,7 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should set arrangementFollower to false (tracks don't follow arrangement)", () => {
+  it("should set arrangementFollower to false (tracks don't follow arrangement) - hidden from interface but implementation remains", () => {
     const result = updateLiveSet({ arrangementFollower: false });
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set" }),
@@ -461,7 +461,7 @@ describe("updateLiveSet", () => {
     });
   });
 
-  it("should combine arrangementFollower with other parameters", () => {
+  it("should combine arrangementFollower with other parameters - hidden from interface but implementation remains", () => {
     const result = updateLiveSet({
       tempo: 130,
       arrangementFollower: true,

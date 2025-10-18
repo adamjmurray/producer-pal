@@ -17,9 +17,6 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       .describe(
         '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Empty string disables scale',
       ),
-    arrangementFollower: z
-      .boolean()
-      .optional()
-      .describe("all tracks follow the arrangement?"),
+    // arrangementFollower removed from interface - playback tool handles this via autoFollow parameter
   },
 });

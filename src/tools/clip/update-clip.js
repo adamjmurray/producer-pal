@@ -2,8 +2,9 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time";
-import { parseNotation } from "../../notation/notation";
+import { interpretNotation, formatNotation } from "../../notation/notation";
 import { MAX_CLIP_BEATS } from "../constants.js";
+import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**
@@ -40,16 +41,14 @@ export function updateClip({
   // Parse comma-separated string into array
   const clipIds = parseCommaSeparatedIds(ids);
 
+  // Validate all IDs are clips, skip invalid ones
+  const clips = validateIdTypes(clipIds, "clip", "updateClip", {
+    skipInvalid: true,
+  });
+
   const updatedClips = [];
 
-  for (const id of clipIds) {
-    // Convert string ID to LiveAPI path if needed
-    const clip = LiveAPI.from(id);
-
-    if (!clip.exists()) {
-      throw new Error(`updateClip failed: clip with id "${id}" does not exist`);
-    }
-
+  for (const clip of clips) {
     // Parse time signature if provided to get numerator/denominator
     let timeSigNumerator, timeSigDenominator;
     if (timeSignature != null) {
@@ -60,6 +59,9 @@ export function updateClip({
       timeSigNumerator = clip.getProperty("signature_numerator");
       timeSigDenominator = clip.getProperty("signature_denominator");
     }
+
+    // Track final note count for response
+    let finalNoteCount = null;
 
     // Convert length parameter to end_marker and loop_end
     let endMarkerBeats = null;
@@ -101,111 +103,59 @@ export function updateClip({
     });
 
     if (notationString != null) {
-      const notes = parseNotation(notationString, {
+      let combinedNotationString = notationString;
+
+      if (noteUpdateMode === "merge") {
+        // In merge mode, prepend existing notes as bar|beat notation
+        const existingNotesResult = JSON.parse(
+          clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS),
+        );
+        const existingNotes = existingNotesResult?.notes || [];
+
+        if (existingNotes.length > 0) {
+          const existingNotationString = formatNotation(existingNotes, {
+            timeSigNumerator,
+            timeSigDenominator,
+          });
+          combinedNotationString = `${existingNotationString} ${notationString}`;
+        }
+      }
+
+      const notes = interpretNotation(combinedNotationString, {
         timeSigNumerator,
         timeSigDenominator,
       });
 
-      // Separate v0 notes (deletion requests) from regular notes
-      const v0Notes = notes.filter((note) => note.velocity === 0);
-      const regularNotes = notes.filter((note) => note.velocity > 0);
-
-      if (noteUpdateMode === "replace") {
-        clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
-        // Only add regular notes when clearing (v0 notes are filtered out for Live API)
-        if (regularNotes.length > 0) {
-          clip.call("add_new_notes", { notes: regularNotes });
-        }
-      } else {
-        // When not clearing, handle v0 notes as deletions
-        if (v0Notes.length > 0) {
-          // Get existing notes and parse the JSON result
-          const existingNotesResult = JSON.parse(
-            clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS),
-          );
-          const existingNotes = existingNotesResult?.notes || [];
-
-          // Filter out notes that match v0 note pitch and start time
-          const filteredExistingNotes = existingNotes.filter((existingNote) => {
-            return !v0Notes.some(
-              (v0Note) =>
-                v0Note.pitch === existingNote.pitch &&
-                Math.abs(v0Note.start_time - existingNote.start_time) < 0.001,
-            );
-          });
-
-          // Clean up existing notes to only include properties that add_new_notes accepts
-          const cleanExistingNotes = filteredExistingNotes.map((note) => ({
-            pitch: note.pitch,
-            start_time: note.start_time,
-            duration: note.duration,
-            velocity: note.velocity,
-            probability: note.probability,
-            velocity_deviation: note.velocity_deviation,
-          }));
-
-          // Remove all notes and add back filtered existing notes plus new regular notes
-          clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
-          const allNotesToAdd = [...cleanExistingNotes, ...regularNotes];
-          if (allNotesToAdd.length > 0) {
-            clip.call("add_new_notes", { notes: allNotesToAdd });
-          }
-        } else {
-          // No v0 notes, just add regular notes
-          if (regularNotes.length > 0) {
-            clip.call("add_new_notes", { notes: regularNotes });
-          }
-        }
+      // Remove all notes and add new notes (v0s already filtered by applyV0Deletions)
+      clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
+      if (notes.length > 0) {
+        clip.call("add_new_notes", { notes });
       }
-    }
 
-    // Determine view and indices from clip path
-    const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
-    let trackIndex, sceneIndex, arrangementStartTime;
-
-    if (isArrangementClip) {
-      trackIndex = clip.trackIndex;
-      arrangementStartTime = clip.getProperty("start_time");
-    } else {
-      trackIndex = clip.trackIndex;
-      sceneIndex = clip.sceneIndex;
-    }
-
-    if (trackIndex == null) {
-      throw new Error(
-        `updateClip failed: could not determine trackIndex for id "${id}" (path="${clip.path}")`,
+      // Query actual note count within playback region (consistent with read-clip)
+      const lengthBeats = clip.getProperty("length");
+      const actualNotesResult = JSON.parse(
+        clip.call("get_notes_extended", 0, 127, 0, lengthBeats),
       );
+      finalNoteCount = actualNotesResult?.notes?.length || 0;
     }
 
     // Build optimistic result object
     const clipResult = {
       id: clip.id,
-      type: clip.getProperty("is_midi_clip") ? "midi" : "audio",
-      view: isArrangementClip ? "arrangement" : "session",
-      trackIndex,
     };
 
-    // Add view-specific properties
-    if (isArrangementClip) {
-      clipResult.arrangementStartTime = arrangementStartTime;
-    } else {
-      clipResult.sceneIndex = sceneIndex;
+    // Only include noteCount if notes were modified
+    if (finalNoteCount != null) {
+      clipResult.noteCount = finalNoteCount;
     }
-
-    // Only include properties that were actually set
-    if (name != null) clipResult.name = name;
-    if (color != null) clipResult.color = color;
-    if (timeSignature != null) clipResult.timeSignature = timeSignature;
-    if (startMarker != null) clipResult.startMarker = startMarker;
-    if (length != null) clipResult.length = length;
-    if (loopStart != null) clipResult.loopStart = loopStart;
-    if (loop != null) clipResult.loop = loop;
-    if (notationString != null) clipResult.notes = notationString;
-    if (notationString != null) clipResult.noteUpdateMode = noteUpdateMode;
 
     updatedClips.push(clipResult);
   }
 
-  // Return single object if single ID was provided, array if comma-separated IDs were provided
-  return clipIds.length > 1 ? updatedClips : updatedClips[0];
+  // Return single object if one valid result, array for multiple results or empty array for none
+  if (updatedClips.length === 0) {
+    return [];
+  }
+  return updatedClips.length === 1 ? updatedClips[0] : updatedClips;
 }

@@ -1,13 +1,15 @@
 import {
+  abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
   barBeatToBeats,
   beatsToBarBeat,
+  timeSigToAbletonBeatsPerBar,
 } from "../../notation/barbeat/barbeat-time";
-import { parseNotation } from "../../notation/notation";
+import { interpretNotation } from "../../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { select } from "../control/select.js";
-import { parseTimeSignature, setAllNonNull } from "../shared/utils.js";
+import { parseTimeSignature } from "../shared/utils.js";
 
 /**
  * Creates MIDI clips in Session or Arrangement view
@@ -122,7 +124,7 @@ export function createClip({
 
   const notes =
     notationString != null
-      ? parseNotation(notationString, {
+      ? interpretNotation(notationString, {
           timeSigNumerator,
           timeSigDenominator,
         })
@@ -137,30 +139,29 @@ export function createClip({
     // For non-looping clips, use endMarker
     clipLength = endMarkerBeats;
   } else if (notes.length > 0) {
-    // const lastNoteEndTime = Math.max(...notes.map((note) => note.start_time + note.duration));
-    // clipLength = Math.ceil(lastNoteEndTime);
-
-    const lastNoteEndTimeAbletonBeats = Math.max(
-      ...notes.map((note) => note.start_time + note.duration),
+    // Find the latest note start time (not end time)
+    const lastNoteStartTimeAbletonBeats = Math.max(
+      ...notes.map((note) => note.start_time),
     );
 
-    // Convert back to musical beats to round up conceptually
-    const lastNoteEndTimeMusicalBeats =
-      timeSigDenominator != null
-        ? lastNoteEndTimeAbletonBeats * (timeSigDenominator / 4)
-        : lastNoteEndTimeAbletonBeats;
+    // Calculate Ableton beats per bar for this time signature
+    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+      timeSigNumerator,
+      timeSigDenominator,
+    );
 
-    // Round up to whole musical beats
-    const clipLengthMusicalBeats = Math.ceil(lastNoteEndTimeMusicalBeats);
-
-    // Convert back to Ableton beats for the Live API
+    // Round up to the next full bar, ensuring at least 1 bar
+    // Add a small epsilon to handle the case where note starts exactly at bar boundary
     clipLength =
-      timeSigDenominator != null
-        ? clipLengthMusicalBeats * (4 / timeSigDenominator)
-        : clipLengthMusicalBeats;
+      Math.ceil((lastNoteStartTimeAbletonBeats + 0.0001) / abletonBeatsPerBar) *
+      abletonBeatsPerBar;
   } else {
-    // Empty clip, use 1 beat minimum
-    clipLength = 1;
+    // Empty clip, use 1 bar minimum
+    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+    clipLength = abletonBeatsPerBar;
   }
 
   const createdClips = [];
@@ -245,17 +246,14 @@ export function createClip({
       looping: loop,
     });
 
-    // Filter out v0 notes for Live API (Live API can't handle velocity 0)
-    const validNotes = notes.filter((note) => note.velocity > 0);
-    if (validNotes.length > 0) {
-      clip.call("add_new_notes", { notes: validNotes });
+    // v0 notes already filtered by applyV0Deletions in interpretNotation
+    if (notes.length > 0) {
+      clip.call("add_new_notes", { notes });
     }
 
     // Build optimistic result object
     const clipResult = {
       id: clip.id,
-      type: "midi",
-      view,
       trackIndex,
     };
 
@@ -283,19 +281,19 @@ export function createClip({
       }
     }
 
-    setAllNonNull(clipResult, {
-      name: clipName,
-      color,
-      timeSignature:
-        timeSigNumerator != null && timeSigDenominator != null
-          ? `${timeSigNumerator}/${timeSigDenominator}`
-          : null,
-      startMarker,
-      length,
-      loopStart,
-      loop,
-      notes: notationString,
-    });
+    // Only include noteCount if notes were provided
+    if (notationString != null) {
+      clipResult.noteCount = notes.length;
+
+      // Include calculated length if it wasn't provided as input parameter
+      if (length == null) {
+        clipResult.length = abletonBeatsToBarBeatDuration(
+          clipLength,
+          timeSigNumerator,
+          timeSigDenominator,
+        );
+      }
+    }
 
     createdClips.push(clipResult);
   }
@@ -312,10 +310,6 @@ export function createClip({
           );
         }
         scene.call("fire");
-        // Mark all created clips as triggered in optimistic results
-        for (let i = 0; i < count; i++) {
-          createdClips[i].triggered = true;
-        }
         break;
 
       case "play-clip":
@@ -326,8 +320,6 @@ export function createClip({
             `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
           );
           clipSlot.call("fire");
-          // Mark as triggered in optimistic results
-          createdClips[i].triggered = true;
         }
         break;
 

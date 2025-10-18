@@ -9,8 +9,13 @@ import {
   MONITORING_STATE,
   STATE,
 } from "../constants.js";
-import { getDrumMap, readDevice } from "../shared/device-reader.js";
+import {
+  cleanupInternalDrumChains,
+  getDrumMap,
+  readDevice,
+} from "../shared/device-reader.js";
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
+import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
@@ -76,19 +81,19 @@ function categorizeDevices(
     const deviceType = processedDevice.type;
 
     if (
-      deviceType === DEVICE_TYPE.MIDI_EFFECT ||
-      deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK
+      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||
+      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT_RACK)
     ) {
       midiEffects.push(processedDevice);
     } else if (
-      deviceType === DEVICE_TYPE.INSTRUMENT ||
-      deviceType === DEVICE_TYPE.INSTRUMENT_RACK ||
-      deviceType === DEVICE_TYPE.DRUM_RACK
+      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
+      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
+      deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
     ) {
       instruments.push(processedDevice);
     } else if (
-      deviceType === DEVICE_TYPE.AUDIO_EFFECT ||
-      deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK
+      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT) ||
+      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT_RACK)
     ) {
       audioEffects.push(processedDevice);
     }
@@ -116,30 +121,14 @@ function stripChains(device) {
 }
 
 /**
- * Read comprehensive information about a track
+ * Generic track reader that works with any track type. This is an internal helper function
+ * used by readTrack to read comprehensive information about tracks.
  * @param {Object} args - The parameters
- * @param {number} args.trackIndex - Track index (0-based). Also used as returnTrackIndex for return tracks. Ignored for master track.
- * @param {string} args.category - Category of track: "regular" (default), "return", or "master"
- * @param {Array} args.include - Array of data to include in the response
- * @returns {Object} Result object with track information
- */
-/**
- * Generic track reader that works with any track type
- * @param {Object} args - The parameters
- * @param {Object} args.track - LiveAPI track object
+ * @param {LiveAPI} args.track - LiveAPI track object
  * @param {number|null} args.trackIndex - Track index (null for master track)
- * @param {string} args.category - Track category: "regular", "return", or "master"
- * @param {boolean} args.includeDrumChains - Include drum chains
- * @param {boolean} args.includeClipNotes - Include notes in clips
- * @param {boolean} args.includeRackChains - Include rack chains
- * @param {boolean} args.includeMidiEffects - Include MIDI effects
- * @param {boolean} args.includeInstruments - Include instruments
- * @param {boolean} args.includeAudioEffects - Include audio effects
- * @param {boolean} args.includeRoutings - Include current routing settings
- * @param {boolean} args.includeAvailableRoutings - Include available routing options
- * @param {boolean} args.includeSessionClips - Include session clips
- * @param {boolean} args.includeArrangementClips - Include arrangement clips
- * @returns {Object} Track information
+ * @param {string} [args.category="regular"] - Track category: "regular", "return", or "master"
+ * @param {Array<string>} [args.include] - Array of data to include in the response
+ * @returns {Object} Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
   track,
@@ -158,6 +147,7 @@ export function readTrackGeneric({
     includeAvailableRoutings,
     includeSessionClips,
     includeArrangementClips,
+    includeColor,
   } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
   if (!track.exists()) {
     const result = {
@@ -192,7 +182,7 @@ export function readTrackGeneric({
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
     name: track.getProperty("name"),
-    color: track.getColor(),
+    ...(includeColor && { color: track.getColor() }),
     arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
 
@@ -228,50 +218,63 @@ export function readTrackGeneric({
 
   // Session clips - only for regular tracks (return and master tracks don't have clip slots)
   if (category === "regular") {
-    result.sessionClips = includeSessionClips
-      ? track
-          .getChildIds("clip_slots")
-          .map((_clipSlotId, sceneIndex) =>
-            readClip({
-              trackIndex,
-              sceneIndex,
-              include: include,
-            }),
-          )
-          .filter((clip) => clip.id != null)
-      : track
-          .getChildren("clip_slots")
-          .map((clipSlot, sceneIndex) => {
-            const clipArray = clipSlot.get("clip");
-            // avoid Live API warning trying to construct with "id 0" for empty slots:
-            if (!clipArray || (Array.isArray(clipArray) && clipArray[1] === 0))
-              return null;
-            const clip = LiveAPI.from(clipArray);
-            return clip.exists() ? { id: clip.id, sceneIndex } : null;
-          })
-          .filter(Boolean);
+    if (includeSessionClips) {
+      result.sessionClips = track
+        .getChildIds("clip_slots")
+        .map((_clipSlotId, sceneIndex) =>
+          readClip({
+            trackIndex,
+            sceneIndex,
+            include: include,
+          }),
+        )
+        .filter((clip) => clip.id != null);
+    } else {
+      // When not including full clip details, just return the count
+      result.sessionClipCount = track
+        .getChildIds("clip_slots")
+        .map((_clipSlotId, sceneIndex) => {
+          const clip = new LiveAPI(
+            `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+          );
+          return clip.exists() ? clip : null;
+        })
+        .filter(Boolean).length;
+    }
   } else {
     // Return and master tracks don't have session clips
-    result.sessionClips = [];
+    if (includeSessionClips) {
+      result.sessionClips = [];
+    } else {
+      result.sessionClipCount = 0;
+    }
   }
 
   // Arrangement clips - group tracks, return tracks, and master track have no arrangement clips
-  result.arrangementClips =
-    isGroup || category === "return" || category === "master"
-      ? [] // These track categories have no arrangement clips
-      : includeArrangementClips
-        ? track
-            .getChildIds("arrangement_clips")
-            .map((clipId) =>
-              readClip({
-                clipId,
-                include: include,
-              }),
-            )
-            .filter((clip) => clip.id != null)
-        : track
-            .getChildIds("arrangement_clips")
-            .map((clipId) => ({ id: clipId.replace("id ", "") }));
+  if (isGroup || category === "return" || category === "master") {
+    // These track categories have no arrangement clips
+    if (includeArrangementClips) {
+      result.arrangementClips = [];
+    } else {
+      result.arrangementClipCount = 0;
+    }
+  } else {
+    if (includeArrangementClips) {
+      result.arrangementClips = track
+        .getChildIds("arrangement_clips")
+        .map((clipId) =>
+          readClip({
+            clipId,
+            include: include,
+          }),
+        )
+        .filter((clip) => clip.id != null);
+    } else {
+      // When not including full clip details, just return the count
+      const clipIds = track.getChildIds("arrangement_clips");
+      result.arrangementClipCount = clipIds.length;
+    }
+  }
 
   // Categorize devices into separate arrays
   // When includeDrumMaps is true but includeRackChains is false, we need to get chains
@@ -294,7 +297,7 @@ export function readTrackGeneric({
     if (isProducerPalHost && categorizedDevices.instrument === null) {
       // Don't include instrument property at all
     } else {
-      result.instruments =
+      result.instrument =
         shouldFetchChainsForDrumMaps && categorizedDevices.instrument
           ? stripChains(categorizedDevices.instrument)
           : categorizedDevices.instrument;
@@ -306,15 +309,28 @@ export function readTrackGeneric({
       : categorizedDevices.audioEffects;
   }
 
-  // Extract drum map from all categorized devices (critical for drumMap preservation)
-  const allDevices = [
-    ...categorizedDevices.midiEffects,
-    ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
-    ...categorizedDevices.audioEffects,
-  ];
-  const drumMap = getDrumMap(allDevices);
-  if (drumMap != null) {
-    result.drumMap = drumMap;
+  // Extract drum map from all categorized devices when requested
+  if (includeDrumMaps) {
+    const allDevices = [
+      ...categorizedDevices.midiEffects,
+      ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
+      ...categorizedDevices.audioEffects,
+    ];
+    const drumMap = getDrumMap(allDevices);
+    if (drumMap != null) {
+      result.drumMap = drumMap;
+    }
+  }
+
+  // Clean up internal _processedDrumChains property after drumMap extraction
+  if (result.midiEffects) {
+    result.midiEffects = cleanupInternalDrumChains(result.midiEffects);
+  }
+  if (result.instrument) {
+    result.instrument = cleanupInternalDrumChains(result.instrument);
+  }
+  if (result.audioEffects) {
+    result.audioEffects = cleanupInternalDrumChains(result.audioEffects);
   }
 
   // Only include playingSlotIndex when >= 0 (only for regular tracks)
@@ -473,11 +489,8 @@ export function readTrack(args = {}) {
   let resolvedCategory = category;
 
   if (trackId != null) {
-    // Use trackId to access track directly
-    track = LiveAPI.from(trackId);
-    if (!track.exists()) {
-      throw new Error(`No track exists for trackId "${trackId}"`);
-    }
+    // Use trackId to access track directly and validate it's a track
+    track = validateIdType(trackId, "track", "readTrack");
 
     // Determine track category and index from the track's path
     resolvedCategory = track.category;

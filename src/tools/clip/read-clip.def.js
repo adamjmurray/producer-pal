@@ -26,7 +26,7 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .optional()
       .describe("0-based index for session clips"),
     include: z
-      .array(z.enum(["clip-notes"]))
+      .array(z.enum(["clip-notes", "color"]))
       .default(["clip-notes"])
       .describe("omit MIDI notes with empty array"),
   },

@@ -1,4 +1,5 @@
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
+import { validateIdType } from "../shared/id-validation.js";
 import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
 
 /**
@@ -89,6 +90,35 @@ function readViewState() {
   };
 }
 
+/**
+ * Reads or updates the view state and selection in Ableton Live.
+ *
+ * When called with no arguments (or empty object), returns the current view state.
+ * When called with arguments, updates the view/selection and returns the full view state
+ * with updates optimistically applied.
+ *
+ * Use update functionality judiciously to avoid interrupting user workflow.
+ * Generally only change views when: 1) User explicitly asks to see something,
+ * 2) After creating/modifying objects the user specifically asked to work on,
+ * 3) Context strongly suggests the user would benefit from seeing the result.
+ * When in doubt, don't change views.
+ *
+ * @param {Object} args - The parameters
+ * @param {string} [args.view] - Main view to switch to ('session' or 'arrangement')
+ * @param {string} [args.trackId] - Track ID to select
+ * @param {string} [args.category] - Track category ('regular', 'return', or 'master')
+ * @param {number} [args.trackIndex] - Track index (0-based)
+ * @param {string} [args.sceneId] - Scene ID to select
+ * @param {number} [args.sceneIndex] - Scene index (0-based)
+ * @param {string|null} [args.clipId] - Clip ID to select (null to deselect all clips)
+ * @param {string} [args.deviceId] - Device ID to select
+ * @param {boolean} [args.instrument] - Select the track's instrument
+ * @param {Object} [args.clipSlot] - Clip slot to highlight {trackIndex, sceneIndex}
+ * @param {string} [args.detailView] - Detail view to show ('clip', 'device', or 'none')
+ * @param {boolean} [args.showLoop] - Show loop view for selected clip
+ * @param {boolean} [args.showBrowser] - Show browser view
+ * @returns {Object} Current view state with selection information
+ */
 export function select({
   // Main view
   view,
@@ -148,7 +178,7 @@ export function select({
   });
 
   // Update scene selection
-  const sceneSelectionResult = updateSceneSelection({
+  updateSceneSelection({
     songView,
     sceneId,
     sceneIndex,
@@ -160,8 +190,8 @@ export function select({
       // Deselect all clips
       songView.set("detail_clip", "id 0");
     } else {
-      // Select specific clip
-      const clipAPI = LiveAPI.from(clipId);
+      // Select specific clip and validate it's a clip
+      const clipAPI = validateIdType(clipId, "clip", "select");
       songView.setProperty("detail_clip", clipAPI.id);
     }
   }
@@ -208,37 +238,8 @@ export function select({
     }
   }
 
-  // Get current view state as base
-  const result = readViewState();
-
-  // If no arguments provided, return current state only
-  const hasArgs = Object.values(arguments[0] || {}).some(
-    (val) => val !== undefined,
-  );
-  if (!hasArgs) {
-    return result;
-  }
-
-  // Apply optimistic updates on top of current state
-  if (view != null) result.view = view;
-
-  // Add track selection results
-  Object.assign(result, trackSelectionResult);
-
-  // Add scene selection results
-  Object.assign(result, sceneSelectionResult);
-
-  if (clipId !== undefined) result.selectedClipId = clipId;
-  if (deviceId != null) result.selectedDeviceId = deviceId;
-  if (instrument != null) result.instrument = instrument;
-  if (clipSlot != null) result.selectedClipSlot = clipSlot;
-  if (detailView !== undefined) {
-    result.detailView = detailView === "none" ? null : detailView;
-  }
-  if (showLoop != null) result.showLoop = showLoop;
-  if (showBrowser != null) result.showBrowser = showBrowser;
-
-  return result;
+  // Get current view state after applying updates
+  return readViewState();
 }
 
 function validateParameters({
@@ -300,14 +301,12 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   let finalTrackId = trackId;
 
   if (trackId != null) {
-    // Select by ID
-    trackAPI = LiveAPI.from(trackId);
-    if (trackAPI.exists()) {
-      songView.setProperty("selected_track", trackAPI.id);
-      result.selectedTrackId = trackId;
-      if (category != null) result.selectedCategory = category;
-      if (trackIndex != null) result.selectedTrackIndex = trackIndex;
-    }
+    // Select by ID and validate it's a track
+    trackAPI = validateIdType(trackId, "track", "select");
+    songView.setProperty("selected_track", trackAPI.id);
+    result.selectedTrackId = trackId;
+    if (category != null) result.selectedCategory = category;
+    if (trackIndex != null) result.selectedTrackIndex = trackIndex;
   } else if (category != null || trackIndex != null) {
     // Select by category/index
     const finalCategory = category || "regular";
@@ -342,13 +341,11 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   const result = {};
 
   if (sceneId != null) {
-    // Select by ID
-    const sceneAPI = LiveAPI.from(sceneId);
-    if (sceneAPI.exists()) {
-      songView.setProperty("selected_scene", sceneAPI.id);
-      result.selectedSceneId = sceneId;
-      if (sceneIndex != null) result.selectedSceneIndex = sceneIndex;
-    }
+    // Select by ID and validate it's a scene
+    const sceneAPI = validateIdType(sceneId, "scene", "select");
+    songView.setProperty("selected_scene", sceneAPI.id);
+    result.selectedSceneId = sceneId;
+    if (sceneIndex != null) result.selectedSceneIndex = sceneIndex;
   } else if (sceneIndex != null) {
     // Select by index
     const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
@@ -365,17 +362,15 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
 
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
-    // Select specific device by ID using the main song view
-    const deviceAPI = LiveAPI.from(deviceId);
-    if (deviceAPI.exists()) {
-      const songView = new LiveAPI("live_set view");
-      // Ensure proper "id X" format for select_device call
-      const deviceIdStr = deviceId.toString();
-      const deviceIdForApi = deviceIdStr.startsWith("id ")
-        ? deviceIdStr
-        : `id ${deviceIdStr}`;
-      songView.call("select_device", deviceIdForApi);
-    }
+    // Select specific device by ID and validate it's a device
+    const deviceAPI = validateIdType(deviceId, "device", "select");
+    const songView = new LiveAPI("live_set view");
+    // Ensure proper "id X" format for select_device call
+    const deviceIdStr = deviceId.toString();
+    const deviceIdForApi = deviceIdStr.startsWith("id ")
+      ? deviceIdStr
+      : `id ${deviceIdStr}`;
+    songView.call("select_device", deviceIdForApi);
   } else if (instrument === true) {
     // Select instrument on the currently selected or specified track
     let trackPath = null;

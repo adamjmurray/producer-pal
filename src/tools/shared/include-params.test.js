@@ -29,6 +29,7 @@ describe("parseIncludeArray", () => {
       includeRegularTracks: true,
       includeReturnTracks: false,
       includeMasterTrack: false,
+      includeColor: false,
     });
   });
 
@@ -52,6 +53,7 @@ describe("parseIncludeArray", () => {
       includeRegularTracks: false,
       includeReturnTracks: false,
       includeMasterTrack: false,
+      includeColor: false,
     });
   });
 
