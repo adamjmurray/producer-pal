@@ -5,8 +5,9 @@ import {
   barBeatToBeats,
   beatsToBarBeat,
   timeSigToAbletonBeatsPerBar,
-} from "../../notation/barbeat/barbeat-time";
-import { interpretNotation } from "../../notation/notation";
+} from "../../notation/barbeat/barbeat-time.js";
+import { interpretNotation } from "../../notation/notation.js";
+import { evaluateModulation } from "../../notation/modulation/modulation-evaluator.js";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { select } from "../control/select.js";
 import { parseTimeSignature } from "../shared/utils.js";
@@ -20,6 +21,7 @@ import { parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.arrangementStartTime] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
+ * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -38,6 +40,7 @@ export function createClip({
   arrangementStartTime = null,
   count = 1,
   notes: notationString = null,
+  modulations: modulationString = null,
   name = null,
   color = null,
   timeSignature = null,
@@ -129,6 +132,48 @@ export function createClip({
           timeSigDenominator,
         })
       : [];
+
+  // Apply modulations to notes if provided
+  if (modulationString != null && notes.length > 0) {
+    for (const note of notes) {
+      // Convert note's Ableton beats start_time to musical beats position
+      const musicalBeats = note.start_time * (timeSigDenominator / 4);
+
+      // Evaluate modulations for this note
+      const modulations = evaluateModulation(modulationString, {
+        position: musicalBeats,
+        timeSig: {
+          numerator: timeSigNumerator,
+          denominator: timeSigDenominator,
+        },
+      });
+
+      // Apply modulations additively with range clamping
+      if (modulations.velocity != null) {
+        note.velocity = Math.max(
+          1,
+          Math.min(127, note.velocity + modulations.velocity),
+        );
+      }
+
+      if (modulations.timing != null) {
+        // Timing modulates start_time directly (in Ableton beats)
+        note.start_time += modulations.timing;
+      }
+
+      if (modulations.duration != null) {
+        // Duration is additive, must remain positive
+        note.duration = Math.max(0.001, note.duration + modulations.duration);
+      }
+
+      if (modulations.probability != null) {
+        note.probability = Math.max(
+          0.0,
+          Math.min(1.0, note.probability + modulations.probability),
+        );
+      }
+    }
+  }
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   let clipLength;

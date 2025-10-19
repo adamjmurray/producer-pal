@@ -7,6 +7,7 @@ import {
   liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
+import { MAX_CLIP_BEATS } from "../constants.js";
 import { updateClip } from "./update-clip";
 
 describe("updateClip", () => {
@@ -1379,5 +1380,309 @@ describe("updateClip", () => {
     );
 
     expect(result).toEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
+  });
+
+  describe("modulation-only updates", () => {
+    it("should apply modulations to existing notes in merge mode without notes parameter", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          length: 4,
+        },
+      });
+
+      // Mock get_notes_extended to return existing notes
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 0,
+                duration: 1,
+                velocity: 64,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 62,
+                start_time: 1,
+                duration: 1,
+                velocity: 64,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        return undefined;
+      });
+
+      updateClip({
+        ids: "123",
+        modulations: "velocity: 20",
+        noteUpdateMode: "merge",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 84, // 64 + 20
+          }),
+          expect.objectContaining({
+            pitch: 62,
+            velocity: 84, // 64 + 20
+          }),
+        ],
+      });
+    });
+
+    it("should apply waveform modulations to existing notes without notes parameter", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          length: 8,
+        },
+      });
+
+      // Mock get_notes_extended to return notes at beats 0 and 4
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 0, // beat 0 in musical beats
+                duration: 1,
+                velocity: 64,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 60,
+                start_time: 4, // beat 4 in musical beats
+                duration: 1,
+                velocity: 64,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        return undefined;
+      });
+
+      updateClip({
+        ids: "123",
+        modulations: "velocity: 20 * cos(1t)", // 1 beat period cosine
+        noteUpdateMode: "merge",
+      });
+
+      const callArgs = liveApiCall.mock.calls.find(
+        (call) => call[0] === "add_new_notes",
+      )?.[1];
+
+      // At beat 0: cos(0) = 1.0, so velocity = 64 + 20*1.0 = 84
+      expect(callArgs.notes[0].velocity).toBe(84);
+
+      // At beat 4: cos(0) = 1.0 (wraps around), so velocity = 64 + 20*1.0 = 84
+      expect(callArgs.notes[1].velocity).toBe(84);
+    });
+
+    it("should apply multiple modulations to existing notes without notes parameter", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          length: 4,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 0,
+                duration: 1,
+                velocity: 64,
+                probability: 0.8,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        return undefined;
+      });
+
+      updateClip({
+        ids: "123",
+        modulations:
+          "velocity: 10\ntiming: 0.1\nduration: 0.5\nprobability: 0.1",
+        noteUpdateMode: "merge",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 74, // 64 + 10
+            start_time: 0.1, // 0 + 0.1
+            duration: 1.5, // 1 + 0.5
+            probability: 0.9, // 0.8 + 0.1
+          }),
+        ],
+      });
+    });
+
+    it("should clear clip in replace mode with modulations but no notes", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          length: 4,
+        },
+      });
+
+      let cleared = false;
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "remove_notes_extended") {
+          cleared = true;
+        } else if (method === "get_notes_extended") {
+          // Return existing note before clear, empty after clear
+          if (cleared) {
+            return JSON.stringify({ notes: [] });
+          }
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 0,
+                duration: 1,
+                velocity: 64,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        return undefined;
+      });
+
+      const result = updateClip({
+        ids: "123",
+        modulations: "velocity: 20",
+        noteUpdateMode: "replace",
+      });
+
+      // Should remove all notes and not add any (replace with empty)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "remove_notes_extended",
+        0,
+        127,
+        0,
+        MAX_CLIP_BEATS,
+      );
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "add_new_notes",
+        expect.anything(),
+      );
+      expect(result).toEqual({ id: "123", noteCount: 0 });
+    });
+
+    it("should handle empty clip with modulations in merge mode", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          length: 4,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] });
+        }
+        return undefined;
+      });
+
+      const result = updateClip({
+        ids: "123",
+        modulations: "velocity: 20",
+        noteUpdateMode: "merge",
+      });
+
+      // Should not add any notes (nothing to modulate)
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "add_new_notes",
+        expect.anything(),
+      );
+      expect(result).toEqual({ id: "123", noteCount: 0 });
+    });
+
+    it("should handle modulation errors gracefully when modulating existing notes", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          length: 4,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 0,
+                duration: 1,
+                velocity: 64,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi.spyOn(console, "error");
+
+      updateClip({
+        ids: "123",
+        modulations: "invalid syntax!!!",
+        noteUpdateMode: "merge",
+      });
+
+      // Should warn about invalid modulation
+      expect(consoleErrorSpy).toHaveBeenCalled();
+
+      // Should still write the note unchanged
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 64, // unchanged
+          }),
+        ],
+      });
+    });
   });
 });

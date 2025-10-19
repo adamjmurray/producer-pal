@@ -1139,4 +1139,311 @@ describe("createClip", () => {
       expect(result).toHaveLength(2);
     });
   });
+
+  describe("with modulations", () => {
+    it("should apply velocity modulation to notes", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      const result = createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "v64 C3 1|1", // base velocity 64, position at 1|1
+        modulations: "velocity: 20", // add 20
+      });
+
+      expect(result.id).toBeTruthy(); // Just verify ID exists
+
+      // Check that add_new_notes was called with modulated velocity
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 84, // 64 + 20
+          }),
+        ],
+      });
+    });
+
+    it("should apply timing modulation to note start_time", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "C3 1|1", // note at position 1|1 (beat 0)
+        modulations: "timing: 0.5", // add 0.5 Ableton beats
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            start_time: 0.5, // 0 + 0.5
+          }),
+        ],
+      });
+    });
+
+    it("should apply duration modulation", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "t1 C3 1|1", // duration 1 beat = 1 Ableton beat
+        modulations: "duration: 0.5", // add 0.5
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            duration: 1.5, // 1 + 0.5
+          }),
+        ],
+      });
+    });
+
+    it("should apply probability modulation", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "p0.5 C3 1|1", // probability 0.5
+        modulations: "probability: 0.2", // add 0.2
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            probability: 0.7, // 0.5 + 0.2
+          }),
+        ],
+      });
+    });
+
+    it("should clamp velocity to range 1-127", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "v120 C3 1|1 v10 D3 1|2",
+        modulations: "velocity: 20", // would push first to 140, second to 30
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 127, // clamped to max
+          }),
+          expect.objectContaining({
+            pitch: 62,
+            velocity: 30, // within range
+          }),
+        ],
+      });
+    });
+
+    it("should clamp probability to range 0.0-1.0", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "p0.9 C3 1|1 p0.1 D3 1|2",
+        modulations: "probability: 0.2",
+      });
+
+      const callArgs = liveApiCall.mock.calls.find(
+        (call) => call[0] === "add_new_notes",
+      )?.[1];
+      expect(callArgs.notes).toHaveLength(2);
+      expect(callArgs.notes[0]).toMatchObject({
+        pitch: 60,
+        probability: 1.0, // clamped to max
+      });
+      expect(callArgs.notes[1].pitch).toBe(62);
+      expect(callArgs.notes[1].probability).toBeCloseTo(0.3); // floating point safe
+    });
+
+    it("should clamp duration to minimum positive value", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "t0.1 C3 1|1",
+        modulations: "duration: -1", // would make negative
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            duration: 0.001, // clamped to minimum
+          }),
+        ],
+      });
+    });
+
+    it("should apply multiple parameter modulations", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "v64 t1 p0.5 C3 1|1",
+        modulations:
+          "velocity: 10\ntiming: 0.1\nduration: 0.5\nprobability: 0.2",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 74, // 64 + 10
+            start_time: 0.1, // 0 + 0.1
+            duration: 1.5, // 1 + 0.5
+            probability: 0.7, // 0.5 + 0.2
+          }),
+        ],
+      });
+    });
+
+    it("should apply modulation with waveform functions", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "v64 C3 1|1", // position 0, cos(0) = 1.0
+        modulations: "velocity: 20 * cos(1t)", // 20 * 1.0 = 20
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 84, // 64 + 20
+          }),
+        ],
+      });
+    });
+
+    it("should handle modulation errors gracefully", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 4,
+        signature_denominator: 4,
+        scenes: children([0]),
+      });
+
+      // Invalid modulation syntax should not crash, just skip modulation
+      const result = createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        notes: "v64 C3 1|1",
+        modulations: "invalid syntax!!!",
+      });
+
+      expect(result.id).toBeTruthy(); // Just verify ID exists
+
+      // Note should be created with original velocity (no modulation applied)
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 64, // unchanged
+          }),
+        ],
+      });
+    });
+
+    it("should work with different time signatures", () => {
+      mockLiveApiGet({
+        ClipSlot: { has_clip: 0 },
+        signature_numerator: 6,
+        signature_denominator: 8,
+        scenes: children([0]),
+      });
+
+      createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: 0,
+        timeSignature: "6/8",
+        notes: "v64 C3 1|1", // position 0
+        modulations: "velocity: 20 * cos(1:0t)", // 1 bar in 6/8 = 6 beats
+      });
+
+      // At position 0, cos should be 1.0, so modulation is +20
+      expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
+        notes: [
+          expect.objectContaining({
+            pitch: 60,
+            velocity: 84, // 64 + 20
+          }),
+        ],
+      });
+    });
+  });
 });

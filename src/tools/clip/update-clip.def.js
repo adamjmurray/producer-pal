@@ -27,12 +27,18 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s)",
+        "MIDI notes in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s). Omit to only apply modulations.",
+      ),
+    modulations: z
+      .string()
+      .optional()
+      .describe(
+        "parameter: expression per line. velocity/timing/duration/probability. Can apply alone in merge mode. Ex: velocity: 20*cos(1:0t)",
       ),
     noteUpdateMode: z
       .enum(["replace", "merge"])
       .describe(
-        '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
+        '"replace" (clear all notes first) or "merge" (overlay/modulate existing notes, v0 deletes)',
       ),
   },
 });

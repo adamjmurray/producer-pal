@@ -55,6 +55,80 @@ p0.5 C1 1|1,2,3,4 // 50% chance each kick plays
 p1.0 D1 1|2,4 // back to 100% - snare always plays
 \`\`\`
 
+## Modulations
+
+Apply dynamic transformations to note properties using mathematical expressions and waveforms. Add modulations parameter to create-clip or update-clip:
+
+**Syntax:** \`parameter: expression\` (one per line)
+
+**Parameters:**
+- velocity: Modify note velocity (additive, clamped 1-127)
+- timing: Shift note start time in beats (additive, no clamping)
+- duration: Modify note length in beats (additive, clamped >0.001)
+- probability: Modify note probability (additive, clamped 0.0-1.0)
+
+**Expressions:**
+- Arithmetic: +, -, *, / (standard precedence)
+- Waveforms: cos(freq), tri(freq), saw(freq), square(freq), noise()
+- Frequency: bar:beat duration + 't' suffix (1t, 1:0t, 0:2t)
+  - Optional bars: 2t = 2:0t, 0:1t = 1t
+- Phase: cos(freq, phase) - phase 0.0-1.0 offsets waveform start
+- Pulse width: square(freq, phase, width) - width 0.0-1.0 (default 0.5)
+
+**Waveform behavior:**
+- All waveforms output -1.0 to 1.0
+- Phase 0 = peak (1.0), descends to -1.0, returns to 1.0
+- cos: smooth sine wave
+- tri: linear triangle wave
+- saw: linear sawtooth (descending)
+- square: hard on/off toggle
+- noise(): random value each note (non-deterministic)
+
+**Examples:**
+
+\`\`\`
+# Velocity cycling every 2 bars
+velocity: 20 * cos(2:0t)
+
+# Humanize timing ±0.05 beats randomly
+timing: 0.05 * noise()
+
+# Crescendo with triangle wave over 4 bars
+velocity: 30 * tri(4t)
+
+# Shorten every other note (2 beat cycle)
+duration: -0.25 * square(2t)
+
+# Fade in probability over 8 bars
+probability: 0.5 * (1 + cos(8t))
+
+# Multiple parameters at once
+velocity: 15 * cos(1t)
+timing: 0.03 * noise()
+
+# Quarter note swing with phase offset
+timing: 0.1 * square(1t, 0.25, 0.5)
+
+# Apply to existing clip notes (update-clip with merge mode, no notes param)
+# Humanizes velocity and timing of all notes in clip without changing pitches
+ppal-update-clip ids=clip123 noteUpdateMode=merge modulations="velocity: 5 * noise()
+timing: 0.02 * noise()"
+\`\`\`
+
+**Use cases:**
+- Humanization: Add subtle random timing/velocity variations
+- Dynamics: Create crescendos, swells, rhythmic emphasis
+- Groove: Apply swing, shuffle, or rhythmic displacement
+- Evolving patterns: Fade notes in/out, cycle velocities
+- Generative variation: Use noise() for unpredictable changes
+- Retroactive modulation: Apply to existing clip notes without rewriting them
+
+**Notes:**
+- Modulations are additive - they add to/subtract from base values
+- Parse/evaluation errors become warnings, partial modulations apply
+- Position context: waveforms evaluate at each note's musical beat position
+- Can apply modulations alone in update-clip merge mode (omit notes parameter)
+
 ## Techniques
 
 ### Repeating Patterns
