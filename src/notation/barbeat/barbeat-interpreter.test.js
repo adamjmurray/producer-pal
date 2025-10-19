@@ -3448,6 +3448,22 @@ multi-line comment */ D3 1|1`);
       );
       consoleSpy.mockRestore();
     });
+
+    it("does not warn about buffered pitches when emitted via repeat pattern", () => {
+      const consoleSpy = vi.spyOn(console, "error");
+      const result = interpretNotation("t.5 C1 1|1x8");
+
+      // Should emit 8 notes
+      expect(result).toHaveLength(8);
+      expect(result[0].pitch).toBe(36); // C1
+      expect(result[0].duration).toBe(0.5);
+
+      // Should NOT warn about buffered pitches
+      expect(consoleSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("pitch(es) buffered but no time position"),
+      );
+      consoleSpy.mockRestore();
+    });
   });
 
   describe("v0 deletions", () => {
