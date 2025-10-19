@@ -303,6 +303,61 @@ describe("bar|beat interpretNotation()", () => {
     ]);
   });
 
+  it("handles duration with + operator in bar:beat format (NEW)", () => {
+    const result = interpretNotation("t1:2+1/3 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result.length).toBe(1);
+    expect(result[0].pitch).toBe(60);
+    expect(result[0].start_time).toBe(0);
+    expect(result[0].duration).toBeCloseTo(6 + 1 / 3, 10); // 1 bar (4 beats) + 2+1/3 beats = 6+1/3 beats
+    expect(result[0].velocity).toBe(100);
+    expect(result[0].probability).toBe(1.0);
+    expect(result[0].velocity_deviation).toBe(0);
+  });
+
+  it("handles beat-only duration with + operator (NEW)", () => {
+    const result = interpretNotation("t2+3/4 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result).toEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 2.75, // 2+3/4 beats in 4/4 = 2.75 Ableton beats
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+
+  it("handles beat positions with + operator (NEW)", () => {
+    const result = interpretNotation("C3 1|2+1/3 D3 1|2+3/4", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result.length).toBe(2);
+
+    // First note at 1|2+1/3
+    expect(result[0].pitch).toBe(60);
+    expect(result[0].start_time).toBeCloseTo(1 + 1 / 3, 10); // bar 1, beat 2+1/3
+    expect(result[0].duration).toBe(1);
+    expect(result[0].velocity).toBe(100);
+    expect(result[0].probability).toBe(1.0);
+    expect(result[0].velocity_deviation).toBe(0);
+
+    // Second note at 1|2+3/4
+    expect(result[1].pitch).toBe(62);
+    expect(result[1].start_time).toBe(1.75); // bar 1, beat 2+3/4
+    expect(result[1].duration).toBe(1);
+    expect(result[1].velocity).toBe(100);
+    expect(result[1].probability).toBe(1.0);
+    expect(result[1].velocity_deviation).toBe(0);
+  });
+
   it("handles mixed duration formats (NEW)", () => {
     const result = interpretNotation("t2:0 C3 1|1 t1.5 D3 1|2 t3/4 E3 1|3", {
       timeSigNumerator: 4,
@@ -3218,6 +3273,180 @@ multi-line comment */ D3 1|1`);
           velocity_deviation: 0,
         },
       ]);
+    });
+  });
+
+  describe("repeat patterns (x{times}@{step})", () => {
+    it("expands basic repeat pattern with whole step", () => {
+      const result = interpretNotation("C1 1|1x4@1");
+      expect(result).toEqual([
+        {
+          pitch: 36,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 36,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 36,
+          start_time: 2,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+        {
+          pitch: 36,
+          start_time: 3,
+          duration: 1,
+          velocity: 100,
+          probability: 1.0,
+          velocity_deviation: 0,
+        },
+      ]);
+    });
+
+    it("expands repeat pattern with fractional step (triplets)", () => {
+      const result = interpretNotation("C3 1|1x3@1/3", {
+        timeSigNumerator: 4,
+        timeSigDenominator: 4,
+      });
+      expect(result).toHaveLength(3);
+      expect(result[0].start_time).toBeCloseTo(0, 10);
+      expect(result[1].start_time).toBeCloseTo(1 / 3, 10);
+      expect(result[2].start_time).toBeCloseTo(2 / 3, 10);
+    });
+
+    it("expands repeat pattern with decimal step", () => {
+      const result = interpretNotation("Gb1 1|1x8@0.5");
+      expect(result).toHaveLength(8);
+      expect(result[0].start_time).toBeCloseTo(0, 10);
+      expect(result[1].start_time).toBeCloseTo(0.5, 10);
+      expect(result[7].start_time).toBeCloseTo(3.5, 10);
+    });
+
+    it("expands repeat pattern with mixed number step", () => {
+      const result = interpretNotation("C1 1|1x4@1+1/2");
+      expect(result).toHaveLength(4);
+      expect(result[0].start_time).toBeCloseTo(0, 10);
+      expect(result[1].start_time).toBeCloseTo(1.5, 10);
+      expect(result[2].start_time).toBeCloseTo(3, 10);
+      expect(result[3].start_time).toBeCloseTo(4.5, 10);
+    });
+
+    it("expands repeat pattern with mixed number start", () => {
+      const result = interpretNotation("C3 1|2+1/3x3@1/3", {
+        timeSigNumerator: 4,
+        timeSigDenominator: 4,
+      });
+      expect(result).toHaveLength(3);
+      expect(result[0].start_time).toBeCloseTo(1 + 1 / 3, 10);
+      expect(result[1].start_time).toBeCloseTo(1 + 2 / 3, 10);
+      expect(result[2].start_time).toBeCloseTo(2, 10);
+    });
+
+    it("handles repeat pattern overflowing into next bar", () => {
+      const result = interpretNotation("C1 1|3x6@1");
+      expect(result).toHaveLength(6);
+      expect(result[0].start_time).toBe(2); // bar 1, beat 3
+      expect(result[1].start_time).toBe(3); // bar 1, beat 4
+      expect(result[2].start_time).toBe(4); // bar 2, beat 1
+      expect(result[3].start_time).toBe(5); // bar 2, beat 2
+      expect(result[4].start_time).toBe(6); // bar 2, beat 3
+      expect(result[5].start_time).toBe(7); // bar 2, beat 4
+    });
+
+    it("handles repeat pattern without bar (uses current bar)", () => {
+      const result = interpretNotation("C1 1|1 D1 |2x2@1");
+      expect(result).toHaveLength(3);
+      expect(result[0].pitch).toBe(36); // C1 at 1|1
+      expect(result[1].pitch).toBe(38); // D1 at 1|2
+      expect(result[2].pitch).toBe(38); // D1 at 1|3
+    });
+
+    it("emits multiple pitches at each expanded position", () => {
+      const result = interpretNotation("C3 D3 E3 1|1x4@1");
+      expect(result).toHaveLength(12); // 3 pitches × 4 positions
+      // Check first position (beat 1)
+      expect(result[0].pitch).toBe(60); // C3
+      expect(result[1].pitch).toBe(62); // D3
+      expect(result[2].pitch).toBe(64); // E3
+      // Check second position (beat 2)
+      expect(result[3].pitch).toBe(60); // C3
+      expect(result[4].pitch).toBe(62); // D3
+      expect(result[5].pitch).toBe(64); // E3
+    });
+
+    it("applies state changes to all expanded positions", () => {
+      const result = interpretNotation("v80 t0.5 C1 1|1x4@1");
+      expect(result).toHaveLength(4);
+      expect(result.every((note) => note.velocity === 80)).toBe(true);
+      expect(result.every((note) => note.duration === 0.5)).toBe(true);
+    });
+
+    it("uses current duration when step is omitted", () => {
+      const result = interpretNotation("t0.5 C1 1|1x4");
+      expect(result).toHaveLength(4);
+      expect(result[0].start_time).toBe(0); // 1|1
+      expect(result[1].start_time).toBe(0.5); // 1|1.5
+      expect(result[2].start_time).toBe(1); // 1|2
+      expect(result[3].start_time).toBe(1.5); // 1|2.5
+      expect(result.every((note) => note.duration === 0.5)).toBe(true);
+    });
+
+    it("uses default duration when step is omitted and no duration set", () => {
+      const result = interpretNotation("C1 1|1x3");
+      expect(result).toHaveLength(3);
+      expect(result[0].start_time).toBe(0); // 1|1
+      expect(result[1].start_time).toBe(1); // 1|2
+      expect(result[2].start_time).toBe(2); // 1|3
+      expect(result.every((note) => note.duration === 1)).toBe(true);
+    });
+
+    it("handles repeat pattern mixed with regular beats", () => {
+      const result = interpretNotation("C1 1|1x2@1,3.5");
+      expect(result).toHaveLength(3);
+      expect(result[0].start_time).toBe(0); // 1|1
+      expect(result[1].start_time).toBe(1); // 1|2
+      expect(result[2].start_time).toBe(2.5); // 1|3.5
+    });
+
+    it("handles multiple repeat patterns in same beat list", () => {
+      const result = interpretNotation("C1 1|1x2@1,3x2@0.5");
+      expect(result).toHaveLength(4);
+      expect(result[0].start_time).toBe(0); // 1|1
+      expect(result[1].start_time).toBe(1); // 1|2
+      expect(result[2].start_time).toBe(2); // 1|3
+      expect(result[3].start_time).toBe(2.5); // 1|3.5
+    });
+
+    it("works with bar copy operations", () => {
+      const result = interpretNotation("C1 1|1x4@1 @2=1");
+      expect(result).toHaveLength(8);
+      // Bar 1
+      expect(result[0].start_time).toBe(0);
+      expect(result[3].start_time).toBe(3);
+      // Bar 2 (copied)
+      expect(result[4].start_time).toBe(4);
+      expect(result[7].start_time).toBe(7);
+    });
+
+    it("emits warning for excessive repeat times", () => {
+      const consoleSpy = vi.spyOn(console, "warn");
+      interpretNotation("C1 1|1x101@1");
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining("101 notes, which may be excessive"),
+      );
+      consoleSpy.mockRestore();
     });
   });
 

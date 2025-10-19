@@ -152,6 +152,21 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToBeats("1|7/3", 6)).toBeCloseTo(4 / 3, 10);
     });
 
+    it("handles beats with + operator (integer + fraction)", () => {
+      // Basic cases
+      expect(barBeatToBeats("1|2+1/3", 4)).toBeCloseTo(4 / 3, 10);
+      expect(barBeatToBeats("1|2+3/4", 4)).toBeCloseTo(1.75, 10);
+      expect(barBeatToBeats("1|3+1/2", 4)).toBeCloseTo(2.5, 10);
+
+      // Different bars
+      expect(barBeatToBeats("2|1+1/4", 4)).toBeCloseTo(4.25, 10);
+      expect(barBeatToBeats("3|2+2/3", 4)).toBeCloseTo(8 + 5 / 3, 10);
+
+      // Different time signatures
+      expect(barBeatToBeats("1|2+1/3", 3)).toBeCloseTo(4 / 3, 10);
+      expect(barBeatToBeats("2|1+1/2", 6)).toBeCloseTo(6.5, 10);
+    });
+
     it("throws error for fractional beats less than 1", () => {
       expect(() => barBeatToBeats("1|1/2", 4)).toThrow(
         "Beat must be 1 or greater",
@@ -666,6 +681,16 @@ describe("barBeatDurationToMusicalBeats", () => {
       expect(barBeatDurationToMusicalBeats("4/3", 4, 4)).toBeCloseTo(4 / 3, 10);
     });
 
+    it("parses beat durations with + operator (integer + fraction)", () => {
+      expect(barBeatDurationToMusicalBeats("2+3/4", 4, 4)).toBe(2.75);
+      expect(barBeatDurationToMusicalBeats("1+1/2", 4, 4)).toBe(1.5);
+      expect(barBeatDurationToMusicalBeats("3+1/3", 4, 4)).toBeCloseTo(
+        10 / 3,
+        10,
+      );
+      expect(barBeatDurationToMusicalBeats("0+3/4", 4, 4)).toBe(0.75);
+    });
+
     it("handles zero duration", () => {
       expect(barBeatDurationToMusicalBeats("0", 4, 4)).toBe(0);
       expect(barBeatDurationToMusicalBeats("0.0", 4, 4)).toBe(0);
@@ -730,6 +755,15 @@ describe("barBeatDurationToMusicalBeats", () => {
         8 + 5 / 3,
         10,
       );
+    });
+
+    it("handles bar:beat durations with + operator", () => {
+      expect(barBeatDurationToMusicalBeats("1:2+1/3", 4, 4)).toBeCloseTo(
+        4 + 2 + 1 / 3,
+        10,
+      );
+      expect(barBeatDurationToMusicalBeats("0:3+3/4", 4, 4)).toBe(3.75);
+      expect(barBeatDurationToMusicalBeats("2:1+1/2", 3, 4)).toBe(7.5);
     });
 
     it("throws error for negative values", () => {
