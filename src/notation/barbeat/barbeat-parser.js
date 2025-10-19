@@ -327,7 +327,11 @@ function peg$parse(input, options) {
   }
   function peg$f17() {
     const [num, den] = text().split('/');
-    return Number.parseInt(num) / Number.parseInt(den);
+    const result = Number.parseInt(num) / Number.parseInt(den);
+    if (result < 1) {
+      throw new Error(`Beat position must be 1 or greater (got ${text()})`);
+    }
+    return result;
   }
   function peg$f18(wholeNumber, fraction) {
     return wholeNumber + fraction;

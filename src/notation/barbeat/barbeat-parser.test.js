@@ -146,6 +146,18 @@ describe("BarBeatScript Parser", () => {
         "Repeat step size must be greater than 0",
       );
     });
+
+    it("rejects fractional beats less than 1", () => {
+      expect(() => parser.parse("1|1/2 C3")).toThrow(
+        "Beat position must be 1 or greater (got 1/2)",
+      );
+      expect(() => parser.parse("1|2/3 C3")).toThrow(
+        "Beat position must be 1 or greater (got 2/3)",
+      );
+      expect(() => parser.parse("1|3/4 C3")).toThrow(
+        "Beat position must be 1 or greater (got 3/4)",
+      );
+    });
   });
 
   describe("probability", () => {
