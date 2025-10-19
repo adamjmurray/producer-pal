@@ -1,7 +1,10 @@
 import * as parser from "./modulation-parser.js";
 import * as waveforms from "./modulation-waveforms.js";
 import { parseFrequency } from "./modulation-frequency.js";
-import { abletonBeatsToBarBeat } from "../barbeat/barbeat-time.js";
+import {
+  abletonBeatsToBarBeat,
+  barBeatToBeats,
+} from "../barbeat/barbeat-time.js";
 
 /**
  * Apply modulations to a list of notes in-place
@@ -19,6 +22,12 @@ export function applyModulations(
   if (!modulationString || notes.length === 0) {
     return;
   }
+
+  // Calculate the overall clip timeRange in musical beats
+  const clipStartTime = notes[0].start_time * (timeSigDenominator / 4);
+  const lastNote = notes[notes.length - 1];
+  const clipEndTime =
+    (lastNote.start_time + lastNote.duration) * (timeSigDenominator / 4);
 
   for (const note of notes) {
     // Convert note's Ableton beats start_time to musical beats position
@@ -43,6 +52,10 @@ export function applyModulations(
       timeSig: {
         numerator: timeSigNumerator,
         denominator: timeSigDenominator,
+      },
+      clipTimeRange: {
+        start: clipStartTime,
+        end: clipEndTime,
       },
     });
 
@@ -109,6 +122,9 @@ export function applyModulations(
  * @param {Object} noteContext.timeSig - Time signature
  * @param {number} noteContext.timeSig.numerator - Time signature numerator
  * @param {number} noteContext.timeSig.denominator - Time signature denominator
+ * @param {Object} [noteContext.clipTimeRange] - Overall clip time range
+ * @param {number} noteContext.clipTimeRange.start - Clip start time in musical beats
+ * @param {number} noteContext.clipTimeRange.end - Clip end time in musical beats
  * @returns {Object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
  */
 export function evaluateModulation(modulationString, noteContext) {
@@ -116,7 +132,7 @@ export function evaluateModulation(modulationString, noteContext) {
     return {};
   }
 
-  const { position, pitch, bar, beat, timeSig } = noteContext;
+  const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
   const { numerator, denominator } = timeSig;
 
   let ast;
@@ -144,7 +160,8 @@ export function evaluateModulation(modulationString, noteContext) {
         continue; // Skip this assignment - doesn't match note's pitch
       }
 
-      // Apply time range filtering
+      // Calculate the active timeRange for this assignment
+      let activeTimeRange;
       if (assignment.timeRange && bar != null && beat != null) {
         const { startBar, startBeat, endBar, endBeat } = assignment.timeRange;
 
@@ -156,6 +173,21 @@ export function evaluateModulation(modulationString, noteContext) {
         if (!(afterStart && beforeEnd)) {
           continue; // Skip this assignment - note outside time range
         }
+
+        // Convert assignment timeRange to musical beats
+        const musicalBeatsPerBar = numerator * (4 / denominator);
+        const startBeats = barBeatToBeats(
+          `${startBar}|${startBeat}`,
+          musicalBeatsPerBar,
+        );
+        const endBeats = barBeatToBeats(
+          `${endBar}|${endBeat}`,
+          musicalBeatsPerBar,
+        );
+        activeTimeRange = { start: startBeats, end: endBeats };
+      } else {
+        // No assignment timeRange, use clip timeRange
+        activeTimeRange = clipTimeRange || { start: 0, end: position };
       }
 
       const value = evaluateExpression(
@@ -163,6 +195,7 @@ export function evaluateModulation(modulationString, noteContext) {
         position,
         numerator,
         denominator,
+        activeTimeRange,
       );
 
       result[assignment.parameter] = {
@@ -186,6 +219,9 @@ export function evaluateModulation(modulationString, noteContext) {
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
+ * @param {Object} timeRange - Active time range for this expression
+ * @param {number} timeRange.start - Start time in musical beats
+ * @param {number} timeRange.end - End time in musical beats
  * @returns {number} Evaluated value
  */
 function evaluateExpression(
@@ -193,6 +229,7 @@ function evaluateExpression(
   position,
   timeSigNumerator,
   timeSigDenominator,
+  timeRange,
 ) {
   // Base case: number literal
   if (typeof node === "number") {
@@ -206,12 +243,14 @@ function evaluateExpression(
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     const right = evaluateExpression(
       node.right,
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     return left + right;
   }
@@ -222,12 +261,14 @@ function evaluateExpression(
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     const right = evaluateExpression(
       node.right,
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     return left - right;
   }
@@ -238,12 +279,14 @@ function evaluateExpression(
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     const right = evaluateExpression(
       node.right,
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     return left * right;
   }
@@ -254,12 +297,14 @@ function evaluateExpression(
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     const right = evaluateExpression(
       node.right,
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
     // Division by zero yields 0 per spec
     if (right === 0) {
@@ -276,6 +321,7 @@ function evaluateExpression(
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
   }
 
@@ -297,10 +343,63 @@ function evaluateFunction(
   position,
   timeSigNumerator,
   timeSigDenominator,
+  timeRange,
 ) {
   // noise() has no arguments
   if (name === "noise") {
     return waveforms.noise();
+  }
+
+  // ramp() is special - it uses timeRange instead of period
+  if (name === "ramp") {
+    // ramp() requires start and end arguments
+    if (args.length < 2) {
+      throw new Error(
+        `Function ramp() requires start and end arguments: ramp(start, end, speed?)`,
+      );
+    }
+
+    // First argument: start value
+    const start = evaluateExpression(
+      args[0],
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+    );
+
+    // Second argument: end value
+    const end = evaluateExpression(
+      args[1],
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+    );
+
+    // Optional third argument: speed (default 1)
+    let speed = 1;
+    if (args.length >= 3) {
+      speed = evaluateExpression(
+        args[2],
+        position,
+        timeSigNumerator,
+        timeSigDenominator,
+        timeRange,
+      );
+      if (speed <= 0) {
+        throw new Error(`Function ramp() speed must be > 0, got ${speed}`);
+      }
+    }
+
+    // Calculate phase based on position within timeRange
+    const timeRangeDuration = timeRange.end - timeRange.start;
+    const phase =
+      timeRangeDuration > 0
+        ? (position - timeRange.start) / timeRangeDuration
+        : 0;
+
+    return waveforms.ramp(phase, start, end, speed);
   }
 
   // All other waveforms require at least a period argument
@@ -331,6 +430,7 @@ function evaluateFunction(
       position,
       timeSigNumerator,
       timeSigDenominator,
+      timeRange,
     );
   }
 
@@ -356,6 +456,7 @@ function evaluateFunction(
           position,
           timeSigNumerator,
           timeSigDenominator,
+          timeRange,
         );
       }
       return waveforms.square(phase, pulseWidth);

@@ -110,6 +110,10 @@ Apply dynamic transformations to note properties using mathematical expressions 
 - saw: linear sawtooth (descending)
 - square: hard on/off toggle
 - noise(): random value each note (non-deterministic)
+- ramp(start, end, speed): linear interpolation over clip duration
+  - start/end: any numeric values
+  - speed: optional multiplier (default 1), >1 = faster, <1 = slower
+  - Ramps over the entire clip or time range (no frequency arg)
 
 **Examples:**
 
@@ -131,6 +135,15 @@ duration += -0.25 * square(2t)
 
 # Fade in probability over 8 bars
 probability += 0.5 * (1 + cos(8t))
+
+# Velocity ramp from 0 to 127 over entire clip
+velocity += ramp(0, 127)
+
+# Reverse ramp (fade out)
+velocity += ramp(127, 0)
+
+# Two complete ramps over clip duration
+velocity += ramp(0, 100, 2)
 
 # Multiple parameters at once
 velocity += 15 * cos(1t)

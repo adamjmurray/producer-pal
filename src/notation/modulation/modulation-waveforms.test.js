@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cos, tri, saw, square, noise } from "./modulation-waveforms.js";
+import { cos, tri, saw, square, noise, ramp } from "./modulation-waveforms.js";
 
 describe("Modulation Waveforms", () => {
   describe("cos()", () => {
@@ -211,6 +211,81 @@ describe("Modulation Waveforms", () => {
 
       expect(hasPositive).toBe(true);
       expect(hasNegative).toBe(true);
+    });
+  });
+
+  describe("ramp()", () => {
+    it("starts at start value at phase 0", () => {
+      expect(ramp(0, 0, 1)).toBe(0);
+      expect(ramp(0, -1, 1)).toBe(-1);
+      expect(ramp(0, 0.5, 1.5)).toBe(0.5);
+    });
+
+    it("ends at end value at phase 1", () => {
+      expect(ramp(1, 0, 1)).toBe(0); // wraps back to start
+      expect(ramp(0.999, 0, 1)).toBeCloseTo(0.999, 10);
+    });
+
+    it("interpolates linearly from start to end", () => {
+      expect(ramp(0, 0, 1)).toBe(0);
+      expect(ramp(0.25, 0, 1)).toBe(0.25);
+      expect(ramp(0.5, 0, 1)).toBe(0.5);
+      expect(ramp(0.75, 0, 1)).toBe(0.75);
+    });
+
+    it("supports reverse ramp (descending)", () => {
+      expect(ramp(0, 1, 0)).toBe(1);
+      expect(ramp(0.25, 1, 0)).toBe(0.75);
+      expect(ramp(0.5, 1, 0)).toBe(0.5);
+      expect(ramp(0.75, 1, 0)).toBe(0.25);
+    });
+
+    it("supports arbitrary value ranges", () => {
+      expect(ramp(0, -0.5, 0.5)).toBe(-0.5);
+      expect(ramp(0.5, -0.5, 0.5)).toBe(0);
+      expect(ramp(1, -0.5, 0.5)).toBe(-0.5); // wraps
+
+      expect(ramp(0, 10, 20)).toBe(10);
+      expect(ramp(0.5, 10, 20)).toBe(15);
+    });
+
+    it("supports speed = 2 (two complete ramps)", () => {
+      // Speed 2: completes two full ramps over phase 0-1
+      expect(ramp(0, 0, 1, 2)).toBe(0);
+      expect(ramp(0.25, 0, 1, 2)).toBe(0.5); // halfway through first ramp
+      expect(ramp(0.5, 0, 1, 2)).toBe(0); // start of second ramp
+      expect(ramp(0.75, 0, 1, 2)).toBe(0.5); // halfway through second ramp
+    });
+
+    it("supports speed = 0.5 (half ramp over period)", () => {
+      // Speed 0.5: completes half a ramp over phase 0-1
+      expect(ramp(0, 0, 1, 0.5)).toBe(0);
+      expect(ramp(0.5, 0, 1, 0.5)).toBe(0.25);
+      expect(ramp(1, 0, 1, 0.5)).toBe(0.5); // only reaches halfway
+    });
+
+    it("supports speed = 3", () => {
+      // Speed 3: completes three full ramps
+      expect(ramp(0, 0, 1, 3)).toBe(0);
+      expect(ramp(1 / 3, 0, 1, 3)).toBeCloseTo(0, 10); // end of first ramp
+      expect(ramp(0.5, 0, 1, 3)).toBeCloseTo(0.5, 10); // middle of second ramp
+      expect(ramp(2 / 3, 0, 1, 3)).toBeCloseTo(0, 10); // end of second ramp
+    });
+
+    it("handles phase > 1.0 with wrapping", () => {
+      expect(ramp(1.25, 0, 1)).toBeCloseTo(ramp(0.25, 0, 1), 10);
+      expect(ramp(2.0, 0, 1)).toBe(ramp(0, 0, 1));
+      expect(ramp(2.5, 0, 1)).toBe(ramp(0.5, 0, 1));
+    });
+
+    it("handles phase wrapping with speed", () => {
+      // Speed 2 with phase > 1
+      expect(ramp(1.25, 0, 1, 2)).toBeCloseTo(ramp(0.25, 0, 1, 2), 10);
+    });
+
+    it("uses default speed of 1", () => {
+      expect(ramp(0.5, 0, 1)).toBe(0.5);
+      expect(ramp(0.5, 0, 1, 1)).toBe(0.5);
     });
   });
 });

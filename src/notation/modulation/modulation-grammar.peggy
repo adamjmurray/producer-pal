@@ -98,6 +98,7 @@ functionName
   / "saw" { return "saw"; }
   / "square" { return "square"; }
   / "noise" { return "noise"; }
+  / "ramp" { return "ramp"; }
 
 argumentList
   = head:argument tail:(_ "," _ argument)* {

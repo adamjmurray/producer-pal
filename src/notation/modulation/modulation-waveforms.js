@@ -67,3 +67,18 @@ export function noise() {
   // Generate random value between -1.0 and 1.0
   return Math.random() * 2.0 - 1.0;
 }
+
+/**
+ * Ramp generator - linearly interpolates from start to end
+ * @param {number} phase - Phase in cycles (0.0-1.0)
+ * @param {number} start - Starting value
+ * @param {number} end - Ending value
+ * @param {number} [speed=1] - Speed multiplier (must be > 0)
+ * @returns {number} Interpolated value between start and end
+ */
+export function ramp(phase, start, end, speed = 1) {
+  // Apply speed multiplier and normalize to 0-1 range
+  const scaledPhase = (phase * speed) % 1.0;
+  // Linear interpolation from start to end
+  return start + (end - start) * scaledPhase;
+}
