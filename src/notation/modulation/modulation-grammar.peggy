@@ -29,13 +29,7 @@ assignment
   }
 
 pitch
-  = midiNote:unsignedInt !"|" {
-    if (midiNote >= 0 && midiNote <= 127) {
-      return midiNote;
-    }
-    throw new Error(`MIDI pitch ${midiNote} outside valid range 0-127`);
-  }
-  / pitchClass:pitchClass octave:signedInt {
+  = pitchClass:pitchClass octave:signedInt {
     const pitch = (octave + 2) * 12 + pitchClass.value;
     if (pitch >= 0 && pitch <= 127) {
       return pitch;

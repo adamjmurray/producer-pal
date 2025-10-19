@@ -443,7 +443,7 @@ timing += 0.05`;
 
   describe("pitch filtering", () => {
     it("applies modulation to matching pitch", () => {
-      const result = evaluateModulation("60 velocity += 10", {
+      const result = evaluateModulation("C3 velocity += 10", {
         position: 0,
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
@@ -452,7 +452,7 @@ timing += 0.05`;
     });
 
     it("skips modulation for non-matching pitch", () => {
-      const result = evaluateModulation("60 velocity += 10", {
+      const result = evaluateModulation("C3 velocity += 10", {
         position: 0,
         pitch: 61,
         timeSig: { numerator: 4, denominator: 4 },
@@ -470,7 +470,7 @@ timing += 0.05`;
     });
 
     it("persists pitch across multiple lines", () => {
-      const result = evaluateModulation("60 velocity += 10\ntiming += 0.05", {
+      const result = evaluateModulation("C3 velocity += 10\ntiming += 0.05", {
         position: 0,
         pitch: 60,
         timeSig: { numerator: 4, denominator: 4 },
@@ -480,8 +480,8 @@ timing += 0.05`;
     });
 
     it("resets pitch when specified again", () => {
-      const modString = `60 velocity += 10
-61 velocity += 20`;
+      const modString = `C3 velocity += 10
+C#3 velocity += 20`;
       const result1 = evaluateModulation(modString, {
         position: 0,
         pitch: 60,
@@ -552,7 +552,7 @@ timing += 0.05`;
 
   describe("combined pitch and time filtering", () => {
     it("applies when both pitch and time match", () => {
-      const result = evaluateModulation("60 1|1-2|1 velocity += 10", {
+      const result = evaluateModulation("C3 1|1-2|1 velocity += 10", {
         position: 0,
         pitch: 60,
         bar: 1,
@@ -563,7 +563,7 @@ timing += 0.05`;
     });
 
     it("skips when pitch matches but time doesn't", () => {
-      const result = evaluateModulation("60 1|1-2|1 velocity += 10", {
+      const result = evaluateModulation("C3 1|1-2|1 velocity += 10", {
         position: 0,
         pitch: 60,
         bar: 3,
@@ -574,7 +574,7 @@ timing += 0.05`;
     });
 
     it("skips when time matches but pitch doesn't", () => {
-      const result = evaluateModulation("60 1|1-2|1 velocity += 10", {
+      const result = evaluateModulation("C3 1|1-2|1 velocity += 10", {
         position: 0,
         pitch: 61,
         bar: 1,
@@ -985,7 +985,7 @@ probability += -0.2`;
           probability: 1,
         },
       ];
-      applyModulations(notes, "60 velocity += 20", 4, 4);
+      applyModulations(notes, "C3 velocity += 20", 4, 4);
       expect(notes[0].velocity).toBe(120);
       expect(notes[1].velocity).toBe(100); // unchanged
     });

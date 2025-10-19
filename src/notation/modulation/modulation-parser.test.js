@@ -92,12 +92,6 @@ describe("Modulation Parser", () => {
   });
 
   describe("pitch selectors", () => {
-    it("parses MIDI note number", () => {
-      const result = parser.parse("60 velocity += 10");
-      expect(result[0].pitch).toBe(60);
-      expect(result[0].parameter).toBe("velocity");
-    });
-
     it("parses note name", () => {
       const result = parser.parse("C1 velocity += 10");
       expect(result[0].pitch).toBe(36); // C1 = MIDI 36
@@ -113,9 +107,9 @@ describe("Modulation Parser", () => {
       expect(result[0].pitch).toBe(37);
     });
 
-    it("throws on invalid MIDI pitch", () => {
-      expect(() => parser.parse("128 velocity += 10")).toThrow();
-      expect(() => parser.parse("-1 velocity += 10")).toThrow();
+    it("throws on invalid pitch (out of range)", () => {
+      expect(() => parser.parse("C10 velocity += 10")).toThrow();
+      expect(() => parser.parse("C-5 velocity += 10")).toThrow();
     });
   });
 
@@ -149,8 +143,8 @@ describe("Modulation Parser", () => {
 
   describe("combined selectors", () => {
     it("parses pitch with time range", () => {
-      const result = parser.parse("60 1|1-2|1 velocity += 10");
-      expect(result[0].pitch).toBe(60);
+      const result = parser.parse("E3 1|1-2|1 velocity += 10");
+      expect(result[0].pitch).toBe(64); // E3 = MIDI 64
       expect(result[0].timeRange).toEqual({
         startBar: 1,
         startBeat: 1,
