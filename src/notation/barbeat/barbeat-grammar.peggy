@@ -17,13 +17,13 @@
 }}
 
 start
-  = _ head:element? tail:(WS+ element)* _ {
+  = _ head:element? tail:(WS element)* _ {
     const elements = [head, ...tail.map(t => t[1])].filter(Boolean);
     return elements.flat();
   }
 
 element
-  = barCopy / time / probability / velocity / duration / note
+  = barCopy / timePoints / probability / velocity / duration / pitch
 
 barCopy
   = '@' 'clear' {
@@ -52,15 +52,15 @@ barCopy
   }
 
 barOrRange
-  = start:positiveInt '-' end:positiveInt {
+  = start:oneOrMoreInt '-' end:oneOrMoreInt {
     return { range: [start, end] };
   }
-  / bar:positiveInt {
+  / bar:oneOrMoreInt {
     return { bar: bar };
   }
 
-time
-  = bar:positiveInt "|" beats:beatList {
+timePoints
+  = bar:oneOrMoreInt "|" beats:beatList {
     return beats.map(beat => ({ bar, beat }));
   }
   / "|" beats:beatList {
@@ -73,16 +73,16 @@ beatList
   }
 
 beatSpec
-  = start:positiveFloat "x" times:positiveInt "@" step:unsignedFloatOrFraction {
+  = start:oneOrMoreFloat "x" times:oneOrMoreInt "@" step:unsignedFloat {
       if (step === 0) {
         throw new Error("Repeat step size must be greater than 0");
       }
       return { start, times, step };
     }
-  / positiveFloat
+  / oneOrMoreFloat
 
 probability
-  = "p" val:unsignedFloat {
+  = "p" val:unsignedDecimal {
     if (val >= 0.0 && val <= 1.0) {
       return { probability: val };
     }
@@ -107,14 +107,14 @@ velocity
   }
 
 duration
-  = "t" bars:unsignedInt ":" beats:unsignedFloatOrFraction {
+  = "t" bars:unsignedInt ":" beats:unsignedFloat {
     return { duration: `${bars}:${beats}` };  // String for bar:beat format
   }
-  / "t" val:unsignedFloatOrFraction {
+  / "t" val:unsignedFloat {
     return { duration: val };  // Number for beat-only (existing)
   }
 
-note
+pitch
   = pitchClass:pitchClass octave:signedInt {
     const name = `${pitchClass.name}${octave}`;
     const pitch = (octave + 2) * 12 + pitchClass.value;
@@ -130,15 +130,52 @@ pitchClass
   return { name: pc, value: PITCH_CLASS_VALUES[pc] };
 }
 
+oneOrMoreFloat
+  = oneOrMoreMixedNumber / oneOrMoreFraction / oneOrMoreDecimal
 
-unsignedInt
-  = [0-9]+ { 
-    return Number.parseInt(text()); 
+oneOrMoreMixedNumber
+ = wholeNumber:oneOrMoreInt "+" fraction:unsignedFraction {
+    return wholeNumber + fraction;
   }
 
-positiveInt
-  = [1-9] [0-9]* { 
-    return Number.parseInt(text()); 
+oneOrMoreFraction
+  = [1-9] [0-9]* "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    return Number.parseInt(num) / Number.parseInt(den);
+  }
+
+unsignedFloat
+  = unsignedMixedNumber / unsignedFraction / unsignedDecimal
+
+unsignedMixedNumber
+  = wholeNumber:unsignedInt "+" fraction:unsignedFraction {
+    return wholeNumber + fraction;
+  }
+
+unsignedFraction
+  = [0-9]+ "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    return Number.parseInt(num) / Number.parseInt(den);
+  }
+
+oneOrMoreDecimal
+  = [1-9] [0-9]* ("." [0-9]*)? {
+    return Number.parseFloat(text());
+  }
+
+signedDecimal
+  = sign:"-"? value:unsignedDecimal {
+    return sign ? -value : value;
+  } 
+
+unsignedDecimal
+  = ([0-9]+ ("." [0-9]*)? / "." [0-9]+) {
+    return Number.parseFloat(text());
+  }
+
+oneOrMoreInt
+  = [1-9] [0-9]* {
+    return Number.parseInt(text());
   }
 
 signedInt
@@ -146,45 +183,11 @@ signedInt
     return sign ? -value : value;
   }
 
-unsignedFloat
-  = ([0-9]+ ("." [0-9]*)? / "." [0-9]+) {
-    return Number.parseFloat(text());
+unsignedInt
+  = [0-9]+ {
+    return Number.parseInt(text());
   }
 
-unsignedFloatOrFraction
-  = whole:([0-9]+) "+" frac:([0-9]+ "/" [1-9] [0-9]*) {
-    const wholeNum = Number.parseInt(whole.flat().join(''));
-    const fracText = frac.flat().join('');
-    const [num, den] = fracText.split('/');
-    return wholeNum + (Number.parseInt(num) / Number.parseInt(den));
-  }
-  / [0-9]+ "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    return Number.parseInt(num) / Number.parseInt(den);
-  }
-  / unsignedFloat
-
-positiveFloat
-  = whole:([1-9] [0-9]*) "+" frac:([0-9]+ "/" [1-9] [0-9]*) {
-    const wholeNum = Number.parseInt(whole.flat().join(''));
-    const fracText = frac.flat().join('');
-    const [num, den] = fracText.split('/');
-    return wholeNum + (Number.parseInt(num) / Number.parseInt(den));
-  }
-  / [1-9] [0-9]* "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    return Number.parseInt(num) / Number.parseInt(den);
-  }
-  / [1-9] [0-9]* ("." [0-9]*)? {
-    return Number.parseFloat(text());
-  }
-
-signedFloat
-  = sign:"-"? value:unsignedFloat {
-    return sign ? -value : value;
-  } 
-
-// Comments
 lineComment
   = "//" [^\r\n]*
 
