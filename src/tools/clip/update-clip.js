@@ -1,10 +1,9 @@
 import {
-  abletonBeatsToBarBeat,
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
 import { interpretNotation, formatNotation } from "../../notation/notation.js";
-import { evaluateModulation } from "../../notation/modulation/modulation-evaluator.js";
+import { applyModulations } from "../../notation/modulation/modulation-evaluator.js";
 import { MAX_CLIP_BEATS } from "../constants.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
@@ -155,87 +154,12 @@ export function updateClip({
       }
 
       // Apply modulations to notes if provided
-      if (modulationString != null && notes.length > 0) {
-        for (const note of notes) {
-          // Convert note's Ableton beats start_time to musical beats position
-          const musicalBeats = note.start_time * (timeSigDenominator / 4);
-
-          // Parse bar|beat position for time range filtering
-          const barBeatStr = abletonBeatsToBarBeat(
-            note.start_time,
-            timeSigNumerator,
-            timeSigDenominator,
-          );
-          const barBeatMatch = barBeatStr.match(/^(\d+)\|(\d+(?:\.\d+)?)$/);
-          const bar = barBeatMatch ? Number.parseInt(barBeatMatch[1]) : null;
-          const beat = barBeatMatch ? Number.parseFloat(barBeatMatch[2]) : null;
-
-          // Evaluate modulations for this note
-          const modulations = evaluateModulation(modulationString, {
-            position: musicalBeats,
-            pitch: note.pitch,
-            bar,
-            beat,
-            timeSig: {
-              numerator: timeSigNumerator,
-              denominator: timeSigDenominator,
-            },
-          });
-
-          // Apply modulations with operator semantics and range clamping
-          if (modulations.velocity != null) {
-            if (modulations.velocity.operator === "set") {
-              note.velocity = Math.max(
-                1,
-                Math.min(127, modulations.velocity.value),
-              );
-            } else {
-              // operator === "add"
-              note.velocity = Math.max(
-                1,
-                Math.min(127, note.velocity + modulations.velocity.value),
-              );
-            }
-          }
-
-          if (modulations.timing != null) {
-            // Timing modulates start_time directly (in Ableton beats)
-            if (modulations.timing.operator === "set") {
-              note.start_time = modulations.timing.value;
-            } else {
-              // operator === "add"
-              note.start_time += modulations.timing.value;
-            }
-          }
-
-          if (modulations.duration != null) {
-            if (modulations.duration.operator === "set") {
-              note.duration = Math.max(0.001, modulations.duration.value);
-            } else {
-              // operator === "add"
-              note.duration = Math.max(
-                0.001,
-                note.duration + modulations.duration.value,
-              );
-            }
-          }
-
-          if (modulations.probability != null) {
-            if (modulations.probability.operator === "set") {
-              note.probability = Math.max(
-                0.0,
-                Math.min(1.0, modulations.probability.value),
-              );
-            } else {
-              // operator === "add"
-              note.probability = Math.max(
-                0.0,
-                Math.min(1.0, note.probability + modulations.probability.value),
-              );
-            }
-          }
-        }
-      }
+      applyModulations(
+        notes,
+        modulationString,
+        timeSigNumerator,
+        timeSigDenominator,
+      );
 
       // Remove all notes and add new notes (v0s already filtered by applyV0Deletions)
       clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
