@@ -142,9 +142,11 @@ unsignedMixedNumber
   }
 
 unsignedFraction
-  = [0-9]+ "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    return Number.parseInt(num) / Number.parseInt(den);
+  = num:[0-9]* "/" den:[1-9] [0-9]* {
+    const parts = text().split('/');
+    const numerator = parts[0] === '' ? 1 : Number.parseInt(parts[0]);
+    const denominator = Number.parseInt(parts[1]);
+    return numerator / denominator;
   }
 
 oneOrMoreDecimal

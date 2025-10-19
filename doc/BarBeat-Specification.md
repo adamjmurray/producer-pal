@@ -40,9 +40,10 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 
 - **Duration (`t`)**
   - Sets duration for following notes until changed
-  - Beat-only format: `t2.5` (2.5 beats), `t3/4` (0.75 beats)
+  - Beat-only format: `t2.5` (2.5 beats), `t3/4` (0.75 beats), `t/4` (0.25
+    beats - numerator defaults to 1)
   - Bar:beat format: `t2:1.5` (2 bars + 1.5 beats), `t1:3/4` (1 bar + 0.75
-    beats)
+    beats), `t1:/4` (1 bar + 0.25 beats)
   - Default: 1.0
   - Requires whitespace separation from following elements
 
@@ -220,8 +221,8 @@ bar|{start}x{times}@{step}
 - **start**: Starting beat position (supports decimals, fractions, and mixed
   numbers)
 - **times**: Number of repetitions (positive integer)
-- **step**: Interval between repetitions (supports decimals, fractions, and
-  mixed numbers)
+- **step**: Interval between repetitions (supports decimals, fractions, mixed
+  numbers, and optional numerator: `/3` = `1/3`)
 
 The `@` symbol reads as "at intervals" and semantically connects to bar copy
 operations.
@@ -238,6 +239,7 @@ operations.
 
 ```
 1|1x3@1/3        // Beats 1, 4/3, 5/3 (every third)
+1|1x3@/3         // Same as above (numerator defaults to 1)
 1|3x3@1/3        // Beats 3, 10/3, 11/3
 ```
 
@@ -245,7 +247,9 @@ operations.
 
 ```
 1|4x4@1/4        // Four 16ths on beat 4: 4, 17/4, 18/4, 19/4
+1|4x4@/4         // Same as above (numerator defaults to 1)
 1|1x16@1/4       // Full bar of 16ths
+1|1x16@/4        // Same as above (numerator defaults to 1)
 ```
 
 **Eighth notes:**
@@ -548,13 +552,16 @@ v100 t0.25 C3 1|1 D3 1|1.5 E3 1|2.25 F3 1|3.75
 // Duration examples - beat-only format
 t2.5 C3 1|1    // 2.5 beats duration (decimal)
 t3/4 C3 1|1    // 0.75 beats duration (fraction)
+t/4 C3 1|1     // 0.25 beats duration (numerator defaults to 1)
 t1/3 C3 1|1,4/3,5/3  // Triplet eighth notes
+t/3 C3 1|1,4/3,5/3   // Same as above (numerator defaults to 1)
 
 // Duration examples - bar:beat format
 t2:0 C3 1|1    // 2 bar duration (whole note in 4/4)
 t1:0 C3 1|1    // 1 bar duration (half note in 4/4)
 t2:1.5 C3 1|1  // 2 bars + 1.5 beats
 t1:3/4 C3 1|1  // 1 bar + 0.75 beats
+t1:/4 C3 1|1   // 1 bar + 0.25 beats (numerator defaults to 1)
 
 // Repeat patterns - whole beats
 C1 1|1x4@1     // Kick on every beat (repeat syntax)
@@ -562,10 +569,12 @@ C1 1|1,2,3,4   // Same as above (comma-separated beats still supported)
 
 // Repeat patterns - triplets
 t1/3 C3 1|1x3@1/3           // Triplet eighth notes
+t/3 C3 1|1x3@/3             // Same as above (numerator defaults to 1)
 t1/3 C3 1|1x3@1/3 |2x3@1/3  // Two sets of triplets
 
 // Repeat patterns - 16th notes
 t1/4 Gb1 1|1x16@1/4  // Full bar of hi-hat 16ths
+t/4 Gb1 1|1x16@/4    // Same as above (numerator defaults to 1)
 
 // Repeat patterns - mixed with regular beats
 C1 1|1x4@1 D1 1|2,4  // Kick on all beats, snare on 2 & 4
