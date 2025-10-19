@@ -574,19 +574,19 @@ describe("BarBeatScript Parser", () => {
   describe("bar copy", () => {
     it("parses single bar copy", () => {
       expect(parser.parse("@5=1")).toStrictEqual([
-        { barCopy: 5, sourceBar: 1 },
+        { destination: { bar: 5 }, source: { bar: 1 } },
       ]);
     });
 
     it("parses range copy", () => {
       expect(parser.parse("@5=1-4")).toStrictEqual([
-        { barCopy: 5, sourceRange: [1, 4] },
+        { destination: { bar: 5 }, source: { range: [1, 4] } },
       ]);
     });
 
     it("parses previous bar copy", () => {
       expect(parser.parse("@2=")).toStrictEqual([
-        { barCopy: 2, sourcePrevious: true },
+        { destination: { bar: 2 }, source: "previous" },
       ]);
     });
 
@@ -596,9 +596,9 @@ describe("BarBeatScript Parser", () => {
 
     it("parses chained copies", () => {
       expect(parser.parse("@2= @3= @4=")).toStrictEqual([
-        { barCopy: 2, sourcePrevious: true },
-        { barCopy: 3, sourcePrevious: true },
-        { barCopy: 4, sourcePrevious: true },
+        { destination: { bar: 2 }, source: "previous" },
+        { destination: { bar: 3 }, source: "previous" },
+        { destination: { bar: 4 }, source: "previous" },
       ]);
     });
 
@@ -606,7 +606,7 @@ describe("BarBeatScript Parser", () => {
       expect(parser.parse("C3 1|1 @2=1 D3 2|1")).toStrictEqual([
         { pitch: 60 },
         { bar: 1, beat: 1 },
-        { barCopy: 2, sourceBar: 1 },
+        { destination: { bar: 2 }, source: { bar: 1 } },
         { pitch: 62 },
         { bar: 2, beat: 1 },
       ]);

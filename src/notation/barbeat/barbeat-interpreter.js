@@ -93,10 +93,10 @@ export function interpretNotation(barBeatExpression, options = {}) {
     const events = [];
 
     for (const element of ast) {
-      if (element.barCopyRange !== undefined) {
+      if (element.destination?.range !== undefined) {
         // BAR COPY RANGE - copy notes from single source to multiple destinations
 
-        const [destStart, destEnd] = element.barCopyRange;
+        const [destStart, destEnd] = element.destination.range;
 
         // Validate destination range
         if (destStart <= 0 || destEnd <= 0) {
@@ -113,8 +113,8 @@ export function interpretNotation(barBeatExpression, options = {}) {
         }
 
         // Handle multi-bar source range tiling
-        if (element.sourceRange !== undefined) {
-          const [sourceStart, sourceEnd] = element.sourceRange;
+        if (element.source.range !== undefined) {
+          const [sourceStart, sourceEnd] = element.source.range;
 
           // Validate source range
           if (sourceStart <= 0 || sourceEnd <= 0) {
@@ -227,7 +227,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
 
         // Determine single source bar
         let sourceBar;
-        if (element.sourcePrevious) {
+        if (element.source === "previous") {
           sourceBar = destStart - 1;
           if (sourceBar <= 0) {
             console.error(
@@ -235,8 +235,8 @@ export function interpretNotation(barBeatExpression, options = {}) {
             );
             continue;
           }
-        } else if (element.sourceBar !== undefined) {
-          sourceBar = element.sourceBar;
+        } else if (element.source.bar !== undefined) {
+          sourceBar = element.source.bar;
           if (sourceBar <= 0) {
             console.error(
               `Warning: Cannot copy from bar ${sourceBar} (no such bar)`,
@@ -329,13 +329,13 @@ export function interpretNotation(barBeatExpression, options = {}) {
         pitchGroupStarted = false;
         stateChangedSinceLastPitch = false;
         stateChangedAfterEmission = false;
-      } else if (element.barCopy !== undefined) {
+      } else if (element.destination?.bar !== undefined) {
         // BAR COPY - copy notes from source bar(s) to destination
 
         // Determine source bar(s)
         let sourceBars;
-        if (element.sourcePrevious) {
-          const previousBar = element.barCopy - 1;
+        if (element.source === "previous") {
+          const previousBar = element.destination.bar - 1;
           if (previousBar <= 0) {
             console.error(
               "Warning: Cannot copy from previous bar when at bar 1 or earlier",
@@ -343,16 +343,16 @@ export function interpretNotation(barBeatExpression, options = {}) {
             continue;
           }
           sourceBars = [previousBar];
-        } else if (element.sourceBar !== undefined) {
-          if (element.sourceBar <= 0) {
+        } else if (element.source.bar !== undefined) {
+          if (element.source.bar <= 0) {
             console.error(
-              `Warning: Cannot copy from bar ${element.sourceBar} (no such bar)`,
+              `Warning: Cannot copy from bar ${element.source.bar} (no such bar)`,
             );
             continue;
           }
-          sourceBars = [element.sourceBar];
-        } else if (element.sourceRange !== undefined) {
-          const [start, end] = element.sourceRange;
+          sourceBars = [element.source.bar];
+        } else if (element.source.range !== undefined) {
+          const [start, end] = element.source.range;
           if (start <= 0 || end <= 0) {
             console.error(
               `Warning: Cannot copy from range ${start}-${end} (invalid bar numbers)`,
@@ -392,7 +392,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
             ? beatsPerBar * (4 / timeSigDenominator)
             : beatsPerBar;
 
-        let destinationBar = element.barCopy;
+        let destinationBar = element.destination.bar;
         let copiedAny = false;
 
         for (const sourceBar of sourceBars) {
@@ -447,7 +447,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
 
         if (copiedAny) {
           // Update current time to start of first destination bar
-          currentTime = { bar: element.barCopy, beat: 1 };
+          currentTime = { bar: element.destination.bar, beat: 1 };
           hasExplicitBarNumber = true;
         }
 

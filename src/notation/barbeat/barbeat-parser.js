@@ -258,25 +258,10 @@ function peg$parse(input, options) {
     return { clearBuffer: true };
   }
   function peg$f2(dest, source) {
-    const result = {};
-
-    // Process destination
-    if (dest.range !== undefined) {
-      result.barCopyRange = dest.range;
-    } else {
-      result.barCopy = dest.bar;
-    }
-
-    // Process source
-    if (source === null) {
-      result.sourcePrevious = true;
-    } else if (source.range !== undefined) {
-      result.sourceRange = source.range;
-    } else {
-      result.sourceBar = source.bar;
-    }
-
-    return result;
+    return {
+      destination: dest,
+      source: source ?? "previous"
+    };
   }
   function peg$f3(start, end) {
     return { range: [start, end] };

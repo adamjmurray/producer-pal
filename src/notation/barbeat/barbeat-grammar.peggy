@@ -1,4 +1,3 @@
-// src/notation/barbeat/barbeat-grammar.peggy
 {{
   const PITCH_CLASS_VALUES = {
     "C": 0,
@@ -30,25 +29,10 @@ barCopy
     return { clearBuffer: true };
   }
   / '@' dest:barOrRange '=' source:barOrRange? {
-    const result = {};
-
-    // Process destination
-    if (dest.range !== undefined) {
-      result.barCopyRange = dest.range;
-    } else {
-      result.barCopy = dest.bar;
-    }
-
-    // Process source
-    if (source === null) {
-      result.sourcePrevious = true;
-    } else if (source.range !== undefined) {
-      result.sourceRange = source.range;
-    } else {
-      result.sourceBar = source.bar;
-    }
-
-    return result;
+    return {
+      destination: dest,
+      source: source ?? "previous"
+    };
   }
 
 barOrRange
