@@ -1154,7 +1154,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "v64 C3 1|1", // base velocity 64, position at 1|1
-        modulations: "velocity: 20", // add 20
+        modulations: "velocity += 20", // add 20
       });
 
       expect(result.id).toBeTruthy(); // Just verify ID exists
@@ -1183,7 +1183,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "C3 1|1", // note at position 1|1 (beat 0)
-        modulations: "timing: 0.5", // add 0.5 Ableton beats
+        modulations: "timing += 0.5", // add 0.5 Ableton beats
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -1209,7 +1209,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "t1 C3 1|1", // duration 1 beat = 1 Ableton beat
-        modulations: "duration: 0.5", // add 0.5
+        modulations: "duration += 0.5", // add 0.5
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -1235,7 +1235,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "p0.5 C3 1|1", // probability 0.5
-        modulations: "probability: 0.2", // add 0.2
+        modulations: "probability += 0.2", // add 0.2
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -1261,7 +1261,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "v120 C3 1|1 v10 D3 1|2",
-        modulations: "velocity: 20", // would push first to 140, second to 30
+        modulations: "velocity += 20", // would push first to 140, second to 30
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -1291,7 +1291,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "p0.9 C3 1|1 p0.1 D3 1|2",
-        modulations: "probability: 0.2",
+        modulations: "probability += 0.2",
       });
 
       const callArgs = liveApiCall.mock.calls.find(
@@ -1319,7 +1319,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "t0.1 C3 1|1",
-        modulations: "duration: -1", // would make negative
+        modulations: "duration += -1", // would make negative
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -1346,7 +1346,7 @@ describe("createClip", () => {
         sceneIndex: 0,
         notes: "v64 t1 p0.5 C3 1|1",
         modulations:
-          "velocity: 10\ntiming: 0.1\nduration: 0.5\nprobability: 0.2",
+          "velocity += 10\ntiming += 0.1\nduration += 0.5\nprobability += 0.2",
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -1375,7 +1375,7 @@ describe("createClip", () => {
         trackIndex: 0,
         sceneIndex: 0,
         notes: "v64 C3 1|1", // position 0, cos(0) = 1.0
-        modulations: "velocity: 20 * cos(1t)", // 20 * 1.0 = 20
+        modulations: "velocity += 20 * cos(1t)", // 20 * 1.0 = 20
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("add_new_notes", {
@@ -1432,7 +1432,7 @@ describe("createClip", () => {
         sceneIndex: 0,
         timeSignature: "6/8",
         notes: "v64 C3 1|1", // position 0
-        modulations: "velocity: 20 * cos(1:0t)", // 1 bar in 6/8 = 6 beats
+        modulations: "velocity += 20 * cos(1:0t)", // 1 bar in 6/8 = 6 beats
       });
 
       // At position 0, cos should be 1.0, so modulation is +20

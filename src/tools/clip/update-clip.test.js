@@ -1423,7 +1423,7 @@ describe("updateClip", () => {
 
       updateClip({
         ids: "123",
-        modulations: "velocity: 20",
+        modulations: "velocity += 20",
         noteUpdateMode: "merge",
       });
 
@@ -1481,7 +1481,7 @@ describe("updateClip", () => {
 
       updateClip({
         ids: "123",
-        modulations: "velocity: 20 * cos(1t)", // 1 beat period cosine
+        modulations: "velocity += 20 * cos(1t)", // 1 beat period cosine
         noteUpdateMode: "merge",
       });
 
@@ -1528,7 +1528,7 @@ describe("updateClip", () => {
       updateClip({
         ids: "123",
         modulations:
-          "velocity: 10\ntiming: 0.1\nduration: 0.5\nprobability: 0.1",
+          "velocity += 10\ntiming += 0.1\nduration += 0.5\nprobability += 0.1",
         noteUpdateMode: "merge",
       });
 
@@ -1583,7 +1583,7 @@ describe("updateClip", () => {
 
       const result = updateClip({
         ids: "123",
-        modulations: "velocity: 20",
+        modulations: "velocity += 20",
         noteUpdateMode: "replace",
       });
 
@@ -1622,7 +1622,7 @@ describe("updateClip", () => {
 
       const result = updateClip({
         ids: "123",
-        modulations: "velocity: 20",
+        modulations: "velocity += 20",
         noteUpdateMode: "merge",
       });
 

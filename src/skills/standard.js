@@ -59,13 +59,28 @@ p1.0 D1 1|2,4 // back to 100% - snare always plays
 
 Apply dynamic transformations to note properties using mathematical expressions and waveforms. Add modulations parameter to create-clip or update-clip:
 
-**Syntax:** \`parameter: expression\` (one per line)
+**Syntax:** \`[pitch] [timeRange] parameter operator expression\` (one per line)
+
+**Operators:**
+- \`+=\` Add to the value (default behavior)
+- \`=\` Set/replace the value
 
 **Parameters:**
-- velocity: Modify note velocity (additive, clamped 1-127)
-- timing: Shift note start time in beats (additive, no clamping)
-- duration: Modify note length in beats (additive, clamped >0.001)
-- probability: Modify note probability (additive, clamped 0.0-1.0)
+- velocity: Modify note velocity (clamped 1-127)
+- timing: Shift note start time in beats (no clamping)
+- duration: Modify note length in beats (clamped >0.001)
+- probability: Modify note probability (clamped 0.0-1.0)
+
+**Pitch Selectors (optional):**
+- MIDI number: \`60 velocity += 10\` (affects only pitch 60)
+- Note name: \`C3 velocity += 10\` (affects only C3 notes)
+- Omitted: \`velocity += 10\` (affects all pitches)
+- Persistence: pitch persists across lines until changed
+
+**Time Range Selectors (optional):**
+- Format: \`startBar|startBeat-endBar|endBeat\`
+- Example: \`1|1-3|1 velocity += 10\` (bar 1 beat 1 to bar 3 beat 1)
+- Combine with pitch: \`60 1|1-2|1 velocity += 10\`
 
 **Expressions:**
 - Arithmetic: +, -, *, / (standard precedence)
@@ -87,32 +102,49 @@ Apply dynamic transformations to note properties using mathematical expressions 
 **Examples:**
 
 \`\`\`
-# Velocity cycling every 2 bars
-velocity: 20 * cos(2:0t)
+# Add velocity cycling every 2 bars
+velocity += 20 * cos(2:0t)
+
+# Set absolute velocity value
+velocity = 80
 
 # Humanize timing ±0.05 beats randomly
-timing: 0.05 * noise()
+timing += 0.05 * noise()
 
 # Crescendo with triangle wave over 4 bars
-velocity: 30 * tri(4t)
+velocity += 30 * tri(4t)
 
 # Shorten every other note (2 beat cycle)
-duration: -0.25 * square(2t)
+duration += -0.25 * square(2t)
 
 # Fade in probability over 8 bars
-probability: 0.5 * (1 + cos(8t))
+probability += 0.5 * (1 + cos(8t))
 
 # Multiple parameters at once
-velocity: 15 * cos(1t)
-timing: 0.03 * noise()
+velocity += 15 * cos(1t)
+timing += 0.03 * noise()
 
 # Quarter note swing with phase offset
-timing: 0.1 * square(1t, 0.25, 0.5)
+timing += 0.1 * square(1t, 0.25, 0.5)
+
+# Pitch-specific modulations (affects only C3 notes)
+C3 velocity += 20
+
+# Time range modulation (only affects notes in bars 1-2)
+1|1-2|4 velocity += 10
+
+# Combined pitch and time range (C3 notes in bar 1 only)
+C3 1|1-1|4 velocity = 100
+
+# Pitch persistence (affects C3, then D3, then all pitches)
+C3 velocity += 10
+D3 velocity += 20
+velocity += 5
 
 # Apply to existing clip notes (update-clip with merge mode, no notes param)
 # Humanizes velocity and timing of all notes in clip without changing pitches
-ppal-update-clip ids=clip123 noteUpdateMode=merge modulations="velocity: 5 * noise()
-timing: 0.02 * noise()"
+ppal-update-clip ids=clip123 noteUpdateMode=merge modulations="velocity += 5 * noise()
+timing += 0.02 * noise()"
 \`\`\`
 
 **Use cases:**
@@ -121,10 +153,15 @@ timing: 0.02 * noise()"
 - Groove: Apply swing, shuffle, or rhythmic displacement
 - Evolving patterns: Fade notes in/out, cycle velocities
 - Generative variation: Use noise() for unpredictable changes
+- Pitch-specific processing: Modulate only certain notes (e.g., accent kicks, humanize hats)
+- Section-specific effects: Apply modulations only to specific time ranges
 - Retroactive modulation: Apply to existing clip notes without rewriting them
 
 **Notes:**
-- Modulations are additive - they add to/subtract from base values
+- \`+=\` adds to base values, \`=\` replaces base values
+- Pitch selectors filter by MIDI pitch; omitted = all pitches
+- Time range selectors filter by bar|beat position
+- Pitch persists across lines until changed or omitted
 - Parse/evaluation errors become warnings, partial modulations apply
 - Position context: waveforms evaluate at each note's musical beat position
 - Can apply modulations alone in update-clip merge mode (omit notes parameter)

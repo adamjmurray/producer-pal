@@ -1,23 +1,27 @@
 import * as parser from "./modulation-parser.js";
 import * as waveforms from "./modulation-waveforms.js";
 import { parseFrequency } from "./modulation-frequency.js";
+import { abletonBeatsToBarBeat } from "../barbeat/barbeat-time.js";
 
 /**
  * Evaluate a modulation expression for a specific note context
- * @param {string} modulationString - Multi-line modulation string (parameter: expression format)
- * @param {Object} noteContext - Note context with position and time signature
+ * @param {string} modulationString - Multi-line modulation string with optional pitch/time filters
+ * @param {Object} noteContext - Note context with position, pitch, and time signature
  * @param {number} noteContext.position - Note position in musical beats (0-based)
+ * @param {number} [noteContext.pitch] - MIDI pitch (0-127) for pitch filtering
+ * @param {number} [noteContext.bar] - Current bar number (1-based) for time range filtering
+ * @param {number} [noteContext.beat] - Current beat position within bar (1-based) for time range filtering
  * @param {Object} noteContext.timeSig - Time signature
  * @param {number} noteContext.timeSig.numerator - Time signature numerator
  * @param {number} noteContext.timeSig.denominator - Time signature denominator
- * @returns {Object} Modulation values by parameter name, e.g., {velocity: 10, timing: 0.05}
+ * @returns {Object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
  */
 export function evaluateModulation(modulationString, noteContext) {
   if (!modulationString) {
     return {};
   }
 
-  const { position, timeSig } = noteContext;
+  const { position, pitch, bar, beat, timeSig } = noteContext;
   const { numerator, denominator } = timeSig;
 
   let ast;
@@ -31,16 +35,45 @@ export function evaluateModulation(modulationString, noteContext) {
   }
 
   const result = {};
+  let currentPitch = null; // Track persistent pitch context
 
   for (const assignment of ast) {
     try {
+      // Update persistent pitch context if specified
+      if (assignment.pitch != null) {
+        currentPitch = assignment.pitch;
+      }
+
+      // Apply pitch filtering
+      if (currentPitch != null && pitch != null && currentPitch !== pitch) {
+        continue; // Skip this assignment - doesn't match note's pitch
+      }
+
+      // Apply time range filtering
+      if (assignment.timeRange && bar != null && beat != null) {
+        const { startBar, startBeat, endBar, endBeat } = assignment.timeRange;
+
+        // Check if note is within the time range
+        const afterStart =
+          bar > startBar || (bar === startBar && beat >= startBeat);
+        const beforeEnd = bar < endBar || (bar === endBar && beat <= endBeat);
+
+        if (!(afterStart && beforeEnd)) {
+          continue; // Skip this assignment - note outside time range
+        }
+      }
+
       const value = evaluateExpression(
         assignment.expression,
         position,
         numerator,
         denominator,
       );
-      result[assignment.parameter] = value;
+
+      result[assignment.parameter] = {
+        operator: assignment.operator,
+        value,
+      };
     } catch (error) {
       console.error(
         `Warning: Failed to evaluate modulation for parameter "${assignment.parameter}": ${error.message}`,
