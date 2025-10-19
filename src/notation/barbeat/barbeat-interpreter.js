@@ -11,6 +11,37 @@ import { applyV0Deletions } from "./barbeat-apply-v0-deletions.js";
 import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
 
 /**
+ * Expand a repeat pattern into multiple beat positions
+ * @param {Object} pattern - Repeat pattern { start, times, step }
+ * @param {number} currentBar - Current bar number (1-indexed)
+ * @param {number} beatsPerBar - Musical beats per bar
+ * @returns {Array<{bar: number, beat: number}>} Expanded positions
+ */
+function expandRepeatPattern(pattern, currentBar, beatsPerBar) {
+  const { start, times, step } = pattern;
+
+  if (times > 100) {
+    console.warn(
+      `Repeat pattern generates ${times} notes, which may be excessive`,
+    );
+  }
+
+  const positions = [];
+
+  // Convert starting position to absolute beats (0-based)
+  const startBeats = (currentBar - 1) * beatsPerBar + (start - 1);
+
+  for (let i = 0; i < times; i++) {
+    const absoluteBeats = startBeats + i * step;
+    const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
+    const beat = (absoluteBeats % beatsPerBar) + 1;
+    positions.push({ bar, beat });
+  }
+
+  return positions;
+}
+
+/**
  * Convert bar|beat notation into note events
  * @param {string} barBeatExpression - bar|beat notation string
  * @param {Object} options - Options
@@ -454,78 +485,109 @@ export function interpretNotation(barBeatExpression, options = {}) {
       } else if (element.bar !== undefined && element.beat !== undefined) {
         // TIME POSITION - emit notes
 
-        // Update current time
-        if (element.bar === null) {
-          if (!hasExplicitBarNumber) {
-            currentTime = { bar: 1, beat: element.beat };
-          } else {
-            currentTime = { bar: currentTime.bar, beat: element.beat };
-          }
-        } else {
-          currentTime = { bar: element.bar, beat: element.beat };
-          hasExplicitBarNumber = true;
-        }
-
-        // Warn if no pitches to emit
-        if (currentPitches.length === 0) {
-          console.error(
-            `Warning: Time position ${currentTime.bar}|${currentTime.beat} has no pitches`,
+        // Determine positions to emit at (expand repeat patterns if needed)
+        let positions;
+        if (
+          typeof element.beat === "object" &&
+          element.beat.start !== undefined
+        ) {
+          // REPEAT PATTERN - expand to multiple positions
+          const currentBar =
+            element.bar === null
+              ? hasExplicitBarNumber
+                ? currentTime.bar
+                : 1
+              : element.bar;
+          positions = expandRepeatPattern(
+            element.beat,
+            currentBar,
+            beatsPerBar,
           );
         } else {
-          // Warn if state changed after pitch but before this time
+          // SINGLE POSITION
+          const bar =
+            element.bar === null
+              ? hasExplicitBarNumber
+                ? currentTime.bar
+                : 1
+              : element.bar;
+          const beat = element.beat;
+          positions = [{ bar, beat }];
+        }
+
+        // Warn once if no pitches to emit
+        if (currentPitches.length === 0) {
+          if (positions.length === 1) {
+            console.error(
+              `Warning: Time position ${positions[0].bar}|${positions[0].beat} has no pitches`,
+            );
+          } else {
+            console.error(
+              `Warning: Time position has no pitches (first position: ${positions[0].bar}|${positions[0].beat})`,
+            );
+          }
+        } else {
+          // Warn if state changed after pitch but before this time (only once)
           if (stateChangedSinceLastPitch) {
             console.error(
               "Warning: state change after pitch(es) but before time position won't affect this group",
             );
           }
 
-          // Emit all buffered pitches at this time
-          for (const pitchState of currentPitches) {
-            // Convert bar|beat to absolute beats
-            const absoluteBeats =
-              (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
-
-            // Convert to Ableton beats
-            const abletonBeats =
-              timeSigDenominator != null
-                ? absoluteBeats * (4 / timeSigDenominator)
-                : absoluteBeats;
-
-            const abletonDuration =
-              timeSigDenominator != null
-                ? pitchState.duration * (4 / timeSigDenominator)
-                : pitchState.duration;
-
-            const noteEvent = {
-              pitch: pitchState.pitch,
-              start_time: abletonBeats,
-              duration: abletonDuration,
-              velocity: pitchState.velocity,
-              probability: pitchState.probability,
-              velocity_deviation: pitchState.velocityDeviation,
-            };
-
-            events.push(noteEvent);
-
-            // Track for bar copy: calculate actual bar from note position
-            const barDuration =
-              timeSigDenominator != null
-                ? beatsPerBar * (4 / timeSigDenominator)
-                : beatsPerBar;
-            const actualBar = Math.floor(abletonBeats / barDuration) + 1;
-            const barStartAbletonBeats = (actualBar - 1) * barDuration;
-            const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
-
-            if (!notesByBar.has(actualBar)) {
-              notesByBar.set(actualBar, []);
+          // Emit all buffered pitches at each position
+          for (const position of positions) {
+            currentTime = position;
+            if (element.bar !== null) {
+              hasExplicitBarNumber = true;
             }
 
-            // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
-            notesByBar.get(actualBar).push({
-              ...noteEvent,
-              relativeTime: relativeAbletonBeats,
-              originalBar: actualBar,
-            });
+            for (const pitchState of currentPitches) {
+              // Convert bar|beat to absolute beats
+              const absoluteBeats =
+                (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
+
+              // Convert to Ableton beats
+              const abletonBeats =
+                timeSigDenominator != null
+                  ? absoluteBeats * (4 / timeSigDenominator)
+                  : absoluteBeats;
+
+              const abletonDuration =
+                timeSigDenominator != null
+                  ? pitchState.duration * (4 / timeSigDenominator)
+                  : pitchState.duration;
+
+              const noteEvent = {
+                pitch: pitchState.pitch,
+                start_time: abletonBeats,
+                duration: abletonDuration,
+                velocity: pitchState.velocity,
+                probability: pitchState.probability,
+                velocity_deviation: pitchState.velocityDeviation,
+              };
+
+              events.push(noteEvent);
+
+              // Track for bar copy: calculate actual bar from note position
+              const barDuration =
+                timeSigDenominator != null
+                  ? beatsPerBar * (4 / timeSigDenominator)
+                  : beatsPerBar;
+              const actualBar = Math.floor(abletonBeats / barDuration) + 1;
+              const barStartAbletonBeats = (actualBar - 1) * barDuration;
+              const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
+
+              if (!notesByBar.has(actualBar)) {
+                notesByBar.set(actualBar, []);
+              }
+
+              // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
+              notesByBar.get(actualBar).push({
+                ...noteEvent,
+                relativeTime: relativeAbletonBeats,
+                originalBar: actualBar,
+              });
+            }
           }
         }
 

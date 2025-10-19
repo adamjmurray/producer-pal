@@ -90,6 +90,62 @@ describe("BarBeatScript Parser", () => {
         { bar: 1, beat: 2 + 3 / 4 },
       ]);
     });
+
+    it("parses repeat pattern with whole step", () => {
+      expect(parser.parse("1|1x4@1")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 4, step: 1 } },
+      ]);
+    });
+
+    it("parses repeat pattern with fractional step", () => {
+      expect(parser.parse("1|1x3@1/3")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 3, step: 1 / 3 } },
+      ]);
+    });
+
+    it("parses repeat pattern with decimal step", () => {
+      expect(parser.parse("1|3x4@0.25")).toStrictEqual([
+        { bar: 1, beat: { start: 3, times: 4, step: 0.25 } },
+      ]);
+    });
+
+    it("parses repeat pattern with mixed number step", () => {
+      expect(parser.parse("1|1x4@1+1/2")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 4, step: 1.5 } },
+      ]);
+    });
+
+    it("parses repeat pattern with mixed number start", () => {
+      expect(parser.parse("1|2+1/3x3@1/3")).toStrictEqual([
+        { bar: 1, beat: { start: 2 + 1 / 3, times: 3, step: 1 / 3 } },
+      ]);
+    });
+
+    it("parses repeat pattern without bar (uses current bar)", () => {
+      expect(parser.parse("|1x4@1")).toStrictEqual([
+        { bar: null, beat: { start: 1, times: 4, step: 1 } },
+      ]);
+    });
+
+    it("parses repeat pattern mixed with regular beats", () => {
+      expect(parser.parse("1|1x4@1,3.5")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 4, step: 1 } },
+        { bar: 1, beat: 3.5 },
+      ]);
+    });
+
+    it("parses multiple repeat patterns in beat list", () => {
+      expect(parser.parse("1|1x2@1,3x2@0.5")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 2, step: 1 } },
+        { bar: 1, beat: { start: 3, times: 2, step: 0.5 } },
+      ]);
+    });
+
+    it("rejects repeat pattern with step=0", () => {
+      expect(() => parser.parse("1|1x4@0")).toThrow(
+        "Repeat step size must be greater than 0",
+      );
+    });
   });
 
   describe("probability", () => {

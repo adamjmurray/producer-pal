@@ -17,7 +17,11 @@ Create MIDI clips using the bar|beat notation syntax:
 - Notes emit at time positions (bar|beat)
   - time positions are relative to clip start
   - \`|beat\` reuses current bar
-  - beat can be a comma-separated (no whitespace) list
+  - beat can be a comma-separated (no whitespace) list or repeat pattern
+  - **Repeat patterns**: \`beatx{times}@{step}\` generates sequences
+    - \`1|1x4@1\` → beats 1,2,3,4
+    - \`1|1x3@1/3\` → triplets at 1, 4/3, 5/3
+    - \`1|1x16@1/4\` → full bar of 16ths
 - v<velocity>: Note intensity from 0-127 (default: v100)
   - Single value: v100 (all notes at velocity 100)
   - Random range: v80-120 (each note gets random velocity between 80-120)
@@ -41,11 +45,14 @@ Create MIDI clips using the bar|beat notation syntax:
 
 \`\`\`
 C3 E3 G3 1|1 // chord at bar 1 beat 1
-C1 1|1,2,3,4 // kick on every beat (comma-separated beats)
+C1 1|1x4@1 // kick on every beat (repeat syntax)
+C1 1|1,2,3,4 // same as above (comma-separated beats)
 C1 1|1 |2 |3 |4 // same as above (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
-t1/3 C3 1|1,4/3,5/3 // triplet eighth notes using fractional notation
+t1/3 C3 1|1x3@1/3 // triplet eighth notes (repeat syntax)
+t1/3 C3 1|1,4/3,5/3 // same as above (fractional notation)
+t1/4 Gb1 1|1x16@1/4 // full bar of 16th note hi-hats
 t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers for natural musician notation
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
@@ -60,9 +67,14 @@ p1.0 D1 1|2,4 // back to 100% - snare always plays
 
 ### Repeating Patterns
 
-Use copy features and pitch persistence:
+Use repeat syntax (\`x{times}@{step}\`), copy features, and pitch persistence:
+- **Repeat syntax**: Best for regular subdivisions (16ths, triplets, every beat)
+  - \`C1 1|1x4@1\` for kicks on every beat
+  - \`Gb1 1|1x8@0.5\` for eighth notes
+  - \`t1/3 C3 1|1x3@1/3\` for triplets
+- **Bar copy**: Best for multi-bar patterns and complex rhythms
 - Within each bar, group by instrument to leverage pitch persistence for multiple time positions
-- Use shorthand beat lists
+- Use shorthand beat lists for irregular patterns
 - Think it through: Complete the full bar first, then copy
 
 \`\`\`

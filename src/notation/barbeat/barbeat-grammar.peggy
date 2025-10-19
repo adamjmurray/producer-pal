@@ -68,9 +68,18 @@ time
   }
 
 beatList
-  = head:positiveFloat tail:("," positiveFloat)* {
+  = head:beatSpec tail:("," beatSpec)* {
     return [head, ...tail.map(t => t[1])];
   }
+
+beatSpec
+  = start:positiveFloat "x" times:positiveInt "@" step:unsignedFloatOrFraction {
+      if (step === 0) {
+        throw new Error("Repeat step size must be greater than 0");
+      }
+      return { start, times, step };
+    }
+  / positiveFloat
 
 probability
   = "p" val:unsignedFloat {
