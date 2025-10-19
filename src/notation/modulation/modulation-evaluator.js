@@ -303,22 +303,20 @@ function evaluateFunction(
     return waveforms.noise();
   }
 
-  // All other waveforms require at least a frequency argument
+  // All other waveforms require at least a period argument
   if (args.length === 0) {
-    throw new Error(
-      `Function ${name}() requires at least a frequency argument`,
-    );
+    throw new Error(`Function ${name}() requires at least a period argument`);
   }
 
-  // First argument is frequency
-  const freqArg = args[0];
+  // First argument is period
+  const periodArg = args[0];
   let period;
 
-  if (freqArg.type === "frequency") {
-    period = parseFrequency(freqArg, timeSigNumerator, timeSigDenominator);
+  if (periodArg.type === "period") {
+    period = parseFrequency(periodArg, timeSigNumerator, timeSigDenominator);
   } else {
     throw new Error(
-      `First argument to ${name}() must be a frequency (e.g., 1t, 1:0t)`,
+      `First argument to ${name}() must be a period (e.g., 1t, 1:0t)`,
     );
   }
 

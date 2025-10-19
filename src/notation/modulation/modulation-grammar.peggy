@@ -1,5 +1,3 @@
-// src/notation/modulation/modulation-grammar.peggy
-
 {{
   const PITCH_CLASS_VALUES = {
     "C": 0,
@@ -44,7 +42,7 @@ pitchClass
   }
 
 timeRange
-  = startBar:positiveInt "|" startBeat:positiveFloat "-" endBar:positiveInt "|" endBeat:positiveFloat {
+  = startBar:oneOrMoreInt "|" startBeat:oneOrMoreFloat "-" endBar:oneOrMoreInt "|" endBeat:oneOrMoreFloat {
     return {
       startBar,
       startBeat,
@@ -107,26 +105,73 @@ argumentList
   }
 
 argument
-  = frequency / number
+  = period / number
 
-frequency
-  = bars:unsignedInt ":" beats:unsignedFloatOrFraction "t" {
-    return { type: "frequency", bars, beats };
+period
+  = bars:unsignedInt ":" beats:unsignedFloat "t" {
+    return { type: "period", bars, beats };
   }
-  / beats:unsignedFloatOrFraction "t" {
-    return { type: "frequency", bars: 0, beats };
+  / beats:unsignedFloat "t" {
+    return { type: "period", bars: 0, beats };
   }
 
 number
-  = signedFloat
+  = signedDecimal
 
-unsignedInt
-  = [0-9]+ {
+oneOrMoreFloat
+  = oneOrMoreMixedNumber / oneOrMoreFraction / oneOrMoreDecimal
+
+oneOrMoreMixedNumber
+  = wholeNumber:oneOrMoreInt "+" fraction:unsignedFraction {
+    return wholeNumber + fraction;
+  }
+
+oneOrMoreFraction
+  = [1-9] [0-9]* "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    const result = Number.parseInt(num) / Number.parseInt(den);
+    if (result < 1) {
+      throw new Error(`Value must be 1 or greater (got ${text()})`);
+    }
+    return result;
+  }
+
+oneOrMoreDecimal
+  = [1-9] [0-9]* ("." [0-9]*)? {
+    return Number.parseFloat(text());
+  }
+
+unsignedFloat
+  = unsignedMixedNumber / unsignedFraction / unsignedDecimal
+
+unsignedMixedNumber
+  = wholeNumber:unsignedInt "+" fraction:unsignedFraction {
+    return wholeNumber + fraction;
+  }
+
+unsignedFraction
+  = [0-9]+ "/" [1-9] [0-9]* {
+    const [num, den] = text().split('/');
+    return Number.parseInt(num) / Number.parseInt(den);
+  }
+
+signedDecimal
+  = sign:"-"? value:unsignedDecimal {
+    return sign ? -value : value;
+  }
+
+unsignedDecimal
+  = ([0-9]+ ("." [0-9]*)? / "." [0-9]+) {
+    return Number.parseFloat(text());
+  }
+
+oneOrMoreInt
+  = [1-9] [0-9]* {
     return Number.parseInt(text());
   }
 
-positiveInt
-  = [1-9] [0-9]* {
+unsignedInt
+  = [0-9]+ {
     return Number.parseInt(text());
   }
 
@@ -135,33 +180,6 @@ signedInt
     return sign ? -value : value;
   }
 
-signedFloat
-  = sign:"-"? value:unsignedFloat {
-    return sign ? -value : value;
-  }
-
-unsignedFloat
-  = ([0-9]+ ("." [0-9]*)? / "." [0-9]+) {
-    return Number.parseFloat(text());
-  }
-
-positiveFloat
-  = [1-9] [0-9]* "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    return Number.parseInt(num) / Number.parseInt(den);
-  }
-  / [1-9] [0-9]* ("." [0-9]*)? {
-    return Number.parseFloat(text());
-  }
-
-unsignedFloatOrFraction
-  = [0-9]+ "/" [1-9] [0-9]* {
-    const [num, den] = text().split('/');
-    return Number.parseInt(num) / Number.parseInt(den);
-  }
-  / unsignedFloat
-
-// Comments
 lineComment
   = "//" [^\r\n]*
 

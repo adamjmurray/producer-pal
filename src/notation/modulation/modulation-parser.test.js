@@ -134,10 +134,10 @@ describe("Modulation Parser", () => {
       });
     });
 
-    it("parses range with fractions", () => {
-      const result = parser.parse("1|1/2-2|3/4 velocity += 10");
-      expect(result[0].timeRange.startBeat).toBeCloseTo(0.5);
-      expect(result[0].timeRange.endBeat).toBeCloseTo(0.75);
+    it("parses range with mixed numbers", () => {
+      const result = parser.parse("1|1+1/2-2|1+3/4 velocity += 10");
+      expect(result[0].timeRange.startBeat).toBeCloseTo(1.5);
+      expect(result[0].timeRange.endBeat).toBeCloseTo(1.75);
     });
   });
 
@@ -209,7 +209,7 @@ describe("Modulation Parser", () => {
       expect(result[0].expression).toStrictEqual({
         type: "function",
         name: "cos",
-        args: [{ type: "frequency", bars: 0, beats: 1 }],
+        args: [{ type: "period", bars: 0, beats: 1 }],
       });
     });
 
@@ -218,7 +218,7 @@ describe("Modulation Parser", () => {
       expect(result[0].expression).toStrictEqual({
         type: "function",
         name: "cos",
-        args: [{ type: "frequency", bars: 0, beats: 1 }, 0.5],
+        args: [{ type: "period", bars: 0, beats: 1 }, 0.5],
       });
     });
 
@@ -227,7 +227,7 @@ describe("Modulation Parser", () => {
       expect(result[0].expression).toStrictEqual({
         type: "function",
         name: "tri",
-        args: [{ type: "frequency", bars: 0, beats: 2 }],
+        args: [{ type: "period", bars: 0, beats: 2 }],
       });
     });
 
@@ -236,7 +236,7 @@ describe("Modulation Parser", () => {
       expect(result[0].expression).toStrictEqual({
         type: "function",
         name: "saw",
-        args: [{ type: "frequency", bars: 0, beats: 0.5 }, 0.25],
+        args: [{ type: "period", bars: 0, beats: 0.5 }, 0.25],
       });
     });
 
@@ -245,7 +245,7 @@ describe("Modulation Parser", () => {
       expect(result[0].expression).toStrictEqual({
         type: "function",
         name: "square",
-        args: [{ type: "frequency", bars: 0, beats: 4 }],
+        args: [{ type: "period", bars: 0, beats: 4 }],
       });
     });
 
@@ -254,7 +254,7 @@ describe("Modulation Parser", () => {
       expect(result[0].expression).toStrictEqual({
         type: "function",
         name: "square",
-        args: [{ type: "frequency", bars: 0, beats: 1 }, 0.25],
+        args: [{ type: "period", bars: 0, beats: 1 }, 0.25],
       });
     });
 
@@ -263,7 +263,7 @@ describe("Modulation Parser", () => {
       expect(result[0].expression).toStrictEqual({
         type: "function",
         name: "square",
-        args: [{ type: "frequency", bars: 0, beats: 2 }, 0, 0.75],
+        args: [{ type: "period", bars: 0, beats: 2 }, 0, 0.75],
       });
     });
 
@@ -281,7 +281,7 @@ describe("Modulation Parser", () => {
     it("parses beat-only frequency (1t)", () => {
       const result = parser.parse("velocity += cos(1t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 0,
         beats: 1,
       });
@@ -290,7 +290,7 @@ describe("Modulation Parser", () => {
     it("parses beat-only frequency with decimal (0.5t)", () => {
       const result = parser.parse("velocity += cos(0.5t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 0,
         beats: 0.5,
       });
@@ -299,7 +299,7 @@ describe("Modulation Parser", () => {
     it("parses beat-only frequency with fraction (1/3t)", () => {
       const result = parser.parse("velocity += cos(1/3t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 0,
         beats: 1 / 3,
       });
@@ -308,7 +308,7 @@ describe("Modulation Parser", () => {
     it("parses bar:beat frequency (1:0t)", () => {
       const result = parser.parse("velocity += cos(1:0t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 1,
         beats: 0,
       });
@@ -317,7 +317,7 @@ describe("Modulation Parser", () => {
     it("parses bar:beat frequency (0:1t)", () => {
       const result = parser.parse("velocity += cos(0:1t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 0,
         beats: 1,
       });
@@ -326,7 +326,7 @@ describe("Modulation Parser", () => {
     it("parses bar:beat frequency with decimal beats (2:1.5t)", () => {
       const result = parser.parse("velocity += cos(2:1.5t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 2,
         beats: 1.5,
       });
@@ -335,7 +335,7 @@ describe("Modulation Parser", () => {
     it("parses bar:beat frequency with fraction beats (1:1/2t)", () => {
       const result = parser.parse("velocity += cos(1:1/2t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 1,
         beats: 0.5,
       });
@@ -344,7 +344,7 @@ describe("Modulation Parser", () => {
     it("parses large bar:beat frequency (4:0t)", () => {
       const result = parser.parse("velocity += cos(4:0t)");
       expect(result[0].expression.args[0]).toStrictEqual({
-        type: "frequency",
+        type: "period",
         bars: 4,
         beats: 0,
       });
@@ -469,7 +469,7 @@ describe("Modulation Parser", () => {
         right: {
           type: "function",
           name: "cos",
-          args: [{ type: "frequency", bars: 1, beats: 0 }],
+          args: [{ type: "period", bars: 1, beats: 0 }],
         },
       });
     });
@@ -484,7 +484,7 @@ describe("Modulation Parser", () => {
           right: {
             type: "function",
             name: "cos",
-            args: [{ type: "frequency", bars: 4, beats: 0 }],
+            args: [{ type: "period", bars: 4, beats: 0 }],
           },
         },
         right: {
@@ -510,7 +510,7 @@ describe("Modulation Parser", () => {
           right: {
             type: "function",
             name: "cos",
-            args: [{ type: "frequency", bars: 2, beats: 0 }],
+            args: [{ type: "period", bars: 2, beats: 0 }],
           },
         },
       });
@@ -526,12 +526,12 @@ describe("Modulation Parser", () => {
           left: {
             type: "function",
             name: "cos",
-            args: [{ type: "frequency", bars: 4, beats: 0 }],
+            args: [{ type: "period", bars: 4, beats: 0 }],
           },
           right: {
             type: "function",
             name: "cos",
-            args: [{ type: "frequency", bars: 0, beats: 1 }],
+            args: [{ type: "period", bars: 0, beats: 1 }],
           },
         },
       });
@@ -547,7 +547,7 @@ describe("Modulation Parser", () => {
           left: {
             type: "function",
             name: "cos",
-            args: [{ type: "frequency", bars: 0, beats: 1 }],
+            args: [{ type: "period", bars: 0, beats: 1 }],
           },
           right: 1,
         },
