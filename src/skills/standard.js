@@ -4,9 +4,9 @@ You can now compose music in Ableton Live using Producer Pal tools and the bar|b
 
 ## Time in Ableton Live
 
-- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|4/3 = bar 1 beat 4/3)
+- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|2+1/3 = bar 1 beat 2 and a third)
 - Durations: beats (2.5, 3/4) or bar:beat (1:2 = 1 bar + 2 beats, 4:0 = 4 bars)
-- Fractional beats: decimals (2.5) or fractions (5/2) supported for both positions and durations
+- Fractional beats: decimals (2.5), fractions (5/2), or mixed numbers (2+1/3) for both positions and durations
 
 ## MIDI Syntax
 
@@ -24,8 +24,8 @@ Create MIDI clips using the bar|beat notation syntax:
   - Use ranges for humanization, natural dynamics, and groove feel
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length (default: 1.0)
-  - Beat-only: t2.5 (2.5 beats), t3/4 (0.75 beats)
-  - Bar:beat: t2:1.5 (2 bars + 1.5 beats), t1:3/4 (1 bar + 0.75 beats)
+  - Beat-only: t2.5 (2.5 beats), t3/4 (0.75 beats), t2+3/4 (2 and three-quarter beats)
+  - Bar:beat: t2:1.5 (2 bars + 1.5 beats), t1:2+1/3 (1 bar + 2 and a third beats)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
@@ -46,6 +46,7 @@ C1 1|1 |2 |3 |4 // same as above (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 t1/3 C3 1|1,4/3,5/3 // triplet eighth notes using fractional notation
+t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers for natural musician notation
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
 C3 D3 1|1 @2=1 v0 D3 2|1 // bar copy then delete D3 from bar 2

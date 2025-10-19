@@ -143,14 +143,26 @@ unsignedFloat
   }
 
 unsignedFloatOrFraction
-  = [0-9]+ "/" [1-9] [0-9]* {
+  = whole:([0-9]+) "+" frac:([0-9]+ "/" [1-9] [0-9]*) {
+    const wholeNum = Number.parseInt(whole.flat().join(''));
+    const fracText = frac.flat().join('');
+    const [num, den] = fracText.split('/');
+    return wholeNum + (Number.parseInt(num) / Number.parseInt(den));
+  }
+  / [0-9]+ "/" [1-9] [0-9]* {
     const [num, den] = text().split('/');
     return Number.parseInt(num) / Number.parseInt(den);
   }
   / unsignedFloat
 
 positiveFloat
-  = [1-9] [0-9]* "/" [1-9] [0-9]* {
+  = whole:([1-9] [0-9]*) "+" frac:([0-9]+ "/" [1-9] [0-9]*) {
+    const wholeNum = Number.parseInt(whole.flat().join(''));
+    const fracText = frac.flat().join('');
+    const [num, den] = fracText.split('/');
+    return wholeNum + (Number.parseInt(num) / Number.parseInt(den));
+  }
+  / [1-9] [0-9]* "/" [1-9] [0-9]* {
     const [num, den] = text().split('/');
     return Number.parseInt(num) / Number.parseInt(den);
   }

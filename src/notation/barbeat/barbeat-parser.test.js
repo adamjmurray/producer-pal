@@ -72,6 +72,24 @@ describe("BarBeatScript Parser", () => {
         { pitch: 65 },
       ]);
     });
+
+    it("parses beats with + operator (integer + fraction)", () => {
+      expect(parser.parse("1|2+1/3 C3 1|2+3/4 D3")).toStrictEqual([
+        { bar: 1, beat: 2 + 1 / 3 },
+        { pitch: 60 },
+        { bar: 1, beat: 2 + 3 / 4 },
+        { pitch: 62 },
+      ]);
+    });
+
+    it("parses beat lists with + operator", () => {
+      expect(parser.parse("1|1,2+1/4,2+1/2,2+3/4")).toStrictEqual([
+        { bar: 1, beat: 1 },
+        { bar: 1, beat: 2 + 1 / 4 },
+        { bar: 1, beat: 2 + 1 / 2 },
+        { bar: 1, beat: 2 + 3 / 4 },
+      ]);
+    });
   });
 
   describe("probability", () => {
@@ -206,6 +224,28 @@ describe("BarBeatScript Parser", () => {
       ]);
       expect(parser.parse("t2:1/3 C3")).toStrictEqual([
         { duration: `2:${1 / 3}` },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("parses bar:beat duration with + operator", () => {
+      expect(parser.parse("t1:2+1/3 C3")).toStrictEqual([
+        { duration: `1:${2 + 1 / 3}` },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t0:3+3/4 C3")).toStrictEqual([
+        { duration: `0:${3 + 3 / 4}` },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("parses beat-only duration with + operator", () => {
+      expect(parser.parse("t2+3/4 C3")).toStrictEqual([
+        { duration: 2 + 3 / 4 },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t1+1/2 C3")).toStrictEqual([
+        { duration: 1 + 1 / 2 },
         { pitch: 60 },
       ]);
     });

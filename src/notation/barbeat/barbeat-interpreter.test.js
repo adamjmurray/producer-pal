@@ -303,6 +303,61 @@ describe("bar|beat interpretNotation()", () => {
     ]);
   });
 
+  it("handles duration with + operator in bar:beat format (NEW)", () => {
+    const result = interpretNotation("t1:2+1/3 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result.length).toBe(1);
+    expect(result[0].pitch).toBe(60);
+    expect(result[0].start_time).toBe(0);
+    expect(result[0].duration).toBeCloseTo(6 + 1 / 3, 10); // 1 bar (4 beats) + 2+1/3 beats = 6+1/3 beats
+    expect(result[0].velocity).toBe(100);
+    expect(result[0].probability).toBe(1.0);
+    expect(result[0].velocity_deviation).toBe(0);
+  });
+
+  it("handles beat-only duration with + operator (NEW)", () => {
+    const result = interpretNotation("t2+3/4 C3 1|1", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result).toEqual([
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 2.75, // 2+3/4 beats in 4/4 = 2.75 Ableton beats
+        velocity: 100,
+        probability: 1.0,
+        velocity_deviation: 0,
+      },
+    ]);
+  });
+
+  it("handles beat positions with + operator (NEW)", () => {
+    const result = interpretNotation("C3 1|2+1/3 D3 1|2+3/4", {
+      timeSigNumerator: 4,
+      timeSigDenominator: 4,
+    });
+    expect(result.length).toBe(2);
+
+    // First note at 1|2+1/3
+    expect(result[0].pitch).toBe(60);
+    expect(result[0].start_time).toBeCloseTo(1 + 1 / 3, 10); // bar 1, beat 2+1/3
+    expect(result[0].duration).toBe(1);
+    expect(result[0].velocity).toBe(100);
+    expect(result[0].probability).toBe(1.0);
+    expect(result[0].velocity_deviation).toBe(0);
+
+    // Second note at 1|2+3/4
+    expect(result[1].pitch).toBe(62);
+    expect(result[1].start_time).toBe(1.75); // bar 1, beat 2+3/4
+    expect(result[1].duration).toBe(1);
+    expect(result[1].velocity).toBe(100);
+    expect(result[1].probability).toBe(1.0);
+    expect(result[1].velocity_deviation).toBe(0);
+  });
+
   it("handles mixed duration formats (NEW)", () => {
     const result = interpretNotation("t2:0 C3 1|1 t1.5 D3 1|2 t3/4 E3 1|3", {
       timeSigNumerator: 4,
