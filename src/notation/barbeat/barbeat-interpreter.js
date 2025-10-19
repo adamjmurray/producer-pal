@@ -15,10 +15,17 @@ import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
  * @param {Object} pattern - Repeat pattern { start, times, step }
  * @param {number} currentBar - Current bar number (1-indexed)
  * @param {number} beatsPerBar - Musical beats per bar
+ * @param {number} currentDuration - Current note duration (used when step is null)
  * @returns {Array<{bar: number, beat: number}>} Expanded positions
  */
-function expandRepeatPattern(pattern, currentBar, beatsPerBar) {
-  const { start, times, step } = pattern;
+function expandRepeatPattern(
+  pattern,
+  currentBar,
+  beatsPerBar,
+  currentDuration,
+) {
+  const { start, times, step: stepValue } = pattern;
+  const step = stepValue ?? currentDuration;
 
   if (times > 100) {
     console.warn(
@@ -502,6 +509,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
             element.beat,
             currentBar,
             beatsPerBar,
+            currentDuration,
           );
         } else {
           // SINGLE POSITION

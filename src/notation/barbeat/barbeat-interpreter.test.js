@@ -3393,6 +3393,25 @@ multi-line comment */ D3 1|1`);
       expect(result.every((note) => note.duration === 0.5)).toBe(true);
     });
 
+    it("uses current duration when step is omitted", () => {
+      const result = interpretNotation("t0.5 C1 1|1x4");
+      expect(result).toHaveLength(4);
+      expect(result[0].start_time).toBe(0); // 1|1
+      expect(result[1].start_time).toBe(0.5); // 1|1.5
+      expect(result[2].start_time).toBe(1); // 1|2
+      expect(result[3].start_time).toBe(1.5); // 1|2.5
+      expect(result.every((note) => note.duration === 0.5)).toBe(true);
+    });
+
+    it("uses default duration when step is omitted and no duration set", () => {
+      const result = interpretNotation("C1 1|1x3");
+      expect(result).toHaveLength(3);
+      expect(result[0].start_time).toBe(0); // 1|1
+      expect(result[1].start_time).toBe(1); // 1|2
+      expect(result[2].start_time).toBe(2); // 1|3
+      expect(result.every((note) => note.duration === 1)).toBe(true);
+    });
+
     it("handles repeat pattern mixed with regular beats", () => {
       const result = interpretNotation("C1 1|1x2@1,3.5");
       expect(result).toHaveLength(3);

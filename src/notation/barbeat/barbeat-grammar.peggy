@@ -57,11 +57,12 @@ beatList
   }
 
 beatSpec
-  = start:oneOrMoreFloat "x" times:oneOrMoreInt "@" step:unsignedFloat {
-      if (step === 0) {
+  = start:oneOrMoreFloat "x" times:oneOrMoreInt step:("@" unsignedFloat)? {
+      const stepValue = step ? step[1] : null;
+      if (stepValue === 0) {
         throw new Error("Repeat step size must be greater than 0");
       }
-      return { start, times, step };
+      return { start, times, step: stepValue };
     }
   / oneOrMoreFloat
 

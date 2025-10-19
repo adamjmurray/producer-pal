@@ -127,6 +127,12 @@ describe("BarBeatScript Parser", () => {
       ]);
     });
 
+    it("parses repeat pattern without step (defaults to null)", () => {
+      expect(parser.parse("1|1x4")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 4, step: null } },
+      ]);
+    });
+
     it("parses repeat pattern mixed with regular beats", () => {
       expect(parser.parse("1|1x4@1,3.5")).toStrictEqual([
         { bar: 1, beat: { start: 1, times: 4, step: 1 } },
