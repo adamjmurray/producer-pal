@@ -1,10 +1,11 @@
-import * as parser from "./modulation-parser.js";
-import * as waveforms from "./modulation-waveforms.js";
-import { parseFrequency } from "./modulation-frequency.js";
+import * as console from "../../shared/v8-max-console";
 import {
   abletonBeatsToBarBeat,
   barBeatToBeats,
 } from "../barbeat/barbeat-time.js";
+import { parseFrequency } from "./modulation-frequency.js";
+import * as parser from "./modulation-parser.js";
+import * as waveforms from "./modulation-waveforms.js";
 
 /**
  * Apply modulations to a list of notes in-place
@@ -21,6 +22,17 @@ export function applyModulations(
 ) {
   if (!modulationString || notes.length === 0) {
     return;
+  }
+
+  // Parse the modulation string once before processing notes
+  let ast;
+  try {
+    ast = parser.parse(modulationString);
+  } catch (error) {
+    console.error(
+      `Warning: Failed to parse modulation string: ${error.message}`,
+    );
+    return; // Early return - no point processing notes if parsing failed
   }
 
   // Calculate the overall clip timeRange in musical beats
@@ -43,8 +55,8 @@ export function applyModulations(
     const bar = barBeatMatch ? Number.parseInt(barBeatMatch[1]) : null;
     const beat = barBeatMatch ? Number.parseFloat(barBeatMatch[2]) : null;
 
-    // Evaluate modulations for this note
-    const modulations = evaluateModulation(modulationString, {
+    // Evaluate modulations for this note using the pre-parsed AST
+    const modulations = evaluateModulationAST(ast, {
       position: musicalBeats,
       pitch: note.pitch,
       bar,
@@ -132,9 +144,6 @@ export function evaluateModulation(modulationString, noteContext) {
     return {};
   }
 
-  const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
-  const { numerator, denominator } = timeSig;
-
   let ast;
   try {
     ast = parser.parse(modulationString);
@@ -144,6 +153,29 @@ export function evaluateModulation(modulationString, noteContext) {
     );
     return {};
   }
+
+  return evaluateModulationAST(ast, noteContext);
+}
+
+/**
+ * Evaluate a pre-parsed modulation AST for a specific note context
+ * @param {Array} ast - Parsed modulation AST
+ * @param {Object} noteContext - Note context with position, pitch, and time signature
+ * @param {number} noteContext.position - Note position in musical beats (0-based)
+ * @param {number} [noteContext.pitch] - MIDI pitch (0-127) for pitch filtering
+ * @param {number} [noteContext.bar] - Current bar number (1-based) for time range filtering
+ * @param {number} [noteContext.beat] - Current beat position within bar (1-based) for time range filtering
+ * @param {Object} noteContext.timeSig - Time signature
+ * @param {number} noteContext.timeSig.numerator - Time signature numerator
+ * @param {number} noteContext.timeSig.denominator - Time signature denominator
+ * @param {Object} [noteContext.clipTimeRange] - Overall clip time range
+ * @param {number} noteContext.clipTimeRange.start - Clip start time in musical beats
+ * @param {number} noteContext.clipTimeRange.end - Clip end time in musical beats
+ * @returns {Object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
+ */
+function evaluateModulationAST(ast, noteContext) {
+  const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
+  const { numerator, denominator } = timeSig;
 
   const result = {};
   let currentPitch = null; // Track persistent pitch context
