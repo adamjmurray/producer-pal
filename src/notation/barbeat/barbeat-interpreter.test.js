@@ -3441,7 +3441,7 @@ multi-line comment */ D3 1|1`);
     });
 
     it("emits warning for excessive repeat times", () => {
-      const consoleSpy = vi.spyOn(console, "warn");
+      const consoleSpy = vi.spyOn(console, "error");
       interpretNotation("C1 1|1x101@1");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("101 notes, which may be excessive"),
