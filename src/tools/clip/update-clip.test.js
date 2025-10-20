@@ -285,7 +285,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -751,7 +751,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -781,7 +781,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -838,7 +838,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -892,7 +892,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -980,7 +980,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -990,7 +990,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -1069,7 +1069,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -1077,7 +1077,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -1130,7 +1130,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -1138,7 +1138,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "123" }),
       "remove_notes_extended",
       0,
-      127,
+      128,
       0,
       1000000,
     );
@@ -1301,7 +1301,7 @@ describe("updateClip", () => {
     expect(liveApiCall).toHaveBeenCalledWith(
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       8,
     );
