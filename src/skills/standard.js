@@ -4,7 +4,7 @@ You can now compose music in Ableton Live using Producer Pal tools and the bar|b
 
 ## Time in Ableton Live
 
-- Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|2+1/3 = bar 1 beat 2 and a third)
+- Positions: bar|beat where both bar and beat must be 1 or higher (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|2+1/3 = bar 1 beat 2 and a third)
 - Durations: beats (2.5, 3/4, /4 = 1/4) or bar:beat (1:2 = 1 bar + 2 beats, 4:0 = 4 bars)
 - Fractional beats: decimals (2.5), fractions (5/2), or mixed numbers (2+1/3) for both positions and durations
 - Fraction shortcut: numerator defaults to 1 when omitted (/4 = 1/4, /3 = 1/3)
