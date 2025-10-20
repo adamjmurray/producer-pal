@@ -305,6 +305,24 @@ describe("Modulation Parser", () => {
       });
     });
 
+    it("parses beat-only frequency with fraction (optional numerator /3t)", () => {
+      const result = parser.parse("velocity += cos(/3t)");
+      expect(result[0].expression.args[0]).toStrictEqual({
+        type: "period",
+        bars: 0,
+        beats: 1 / 3,
+      });
+    });
+
+    it("parses beat-only frequency with fraction (optional numerator /4t)", () => {
+      const result = parser.parse("velocity += cos(/4t)");
+      expect(result[0].expression.args[0]).toStrictEqual({
+        type: "period",
+        bars: 0,
+        beats: 1 / 4,
+      });
+    });
+
     it("parses bar:beat frequency (1:0t)", () => {
       const result = parser.parse("velocity += cos(1:0t)");
       expect(result[0].expression.args[0]).toStrictEqual({
@@ -338,6 +356,24 @@ describe("Modulation Parser", () => {
         type: "period",
         bars: 1,
         beats: 0.5,
+      });
+    });
+
+    it("parses bar:beat frequency with fraction beats (optional numerator 1:/2t)", () => {
+      const result = parser.parse("velocity += cos(1:/2t)");
+      expect(result[0].expression.args[0]).toStrictEqual({
+        type: "period",
+        bars: 1,
+        beats: 0.5,
+      });
+    });
+
+    it("parses bar:beat frequency with fraction beats (optional numerator 2:/3t)", () => {
+      const result = parser.parse("velocity += cos(2:/3t)");
+      expect(result[0].expression.args[0]).toStrictEqual({
+        type: "period",
+        bars: 2,
+        beats: 1 / 3,
       });
     });
 
