@@ -3441,10 +3441,60 @@ multi-line comment */ D3 1|1`);
     });
 
     it("emits warning for excessive repeat times", () => {
-      const consoleSpy = vi.spyOn(console, "warn");
+      const consoleSpy = vi.spyOn(console, "error");
       interpretNotation("C1 1|1x101@1");
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining("101 notes, which may be excessive"),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("does not warn about buffered pitches when emitted via repeat pattern", () => {
+      const consoleSpy = vi.spyOn(console, "error");
+      const result = interpretNotation("t.5 C1 1|1x8");
+
+      // Should emit 8 notes
+      expect(result).toHaveLength(8);
+      expect(result[0].pitch).toBe(36); // C1
+      expect(result[0].duration).toBe(0.5);
+
+      // Should NOT warn about buffered pitches
+      expect(consoleSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("pitch(es) buffered but no time position"),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("does not warn about buffered pitches when emitted then bar copied", () => {
+      const consoleSpy = vi.spyOn(console, "error");
+      const result = interpretNotation("t.5 C1 1|1x8 @2=");
+
+      // Should emit 8 notes in bar 1 and copy to bar 2 (16 total)
+      expect(result).toHaveLength(16);
+      expect(result[0].pitch).toBe(36); // C1
+      expect(result[0].duration).toBe(0.5);
+
+      // Should NOT warn about buffered pitches before bar copy
+      expect(consoleSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining(
+          "pitch(es) buffered but not emitted before bar copy",
+        ),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it("does warn about buffered pitches when never emitted then bar copied", () => {
+      const consoleSpy = vi.spyOn(console, "error");
+      const result = interpretNotation("C1 E1 @2=1");
+
+      // Should copy bar 1 to bar 2, but bar 1 is empty
+      expect(result).toHaveLength(0);
+
+      // Should warn about buffered pitches before bar copy
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "2 pitch(es) buffered but not emitted before bar copy",
+        ),
       );
       consoleSpy.mockRestore();
     });

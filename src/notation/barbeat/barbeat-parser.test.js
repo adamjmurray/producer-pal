@@ -103,6 +103,15 @@ describe("BarBeatScript Parser", () => {
       ]);
     });
 
+    it("parses repeat pattern with fractional step (optional numerator)", () => {
+      expect(parser.parse("1|1x3@/3")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 3, step: 1 / 3 } },
+      ]);
+      expect(parser.parse("1|1x4@/4")).toStrictEqual([
+        { bar: 1, beat: { start: 1, times: 4, step: 1 / 4 } },
+      ]);
+    });
+
     it("parses repeat pattern with decimal step", () => {
       expect(parser.parse("1|3x4@0.25")).toStrictEqual([
         { bar: 1, beat: { start: 3, times: 4, step: 0.25 } },
@@ -276,6 +285,21 @@ describe("BarBeatScript Parser", () => {
       ]);
     });
 
+    it("parses fractional duration with optional numerator (defaults to 1)", () => {
+      expect(parser.parse("t/4 C3")).toStrictEqual([
+        { duration: 1 / 4 },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t/8 C3")).toStrictEqual([
+        { duration: 1 / 8 },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t/3 C3")).toStrictEqual([
+        { duration: 1 / 3 },
+        { pitch: 60 },
+      ]);
+    });
+
     it("parses bar:beat duration format (NEW)", () => {
       expect(parser.parse("t2:1.5 C3")).toStrictEqual([
         { duration: "2:1.5" },
@@ -298,6 +322,17 @@ describe("BarBeatScript Parser", () => {
       ]);
       expect(parser.parse("t2:1/3 C3")).toStrictEqual([
         { duration: `2:${1 / 3}` },
+        { pitch: 60 },
+      ]);
+    });
+
+    it("parses bar:beat duration with fractions (optional numerator)", () => {
+      expect(parser.parse("t1:/4 C3")).toStrictEqual([
+        { duration: "1:0.25" },
+        { pitch: 60 },
+      ]);
+      expect(parser.parse("t0:/3 C3")).toStrictEqual([
+        { duration: `0:${1 / 3}` },
         { pitch: 60 },
       ]);
     });

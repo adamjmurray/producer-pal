@@ -29,8 +29,8 @@ function expandRepeatPattern(
   const step = stepValue ?? currentDuration;
 
   if (times > 100) {
-    console.warn(
-      `Repeat pattern generates ${times} notes, which may be excessive`,
+    console.error(
+      `WARNING: Repeat pattern generates ${times} notes, which may be excessive`,
     );
   }
 
@@ -92,6 +92,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
     // New: Pitch buffering
     let currentPitches = [];
     let pitchGroupStarted = false;
+    let pitchesEmitted = false; // Track if current pitches have been emitted at least once
     let stateChangedSinceLastPitch = false;
     let stateChangedAfterEmission = false; // Track wasted state changes before bar copy
 
@@ -139,7 +140,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
           }
 
           // Warn if pitches or state buffered but not emitted
-          if (currentPitches.length > 0) {
+          if (currentPitches.length > 0 && !pitchesEmitted) {
             console.error(
               `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
             );
@@ -228,6 +229,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
           // Clear pitch buffer (don't emit) and reset flags
           currentPitches = [];
           pitchGroupStarted = false;
+          pitchesEmitted = false;
           stateChangedSinceLastPitch = false;
           stateChangedAfterEmission = false;
           continue; // Skip single-source logic below
@@ -254,7 +256,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         }
 
         // Warn if pitches or state buffered but not emitted
-        if (currentPitches.length > 0) {
+        if (currentPitches.length > 0 && !pitchesEmitted) {
           console.error(
             `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
           );
@@ -335,6 +337,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         // Clear pitch buffer (don't emit) and reset flags
         currentPitches = [];
         pitchGroupStarted = false;
+        pitchesEmitted = false;
         stateChangedSinceLastPitch = false;
         stateChangedAfterEmission = false;
       } else if (element.destination?.bar !== undefined) {
@@ -380,7 +383,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         }
 
         // Warn if pitches or state buffered but not emitted
-        if (currentPitches.length > 0) {
+        if (currentPitches.length > 0 && !pitchesEmitted) {
           console.error(
             `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
           );
@@ -462,13 +465,14 @@ export function interpretNotation(barBeatExpression, options = {}) {
         // Clear pitch buffer (don't emit) and reset flags
         currentPitches = [];
         pitchGroupStarted = false;
+        pitchesEmitted = false;
         stateChangedSinceLastPitch = false;
         stateChangedAfterEmission = false;
       } else if (element.clearBuffer) {
         // CLEAR BUFFER - immediately clear the copy buffer
 
         // Warn if pitches or state buffered but not emitted
-        if (currentPitches.length > 0) {
+        if (currentPitches.length > 0 && !pitchesEmitted) {
           console.error(
             `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before @clear`,
           );
@@ -488,6 +492,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         // Clear pitch buffer (don't emit) and reset flags
         currentPitches = [];
         pitchGroupStarted = false;
+        pitchesEmitted = false;
         stateChangedSinceLastPitch = false;
         stateChangedAfterEmission = false;
       } else if (element.bar !== undefined && element.beat !== undefined) {
@@ -598,6 +603,9 @@ export function interpretNotation(barBeatExpression, options = {}) {
               });
             }
           }
+
+          // Mark pitches as emitted
+          pitchesEmitted = true;
         }
 
         // Reset flags (but keep pitches for next time)
@@ -611,6 +619,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         if (!pitchGroupStarted) {
           currentPitches = [];
           pitchGroupStarted = true;
+          pitchesEmitted = false; // Reset emission flag for new pitch group
           stateChangedAfterEmission = false; // State will be captured with pitches
         }
 
@@ -749,7 +758,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
     }
 
     // Warn if pitches buffered but never emitted
-    if (currentPitches.length > 0) {
+    if (currentPitches.length > 0 && !pitchesEmitted) {
       console.error(
         `Warning: ${currentPitches.length} pitch(es) buffered but no time position to emit them`,
       );

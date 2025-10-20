@@ -5,8 +5,9 @@ You can now compose music in Ableton Live using Producer Pal tools and the bar|b
 ## Time in Ableton Live
 
 - Positions: bar|beat (1|1 = first beat, 2|3.5 = bar 2 beat 3.5, 1|2+1/3 = bar 1 beat 2 and a third)
-- Durations: beats (2.5, 3/4) or bar:beat (1:2 = 1 bar + 2 beats, 4:0 = 4 bars)
+- Durations: beats (2.5, 3/4, /4 = 1/4) or bar:beat (1:2 = 1 bar + 2 beats, 4:0 = 4 bars)
 - Fractional beats: decimals (2.5), fractions (5/2), or mixed numbers (2+1/3) for both positions and durations
+- Fraction shortcut: numerator defaults to 1 when omitted (/4 = 1/4, /3 = 1/3)
 
 ## MIDI Syntax
 
@@ -21,18 +22,18 @@ Create MIDI clips using the bar|beat notation syntax:
   - **Repeat patterns**: \`beatx{times}[@{step}]\` generates sequences (step optional, uses duration)
     - \`1|1x4@1\` → beats 1,2,3,4 (explicit step)
     - \`t0.5 1|1x4\` → beats 1, 1.5, 2, 2.5 (step = duration)
-    - \`1|1x3@1/3\` → triplets at 1, 4/3, 5/3 (explicit step)
-    - \`t1/3 1|1x3\` → triplets at 1, 4/3, 5/3 (step = duration)
-    - \`1|1x16@1/4\` → full bar of 16ths (explicit step)
-    - \`t1/4 1|1x16\` → full bar of 16ths (step = duration)
+    - \`1|1x3@1/3\` or \`1|1x3@/3\` → triplets at 1, 4/3, 5/3 (explicit step)
+    - \`t1/3 1|1x3\` or \`t/3 1|1x3\` → triplets at 1, 4/3, 5/3 (step = duration)
+    - \`1|1x16@1/4\` or \`1|1x16@/4\` → full bar of 16ths (explicit step)
+    - \`t1/4 1|1x16\` or \`t/4 1|1x16\` → full bar of 16ths (step = duration)
 - v<velocity>: Note intensity from 0-127 (default: v100)
   - Single value: v100 (all notes at velocity 100)
   - Random range: v80-120 (each note gets random velocity between 80-120)
   - Use ranges for humanization, natural dynamics, and groove feel
   - \`v0\` deletes earlier notes at same pitch/time (**deletes until disabled** with non-zero v)
 - t<duration>: Note length (default: 1.0)
-  - Beat-only: t2.5 (2.5 beats), t3/4 (0.75 beats), t2+3/4 (2 and three-quarter beats)
-  - Bar:beat: t2:1.5 (2 bars + 1.5 beats), t1:2+1/3 (1 bar + 2 and a third beats)
+  - Beat-only: t2.5 (2.5 beats), t3/4 (0.75 beats), t/4 (0.25 beats), t2+3/4 (2 and three-quarter beats)
+  - Bar:beat: t2:1.5 (2 bars + 1.5 beats), t1:/4 (1 bar + 0.25 beats), t1:2+1/3 (1 bar + 2 and a third beats)
 - p<chance>: Probability from 0.0 to 1.0 (default: 1.0 = always)
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
@@ -55,8 +56,10 @@ C1 1|1 |2 |3 |4 // same as above (pitch persistence)
 v100 C3 1|1 D3 |2.5 // C at beat 1, D at beat 2.5
 t0.25 C3 1|1.75 // 16th note at beat 1.75
 t1/3 C3 1|1x3 // triplet eighth notes (step = duration)
+t/3 C3 1|1x3 // same as above (numerator defaults to 1)
 t1/3 C3 1|1,4/3,5/3 // same as above (fractional notation)
 t1/4 Gb1 1|1x16 // full bar of 16th note hi-hats (step = duration)
+t/4 Gb1 1|1x16 // same as above (numerator defaults to 1)
 t1+1/4 C3 D3 E3 1|1,1+1/3,1+2/3 // mixed numbers for natural musician notation
 C3 D3 1|1 v0 C3 1|1 // delete earlier C3 (D3 remains)
 C3 E3 G3 1|1,2,3,4 v0 C3 E3 G3 1|2 // delete chord at beat 2 only
@@ -199,9 +202,9 @@ Use repeat syntax (\`x{times}[@{step}]\`), copy features, and pitch persistence:
 - **Repeat syntax**: Best for regular subdivisions (16ths, triplets, every beat)
   - \`t1 C1 1|1x4\` for kicks on every beat (step = duration)
   - \`t0.5 Gb1 1|1x8\` for eighth notes (step = duration)
-  - \`t1/3 C3 1|1x3\` for triplets (step = duration)
+  - \`t1/3 C3 1|1x3\` or \`t/3 C3 1|1x3\` for triplets (step = duration)
   - Step is optional - omit @step to use current duration
-  - Explicit step still works: \`C1 1|1x4@1\`, \`Gb1 1|1x8@0.5\`, \`C3 1|1x3@1/3\`
+  - Explicit step still works: \`C1 1|1x4@1\`, \`Gb1 1|1x8@0.5\`, \`C3 1|1x3@1/3\` or \`C3 1|1x3@/3\`
 - **Bar copy**: Best for multi-bar patterns and complex rhythms
 - Within each bar, group by instrument to leverage pitch persistence for multiple time positions
 - Use shorthand beat lists for irregular patterns
