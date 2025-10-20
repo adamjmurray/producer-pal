@@ -140,7 +140,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
           }
 
           // Warn if pitches or state buffered but not emitted
-          if (currentPitches.length > 0) {
+          if (currentPitches.length > 0 && !pitchesEmitted) {
             console.error(
               `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
             );
@@ -256,7 +256,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         }
 
         // Warn if pitches or state buffered but not emitted
-        if (currentPitches.length > 0) {
+        if (currentPitches.length > 0 && !pitchesEmitted) {
           console.error(
             `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
           );
@@ -383,7 +383,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         }
 
         // Warn if pitches or state buffered but not emitted
-        if (currentPitches.length > 0) {
+        if (currentPitches.length > 0 && !pitchesEmitted) {
           console.error(
             `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before bar copy`,
           );
@@ -472,7 +472,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
         // CLEAR BUFFER - immediately clear the copy buffer
 
         // Warn if pitches or state buffered but not emitted
-        if (currentPitches.length > 0) {
+        if (currentPitches.length > 0 && !pitchesEmitted) {
           console.error(
             `Warning: ${currentPitches.length} pitch(es) buffered but not emitted before @clear`,
           );
