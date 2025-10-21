@@ -19,7 +19,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - time positions are relative to clip start
   - \`|beat\` reuses current bar
   - beat can be a comma-separated (no whitespace) list or repeat pattern
-  - **Repeat patterns**: \`beatx{times}[@{step}]\` generates sequences (step optional, uses duration)
+  - **Repeat patterns**: \`{beat}x{times}[@{step}]\` generates sequences (step optional, uses duration)
     - \`1|1x4@1\` → beats 1,2,3,4 (explicit step)
     - \`t0.5 1|1x4\` → beats 1, 1.5, 2, 2.5 (step = duration)
     - \`1|1x3@1/3\` or \`1|1x3@/3\` → triplets at 1, 4/3, 5/3 (explicit step)
@@ -49,6 +49,7 @@ Create MIDI clips using the bar|beat notation syntax:
 
 \`\`\`
 C3 E3 G3 1|1 // chord at bar 1 beat 1
+C3 E3 G3 1|1,2,3,4 // same chord on every beat
 C1 1|1x4@1 // kick on every beat (explicit step)
 t1 C1 1|1x4 // same as above (step = duration)
 C1 1|1,2,3,4 // same as above (comma-separated beats)
