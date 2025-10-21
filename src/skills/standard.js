@@ -97,13 +97,26 @@ Apply dynamic transformations to note properties using mathematical expressions 
 - Example: \`1|1-3|1 velocity += 10\` (bar 1 beat 1 to bar 3 beat 1)
 - Combine with pitch: \`60 1|1-2|1 velocity += 10\`
 
+**Note Property Variables:**
+- Access note properties using \`note.\` prefix:
+  - \`note.pitch\`: MIDI pitch (0-127)
+  - \`note.start\`: Start time in musical beats (from clip start)
+  - \`note.velocity\`: Current velocity value (1-127)
+  - \`note.velocityDeviation\`: Velocity deviation
+  - \`note.duration\`: Duration in beats
+  - \`note.probability\`: Probability (0.0-1.0)
+- Use in any expression: arithmetic, functions, waveform periods, etc.
+
 **Expressions:**
 - Arithmetic: +, -, *, / (standard precedence)
 - Waveforms: cos(freq), tri(freq), saw(freq), square(freq), noise()
-- Frequency: bar:beat duration + 't' suffix (1t, 1:0t, 0:2t)
-  - Optional bars: 2t = 2:0t, 0:1t = 1t
-- Phase: cos(freq, phase) - phase 0.0-1.0 offsets waveform start
-- Pulse width: square(freq, phase, width) - width 0.0-1.0 (default 0.5)
+- Frequency: Two options:
+  - Period notation: bar:beat duration + 't' suffix (1t, 1:0t, 0:2t)
+    - Optional bars: 2t = 2:0t, 0:1t = 1t
+  - Expression: Any numeric value/variable (treated as beats)
+    - Examples: note.duration, note.start/4, 2.5
+- Phase: cos(freq, phase) - phase 0.0-1.0 offsets waveform start (can use variables)
+- Pulse width: square(freq, phase, width) - width 0.0-1.0 (default 0.5, can use variables)
 
 **Waveform behavior:**
 - All waveforms output -1.0 to 1.0
@@ -114,48 +127,42 @@ Apply dynamic transformations to note properties using mathematical expressions 
 - square: hard on/off toggle
 - noise(): random value each note (non-deterministic)
 - ramp(start, end, speed): linear interpolation over clip duration
-  - start/end: any numeric values
-  - speed: optional multiplier (default 1), >1 = faster, <1 = slower
+  - start/end: any numeric values (can use variables)
+  - speed: optional multiplier (default 1), >1 = faster, <1 = slower (can use variables)
   - Ramps over the entire clip or time range (no frequency arg)
 
 **Examples:**
 
 \`\`\`
-# Add velocity cycling every 2 bars
-velocity += 20 * cos(2:0t)
+# Basic waveforms
+velocity += 20 * cos(2:0t)  # velocity cycle every 2 bars
+timing += 0.05 * noise()    # humanize timing randomly
+velocity += 30 * tri(4t)    # crescendo over 4 bars
 
-# Set absolute velocity value
+# Absolute values
 velocity = 80
 
-# Humanize timing ±0.05 beats randomly
-timing += 0.05 * noise()
+# Ramp functions
+velocity += ramp(0, 127)    # fade in over entire clip
+velocity += ramp(127, 0)    # fade out
+velocity += ramp(0, 100, 2) # two complete ramps
 
-# Crescendo with triangle wave over 4 bars
-velocity += 30 * tri(4t)
+# Note property variables
+velocity = note.pitch       # velocity follows pitch value
+velocity = note.velocity/2  # halve existing velocity
+timing += note.pitch * 0.01 # delay higher notes
+duration = note.duration * note.probability
 
-# Shorten every other note (2 beat cycle)
-duration += -0.25 * square(2t)
+# Variable periods
+velocity += cos(note.duration)     # period = note duration
+velocity += tri(note.duration * 2) # period = 2x note duration
 
-# Fade in probability over 8 bars
-probability += 0.5 * (1 + cos(8t))
+# Variables in function arguments
+velocity = ramp(0, note.velocity)         # ramp to note's velocity
+velocity += cos(1t, note.probability)     # phase offset from probability
+velocity += square(1t, 0, note.duration)  # pulse width from duration
 
-# Velocity ramp from 0 to 127 over entire clip
-velocity += ramp(0, 127)
-
-# Reverse ramp (fade out)
-velocity += ramp(127, 0)
-
-# Two complete ramps over clip duration
-velocity += ramp(0, 100, 2)
-
-# Multiple parameters at once
-velocity += 15 * cos(1t)
-timing += 0.03 * noise()
-
-# Quarter note swing with phase offset
-timing += 0.1 * square(1t, 0.25, 0.5)
-
-# Pitch-specific modulations (affects only C3 notes)
+# Pitch-specific (affects only C3 notes)
 C3 velocity += 20
 
 # Time range modulation (only affects notes in bars 1-2)

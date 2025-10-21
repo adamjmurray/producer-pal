@@ -84,8 +84,22 @@ multiplicative
 
 primary
   = functionCall
+  / variable
   / number
   / "(" _ expr:expression _ ")" { return expr; }
+
+variable
+  = "note." name:propertyName {
+    return { type: "variable", name };
+  }
+
+propertyName
+  = "velocityDeviation" { return "velocityDeviation"; }
+  / "velocity" { return "velocity"; }
+  / "probability" { return "probability"; }
+  / "duration" { return "duration"; }
+  / "pitch" { return "pitch"; }
+  / "start" { return "start"; }
 
 functionCall
   = name:functionName "(" _ args:argumentList? _ ")" {
@@ -106,7 +120,7 @@ argumentList
   }
 
 argument
-  = period / number
+  = period / expression
 
 period
   = bars:unsignedInt ":" beats:unsignedFloat "t" {

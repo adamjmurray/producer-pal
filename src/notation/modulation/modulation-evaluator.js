@@ -55,21 +55,35 @@ export function applyModulations(
     const bar = barBeatMatch ? Number.parseInt(barBeatMatch[1]) : null;
     const beat = barBeatMatch ? Number.parseFloat(barBeatMatch[2]) : null;
 
-    // Evaluate modulations for this note using the pre-parsed AST
-    const modulations = evaluateModulationAST(ast, {
-      position: musicalBeats,
+    // Prepare note properties for variable access
+    const noteProperties = {
       pitch: note.pitch,
-      bar,
-      beat,
-      timeSig: {
-        numerator: timeSigNumerator,
-        denominator: timeSigDenominator,
+      start: musicalBeats,
+      velocity: note.velocity,
+      velocityDeviation: note.velocity_deviation ?? 0,
+      duration: note.duration,
+      probability: note.probability,
+    };
+
+    // Evaluate modulations for this note using the pre-parsed AST
+    const modulations = evaluateModulationAST(
+      ast,
+      {
+        position: musicalBeats,
+        pitch: note.pitch,
+        bar,
+        beat,
+        timeSig: {
+          numerator: timeSigNumerator,
+          denominator: timeSigDenominator,
+        },
+        clipTimeRange: {
+          start: clipStartTime,
+          end: clipEndTime,
+        },
       },
-      clipTimeRange: {
-        start: clipStartTime,
-        end: clipEndTime,
-      },
-    });
+      noteProperties,
+    );
 
     // Apply modulations with operator semantics and range clamping
     if (modulations.velocity != null) {
@@ -137,9 +151,20 @@ export function applyModulations(
  * @param {Object} [noteContext.clipTimeRange] - Overall clip time range
  * @param {number} noteContext.clipTimeRange.start - Clip start time in musical beats
  * @param {number} noteContext.clipTimeRange.end - Clip end time in musical beats
+ * @param {Object} [noteProperties] - Note properties accessible via note.* variables
+ * @param {number} [noteProperties.pitch] - MIDI pitch (0-127)
+ * @param {number} [noteProperties.start] - Start time in musical beats
+ * @param {number} [noteProperties.velocity] - Velocity (1-127)
+ * @param {number} [noteProperties.velocityDeviation] - Velocity deviation
+ * @param {number} [noteProperties.duration] - Duration in beats
+ * @param {number} [noteProperties.probability] - Probability (0.0-1.0)
  * @returns {Object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
  */
-export function evaluateModulation(modulationString, noteContext) {
+export function evaluateModulation(
+  modulationString,
+  noteContext,
+  noteProperties,
+) {
   if (!modulationString) {
     return {};
   }
@@ -154,7 +179,7 @@ export function evaluateModulation(modulationString, noteContext) {
     return {};
   }
 
-  return evaluateModulationAST(ast, noteContext);
+  return evaluateModulationAST(ast, noteContext, noteProperties);
 }
 
 /**
@@ -171,9 +196,16 @@ export function evaluateModulation(modulationString, noteContext) {
  * @param {Object} [noteContext.clipTimeRange] - Overall clip time range
  * @param {number} noteContext.clipTimeRange.start - Clip start time in musical beats
  * @param {number} noteContext.clipTimeRange.end - Clip end time in musical beats
+ * @param {Object} [noteProperties] - Note properties accessible via note.* variables
+ * @param {number} [noteProperties.pitch] - MIDI pitch (0-127)
+ * @param {number} [noteProperties.start] - Start time in musical beats
+ * @param {number} [noteProperties.velocity] - Velocity (1-127)
+ * @param {number} [noteProperties.velocityDeviation] - Velocity deviation
+ * @param {number} [noteProperties.duration] - Duration in beats
+ * @param {number} [noteProperties.probability] - Probability (0.0-1.0)
  * @returns {Object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
  */
-function evaluateModulationAST(ast, noteContext) {
+function evaluateModulationAST(ast, noteContext, noteProperties = {}) {
   const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
   const { numerator, denominator } = timeSig;
 
@@ -228,6 +260,7 @@ function evaluateModulationAST(ast, noteContext) {
         numerator,
         denominator,
         activeTimeRange,
+        noteProperties,
       );
 
       result[assignment.parameter] = {
@@ -254,6 +287,7 @@ function evaluateModulationAST(ast, noteContext) {
  * @param {Object} timeRange - Active time range for this expression
  * @param {number} timeRange.start - Start time in musical beats
  * @param {number} timeRange.end - End time in musical beats
+ * @param {Object} [noteProperties] - Note properties accessible via note.* variables
  * @returns {number} Evaluated value
  */
 function evaluateExpression(
@@ -262,10 +296,21 @@ function evaluateExpression(
   timeSigNumerator,
   timeSigDenominator,
   timeRange,
+  noteProperties = {},
 ) {
   // Base case: number literal
   if (typeof node === "number") {
     return node;
+  }
+
+  // Variable lookup
+  if (node.type === "variable") {
+    if (noteProperties[node.name] == null) {
+      throw new Error(
+        `Variable "note.${node.name}" is not available in this context`,
+      );
+    }
+    return noteProperties[node.name];
   }
 
   // Arithmetic operators
@@ -276,6 +321,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     const right = evaluateExpression(
       node.right,
@@ -283,6 +329,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     return left + right;
   }
@@ -294,6 +341,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     const right = evaluateExpression(
       node.right,
@@ -301,6 +349,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     return left - right;
   }
@@ -312,6 +361,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     const right = evaluateExpression(
       node.right,
@@ -319,6 +369,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     return left * right;
   }
@@ -330,6 +381,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     const right = evaluateExpression(
       node.right,
@@ -337,6 +389,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
     // Division by zero yields 0 per spec
     if (right === 0) {
@@ -354,6 +407,7 @@ function evaluateExpression(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
   }
 
@@ -367,6 +421,8 @@ function evaluateExpression(
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
+ * @param {Object} timeRange - Active time range for this expression
+ * @param {Object} [noteProperties] - Note properties accessible via note.* variables
  * @returns {number} Function result
  */
 function evaluateFunction(
@@ -376,6 +432,7 @@ function evaluateFunction(
   timeSigNumerator,
   timeSigDenominator,
   timeRange,
+  noteProperties = {},
 ) {
   // noise() has no arguments
   if (name === "noise") {
@@ -398,6 +455,7 @@ function evaluateFunction(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
 
     // Second argument: end value
@@ -407,6 +465,7 @@ function evaluateFunction(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
 
     // Optional third argument: speed (default 1)
@@ -418,6 +477,7 @@ function evaluateFunction(
         timeSigNumerator,
         timeSigDenominator,
         timeRange,
+        noteProperties,
       );
       if (speed <= 0) {
         throw new Error(`Function ramp() speed must be > 0, got ${speed}`);
@@ -439,16 +499,25 @@ function evaluateFunction(
     throw new Error(`Function ${name}() requires at least a period argument`);
   }
 
-  // First argument is period
+  // First argument is period (either period type with "t" suffix, or a number expression)
   const periodArg = args[0];
   let period;
 
   if (periodArg.type === "period") {
     period = parseFrequency(periodArg, timeSigNumerator, timeSigDenominator);
   } else {
-    throw new Error(
-      `First argument to ${name}() must be a period (e.g., 1t, 1:0t)`,
+    // Evaluate as expression (e.g., variable or number) - treated as beats
+    period = evaluateExpression(
+      periodArg,
+      position,
+      timeSigNumerator,
+      timeSigDenominator,
+      timeRange,
+      noteProperties,
     );
+    if (period <= 0) {
+      throw new Error(`Function ${name}() period must be > 0, got ${period}`);
+    }
   }
 
   // Calculate phase from position and period
@@ -463,6 +532,7 @@ function evaluateFunction(
       timeSigNumerator,
       timeSigDenominator,
       timeRange,
+      noteProperties,
     );
   }
 
@@ -489,6 +559,7 @@ function evaluateFunction(
           timeSigNumerator,
           timeSigDenominator,
           timeRange,
+          noteProperties,
         );
       }
       return waveforms.square(phase, pulseWidth);

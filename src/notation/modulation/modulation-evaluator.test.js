@@ -705,6 +705,268 @@ C#3 velocity += 20`;
       expect(result.velocity.operator).toBe("set");
     });
   });
+
+  describe("note property variables", () => {
+    const noteProps = {
+      pitch: 60,
+      start: 2.5,
+      velocity: 100,
+      velocityDeviation: 10,
+      duration: 0.5,
+      probability: 0.8,
+    };
+
+    it("evaluates note.pitch variable", () => {
+      const result = evaluateModulation(
+        "velocity += note.pitch",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(60);
+    });
+
+    it("evaluates note.start variable", () => {
+      const result = evaluateModulation(
+        "velocity += note.start * 10",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(25);
+    });
+
+    it("evaluates note.velocity variable", () => {
+      const result = evaluateModulation(
+        "duration += note.velocity / 100",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.duration.value).toBe(1);
+    });
+
+    it("evaluates note.velocityDeviation variable", () => {
+      const result = evaluateModulation(
+        "velocity += note.velocityDeviation",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(10);
+    });
+
+    it("evaluates note.duration variable", () => {
+      const result = evaluateModulation(
+        "probability += note.duration",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.probability.value).toBe(0.5);
+    });
+
+    it("evaluates note.probability variable", () => {
+      const result = evaluateModulation(
+        "velocity += note.probability * 20",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(16);
+    });
+
+    it("allows self-reference: velocity based on note.velocity", () => {
+      const result = evaluateModulation(
+        "velocity = note.velocity / 2",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(50);
+    });
+
+    it("combines variables in arithmetic expressions", () => {
+      const result = evaluateModulation(
+        "velocity += note.pitch + note.velocityDeviation",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(70);
+    });
+
+    it("uses variables with functions", () => {
+      const result = evaluateModulation(
+        "velocity += note.velocity * cos(1t)",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBeCloseTo(100, 5);
+    });
+
+    it("uses variables in complex expressions", () => {
+      const result = evaluateModulation(
+        "velocity = (note.pitch / 127) * 100",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBeCloseTo(47.24, 2);
+    });
+
+    it("uses multiple variables in same expression", () => {
+      const result = evaluateModulation(
+        "duration = note.duration * note.probability",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.duration.value).toBe(0.4);
+    });
+
+    it("uses variables in parenthesized expressions", () => {
+      const result = evaluateModulation(
+        "velocity = (note.pitch + note.velocityDeviation) * 2",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(140);
+    });
+
+    it("uses variables with pitch filtering", () => {
+      const result = evaluateModulation(
+        "C3 velocity = note.velocity / 2",
+        {
+          position: 0,
+          pitch: 60,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(50);
+    });
+
+    it("uses variables with time range filtering", () => {
+      const result = evaluateModulation(
+        "1|1-2|1 velocity = note.pitch",
+        {
+          position: 0,
+          bar: 1,
+          beat: 2,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(60);
+    });
+
+    it("throws error for undefined variable", () => {
+      const result = evaluateModulation(
+        "velocity += note.invalid",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        {},
+      );
+      // Should skip the parameter due to error
+      expect(result).toStrictEqual({});
+    });
+
+    it("handles variables in ramp function arguments", () => {
+      const result = evaluateModulation(
+        "velocity = ramp(0, note.velocity)",
+        {
+          position: 2,
+          timeSig: { numerator: 4, denominator: 4 },
+          clipTimeRange: { start: 0, end: 4 },
+        },
+        noteProps,
+      );
+      expect(result.velocity.value).toBe(50); // ramp at 0.5 phase
+    });
+
+    it("handles variables in waveform phase offset", () => {
+      const result = evaluateModulation(
+        "velocity += cos(1t, note.probability)",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      // cos(phase 0 + offset 0.8)
+      expect(result.velocity.value).toBeCloseTo(Math.cos(2 * Math.PI * 0.8), 5);
+    });
+
+    it("uses variable as waveform period", () => {
+      const result = evaluateModulation(
+        "velocity += cos(note.duration)",
+        {
+          position: 0.25, // quarter way through period
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      // noteProps.duration = 0.5, so position 0.25 / period 0.5 = phase 0.5
+      // cos(0.5) = -1
+      expect(result.velocity.value).toBeCloseTo(-1.0, 5);
+    });
+
+    it("uses expression as waveform period", () => {
+      const result = evaluateModulation(
+        "velocity += cos(note.duration * 2)",
+        {
+          position: 0.5, // halfway through period
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      // noteProps.duration * 2 = 0.5 * 2 = 1.0
+      // position 0.5 / period 1.0 = phase 0.5 → cos(0.5) = -1
+      expect(result.velocity.value).toBeCloseTo(-1.0, 5);
+    });
+
+    it("throws error when variable period is <= 0", () => {
+      const result = evaluateModulation(
+        "velocity += cos(note.duration - 0.5)",
+        {
+          position: 0,
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+        noteProps,
+      );
+      // noteProps.duration - 0.5 = 0.5 - 0.5 = 0, should error
+      expect(result).toStrictEqual({});
+    });
+  });
 });
 
 describe("applyModulations", () => {
@@ -1205,6 +1467,161 @@ probability += -0.2`;
       applyModulations(notes, "probability += 0.5", 4, 4);
       expect(notes[0].probability).toBe(0.5);
       expect(notes[1].probability).toBe(1.0); // clamped
+    });
+  });
+
+  describe("note property variables", () => {
+    it("applies modulation using note.pitch variable", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+        {
+          pitch: 72,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ];
+      applyModulations(notes, "velocity = note.pitch", 4, 4);
+      expect(notes[0].velocity).toBe(60);
+      expect(notes[1].velocity).toBe(72);
+    });
+
+    it("applies modulation using note.velocity variable (self-reference)", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ];
+      applyModulations(notes, "velocity = note.velocity / 2", 4, 4);
+      expect(notes[0].velocity).toBe(50);
+    });
+
+    it("applies modulation using note.velocityDeviation variable", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 20,
+          probability: 1,
+        },
+      ];
+      applyModulations(notes, "velocity += note.velocityDeviation", 4, 4);
+      expect(notes[0].velocity).toBe(120);
+    });
+
+    it("applies modulation using note.duration variable", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.5,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ];
+      applyModulations(notes, "probability = note.duration", 4, 4);
+      expect(notes[0].probability).toBe(0.5);
+    });
+
+    it("applies modulation using note.probability variable", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 0.5,
+        },
+      ];
+      applyModulations(notes, "velocity = note.probability * 127", 4, 4);
+      expect(notes[0].velocity).toBeCloseTo(63.5, 1);
+    });
+
+    it("applies modulation using note.start variable", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+        {
+          pitch: 60,
+          start_time: 1,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ];
+      // In 4/4, start_time 0 = 0 beats, start_time 1 = 1 beat
+      applyModulations(notes, "velocity = 64 + note.start * 10", 4, 4);
+      expect(notes[0].velocity).toBe(64); // 64 + 0 * 10
+      expect(notes[1].velocity).toBe(74); // 64 + 1 * 10
+    });
+
+    it("applies different modulations to different notes based on their properties", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 0.25,
+          velocity: 80,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+        {
+          pitch: 72,
+          start_time: 1,
+          duration: 0.5,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ];
+      applyModulations(
+        notes,
+        "velocity = note.pitch + note.duration * 20",
+        4,
+        4,
+      );
+      expect(notes[0].velocity).toBe(65); // 60 + 0.25 * 20
+      expect(notes[1].velocity).toBe(82); // 72 + 0.5 * 20
+    });
+
+    it("combines note variables with waveforms", () => {
+      const notes = [
+        {
+          pitch: 60,
+          start_time: 0,
+          duration: 1,
+          velocity: 100,
+          velocity_deviation: 0,
+          probability: 1,
+        },
+      ];
+      applyModulations(notes, "velocity = note.velocity * cos(1t)", 4, 4);
+      expect(notes[0].velocity).toBeCloseTo(100, 5); // 100 * cos(0) = 100 * 1
     });
   });
 });
