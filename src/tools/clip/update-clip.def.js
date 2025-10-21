@@ -17,7 +17,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     length: z
       .string()
       .optional()
-      .describe("bar:beat duration relative to startMarker"),
+      .describe("duration (beats or bar:beat) relative to startMarker"),
     loop: z.boolean().optional().describe("looping?"),
     loopStart: z
       .string()

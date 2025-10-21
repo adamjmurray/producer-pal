@@ -3,6 +3,7 @@ import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
+  barBeatDurationToMusicalBeats,
   barBeatToAbletonBeats,
   barBeatToBeats,
   beatsToBarBeat,
@@ -123,6 +124,70 @@ describe("barbeat-time utilities", () => {
       );
       expect(() => barBeatToBeats("1|-1", 3)).toThrow(
         "Beat must be 1 or greater",
+      );
+    });
+
+    it("handles fractional beat notation", () => {
+      // Triplets in 4/4 (beat positions are 1-indexed, so 4/3 = 1 + 1/3)
+      expect(barBeatToBeats("1|4/3", 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToBeats("1|5/3", 4)).toBeCloseTo(2 / 3, 10);
+      expect(barBeatToBeats("1|7/3", 4)).toBeCloseTo(4 / 3, 10);
+
+      // Dotted notes
+      expect(barBeatToBeats("1|3/2", 4)).toBe(0.5);
+      expect(barBeatToBeats("2|5/2", 4)).toBe(5.5);
+
+      // Quintuplets
+      expect(barBeatToBeats("1|6/5", 4)).toBeCloseTo(0.2, 10);
+      expect(barBeatToBeats("1|7/5", 4)).toBeCloseTo(0.4, 10);
+    });
+
+    it("handles fractional beats in different time signatures", () => {
+      // Triplets in 3/4
+      expect(barBeatToBeats("1|4/3", 3)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToBeats("2|4/3", 3)).toBeCloseTo(3 + 1 / 3, 10);
+
+      // Triplets in 6/8
+      expect(barBeatToBeats("1|4/3", 6)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToBeats("1|7/3", 6)).toBeCloseTo(4 / 3, 10);
+    });
+
+    it("handles beats with + operator (integer + fraction)", () => {
+      // Basic cases
+      expect(barBeatToBeats("1|2+1/3", 4)).toBeCloseTo(4 / 3, 10);
+      expect(barBeatToBeats("1|2+3/4", 4)).toBeCloseTo(1.75, 10);
+      expect(barBeatToBeats("1|3+1/2", 4)).toBeCloseTo(2.5, 10);
+
+      // Different bars
+      expect(barBeatToBeats("2|1+1/4", 4)).toBeCloseTo(4.25, 10);
+      expect(barBeatToBeats("3|2+2/3", 4)).toBeCloseTo(8 + 5 / 3, 10);
+
+      // Different time signatures
+      expect(barBeatToBeats("1|2+1/3", 3)).toBeCloseTo(4 / 3, 10);
+      expect(barBeatToBeats("2|1+1/2", 6)).toBeCloseTo(6.5, 10);
+    });
+
+    it("throws error for fractional beats less than 1", () => {
+      expect(() => barBeatToBeats("1|1/2", 4)).toThrow(
+        "Beat must be 1 or greater",
+      );
+      expect(() => barBeatToBeats("1|2/3", 4)).toThrow(
+        "Beat must be 1 or greater",
+      );
+      expect(() => barBeatToBeats("1|3/4", 4)).toThrow(
+        "Beat must be 1 or greater",
+      );
+    });
+
+    it("handles invalid fractional formats", () => {
+      expect(() => barBeatToBeats("1|/3", 4)).toThrow(
+        "Invalid bar|beat format",
+      );
+      expect(() => barBeatToBeats("1|4/", 4)).toThrow(
+        "Invalid bar|beat format",
+      );
+      expect(() => barBeatToBeats("1|4/3/2", 4)).toThrow(
+        "Invalid bar|beat format",
       );
     });
   });
@@ -257,6 +322,25 @@ describe("barbeat-time utilities", () => {
       expect(barBeatToAbletonBeats(undefined, 3, 4)).toBeNull();
       expect(barBeatToAbletonBeats(undefined, 6, 8)).toBeNull();
     });
+
+    it("converts fractional bar|beat notation to Ableton beats", () => {
+      // Triplets in 4/4 (1 Ableton beat = 1 musical beat)
+      expect(barBeatToAbletonBeats("1|4/3", 4, 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToAbletonBeats("1|5/3", 4, 4)).toBeCloseTo(2 / 3, 10);
+      expect(barBeatToAbletonBeats("1|7/3", 4, 4)).toBeCloseTo(4 / 3, 10);
+
+      // Triplets in 3/4
+      expect(barBeatToAbletonBeats("1|4/3", 3, 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatToAbletonBeats("2|4/3", 3, 4)).toBeCloseTo(3 + 1 / 3, 10);
+
+      // Triplets in 6/8 (1 Ableton beat = 2 eighth notes)
+      expect(barBeatToAbletonBeats("1|4/3", 6, 8)).toBeCloseTo(1 / 6, 10);
+      expect(barBeatToAbletonBeats("1|7/3", 6, 8)).toBeCloseTo(2 / 3, 10);
+
+      // Dotted notes
+      expect(barBeatToAbletonBeats("1|3/2", 4, 4)).toBe(0.5);
+      expect(barBeatToAbletonBeats("2|5/2", 4, 4)).toBe(5.5);
+    });
   });
 
   describe("round-trip conversions", () => {
@@ -274,6 +358,22 @@ describe("barbeat-time utilities", () => {
         const barBeat = beatsToBarBeat(beats, beatsPerBar);
         const backToBeats = barBeatToBeats(barBeat, beatsPerBar);
         expect(backToBeats).toBeCloseTo(beats, 10);
+      });
+    });
+
+    it("fractional notation round-trips correctly", () => {
+      // Test that fractional inputs convert correctly
+      const testCases = [
+        { barBeat: "1|4/3", beatsPerBar: 4, expectedBeats: 1 / 3 },
+        { barBeat: "1|5/3", beatsPerBar: 4, expectedBeats: 2 / 3 },
+        { barBeat: "1|7/3", beatsPerBar: 4, expectedBeats: 4 / 3 },
+        { barBeat: "2|4/3", beatsPerBar: 3, expectedBeats: 3 + 1 / 3 },
+        { barBeat: "1|3/2", beatsPerBar: 4, expectedBeats: 0.5 },
+      ];
+
+      testCases.forEach(({ barBeat, beatsPerBar, expectedBeats }) => {
+        const beats = barBeatToBeats(barBeat, beatsPerBar);
+        expect(beats).toBeCloseTo(expectedBeats, 10);
       });
     });
 
@@ -496,16 +596,60 @@ describe("barBeatDurationToAbletonBeats", () => {
     });
   });
 
+  it("handles fractional beat notation", () => {
+    // Triplet durations in 4/4
+    expect(barBeatDurationToAbletonBeats("0:1/3", 4, 4)).toBeCloseTo(1 / 3, 10);
+    expect(barBeatDurationToAbletonBeats("0:2/3", 4, 4)).toBeCloseTo(2 / 3, 10);
+    expect(barBeatDurationToAbletonBeats("0:4/3", 4, 4)).toBeCloseTo(4 / 3, 10);
+
+    // Bar + fractional beats
+    expect(barBeatDurationToAbletonBeats("1:1/2", 4, 4)).toBe(4.5);
+    expect(barBeatDurationToAbletonBeats("1:3/4", 4, 4)).toBe(4.75);
+    expect(barBeatDurationToAbletonBeats("2:5/3", 4, 4)).toBeCloseTo(
+      8 + 5 / 3,
+      10,
+    );
+
+    // Quintuplet durations
+    expect(barBeatDurationToAbletonBeats("0:1/5", 4, 4)).toBeCloseTo(0.2, 10);
+    expect(barBeatDurationToAbletonBeats("0:2/5", 4, 4)).toBeCloseTo(0.4, 10);
+  });
+
+  it("handles fractional durations in different time signatures", () => {
+    // Triplets in 3/4
+    expect(barBeatDurationToAbletonBeats("0:1/3", 3, 4)).toBeCloseTo(1 / 3, 10);
+    expect(barBeatDurationToAbletonBeats("1:2/3", 3, 4)).toBeCloseTo(
+      3 + 2 / 3,
+      10,
+    );
+
+    // Triplets in 6/8 (1 musical beat = 0.5 Ableton beats)
+    expect(barBeatDurationToAbletonBeats("0:1/3", 6, 8)).toBeCloseTo(1 / 6, 10);
+    expect(barBeatDurationToAbletonBeats("0:2/3", 6, 8)).toBeCloseTo(1 / 3, 10);
+  });
+
   it("throws error for invalid format", () => {
+    // Pipe symbol used instead of colon
     expect(() => barBeatDurationToAbletonBeats("1|2", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1|2". Expected "{int}:{float}" like "1:2" or "2:1.5"',
+      'Use ":" for bar:beat format, not "|"',
     );
-    expect(() => barBeatDurationToAbletonBeats("1", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1". Expected "{int}:{float}" like "1:2" or "2:1.5"',
-    );
+    // Invalid bar:beat formats (missing parts)
     expect(() => barBeatDurationToAbletonBeats("1:", 4, 4)).toThrow(
-      'Invalid bar:beat duration format: "1:". Expected "{int}:{float}" like "1:2" or "2:1.5"',
+      "Invalid bar:beat duration format",
     );
+    expect(() => barBeatDurationToAbletonBeats("0:/3", 4, 4)).toThrow(
+      "Invalid bar:beat duration format",
+    );
+    expect(() => barBeatDurationToAbletonBeats("0:1/", 4, 4)).toThrow(
+      "Invalid bar:beat duration format",
+    );
+  });
+
+  it("accepts beat-only integer format (NEW)", () => {
+    // "1" is now valid - it means 1 beat
+    expect(barBeatDurationToAbletonBeats("1", 4, 4)).toBe(1);
+    expect(barBeatDurationToAbletonBeats("2", 4, 4)).toBe(2);
+    expect(barBeatDurationToAbletonBeats("0", 4, 4)).toBe(0);
   });
 
   it("throws error for negative values", () => {
@@ -515,6 +659,130 @@ describe("barBeatDurationToAbletonBeats", () => {
     expect(() => barBeatDurationToAbletonBeats("0:-1", 4, 4)).toThrow(
       "Beats in duration must be 0 or greater, got: -1",
     );
+    expect(() => barBeatDurationToAbletonBeats("0:-1/3", 4, 4)).toThrow(
+      "Beats in duration must be 0 or greater",
+    );
+  });
+});
+
+describe("barBeatDurationToMusicalBeats", () => {
+  describe("beat-only format (NEW)", () => {
+    it("parses decimal beat durations", () => {
+      expect(barBeatDurationToMusicalBeats("2.5", 4, 4)).toBe(2.5);
+      expect(barBeatDurationToMusicalBeats("1.0", 4, 4)).toBe(1.0);
+      expect(barBeatDurationToMusicalBeats("0.25", 4, 4)).toBe(0.25);
+      expect(barBeatDurationToMusicalBeats("3.75", 4, 4)).toBe(3.75);
+    });
+
+    it("parses fractional beat durations", () => {
+      expect(barBeatDurationToMusicalBeats("5/2", 4, 4)).toBe(2.5);
+      expect(barBeatDurationToMusicalBeats("3/4", 4, 4)).toBe(0.75);
+      expect(barBeatDurationToMusicalBeats("1/3", 4, 4)).toBeCloseTo(1 / 3, 10);
+      expect(barBeatDurationToMusicalBeats("4/3", 4, 4)).toBeCloseTo(4 / 3, 10);
+    });
+
+    it("parses beat durations with + operator (integer + fraction)", () => {
+      expect(barBeatDurationToMusicalBeats("2+3/4", 4, 4)).toBe(2.75);
+      expect(barBeatDurationToMusicalBeats("1+1/2", 4, 4)).toBe(1.5);
+      expect(barBeatDurationToMusicalBeats("3+1/3", 4, 4)).toBeCloseTo(
+        10 / 3,
+        10,
+      );
+      expect(barBeatDurationToMusicalBeats("0+3/4", 4, 4)).toBe(0.75);
+    });
+
+    it("handles zero duration", () => {
+      expect(barBeatDurationToMusicalBeats("0", 4, 4)).toBe(0);
+      expect(barBeatDurationToMusicalBeats("0.0", 4, 4)).toBe(0);
+    });
+
+    it("throws error for negative durations", () => {
+      expect(() => barBeatDurationToMusicalBeats("-1", 4, 4)).toThrow(
+        "Beats in duration must be 0 or greater, got: -1",
+      );
+      expect(() => barBeatDurationToMusicalBeats("-2.5", 4, 4)).toThrow(
+        "Beats in duration must be 0 or greater",
+      );
+    });
+
+    it("throws error for division by zero", () => {
+      expect(() => barBeatDurationToMusicalBeats("5/0", 4, 4)).toThrow(
+        "Invalid fraction: division by zero",
+      );
+    });
+
+    it("throws error for invalid formats", () => {
+      expect(() => barBeatDurationToMusicalBeats("abc", 4, 4)).toThrow(
+        "Invalid duration format",
+      );
+      expect(() => barBeatDurationToMusicalBeats("", 4, 4)).toThrow(
+        "Invalid duration format",
+      );
+      expect(() => barBeatDurationToMusicalBeats("/3", 4, 4)).toThrow(
+        "Invalid fraction format",
+      );
+      expect(() => barBeatDurationToMusicalBeats("5/", 4, 4)).toThrow(
+        "Invalid fraction format",
+      );
+    });
+  });
+
+  describe("bar:beat format (existing)", () => {
+    it("parses bar:beat durations in 4/4 time", () => {
+      expect(barBeatDurationToMusicalBeats("0:0", 4, 4)).toBe(0);
+      expect(barBeatDurationToMusicalBeats("0:1", 4, 4)).toBe(1);
+      expect(barBeatDurationToMusicalBeats("1:0", 4, 4)).toBe(4);
+      expect(barBeatDurationToMusicalBeats("2:1.5", 4, 4)).toBe(9.5);
+    });
+
+    it("parses bar:beat durations in 3/4 time", () => {
+      expect(barBeatDurationToMusicalBeats("0:0", 3, 4)).toBe(0);
+      expect(barBeatDurationToMusicalBeats("0:1", 3, 4)).toBe(1);
+      expect(barBeatDurationToMusicalBeats("1:0", 3, 4)).toBe(3);
+      expect(barBeatDurationToMusicalBeats("2:1.5", 3, 4)).toBe(7.5);
+    });
+
+    it("handles fractional beats in bar:beat format", () => {
+      expect(barBeatDurationToMusicalBeats("0:1/3", 4, 4)).toBeCloseTo(
+        1 / 3,
+        10,
+      );
+      expect(barBeatDurationToMusicalBeats("1:3/4", 4, 4)).toBeCloseTo(
+        4.75,
+        10,
+      );
+      expect(barBeatDurationToMusicalBeats("2:5/3", 4, 4)).toBeCloseTo(
+        8 + 5 / 3,
+        10,
+      );
+    });
+
+    it("handles bar:beat durations with + operator", () => {
+      expect(barBeatDurationToMusicalBeats("1:2+1/3", 4, 4)).toBeCloseTo(
+        4 + 2 + 1 / 3,
+        10,
+      );
+      expect(barBeatDurationToMusicalBeats("0:3+3/4", 4, 4)).toBe(3.75);
+      expect(barBeatDurationToMusicalBeats("2:1+1/2", 3, 4)).toBe(7.5);
+    });
+
+    it("throws error for negative values", () => {
+      expect(() => barBeatDurationToMusicalBeats("-1:0", 4, 4)).toThrow(
+        "Bars in duration must be 0 or greater, got: -1",
+      );
+      expect(() => barBeatDurationToMusicalBeats("0:-1", 4, 4)).toThrow(
+        "Beats in duration must be 0 or greater, got: -1",
+      );
+    });
+
+    it("throws error for invalid bar:beat format", () => {
+      expect(() => barBeatDurationToMusicalBeats("1:", 4, 4)).toThrow(
+        "Invalid bar:beat duration format",
+      );
+      expect(() => barBeatDurationToMusicalBeats(":2", 4, 4)).toThrow(
+        "Invalid bar:beat duration format",
+      );
+    });
   });
 });
 

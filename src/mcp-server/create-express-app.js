@@ -25,6 +25,19 @@ const internalError = (message) => ({
 
 export function createExpressApp() {
   const app = express();
+
+  // CORS middleware for MCP Inspector support
+  app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
+    res.setHeader("Access-Control-Allow-Headers", "*");
+    // Handle preflight requests
+    if (req.method === "OPTIONS") {
+      return res.status(200).end();
+    }
+    next();
+  });
+
   app.use(express.json());
 
   app.post("/mcp", async (req, res) => {
