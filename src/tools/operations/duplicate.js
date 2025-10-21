@@ -209,7 +209,7 @@ function copyClipProperties(sourceClip, destClip, name) {
   // Copy notes if it's a MIDI clip
   if (sourceClip.getProperty("is_midi_clip")) {
     const { notes } = JSON.parse(
-      sourceClip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS),
+      sourceClip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
     );
     if (notes && notes.length > 0) {
       for (const note of notes) {
