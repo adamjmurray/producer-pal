@@ -210,18 +210,21 @@ function evaluateModulationAST(ast, noteContext, noteProperties = {}) {
   const { numerator, denominator } = timeSig;
 
   const result = {};
-  let currentPitch = null; // Track persistent pitch context
+  let currentPitchRange = null; // Track persistent pitch range context
 
   for (const assignment of ast) {
     try {
-      // Update persistent pitch context if specified
-      if (assignment.pitch != null) {
-        currentPitch = assignment.pitch;
+      // Update persistent pitch range context if specified
+      if (assignment.pitchRange != null) {
+        currentPitchRange = assignment.pitchRange;
       }
 
       // Apply pitch filtering
-      if (currentPitch != null && pitch != null && currentPitch !== pitch) {
-        continue; // Skip this assignment - doesn't match note's pitch
+      if (currentPitchRange != null && pitch != null) {
+        const { startPitch, endPitch } = currentPitchRange;
+        if (pitch < startPitch || pitch > endPitch) {
+          continue; // Skip this assignment - note's pitch outside range
+        }
       }
 
       // Calculate the active timeRange for this assignment

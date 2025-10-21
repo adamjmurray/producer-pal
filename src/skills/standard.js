@@ -88,10 +88,10 @@ Apply dynamic transformations to note properties using mathematical expressions 
 - probability: Modify note probability (clamped 0.0-1.0)
 
 **Pitch Selectors (optional):**
-- MIDI number: \`60 velocity += 10\` (affects only pitch 60)
-- Note name: \`C3 velocity += 10\` (affects only C3 notes)
+- Single pitch: \`C3 velocity += 10\` (affects only C3 notes)
+- Pitch range: \`C3-C5 velocity += 10\` (affects all notes from C3 to C5 inclusive)
 - Omitted: \`velocity += 10\` (affects all pitches)
-- Persistence: pitch persists across lines until changed
+- Persistence: pitch selector persists across lines until changed
 
 **Time Range Selectors (optional):**
 - Format: \`startBar|startBeat-endBar|endBeat\`
@@ -163,19 +163,30 @@ velocity = ramp(0, note.velocity)         # ramp to note's velocity
 velocity += cos(1t, note.probability)     # phase offset from probability
 velocity += square(1t, 0, note.duration)  # pulse width from duration
 
-# Pitch-specific (affects only C3 notes)
+# Single pitch selector (affects only C3 notes)
 C3 velocity += 20
+
+# Pitch range selector (affects C3 through C5)
+C3-C5 velocity += 20
+
+# Accent bass notes (C1 through C2)
+C1-C2 velocity += 30
 
 # Time range modulation (only affects notes in bars 1-2)
 1|1-2|4 velocity += 10
 
-# Combined pitch and time range (C3 notes in bar 1 only)
-C3 1|1-1|4 velocity = 100
+# Combined pitch range and time range
+C3-C5 1|1-1|4 velocity = 100
 
 # Pitch persistence (affects C3, then D3, then all pitches)
 C3 velocity += 10
 D3 velocity += 20
 velocity += 5
+
+# Multiple pitch ranges with different modulations
+C1-C2 velocity += 30
+C3-C5 velocity += 10
+C6-C7 velocity = 100
 
 # Apply to existing clip notes (update-clip with merge mode, no notes param)
 # Humanizes velocity and timing of all notes in clip without changing pitches
@@ -195,9 +206,10 @@ timing += 0.02 * noise()"
 
 **Notes:**
 - \`+=\` adds to base values, \`=\` replaces base values
-- Pitch selectors filter by MIDI pitch; omitted = all pitches
+- Pitch selectors filter by single pitch or pitch range; omitted = all pitches
+- Pitch ranges are inclusive (C3-C5 includes C3, C#3, D3, ... C5)
 - Time range selectors filter by bar|beat position
-- Pitch persists across lines until changed or omitted
+- Pitch selector persists across lines until changed or omitted
 - Parse/evaluation errors become warnings, partial modulations apply
 - Position context: waveforms evaluate at each note's musical beat position
 - Can apply modulations alone in update-clip merge mode (omit notes parameter)

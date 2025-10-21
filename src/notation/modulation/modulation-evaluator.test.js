@@ -599,6 +599,90 @@ C#3 velocity += 20`;
       });
       expect(result2.velocity.value).toBe(20);
     });
+
+    it("applies modulation to pitch within range", () => {
+      const result = evaluateModulation("C3-C5 velocity += 10", {
+        position: 0,
+        pitch: 72, // C4 is within C3-C5
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result.velocity.value).toBe(10);
+    });
+
+    it("applies modulation to pitch at range start", () => {
+      const result = evaluateModulation("C3-C5 velocity += 10", {
+        position: 0,
+        pitch: 60, // C3 is at start
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result.velocity.value).toBe(10);
+    });
+
+    it("applies modulation to pitch at range end", () => {
+      const result = evaluateModulation("C3-C5 velocity += 10", {
+        position: 0,
+        pitch: 84, // C5 is at end
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result.velocity.value).toBe(10);
+    });
+
+    it("skips modulation for pitch below range", () => {
+      const result = evaluateModulation("C3-C5 velocity += 10", {
+        position: 0,
+        pitch: 59, // B2 is below C3
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result).toStrictEqual({});
+    });
+
+    it("skips modulation for pitch above range", () => {
+      const result = evaluateModulation("C3-C5 velocity += 10", {
+        position: 0,
+        pitch: 85, // C#5 is above C5
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result).toStrictEqual({});
+    });
+
+    it("persists pitch range across multiple lines", () => {
+      const result = evaluateModulation(
+        "C3-C5 velocity += 10\ntiming += 0.05",
+        {
+          position: 0,
+          pitch: 72, // C4 within range
+          timeSig: { numerator: 4, denominator: 4 },
+        },
+      );
+      expect(result.velocity.value).toBe(10);
+      expect(result.timing.value).toBe(0.05);
+    });
+
+    it("updates pitch range when specified again", () => {
+      const modString = `C3-C5 velocity += 10
+G4-G5 velocity += 20`;
+
+      const result1 = evaluateModulation(modString, {
+        position: 0,
+        pitch: 72, // C4 in first range
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result1.velocity.value).toBe(10);
+
+      const result2 = evaluateModulation(modString, {
+        position: 0,
+        pitch: 91, // G5 in second range
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result2.velocity.value).toBe(20);
+
+      const result3 = evaluateModulation(modString, {
+        position: 0,
+        pitch: 76, // E4 in first range but not second
+        timeSig: { numerator: 4, denominator: 4 },
+      });
+      expect(result3.velocity.value).toBe(10);
+    });
   });
 
   describe("time range filtering", () => {

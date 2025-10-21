@@ -22,8 +22,19 @@ start
   }
 
 assignment
-  = pitch:pitch? _ timeRange:timeRange? _ parameter:parameter _ operator:operator _ expression:expression {
-    return { pitch, timeRange, parameter, operator, expression };
+  = pitchRange:pitchRange? _ timeRange:timeRange? _ parameter:parameter _ operator:operator _ expression:expression {
+    return { pitchRange, timeRange, parameter, operator, expression };
+  }
+
+pitchRange
+  = startPitch:pitch "-" endPitch:pitch {
+    if (endPitch < startPitch) {
+      throw new Error(`Invalid pitch range: end pitch ${endPitch} is lower than start pitch ${startPitch}`);
+    }
+    return { startPitch, endPitch };
+  }
+  / singlePitch:pitch {
+    return { startPitch: singlePitch, endPitch: singlePitch };
   }
 
 pitch

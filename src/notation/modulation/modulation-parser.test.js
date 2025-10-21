@@ -12,7 +12,7 @@ describe("Modulation Parser", () => {
       const result = parser.parse("velocity += 10");
       expect(result).toStrictEqual([
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "velocity",
           operator: "add",
@@ -25,7 +25,7 @@ describe("Modulation Parser", () => {
       const result = parser.parse("velocity = 10");
       expect(result).toStrictEqual([
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "velocity",
           operator: "set",
@@ -38,14 +38,14 @@ describe("Modulation Parser", () => {
       const result = parser.parse("velocity += 10\ntiming += 0.05");
       expect(result).toStrictEqual([
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "velocity",
           operator: "add",
           expression: 10,
         },
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "timing",
           operator: "add",
@@ -60,28 +60,28 @@ describe("Modulation Parser", () => {
       );
       expect(result).toStrictEqual([
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "velocity",
           operator: "add",
           expression: 1,
         },
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "timing",
           operator: "add",
           expression: 2,
         },
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "duration",
           operator: "add",
           expression: 3,
         },
         {
-          pitch: null,
+          pitchRange: null,
           timeRange: null,
           parameter: "probability",
           operator: "add",
@@ -92,19 +92,58 @@ describe("Modulation Parser", () => {
   });
 
   describe("pitch selectors", () => {
-    it("parses note name", () => {
+    it("parses single note name as pitch range", () => {
       const result = parser.parse("C1 velocity += 10");
-      expect(result[0].pitch).toBe(36); // C1 = MIDI 36
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 36,
+        endPitch: 36,
+      }); // C1 = MIDI 36
     });
 
     it("parses sharp notes", () => {
       const result = parser.parse("C#1 velocity += 10");
-      expect(result[0].pitch).toBe(37);
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 37,
+        endPitch: 37,
+      });
     });
 
     it("parses flat notes", () => {
       const result = parser.parse("Db1 velocity += 10");
-      expect(result[0].pitch).toBe(37);
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 37,
+        endPitch: 37,
+      });
+    });
+
+    it("parses pitch range with hyphen", () => {
+      const result = parser.parse("C3-C5 velocity += 10");
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 60, // C3 = MIDI 60
+        endPitch: 84, // C5 = MIDI 84
+      });
+    });
+
+    it("parses pitch range with different note names", () => {
+      const result = parser.parse("C4-G4 velocity += 10");
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 72, // C4 = MIDI 72
+        endPitch: 79, // G4 = MIDI 79
+      });
+    });
+
+    it("parses pitch range with sharps and flats", () => {
+      const result = parser.parse("C#3-Eb4 velocity += 10");
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 61, // C#3 = MIDI 61
+        endPitch: 75, // Eb4 = MIDI 75
+      });
+    });
+
+    it("throws on invalid pitch range (end < start)", () => {
+      expect(() => parser.parse("C5-C3 velocity += 10")).toThrow(
+        /Invalid pitch range/,
+      );
     });
 
     it("throws on invalid pitch (out of range)", () => {
@@ -144,7 +183,10 @@ describe("Modulation Parser", () => {
   describe("combined selectors", () => {
     it("parses pitch with time range", () => {
       const result = parser.parse("E3 1|1-2|1 velocity += 10");
-      expect(result[0].pitch).toBe(64); // E3 = MIDI 64
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 64,
+        endPitch: 64,
+      }); // E3 = MIDI 64
       expect(result[0].timeRange).toEqual({
         startBar: 1,
         startBeat: 1,
@@ -155,8 +197,25 @@ describe("Modulation Parser", () => {
 
     it("parses note name with time range", () => {
       const result = parser.parse("C1 1|1-4|1 velocity += 10");
-      expect(result[0].pitch).toBe(36);
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 36,
+        endPitch: 36,
+      });
       expect(result[0].timeRange.startBar).toBe(1);
+    });
+
+    it("parses pitch range with time range", () => {
+      const result = parser.parse("C3-C5 1|1-2|1 velocity += 10");
+      expect(result[0].pitchRange).toEqual({
+        startPitch: 60,
+        endPitch: 84,
+      });
+      expect(result[0].timeRange).toEqual({
+        startBar: 1,
+        startBeat: 1,
+        endBar: 2,
+        endBeat: 1,
+      });
     });
   });
 

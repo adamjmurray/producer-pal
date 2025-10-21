@@ -67,14 +67,16 @@ ramp(start, end, [speed]); // linear ramp over clip/time range
 
 ## Modulation Syntax
 
-- **Format**: `[pitch] [timeRange] parameter operator expression` (one per line
-  in `modulations` string)
+- **Format**: `[pitchRange] [timeRange] parameter operator expression` (one per
+  line in `modulations` string)
 - **Parameters**: velocity, timing, duration, probability
 - **Assignment Operators**:
   - `+=` Add to the value (additive modulation)
   - `=` Set/replace the value (absolute modulation)
-- **Pitch selectors** (optional): Filter by MIDI pitch or note name (e.g.,
-  `C3 velocity += 10`)
+- **Pitch selectors** (optional): Filter by MIDI pitch or note name
+  - Single pitch: `C3 velocity += 10`
+  - Pitch range: `C3-C5 velocity += 10` (applies to all notes from C3 to C5
+    inclusive)
 - **Time range selectors** (optional): Filter by bar|beat range (e.g.,
   `1|1-2|1 velocity += 10`)
 - **Range clamping**: Applied after modulation (velocity 1-127, probability
@@ -152,6 +154,30 @@ velocity += ramp(0, 127, 2);
 
 // Combine ramp with periodic modulation
 velocity += ramp(20, 100) + 10 * noise();
+```
+
+### Pitch Filtering
+
+```javascript
+// Single pitch selector (only affects C3 notes)
+C3 velocity += 20
+
+// Pitch range selector (affects C3, C#3, D3, ... up to C5)
+C3-C5 velocity += 20
+
+// Accent bass notes (C1 through C2)
+C1-C2 velocity += 30
+
+// Different modulation for high notes
+C5-C7 velocity = 100
+
+// Combine pitch range with time range
+C3-C5 1|1-2|1 velocity += 10
+
+// Multiple pitch ranges with different modulations
+C1-C2 velocity += 30
+C3-C5 velocity += 10
+C6-C7 velocity = 100
 ```
 
 ### Note Property Variables
