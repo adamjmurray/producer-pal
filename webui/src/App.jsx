@@ -415,25 +415,28 @@ export function App() {
             {msg.role === "assistant" && (
               <>
                 {msg.thoughts && (
-                  <div className="mb-2 p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-4 border-yellow-500">
+                  <div className="my-2 p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-4 border-yellow-500">
                     <div className="font-semibold mb-1">💭 Thinking:</div>
                     <div className="whitespace-pre-wrap">{msg.thoughts}</div>
                   </div>
                 )}
 
                 {msg.toolCalls?.length > 0 && (
-                  <div className="mb-2 space-y-1">
+                  <div className="my-2 space-y-1">
                     {msg.toolCalls.map((call, i) => (
                       <div
                         key={i}
-                        className="text-xs p-2 bg-gray-200 dark:bg-gray-900 rounded"
+                        className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded"
                       >
-                        <div className="font-mono">
-                          🔧 {call.name}({JSON.stringify(call.args, null, 0)})
-                        </div>
                         <details>
-                          <summary className="m-1 truncate text-gray-600 dark:text-gray-400">
-                            <span className="px-2">↳ {call.result}</span>
+                          <summary>🔧 {call.name}</summary>
+                          <div className="mt-1 p-1 border-t break-all text-gray-500 dark:text-gray-500">
+                            {call.name}({JSON.stringify(call.args, null, 0)})
+                          </div>
+                        </details>
+                        <details>
+                          <summary className="my-1 truncate text-gray-600 dark:text-gray-400">
+                            &nbsp;&nbsp;&nbsp;↳ {call.result}
                           </summary>
                           <div className="mt-1 p-1 border-t break-all text-gray-500 dark:text-gray-500">
                             {call.result}
@@ -445,7 +448,7 @@ export function App() {
                 )}
 
                 <div
-                  className="prose dark:prose-invert prose-sm max-w-none"
+                  className="mb-1 prose dark:prose-invert prose-sm max-w-none"
                   dangerouslySetInnerHTML={{ __html: marked(msg.content) }}
                 />
               </>
