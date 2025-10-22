@@ -194,11 +194,24 @@ export function App() {
             if (lastPart && lastPart.type === chunk.type) {
               lastPart.content += chunk.content;
             } else {
+              // When adding a new thought or text part, close all previous thoughts
+              if (chunk.type === "thought" || chunk.type === "text") {
+                for (const part of lastMsg.parts) {
+                  if (part.type === "thought" && part.isOpen) {
+                    part.isOpen = false;
+                  }
+                }
+              }
+
               // Create new part
-              lastMsg.parts.push({
+              const newPart = {
                 type: chunk.type,
                 content: chunk.content,
-              });
+              };
+              if (chunk.type === "thought") {
+                newPart.isOpen = true;
+              }
+              lastMsg.parts.push(newPart);
             }
             return newMsgs;
           });
@@ -514,7 +527,7 @@ export function App() {
                       <details
                         key={i}
                         className="p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500"
-                        open
+                        open={part.isOpen}
                       >
                         <summary className="font-semibold">
                           💭 Thinking:
