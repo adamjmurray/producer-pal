@@ -12,12 +12,16 @@ export function App() {
   const [stream, setStream] = useState(true);
   const [model, setModel] = useState("gemini-2.5-flash");
   const [activeModel, setActiveModel] = useState(null);
+  const [thinking, setThinking] = useState("Off");
+  const [activeThinking, setActiveThinking] = useState(null);
+  const [temperature, setTemperature] = useState(1.0);
+  const [activeTemperature, setActiveTemperature] = useState(null);
   const [mcpStatus, setMcpStatus] = useState("connecting");
   const [mcpError, setMcpError] = useState("");
   const chatRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Load API key, theme, model, and stream from localStorage
+  // Load API key, theme, model, stream, thinking, and temperature from localStorage
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini_api_key");
     if (savedKey) {
@@ -35,6 +39,14 @@ export function App() {
     const savedStream = localStorage.getItem("gemini_stream");
     if (savedStream != null) {
       setStream(savedStream === "true");
+    }
+    const savedThinking = localStorage.getItem("gemini_thinking");
+    if (savedThinking) {
+      setThinking(savedThinking);
+    }
+    const savedTemperature = localStorage.getItem("gemini_temperature");
+    if (savedTemperature != null) {
+      setTemperature(parseFloat(savedTemperature));
     }
   }, []);
 
@@ -87,6 +99,8 @@ export function App() {
     localStorage.setItem("gemini_api_key", apiKey);
     localStorage.setItem("gemini_model", model);
     localStorage.setItem("gemini_stream", stream.toString());
+    localStorage.setItem("gemini_thinking", thinking);
+    localStorage.setItem("gemini_temperature", temperature.toString());
     setShowSettings(false);
   };
 
@@ -104,6 +118,14 @@ export function App() {
     if (savedStream != null) {
       setStream(savedStream === "true");
     }
+    const savedThinking = localStorage.getItem("gemini_thinking");
+    if (savedThinking) {
+      setThinking(savedThinking);
+    }
+    const savedTemperature = localStorage.getItem("gemini_temperature");
+    if (savedTemperature != null) {
+      setTemperature(parseFloat(savedTemperature));
+    }
     setShowSettings(false);
   };
 
@@ -111,6 +133,8 @@ export function App() {
     setMessages([]);
     chatRef.current = null;
     setActiveModel(null);
+    setActiveThinking(null);
+    setActiveTemperature(null);
   };
 
   const handleSend = async (message) => {
@@ -132,9 +156,21 @@ export function App() {
           }
         }
 
-        chatRef.current = new GeminiChat(apiKey, { model });
+        const thinkingBudget = getThinkingBudget(thinking);
+        const config = {
+          model,
+          temperature,
+        };
+
+        if (thinkingBudget !== 0) {
+          config.thinkingConfig = { thinkingBudget };
+        }
+
+        chatRef.current = new GeminiChat(apiKey, config);
         await chatRef.current.initialize();
         setActiveModel(model);
+        setActiveThinking(thinking);
+        setActiveTemperature(temperature);
         setMcpStatus("connected");
       }
 
@@ -263,9 +299,6 @@ export function App() {
                 Gemini 2.5 Flash-Lite (ultra fast)
               </option>
             </select>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Note: Model changes apply to new conversations
-            </p>
           </div>
           <div className="flex items-center gap-2">
             <input
@@ -275,9 +308,41 @@ export function App() {
               onChange={(e) => setStream(e.target.checked)}
             />
             <label htmlFor="stream" className="text-sm">
-              Enable streaming
+              Enable streaming (recommended)
             </label>
           </div>
+          <div>
+            <label className="block text-sm mb-2">Thinking</label>
+            <select
+              value={thinking}
+              onChange={(e) => setThinking(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+            >
+              <option value="Off">Off</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Ultra">Ultra</option>
+              <option value="Auto">Auto</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm mb-2">
+              Randomness: {Math.round((temperature / 2) * 100)}%
+            </label>
+            <input
+              type="range"
+              min="0"
+              max="2"
+              step="0.1"
+              value={temperature}
+              onInput={(e) => setTemperature(parseFloat(e.target.value))}
+              className="w-full"
+            />
+          </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Note: Settings changes apply to new conversations
+          </p>
           <div className="flex gap-2">
             <button
               onClick={saveApiKey}
@@ -323,6 +388,25 @@ export function App() {
     }
   };
 
+  const getThinkingBudget = (level) => {
+    switch (level) {
+      case "Off":
+        return 0;
+      case "Low":
+        return 2048;
+      case "Medium":
+        return 4096;
+      case "High":
+        return 8192;
+      case "Ultra":
+        return 16384;
+      case "Auto":
+        return -1;
+      default:
+        return 0;
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
@@ -345,6 +429,16 @@ export function App() {
           {activeModel && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {getModelName(activeModel)}
+            </span>
+          )}
+          {activeThinking && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              Thinking: {activeThinking}
+            </span>
+          )}
+          {activeTemperature != null && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {Math.round((activeTemperature / 2) * 100)}% random
             </span>
           )}
           <button
