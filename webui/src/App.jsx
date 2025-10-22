@@ -511,18 +511,21 @@ export function App() {
                 {msg.parts?.map((part, i) => {
                   if (part.type === "thought") {
                     return (
-                      <div
+                      <details
                         key={i}
                         className="p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500"
+                        open
                       >
-                        <div className="font-semibold mb-2">💭 Thinking:</div>
+                        <summary className="font-semibold">
+                          💭 Thinking:
+                        </summary>
                         <div
-                          className="prose dark:prose-invert prose-sm text-xs max-w-none"
+                          className="pt-2 prose dark:prose-invert prose-sm text-xs max-w-none"
                           dangerouslySetInnerHTML={{
                             __html: marked(part.content.trim()),
                           }}
                         />
-                      </div>
+                      </details>
                     );
                   } else if (part.type === "tool") {
                     return (
