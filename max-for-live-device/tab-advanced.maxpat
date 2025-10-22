@@ -15,6 +15,64 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-37",
+					"linecount" : 2,
+					"maxclass" : "comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 517.0, 7.0, 150.0, 33.0 ],
+					"text" : "TODO: use the current port setting"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-35",
+					"linecount" : 3,
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 585.0, 73.0, 142.0, 49.0 ],
+					"text" : ";\rmax launch_browser http://localhost:3350/chat"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Open the experimental built-in AI chat UI in a web browser. Currently only works with Google Gemini (which can be used for free with any Google account).",
+					"annotation_name" : "Open Chat UI",
+					"id" : "obj-33",
+					"maxclass" : "live.text",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"parameter_enable" : 1,
+					"patching_rect" : [ 585.0, 42.0, 44.0, 15.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 214.0, 36.5, 36.0, 20.0 ],
+					"saved_attribute_attributes" : 					{
+						"valueof" : 						{
+							"parameter_annotation_name" : "Open Chat UI",
+							"parameter_enum" : [ "val1", "val2" ],
+							"parameter_info" : "Open the experimental built-in AI chat UI in a web browser. Currently only works with Google Gemini (which can be used for free with any Google account).",
+							"parameter_longname" : "live.text[2]",
+							"parameter_mmax" : 1,
+							"parameter_modmode" : 0,
+							"parameter_shortname" : "live.text[2]",
+							"parameter_type" : 2
+						}
+
+					}
+,
+					"text" : "chat UI",
+					"varname" : "chatUI"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"annotation" : "Enable for smaller local LLMs. Simplifies features to reduce confusion.",
 					"annotation_name" : "Small Model Mode",
 					"id" : "obj-21",
@@ -200,7 +258,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 420.0, 161.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 16.078836843371391, 94.626555889844894, 217.842326313257217, 20.746888220310211 ],
+					"presentation_rect" : [ 16.0, 95.0, 198.0, 21.0 ],
 					"proportion" : 0.39,
 					"varname" : "Server Port"
 				}
@@ -220,7 +278,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 405.0, 146.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 16.078836843371391, 74.172012239694595, 217.842326313257217, 20.746888220310211 ],
+					"presentation_rect" : [ 16.0, 74.0, 198.0, 21.0 ],
 					"proportion" : 0.39,
 					"varname" : "Timeout"
 				}
@@ -240,7 +298,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 390.0, 131.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 16.078836843371391, 55.232619971036911, 217.842326313257217, 20.746888220310211 ],
+					"presentation_rect" : [ 16.0, 55.0, 198.0, 21.0 ],
 					"proportion" : 0.39,
 					"varname" : "Verbose Logs"
 				}
@@ -260,7 +318,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 375.0, 116.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 16.078836843371391, 36.293227702379227, 217.842326313257217, 20.746888220310211 ],
+					"presentation_rect" : [ 16.0, 36.0, 198.0, 21.0 ],
 					"proportion" : 0.39,
 					"varname" : "JSON Output"
 				}
@@ -280,7 +338,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 360.0, 101.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 16.078836843371391, 18.11141112446785, 217.842326313257217, 20.746888220310211 ],
+					"presentation_rect" : [ 16.0, 18.0, 198.0, 21.0 ],
 					"proportion" : 0.39,
 					"varname" : "Small Model Mode"
 				}
@@ -377,7 +435,7 @@
 , 			{
 				"box" : 				{
 					"annotation" : "Stop Producer Pal's server for AI connectivity. Use this to troubleshoot connection issues or for freeing up the port to connect to the device in the Max patch editor.",
-					"annotation_name" : "Stop server",
+					"annotation_name" : "Stop Server",
 					"id" : "obj-70",
 					"maxclass" : "live.text",
 					"mode" : 0,
@@ -390,7 +448,7 @@
 					"presentation_rect" : [ 214.0, 121.0, 36.0, 20.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Stop server",
+							"parameter_annotation_name" : "Stop Server",
 							"parameter_enum" : [ "val1", "val2" ],
 							"parameter_info" : "Stop Producer Pal's server for AI connectivity. Use this to troubleshoot connection issues or for freeing up the port to connect to the device in the Max patch editor.",
 							"parameter_invisible" : 2,
@@ -411,7 +469,7 @@
 , 			{
 				"box" : 				{
 					"annotation" : "Manually start Producer Pal's server for AI connectivity. This normally happens automatically when the device loads. It needs to be restarted after changing advanced settings.",
-					"annotation_name" : "Start server",
+					"annotation_name" : "Start Server",
 					"id" : "obj-69",
 					"maxclass" : "live.text",
 					"mode" : 0,
@@ -421,10 +479,10 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 256.0, 60.0, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 0.0, 121.0, 36.0, 20.0 ],
+					"presentation_rect" : [ 214.0, 95.5, 36.0, 20.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Start server",
+							"parameter_annotation_name" : "Start Server",
 							"parameter_enum" : [ "val1", "val2" ],
 							"parameter_info" : "Manually start Producer Pal's server for AI connectivity. This normally happens automatically when the device loads. It needs to be restarted after changing advanced settings.",
 							"parameter_invisible" : 2,
@@ -785,6 +843,13 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-35", 0 ],
+					"source" : [ "obj-33", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-3", 0 ],
 					"source" : [ "obj-64", 0 ]
 				}
@@ -829,6 +894,7 @@
 		"parameters" : 		{
 			"obj-17" : [ "json-output", "json-output", 0 ],
 			"obj-21" : [ "small-model-mode", "small-model-mode", 0 ],
+			"obj-33" : [ "live.text[2]", "live.text[2]", 0 ],
 			"obj-64" : [ "port", "port", 0 ],
 			"obj-68" : [ "timeout", "timeout", 0 ],
 			"obj-69" : [ "live.text", "live.text", 0 ],
