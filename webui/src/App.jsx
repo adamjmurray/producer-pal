@@ -10,10 +10,12 @@ export function App() {
   const [theme, setTheme] = useState("system");
   const [showSettings, setShowSettings] = useState(true);
   const [stream, setStream] = useState(true);
+  const [model, setModel] = useState("gemini-2.5-flash-lite");
+  const [activeModel, setActiveModel] = useState(null);
   const chatRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Load API key and theme from localStorage
+  // Load API key, theme, model, and stream from localStorage
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini_api_key");
     if (savedKey) {
@@ -23,6 +25,14 @@ export function App() {
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme) {
       setTheme(savedTheme);
+    }
+    const savedModel = localStorage.getItem("gemini_model");
+    if (savedModel) {
+      setModel(savedModel);
+    }
+    const savedStream = localStorage.getItem("gemini_stream");
+    if (savedStream != null) {
+      setStream(savedStream === "true");
     }
   }, []);
 
@@ -49,6 +59,7 @@ export function App() {
     }
   }, [theme]);
 
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -56,7 +67,32 @@ export function App() {
 
   const saveApiKey = () => {
     localStorage.setItem("gemini_api_key", apiKey);
+    localStorage.setItem("gemini_model", model);
+    localStorage.setItem("gemini_stream", stream.toString());
     setShowSettings(false);
+  };
+
+  const cancelSettings = () => {
+    // Reload values from localStorage
+    const savedKey = localStorage.getItem("gemini_api_key");
+    if (savedKey) {
+      setApiKey(savedKey);
+    }
+    const savedModel = localStorage.getItem("gemini_model");
+    if (savedModel) {
+      setModel(savedModel);
+    }
+    const savedStream = localStorage.getItem("gemini_stream");
+    if (savedStream != null) {
+      setStream(savedStream === "true");
+    }
+    setShowSettings(false);
+  };
+
+  const clearConversation = () => {
+    setMessages([]);
+    chatRef.current = null;
+    setActiveModel(null);
   };
 
   const handleSend = async () => {
@@ -69,8 +105,9 @@ export function App() {
 
     try {
       if (!chatRef.current) {
-        chatRef.current = new GeminiChat(apiKey);
+        chatRef.current = new GeminiChat(apiKey, { model });
         await chatRef.current.initialize();
+        setActiveModel(model);
       }
 
       if (stream) {
@@ -162,6 +199,21 @@ export function App() {
               placeholder="Enter your API key"
             />
           </div>
+          <div>
+            <label className="block text-sm mb-2">Model</label>
+            <select
+              value={model}
+              onChange={(e) => setModel(e.target.value)}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+            >
+              <option value="gemini-2.5-pro">Gemini 2.5 Pro (most advanced)</option>
+              <option value="gemini-2.5-flash">Gemini 2.5 Flash (fast & intelligent)</option>
+              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (ultra fast)</option>
+            </select>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Note: Model changes apply to new conversations
+            </p>
+          </div>
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -181,19 +233,42 @@ export function App() {
             >
               Save
             </button>
-            {messages.length > 0 && (
+            {localStorage.getItem("gemini_api_key") && (
               <button
-                onClick={() => setShowSettings(false)}
+                onClick={cancelSettings}
                 className="px-4 py-2 bg-gray-600 text-white rounded"
               >
                 Cancel
               </button>
             )}
           </div>
+          {(messages.length > 0 || activeModel) && (
+            <div className="pt-2 border-t border-gray-300 dark:border-gray-600">
+              <button
+                onClick={clearConversation}
+                className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+              >
+                Clear & Restart Conversation
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
   }
+
+  const getModelName = (modelId) => {
+    switch (modelId) {
+      case "gemini-2.5-pro":
+        return "Gemini 2.5 Pro";
+      case "gemini-2.5-flash":
+        return "Gemini 2.5 Flash";
+      case "gemini-2.5-flash-lite":
+        return "Gemini 2.5 Flash-Lite";
+      default:
+        return modelId;
+    }
+  };
 
   return (
     <div className="flex flex-col h-screen">
@@ -201,6 +276,9 @@ export function App() {
       <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center">
         <h1 className="text-lg font-semibold">Producer Pal Chat</h1>
         <div className="ml-auto flex items-center gap-3">
+          {activeModel && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">{getModelName(activeModel)}</span>
+          )}
           <button
             onClick={() => setShowSettings(true)}
             className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
