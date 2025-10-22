@@ -18,23 +18,31 @@ export function beatsToBarBeat(beats, beatsPerBar) {
 
 /**
  * Convert bar|beat format to beats
- * @param {string} barBeat - bar|beat format (e.g., "2|3.5" or "1|4/3")
+ * @param {string} barBeat - bar|beat format (e.g., "2|3.5" or "1|4/3" or "1|2+1/3")
  * @param {number} beatsPerBar - Beats per bar from time signature
  * @returns {number} Absolute beats (0-based)
  */
 export function barBeatToBeats(barBeat, beatsPerBar) {
-  const match = barBeat.match(/^(-?\d+)\|((-?\d+)(?:\.\d+|\/\d+)?)$/);
+  const match = barBeat.match(
+    /^(-?\d+)\|((-?\d+)(?:\+\d+\/\d+|\.\d+|\/\d+)?)$/,
+  );
   if (!match) {
     throw new Error(
-      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{float}" like "1|2" or "2|3.5" or "{int}|{int}/{int}" like "1|4/3"`,
+      `Invalid bar|beat format: "${barBeat}". Expected "{int}|{float}" like "1|2" or "2|3.5" or "{int}|{int}/{int}" like "1|4/3" or "{int}|{int}+{int}/{int}" like "1|2+1/3"`,
     );
   }
   const bar = Number.parseInt(match[1]);
 
-  // Parse beat as either decimal or fraction
+  // Parse beat as decimal, fraction, or integer+fraction
   const beatStr = match[2];
   let beat;
-  if (beatStr.includes("/")) {
+  if (beatStr.includes("+")) {
+    const [intPart, fracPart] = beatStr.split("+");
+    const [numerator, denominator] = fracPart.split("/");
+    beat =
+      Number.parseInt(intPart) +
+      Number.parseInt(numerator) / Number.parseInt(denominator);
+  } else if (beatStr.includes("/")) {
     const [numerator, denominator] = beatStr.split("/");
     beat = Number.parseInt(numerator) / Number.parseInt(denominator);
   } else {
@@ -131,8 +139,122 @@ export function abletonBeatsToBarBeatDuration(
 }
 
 /**
- * Convert bar:beat duration format to Ableton beats (quarter notes) using musical beats
- * @param {string} barBeatDuration - bar:beat duration format (e.g., "2:1.5" or "0:4/3")
+ * Convert bar:beat or beat-only duration to musical beats
+ * @param {string} barBeatDuration - "2:1.5" or "2.5" or "5/2" or "1:2+1/3" or "2+3/4"
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} Musical beats (duration)
+ */
+export function barBeatDurationToMusicalBeats(
+  barBeatDuration,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  // Check if it's bar:beat format or beat-only
+  if (barBeatDuration.includes(":")) {
+    // Existing bar:beat parsing logic
+    const match = barBeatDuration.match(
+      /^(-?\d+):((-?\d+)(?:\+\d+\/\d+|\.\d+|\/\d+)?)$/,
+    );
+    if (!match) {
+      throw new Error(
+        `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5" or "{int}:{int}/{int}" like "0:4/3" or "{int}:{int}+{int}/{int}" like "1:2+1/3"`,
+      );
+    }
+
+    const bars = Number.parseInt(match[1]);
+    const beatsStr = match[2];
+    let beats;
+    if (beatsStr.includes("+")) {
+      const [intPart, fracPart] = beatsStr.split("+");
+      const [numerator, denominator] = fracPart.split("/");
+      beats =
+        Number.parseInt(intPart) +
+        Number.parseInt(numerator) / Number.parseInt(denominator);
+    } else if (beatsStr.includes("/")) {
+      const [numerator, denominator] = beatsStr.split("/");
+      beats = Number.parseInt(numerator) / Number.parseInt(denominator);
+    } else {
+      beats = Number.parseFloat(beatsStr);
+    }
+
+    if (bars < 0)
+      throw new Error(`Bars in duration must be 0 or greater, got: ${bars}`);
+    if (beats < 0)
+      throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
+
+    const musicalBeatsPerBar = timeSigNumerator;
+    return bars * musicalBeatsPerBar + beats; // RETURN EARLY (musical beats)
+  } else {
+    // NEW: Beat-only format (decimal, fraction, or integer+fraction)
+
+    // Validate format: must be valid number or fraction, not containing invalid characters
+    if (barBeatDuration.includes("|")) {
+      throw new Error(
+        `Invalid duration format: "${barBeatDuration}". Use ":" for bar:beat format, not "|"`,
+      );
+    }
+
+    let beats;
+    if (barBeatDuration.includes("+")) {
+      const [intPart, fracPart] = barBeatDuration.split("+");
+      const num = Number.parseInt(intPart);
+
+      if (isNaN(num)) {
+        throw new Error(
+          `Invalid integer+fraction format: "${barBeatDuration}"`,
+        );
+      }
+
+      const [numerator, denominator] = fracPart.split("/");
+      const fracNum = Number.parseInt(numerator);
+      const fracDen = Number.parseInt(denominator);
+
+      if (fracDen === 0) {
+        throw new Error(
+          `Invalid fraction: division by zero in "${barBeatDuration}"`,
+        );
+      }
+      if (isNaN(fracNum) || isNaN(fracDen)) {
+        throw new Error(
+          `Invalid integer+fraction format: "${barBeatDuration}"`,
+        );
+      }
+
+      beats = num + fracNum / fracDen;
+    } else if (barBeatDuration.includes("/")) {
+      const [numerator, denominator] = barBeatDuration.split("/");
+      const num = Number.parseInt(numerator);
+      const den = Number.parseInt(denominator);
+
+      if (den === 0) {
+        throw new Error(
+          `Invalid fraction: division by zero in "${barBeatDuration}"`,
+        );
+      }
+      if (isNaN(num) || isNaN(den)) {
+        throw new Error(`Invalid fraction format: "${barBeatDuration}"`);
+      }
+
+      beats = num / den;
+    } else {
+      beats = Number.parseFloat(barBeatDuration);
+      if (isNaN(beats)) {
+        throw new Error(`Invalid duration format: "${barBeatDuration}"`);
+      }
+    }
+
+    if (beats < 0) {
+      throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
+    }
+
+    return beats; // Musical beats directly
+  }
+}
+
+/**
+ * Convert bar:beat or beat-only duration to Ableton beats (quarter notes)
+ * @param {string} barBeatDuration - "2:1.5" or "2.5" or "5/2"
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} Quarter note beats (duration)
@@ -142,35 +264,10 @@ export function barBeatDurationToAbletonBeats(
   timeSigNumerator,
   timeSigDenominator,
 ) {
-  const match = barBeatDuration.match(/^(-?\d+):((-?\d+)(?:\.\d+|\/\d+)?)$/);
-  if (!match) {
-    throw new Error(
-      `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5" or "{int}:{int}/{int}" like "0:4/3"`,
-    );
-  }
-
-  const bars = Number.parseInt(match[1]);
-
-  // Parse beats as either decimal or fraction
-  const beatsStr = match[2];
-  let beats;
-  if (beatsStr.includes("/")) {
-    const [numerator, denominator] = beatsStr.split("/");
-    beats = Number.parseInt(numerator) / Number.parseInt(denominator);
-  } else {
-    beats = Number.parseFloat(beatsStr);
-  }
-
-  if (bars < 0)
-    throw new Error(`Bars in duration must be 0 or greater, got: ${bars}`);
-  if (beats < 0)
-    throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
-
-  const musicalBeatsPerBar = timeSigNumerator;
-
-  // Calculate total musical beats (0-based duration)
-  const totalMusicalBeats = bars * musicalBeatsPerBar + beats;
-
-  // Convert musical beats to Ableton beats
-  return totalMusicalBeats * (4 / timeSigDenominator);
+  const musicalBeats = barBeatDurationToMusicalBeats(
+    barBeatDuration,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  return musicalBeats * (4 / timeSigDenominator);
 }
