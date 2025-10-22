@@ -188,31 +188,37 @@ export function App() {
       if (stream) {
         const assistantMessage = {
           role: "assistant",
-          content: "",
-          thoughts: "",
-          toolCalls: [],
+          parts: [],
         };
         setMessages((msgs) => [...msgs, assistantMessage]);
 
         const streamGen = chatRef.current.sendMessageStream(userMessage);
 
         for await (const chunk of streamGen) {
-          if (chunk.type === "text") {
+          if (chunk.type === "text" || chunk.type === "thought") {
             setMessages((msgs) => {
               const newMsgs = [...msgs];
-              newMsgs[newMsgs.length - 1].content += chunk.content;
-              return newMsgs;
-            });
-          } else if (chunk.type === "thought") {
-            setMessages((msgs) => {
-              const newMsgs = [...msgs];
-              newMsgs[newMsgs.length - 1].thoughts += chunk.content;
+              const lastMsg = newMsgs[newMsgs.length - 1];
+              const lastPart = lastMsg.parts[lastMsg.parts.length - 1];
+
+              // If last part is same type, append to it
+              if (lastPart && lastPart.type === chunk.type) {
+                lastPart.content += chunk.content;
+              } else {
+                // Create new part
+                lastMsg.parts.push({
+                  type: chunk.type,
+                  content: chunk.content,
+                });
+              }
               return newMsgs;
             });
           } else if (chunk.type === "toolCall") {
             setMessages((msgs) => {
               const newMsgs = [...msgs];
-              newMsgs[newMsgs.length - 1].toolCalls.push({
+              const lastMsg = newMsgs[newMsgs.length - 1];
+              lastMsg.parts.push({
+                type: "tool",
                 name: chunk.name,
                 args: chunk.args,
                 result: "...",
@@ -222,9 +228,13 @@ export function App() {
           } else if (chunk.type === "toolResult") {
             setMessages((msgs) => {
               const newMsgs = [...msgs];
-              const calls = newMsgs[newMsgs.length - 1].toolCalls;
-              if (calls.length > 0) {
-                calls[calls.length - 1].result = chunk.result;
+              const lastMsg = newMsgs[newMsgs.length - 1];
+              // Find the last tool part and update its result
+              for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
+                if (lastMsg.parts[i].type === "tool") {
+                  lastMsg.parts[i].result = chunk.result;
+                  break;
+                }
               }
               return newMsgs;
             });
@@ -232,13 +242,41 @@ export function App() {
         }
       } else {
         const response = await chatRef.current.sendMessage(userMessage);
+        const parts = [];
+
+        // Add thoughts if present
+        if (response.thoughts) {
+          parts.push({
+            type: "thought",
+            content: response.thoughts,
+          });
+        }
+
+        // Add tool calls if present
+        if (response.toolCalls && response.toolCalls.length > 0) {
+          for (const call of response.toolCalls) {
+            parts.push({
+              type: "tool",
+              name: call.name,
+              args: call.args,
+              result: call.result,
+            });
+          }
+        }
+
+        // Add text if present
+        if (response.text) {
+          parts.push({
+            type: "text",
+            content: response.text,
+          });
+        }
+
         setMessages((msgs) => [
           ...msgs,
           {
             role: "assistant",
-            content: response.text,
-            thoughts: response.thoughts,
-            toolCalls: response.toolCalls,
+            parts,
           },
         ]);
       }
@@ -532,43 +570,53 @@ export function App() {
           >
             {msg.role === "assistant" && (
               <>
-                {msg.thoughts && (
-                  <div className="my-2 p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-4 border-yellow-500">
-                    <div className="font-semibold mb-1">💭 Thinking:</div>
-                    <div className="whitespace-pre-wrap">{msg.thoughts}</div>
-                  </div>
-                )}
-
-                {msg.toolCalls?.length > 0 && (
-                  <div className="my-2 space-y-1">
-                    {msg.toolCalls.map((call, i) => (
+                {msg.parts?.map((part, i) => {
+                  if (part.type === "thought") {
+                    return (
                       <div
                         key={i}
-                        className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded"
+                        className="my-2 p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-4 border-yellow-500"
                       >
-                        <details>
-                          <summary>🔧 {call.name}</summary>
-                          <div className="mt-1 p-1 border-t break-all text-gray-500 dark:text-gray-500">
-                            {call.name}({JSON.stringify(call.args, null, 0)})
-                          </div>
-                        </details>
-                        <details>
-                          <summary className="my-1 truncate text-gray-600 dark:text-gray-400">
-                            &nbsp;&nbsp;&nbsp;↳ {call.result}
-                          </summary>
-                          <div className="mt-1 p-1 border-t break-all text-gray-500 dark:text-gray-500">
-                            {call.result}
-                          </div>
-                        </details>
+                        <div className="font-semibold mb-1">💭 Thinking:</div>
+                        <div className="whitespace-pre-wrap">
+                          {part.content}
+                        </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                <div
-                  className="mb-1 prose dark:prose-invert prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: marked(msg.content) }}
-                />
+                    );
+                  } else if (part.type === "tool") {
+                    return (
+                      <div key={i} className="my-2">
+                        <div className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded">
+                          <details>
+                            <summary>🔧 {part.name}</summary>
+                            <div className="mt-1 p-1 border-t break-all text-gray-500 dark:text-gray-500">
+                              {part.name}({JSON.stringify(part.args, null, 0)})
+                            </div>
+                          </details>
+                          <details>
+                            <summary className="my-1 truncate text-gray-600 dark:text-gray-400">
+                              &nbsp;&nbsp;&nbsp;↳ {part.result}
+                            </summary>
+                            <div className="mt-1 p-1 border-t break-all text-gray-500 dark:text-gray-500">
+                              {part.result}
+                            </div>
+                          </details>
+                        </div>
+                      </div>
+                    );
+                  } else if (part.type === "text") {
+                    return (
+                      <div
+                        key={i}
+                        className="mb-1 prose dark:prose-invert prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{
+                          __html: marked(part.content),
+                        }}
+                      />
+                    );
+                  }
+                  return null;
+                })}
               </>
             )}
 
