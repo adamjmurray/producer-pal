@@ -8,7 +8,7 @@ export function App() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [theme, setTheme] = useState("dark");
-  const [showSettings, setShowSettings] = useState(false);
+  const [showSettings, setShowSettings] = useState(true);
   const [stream, setStream] = useState(true);
   const chatRef = useRef(null);
   const messagesEndRef = useRef(null);
@@ -16,7 +16,10 @@ export function App() {
   // Load API key from localStorage
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini_api_key");
-    if (savedKey) setApiKey(savedKey);
+    if (savedKey) {
+      setApiKey(savedKey);
+      setShowSettings(false);
+    }
   }, []);
 
   // Apply theme
@@ -123,7 +126,7 @@ export function App() {
     }
   };
 
-  if (showSettings || !apiKey) {
+  if (showSettings) {
     return (
       <div className="flex items-center justify-center h-screen p-4">
         <div className="max-w-md w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 space-y-4">
