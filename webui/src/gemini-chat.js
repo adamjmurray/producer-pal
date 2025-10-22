@@ -36,17 +36,8 @@ export class GeminiChat {
       automaticFunctionCalling: {
         // Gemini will automatically execute MCP tools
       },
+      ...this.config,
     };
-
-    // Add thinkingConfig if provided
-    if (this.config.thinkingConfig) {
-      chatConfig.thinkingConfig = this.config.thinkingConfig;
-    }
-
-    // Add temperature if provided
-    if (this.config.temperature != null) {
-      chatConfig.temperature = this.config.temperature;
-    }
 
     this.chat = this.ai.chats.create({
       model: this.config.model || "gemini-2.5-flash-lite",

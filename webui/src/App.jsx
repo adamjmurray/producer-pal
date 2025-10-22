@@ -12,10 +12,11 @@ export function App() {
   const [stream, setStream] = useState(true);
   const [model, setModel] = useState("gemini-2.5-flash");
   const [activeModel, setActiveModel] = useState(null);
-  const [thinking, setThinking] = useState("Off");
+  const [thinking, setThinking] = useState("Auto");
   const [activeThinking, setActiveThinking] = useState(null);
   const [temperature, setTemperature] = useState(1.0);
   const [activeTemperature, setActiveTemperature] = useState(null);
+  const [showThoughts, setShowThoughts] = useState(true);
   const [mcpStatus, setMcpStatus] = useState("connecting");
   const [mcpError, setMcpError] = useState("");
   const chatRef = useRef(null);
@@ -47,6 +48,10 @@ export function App() {
     const savedTemperature = localStorage.getItem("gemini_temperature");
     if (savedTemperature != null) {
       setTemperature(parseFloat(savedTemperature));
+    }
+    const savedShowThoughts = localStorage.getItem("gemini_showThoughts");
+    if (savedShowThoughts != null) {
+      setShowThoughts(savedShowThoughts === "true");
     }
   }, []);
 
@@ -101,6 +106,7 @@ export function App() {
     localStorage.setItem("gemini_stream", stream.toString());
     localStorage.setItem("gemini_thinking", thinking);
     localStorage.setItem("gemini_temperature", temperature.toString());
+    localStorage.setItem("gemini_showThoughts", showThoughts.toString());
     setShowSettings(false);
   };
 
@@ -125,6 +131,10 @@ export function App() {
     const savedTemperature = localStorage.getItem("gemini_temperature");
     if (savedTemperature != null) {
       setTemperature(parseFloat(savedTemperature));
+    }
+    const savedShowThoughts = localStorage.getItem("gemini_showThoughts");
+    if (savedShowThoughts != null) {
+      setShowThoughts(savedShowThoughts === "true");
     }
     setShowSettings(false);
   };
@@ -162,8 +172,9 @@ export function App() {
           temperature,
         };
 
-        if (thinkingBudget !== 0) {
-          config.thinkingConfig = { thinkingBudget };
+        config.thinkingConfig = { thinkingBudget };
+        if (thinkingBudget > 0) {
+          config.thinkingConfig.includeThoughts = showThoughts;
         }
 
         chatRef.current = new GeminiChat(apiKey, config);
@@ -319,13 +330,26 @@ export function App() {
               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
             >
               <option value="Off">Off</option>
+              <option value="Auto">Auto</option>
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
               <option value="Ultra">Ultra</option>
-              <option value="Auto">Auto</option>
             </select>
           </div>
+          {thinking !== "Off" && (
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="showThoughts"
+                checked={showThoughts}
+                onChange={(e) => setShowThoughts(e.target.checked)}
+              />
+              <label htmlFor="showThoughts" className="text-sm">
+                Show thinking process
+              </label>
+            </div>
+          )}
           <div>
             <label className="block text-sm mb-2">
               Randomness: {Math.round((temperature / 2) * 100)}%
