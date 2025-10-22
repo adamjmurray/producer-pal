@@ -113,10 +113,11 @@ export function App() {
     setActiveModel(null);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || !apiKey) return;
+  const handleSend = async (message) => {
+    if (!apiKey) return;
+    if (!message?.trim()) return;
 
-    const userMessage = input.trim();
+    const userMessage = message.trim();
     setInput("");
     setMessages((msgs) => [...msgs, { role: "user", content: userMessage }]);
     setIsLoading(true);
@@ -216,7 +217,7 @@ export function App() {
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
+      handleSend(input);
     }
   };
 
@@ -369,9 +370,17 @@ export function App() {
         {messages.length === 0 && (
           <div className="h-full items-center justify-center flex flex-col gap-8">
             {mcpStatus === "connected" && (
-              <p className="text-gray-500 dark:text-gray-400">
-                Start a conversation with Producer Pal
-              </p>
+              <>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Start a conversation with Producer Pal
+                </p>
+                <button
+                  onClick={() => handleSend("Connect to Ableton.")}
+                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Quick Connect
+                </button>
+              </>
             )}
             {mcpStatus === "error" && (
               <>
@@ -463,7 +472,7 @@ export function App() {
             rows="2"
           />
           <button
-            onClick={handleSend}
+            onClick={() => handleSend(input)}
             disabled={isLoading || !input.trim()}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700"
           >
