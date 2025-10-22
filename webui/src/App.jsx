@@ -529,13 +529,28 @@ export function App() {
                         className="p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500"
                         open={part.isOpen}
                       >
-                        <summary className="font-semibold">
-                          💭 Thinking:
-                        </summary>
+                        <summary
+                          className={`font-semibold truncate ${part.isOpen ? "animate-pulse" : ""}`}
+                          dangerouslySetInnerHTML={{
+                            __html: part.isOpen
+                              ? "💭 Thinking..."
+                              : marked.parseInline(
+                                  `💭 Thought about: ${part.content.trim().split("\n")[0]}`,
+                                ),
+                          }}
+                        />
                         <div
                           className="pt-2 prose dark:prose-invert prose-sm text-xs max-w-none"
                           dangerouslySetInnerHTML={{
-                            __html: marked(part.content.trim()),
+                            __html: part.isOpen
+                              ? marked(part.content.trim())
+                              : marked(
+                                  part.content
+                                    .trim()
+                                    .split("\n")
+                                    .slice(1)
+                                    .join("\n"),
+                                ),
                           }}
                         />
                       </details>
