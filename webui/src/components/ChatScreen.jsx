@@ -1,6 +1,7 @@
-import { marked } from "marked";
 import { useEffect, useRef, useState } from "preact/hooks";
 import { getModelName } from "../config.js";
+import { AssistantMessage } from "./AssistantMessage.jsx";
+import { ChatStart } from "./ChatStart.jsx";
 
 export function ChatScreen({
   messages,
@@ -92,37 +93,12 @@ export function ChatScreen({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <div className="h-full items-center justify-center flex flex-col gap-8">
-            {mcpStatus === "connected" && (
-              <>
-                <p className="text-gray-500 dark:text-gray-400">
-                  Start a conversation with Producer Pal
-                </p>
-                <button
-                  onClick={() => handleSend("Connect to Ableton.")}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  Quick Connect
-                </button>
-              </>
-            )}
-            {mcpStatus === "error" && (
-              <>
-                <h1 className="font-bold text-red-600 dark:text-red-400">
-                  Producer Pal Not Found
-                </h1>
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {mcpError}
-                </p>
-                <button
-                  onClick={checkMcpConnection}
-                  className="mt-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-                >
-                  Retry
-                </button>
-              </>
-            )}
-          </div>
+          <ChatStart
+            mcpStatus={mcpStatus}
+            mcpError={mcpError}
+            checkMcpConnection={checkMcpConnection}
+            handleSend={handleSend}
+          />
         )}
 
         {messages.map((msg, idx) => (
@@ -136,78 +112,7 @@ export function ChatScreen({
                   : "bg-gray-100 dark:bg-gray-800"
             } rounded-lg py-0.5 px-3 max-w-[90%]`}
           >
-            {msg.role === "assistant" && (
-              <div className="flex flex-col gap-3 py-1">
-                {msg.parts?.map((part, i) => {
-                  if (part.type === "thought") {
-                    return (
-                      <details
-                        key={i}
-                        className="p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500"
-                        open={part.isOpen}
-                      >
-                        <summary
-                          className={`font-semibold truncate ${part.isOpen ? "animate-pulse" : ""}`}
-                          dangerouslySetInnerHTML={{
-                            __html: part.isOpen
-                              ? "💭 Thinking..."
-                              : marked.parseInline(
-                                  `💭 Thought about: ${part.content.trim().split("\n")[0]}`,
-                                ),
-                          }}
-                        />
-                        <div
-                          className="pt-2 prose dark:prose-invert prose-sm text-xs max-w-none"
-                          dangerouslySetInnerHTML={{
-                            __html: part.isOpen
-                              ? marked(part.content.trim())
-                              : marked(
-                                  part.content
-                                    .trim()
-                                    .split("\n")
-                                    .slice(1)
-                                    .join("\n"),
-                                ),
-                          }}
-                        />
-                      </details>
-                    );
-                  } else if (part.type === "tool") {
-                    return (
-                      <div key={i}>
-                        <div className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded">
-                          <details>
-                            <summary>🔧 {part.name}</summary>
-                            <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
-                              {part.name}({JSON.stringify(part.args, null, 0)})
-                            </div>
-                          </details>
-                          <details>
-                            <summary className="my-1 truncate text-gray-600 dark:text-gray-400">
-                              &nbsp;&nbsp;&nbsp;↳ {part.result}
-                            </summary>
-                            <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
-                              {part.result}
-                            </div>
-                          </details>
-                        </div>
-                      </div>
-                    );
-                  } else if (part.type === "text") {
-                    return (
-                      <div
-                        key={i}
-                        className="prose dark:prose-invert prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{
-                          __html: marked(part.content),
-                        }}
-                      />
-                    );
-                  }
-                  return null;
-                })}
-              </div>
-            )}
+            {msg.role === "assistant" && <AssistantMessage parts={msg.parts} />}
 
             {msg.role === "user" && (
               <div className="prose dark:prose-invert prose-sm">
