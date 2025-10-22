@@ -10,7 +10,7 @@ export function App() {
   const [theme, setTheme] = useState("system");
   const [showSettings, setShowSettings] = useState(true);
   const [stream, setStream] = useState(true);
-  const [model, setModel] = useState("gemini-2.5-flash-lite");
+  const [model, setModel] = useState("gemini-2.5-flash");
   const [activeModel, setActiveModel] = useState(null);
   const [mcpStatus, setMcpStatus] = useState("connecting");
   const [mcpError, setMcpError] = useState("");
@@ -341,7 +341,7 @@ export function App() {
             <span className="text-red-600 dark:text-red-400">✗ Error</span>
           )}
         </div>
-        <div className="ml-auto flex gap-3">
+        <div className="ml-auto flex gap-3 items-baseline">
           {activeModel && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {getModelName(activeModel)}
