@@ -108,7 +108,7 @@ export function updateClip({
       if (noteUpdateMode === "merge") {
         // In merge mode, prepend existing notes as bar|beat notation
         const existingNotesResult = JSON.parse(
-          clip.call("get_notes_extended", 0, 127, 0, MAX_CLIP_BEATS),
+          clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
         );
         const existingNotes = existingNotesResult?.notes || [];
 
@@ -127,7 +127,7 @@ export function updateClip({
       });
 
       // Remove all notes and add new notes (v0s already filtered by applyV0Deletions)
-      clip.call("remove_notes_extended", 0, 127, 0, MAX_CLIP_BEATS);
+      clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
       if (notes.length > 0) {
         clip.call("add_new_notes", { notes });
       }
@@ -135,7 +135,7 @@ export function updateClip({
       // Query actual note count within playback region (consistent with read-clip)
       const lengthBeats = clip.getProperty("length");
       const actualNotesResult = JSON.parse(
-        clip.call("get_notes_extended", 0, 127, 0, lengthBeats),
+        clip.call("get_notes_extended", 0, 128, 0, lengthBeats),
       );
       finalNoteCount = actualNotesResult?.notes?.length || 0;
     }

@@ -15,6 +15,9 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
 - **Start Time (`bar|beat`)** Time position that emits buffered notes.
   - `bar` – 1-based bar number (integer), or omit for beat-only shorthand (`|2`)
   - `beat` – 1-based beat number within bar (float for sub-beat precision)
+  - **Repeat patterns**: `beat x times @ step` generates multiple positions
+    - Example: `1|1x4@1` → beats 1,2,3,4
+    - Example: `1|1x3@1/3` → triplets at 1, 4/3, 5/3
   - Notes are emitted ONLY at time positions
   - Buffered pitches persist and re-emit at subsequent time positions
   - Requires whitespace separation from following elements
@@ -35,8 +38,12 @@ A precise, stateful music notation format for MIDI sequencing in Ableton Live.
   - Default: 100
   - Requires whitespace separation from following elements
 
-- **Duration (`t<float>`)**
-  - Sets duration in beats for following notes until changed
+- **Duration (`t`)**
+  - Sets duration for following notes until changed
+  - Beat-only format: `t2.5` (2.5 beats), `t3/4` (0.75 beats), `t/4` (0.25
+    beats - numerator defaults to 1)
+  - Bar:beat format: `t2:1.5` (2 bars + 1.5 beats), `t1:3/4` (1 bar + 0.75
+    beats), `t1:/4` (1 bar + 0.25 beats)
   - Default: 1.0
   - Requires whitespace separation from following elements
 
@@ -197,6 +204,123 @@ All components are stateful:
 - **Velocity**: Set with `v<value>` or `v<min>-<max>`, applies to following
   notes until changed
 - **Duration**: Set with `t<value>`, applies to following notes until changed
+
+---
+
+## Repeat Patterns
+
+Repeat patterns generate sequences of beat positions using the syntax
+`{start}x{times}@{step}`, eliminating the need to list long sequences manually.
+
+### Syntax
+
+```
+bar|{start}x{times}@{step}
+```
+
+- **start**: Starting beat position (supports decimals, fractions, and mixed
+  numbers)
+- **times**: Number of repetitions (positive integer)
+- **step**: Interval between repetitions (supports decimals, fractions, mixed
+  numbers, and optional numerator: `/3` = `1/3`)
+
+The `@` symbol reads as "at intervals" and semantically connects to bar copy
+operations.
+
+### Examples
+
+**Whole beats:**
+
+```
+1|1x4@1          // Beats 1,2,3,4
+```
+
+**Triplets:**
+
+```
+1|1x3@1/3        // Beats 1, 4/3, 5/3 (every third)
+1|1x3@/3         // Same as above (numerator defaults to 1)
+1|3x3@1/3        // Beats 3, 10/3, 11/3
+```
+
+**16th notes:**
+
+```
+1|4x4@1/4        // Four 16ths on beat 4: 4, 17/4, 18/4, 19/4
+1|4x4@/4         // Same as above (numerator defaults to 1)
+1|1x16@1/4       // Full bar of 16ths
+1|1x16@/4        // Same as above (numerator defaults to 1)
+```
+
+**Eighth notes:**
+
+```
+1|1x8@1/2        // Eight 8ths: 1, 3/2, 2, 5/2, ..., 9/2
+1|1x8@0.5        // Same as above (decimal notation)
+```
+
+**Mixed numbers:**
+
+```
+1|2+1/3x3@1/3    // Start at 2+1/3: 2+1/3, 2+2/3, 3
+1|1x4@1+1/2      // Steps of 1.5: 1, 2.5, 4, 5.5
+```
+
+### Behavior
+
+**Bar overflow**: Patterns naturally overflow into subsequent bars:
+
+```
+1|3x6@1          // 3,4,5,6,7,8 → 1|3, 1|4, 2|1, 2|2, 2|3, 2|4
+```
+
+**Bar shorthand**: Works with `|beat` notation:
+
+```
+C3 1|1           // Bar 1, beat 1
+|1x4@1           // Bar 1, beats 1,2,3,4 (bar persists)
+```
+
+**Mixing with regular beats**: Combine repeat patterns with explicit beats:
+
+```
+C1 1|1x4@1,3.5   // Beats 1,2,3,4,3.5 (beat 3.5 listed explicitly)
+```
+
+**Multiple patterns**: Use multiple repeat patterns in one beat list:
+
+```
+C1 1|1x2@1,3x2@0.5  // Beats 1,2,3,3.5
+```
+
+### Interaction with Other Features
+
+**Pitch buffering**: All buffered pitches emit at each expanded position:
+
+```
+C3 D3 E3 1|1x4@1    // C3, D3, E3 at each of beats 1,2,3,4
+```
+
+**State parameters**: Velocity, duration, probability apply to all positions:
+
+```
+v80 t0.5 C1 1|1x4@1 // All four notes have v80 and t0.5
+```
+
+**Bar copy**: Repeat patterns work with bar copy operations:
+
+```
+C1 1|1x4@1          // Bar 1: kick on every beat
+@2=1                // Bar 2: copy of bar 1
+```
+
+### Validation
+
+**Maximum repetitions**: Parser warns if `times > 100` (excessive notes)
+
+**Step size**: Must be greater than 0 (validated in grammar)
+
+**Start position**: Must be ≥ 1 (enforced by grammar)
 
 ---
 
@@ -425,6 +549,39 @@ v80 t2.0 G3 2|1
 // Sub-beat timing with floating points
 v100 t0.25 C3 1|1 D3 1|1.5 E3 1|2.25 F3 1|3.75
 
+// Duration examples - beat-only format
+t2.5 C3 1|1    // 2.5 beats duration (decimal)
+t3/4 C3 1|1    // 0.75 beats duration (fraction)
+t/4 C3 1|1     // 0.25 beats duration (numerator defaults to 1)
+t1/3 C3 1|1,4/3,5/3  // Triplet eighth notes
+t/3 C3 1|1,4/3,5/3   // Same as above (numerator defaults to 1)
+
+// Duration examples - bar:beat format
+t2:0 C3 1|1    // 2 bar duration (whole note in 4/4)
+t1:0 C3 1|1    // 1 bar duration (half note in 4/4)
+t2:1.5 C3 1|1  // 2 bars + 1.5 beats
+t1:3/4 C3 1|1  // 1 bar + 0.75 beats
+t1:/4 C3 1|1   // 1 bar + 0.25 beats (numerator defaults to 1)
+
+// Repeat patterns - whole beats
+C1 1|1x4@1     // Kick on every beat (repeat syntax)
+C1 1|1,2,3,4   // Same as above (comma-separated beats still supported)
+
+// Repeat patterns - triplets
+t1/3 C3 1|1x3@1/3           // Triplet eighth notes
+t/3 C3 1|1x3@/3             // Same as above (numerator defaults to 1)
+t1/3 C3 1|1x3@1/3 |2x3@1/3  // Two sets of triplets
+
+// Repeat patterns - 16th notes
+t1/4 Gb1 1|1x16@1/4  // Full bar of hi-hat 16ths
+t/4 Gb1 1|1x16@/4    // Same as above (numerator defaults to 1)
+
+// Repeat patterns - mixed with regular beats
+C1 1|1x4@1 D1 1|2,4  // Kick on all beats, snare on 2 & 4
+
+// Repeat patterns - bar overflow
+C3 1|3x6@1  // Starts beat 3, overflows into bar 2
+
 // Drum pattern with probability and velocity variation
 v100 t0.25 p1.0 C1 v80-100 p0.8 Gb1 1|1
 p0.6 Gb1 1|1.5
@@ -477,8 +634,8 @@ Element[]
 
 type Element =
   | { pitch: number }                                                // Note (0-127)
-  | { bar: number, beat: number }                                    // Time with bar
-  | { bar: null, beat: number }                                      // Time without bar (beat shorthand)
+  | { bar: number, beat: number | RepeatPattern }                    // Time with bar
+  | { bar: null, beat: number | RepeatPattern }                      // Time without bar (beat shorthand)
   | { velocity: number }                                             // Single velocity (0-127)
   | { velocityMin: number, velocityMax: number }                     // Velocity range (0-127)
   | { duration: number }                                             // Duration in beats
@@ -490,6 +647,12 @@ type Element =
   | { barCopyRange: [number, number], sourceBar: number }            // @N-M=P (copy bar to range)
   | { barCopyRange: [number, number], sourceRange: [number, number] } // @N-M=P-Q (tile pattern)
   | { clearBuffer: true }                                            // @clear (clear copy buffer)
+
+type RepeatPattern = {
+  start: number,   // Starting beat position
+  times: number,   // Number of repetitions (integer)
+  step: number     // Step size (supports fractions)
+}
 ```
 
 ### Notes

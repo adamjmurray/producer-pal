@@ -65,7 +65,7 @@ describe("readClip", () => {
       expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       4,
     );
@@ -142,7 +142,7 @@ describe("readClip", () => {
       expect.objectContaining({ path: "live_set tracks 1 clip_slots 1 clip" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       4,
     );
@@ -214,7 +214,7 @@ describe("readClip", () => {
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       4,
     );
@@ -275,7 +275,7 @@ describe("readClip", () => {
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       3,
     );
@@ -489,7 +489,7 @@ describe("readClip", () => {
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       4,
     );
@@ -696,5 +696,63 @@ describe("readClip", () => {
 
     // Verify notes are included
     expect(resultWildcard.notes).toBe("C3 1|1 v80 E3 1|3");
+  });
+
+  it("reads G8 (MIDI note 127) correctly by calling Live API with pitch range 0-128", () => {
+    liveApiCall.mockImplementation(function (method) {
+      if (method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              note_id: 1,
+              pitch: 127, // G8 - highest MIDI note
+              start_time: 0,
+              duration: 1,
+              velocity: 100,
+              probability: 1.0,
+              velocity_deviation: 0,
+            },
+          ],
+        });
+      }
+      return null;
+    });
+    mockLiveApiGet({
+      "live_set/tracks/0/clip_slots/0/clip": {
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        start_marker: 0,
+        end_marker: 4,
+        loop_start: 0,
+        loop_end: 4,
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+
+    // Verify get_notes_extended is called with upper bound of 128 (exclusive), not 127
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
+      "get_notes_extended",
+      0,
+      128, // Upper bound must be 128 to include note 127 (G8)
+      0,
+      4,
+    );
+
+    expect(result).toEqual({
+      id: "live_set/tracks/0/clip_slots/0/clip",
+      name: "Test Clip",
+      type: "midi",
+      sceneIndex: 0,
+      trackIndex: 0,
+      view: "session",
+      length: "1:0",
+      loop: false,
+      timeSignature: "4/4",
+      notes: "G8 1|1",
+      noteCount: 1,
+    });
   });
 });

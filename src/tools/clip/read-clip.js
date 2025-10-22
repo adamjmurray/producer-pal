@@ -135,7 +135,7 @@ export function readClip(args = {}) {
     const notesDictionary = clip.call(
       "get_notes_extended",
       0,
-      127,
+      128,
       0,
       lengthBeats,
     );
