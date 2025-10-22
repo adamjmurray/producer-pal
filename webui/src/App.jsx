@@ -9,7 +9,6 @@ export function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [theme, setTheme] = useState("system");
   const [showSettings, setShowSettings] = useState(true);
-  const [stream, setStream] = useState(true);
   const [model, setModel] = useState("gemini-2.5-flash");
   const [activeModel, setActiveModel] = useState(null);
   const [thinking, setThinking] = useState("Auto");
@@ -22,7 +21,7 @@ export function App() {
   const chatRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Load API key, theme, model, stream, thinking, and temperature from localStorage
+  // Load API key, theme, model, thinking, and temperature from localStorage
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini_api_key");
     if (savedKey) {
@@ -36,10 +35,6 @@ export function App() {
     const savedModel = localStorage.getItem("gemini_model");
     if (savedModel) {
       setModel(savedModel);
-    }
-    const savedStream = localStorage.getItem("gemini_stream");
-    if (savedStream != null) {
-      setStream(savedStream === "true");
     }
     const savedThinking = localStorage.getItem("gemini_thinking");
     if (savedThinking) {
@@ -103,7 +98,6 @@ export function App() {
   const saveApiKey = () => {
     localStorage.setItem("gemini_api_key", apiKey);
     localStorage.setItem("gemini_model", model);
-    localStorage.setItem("gemini_stream", stream.toString());
     localStorage.setItem("gemini_thinking", thinking);
     localStorage.setItem("gemini_temperature", temperature.toString());
     localStorage.setItem("gemini_showThoughts", showThoughts.toString());
@@ -119,10 +113,6 @@ export function App() {
     const savedModel = localStorage.getItem("gemini_model");
     if (savedModel) {
       setModel(savedModel);
-    }
-    const savedStream = localStorage.getItem("gemini_stream");
-    if (savedStream != null) {
-      setStream(savedStream === "true");
     }
     const savedThinking = localStorage.getItem("gemini_thinking");
     if (savedThinking) {
@@ -185,100 +175,59 @@ export function App() {
         setMcpStatus("connected");
       }
 
-      if (stream) {
-        const assistantMessage = {
-          role: "assistant",
-          parts: [],
-        };
-        setMessages((msgs) => [...msgs, assistantMessage]);
+      const assistantMessage = {
+        role: "assistant",
+        parts: [],
+      };
+      setMessages((msgs) => [...msgs, assistantMessage]);
 
-        const streamGen = chatRef.current.sendMessageStream(userMessage);
+      const streamGen = chatRef.current.sendMessageStream(userMessage);
 
-        for await (const chunk of streamGen) {
-          if (chunk.type === "text" || chunk.type === "thought") {
-            setMessages((msgs) => {
-              const newMsgs = [...msgs];
-              const lastMsg = newMsgs[newMsgs.length - 1];
-              const lastPart = lastMsg.parts[lastMsg.parts.length - 1];
+      for await (const chunk of streamGen) {
+        if (chunk.type === "text" || chunk.type === "thought") {
+          setMessages((msgs) => {
+            const newMsgs = [...msgs];
+            const lastMsg = newMsgs[newMsgs.length - 1];
+            const lastPart = lastMsg.parts[lastMsg.parts.length - 1];
 
-              // If last part is same type, append to it
-              if (lastPart && lastPart.type === chunk.type) {
-                lastPart.content += chunk.content;
-              } else {
-                // Create new part
-                lastMsg.parts.push({
-                  type: chunk.type,
-                  content: chunk.content,
-                });
-              }
-              return newMsgs;
-            });
-          } else if (chunk.type === "toolCall") {
-            setMessages((msgs) => {
-              const newMsgs = [...msgs];
-              const lastMsg = newMsgs[newMsgs.length - 1];
+            // If last part is same type, append to it
+            if (lastPart && lastPart.type === chunk.type) {
+              lastPart.content += chunk.content;
+            } else {
+              // Create new part
               lastMsg.parts.push({
-                type: "tool",
-                name: chunk.name,
-                args: chunk.args,
-                result: "...",
+                type: chunk.type,
+                content: chunk.content,
               });
-              return newMsgs;
-            });
-          } else if (chunk.type === "toolResult") {
-            setMessages((msgs) => {
-              const newMsgs = [...msgs];
-              const lastMsg = newMsgs[newMsgs.length - 1];
-              // Find the last tool part and update its result
-              for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
-                if (lastMsg.parts[i].type === "tool") {
-                  lastMsg.parts[i].result = chunk.result;
-                  break;
-                }
-              }
-              return newMsgs;
-            });
-          }
-        }
-      } else {
-        const response = await chatRef.current.sendMessage(userMessage);
-        const parts = [];
-
-        // Add thoughts if present
-        if (response.thoughts) {
-          parts.push({
-            type: "thought",
-            content: response.thoughts,
+            }
+            return newMsgs;
           });
-        }
-
-        // Add tool calls if present
-        if (response.toolCalls && response.toolCalls.length > 0) {
-          for (const call of response.toolCalls) {
-            parts.push({
+        } else if (chunk.type === "toolCall") {
+          setMessages((msgs) => {
+            const newMsgs = [...msgs];
+            const lastMsg = newMsgs[newMsgs.length - 1];
+            lastMsg.parts.push({
               type: "tool",
-              name: call.name,
-              args: call.args,
-              result: call.result,
+              name: chunk.name,
+              args: chunk.args,
+              result: "...",
             });
-          }
-        }
-
-        // Add text if present
-        if (response.text) {
-          parts.push({
-            type: "text",
-            content: response.text,
+            return newMsgs;
+          });
+        } else if (chunk.type === "toolResult") {
+          setMessages((msgs) => {
+            const newMsgs = [...msgs];
+            const lastMsg = newMsgs[newMsgs.length - 1];
+            // Find the last tool part and update its result
+            for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
+              if (lastMsg.parts[i].type === "tool") {
+                lastMsg.parts[i].result = chunk.result;
+                break;
+              }
+            }
+            return newMsgs;
           });
         }
-
-        setMessages((msgs) => [
-          ...msgs,
-          {
-            role: "assistant",
-            parts,
-          },
-        ]);
       }
     } catch (error) {
       // Check if this is an MCP connection error
@@ -348,17 +297,6 @@ export function App() {
                 Gemini 2.5 Flash-Lite (ultra fast)
               </option>
             </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="stream"
-              checked={stream}
-              onChange={(e) => setStream(e.target.checked)}
-            />
-            <label htmlFor="stream" className="text-sm">
-              Enable streaming (recommended)
-            </label>
           </div>
           <div>
             <label className="block text-sm mb-2">Thinking</label>
