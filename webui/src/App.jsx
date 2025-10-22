@@ -507,23 +507,26 @@ export function App() {
             } rounded-lg py-0.5 px-3 max-w-[90%]`}
           >
             {msg.role === "assistant" && (
-              <>
+              <div className="flex flex-col gap-3 py-1">
                 {msg.parts?.map((part, i) => {
                   if (part.type === "thought") {
                     return (
                       <div
                         key={i}
-                        className="my-2 p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-4 border-yellow-500"
+                        className="p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500"
                       >
-                        <div className="font-semibold mb-1">💭 Thinking:</div>
-                        <div className="whitespace-pre-wrap">
-                          {part.content}
-                        </div>
+                        <div className="font-semibold mb-2">💭 Thinking:</div>
+                        <div
+                          className="prose dark:prose-invert prose-sm text-xs max-w-none"
+                          dangerouslySetInnerHTML={{
+                            __html: marked(part.content.trim()),
+                          }}
+                        />
                       </div>
                     );
                   } else if (part.type === "tool") {
                     return (
-                      <div key={i} className="my-2">
+                      <div key={i}>
                         <div className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded">
                           <details>
                             <summary>🔧 {part.name}</summary>
@@ -546,7 +549,7 @@ export function App() {
                     return (
                       <div
                         key={i}
-                        className="mb-1 prose dark:prose-invert prose-sm max-w-none"
+                        className="prose dark:prose-invert prose-sm max-w-none"
                         dangerouslySetInnerHTML={{
                           __html: marked(part.content),
                         }}
@@ -555,7 +558,7 @@ export function App() {
                   }
                   return null;
                 })}
-              </>
+              </div>
             )}
 
             {msg.role === "user" && (
