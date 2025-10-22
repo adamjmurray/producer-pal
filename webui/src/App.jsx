@@ -268,31 +268,38 @@ export function App() {
     }
   };
 
+  const hasApiKey = !!localStorage.getItem("gemini_api_key");
+
   if (showSettings) {
     return (
       <div className="flex items-center justify-center h-screen p-4">
         <div className="max-w-md w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 space-y-4">
-          <h2 className="text-xl font-semibold">Settings</h2>
+          <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
           <div>
-            <label className="block text-sm mb-2">Gemini API Key</label>
+            <label className="block text-sm mb-2">
+              Gemini API Key (required)
+            </label>
             <input
               type="password"
               value={apiKey}
               onInput={(e) => setApiKey(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded placeholder:dark:text-gray-400 placeholder:text-gray-500"
               placeholder="Enter your API key"
+              autoFocus={!hasApiKey}
             />
           </div>
-          <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
-            <a
-              href="https://aistudio.google.com/api-keys"
-              target="_blank"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              Get a Gemini API Key
-            </a>{" "}
-            <span>(free, requires Google account)</span>
-          </p>
+          {!hasApiKey && (
+            <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
+              <a
+                href="https://aistudio.google.com/api-keys"
+                target="_blank"
+                className="text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Get a Gemini API Key
+              </a>{" "}
+              <span>(free, requires Google account)</span>
+            </p>
+          )}
           <div>
             <label className="block text-sm mb-2">Model</label>
             <select
@@ -353,9 +360,11 @@ export function App() {
               className="w-full"
             />
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Note: Settings changes apply to new conversations
-          </p>
+          {hasApiKey && (
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Note: Settings changes apply to new conversations.
+            </p>
+          )}
           <div className="flex gap-2">
             <button
               onClick={saveApiKey}
@@ -364,7 +373,7 @@ export function App() {
             >
               Save
             </button>
-            {localStorage.getItem("gemini_api_key") && (
+            {hasApiKey && (
               <button
                 onClick={cancelSettings}
                 className="px-4 py-2 bg-gray-600 text-white rounded"
