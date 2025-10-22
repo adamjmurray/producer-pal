@@ -217,7 +217,7 @@ export function App() {
                 : msg.role === "error"
                   ? "bg-red-600 text-white"
                   : "bg-gray-100 dark:bg-gray-800"
-            } rounded-lg p-3 max-w-[80%] ${msg.role === "user" ? "ml-auto" : ""}`}
+            } rounded-lg p-3 max-w-[90%] ${msg.role === "user" ? "ml-auto" : ""}`}
           >
             {msg.role === "assistant" && (
               <>
@@ -233,14 +233,19 @@ export function App() {
                     {msg.toolCalls.map((call, i) => (
                       <div
                         key={i}
-                        className="text-xs p-2 bg-gray-200 dark:bg-gray-700 rounded"
+                        className="text-xs p-2 bg-gray-200 dark:bg-gray-900 rounded"
                       >
                         <div className="font-mono">
                           🔧 {call.name}({JSON.stringify(call.args, null, 0)})
                         </div>
-                        <div className="mt-1 text-gray-600 dark:text-gray-400 truncate">
-                          ↳ {call.result}
-                        </div>
+                        <details>
+                          <summary className="m-1 truncate text-gray-600 dark:text-gray-400">
+                            <span className="px-2">↳ {call.result}</span>
+                          </summary>
+                          <div className="mt-1 p-1 border-t break-all text-gray-600 dark:text-gray-500">
+                            {call.result}
+                          </div>
+                        </details>
                       </div>
                     ))}
                   </div>
