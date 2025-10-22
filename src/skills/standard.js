@@ -71,6 +71,149 @@ p0.5 C1 1|1,2,3,4 // 50% chance each kick plays
 p1.0 D1 1|2,4 // back to 100% - snare always plays
 \`\`\`
 
+## Modulations
+
+Apply dynamic transformations to note properties using mathematical expressions and waveforms. Add modulations parameter to create-clip or update-clip:
+
+**Syntax:** \`[pitch] [timeRange] parameter operator expression\` (one per line)
+
+**Operators:**
+- \`+=\` Add to the value (default behavior)
+- \`=\` Set/replace the value
+
+**Parameters:**
+- velocity: Modify note velocity (clamped 1-127)
+- timing: Shift note start time in beats (no clamping)
+- duration: Modify note length in beats (clamped >0.001)
+- probability: Modify note probability (clamped 0.0-1.0)
+
+**Pitch Selectors (optional):**
+- Single pitch: \`C3 velocity += 10\` (affects only C3 notes)
+- Pitch range: \`C3-C5 velocity += 10\` (affects all notes from C3 to C5 inclusive)
+- Omitted: \`velocity += 10\` (affects all pitches)
+- Persistence: pitch selector persists across lines until changed
+
+**Time Range Selectors (optional):**
+- Format: \`startBar|startBeat-endBar|endBeat\`
+- Example: \`1|1-3|1 velocity += 10\` (bar 1 beat 1 to bar 3 beat 1)
+- Combine with pitch: \`60 1|1-2|1 velocity += 10\`
+
+**Note Property Variables:**
+- Access note properties using \`note.\` prefix:
+  - \`note.pitch\`: MIDI pitch (0-127)
+  - \`note.start\`: Start time in musical beats (from clip start)
+  - \`note.velocity\`: Current velocity value (1-127)
+  - \`note.velocityDeviation\`: Velocity deviation
+  - \`note.duration\`: Duration in beats
+  - \`note.probability\`: Probability (0.0-1.0)
+- Use in any expression: arithmetic, functions, waveform periods, etc.
+
+**Expressions:**
+- Arithmetic: +, -, *, / (standard precedence)
+- Waveforms: cos(freq), tri(freq), saw(freq), square(freq), noise()
+- Frequency: Two options:
+  - Period notation: bar:beat duration + 't' suffix (1t, 1:0t, 0:2t)
+    - Optional bars: 2t = 2:0t, 0:1t = 1t
+  - Expression: Any numeric value/variable (treated as beats)
+    - Examples: note.duration, note.start/4, 2.5
+- Phase: cos(freq, phase) - phase 0.0-1.0 offsets waveform start (can use variables)
+- Pulse width: square(freq, phase, width) - width 0.0-1.0 (default 0.5, can use variables)
+
+**Waveform behavior:**
+- All waveforms output -1.0 to 1.0
+- Phase 0 = peak (1.0), descends to -1.0, returns to 1.0
+- cos: smooth sine wave
+- tri: linear triangle wave
+- saw: linear sawtooth (descending)
+- square: hard on/off toggle
+- noise(): random value each note (non-deterministic)
+- ramp(start, end, speed): linear interpolation over clip duration
+  - start/end: any numeric values (can use variables)
+  - speed: optional multiplier (default 1), >1 = faster, <1 = slower (can use variables)
+  - Ramps over the entire clip or time range (no frequency arg)
+
+**Examples:**
+
+\`\`\`
+# Basic waveforms
+velocity += 20 * cos(2:0t)  # velocity cycle every 2 bars
+timing += 0.05 * noise()    # humanize timing randomly
+velocity += 30 * tri(4t)    # crescendo over 4 bars
+
+# Absolute values
+velocity = 80
+
+# Ramp functions
+velocity += ramp(0, 127)    # fade in over entire clip
+velocity += ramp(127, 0)    # fade out
+velocity += ramp(0, 100, 2) # two complete ramps
+
+# Note property variables
+velocity = note.pitch       # velocity follows pitch value
+velocity = note.velocity/2  # halve existing velocity
+timing += note.pitch * 0.01 # delay higher notes
+duration = note.duration * note.probability
+
+# Variable periods
+velocity += cos(note.duration)     # period = note duration
+velocity += tri(note.duration * 2) # period = 2x note duration
+
+# Variables in function arguments
+velocity = ramp(0, note.velocity)         # ramp to note's velocity
+velocity += cos(1t, note.probability)     # phase offset from probability
+velocity += square(1t, 0, note.duration)  # pulse width from duration
+
+# Single pitch selector (affects only C3 notes)
+C3 velocity += 20
+
+# Pitch range selector (affects C3 through C5)
+C3-C5 velocity += 20
+
+# Accent bass notes (C1 through C2)
+C1-C2 velocity += 30
+
+# Time range modulation (only affects notes in bars 1-2)
+1|1-2|4 velocity += 10
+
+# Combined pitch range and time range
+C3-C5 1|1-1|4 velocity = 100
+
+# Pitch persistence (affects C3, then D3, then all pitches)
+C3 velocity += 10
+D3 velocity += 20
+velocity += 5
+
+# Multiple pitch ranges with different modulations
+C1-C2 velocity += 30
+C3-C5 velocity += 10
+C6-C7 velocity = 100
+
+# Apply to existing clip notes (update-clip with merge mode, no notes param)
+# Humanizes velocity and timing of all notes in clip without changing pitches
+ppal-update-clip ids=clip123 noteUpdateMode=merge modulations="velocity += 5 * noise()
+timing += 0.02 * noise()"
+\`\`\`
+
+**Use cases:**
+- Humanization: Add subtle random timing/velocity variations
+- Dynamics: Create crescendos, swells, rhythmic emphasis
+- Groove: Apply swing, shuffle, or rhythmic displacement
+- Evolving patterns: Fade notes in/out, cycle velocities
+- Generative variation: Use noise() for unpredictable changes
+- Pitch-specific processing: Modulate only certain notes (e.g., accent kicks, humanize hats)
+- Section-specific effects: Apply modulations only to specific time ranges
+- Retroactive modulation: Apply to existing clip notes without rewriting them
+
+**Notes:**
+- \`+=\` adds to base values, \`=\` replaces base values
+- Pitch selectors filter by single pitch or pitch range; omitted = all pitches
+- Pitch ranges are inclusive (C3-C5 includes C3, C#3, D3, ... C5)
+- Time range selectors filter by bar|beat position
+- Pitch selector persists across lines until changed or omitted
+- Parse/evaluation errors become warnings, partial modulations apply
+- Position context: waveforms evaluate at each note's musical beat position
+- Can apply modulations alone in update-clip merge mode (omit notes parameter)
+
 ## Techniques
 
 ### Repeating Patterns

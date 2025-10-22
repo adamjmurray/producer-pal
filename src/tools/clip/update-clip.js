@@ -1,8 +1,9 @@
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time";
-import { interpretNotation, formatNotation } from "../../notation/notation";
+} from "../../notation/barbeat/barbeat-time.js";
+import { applyModulations } from "../../notation/modulation/modulation-evaluator.js";
+import { formatNotation, interpretNotation } from "../../notation/notation.js";
 import { MAX_CLIP_BEATS } from "../constants.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
@@ -12,6 +13,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param {string} [args.notes] - Musical notation string
+ * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
  * @param {string} args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
@@ -25,6 +27,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 export function updateClip({
   ids,
   notes: notationString,
+  modulations: modulationString,
   noteUpdateMode,
   name,
   color,
@@ -102,29 +105,61 @@ export function updateClip({
       looping: loop,
     });
 
-    if (notationString != null) {
-      let combinedNotationString = notationString;
+    if (notationString != null || modulationString != null) {
+      let notes;
 
-      if (noteUpdateMode === "merge") {
-        // In merge mode, prepend existing notes as bar|beat notation
-        const existingNotesResult = JSON.parse(
-          clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
-        );
-        const existingNotes = existingNotesResult?.notes || [];
+      if (notationString != null) {
+        let combinedNotationString = notationString;
 
-        if (existingNotes.length > 0) {
-          const existingNotationString = formatNotation(existingNotes, {
-            timeSigNumerator,
-            timeSigDenominator,
-          });
-          combinedNotationString = `${existingNotationString} ${notationString}`;
+        if (noteUpdateMode === "merge") {
+          // In merge mode, prepend existing notes as bar|beat notation
+          const existingNotesResult = JSON.parse(
+            clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
+          );
+          const existingNotes = existingNotesResult?.notes || [];
+
+          if (existingNotes.length > 0) {
+            const existingNotationString = formatNotation(existingNotes, {
+              timeSigNumerator,
+              timeSigDenominator,
+            });
+            combinedNotationString = `${existingNotationString} ${notationString}`;
+          }
+        }
+
+        notes = interpretNotation(combinedNotationString, {
+          timeSigNumerator,
+          timeSigDenominator,
+        });
+      } else {
+        // No notation provided, but modulations are - use existing notes
+        if (noteUpdateMode === "merge") {
+          const existingNotesResult = JSON.parse(
+            clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
+          );
+          const existingNotes = existingNotesResult?.notes || [];
+          // Filter to only valid fields for add_new_notes
+          notes = existingNotes.map((note) => ({
+            pitch: note.pitch,
+            start_time: note.start_time,
+            duration: note.duration,
+            velocity: note.velocity,
+            probability: note.probability,
+            velocity_deviation: note.velocity_deviation,
+          }));
+        } else {
+          // Replace mode with no notes means clear the clip
+          notes = [];
         }
       }
 
-      const notes = interpretNotation(combinedNotationString, {
+      // Apply modulations to notes if provided
+      applyModulations(
+        notes,
+        modulationString,
         timeSigNumerator,
         timeSigDenominator,
-      });
+      );
 
       // Remove all notes and add new notes (v0s already filtered by applyV0Deletions)
       clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
