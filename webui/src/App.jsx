@@ -12,6 +12,8 @@ export function App() {
   const [stream, setStream] = useState(true);
   const [model, setModel] = useState("gemini-2.5-flash-lite");
   const [activeModel, setActiveModel] = useState(null);
+  const [mcpStatus, setMcpStatus] = useState("connecting");
+  const [mcpError, setMcpError] = useState("");
   const chatRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -64,6 +66,23 @@ export function App() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Check MCP connection on mount
+  const checkMcpConnection = async () => {
+    setMcpStatus("connecting");
+    setMcpError("");
+    try {
+      await GeminiChat.testConnection();
+      setMcpStatus("connected");
+    } catch (error) {
+      setMcpStatus("error");
+      setMcpError(error.message);
+    }
+  };
+
+  useEffect(() => {
+    checkMcpConnection();
+  }, []);
+
   const saveApiKey = () => {
     localStorage.setItem("gemini_api_key", apiKey);
     localStorage.setItem("gemini_model", model);
@@ -104,9 +123,18 @@ export function App() {
 
     try {
       if (!chatRef.current) {
+        // Auto-retry MCP connection if it failed
+        if (mcpStatus === "error") {
+          await checkMcpConnection();
+          if (mcpStatus === "error") {
+            throw new Error(`MCP connection failed: ${mcpError}`);
+          }
+        }
+
         chatRef.current = new GeminiChat(apiKey, { model });
         await chatRef.current.initialize();
         setActiveModel(model);
+        setMcpStatus("connected");
       }
 
       if (stream) {
@@ -167,6 +195,15 @@ export function App() {
         ]);
       }
     } catch (error) {
+      // Check if this is an MCP connection error
+      if (
+        error.message?.includes("MCP") ||
+        error.message?.includes("connect")
+      ) {
+        setMcpStatus("error");
+        setMcpError(error.message);
+      }
+
       setMessages((msgs) => [
         ...msgs,
         { role: "error", content: `Error: ${error.message}` },
@@ -288,9 +325,22 @@ export function App() {
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-center">
+      <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-baseline">
         <h1 className="text-lg font-semibold">Producer Pal Chat</h1>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-2 flex gap-1 text-xs">
+          {mcpStatus === "connected" && (
+            <span className="text-green-600 dark:text-green-400">✓ Ready</span>
+          )}
+          {mcpStatus === "connecting" && (
+            <span className="text-gray-500 dark:text-gray-400">
+              👀 Looking for Producer Pal...
+            </span>
+          )}
+          {mcpStatus === "error" && (
+            <span className="text-red-600 dark:text-red-400">✗ Error</span>
+          )}
+        </div>
+        <div className="ml-auto flex gap-3">
           {activeModel && (
             <span className="text-xs text-gray-500 dark:text-gray-400">
               {getModelName(activeModel)}
@@ -317,11 +367,28 @@ export function App() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (
-          <div className="text-center text-gray-500 mt-8">
-            <p>Start a conversation with Producer Pal</p>
-            <p className="text-sm mt-2">
-              Connected to MCP server at localhost:3350
-            </p>
+          <div className="h-full items-center justify-center flex flex-col gap-8">
+            {mcpStatus === "connected" && (
+              <p className="text-gray-500 dark:text-gray-400">
+                Start a conversation with Producer Pal
+              </p>
+            )}
+            {mcpStatus === "error" && (
+              <>
+                <h1 className="font-bold text-red-600 dark:text-red-400">
+                  Producer Pal Not Found
+                </h1>
+                <p className="text-sm text-red-600 dark:text-red-400">
+                  {mcpError}
+                </p>
+                <button
+                  onClick={checkMcpConnection}
+                  className="mt-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                >
+                  Retry
+                </button>
+              </>
+            )}
           </div>
         )}
 

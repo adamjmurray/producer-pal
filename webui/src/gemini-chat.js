@@ -11,6 +11,16 @@ export class GeminiChat {
     this.mcpClient = null;
   }
 
+  static async testConnection(mcpUrl = "http://localhost:3350/mcp") {
+    const transport = new StreamableHTTPClientTransport(mcpUrl);
+    const client = new Client({
+      name: "producer-pal-chat-ui-test",
+      version: "1.0.0",
+    });
+    await client.connect(transport);
+    await client.close();
+  }
+
   async initialize() {
     // Connect to MCP server
     const transport = new StreamableHTTPClientTransport(this.mcpUrl);
