@@ -7,25 +7,46 @@ export function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [theme, setTheme] = useState("dark");
+  const [theme, setTheme] = useState("system");
   const [showSettings, setShowSettings] = useState(true);
   const [stream, setStream] = useState(true);
   const chatRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Load API key from localStorage
+  // Load API key and theme from localStorage
   useEffect(() => {
     const savedKey = localStorage.getItem("gemini_api_key");
     if (savedKey) {
       setApiKey(savedKey);
       setShowSettings(false);
     }
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+      setTheme(savedTheme);
+    }
   }, []);
 
   // Apply theme
   useEffect(() => {
     const root = document.documentElement;
-    root.classList.toggle("dark", theme === "dark");
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const applyTheme = () => {
+      if (theme === "system") {
+        root.classList.toggle("dark", mediaQuery.matches);
+      } else {
+        root.classList.toggle("dark", theme === "dark");
+      }
+    };
+
+    applyTheme();
+    localStorage.setItem("theme", theme);
+
+    // Listen for system theme changes when using "system" theme
+    if (theme === "system") {
+      mediaQuery.addEventListener("change", applyTheme);
+      return () => mediaQuery.removeEventListener("change", applyTheme);
+    }
   }, [theme]);
 
   // Auto-scroll to bottom
@@ -191,6 +212,7 @@ export function App() {
             onChange={(e) => setTheme(e.target.value)}
             className="text-xs bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
           >
+            <option value="system">System</option>
             <option value="light">Light</option>
             <option value="dark">Dark</option>
           </select>
@@ -242,7 +264,7 @@ export function App() {
                           <summary className="m-1 truncate text-gray-600 dark:text-gray-400">
                             <span className="px-2">↳ {call.result}</span>
                           </summary>
-                          <div className="mt-1 p-1 border-t break-all text-gray-600 dark:text-gray-500">
+                          <div className="mt-1 p-1 border-t break-all text-gray-500 dark:text-gray-500">
                             {call.result}
                           </div>
                         </details>
