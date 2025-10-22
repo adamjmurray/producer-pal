@@ -59,7 +59,6 @@ export function App() {
     }
   }, [theme]);
 
-
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -199,6 +198,16 @@ export function App() {
               placeholder="Enter your API key"
             />
           </div>
+          <p className="text-xs mt-1 text-gray-500 dark:text-gray-400">
+            <a
+              href="https://aistudio.google.com/api-keys"
+              target="_blank"
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Get a Gemini API Key
+            </a>{" "}
+            <span>(free, requires Google account)</span>
+          </p>
           <div>
             <label className="block text-sm mb-2">Model</label>
             <select
@@ -206,9 +215,15 @@ export function App() {
               onChange={(e) => setModel(e.target.value)}
               className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
             >
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (most advanced)</option>
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash (fast & intelligent)</option>
-              <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite (ultra fast)</option>
+              <option value="gemini-2.5-pro">
+                Gemini 2.5 Pro (most advanced)
+              </option>
+              <option value="gemini-2.5-flash">
+                Gemini 2.5 Flash (fast & intelligent)
+              </option>
+              <option value="gemini-2.5-flash-lite">
+                Gemini 2.5 Flash-Lite (ultra fast)
+              </option>
             </select>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Note: Model changes apply to new conversations
@@ -277,7 +292,9 @@ export function App() {
         <h1 className="text-lg font-semibold">Producer Pal Chat</h1>
         <div className="ml-auto flex items-center gap-3">
           {activeModel && (
-            <span className="text-xs text-gray-500 dark:text-gray-400">{getModelName(activeModel)}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {getModelName(activeModel)}
+            </span>
           )}
           <button
             onClick={() => setShowSettings(true)}
