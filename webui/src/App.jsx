@@ -406,11 +406,11 @@ export function App() {
             key={idx}
             className={`${
               msg.role === "user"
-                ? "ml-auto bg-blue-600 text-white"
+                ? "ml-auto text-black bg-blue-300 dark:text-white dark:bg-blue-600"
                 : msg.role === "error"
                   ? "bg-red-600 text-white"
                   : "bg-gray-100 dark:bg-gray-800"
-            } rounded-lg p-3 max-w-[90%] ${msg.role === "user" ? "ml-auto" : ""}`}
+            } rounded-lg py-0.5 px-3 max-w-[90%]`}
           >
             {msg.role === "assistant" && (
               <>
@@ -451,8 +451,16 @@ export function App() {
               </>
             )}
 
-            {msg.role === "user" && <div>{msg.content}</div>}
-            {msg.role === "error" && <div>{msg.content}</div>}
+            {msg.role === "user" && (
+              <div className="prose dark:prose-invert prose-sm">
+                {msg.content}
+              </div>
+            )}
+            {msg.role === "error" && (
+              <div className="prose dark:prose-invert prose-sm">
+                {msg.content}
+              </div>
+            )}
           </div>
         ))}
 
