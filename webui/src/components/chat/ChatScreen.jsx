@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "preact/hooks";
 import { AssistantMessage } from "./AssistantMessage.jsx";
-import { ChatStart } from "./ChatStart.jsx";
 import { ChatHeader } from "./ChatHeader.jsx";
 import { ChatInput } from "./ChatInput.jsx";
+import { ChatStart } from "./ChatStart.jsx";
 
 export function ChatScreen({
   messages,

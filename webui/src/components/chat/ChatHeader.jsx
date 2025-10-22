@@ -1,4 +1,4 @@
-import { getModelName } from "../config.js";
+import { getModelName } from "../../config.js";
 
 export function ChatHeader({
   mcpStatus,

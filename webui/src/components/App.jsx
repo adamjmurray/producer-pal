@@ -1,10 +1,10 @@
 import { useState } from "preact/hooks";
+import { useGeminiChat } from "../hooks/useGeminiChat.js";
+import { useMcpConnection } from "../hooks/useMcpConnection.js";
 import { useSettings } from "../hooks/useSettings.js";
 import { useTheme } from "../hooks/useTheme.js";
-import { useMcpConnection } from "../hooks/useMcpConnection.js";
-import { useGeminiChat } from "../hooks/useGeminiChat.js";
-import { SettingsScreen } from "./SettingsScreen.jsx";
-import { ChatScreen } from "./ChatScreen.jsx";
+import { ChatScreen } from "./chat/ChatScreen.jsx";
+import { SettingsScreen } from "./settings/SettingsScreen.jsx";
 
 export function App() {
   const settings = useSettings();
