@@ -105,11 +105,11 @@ export function SettingsScreen({
             className="w-full"
           />
         </div>
-        {hasApiKey && (
-          <p className="text-xs text-gray-500 dark:text-gray-400">
-            Note: Settings changes apply to new conversations.
-          </p>
-        )}
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          {hasApiKey
+            ? "Note: Settings changes apply to new conversations."
+            : "Settings will be stored in this web browser."}
+        </p>
         <div className="flex gap-2">
           <button
             onClick={saveSettings}
