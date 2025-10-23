@@ -51,9 +51,13 @@ export function useGeminiChat({
           temperature,
         };
 
-        config.thinkingConfig = { thinkingBudget };
-        if (thinkingBudget > 0) {
-          config.thinkingConfig.includeThoughts = showThoughts;
+        // Only set thinkingConfig if thinking is not disabled (0)
+        // For Auto mode (-1) or specific budgets (>0), include thoughts based on user setting
+        if (thinkingBudget !== 0) {
+          config.thinkingConfig = {
+            thinkingBudget,
+            includeThoughts: showThoughts,
+          };
         }
 
         chatRef.current = new GeminiChat(apiKey, config);
