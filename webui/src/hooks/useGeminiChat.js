@@ -136,15 +136,7 @@ export function useGeminiChat({
         }
       }
     } catch (error) {
-      // Check if this is an MCP connection error
-      if (
-        error.message?.includes("MCP") ||
-        error.message?.includes("connect")
-      ) {
-        // Note: We can't call setMcpStatus here since it's managed by useMcpConnection
-        // The error message will inform the user
-      }
-
+      console.error(error);
       setMessages((msgs) => [
         ...msgs,
         { role: "error", content: `Error: ${error.message}` },
