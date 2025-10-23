@@ -11,8 +11,10 @@ claude-desktop-extension/licenses
 claude-desktop-extension/manifest.json
 max-for-live-device/*.js
 max-for-live-device/*.mjs
+max-for-live-device/*.html
 max-for-live-device/LICENSE
 max-for-live-device/Ableton Folder Info/
 *.afdesign~lock~
 release
 scratchpad
+.env
