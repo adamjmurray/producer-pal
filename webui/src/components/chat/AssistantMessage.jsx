@@ -54,7 +54,7 @@ export function AssistantMessage({ parts }) {
                         &nbsp;↳ {part.result}
                       </summary>
                       <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
-                        {part.result}
+                        <FullResultDetails result={part.result} />
                       </div>
                     </details>
                   )}
@@ -77,4 +77,19 @@ export function AssistantMessage({ parts }) {
       })}
     </div>
   );
+}
+
+function FullResultDetails({ result }) {
+  let s = `${result}`;
+  if (s.startsWith("{")) {
+    try {
+      const obj = JSON.parse(s);
+      return (
+        <pre className="whitespace-pre-wrap">
+          {JSON.stringify(obj, null, 2).replaceAll("\\n", "\n")}
+        </pre>
+      );
+    } catch {}
+  }
+  return <>{s}</>;
 }
