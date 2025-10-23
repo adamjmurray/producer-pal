@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
+import { ActivityIndicator } from "./ActivityIndicator.jsx";
 import { AssistantMessage } from "./AssistantMessage.jsx";
 import { ChatHeader } from "./ChatHeader.jsx";
 import { ChatInput } from "./ChatInput.jsx";
@@ -73,6 +74,8 @@ export function ChatScreen({
             )}
           </div>
         ))}
+
+        {isLoading && <ActivityIndicator />}
 
         <div ref={messagesEndRef} />
       </div>
