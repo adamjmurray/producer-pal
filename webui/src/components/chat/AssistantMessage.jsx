@@ -3,7 +3,7 @@ import { toolNames } from "../../config";
 
 export function AssistantMessage({ parts }) {
   return (
-    <div className="flex flex-col gap-3 py-1">
+    <div className="flex flex-col gap-3 pt-2 pb-1">
       {parts?.map((part, i) => {
         if (part.type === "thought") {
           return (
