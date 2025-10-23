@@ -27,7 +27,14 @@ function SineWave() {
     >
       <defs>
         <filter id="blur">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1" />
+          <feGaussianBlur in="SourceGraphic" stdDeviation="1">
+            <animate
+              attributeName="stdDeviation"
+              values="0;1.5;0"
+              dur="2.9s"
+              repeatCount="indefinite"
+            />
+          </feGaussianBlur>
         </filter>
         <style>
           {`
