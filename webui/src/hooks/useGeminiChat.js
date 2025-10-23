@@ -137,10 +137,21 @@ export function useGeminiChat({
       }
     } catch (error) {
       console.error(error);
+      let errorMessage = `${error}`;
+      if (!errorMessage.startsWith("Error")) {
+        errorMessage = `Error: ${errorMessage}`;
+      }
+      // TODO: it might make sense to replace existing msgs with
+      // whatever made it into chatRef.current.chat.getHistory()
+      // and then it might be possible to allow a retry here?
       setMessages((msgs) => [
         ...msgs,
-        { role: "error", content: `Error: ${error.message}` },
+        { role: "error", content: errorMessage },
       ]);
+      if (chatRef.current && chatRef.current.chat) {
+        const chatHistory = chatRef.current.chat.getHistory();
+        console.log("chat history at point of error:", chatHistory);
+      }
     } finally {
       setIsAssistantResponding(false);
     }
