@@ -1,3 +1,4 @@
+import logoSvg from "../../assets/producer-pal-logo.svg";
 import { getModelName } from "../../config.js";
 
 export function ChatHeader({
@@ -11,7 +12,12 @@ export function ChatHeader({
 }) {
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-baseline">
-      <h1 className="text-lg font-semibold">Producer Pal Chat</h1>
+      <img
+        src={logoSvg}
+        alt="Producer Pal"
+        className="absolute h-5 translate-y-1 scale-200"
+      />
+      <h1 className="pl-9 text-lg font-semibold">Producer Pal Chat</h1>
       <div className="ml-2 flex gap-1 text-xs">
         {mcpStatus === "connected" && (
           <span className="text-green-600 dark:text-green-400">✓ Ready</span>
