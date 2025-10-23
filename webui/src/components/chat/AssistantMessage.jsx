@@ -9,11 +9,13 @@ export function AssistantMessage({ parts }) {
           return (
             <details
               key={i}
-              className="p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500"
+              className={`p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500 ${
+                part.isOpen ? "animate-pulse" : ""
+              }`}
               open={part.isOpen}
             >
               <summary
-                className={`font-semibold truncate ${part.isOpen ? "animate-pulse" : ""}`}
+                className="font-semibold truncate"
                 dangerouslySetInnerHTML={{
                   __html: part.isOpen
                     ? "💭 Thinking..."
@@ -38,8 +40,8 @@ export function AssistantMessage({ parts }) {
           return (
             <div key={i}>
               <div className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded">
-                <details>
-                  <summary className={`${part.result ? "" : "animate-pulse"}`}>
+                <details className={`${part.result ? "" : "animate-pulse"}`}>
+                  <summary>
                     &nbsp;🔧 {part.result ? "used tool: " : "using tool: "}
                     {toolNames[part.name] ?? part.name}
                   </summary>
