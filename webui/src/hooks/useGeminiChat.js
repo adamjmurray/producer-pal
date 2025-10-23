@@ -1,5 +1,5 @@
 import { useRef, useState } from "preact/hooks";
-import { getThinkingBudget } from "../config.js";
+import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 import { GeminiChat } from "./gemini-chat.js";
 
 export function useGeminiChat({
@@ -49,6 +49,7 @@ export function useGeminiChat({
         const config = {
           model,
           temperature,
+          systemInstruction: SYSTEM_INSTRUCTION,
         };
 
         // Only set thinkingConfig if thinking is not disabled (0)
