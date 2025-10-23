@@ -60,7 +60,7 @@ export function App() {
   return (
     <ChatScreen
       messages={chat.messages}
-      isLoading={chat.isLoading}
+      isAssistantResponding={chat.isAssistantResponding}
       handleSend={chat.handleSend}
       activeModel={chat.activeModel}
       activeThinking={chat.activeThinking}

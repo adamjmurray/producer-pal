@@ -13,7 +13,7 @@ export function useGeminiChat({
   checkMcpConnection,
 }) {
   const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const [activeModel, setActiveModel] = useState(null);
   const [activeThinking, setActiveThinking] = useState(null);
   const [activeTemperature, setActiveTemperature] = useState(null);
@@ -33,7 +33,7 @@ export function useGeminiChat({
 
     const userMessage = message.trim();
     setMessages((msgs) => [...msgs, { role: "user", content: userMessage }]);
-    setIsLoading(true);
+    setIsAssistantResponding(true);
 
     try {
       if (!chatRef.current) {
@@ -145,13 +145,13 @@ export function useGeminiChat({
         { role: "error", content: `Error: ${error.message}` },
       ]);
     } finally {
-      setIsLoading(false);
+      setIsAssistantResponding(false);
     }
   };
 
   return {
     messages,
-    isLoading,
+    isAssistantResponding,
     activeModel,
     activeThinking,
     activeTemperature,

@@ -7,7 +7,7 @@ import { ChatStart } from "./ChatStart.jsx";
 
 export function ChatScreen({
   messages,
-  isLoading,
+  isAssistantResponding,
   handleSend,
   activeModel,
   activeThinking,
@@ -75,12 +75,15 @@ export function ChatScreen({
           </div>
         ))}
 
-        {isLoading && <ActivityIndicator />}
+        {isAssistantResponding && <ActivityIndicator />}
 
         <div ref={messagesEndRef} />
       </div>
 
-      <ChatInput handleSend={handleSend} isLoading={isLoading} />
+      <ChatInput
+        handleSend={handleSend}
+        isAssistantResponding={isAssistantResponding}
+      />
     </div>
   );
 }

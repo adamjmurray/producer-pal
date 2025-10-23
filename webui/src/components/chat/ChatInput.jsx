@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 
-export function ChatInput({ handleSend, isLoading }) {
+export function ChatInput({ handleSend, isAssistantResponding }) {
   const [input, setInput] = useState("");
 
   const handleKeyDown = (e) => {
@@ -23,17 +23,17 @@ export function ChatInput({ handleSend, isLoading }) {
           value={input}
           onInput={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          disabled={isLoading}
+          disabled={isAssistantResponding}
           placeholder="Type a message... (Shift+Enter for new line)"
           className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded resize-none placeholder:dark:text-gray-400 placeholder:text-gray-500"
           rows="2"
         />
         <button
           onClick={handleSendClick}
-          disabled={isLoading || !input.trim()}
+          disabled={isAssistantResponding || !input.trim()}
           className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 hover:bg-blue-700"
         >
-          {isLoading ? "..." : "Send"}
+          {isAssistantResponding ? "..." : "Send"}
         </button>
       </div>
     </div>
