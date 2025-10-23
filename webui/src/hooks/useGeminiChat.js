@@ -111,7 +111,7 @@ export function useGeminiChat({
               type: "tool",
               name: chunk.name,
               args: chunk.args,
-              result: "...",
+              result: null,
             });
             return newMsgs;
           });

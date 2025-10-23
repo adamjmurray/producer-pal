@@ -39,21 +39,23 @@ export function AssistantMessage({ parts }) {
             <div key={i}>
               <div className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded">
                 <details>
-                  <summary>
-                    &nbsp;🔧 {toolNames[part.name] ?? part.name}
+                  <summary className={`${part.result ? "" : "animate-pulse"}`}>
+                    &nbsp;🔧 {part.result ? "used tool: " : "using tool: "}
+                    {toolNames[part.name] ?? part.name}
                   </summary>
                   <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
                     {part.name}({JSON.stringify(part.args, null, 0)})
                   </div>
-
-                  <details>
-                    <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
-                      &nbsp;↳ {part.result}
-                    </summary>
-                    <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
-                      {part.result}
-                    </div>
-                  </details>
+                  {part.result && (
+                    <details>
+                      <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
+                        &nbsp;↳ {part.result}
+                      </summary>
+                      <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
+                        {part.result}
+                      </div>
+                    </details>
+                  )}
                 </details>
               </div>
             </div>
