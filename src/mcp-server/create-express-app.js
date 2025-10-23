@@ -66,8 +66,16 @@ export function createExpressApp() {
     }
   });
 
-  // Because we're using a stateless server, these standard streamable HTTP transport methods are not allowed:
-  app.get("/mcp", async (_req, res) => res.status(405).json(methodNotAllowed));
+  // Status endpoint - the MCP client may check this
+  app.get("/mcp", async (_req, res) =>
+    res.status(200).json({
+      status: "ready",
+      mode: "stateless",
+      message: "Use POST to /mcp for MCP requests",
+    }),
+  );
+
+  // Because we're using a stateless server, DELETE is not needed:
   app.delete("/mcp", async (_req, res) =>
     res.status(405).json(methodNotAllowed),
   );
