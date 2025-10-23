@@ -49,7 +49,7 @@ export function ChatScreen({
           />
         )}
 
-        {messages.map((msg, idx) => (
+        {messages.filter(hasContent).map((msg, idx) => (
           <div
             key={idx}
             className={`${
@@ -62,12 +62,7 @@ export function ChatScreen({
           >
             {msg.role === "assistant" && <AssistantMessage parts={msg.parts} />}
 
-            {msg.role === "user" && (
-              <div className="prose dark:prose-invert prose-sm">
-                {msg.content}
-              </div>
-            )}
-            {msg.role === "error" && (
+            {(msg.role === "user" || msg.role === "error") && (
               <div className="prose dark:prose-invert prose-sm">
                 {msg.content}
               </div>
@@ -86,4 +81,8 @@ export function ChatScreen({
       />
     </div>
   );
+}
+
+function hasContent(message) {
+  return (message.parts ?? []).length > 0 || (message.content ?? "").length > 0;
 }
