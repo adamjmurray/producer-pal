@@ -17,7 +17,7 @@ export function MessageList({ messages, isAssistantResponding }) {
           key={idx}
           className={`${
             msg.role === "user"
-              ? "ml-auto text-black bg-blue-300 dark:text-white dark:bg-blue-600"
+              ? "ml-auto text-black bg-blue-100 dark:text-white dark:bg-blue-900"
               : msg.role === "error"
                 ? "bg-red-600 text-white"
                 : "bg-gray-100 dark:bg-gray-800"
