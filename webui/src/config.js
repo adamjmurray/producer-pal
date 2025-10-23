@@ -29,3 +29,22 @@ export const getThinkingBudget = (level) => {
       return 0;
   }
 };
+
+export const toolNames = {
+  "ppal-connect": "Connect to Ableton",
+  "ppal-read-live-set": "Read Live Set",
+  "ppal-update-live-set": "Update Live Set",
+  "ppal-create-track": "Create Track",
+  "ppal-read-track": "Read Track",
+  "ppal-update-track": "Update Track",
+  "ppal-create-scene": "Create Scene",
+  "ppal-read-scene": "Read Scene",
+  "ppal-update-scene": "Update Scene",
+  "ppal-create-clip": "Create Clip",
+  "ppal-read-clip": "Read Clip",
+  "ppal-update-clip": "Update Clip",
+  "ppal-playback": "Playback Controls",
+  "ppal-delete": "Delete Track/Scene/Clip",
+  "ppal-duplicate": "Duplicate Track/Scene/Clip",
+  "ppal-memory": "Project Notes",
+};

@@ -1,4 +1,5 @@
 import { marked } from "marked";
+import { toolNames } from "../../config";
 
 export function AssistantMessage({ parts }) {
   return (
@@ -38,7 +39,9 @@ export function AssistantMessage({ parts }) {
             <div key={i}>
               <div className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded">
                 <details>
-                  <summary>&nbsp;🔧 {part.name}</summary>
+                  <summary>
+                    &nbsp;🔧 {toolNames[part.name] ?? part.name}
+                  </summary>
                   <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
                     {part.name}({JSON.stringify(part.args, null, 0)})
                   </div>

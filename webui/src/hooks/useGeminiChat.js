@@ -1,6 +1,6 @@
 import { useRef, useState } from "preact/hooks";
-import { GeminiChat } from "./gemini-chat.js";
 import { getThinkingBudget } from "../config.js";
+import { GeminiChat } from "./gemini-chat.js";
 
 export function useGeminiChat({
   apiKey,
