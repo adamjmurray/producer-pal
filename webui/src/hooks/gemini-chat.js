@@ -9,6 +9,8 @@ export class GeminiChat {
     this.config = config;
     this.chat = null;
     this.mcpClient = null;
+    this.history = config.initialHistory || [];
+    this.currentTurn = null; // Buffer for accumulating streaming parts
   }
 
   static async testConnection(mcpUrl = "http://localhost:3350/mcp") {
@@ -42,6 +44,7 @@ export class GeminiChat {
     this.chat = this.ai.chats.create({
       model: this.config.model || "gemini-2.5-flash-lite",
       config: chatConfig,
+      history: this.history,
     });
   }
 
@@ -113,12 +116,46 @@ export class GeminiChat {
       throw new Error("Chat not initialized. Call initialize() first.");
     }
 
+    this.history.push({
+      role: "user",
+      parts: [{ text: message }],
+    });
+
     const stream = await this.chat.sendMessageStream({ message });
 
     for await (const chunk of stream) {
-      const parts = chunk.candidates?.[0]?.content?.parts || [];
+      //console.log("chunk:", JSON.stringify(chunk, null, 2));
+      const response = chunk.candidates?.[0] ?? {};
+      const { role, parts = [] } = response.content;
+      const finishReason = response.finishReason;
 
       for (const part of parts) {
+        // function call results are presented as a user message, so handle switching roles:
+        if (this.currentTurn && this.currentTurn.role !== role) {
+          this.history.push(this.currentTurn);
+          this.currentTurn = null;
+        }
+
+        // If we have parts but no currentTurn (after a finishReason),
+        // start a new turn to handle e.g. automatic function calling
+        if (!this.currentTurn) {
+          this.currentTurn = { role, parts: [] };
+        }
+
+        // Merge text chunks: if current part is text and last part is also text with same thought flag,
+        // append to existing text instead of creating a new part
+        const lastPart =
+          this.currentTurn.parts[this.currentTurn.parts.length - 1];
+        if (
+          part.text &&
+          lastPart?.text &&
+          !!part.thought === !!lastPart.thought
+        ) {
+          lastPart.text += part.text;
+        } else {
+          this.currentTurn.parts.push(part);
+        }
+
         if (part.text) {
           yield {
             type: part.thought ? "thought" : "text",
@@ -137,6 +174,36 @@ export class GeminiChat {
           };
         }
       }
+
+      // When a turn completes with finishReason, finalize it
+      if (finishReason && this.currentTurn) {
+        this.history.push(this.currentTurn);
+        this.currentTurn = null;
+        console.log("added to history", JSON.stringify(this.history, null, 2));
+      }
     }
+  }
+
+  /**
+   * Returns the full conversation history in Gemini's native Content[] format.
+   * @returns {Array} Array of Content objects with role and parts
+   */
+  getHistory() {
+    return this.history;
+  }
+
+  /**
+   * Returns conversation history up to (and including) the specified turn index.
+   * Useful for implementing retry/fork from a specific point.
+   * @param {number} turnIndex - Zero-based index of the last turn to include
+   * @returns {Array} Partial history as Content[] array
+   */
+  getHistoryUpTo(turnIndex) {
+    if (turnIndex < 0 || turnIndex >= this.history.length) {
+      throw new Error(
+        `Invalid turnIndex ${turnIndex}. History has ${this.history.length} turns.`,
+      );
+    }
+    return this.history.slice(0, turnIndex + 1);
   }
 }
