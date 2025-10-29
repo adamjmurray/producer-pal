@@ -121,16 +121,23 @@ export class GeminiChat {
       parts: [{ text: message }],
     });
 
+    // console.log(
+    //   "currentTurn:",
+    //   this.history.length, // turn index
+    //   JSON.stringify(this.currentTurn, null, 2),
+    // );
+
     const stream = await this.chat.sendMessageStream({ message });
 
     for await (const chunk of stream) {
-      //console.log("chunk:", JSON.stringify(chunk, null, 2));
+      // console.log("chunk:", JSON.stringify(chunk, null, 2));
       const response = chunk.candidates?.[0] ?? {};
       const { role, parts = [] } = response.content;
       const finishReason = response.finishReason;
 
       for (const part of parts) {
-        // function call results are presented as a user message, so handle switching roles:
+        // if we switch roles, change turns
+        // (this generally only happens for function calls and responses, but that's already handled below anyway)
         if (this.currentTurn && this.currentTurn.role !== role) {
           this.history.push(this.currentTurn);
           this.currentTurn = null;
@@ -147,14 +154,25 @@ export class GeminiChat {
         const lastPart =
           this.currentTurn.parts[this.currentTurn.parts.length - 1];
         if (
+          // if consecutive parts are text, we potentially can concatenate
           part.text &&
           lastPart?.text &&
-          !!part.thought === !!lastPart.thought
+          // if we switch between thoughts and normal text, don't concatenate:
+          !!part.thought === !!lastPart.thought &&
+          // if anything has a thoughtSignature, don't concatenate (https://ai.google.dev/gemini-api/docs/thinking#signatures):
+          !lastPart.thoughtSignature &&
+          !part.thoughtSignature
         ) {
           lastPart.text += part.text;
         } else {
           this.currentTurn.parts.push(part);
         }
+
+        // console.log(
+        //   "currentTurn:",
+        //   this.history.length, // turn index
+        //   JSON.stringify(this.currentTurn, null, 2),
+        // );
 
         if (part.text) {
           yield {
@@ -175,11 +193,16 @@ export class GeminiChat {
         }
       }
 
-      // When a turn completes with finishReason, finalize it
-      if (finishReason && this.currentTurn) {
+      // When a turn completes with finishReason, finalize it.
+      // Function responses don't have a finishReason, but always happen in a single stream chunk,
+      // (at least in Producer Pal's current implementation), so we can finalize them immediately.
+      if (
+        this.currentTurn &&
+        (finishReason || this.currentTurn.parts?.[0]?.functionResponse)
+      ) {
         this.history.push(this.currentTurn);
         this.currentTurn = null;
-        console.log("added to history", JSON.stringify(this.history, null, 2));
+        // console.log("added to history", JSON.stringify(this.history, null, 2));
       }
     }
   }
