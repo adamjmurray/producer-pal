@@ -1,6 +1,13 @@
 import { beforeEach, vi } from "vitest";
 import "./expect-extensions";
-import { LiveAPI, liveApiCall, mockLiveApiGet } from "./mock-live-api";
+import {
+  LiveAPI,
+  liveApiCall,
+  liveApiId,
+  liveApiPath,
+  liveApiType,
+  mockLiveApiGet,
+} from "./mock-live-api";
 import { Task } from "./mock-task";
 
 globalThis.LiveAPI = LiveAPI;
@@ -58,7 +65,13 @@ beforeEach(() => {
 
   // default mocking behaviors:
   mockLiveApiGet();
-  // TODO: this should move into mockLiveApiCall (and maybe introduce mockLiveApiId and mockLiveApiPath and eventually wrap the whole thing in mockLiveApi)
+
+  // Set up default mock implementations for id, path, and type getters
+  // Return undefined to fall back to instance properties (_id, _path) and auto-detection
+  liveApiId.mockImplementation(() => undefined);
+  liveApiPath.mockImplementation(() => undefined);
+  liveApiType.mockImplementation(() => undefined);
+
   liveApiCall.mockImplementation(function (method) {
     switch (method) {
       case "get_version_string":

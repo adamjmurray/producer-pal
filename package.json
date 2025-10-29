@@ -57,12 +57,12 @@
     "@types/express": "^5.0.5",
     "@types/max-api": "^2.0.3",
     "@types/node": "^24.9.2",
-    "@vitest/coverage-v8": "^3.2.4",
+    "@vitest/coverage-v8": "^4.0.5",
     "chokidar-cli": "^3.0.0",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
     "rollup": "^4.52.5",
     "rollup-plugin-copy": "^3.5.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.5"
   }
 }

@@ -17,19 +17,27 @@ const mockServer = {
 const mockTransport = {};
 
 vi.mock(import("@modelcontextprotocol/sdk/client/index.js"), () => ({
-  Client: vi.fn(() => mockClient),
+  Client: vi.fn(function () {
+    return mockClient;
+  }),
 }));
 
 vi.mock(import("@modelcontextprotocol/sdk/client/streamableHttp.js"), () => ({
-  StreamableHTTPClientTransport: vi.fn(() => mockTransport),
+  StreamableHTTPClientTransport: vi.fn(function () {
+    return mockTransport;
+  }),
 }));
 
 vi.mock(import("@modelcontextprotocol/sdk/server/index.js"), () => ({
-  Server: vi.fn(() => mockServer),
+  Server: vi.fn(function () {
+    return mockServer;
+  }),
 }));
 
 vi.mock(import("@modelcontextprotocol/sdk/server/stdio.js"), () => ({
-  StdioServerTransport: vi.fn(() => mockTransport),
+  StdioServerTransport: vi.fn(function () {
+    return mockTransport;
+  }),
 }));
 
 vi.mock(import("@modelcontextprotocol/sdk/types.js"), () => ({
