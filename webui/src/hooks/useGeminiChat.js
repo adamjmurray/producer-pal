@@ -68,12 +68,12 @@ export function useGeminiChat({
         setActiveTemperature(temperature);
       }
 
-      const streamGen = chatRef.current.sendMessageStream(userMessage);
+      const stream = chatRef.current.sendMessage(userMessage);
 
-      for await (const chatHistory of streamGen) {
+      for await (const chatHistory of stream) {
         // console.log(
         //   "useGeminiChat received chunk, now history is",
-        //   JSON.stringify(history, null, 2),
+        //   JSON.stringify(chatHistory, null, 2),
         // );
         setMessages(mergeMessages(chatHistory));
       }
