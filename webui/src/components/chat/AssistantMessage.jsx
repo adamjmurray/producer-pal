@@ -9,7 +9,7 @@ export function AssistantMessage({ parts }) {
           return (
             <details
               key={i}
-              className={`p-2 bg-gray-200 dark:bg-gray-700 rounded text-xs border-l-3 border-green-500 ${
+              className={`p-2 text-xs bg-gray-200 dark:bg-gray-700 rounded border-l-3 border-green-500 ${
                 part.isOpen ? "animate-pulse" : ""
               }`}
               open={part.isOpen}
@@ -25,7 +25,7 @@ export function AssistantMessage({ parts }) {
                 }}
               />
               <div
-                className="pt-2 prose dark:prose-invert prose-sm text-xs max-w-none"
+                className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
                 dangerouslySetInnerHTML={{
                   __html: part.isOpen
                     ? marked(part.content.trim())
@@ -38,29 +38,37 @@ export function AssistantMessage({ parts }) {
           );
         } else if (part.type === "tool") {
           return (
-            <div key={i}>
-              <div className="text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded">
-                <details className={`${part.result ? "" : "animate-pulse"}`}>
-                  <summary>
-                    &nbsp;🔧 {part.result ? "used tool: " : "using tool: "}
-                    {toolNames[part.name] ?? part.name}
+            <details
+              key={i}
+              className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
+                part.result ? "" : "animate-pulse"
+              } ${part.isError ? "border-l-3 border-red-500" : ""}`}
+            >
+              <summary>
+                &nbsp;🔧{" "}
+                {!part.result
+                  ? "using tool: "
+                  : part.isError
+                    ? "tool failed: "
+                    : "used tool: "}
+                {toolNames[part.name] ?? part.name}
+              </summary>
+              <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
+                {part.name}({JSON.stringify(part.args, null, 0)})
+              </div>
+              {part.result && (
+                <details>
+                  <summary
+                    className={`px-2 my-1 truncate ${part.isError ? "text-red-700 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}`}
+                  >
+                    &nbsp;↳ {part.result}
                   </summary>
                   <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
-                    {part.name}({JSON.stringify(part.args, null, 0)})
+                    <FullResultDetails result={part.result} />
                   </div>
-                  {part.result && (
-                    <details>
-                      <summary className="px-2 my-1 truncate text-gray-600 dark:text-gray-400">
-                        &nbsp;↳ {part.result}
-                      </summary>
-                      <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
-                        <FullResultDetails result={part.result} />
-                      </div>
-                    </details>
-                  )}
                 </details>
-              </div>
-            </div>
+              )}
+            </details>
           );
         } else if (part.type === "text") {
           return (

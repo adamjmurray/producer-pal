@@ -33,6 +33,9 @@ export function mergeMessages(history) {
           lastPart.name === functionResponse.name
         ) {
           lastPart.result = getToolCallResult(functionResponse);
+          if (isToolCallError(functionResponse)) {
+            lastPart.isError = true;
+          }
         } else {
           console.error(
             "Missing corresponding function call for function response",
@@ -72,5 +75,12 @@ function isFunctionResponse(parts) {
 function getToolCallResult(functionResponse) {
   // Warnings can be returned in the additional content entries,
   // but that generally isn't intended to be user-facing, so we ignore it
-  return functionResponse.response?.content?.[0]?.text;
+  return (
+    functionResponse.response?.content?.[0]?.text ??
+    functionResponse.response?.error?.content?.[0]?.text
+  );
+}
+
+function isToolCallError(functionResponse) {
+  return functionResponse.response?.error != null;
 }
