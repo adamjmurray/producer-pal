@@ -23,7 +23,7 @@ export function MessageList({ messages, isAssistantResponding }) {
                 : "bg-gray-100 dark:bg-gray-800"
           } rounded-lg py-0.5 px-3 max-w-[90%]`}
         >
-          {msg.role === "assistant" && <AssistantMessage parts={msg.parts} />}
+          {msg.role === "model" && <AssistantMessage parts={msg.parts} />}
 
           {(msg.role === "user" || msg.role === "error") && (
             <div className="prose dark:prose-invert prose-sm">

@@ -10,7 +10,6 @@ export class GeminiChat {
     this.chat = null;
     this.mcpClient = null;
     this.history = config.initialHistory || [];
-    this.currentTurn = null; // Buffer for accumulating streaming parts
   }
 
   static async testConnection(mcpUrl = "http://localhost:3350/mcp") {
@@ -116,16 +115,16 @@ export class GeminiChat {
       throw new Error("Chat not initialized. Call initialize() first.");
     }
 
-    this.history.push({
+    let currentTurn = {
       role: "user",
       parts: [{ text: message }],
-    });
+    };
 
-    // console.log(
-    //   "currentTurn:",
-    //   this.history.length, // turn index
-    //   JSON.stringify(this.currentTurn, null, 2),
-    // );
+    this.history.push(currentTurn);
+
+    yield {
+      history: this.history,
+    };
 
     const stream = await this.chat.sendMessageStream({ message });
 
@@ -136,23 +135,14 @@ export class GeminiChat {
       const finishReason = response.finishReason;
 
       for (const part of parts) {
-        // if we switch roles, change turns
-        // (this generally only happens for function calls and responses, but that's already handled below anyway)
-        if (this.currentTurn && this.currentTurn.role !== role) {
-          this.history.push(this.currentTurn);
-          this.currentTurn = null;
-        }
-
-        // If we have parts but no currentTurn (after a finishReason),
-        // start a new turn to handle e.g. automatic function calling
-        if (!this.currentTurn) {
-          this.currentTurn = { role, parts: [] };
+        if (currentTurn?.role !== role) {
+          currentTurn = { role, parts: [] };
+          this.history.push(currentTurn);
         }
 
         // Merge text chunks: if current part is text and last part is also text with same thought flag,
         // append to existing text instead of creating a new part
-        const lastPart =
-          this.currentTurn.parts[this.currentTurn.parts.length - 1];
+        const lastPart = currentTurn.parts.at(-1);
         if (
           // if consecutive parts are text, we potentially can concatenate
           part.text &&
@@ -165,30 +155,33 @@ export class GeminiChat {
         ) {
           lastPart.text += part.text;
         } else {
-          this.currentTurn.parts.push(part);
+          currentTurn.parts.push(part);
         }
 
         // console.log(
         //   "currentTurn:",
         //   this.history.length, // turn index
-        //   JSON.stringify(this.currentTurn, null, 2),
+        //   JSON.stringify(currentTurn, null, 2),
         // );
 
         if (part.text) {
           yield {
             type: part.thought ? "thought" : "text",
             content: part.text,
+            history: this.history,
           };
         } else if (part.functionCall) {
           yield {
             type: "toolCall",
             name: part.functionCall.name,
             args: part.functionCall.args,
+            history: this.history,
           };
         } else if (part.functionResponse) {
           yield {
             type: "toolResult",
             result: part.functionResponse?.response?.content?.[0]?.text,
+            history: this.history,
           };
         }
       }
@@ -196,13 +189,8 @@ export class GeminiChat {
       // When a turn completes with finishReason, finalize it.
       // Function responses don't have a finishReason, but always happen in a single stream chunk,
       // (at least in Producer Pal's current implementation), so we can finalize them immediately.
-      if (
-        this.currentTurn &&
-        (finishReason || this.currentTurn.parts?.[0]?.functionResponse)
-      ) {
-        this.history.push(this.currentTurn);
-        this.currentTurn = null;
-        // console.log("added to history", JSON.stringify(this.history, null, 2));
+      if (finishReason || currentTurn.parts?.[0]?.functionResponse) {
+        currentTurn = null;
       }
     }
   }

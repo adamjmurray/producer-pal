@@ -69,7 +69,7 @@ export function useGeminiChat({
       }
 
       const assistantMessage = {
-        role: "assistant",
+        role: "model",
         parts: [],
       };
       setMessages((msgs) => [...msgs, assistantMessage]);
@@ -77,6 +77,11 @@ export function useGeminiChat({
       const streamGen = chatRef.current.sendMessageStream(userMessage);
 
       for await (const chunk of streamGen) {
+        // console.log(
+        //   "useGeminiChat received chunk, now history is",
+        //   JSON.stringify(chunk.history, null, 2),
+        // );
+
         if (chunk.type === "text" || chunk.type === "thought") {
           setMessages((msgs) => {
             const newMsgs = [...msgs];
