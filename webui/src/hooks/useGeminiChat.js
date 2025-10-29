@@ -1,6 +1,7 @@
 import { useRef, useState } from "preact/hooks";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 import { GeminiChat } from "./gemini-chat.js";
+import { mergeMessages } from "./mergeMessages.js";
 
 export function useGeminiChat({
   apiKey,
@@ -32,7 +33,6 @@ export function useGeminiChat({
     if (!message?.trim()) return;
 
     const userMessage = message.trim();
-    setMessages((msgs) => [...msgs, { role: "user", content: userMessage }]);
     setIsAssistantResponding(true);
 
     try {
@@ -68,91 +68,33 @@ export function useGeminiChat({
         setActiveTemperature(temperature);
       }
 
-      const assistantMessage = {
-        role: "model",
-        parts: [],
-      };
-      setMessages((msgs) => [...msgs, assistantMessage]);
-
       const streamGen = chatRef.current.sendMessageStream(userMessage);
 
-      for await (const chunk of streamGen) {
+      for await (const chatHistory of streamGen) {
         // console.log(
         //   "useGeminiChat received chunk, now history is",
-        //   JSON.stringify(chunk.history, null, 2),
+        //   JSON.stringify(history, null, 2),
         // );
-
-        if (chunk.type === "text" || chunk.type === "thought") {
-          setMessages((msgs) => {
-            const newMsgs = [...msgs];
-            const lastMsg = newMsgs[newMsgs.length - 1];
-            const lastPart = lastMsg.parts[lastMsg.parts.length - 1];
-
-            // If last part is same type, append to it
-            if (lastPart && lastPart.type === chunk.type) {
-              lastPart.content += chunk.content;
-            } else {
-              // When adding a new thought or text part, close all previous thoughts
-              if (chunk.type === "thought" || chunk.type === "text") {
-                for (const part of lastMsg.parts) {
-                  if (part.type === "thought" && part.isOpen) {
-                    part.isOpen = false;
-                  }
-                }
-              }
-
-              // Create new part
-              const newPart = {
-                type: chunk.type,
-                content: chunk.content,
-              };
-              if (chunk.type === "thought") {
-                newPart.isOpen = true;
-              }
-              lastMsg.parts.push(newPart);
-            }
-            return newMsgs;
-          });
-        } else if (chunk.type === "toolCall") {
-          setMessages((msgs) => {
-            const newMsgs = [...msgs];
-            const lastMsg = newMsgs[newMsgs.length - 1];
-            lastMsg.parts.push({
-              type: "tool",
-              name: chunk.name,
-              args: chunk.args,
-              result: null,
-            });
-            return newMsgs;
-          });
-        } else if (chunk.type === "toolResult") {
-          setMessages((msgs) => {
-            const newMsgs = [...msgs];
-            const lastMsg = newMsgs[newMsgs.length - 1];
-            // Find the last tool part and update its result
-            for (let i = lastMsg.parts.length - 1; i >= 0; i--) {
-              if (lastMsg.parts[i].type === "tool") {
-                lastMsg.parts[i].result = chunk.result;
-                break;
-              }
-            }
-            return newMsgs;
-          });
-        }
+        setMessages(mergeMessages(chatHistory));
       }
-      // console.log(
-      //   "Done streaming assistant response. History:",
-      //   JSON.stringify(chatRef.current?.chat?.getHistory(), null, 2),
-      // );
     } catch (error) {
       console.error(error);
       let errorMessage = `${error}`;
       if (!errorMessage.startsWith("Error")) {
         errorMessage = `Error: ${errorMessage}`;
       }
+      // TODO? Should the latest/current error be separate state from the list of messages?
       setMessages((msgs) => [
         ...msgs,
-        { role: "error", content: errorMessage },
+        {
+          role: "error",
+          parts: [
+            {
+              type: "text",
+              content: errorMessage,
+            },
+          ],
+        },
       ]);
     } finally {
       setIsAssistantResponding(false);

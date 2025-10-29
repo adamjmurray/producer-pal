@@ -12,22 +12,23 @@ export function MessageList({ messages, isAssistantResponding }) {
 
   return (
     <div className="p-4 space-y-4">
-      {messages.filter(hasContent).map((msg, idx) => (
+      {messages.filter(hasContent).map((message, idx) => (
         <div
           key={idx}
           className={`${
-            msg.role === "user"
+            message.role === "user"
               ? "ml-auto text-black bg-blue-100 dark:text-white dark:bg-blue-900"
-              : msg.role === "error"
+              : message.role === "error"
                 ? "bg-red-600 text-white"
                 : "bg-gray-100 dark:bg-gray-800"
           } rounded-lg py-0.5 px-3 max-w-[90%]`}
         >
-          {msg.role === "model" && <AssistantMessage parts={msg.parts} />}
-
-          {(msg.role === "user" || msg.role === "error") && (
+          {message.role === "model" && (
+            <AssistantMessage parts={message.parts} />
+          )}
+          {(message.role === "user" || message.role === "error") && (
             <div className="prose dark:prose-invert prose-sm">
-              {msg.content}
+              {formatUserAndErrorContent(message)}
             </div>
           )}
         </div>
@@ -42,4 +43,8 @@ export function MessageList({ messages, isAssistantResponding }) {
 
 function hasContent(message) {
   return (message.parts ?? []).length > 0 || (message.content ?? "").length > 0;
+}
+
+function formatUserAndErrorContent(message) {
+  return (message.parts ?? []).map(({ content }) => content ?? "").join("");
 }

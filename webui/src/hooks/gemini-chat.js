@@ -122,9 +122,7 @@ export class GeminiChat {
 
     this.history.push(currentTurn);
 
-    yield {
-      history: this.history,
-    };
+    yield this.history;
 
     const stream = await this.chat.sendMessageStream({ message });
 
@@ -158,32 +156,7 @@ export class GeminiChat {
           currentTurn.parts.push(part);
         }
 
-        // console.log(
-        //   "currentTurn:",
-        //   this.history.length, // turn index
-        //   JSON.stringify(currentTurn, null, 2),
-        // );
-
-        if (part.text) {
-          yield {
-            type: part.thought ? "thought" : "text",
-            content: part.text,
-            history: this.history,
-          };
-        } else if (part.functionCall) {
-          yield {
-            type: "toolCall",
-            name: part.functionCall.name,
-            args: part.functionCall.args,
-            history: this.history,
-          };
-        } else if (part.functionResponse) {
-          yield {
-            type: "toolResult",
-            result: part.functionResponse?.response?.content?.[0]?.text,
-            history: this.history,
-          };
-        }
+        yield this.history;
       }
 
       // When a turn completes with finishReason, finalize it.
