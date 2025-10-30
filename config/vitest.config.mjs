@@ -22,14 +22,20 @@ export default defineConfig({
       include: ["src/**", "webui/**"],
       exclude: [
         // ignore files that are not feasible to test
+
+        // ignore OS metadata files
         "**/.DS_Store",
 
         // ignore typedefs:
         "**/*.d.ts",
 
         // ignore static assets:
+        "**/*.html",
         "**/*.css",
         "**/*.svg",
+
+        // peggy grammars
+        "**/*.peggy",
 
         // ignore the bundle entry scripts:
         "src/live-api-adapter/live-api-adapter.js",
