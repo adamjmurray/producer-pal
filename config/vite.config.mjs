@@ -1,9 +1,13 @@
 import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
-import { renameSync } from "fs";
-import { join } from "path";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
+
+const rootDir = process.cwd();
+const licensePath = join(rootDir, "LICENSE");
+const licenseText = readFileSync(licensePath, "utf-8");
 
 export default defineConfig({
   plugins: [
@@ -23,6 +27,39 @@ export default defineConfig({
           );
         } catch (err) {
           console.error("Error renaming file:", err.message);
+        }
+      },
+    },
+    {
+      name: "add-license-header",
+      closeBundle() {
+        const outDir = join(process.cwd(), "max-for-live-device");
+        const filePath = join(outDir, "chat-ui.html");
+
+        try {
+          const content = readFileSync(filePath, "utf-8");
+
+          const licenseHeader = `<!--
+${licenseText}
+This file includes bundled dependencies:
+- Preact (MIT License)
+- Marked (MIT License)
+- Tailwind CSS (MIT License)
+- @modelcontextprotocol/sdk (MIT License)
+- @google/genai (Apache License 2.0)
+
+See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses.
+-->
+
+`;
+
+          const contentWithHeader = licenseHeader + content;
+          writeFileSync(filePath, contentWithHeader, "utf-8");
+          console.log(
+            `Added license header to ${filePath.replace(process.cwd() + "/", "")}`,
+          );
+        } catch (err) {
+          console.error("Error adding license header:", err.message);
         }
       },
     },
