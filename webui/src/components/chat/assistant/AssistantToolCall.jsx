@@ -1,4 +1,5 @@
 import { toolNames } from "../../../config.js";
+import { truncateString } from "../../../utils/truncate-string.js";
 
 export function AssistantToolCall({ name, args, result, isError }) {
   return (
@@ -20,7 +21,7 @@ export function AssistantToolCall({ name, args, result, isError }) {
           <summary
             className={`px-2 my-1 truncate ${isError ? "text-red-700 dark:text-red-400" : "text-gray-600 dark:text-gray-400"}`}
           >
-            &nbsp;↳ {result}
+            &nbsp;↳ {truncateString(result, 300)}
           </summary>
           <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
             <FullResultDetails result={result} />
