@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mergeMessages } from "./mergeMessages";
+import { mergeMessages } from "./merge-messages";
 
 describe("mergeMessages", () => {
   it("merges consecutive model messages and adds functionResponses to functionCalls ", () => {

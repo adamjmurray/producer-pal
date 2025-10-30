@@ -1,7 +1,7 @@
 import { useRef, useState } from "preact/hooks";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 import { GeminiChat } from "./gemini-chat.js";
-import { mergeMessages } from "./mergeMessages.js";
+import { mergeMessages } from "./merge-messages.js";
 
 export function useGeminiChat({
   apiKey,
