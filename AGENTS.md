@@ -36,6 +36,9 @@ See `doc/Architecture.md` for detailed system design.
 
 ## Critical Coding Rules
 
+- **File naming**: React components use PascalCase (e.g., `ChatHeader.jsx`). All
+  other files use kebab-case (e.g., `use-gemini-chat.js`, `live-api-adapter.js`)
+
 - **Import extensions**: Always include `.js` in imports
 
 - **Testing builds**: Always use `npm run build:all` for development (includes

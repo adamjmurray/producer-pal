@@ -1,0 +1,2 @@
+#!/bin/bash
+node --env-file=.env scripts/chat.mjs "$@"
