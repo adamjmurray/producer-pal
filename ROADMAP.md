@@ -15,10 +15,16 @@ In no particular order:
 - Run sand-boxed LLM-generated JavaScript code to generate and transform MIDI
   (LLM-generated algorithms)
 
-### Built-in Chat
+### Improved Built-in Chat
 
-- Setup an API key or point at a local LM Studio server and chat directly from
-  the Max for Live device via a popup window
+Along with Gemini, support these in the built-in chat UI:
+
+- Mistral API with free tier API keys
+- Local LM Studio server
+
+Any other free options, and possibly reasonably priced flat subscriptions, will
+take priority over pay-as-you-go options. The cost of pay-as-you-go may be a
+barrier to many.
 
 ### Behavior Customization
 
