@@ -54,7 +54,6 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.16",
     "@anthropic-ai/mcpb": "^1.1.1",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-commonjs": "^28.0.9",
@@ -62,12 +61,15 @@
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^0.4.4",
+    "@tailwindcss/vite": "^4.1.16",
+    "@testing-library/preact": "^3.2.4",
     "@types/express": "^5.0.5",
     "@types/max-api": "^2.0.3",
     "@types/node": "^24.9.2",
     "@vitest/coverage-v8": "^4.0.5",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
+    "happy-dom": "^20.0.10",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
     "rollup": "^4.52.5",
