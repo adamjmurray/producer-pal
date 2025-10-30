@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "preact/hooks";
 import { ActivityIndicator } from "./ActivityIndicator.jsx";
-import { AssistantMessage } from "./AssistantMessage.jsx";
+import { AssistantMessage } from "./assistant/AssistantMessage.jsx";
 
 export function MessageList({ messages, isAssistantResponding }) {
   const messagesEndRef = useRef(null);

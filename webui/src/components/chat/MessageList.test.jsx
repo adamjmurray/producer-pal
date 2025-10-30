@@ -12,7 +12,7 @@ vi.mock("./ActivityIndicator.jsx", () => ({
   ),
 }));
 
-vi.mock("./AssistantMessage.jsx", () => ({
+vi.mock("./assistant/AssistantMessage.jsx", () => ({
   AssistantMessage: ({ parts }) => (
     <div data-testid="assistant-message">
       {parts.map((p, i) => (
