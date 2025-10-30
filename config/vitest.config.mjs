@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.js"],
+    include: ["src/**/*.test.js", "webui/**/*.test.js"],
     setupFiles: ["src/test/test-setup.js"],
     clearMocks: true,
     restoreMocks: true,
@@ -17,7 +17,7 @@ export default defineConfig({
         "json",
         "html",
       ],
-      include: ["src/**"],
+      include: ["src/**", "webui/**"],
       exclude: [
         // ignore files that are not feasible to test
 
