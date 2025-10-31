@@ -1,25 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { mergeMessages } from "./merge-messages";
+import { formatGeminiMessages } from "./gemini-formatter.js";
 
-describe("mergeMessages", () => {
+describe("formatGeminiMessages", () => {
   it("merges consecutive model messages and adds functionResponses to functionCalls ", () => {
-    expect(mergeMessages(history)).toStrictEqual(expected);
+    expect(formatGeminiMessages(history)).toStrictEqual(expected);
   });
 
   it("merges non-thought text with thoughtSignatures ", () => {
-    expect(mergeMessages(historyNonThoughtTextWithSignature)).toStrictEqual(
-      expectedNonThoughtTextWithSignature,
-    );
+    expect(
+      formatGeminiMessages(historyNonThoughtTextWithSignature),
+    ).toStrictEqual(expectedNonThoughtTextWithSignature);
   });
 
   it("handles history ending with a thought ", () => {
-    expect(mergeMessages(historyEndingInThought)).toStrictEqual(
+    expect(formatGeminiMessages(historyEndingInThought)).toStrictEqual(
       expectedEndingInThought,
     );
   });
 
   it("handles tool call errors", () => {
-    expect(mergeMessages(historyWithToolError)).toStrictEqual(
+    expect(formatGeminiMessages(historyWithToolError)).toStrictEqual(
       expectedWithToolError,
     );
   });

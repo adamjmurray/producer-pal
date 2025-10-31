@@ -1,10 +1,40 @@
 /**
- * Convert user-role functionResponse messages to the result field of the corresponding functionCall.
- * Merge consecutive model messages together.
- * Mark the current thought as "isOpen" for activity indicators in the UI.
- * Track rawHistoryIndex to map merged messages back to raw chatHistory indices.
+ * Formats Gemini's raw chat history into a UI-friendly structure.
+ *
+ * Transformations applied:
+ * 1. Merges consecutive model-role messages into single messages
+ * 2. Integrates functionResponse messages (user-role) into the corresponding functionCall as a `result` field
+ * 3. Converts raw part structures into typed parts for the UI:
+ *    - `{ text }` → `{ type: "text", content }`
+ *    - `{ text, thought: true }` → `{ type: "thought", content }`
+ *    - `{ functionCall }` + `{ functionResponse }` → `{ type: "tool", name, args, result }`
+ * 4. Marks the last thought part with `isOpen: true` for activity indicators
+ * 5. Tracks `rawHistoryIndex` to map merged messages back to original indices (for retry functionality)
+ *
+ * @param {Array} history - Raw chat history from GeminiClient
+ * @returns {Array} Formatted messages ready for UI rendering
+ *
+ * @example
+ * // Raw history:
+ * [
+ *   { role: "user", parts: [{ text: "Search for docs" }] },
+ *   { role: "model", parts: [{ text: "Thinking...", thought: true }] },
+ *   { role: "model", parts: [{ functionCall: { name: "search", args: { query: "docs" } } }] },
+ *   { role: "user", parts: [{ functionResponse: { name: "search", response: { content: [{ text: "Found docs..." }] } } }] },
+ *   { role: "model", parts: [{ text: "Based on the search results..." }] }
+ * ]
+ *
+ * // Formatted output:
+ * [
+ *   { role: "user", parts: [{ type: "text", content: "Search for docs" }], rawHistoryIndex: 0 },
+ *   { role: "model", parts: [
+ *     { type: "thought", content: "Thinking..." },
+ *     { type: "tool", name: "search", args: { query: "docs" }, result: "Found docs..." },
+ *     { type: "text", content: "Based on the search results..." }
+ *   ], rawHistoryIndex: 1 }
+ * ]
  */
-export function mergeMessages(history) {
+export function formatGeminiMessages(history) {
   const messages = history.reduce(
     (messages, { role, parts = [] }, rawIndex) => {
       const lastMessage = messages.at(-1);

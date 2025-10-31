@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "preact/hooks";
+import { GeminiClient } from "../chat/gemini-client.js";
+import { formatGeminiMessages } from "../chat/gemini-formatter.js";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
-import { GeminiChat } from "./gemini-chat.js";
-import { mergeMessages } from "./merge-messages.js";
 
 export function useGeminiChat({
   apiKey,
@@ -18,11 +18,11 @@ export function useGeminiChat({
   const [activeModel, setActiveModel] = useState(null);
   const [activeThinking, setActiveThinking] = useState(null);
   const [activeTemperature, setActiveTemperature] = useState(null);
-  const chatRef = useRef(null);
+  const geminiRef = useRef(null);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
-    chatRef.current = null;
+    geminiRef.current = null;
     setActiveModel(null);
     setActiveThinking(null);
     setActiveTemperature(null);
@@ -58,8 +58,8 @@ export function useGeminiChat({
         };
       }
 
-      chatRef.current = new GeminiChat(apiKey, config);
-      await chatRef.current.initialize();
+      geminiRef.current = new GeminiClient(apiKey, config);
+      await geminiRef.current.initialize();
       setActiveModel(model);
       setActiveThinking(thinking);
       setActiveTemperature(temperature);
@@ -85,18 +85,18 @@ export function useGeminiChat({
       setIsAssistantResponding(true);
 
       try {
-        if (!chatRef.current) {
+        if (!geminiRef.current) {
           await initializeChat();
         }
 
-        const stream = chatRef.current.sendMessage(userMessage);
+        const stream = geminiRef.current.sendMessage(userMessage);
 
         for await (const chatHistory of stream) {
           // console.log(
           //   "useGeminiChat received chunk, now history is",
           //   JSON.stringify(chatHistory, null, 2),
           // );
-          setMessages(mergeMessages(chatHistory));
+          setMessages(formatGeminiMessages(chatHistory));
         }
       } catch (error) {
         console.error(error);
@@ -132,7 +132,7 @@ export function useGeminiChat({
       if (!message || message.role !== "user") return;
 
       const rawIndex = message.rawHistoryIndex;
-      const rawMessage = chatRef.current.chatHistory[rawIndex];
+      const rawMessage = geminiRef.current.chatHistory[rawIndex];
       if (!rawMessage) return;
 
       // Extract the user message text
@@ -146,14 +146,14 @@ export function useGeminiChat({
 
       try {
         // Slice history to exclude this message and everything after
-        const slicedHistory = chatRef.current.chatHistory.slice(0, rawIndex);
+        const slicedHistory = geminiRef.current.chatHistory.slice(0, rawIndex);
 
         await initializeChat(slicedHistory);
 
-        const stream = chatRef.current.sendMessage(userMessage);
+        const stream = geminiRef.current.sendMessage(userMessage);
 
         for await (const chatHistory of stream) {
-          setMessages(mergeMessages(chatHistory));
+          setMessages(formatGeminiMessages(chatHistory));
         }
       } catch (error) {
         console.error(error);

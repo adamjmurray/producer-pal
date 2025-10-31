@@ -2,7 +2,41 @@ import { GoogleGenAI, mcpToTool } from "@google/genai/web";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
-export class GeminiChat {
+/**
+ * Client for interacting with the Gemini API with MCP (Model Context Protocol) tool support.
+ *
+ * Returns chat history in Gemini's raw API format:
+ * - Each turn has a `role` ("user" or "model")
+ * - Each turn has `parts` array containing:
+ *   - `{ text: string }` - text content
+ *   - `{ text: string, thought: true }` - thinking content
+ *   - `{ functionCall: { name: string, args: object } }` - tool call request
+ *   - `{ functionResponse: { name: string, response: object } }` - tool call result (in separate user turn)
+ *
+ * Example raw history:
+ * ```js
+ * [
+ *   { role: "user", parts: [{ text: "Hello" }] },
+ *   { role: "model", parts: [{ text: "Hi there!" }] },
+ *   { role: "model", parts: [{ functionCall: { name: "search", args: { query: "foo" } } }] },
+ *   { role: "user", parts: [{ functionResponse: { name: "search", response: { content: [{ text: "result" }] } } }] },
+ *   { role: "model", parts: [{ text: "Based on the search..." }] }
+ * ]
+ * ```
+ *
+ * For UI-friendly format, use formatGeminiMessages() from gemini-formatter.js
+ */
+export class GeminiClient {
+  /**
+   * @param {string} apiKey - Gemini API key
+   * @param {object} config - Configuration options
+   * @param {string} [config.mcpUrl="http://localhost:3350/mcp"] - MCP server URL
+   * @param {string} [config.model] - Gemini model name
+   * @param {number} [config.temperature] - Response randomness (0-2)
+   * @param {string} [config.systemInstruction] - System instruction for the model
+   * @param {object} [config.thinkingConfig] - Thinking mode configuration
+   * @param {Array} [config.chatHistory] - Initial chat history to resume from
+   */
   constructor(apiKey, config = {}) {
     this.ai = new GoogleGenAI({ apiKey });
     this.mcpUrl = config.mcpUrl || "http://localhost:3350/mcp";
@@ -12,6 +46,11 @@ export class GeminiChat {
     this.chatHistory = config.chatHistory || [];
   }
 
+  /**
+   * Tests connection to the MCP server without creating a client instance.
+   * @param {string} [mcpUrl="http://localhost:3350/mcp"] - MCP server URL to test
+   * @throws {Error} If connection fails
+   */
   static async testConnection(mcpUrl = "http://localhost:3350/mcp") {
     const transport = new StreamableHTTPClientTransport(mcpUrl);
     const client = new Client({
@@ -22,6 +61,11 @@ export class GeminiChat {
     await client.close();
   }
 
+  /**
+   * Initializes the MCP connection and creates a Gemini chat session with MCP tools.
+   * Must be called before sending messages.
+   * @throws {Error} If MCP connection or chat creation fails
+   */
   async initialize() {
     // Connect to MCP server
     const transport = new StreamableHTTPClientTransport(this.mcpUrl);
@@ -47,6 +91,26 @@ export class GeminiChat {
     });
   }
 
+  /**
+   * Sends a message to Gemini and streams back the chat history as it updates.
+   *
+   * This async generator yields the full chat history after each update, allowing
+   * consumers to track the conversation state in real-time. The history includes
+   * the user's message, model responses, tool calls, and tool results.
+   *
+   * @param {string} message - User message to send
+   * @yields {Array} Complete chat history in Gemini's raw format after each update
+   * @throws {Error} If chat is not initialized or if message sending fails
+   *
+   * @example
+   * const stream = client.sendMessage("Hello");
+   * for await (const history of stream) {
+   *   console.log("Current history:", history);
+   *   // History grows as model responds:
+   *   // [{ role: "user", parts: [{ text: "Hello" }] }]
+   *   // [{ role: "user", ... }, { role: "model", parts: [{ text: "Hi" }] }]
+   * }
+   */
   async *sendMessage(message) {
     if (!this.chat) {
       throw new Error("Chat not initialized. Call initialize() first.");

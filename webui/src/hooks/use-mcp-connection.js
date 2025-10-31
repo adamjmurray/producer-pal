@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { GeminiChat } from "./gemini-chat.js";
+import { GeminiClient } from "../chat/gemini-client.js";
 
 export function useMcpConnection() {
   const [mcpStatus, setMcpStatus] = useState("connecting");
@@ -9,7 +9,7 @@ export function useMcpConnection() {
     setMcpStatus("connecting");
     setMcpError("");
     try {
-      await GeminiChat.testConnection();
+      await GeminiClient.testConnection();
       setMcpStatus("connected");
     } catch (error) {
       setMcpStatus("error");
