@@ -31,13 +31,16 @@ export function MessageList({ messages, isAssistantResponding, handleRetry }) {
           : -1;
 
         return (
-          <div key={idx}>
+          <div
+            key={idx}
+            className={message.role === "model" ? "flex items-end gap-2" : ""}
+          >
             <div
               className={`${
                 message.role === "user"
                   ? "ml-auto text-black bg-blue-100 dark:text-white dark:bg-blue-900"
                   : "bg-gray-100 dark:bg-gray-800"
-              } rounded-lg py-0.5 px-3 max-w-[90%]`}
+              } ${message.role === "model" ? "flex-1" : ""} rounded-lg py-0.5 px-3 max-w-[90%]`}
             >
               {message.role === "model" && (
                 <AssistantMessage parts={message.parts} />
@@ -49,11 +52,9 @@ export function MessageList({ messages, isAssistantResponding, handleRetry }) {
               )}
             </div>
             {canRetry && previousUserMessageIdx >= 0 && (
-              <div className="flex justify-start my-2">
-                <RetryButton
-                  onClick={() => handleRetry(previousUserMessageIdx)}
-                />
-              </div>
+              <RetryButton
+                onClick={() => handleRetry(previousUserMessageIdx)}
+              />
             )}
           </div>
         );
