@@ -18,6 +18,9 @@ npm run format
 
 # Parser rebuild (when modifying bar|beat grammar)
 npm run parser:build
+
+# Chat UI development
+npm run ui:build # Production build
 ```
 
 ## Architecture
@@ -29,10 +32,12 @@ Key entry points:
 - MCP Server: `src/mcp-server/mcp-server.js`
 - Max V8 code: `src/live-api-adapter/live-api-adapter.js`
 - Portal: `src/portal/producer-pal-portal.js`
+- Chat UI: `webui/src/main.jsx`
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
 - Tools: `src/tools/**/*.js`
 
-See `doc/Architecture.md` for detailed system design.
+See `doc/Architecture.md` for detailed system design and `doc/Chat-UI.md` for
+web UI architecture.
 
 ## Critical Coding Rules
 
@@ -60,6 +65,15 @@ See `doc/Architecture.md` for detailed system design.
 - **Context window usage optimization**: The Producer Pal Skills, tool and
   parameter descriptions in `.def.js` files, and tool results need to be very
   short, clear, and focused on the most useful and relevant info.
+
+- **Chat UI builds**: The webui is built with Vite (config in
+  `config/vite.config.mjs`) and outputs a single self-contained
+  `max-for-live-device/chat-ui.html` file. Use `npm run ui:build` to check the
+  UI build succeeds.
+
+- **UI testing**: Webui tests use vitest + @testing-library/preact. Tests are
+  colocated with source files (e.g., `ChatHeader.jsx` has `ChatHeader.test.jsx`
+  in the same directory).
 
 ## Testing After Changes
 
