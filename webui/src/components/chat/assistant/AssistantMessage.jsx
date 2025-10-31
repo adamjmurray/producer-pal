@@ -1,3 +1,4 @@
+import { AssistantError } from "./AssistantError.jsx";
 import { AssistantText } from "./AssistantText.jsx";
 import { AssistantThought } from "./AssistantThought.jsx";
 import { AssistantToolCall } from "./AssistantToolCall.jsx";
@@ -26,6 +27,8 @@ export function AssistantMessage({ parts }) {
           );
         } else if (part.type === "text") {
           return <AssistantText key={i} content={part.content} />;
+        } else if (part.type === "error") {
+          return <AssistantError key={i} content={part.content} />;
         }
         return (
           <details className="p-2 text-xs bg-gray-200 dark:bg-gray-900 rounded">

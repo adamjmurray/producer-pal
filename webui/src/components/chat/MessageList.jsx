@@ -36,17 +36,15 @@ export function MessageList({ messages, isAssistantResponding, handleRetry }) {
               className={`${
                 message.role === "user"
                   ? "ml-auto text-black bg-blue-100 dark:text-white dark:bg-blue-900"
-                  : message.role === "error"
-                    ? "bg-red-200 dark:bg-red-800 text-white"
-                    : "bg-gray-100 dark:bg-gray-800"
+                  : "bg-gray-100 dark:bg-gray-800"
               } rounded-lg py-0.5 px-3 max-w-[90%]`}
             >
               {message.role === "model" && (
                 <AssistantMessage parts={message.parts} />
               )}
-              {(message.role === "user" || message.role === "error") && (
+              {message.role === "user" && (
                 <div className="prose dark:prose-invert prose-sm">
-                  {formatUserAndErrorContent(message)}
+                  {formatUserContent(message)}
                 </div>
               )}
             </div>
@@ -72,6 +70,6 @@ function hasContent(message) {
   return (message.parts ?? []).length > 0 || (message.content ?? "").length > 0;
 }
 
-function formatUserAndErrorContent(message) {
+function formatUserContent(message) {
   return (message.parts ?? []).map(({ content }) => content ?? "").join("");
 }

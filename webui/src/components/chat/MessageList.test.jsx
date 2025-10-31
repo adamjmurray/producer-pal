@@ -16,7 +16,7 @@ vi.mock("./assistant/AssistantMessage.jsx", () => ({
   AssistantMessage: ({ parts }) => (
     <div data-testid="assistant-message">
       {parts.map((p, i) => (
-        <span key={i}>{p.text || ""}</span>
+        <span key={i}>{p.content || ""}</span>
       ))}
     </div>
   ),
@@ -50,17 +50,15 @@ describe("MessageList", () => {
     it("renders error message", () => {
       const messages = [
         {
-          role: "error",
-          parts: [{ content: "Something went wrong" }],
+          role: "model",
+          parts: [
+            { type: "error", content: "Something went wrong", isError: true },
+          ],
         },
       ];
-      const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} />,
-      );
+      render(<MessageList messages={messages} isAssistantResponding={false} />);
 
       expect(screen.getByText("Something went wrong")).toBeDefined();
-      const messageDiv = container.querySelector(".bg-red-600");
-      expect(messageDiv).toBeDefined();
     });
 
     it("renders model message using AssistantMessage component", () => {
@@ -191,17 +189,18 @@ describe("MessageList", () => {
     it("applies correct classes to error messages", () => {
       const messages = [
         {
-          role: "error",
-          parts: [{ content: "Error message" }],
+          role: "model",
+          parts: [{ type: "error", content: "Error message", isError: true }],
         },
       ];
       const { container } = render(
         <MessageList messages={messages} isAssistantResponding={false} />,
       );
 
-      const messageDiv = container.querySelector(".bg-red-200");
+      // Check that error is rendered within a model message container
+      const messageDiv = container.querySelector(".bg-gray-100");
       expect(messageDiv).toBeDefined();
-      expect(messageDiv.className).toContain("text-white");
+      expect(screen.getByText("Error message")).toBeDefined();
     });
 
     it("applies correct classes to model messages", () => {

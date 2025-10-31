@@ -23,6 +23,18 @@ describe("formatGeminiMessages", () => {
       expectedWithToolError,
     );
   });
+
+  it("merges error into existing model message", () => {
+    expect(formatGeminiMessages(historyWithError)).toStrictEqual(
+      expectedWithError,
+    );
+  });
+
+  it("creates new model message for error when no preceding model exists", () => {
+    expect(formatGeminiMessages(historyWithErrorNoModel)).toStrictEqual(
+      expectedWithErrorNoModel,
+    );
+  });
 });
 
 const history = [
@@ -644,6 +656,63 @@ const expectedWithToolError = [
         content:
           'I\'ve created a 4-bar drum loop in a new track called "New Drums" in the first scene. It should be playing now!\n\nLet me know if you want to make any changes to it or add more to your song.',
       },
+    ],
+    rawHistoryIndex: 1,
+  },
+];
+
+const historyWithError = [
+  {
+    role: "user",
+    parts: [{ text: "Connect to Ableton" }],
+  },
+  {
+    role: "model",
+    parts: [{ text: "Connecting to Ableton..." }],
+  },
+  {
+    role: "error",
+    parts: [{ text: "Error: API connection failed" }],
+  },
+];
+
+const expectedWithError = [
+  {
+    role: "user",
+    parts: [{ type: "text", content: "Connect to Ableton" }],
+    rawHistoryIndex: 0,
+  },
+  {
+    role: "model",
+    parts: [
+      { type: "text", content: "Connecting to Ableton..." },
+      { type: "error", content: "Error: API connection failed", isError: true },
+    ],
+    rawHistoryIndex: 1,
+  },
+];
+
+const historyWithErrorNoModel = [
+  {
+    role: "user",
+    parts: [{ text: "Connect to Ableton" }],
+  },
+  {
+    role: "error",
+    parts: [{ text: "Error: Network timeout" }],
+  },
+];
+
+const expectedWithErrorNoModel = [
+  {
+    role: "user",
+    parts: [{ type: "text", content: "Connect to Ableton" }],
+    rawHistoryIndex: 0,
+  },
+  {
+    role: "model",
+    parts: [
+      { type: "error", content: "Error: Network timeout", isError: true },
     ],
     rawHistoryIndex: 1,
   },

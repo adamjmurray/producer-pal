@@ -40,6 +40,36 @@ export function formatGeminiMessages(history) {
       const lastMessage = messages.at(-1);
       let currentMessage;
 
+      // Handle error-role messages
+      if (role === "error") {
+        // Check if last message is a model message
+        if (lastMessage?.role === "model") {
+          // Merge error into existing model message
+          currentMessage = lastMessage;
+        } else {
+          // Create new model message for the error
+          currentMessage = {
+            role: "model",
+            parts: [],
+            rawHistoryIndex: rawIndex,
+          };
+          messages.push(currentMessage);
+        }
+
+        // Add error parts
+        for (const part of parts) {
+          if (part.text) {
+            currentMessage.parts.push({
+              type: "error",
+              content: part.text,
+              isError: true,
+            });
+          }
+        }
+
+        return messages;
+      }
+
       if (lastMessage?.role === role || isFunctionResponse(parts)) {
         currentMessage = lastMessage;
       } else {

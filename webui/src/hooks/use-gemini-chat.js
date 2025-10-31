@@ -3,6 +3,21 @@ import { GeminiClient } from "../chat/gemini-client.js";
 import { formatGeminiMessages } from "../chat/gemini-formatter.js";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 
+function createErrorMessage(error, chatHistory) {
+  console.error(error);
+  let errorMessage = `${error}`;
+  if (!errorMessage.startsWith("Error")) {
+    errorMessage = `Error: ${errorMessage}`;
+  }
+
+  const errorEntry = {
+    role: "error",
+    parts: [{ text: errorMessage }],
+  };
+
+  return formatGeminiMessages([...chatHistory, errorEntry]);
+}
+
 export function useGeminiChat({
   apiKey,
   model,
@@ -99,24 +114,9 @@ export function useGeminiChat({
           setMessages(formatGeminiMessages(chatHistory));
         }
       } catch (error) {
-        console.error(error);
-        let errorMessage = `${error}`;
-        if (!errorMessage.startsWith("Error")) {
-          errorMessage = `Error: ${errorMessage}`;
-        }
-        // TODO? Should the latest/current error be separate state from the list of messages?
-        setMessages((msgs) => [
-          ...msgs,
-          {
-            role: "error",
-            parts: [
-              {
-                type: "text",
-                content: errorMessage,
-              },
-            ],
-          },
-        ]);
+        setMessages(
+          createErrorMessage(error, geminiRef.current?.chatHistory ?? []),
+        );
       } finally {
         setIsAssistantResponding(false);
       }
@@ -156,23 +156,9 @@ export function useGeminiChat({
           setMessages(formatGeminiMessages(chatHistory));
         }
       } catch (error) {
-        console.error(error);
-        let errorMessage = `${error}`;
-        if (!errorMessage.startsWith("Error")) {
-          errorMessage = `Error: ${errorMessage}`;
-        }
-        setMessages((msgs) => [
-          ...msgs,
-          {
-            role: "error",
-            parts: [
-              {
-                type: "text",
-                content: errorMessage,
-              },
-            ],
-          },
-        ]);
+        setMessages(
+          createErrorMessage(error, geminiRef.current?.chatHistory ?? []),
+        );
       } finally {
         setIsAssistantResponding(false);
       }
