@@ -4,6 +4,8 @@ Choose your AI for installation steps:
 
 - ⭐️ [Claude Desktop](#claude-desktop) - Anthropic's desktop GUI - easiest
   setup
+- ⭐️ [Producer Pal Chat UI](#producer-pal-chat-ui) - Standalone web interface -
+  platform independent
 - ⭐️ [Gemini CLI](#gemini-cli) - Google's command line agent - generous free
   tier
 - [Codex CLI](#codex-cli) - OpenAI's command line agent
@@ -115,6 +117,58 @@ Pal.
    ![Producer Pal start a conversation](./doc/img/screenshot.png)
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+<br><br>
+
+## Producer Pal Chat UI
+
+Producer Pal includes its own standalone web interface, independent from Claude
+Desktop, Gemini CLI, or any other AI platform. The chat UI is served from the
+Max for Live device and opens in your system's default browser.
+
+It currently requires a Gemini API key (which is free with a Google account).
+Support for LLMs other than Gemini will be added in the future.
+
+### Requirements
+
+- [Ableton Live 12.2+](https://www.ableton.com/live/) with
+  [Max for Live](https://www.ableton.com/live/max-for-live/)
+- Google Gemini API key (free tier available,
+  [get your API key](https://aistudio.google.com/apikey))
+
+### Installation
+
+1. Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd),
+   the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
+   Live:
+
+   <img src="./doc/img/producer-pal-running.png" alt="Producer Pal device running in Ableton Live" width="300">
+
+   _It should display "Producer Pal Running" or something isn't working._
+
+2. Open the "Advanced" tab in the device and click "Open Chat UI", or visit
+   [http://localhost:3350/chat](http://localhost:3350/chat) (or whatever port
+   you're using)
+
+   <img src="./doc/img/producer-pal-device-advanced-tab.png" alt="Producer Pal Advanced tab with Open Chat UI button" width="400">
+
+3. If it's your first time, enter your Gemini API key in the chat UI settings
+   and click "Save".
+
+4. Click the "Quick Connect" button to start a chat:
+
+   <img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
+
+The chat UI connects directly to Google's Gemini API and uses Producer Pal's MCP
+tools automatically.
+
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+**Privacy Note:** Your API key is stored in the browser's local storage for
+convenience. If that concerns you, use a private browser session, clear it after
+use (change the key to "junk" and save before closing), or delete local storage.
+You can also delete and regenerate Gemini API keys at any time.
 
 <br><br>
 

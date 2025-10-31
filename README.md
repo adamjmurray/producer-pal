@@ -70,6 +70,23 @@ sensitive work.
 
 ## Usage
 
+### Producer Pal Chat UI
+
+Producer Pal includes its own standalone web interface, keeping you independent
+from any specific AI platform. The chat UI is a browser-based interface served
+from the Max for Live device at `http://localhost:3350/chat`.
+
+Currently supports Google's Gemini API with more LLMs planned. Access it by
+clicking the "Open Chat UI" button in the Max device or visiting the URL
+directly in your browser.
+
+<img src="./doc/img/producer-pal-device-advanced-tab.png" alt="Producer Pal Advanced tab with Open Chat UI button" width="400">
+
+<img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
+
+See the [Chat UI installation guide](./INSTALLATION.md#producer-pal-chat-ui) for
+setup instructions.
+
 ### Basic Examples
 
 - Start a chat like:
