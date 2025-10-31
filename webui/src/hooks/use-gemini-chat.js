@@ -101,6 +101,88 @@ export function useGeminiChat({
     }
   };
 
+  const handleRetry = async (mergedMessageIndex) => {
+    if (!apiKey) return;
+    if (!chatRef.current) return;
+
+    const message = messages[mergedMessageIndex];
+    if (!message || message.role !== "user") return;
+
+    const rawIndex = message.rawHistoryIndex;
+    const rawMessage = chatRef.current.chatHistory[rawIndex];
+    if (!rawMessage) return;
+
+    // Extract the user message text
+    const userMessage = rawMessage.parts
+      ?.find((part) => part.text)
+      ?.text?.trim();
+
+    if (!userMessage) return;
+
+    setIsAssistantResponding(true);
+
+    try {
+      // Slice history to exclude this message and everything after
+      const slicedHistory = chatRef.current.chatHistory.slice(0, rawIndex);
+
+      // Auto-retry MCP connection if it failed
+      if (mcpStatus === "error") {
+        await checkMcpConnection();
+        if (mcpStatus === "error") {
+          throw new Error(`MCP connection failed: ${mcpError}`);
+        }
+      }
+
+      const thinkingBudget = getThinkingBudget(thinking);
+      const config = {
+        model,
+        temperature,
+        systemInstruction: SYSTEM_INSTRUCTION,
+        chatHistory: slicedHistory,
+      };
+
+      // Only set thinkingConfig if thinking is not disabled (0)
+      if (thinkingBudget !== 0) {
+        config.thinkingConfig = {
+          thinkingBudget,
+          includeThoughts: showThoughts,
+        };
+      }
+
+      chatRef.current = new GeminiChat(apiKey, config);
+      await chatRef.current.initialize();
+      setActiveModel(model);
+      setActiveThinking(thinking);
+      setActiveTemperature(temperature);
+
+      const stream = chatRef.current.sendMessage(userMessage);
+
+      for await (const chatHistory of stream) {
+        setMessages(mergeMessages(chatHistory));
+      }
+    } catch (error) {
+      console.error(error);
+      let errorMessage = `${error}`;
+      if (!errorMessage.startsWith("Error")) {
+        errorMessage = `Error: ${errorMessage}`;
+      }
+      setMessages((msgs) => [
+        ...msgs,
+        {
+          role: "error",
+          parts: [
+            {
+              type: "text",
+              content: errorMessage,
+            },
+          ],
+        },
+      ]);
+    } finally {
+      setIsAssistantResponding(false);
+    }
+  };
+
   return {
     messages,
     isAssistantResponding,
@@ -108,6 +190,7 @@ export function useGeminiChat({
     activeThinking,
     activeTemperature,
     handleSend,
+    handleRetry,
     clearConversation,
   };
 }

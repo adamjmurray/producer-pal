@@ -7,6 +7,7 @@ export function ChatScreen({
   messages,
   isAssistantResponding,
   handleSend,
+  handleRetry,
   activeModel,
   activeThinking,
   activeTemperature,
@@ -41,6 +42,7 @@ export function ChatScreen({
           <MessageList
             messages={messages}
             isAssistantResponding={isAssistantResponding}
+            handleRetry={handleRetry}
           />
         )}
       </div>

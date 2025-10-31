@@ -132,6 +132,7 @@ const expected = [
         content: "Connect to Ableton.",
       },
     ],
+    rawHistoryIndex: 0,
   },
   {
     role: "model",
@@ -171,6 +172,7 @@ const expected = [
           "Producer Pal 1.0.2 is connected to Ableton Live 12.2.5.\n\nHere's a summary of your Live Set:\n*   **Tempo:** 110 BPM\n*   **Time Signature:** 4/4\n*   **Scale:** A Minor\n*   **Scenes:** 8\n*   **Tracks:** 5\n    *   **0: Drums** (MIDI) - Instrument: Cyndal Kit\n    *   **1: Bass** (MIDI) - Instrument: Electric Bass Open\n    *   **2: Chords** (MIDI) - Instrument: Grand Piano Equal Mellow Production\n    *   **3: Lead** (MIDI) - Instrument: Wish U Were Lead\n    *   **4: 5-MIDI** (MIDI) - This track has the Producer Pal device.\n\nPlease tell me if you rearrange anything in Live so I can stay in sync. Also, remember to save often!\n\nWhat would you like to do next?\n",
       },
     ],
+    rawHistoryIndex: 1,
   },
 ];
 
@@ -237,6 +239,7 @@ const expectedNonThoughtTextWithSignature = [
         content: "Connect to Ableton.",
       },
     ],
+    rawHistoryIndex: 0,
   },
   {
     role: "model",
@@ -259,6 +262,7 @@ const expectedNonThoughtTextWithSignature = [
           "I'm now connected to Ableton Live 12.2.5 with Producer Pal 1.0.2!\n\nCurrently, your Live Set has:\n* 5 tracks\n* 8 scenes\n* Tempo: 110 BPM\n* Time Signature: 4/4\n* Scale: A Minor\n\nI've also loaded my Producer Pal Skills for you, which you can refer to for detailed instructions on using bar|beat notation and various music composition techniques.\n\nPlease tell me if you rearrange things in Live so I can stay in sync. And remember to save often! I make mistakes.\n\nWhat would you like to do next?\n",
       },
     ],
+    rawHistoryIndex: 1,
   },
 ];
 
@@ -291,6 +295,7 @@ const expectedEndingInThought = [
         content: "Connect to Ableton.",
       },
     ],
+    rawHistoryIndex: 0,
   },
   {
     role: "model",
@@ -302,6 +307,7 @@ const expectedEndingInThought = [
         isOpen: true,
       },
     ],
+    rawHistoryIndex: 1,
   },
 ];
 
@@ -542,6 +548,7 @@ const expectedWithToolError = [
         content: "Create a simple 4-bar drum loop in the first scene",
       },
     ],
+    rawHistoryIndex: 0,
   },
   {
     role: "model",
@@ -638,5 +645,6 @@ const expectedWithToolError = [
           'I\'ve created a 4-bar drum loop in a new track called "New Drums" in the first scene. It should be playing now!\n\nLet me know if you want to make any changes to it or add more to your song.',
       },
     ],
+    rawHistoryIndex: 1,
   },
 ];

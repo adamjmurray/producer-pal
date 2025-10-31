@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/preact";
+import { describe, expect, it, vi } from "vitest";
 import { MessageList } from "./MessageList.jsx";
 
 // Mock child components
@@ -199,7 +199,7 @@ describe("MessageList", () => {
         <MessageList messages={messages} isAssistantResponding={false} />,
       );
 
-      const messageDiv = container.querySelector(".bg-red-600");
+      const messageDiv = container.querySelector(".bg-red-200");
       expect(messageDiv).toBeDefined();
       expect(messageDiv.className).toContain("text-white");
     });

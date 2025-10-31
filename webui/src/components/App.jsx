@@ -62,6 +62,7 @@ export function App() {
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding}
       handleSend={chat.handleSend}
+      handleRetry={chat.handleRetry}
       activeModel={chat.activeModel}
       activeThinking={chat.activeThinking}
       activeTemperature={chat.activeTemperature}
