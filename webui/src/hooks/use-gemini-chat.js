@@ -1,4 +1,4 @@
-import { useRef, useState } from "preact/hooks";
+import { useCallback, useRef, useState } from "preact/hooks";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 import { GeminiChat } from "./gemini-chat.js";
 import { mergeMessages } from "./merge-messages.js";
@@ -20,111 +20,16 @@ export function useGeminiChat({
   const [activeTemperature, setActiveTemperature] = useState(null);
   const chatRef = useRef(null);
 
-  const clearConversation = () => {
+  const clearConversation = useCallback(() => {
     setMessages([]);
     chatRef.current = null;
     setActiveModel(null);
     setActiveThinking(null);
     setActiveTemperature(null);
-  };
+  }, []);
 
-  const handleSend = async (message) => {
-    if (!apiKey) return;
-    if (!message?.trim()) return;
-
-    const userMessage = message.trim();
-    setIsAssistantResponding(true);
-
-    try {
-      if (!chatRef.current) {
-        // Auto-retry MCP connection if it failed
-        if (mcpStatus === "error") {
-          await checkMcpConnection();
-          if (mcpStatus === "error") {
-            throw new Error(`MCP connection failed: ${mcpError}`);
-          }
-        }
-
-        const thinkingBudget = getThinkingBudget(thinking);
-        const config = {
-          model,
-          temperature,
-          systemInstruction: SYSTEM_INSTRUCTION,
-        };
-
-        // Only set thinkingConfig if thinking is not disabled (0)
-        // For Auto mode (-1) or specific budgets (>0), include thoughts based on user setting
-        if (thinkingBudget !== 0) {
-          config.thinkingConfig = {
-            thinkingBudget,
-            includeThoughts: showThoughts,
-          };
-        }
-
-        chatRef.current = new GeminiChat(apiKey, config);
-        await chatRef.current.initialize();
-        setActiveModel(model);
-        setActiveThinking(thinking);
-        setActiveTemperature(temperature);
-      }
-
-      const stream = chatRef.current.sendMessage(userMessage);
-
-      for await (const chatHistory of stream) {
-        // console.log(
-        //   "useGeminiChat received chunk, now history is",
-        //   JSON.stringify(chatHistory, null, 2),
-        // );
-        setMessages(mergeMessages(chatHistory));
-      }
-    } catch (error) {
-      console.error(error);
-      let errorMessage = `${error}`;
-      if (!errorMessage.startsWith("Error")) {
-        errorMessage = `Error: ${errorMessage}`;
-      }
-      // TODO? Should the latest/current error be separate state from the list of messages?
-      setMessages((msgs) => [
-        ...msgs,
-        {
-          role: "error",
-          parts: [
-            {
-              type: "text",
-              content: errorMessage,
-            },
-          ],
-        },
-      ]);
-    } finally {
-      setIsAssistantResponding(false);
-    }
-  };
-
-  const handleRetry = async (mergedMessageIndex) => {
-    if (!apiKey) return;
-    if (!chatRef.current) return;
-
-    const message = messages[mergedMessageIndex];
-    if (!message || message.role !== "user") return;
-
-    const rawIndex = message.rawHistoryIndex;
-    const rawMessage = chatRef.current.chatHistory[rawIndex];
-    if (!rawMessage) return;
-
-    // Extract the user message text
-    const userMessage = rawMessage.parts
-      ?.find((part) => part.text)
-      ?.text?.trim();
-
-    if (!userMessage) return;
-
-    setIsAssistantResponding(true);
-
-    try {
-      // Slice history to exclude this message and everything after
-      const slicedHistory = chatRef.current.chatHistory.slice(0, rawIndex);
-
+  const initializeChat = useCallback(
+    async (chatHistory) => {
       // Auto-retry MCP connection if it failed
       if (mcpStatus === "error") {
         await checkMcpConnection();
@@ -138,10 +43,14 @@ export function useGeminiChat({
         model,
         temperature,
         systemInstruction: SYSTEM_INSTRUCTION,
-        chatHistory: slicedHistory,
       };
 
+      if (chatHistory) {
+        config.chatHistory = chatHistory;
+      }
+
       // Only set thinkingConfig if thinking is not disabled (0)
+      // For Auto mode (-1) or specific budgets (>0), include thoughts based on user setting
       if (thinkingBudget !== 0) {
         config.thinkingConfig = {
           thinkingBudget,
@@ -154,34 +63,122 @@ export function useGeminiChat({
       setActiveModel(model);
       setActiveThinking(thinking);
       setActiveTemperature(temperature);
+    },
+    [
+      mcpStatus,
+      checkMcpConnection,
+      mcpError,
+      thinking,
+      model,
+      temperature,
+      showThoughts,
+      apiKey,
+    ],
+  );
 
-      const stream = chatRef.current.sendMessage(userMessage);
+  const handleSend = useCallback(
+    async (message) => {
+      if (!apiKey) return;
+      if (!message?.trim()) return;
 
-      for await (const chatHistory of stream) {
-        setMessages(mergeMessages(chatHistory));
+      const userMessage = message.trim();
+      setIsAssistantResponding(true);
+
+      try {
+        if (!chatRef.current) {
+          await initializeChat();
+        }
+
+        const stream = chatRef.current.sendMessage(userMessage);
+
+        for await (const chatHistory of stream) {
+          // console.log(
+          //   "useGeminiChat received chunk, now history is",
+          //   JSON.stringify(chatHistory, null, 2),
+          // );
+          setMessages(mergeMessages(chatHistory));
+        }
+      } catch (error) {
+        console.error(error);
+        let errorMessage = `${error}`;
+        if (!errorMessage.startsWith("Error")) {
+          errorMessage = `Error: ${errorMessage}`;
+        }
+        // TODO? Should the latest/current error be separate state from the list of messages?
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            role: "error",
+            parts: [
+              {
+                type: "text",
+                content: errorMessage,
+              },
+            ],
+          },
+        ]);
+      } finally {
+        setIsAssistantResponding(false);
       }
-    } catch (error) {
-      console.error(error);
-      let errorMessage = `${error}`;
-      if (!errorMessage.startsWith("Error")) {
-        errorMessage = `Error: ${errorMessage}`;
+    },
+    [apiKey, initializeChat],
+  );
+
+  const handleRetry = useCallback(
+    async (mergedMessageIndex) => {
+      if (!apiKey) return;
+
+      const message = messages[mergedMessageIndex];
+      if (!message || message.role !== "user") return;
+
+      const rawIndex = message.rawHistoryIndex;
+      const rawMessage = chatRef.current.chatHistory[rawIndex];
+      if (!rawMessage) return;
+
+      // Extract the user message text
+      const userMessage = rawMessage.parts
+        ?.find((part) => part.text)
+        ?.text?.trim();
+
+      if (!userMessage) return;
+
+      setIsAssistantResponding(true);
+
+      try {
+        // Slice history to exclude this message and everything after
+        const slicedHistory = chatRef.current.chatHistory.slice(0, rawIndex);
+
+        await initializeChat(slicedHistory);
+
+        const stream = chatRef.current.sendMessage(userMessage);
+
+        for await (const chatHistory of stream) {
+          setMessages(mergeMessages(chatHistory));
+        }
+      } catch (error) {
+        console.error(error);
+        let errorMessage = `${error}`;
+        if (!errorMessage.startsWith("Error")) {
+          errorMessage = `Error: ${errorMessage}`;
+        }
+        setMessages((msgs) => [
+          ...msgs,
+          {
+            role: "error",
+            parts: [
+              {
+                type: "text",
+                content: errorMessage,
+              },
+            ],
+          },
+        ]);
+      } finally {
+        setIsAssistantResponding(false);
       }
-      setMessages((msgs) => [
-        ...msgs,
-        {
-          role: "error",
-          parts: [
-            {
-              type: "text",
-              content: errorMessage,
-            },
-          ],
-        },
-      ]);
-    } finally {
-      setIsAssistantResponding(false);
-    }
-  };
+    },
+    [apiKey, messages, initializeChat],
+  );
 
   return {
     messages,
