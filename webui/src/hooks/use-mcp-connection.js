@@ -1,11 +1,11 @@
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 import { GeminiChat } from "./gemini-chat.js";
 
 export function useMcpConnection() {
   const [mcpStatus, setMcpStatus] = useState("connecting");
   const [mcpError, setMcpError] = useState("");
 
-  const checkMcpConnection = async () => {
+  const checkMcpConnection = useCallback(async () => {
     setMcpStatus("connecting");
     setMcpError("");
     try {
@@ -15,12 +15,12 @@ export function useMcpConnection() {
       setMcpStatus("error");
       setMcpError(error.message);
     }
-  };
+  }, []);
 
   // Check connection on mount
   useEffect(() => {
     checkMcpConnection();
-  }, []);
+  }, [checkMcpConnection]);
 
   return { mcpStatus, mcpError, checkMcpConnection };
 }

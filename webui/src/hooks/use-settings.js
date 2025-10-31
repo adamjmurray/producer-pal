@@ -1,4 +1,4 @@
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useState } from "preact/hooks";
 
 export function useSettings() {
   const [apiKey, setApiKey] = useState("");
@@ -31,15 +31,15 @@ export function useSettings() {
     }
   }, []);
 
-  const saveSettings = () => {
+  const saveSettings = useCallback(() => {
     localStorage.setItem("gemini_api_key", apiKey);
     localStorage.setItem("gemini_model", model);
     localStorage.setItem("gemini_thinking", thinking);
     localStorage.setItem("gemini_temperature", temperature.toString());
     localStorage.setItem("gemini_showThoughts", showThoughts.toString());
-  };
+  }, [apiKey, model, thinking, temperature, showThoughts]);
 
-  const cancelSettings = () => {
+  const cancelSettings = useCallback(() => {
     const savedKey = localStorage.getItem("gemini_api_key");
     if (savedKey) {
       setApiKey(savedKey);
@@ -60,7 +60,7 @@ export function useSettings() {
     if (savedShowThoughts != null) {
       setShowThoughts(savedShowThoughts === "true");
     }
-  };
+  }, []);
 
   const hasApiKey = !!localStorage.getItem("gemini_api_key");
 
