@@ -31,9 +31,9 @@ describe("AssistantToolCall", () => {
     it("has correct base styling classes", () => {
       render(<AssistantToolCall {...defaultProps} />);
       const details = document.querySelector("details");
-      expect(details.className).toContain("bg-gray-200");
-      expect(details.className).toContain("dark:bg-gray-900");
-      expect(details.className).toContain("font-mono");
+      expect(details!.className).toContain("bg-gray-200");
+      expect(details!.className).toContain("dark:bg-gray-900");
+      expect(details!.className).toContain("font-mono");
     });
   });
 
@@ -41,19 +41,19 @@ describe("AssistantToolCall", () => {
     it("shows friendly name from toolNames config", () => {
       render(<AssistantToolCall {...defaultProps} name="test-tool" />);
       const summary = document.querySelector("summary");
-      expect(summary.textContent).toContain("Test Tool");
+      expect(summary!.textContent).toContain("Test Tool");
     });
 
     it("shows raw name when not in toolNames config", () => {
       render(<AssistantToolCall {...defaultProps} name="unknown-tool" />);
       const summary = document.querySelector("summary");
-      expect(summary.textContent).toContain("unknown-tool");
+      expect(summary!.textContent).toContain("unknown-tool");
     });
 
     it("includes tool emoji in summary", () => {
       render(<AssistantToolCall {...defaultProps} />);
       const summary = document.querySelector("summary");
-      expect(summary.textContent).toContain("🔧");
+      expect(summary!.textContent).toContain("🔧");
     });
   });
 
@@ -80,13 +80,13 @@ describe("AssistantToolCall", () => {
     it("has animate-pulse class when no result", () => {
       render(<AssistantToolCall {...defaultProps} result={null} />);
       const details = document.querySelector("details");
-      expect(details.className).toContain("animate-pulse");
+      expect(details!.className).toContain("animate-pulse");
     });
 
     it("does not have animate-pulse class when has result", () => {
       render(<AssistantToolCall {...defaultProps} result="Done" />);
       const details = document.querySelector("details");
-      expect(details.className).not.toContain("animate-pulse");
+      expect(details!.className).not.toContain("animate-pulse");
     });
   });
 
@@ -96,13 +96,13 @@ describe("AssistantToolCall", () => {
         <AssistantToolCall {...defaultProps} result="Error" isError={true} />,
       );
       const details = document.querySelector("details");
-      expect(details.className).toContain("border-red-500");
+      expect(details!.className).toContain("border-red-500");
     });
 
     it("does not have red border when isError is false", () => {
       render(<AssistantToolCall {...defaultProps} result="Success" />);
       const details = document.querySelector("details");
-      expect(details.className).not.toContain("border-red-500");
+      expect(details!.className).not.toContain("border-red-500");
     });
   });
 
@@ -116,9 +116,9 @@ describe("AssistantToolCall", () => {
         />,
       );
       const funcDiv = document.querySelector(".text-gray-500");
-      expect(funcDiv.textContent).toContain("test-tool");
-      expect(funcDiv.textContent).toContain("foo");
-      expect(funcDiv.textContent).toContain("bar");
+      expect(funcDiv!.textContent).toContain("test-tool");
+      expect(funcDiv!.textContent).toContain("foo");
+      expect(funcDiv!.textContent).toContain("bar");
     });
 
     it("formats args as JSON", () => {
@@ -130,7 +130,7 @@ describe("AssistantToolCall", () => {
         />,
       );
       const funcDiv = document.querySelector(".text-gray-500");
-      expect(funcDiv.textContent).toContain('"key":"value"');
+      expect(funcDiv!.textContent).toContain('"key":"value"');
     });
   });
 
@@ -161,9 +161,9 @@ describe("AssistantToolCall", () => {
       render(<AssistantToolCall {...defaultProps} result={jsonResult} />);
       const pre = document.querySelector("pre");
       expect(pre).toBeDefined();
-      expect(pre.innerHTML).toContain('"status"');
-      expect(pre.innerHTML).toContain('"ok"');
-      expect(pre.innerHTML).toContain('"count"');
+      expect(pre!.innerHTML).toContain('"status"');
+      expect(pre!.innerHTML).toContain('"ok"');
+      expect(pre!.innerHTML).toContain('"count"');
     });
 
     it("handles newlines in JSON strings", () => {
@@ -172,7 +172,7 @@ describe("AssistantToolCall", () => {
       const pre = document.querySelector("pre");
       expect(pre).toBeDefined();
       // The \n should be replaced with actual newline
-      expect(pre.innerHTML).toContain("line1\nline2");
+      expect(pre!.innerHTML).toContain("line1\nline2");
     });
 
     it("renders non-JSON result as plain text", () => {

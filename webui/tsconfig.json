@@ -22,5 +22,10 @@
     "isolatedModules": true
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.tsx"]
+  "exclude": ["src/**/*.test.tsx"],
+  "files": [
+    "src/components/chat/assistant/AssistantText.test.tsx",
+    "src/components/chat/assistant/AssistantThought.test.tsx",
+    "src/components/chat/assistant/AssistantToolCall.test.tsx"
+  ]
 }
