@@ -40,7 +40,7 @@ Follow the [Installation Guide](./INSTALLATION.md) to connect Producer Pal to
 your AI:
 
 - [Claude Desktop](./INSTALLATION.md#claude-desktop)
-- [Gemini CLI](./INSTALLATION.md#gemini-cli)
+- [Built-in Chat UI with Gemini](./INSTALLATION.md#producer-pal-chat-ui)
 - [More options...](./INSTALLATION.md)
 
 Then, see the [Usage Guide](#usage) for help getting started.
@@ -70,22 +70,18 @@ sensitive work.
 
 ## Usage
 
-### Producer Pal Chat UI
+1. Add the Producer Pal Max for Live device
+   ([download here](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd))
+   to a MIDI track in your Ableton Live project
+2. Provide your AI with Producer Pal tools. Either:
+   - Add Producer Pal tools to your AI application (see the
+     [Installation Guide](./INSTALLATION.md))
 
-Producer Pal includes its own standalone web interface, keeping you independent
-from any specific AI platform. The chat UI is a browser-based interface served
-from the Max for Live device at `http://localhost:3350/chat`.
+     OR
 
-Currently supports Google's Gemini API with more LLMs planned. Access it by
-clicking the "Open Chat UI" button in the Max device or visiting the URL
-directly in your browser.
+   - Use the [built-in chat UI](#producer-pal-chat-ui)
 
-<img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
-
-<img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
-
-See the [Chat UI installation guide](./INSTALLATION.md#producer-pal-chat-ui) for
-setup instructions.
+3. Start a conversation with "Connect to Ableton"
 
 ### Basic Examples
 
@@ -135,6 +131,23 @@ setup instructions.
 - Let the AI tell you what else it can do:
 
   > what are all the things you can do with your Ableton Live tools?
+
+### Producer Pal Chat UI
+
+Producer Pal includes its own standalone web interface, keeping you independent
+from any specific AI platform. The chat UI is a browser-based interface served
+from the Max for Live device at `http://localhost:3350/chat`.
+
+Currently supports Google's Gemini API with more LLMs planned. Access it by
+clicking the "Open Chat UI" button in the Max device or visiting the URL
+directly in your browser.
+
+<img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
+
+<img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
+
+See the [Chat UI installation guide](./INSTALLATION.md#producer-pal-chat-ui) for
+setup instructions.
 
 ### Session and Arrangement views
 
