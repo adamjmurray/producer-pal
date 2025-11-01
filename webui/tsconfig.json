@@ -11,8 +11,8 @@
     "strict": false,
     "noImplicitAny": false,
     "strictNullChecks": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noImplicitReturns": false,
 
     "resolveJsonModule": true,
