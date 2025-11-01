@@ -9,7 +9,6 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import {
-  DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "../constants.js";
@@ -170,7 +169,7 @@ describe("readLiveSet", () => {
               ...expectedClip({ id: "clip2", trackIndex: 0, sceneIndex: 2 }),
               color: undefined,
             },
-          ].map(({ color, ...clip }) => clip),
+          ].map(({ color: _color, ...clip }) => clip),
           instrument: null,
         },
         {
@@ -190,11 +189,11 @@ describe("readLiveSet", () => {
               ...expectedClip({ id: "clip3", trackIndex: 1, sceneIndex: 0 }),
               color: undefined,
             },
-          ].map(({ color, ...clip }) => clip),
+          ].map(({ color: _color, ...clip }) => clip),
           instrument: null,
         },
         (() => {
-          const { color, ...track } = expectedTrack({
+          const { color: _color, ...track } = expectedTrack({
             id: "track3",
             trackIndex: 2,
           });

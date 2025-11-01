@@ -61,7 +61,7 @@ const SHORTCUT_MAPPINGS = {
  */
 function expandWildcardIncludes(includeArray, defaults) {
   // First expand shortcuts
-  let expandedArray = [];
+  const expandedArray = [];
   for (const option of includeArray) {
     if (SHORTCUT_MAPPINGS[option]) {
       expandedArray.push(...SHORTCUT_MAPPINGS[option]);

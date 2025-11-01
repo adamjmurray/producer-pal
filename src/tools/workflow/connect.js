@@ -9,11 +9,11 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 
 /**
  * Initialize connection to Ableton Live with minimal data for safety
- * @param {Object} _ - No parameters used
+ * @param {Object} _params - No parameters used
  * @param {Object} context - The userContext from main.js
  * @returns {Object} Connection status and basic Live Set info
  */
-export function connect({} = {}, context) {
+export function connect(_params = {}, context) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
 

@@ -75,11 +75,10 @@ export function createClip({
 
   const liveSet = new LiveAPI("live_set");
   let timeSigNumerator, timeSigDenominator;
-  let songTimeSigNumerator, songTimeSigDenominator;
 
   // Get song time signature for arrangementStartTime conversion
-  songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
@@ -301,7 +300,7 @@ export function createClip({
   // Handle automatic playback for Session clips
   if (auto && view === "session") {
     switch (auto) {
-      case "play-scene":
+      case "play-scene": {
         // Launch the entire scene for synchronization
         const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
         if (!scene.exists()) {
@@ -311,6 +310,7 @@ export function createClip({
         }
         scene.call("fire");
         break;
+      }
 
       case "play-clip":
         // Fire individual clips (original autoplay behavior)

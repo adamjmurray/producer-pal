@@ -9,7 +9,6 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import {
-  DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
@@ -271,7 +270,7 @@ describe("readTrack", () => {
           ...expectedClip({ id: "clip2", trackIndex: 2, sceneIndex: 2 }),
           color: undefined,
         },
-      ].map(({ color, ...clip }) => clip),
+      ].map(({ color: _color, ...clip }) => clip),
       instrument: null,
     });
   });
@@ -1804,7 +1803,7 @@ describe("readTrack", () => {
         },
       });
 
-      const result = readTrack({
+      readTrack({
         trackIndex: 0,
         include: [
           "clip-notes",

@@ -731,7 +731,7 @@ describe("createClip", () => {
         },
       });
 
-      liveApiCall.mockImplementation((method, ...args) => {
+      liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_midi_clip") {
           return ["id", "arrangement_clip"];
         }
@@ -777,7 +777,7 @@ describe("createClip", () => {
         Track: { exists: () => true },
       });
 
-      liveApiCall.mockImplementation((method, ...args) => {
+      liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_midi_clip") {
           return ["id", "arrangement_clip"];
         }

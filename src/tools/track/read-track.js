@@ -116,7 +116,7 @@ function categorizeDevices(
 // Helper function to strip chains from device objects
 function stripChains(device) {
   if (!device || typeof device !== "object") return device;
-  const { chains, ...rest } = device;
+  const { chains: _chains, ...rest } = device;
   return rest;
 }
 

@@ -873,7 +873,7 @@ describe("updateClip", () => {
     });
 
     // Mock empty existing notes
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [],
@@ -935,7 +935,7 @@ describe("updateClip", () => {
     });
 
     // Mock existing notes in the clip
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -1040,7 +1040,7 @@ describe("updateClip", () => {
     });
 
     // Mock existing notes that don't match the v0 note
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
@@ -1110,7 +1110,7 @@ describe("updateClip", () => {
     });
 
     // Mock existing notes
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [],
@@ -1318,7 +1318,7 @@ describe("updateClip", () => {
     });
 
     // Mock existing notes in bar 1
-    liveApiCall.mockImplementation(function (method, ...args) {
+    liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "get_notes_extended") {
         return JSON.stringify({
           notes: [
