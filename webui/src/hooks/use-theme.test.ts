@@ -6,20 +6,27 @@ import { renderHook, act, waitFor } from "@testing-library/preact";
 import { useTheme } from "./use-theme.js";
 
 describe("useTheme", () => {
-  let matchMediaMock;
+  let matchMediaMock: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.classList.remove("dark");
 
     // Mock window.matchMedia
-    matchMediaMock = vi.fn(() => ({
-      matches: false,
-      media: "(prefers-color-scheme: dark)",
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
-    window.matchMedia = matchMediaMock;
+    matchMediaMock = vi.fn(
+      (): MediaQueryList =>
+        ({
+          matches: false,
+          media: "(prefers-color-scheme: dark)",
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        }) as MediaQueryList,
+    );
+    window.matchMedia = matchMediaMock as unknown as typeof window.matchMedia;
   });
 
   it("defaults to system theme", () => {
@@ -64,7 +71,11 @@ describe("useTheme", () => {
       media: "(prefers-color-scheme: dark)",
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-    });
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    } as MediaQueryList);
 
     const { result } = renderHook(() => useTheme());
 
@@ -83,7 +94,11 @@ describe("useTheme", () => {
       media: "(prefers-color-scheme: dark)",
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-    });
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    } as MediaQueryList);
 
     const { result } = renderHook(() => useTheme());
 
@@ -135,7 +150,11 @@ describe("useTheme", () => {
       media: "(prefers-color-scheme: dark)",
       addEventListener: mockAddEventListener,
       removeEventListener: vi.fn(),
-    });
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    } as MediaQueryList);
 
     renderHook(() => useTheme());
 
@@ -152,7 +171,11 @@ describe("useTheme", () => {
       media: "(prefers-color-scheme: dark)",
       addEventListener: vi.fn(),
       removeEventListener: mockRemoveEventListener,
-    });
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    } as MediaQueryList);
 
     const { unmount } = renderHook(() => useTheme());
     unmount();
