@@ -1,13 +1,10 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 import { createMcpServer } from "./create-mcp-server";
 import { callLiveApi } from "./max-api-adapter.js";
 import * as console from "./node-for-max-logger";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import chatUiHtml from "virtual:chat-ui-html";
 
 const methodNotAllowed = {
   jsonrpc: "2.0",
@@ -80,10 +77,9 @@ export function createExpressApp() {
     res.status(405).json(methodNotAllowed),
   );
 
-  // Serve the chat UI
+  // Serve the chat UI (inlined for frozen .amxd builds)
   app.get("/chat", (_req, res) => {
-    const htmlPath = join(__dirname, "chat-ui.html");
-    res.sendFile(htmlPath);
+    res.type("html").send(chatUiHtml);
   });
 
   return app;

@@ -1,8 +1,20 @@
 import preact from "@preact/preset-vite";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { defineConfig } from "vitest/config";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [preact()],
+  resolve: {
+    alias: {
+      "virtual:chat-ui-html": join(
+        __dirname,
+        "../src/test/mock-chat-ui-html.js",
+      ),
+    },
+  },
   test: {
     globals: true,
     environment: "node",
