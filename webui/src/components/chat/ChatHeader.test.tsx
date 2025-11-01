@@ -7,11 +7,11 @@ import { ChatHeader } from "./ChatHeader.jsx";
 
 describe("ChatHeader", () => {
   const defaultProps = {
-    mcpStatus: "connected",
+    mcpStatus: "connected" as const,
     activeModel: null,
     activeThinking: null,
     activeTemperature: null,
-    theme: "system",
+    theme: "system" as const,
     setTheme: vi.fn(),
     onOpenSettings: vi.fn(),
   };
@@ -145,7 +145,7 @@ describe("ChatHeader", () => {
   describe("theme selector", () => {
     it("has correct initial value", () => {
       render(<ChatHeader {...defaultProps} theme="dark" />);
-      const select = screen.getByRole("combobox");
+      const select = screen.getByRole("combobox") as HTMLSelectElement;
       expect(select.value).toBe("dark");
     });
 

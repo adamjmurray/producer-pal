@@ -18,7 +18,7 @@ describe("ThinkingSettings", () => {
       />,
     );
 
-    const select = screen.getByRole("combobox");
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
     expect(select.value).toBe("Auto");
   });
 
@@ -106,7 +106,7 @@ describe("ThinkingSettings", () => {
       />,
     );
 
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
   });
 
@@ -122,7 +122,7 @@ describe("ThinkingSettings", () => {
       />,
     );
 
-    const checkbox = screen.getByRole("checkbox");
+    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
     expect(checkbox.checked).toBe(true);
   });
 

@@ -22,15 +22,9 @@
     "isolatedModules": true
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.tsx"],
-  "files": [
-    "src/components/chat/assistant/AssistantText.test.tsx",
-    "src/components/chat/assistant/AssistantThought.test.tsx",
-    "src/components/chat/assistant/AssistantToolCall.test.tsx",
-    "src/components/chat/RetryButton.test.tsx",
-    "src/components/chat/ActivityIndicator.test.tsx",
-    "src/components/settings/ModelSelector.test.tsx",
-    "src/components/settings/RandomnessSlider.test.tsx",
-    "src/components/settings/GeminiApiKeyInput.test.tsx"
+  "exclude": [
+    "src/components/chat/MessageList.test.tsx",
+    "src/components/chat/ChatInput.test.tsx",
+    "src/components/settings/SettingsScreen.test.tsx"
   ]
 }
