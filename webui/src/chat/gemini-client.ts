@@ -1,4 +1,5 @@
 import { GoogleGenAI, mcpToTool } from "@google/genai/web";
+import type { Chat, ThinkingConfig } from "@google/genai/web";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { GeminiMessage } from "../types/messages.js";
@@ -9,7 +10,7 @@ interface GeminiClientConfig {
   model?: string;
   temperature?: number;
   systemInstruction?: string;
-  thinkingConfig?: any;
+  thinkingConfig?: ThinkingConfig;
   chatHistory?: GeminiMessage[];
 }
 
@@ -41,7 +42,7 @@ export class GeminiClient {
   ai: GoogleGenAI;
   mcpUrl: string;
   config: GeminiClientConfig;
-  chat: any; // Gemini SDK doesn't export a type for this
+  chat: Chat | null;
   mcpClient: Client | null;
   chatHistory: GeminiMessage[];
 
@@ -162,10 +163,10 @@ export class GeminiClient {
           part.text &&
           lastPart?.text &&
           // if we switch between thoughts and normal text, don't concatenate:
-          !!(part as any).thought === !!(lastPart as any).thought &&
+          !!part.thought === !!lastPart.thought &&
           // if anything has a thoughtSignature, don't concatenate (https://ai.google.dev/gemini-api/docs/thinking#signatures):
-          !(lastPart as any).thoughtSignature &&
-          !(part as any).thoughtSignature
+          !lastPart.thoughtSignature &&
+          !part.thoughtSignature
         ) {
           lastPart.text += part.text;
         } else {
