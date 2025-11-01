@@ -156,10 +156,12 @@ export class GeminiClient {
           this.chatHistory.push(currentTurn);
         }
 
+        // Ensure parts array exists (SDK type allows it to be optional)
+        currentTurn.parts ??= [];
+
         // Merge text chunks: if current part is text and last part is also text with same thought flag,
         // append to existing text instead of creating a new part
-        // Note: parts is always defined because we initialize it in currentTurn
-        const lastPart = currentTurn.parts!.at(-1);
+        const lastPart = currentTurn.parts.at(-1);
         if (
           // if consecutive parts are text, we potentially can concatenate
           part.text &&
@@ -172,7 +174,7 @@ export class GeminiClient {
         ) {
           lastPart.text += part.text;
         } else {
-          currentTurn.parts!.push(part);
+          currentTurn.parts.push(part);
         }
 
         yield this.chatHistory;

@@ -45,7 +45,7 @@ export function AssistantToolCall({
 }
 
 function FullResultDetails({ result }: { result: string }) {
-  let s = `${result}`;
+  const s = `${result}`;
   let formatted: string | null = null;
 
   if (s.startsWith("{")) {

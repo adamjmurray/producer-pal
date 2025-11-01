@@ -49,6 +49,11 @@ export default [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/consistent-type-imports": "error",
+      eqeqeq: ["error", "always", { null: "ignore" }],
+      "no-var": "error",
+      "prefer-const": "error",
     },
   },
   {
@@ -79,6 +84,18 @@ export default [
           caughtErrorsIgnorePattern: "^_",
         },
       ],
+      "@typescript-eslint/no-non-null-assertion": "error",
+      "@typescript-eslint/consistent-type-imports": "error",
+      eqeqeq: ["error", "always", { null: "ignore" }],
+      "no-var": "error",
+      "prefer-const": "error",
+    },
+  },
+  {
+    // Test files - relax no-non-null-assertion rule
+    files: ["**/*.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
 ];
