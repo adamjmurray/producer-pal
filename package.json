@@ -45,7 +45,8 @@
     "typecheck": "npm run ui:typecheck",
     "ui:build": "vite build --config config/vite.config.mjs",
     "ui:dev": "vite --config config/vite.config.mjs",
-    "ui:typecheck": "tsc --project webui/tsconfig.json"
+    "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json",
+    "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.28.0",

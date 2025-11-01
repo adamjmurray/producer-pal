@@ -6,8 +6,7 @@
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
-    "allowJs": true,
-    "checkJs": true,
+    "allowJs": false,
 
     "strict": false,
     "noImplicitAny": false,
