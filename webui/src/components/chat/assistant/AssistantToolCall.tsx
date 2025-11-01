@@ -23,7 +23,7 @@ export function AssistantToolCall({
       <summary>
         &nbsp;🔧{" "}
         {!result ? "using tool: " : isError ? "tool failed: " : "used tool: "}
-        {toolNames[name as keyof typeof toolNames] ?? name}
+        {toolNames[name] ?? name}
       </summary>
       <div className="mt-1 p-1 break-all text-gray-500 dark:text-gray-500">
         {name}({JSON.stringify(args, null, 0)})

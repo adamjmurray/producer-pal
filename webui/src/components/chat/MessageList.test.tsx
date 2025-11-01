@@ -168,14 +168,14 @@ describe("MessageList", () => {
     });
 
     it("filters message with no parts and no content", () => {
-      const messages = [
+      const messages: UIMessage[] = [
         { role: "user" as const, parts: [], rawHistoryIndex: 0 },
         {
           role: "model" as const,
           rawHistoryIndex: 1,
-          parts: undefined,
-        } as unknown,
-      ] as UIMessage[];
+          parts: [],
+        },
+      ];
       const { container } = render(
         <MessageList
           messages={messages}

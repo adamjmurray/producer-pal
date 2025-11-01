@@ -150,7 +150,7 @@ describe("AssistantToolCall", () => {
     it("shows result preview in summary", () => {
       render(<AssistantToolCall {...defaultProps} result="Result preview" />);
       const summaries = document.querySelectorAll("summary");
-      const resultSummary = summaries[1]; // Second summary is for the result
+      const resultSummary = summaries[1]!; // Second summary is for the result
       expect(resultSummary.textContent).toContain("Result preview");
     });
   });
@@ -201,7 +201,7 @@ describe("AssistantToolCall", () => {
           isError={true}
         />,
       );
-      const resultSummary = document.querySelectorAll("summary")[1]; // Second summary (inner details)
+      const resultSummary = document.querySelectorAll("summary")[1]!; // Second summary (inner details)
       expect(resultSummary.className).toContain("text-red-700");
       expect(resultSummary.className).toContain("dark:text-red-400");
     });
@@ -214,7 +214,7 @@ describe("AssistantToolCall", () => {
           isError={false}
         />,
       );
-      const resultSummary = document.querySelectorAll("summary")[1]; // Second summary (inner details)
+      const resultSummary = document.querySelectorAll("summary")[1]!; // Second summary (inner details)
       expect(resultSummary.className).toContain("text-gray-600");
       expect(resultSummary.className).toContain("dark:text-gray-400");
     });

@@ -36,7 +36,7 @@ export const getThinkingBudget = (level: string): number => {
   }
 };
 
-export const toolNames = {
+export const toolNames: Record<string, string> = {
   "ppal-connect": "Connect to Ableton",
   "ppal-read-live-set": "Read Live Set",
   "ppal-update-live-set": "Update Live Set",

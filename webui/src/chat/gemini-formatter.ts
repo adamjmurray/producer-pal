@@ -144,7 +144,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
     [],
   );
 
-  const lastPart = messages.at(-1)?.parts?.at(-1);
+  const lastPart = messages.at(-1)?.parts.at(-1);
   if (lastPart?.type === "thought") {
     lastPart.isOpen = true; // show the thought as currently active
   }
@@ -153,7 +153,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
 }
 
 function isFunctionResponse(parts: Part[]): boolean {
-  return !!parts?.[0]?.functionResponse;
+  return !!parts[0]?.functionResponse;
 }
 
 function getToolCallResult(functionResponse: FunctionResponse): string {

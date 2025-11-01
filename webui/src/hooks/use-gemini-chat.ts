@@ -79,9 +79,9 @@ export function useGeminiChat({
       // Auto-retry MCP connection if it failed
       if (mcpStatus === "error") {
         await checkMcpConnection();
-        if (mcpStatus === "error") {
-          throw new Error(`MCP connection failed: ${mcpError}`);
-        }
+        // Note: mcpStatus is a prop and won't update within this function
+        // The parent needs to re-render for status changes to be reflected
+        throw new Error(`MCP connection failed: ${mcpError}`);
       }
 
       const thinkingBudget = getThinkingBudget(thinking);
@@ -125,7 +125,7 @@ export function useGeminiChat({
   const handleSend = useCallback(
     async (message: string) => {
       if (!apiKey) return;
-      if (!message?.trim()) return;
+      if (!message.trim()) return;
 
       const userMessage = message.trim();
       setIsAssistantResponding(true);
@@ -187,19 +187,13 @@ export function useGeminiChat({
 
         await initializeChat(slicedHistory);
 
-        if (!geminiRef.current) {
-          throw new Error("Failed to initialize Gemini client");
-        }
-
         const stream = geminiRef.current.sendMessage(userMessage);
 
         for await (const chatHistory of stream) {
           setMessages(formatGeminiMessages(chatHistory));
         }
       } catch (error) {
-        setMessages(
-          createErrorMessage(error, geminiRef.current?.chatHistory ?? []),
-        );
+        setMessages(createErrorMessage(error, geminiRef.current.chatHistory));
       } finally {
         setIsAssistantResponding(false);
       }

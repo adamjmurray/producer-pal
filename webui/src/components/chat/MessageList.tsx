@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "preact/hooks";
+import type { UIMessage } from "../../types/messages.js";
 import { ActivityIndicator } from "./ActivityIndicator.jsx";
 import { AssistantMessage } from "./assistant/AssistantMessage.jsx";
 import { RetryButton } from "./RetryButton.jsx";
-import type { UIMessage } from "../../types/messages.js";
 
 interface MessageListProps {
   messages: UIMessage[];
@@ -25,7 +25,7 @@ export function MessageList({
   // Find the previous user message index for retry
   const findPreviousUserMessageIndex = (currentIdx: number): number => {
     for (let i = currentIdx - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
+      if (messages[i]?.role === "user") {
         return i;
       }
     }
@@ -79,14 +79,14 @@ export function MessageList({
 }
 
 function hasContent(message: UIMessage): boolean {
-  return (message.parts ?? []).length > 0;
+  return message.parts.length > 0;
 }
 
 function formatUserContent(message: UIMessage): string {
-  return (message.parts ?? [])
+  return message.parts
     .map((part) => {
       if ("content" in part) {
-        return part.content ?? "";
+        return part.content;
       }
       return "";
     })
