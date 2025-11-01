@@ -99,7 +99,8 @@ Musical notation parser and utilities for creating and manipulating MIDI clips.
 
 ## Build System
 
-Three separate JavaScript bundles built with rollup.js:
+Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
+(Chat UI):
 
 ### MCP Server Bundle
 
@@ -126,6 +127,23 @@ Three separate JavaScript bundles built with rollup.js:
   - Converts MCP stdio transport to streamable HTTP
   - Graceful degradation when Live isn't running
   - Returns setup instructions when offline
+
+### Chat UI Bundle
+
+- **Entry:** `webui/src/main.jsx`
+- **Output:** `max-for-live-device/chat-ui.html`
+- **Target:** Browser (served at `http://localhost:3350/chat`, opened via Max)
+- **Build Tool:** Vite with custom plugins
+- **Dependencies:** Bundled into single self-contained HTML file
+- **Purpose:** Preact-based chat interface for Gemini + MCP integration
+- **Features:**
+  - Served from MCP server's Express app
+  - Opened in system default browser (avoids Max jweb keyboard issues)
+  - Connects to Gemini API with automatic MCP tool calling
+  - Real-time streaming chat interface
+  - Settings persistence via localStorage
+
+See `doc/Chat-UI.md` for detailed architecture and development workflow.
 
 ## Message Protocol
 

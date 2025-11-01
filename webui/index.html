@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Producer Pal Chat</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23222'/><path d='M15 30v40M15 30h15c8 0 12 3 12 10 0 7-4 10-12 10H15' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/><path d='M55 30v40M55 30h15c8 0 12 3 12 10 0 7-4 10-12 10H55' fill='none' stroke='white' stroke-width='7' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+    />
+    <script>
+      // Set theme before page renders to avoid flash
+      const theme = localStorage.getItem("theme") || "system";
+      if (
+        theme === "dark" ||
+        (theme === "system" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
+    <link rel="stylesheet" href="/src/main.css" />
+  </head>
+  <body
+    class="h-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-300"
+  >
+    <div id="app"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -43,6 +43,64 @@ Automated tests must always pass:
 npm test
 ```
 
+## Web UI Development
+
+The chat interface is a Preact web application built with Vite. It's served from
+the MCP server at `http://localhost:3350/chat` and opened in your system's
+default browser. It connects to both the Gemini API and the local MCP server.
+
+### Development Server
+
+```bash
+npm run ui:dev
+```
+
+This starts a dev server at http://localhost:3355 with hot reload. Changes to
+webui source files will update automatically in the browser. Occasionally a page
+refresh may be needed if things stop working.
+
+**Note:** The dev server runs on a different port (3355) than the production
+server (3350). Both connect to the MCP server at http://localhost:3350/mcp. For
+full integration testing, use the production build served from port 3350.
+
+### Production Build
+
+```bash
+npm run ui:build
+```
+
+Builds a single self-contained `max-for-live-device/chat-ui.html` file. This is
+automatically included in `npm run build`.
+
+### Development Workflows
+
+**Working on MCP server/tools only** (UI doesn't need changes):
+
+- Build UI once: `npm run build` (or just `npm run ui:build`)
+- Run: `npm run dev` (watches MCP server, V8, Portal)
+- Access UI at http://localhost:3350/chat
+
+**Working on web UI only** (MCP server doesn't need changes):
+
+- Build MCP server once: `npm run build`
+- Run: `npm run ui:dev` (watches UI with hot reload)
+- Access UI at http://localhost:3355
+
+**Working on everything** (full-stack development):
+
+- Terminal 1: `npm run dev` (watches MCP server, V8, Portal)
+- Terminal 2: `npm run ui:dev` (watches UI with hot reload)
+- Access UI at http://localhost:3355
+
+**Tip:** The Max for Live device has a button to open http://localhost:3350/chat
+in your browser.
+
+### Architecture
+
+See `doc/Chat-UI.md` for detailed information about:
+
+## Testing and Debugging
+
 To test/debug, you can use:
 
 ```

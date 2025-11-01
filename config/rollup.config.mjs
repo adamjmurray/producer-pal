@@ -8,6 +8,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import copy from "rollup-plugin-copy";
+import { inlineChatUI } from "./rollup-plugin-inline-chat-ui.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
@@ -76,6 +77,7 @@ export default [
         ),
         preventAssignment: true,
       }),
+      inlineChatUI(), // Inline chat-ui.html for frozen .amxd builds
       resolve({
         preferBuiltins: true,
         browser: false,

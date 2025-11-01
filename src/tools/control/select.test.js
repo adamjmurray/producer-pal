@@ -14,7 +14,9 @@ import { select } from "./select.js";
 vi.mocked(LiveAPI);
 
 // Set up global LiveAPI
-global.LiveAPI = vi.fn();
+global.LiveAPI = vi.fn(function () {
+  // Will be overridden by mockImplementation in beforeEach
+});
 
 // Mock utility functions
 vi.mock(import("../shared/utils.js"), () => ({
@@ -718,7 +720,7 @@ describe("view", () => {
       };
 
       // Mock LiveAPI constructor to return appropriate instances
-      global.LiveAPI.mockImplementation((path) => {
+      global.LiveAPI.mockImplementation(function (path) {
         const instance = (() => {
           if (path === "live_app view") return mockAppView;
           if (path === "live_set view selected_track") return mockSelectedTrack;

@@ -1,11 +1,26 @@
+import preact from "@preact/preset-vite";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
 import { defineConfig } from "vitest/config";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 export default defineConfig({
+  plugins: [preact()],
+  resolve: {
+    alias: {
+      "virtual:chat-ui-html": join(
+        __dirname,
+        "../src/test/mock-chat-ui-html.js",
+      ),
+    },
+  },
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.js"],
+    include: ["src/**/*.test.js", "webui/**/*.test.js", "webui/**/*.test.jsx"],
     setupFiles: ["src/test/test-setup.js"],
+    clearMocks: true,
     restoreMocks: true,
     coverage: {
       provider: "v8",
@@ -16,12 +31,23 @@ export default defineConfig({
         "json",
         "html",
       ],
-      include: ["src/**"],
+      include: ["src/**", "webui/**"],
       exclude: [
         // ignore files that are not feasible to test
 
+        // ignore OS metadata files
+        "**/.DS_Store",
+
         // ignore typedefs:
         "**/*.d.ts",
+
+        // ignore static assets:
+        "**/*.html",
+        "**/*.css",
+        "**/*.svg",
+
+        // peggy grammars
+        "**/*.peggy",
 
         // ignore the bundle entry scripts:
         "src/live-api-adapter/live-api-adapter.js",

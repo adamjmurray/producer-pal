@@ -96,6 +96,27 @@ const itemsToCopy = [
       return "src";
     },
   },
+  {
+    src: "webui",
+    isDir: true,
+    exclude: ["node_modules", "dist"],
+    group: ({ relativePath }) => {
+      // Test files
+      if (relativePath.match(/\.test\.\w+$/)) {
+        return "webui--test.js";
+      }
+      // JSX files (React components)
+      if (relativePath.endsWith(".jsx")) {
+        return "webui--jsx";
+      }
+      // JS files (hooks, utilities, etc.)
+      if (relativePath.endsWith(".js")) {
+        return "webui--js";
+      }
+      // Everything else (CSS, HTML, SVG, etc.)
+      return "webui--other";
+    },
+  },
 
   // Individual files
   { src: ".gitignore", flatName: "gitignore", group: "config" },

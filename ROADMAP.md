@@ -15,10 +15,26 @@ In no particular order:
 - Run sand-boxed LLM-generated JavaScript code to generate and transform MIDI
   (LLM-generated algorithms)
 
-### Built-in Chat
+### Improved Built-in Chat
 
-- Setup an API key or point at a local LM Studio server and chat directly from
-  the Max for Live device via a popup window
+Support more models:
+
+- Mistral API with free tier API keys
+- Local LM Studio server
+- Other providers with free tier API keys
+- Maybe pay-as-you-go APIs?
+
+UI Improvements:
+
+- Edit and resend any previous message
+- Change model settings mid-chat
+
+### Voice Interaction
+
+Allow for controlling Ableton Live by simply talking:
+
+- Realtime bi-directional audio-chat
+- Auto-transcribe-and-send (VAD) with text-to-speech responses
 
 ### Behavior Customization
 
