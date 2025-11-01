@@ -19,7 +19,7 @@ export function ChatStart({
             Start a conversation with Producer Pal
           </p>
           <button
-            onClick={() => handleSend("Connect to Ableton.")}
+            onClick={() => void handleSend("Connect to Ableton.")}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
             Quick Connect
@@ -33,7 +33,7 @@ export function ChatStart({
           </h1>
           <p className="text-sm text-red-600 dark:text-red-400">{mcpError}</p>
           <button
-            onClick={checkMcpConnection}
+            onClick={() => void checkMcpConnection()}
             className="mt-2 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
           >
             Retry

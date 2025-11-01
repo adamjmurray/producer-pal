@@ -43,7 +43,7 @@ describe("useTheme", () => {
   it("applies dark class when theme is dark", async () => {
     const { result } = renderHook(() => useTheme());
 
-    act(() => {
+    await act(() => {
       result.current.setTheme("dark");
     });
 
@@ -56,7 +56,7 @@ describe("useTheme", () => {
     document.documentElement.classList.add("dark");
     const { result } = renderHook(() => useTheme());
 
-    act(() => {
+    await act(() => {
       result.current.setTheme("light");
     });
 
@@ -79,7 +79,7 @@ describe("useTheme", () => {
 
     const { result } = renderHook(() => useTheme());
 
-    act(() => {
+    await act(() => {
       result.current.setTheme("system");
     });
 
@@ -102,7 +102,7 @@ describe("useTheme", () => {
 
     const { result } = renderHook(() => useTheme());
 
-    act(() => {
+    await act(() => {
       result.current.setTheme("system");
     });
 
@@ -114,7 +114,7 @@ describe("useTheme", () => {
   it("saves theme to localStorage when changed", async () => {
     const { result } = renderHook(() => useTheme());
 
-    act(() => {
+    await act(() => {
       result.current.setTheme("dark");
     });
 
@@ -126,7 +126,7 @@ describe("useTheme", () => {
   it("updates localStorage when theme changes", async () => {
     const { result } = renderHook(() => useTheme());
 
-    act(() => {
+    await act(() => {
       result.current.setTheme("dark");
     });
 
@@ -134,7 +134,7 @@ describe("useTheme", () => {
       expect(localStorage.getItem("theme")).toBe("dark");
     });
 
-    act(() => {
+    await act(() => {
       result.current.setTheme("light");
     });
 

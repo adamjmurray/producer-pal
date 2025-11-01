@@ -27,7 +27,7 @@ export function useMcpConnection(): UseMcpConnectionReturn {
 
   // Check connection on mount
   useEffect(() => {
-    checkMcpConnection();
+    void checkMcpConnection();
   }, [checkMcpConnection]);
 
   return { mcpStatus, mcpError, checkMcpConnection };

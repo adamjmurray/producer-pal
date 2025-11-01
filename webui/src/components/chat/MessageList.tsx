@@ -7,7 +7,7 @@ import { RetryButton } from "./RetryButton.jsx";
 interface MessageListProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
-  handleRetry: (messageIndex: number) => void;
+  handleRetry: (messageIndex: number) => Promise<void>;
 }
 
 export function MessageList({
@@ -64,7 +64,7 @@ export function MessageList({
             </div>
             {canRetry && previousUserMessageIdx >= 0 && (
               <RetryButton
-                onClick={() => handleRetry(previousUserMessageIdx)}
+                onClick={() => void handleRetry(previousUserMessageIdx)}
               />
             )}
           </div>

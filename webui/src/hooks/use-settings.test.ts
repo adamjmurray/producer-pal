@@ -38,60 +38,60 @@ describe("useSettings", () => {
     expect(result.current.hasApiKey).toBe(true);
   });
 
-  it("updates apiKey when setApiKey is called", () => {
+  it("updates apiKey when setApiKey is called", async () => {
     const { result } = renderHook(() => useSettings());
 
-    act(() => {
+    await act(() => {
       result.current.setApiKey("new-key");
     });
 
     expect(result.current.apiKey).toBe("new-key");
   });
 
-  it("updates model when setModel is called", () => {
+  it("updates model when setModel is called", async () => {
     const { result } = renderHook(() => useSettings());
 
-    act(() => {
+    await act(() => {
       result.current.setModel("gemini-2.5-flash-lite");
     });
 
     expect(result.current.model).toBe("gemini-2.5-flash-lite");
   });
 
-  it("updates thinking when setThinking is called", () => {
+  it("updates thinking when setThinking is called", async () => {
     const { result } = renderHook(() => useSettings());
 
-    act(() => {
+    await act(() => {
       result.current.setThinking("Low");
     });
 
     expect(result.current.thinking).toBe("Low");
   });
 
-  it("updates temperature when setTemperature is called", () => {
+  it("updates temperature when setTemperature is called", async () => {
     const { result } = renderHook(() => useSettings());
 
-    act(() => {
+    await act(() => {
       result.current.setTemperature(0.5);
     });
 
     expect(result.current.temperature).toBe(0.5);
   });
 
-  it("updates showThoughts when setShowThoughts is called", () => {
+  it("updates showThoughts when setShowThoughts is called", async () => {
     const { result } = renderHook(() => useSettings());
 
-    act(() => {
+    await act(() => {
       result.current.setShowThoughts(false);
     });
 
     expect(result.current.showThoughts).toBe(false);
   });
 
-  it("saves settings to localStorage", () => {
+  it("saves settings to localStorage", async () => {
     const { result } = renderHook(() => useSettings());
 
-    act(() => {
+    await act(() => {
       result.current.setApiKey("new-key");
       result.current.setModel("gemini-2.5-flash-lite");
       result.current.setThinking("Medium");
@@ -99,7 +99,7 @@ describe("useSettings", () => {
       result.current.setShowThoughts(false);
     });
 
-    act(() => {
+    await act(() => {
       result.current.saveSettings();
     });
 
@@ -110,13 +110,13 @@ describe("useSettings", () => {
     expect(localStorage.getItem("gemini_showThoughts")).toBe("false");
   });
 
-  it("reverts to saved settings on cancel", () => {
+  it("reverts to saved settings on cancel", async () => {
     localStorage.setItem("gemini_api_key", "saved-key");
     localStorage.setItem("gemini_model", "gemini-2.5-pro");
 
     const { result } = renderHook(() => useSettings());
 
-    act(() => {
+    await act(() => {
       result.current.setApiKey("temporary-key");
       result.current.setModel("gemini-2.5-flash");
     });
@@ -124,7 +124,7 @@ describe("useSettings", () => {
     expect(result.current.apiKey).toBe("temporary-key");
     expect(result.current.model).toBe("gemini-2.5-flash");
 
-    act(() => {
+    await act(() => {
       result.current.cancelSettings();
     });
 

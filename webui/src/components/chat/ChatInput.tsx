@@ -15,14 +15,14 @@ export function ChatInput({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isAssistantResponding && input.trim()) {
-        handleSend(input);
+        void handleSend(input);
         setInput("");
       }
     }
   };
 
   const handleSendClick = () => {
-    handleSend(input);
+    void handleSend(input);
     setInput("");
   };
 
