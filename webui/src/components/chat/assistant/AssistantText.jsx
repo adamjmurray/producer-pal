@@ -5,7 +5,7 @@ export function AssistantText({ content }) {
     <div
       className="prose dark:prose-invert prose-sm max-w-none"
       dangerouslySetInnerHTML={{
-        __html: marked(content),
+        __html: /** @type {string} */ (marked(content)),
       }}
     />
   );

@@ -10,7 +10,11 @@ export function RandomnessSlider({ temperature, setTemperature }) {
         max="2"
         step="0.1"
         value={temperature}
-        onInput={(e) => setTemperature(parseFloat(e.target.value))}
+        onInput={(e) =>
+          setTemperature(
+            parseFloat(/** @type {HTMLInputElement} */ (e.target).value),
+          )
+        }
         className="w-full"
       />
     </div>

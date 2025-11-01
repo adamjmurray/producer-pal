@@ -23,11 +23,13 @@ export function ChatInput({ handleSend, isAssistantResponding }) {
       <div className="flex gap-2">
         <textarea
           value={input}
-          onInput={(e) => setInput(e.target.value)}
+          onInput={(e) =>
+            setInput(/** @type {HTMLTextAreaElement} */ (e.target).value)
+          }
           onKeyDown={handleKeyDown}
           placeholder="Type a message... (Shift+Enter for new line)"
           className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded resize-none placeholder:dark:text-gray-400 placeholder:text-gray-500"
-          rows="2"
+          rows={2}
         />
         <button
           onClick={handleSendClick}

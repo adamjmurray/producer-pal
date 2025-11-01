@@ -52,7 +52,7 @@ export class GeminiClient {
    * @throws {Error} If connection fails
    */
   static async testConnection(mcpUrl = "http://localhost:3350/mcp") {
-    const transport = new StreamableHTTPClientTransport(mcpUrl);
+    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
     const client = new Client({
       name: "producer-pal-chat-ui-test",
       version: "1.0.0",
@@ -68,7 +68,7 @@ export class GeminiClient {
    */
   async initialize() {
     // Connect to MCP server
-    const transport = new StreamableHTTPClientTransport(this.mcpUrl);
+    const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
     this.mcpClient = new Client({
       name: "producer-pal-chat-ui",
       version: "1.0.0",
@@ -116,6 +116,7 @@ export class GeminiClient {
       throw new Error("Chat not initialized. Call initialize() first.");
     }
 
+    /** @type {{ role: string, parts: any[] }} */
     let currentTurn = {
       role: "user",
       parts: [{ text: message }],

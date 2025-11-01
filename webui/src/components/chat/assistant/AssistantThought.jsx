@@ -13,17 +13,21 @@ export function AssistantThought({ content, isOpen }) {
         dangerouslySetInnerHTML={{
           __html: isOpen
             ? "💭 Thinking..."
-            : marked.parseInline(
-                `💭 Thought about: ${content.trim().split("\n")[0]}`,
+            : /** @type {string} */ (
+                marked.parseInline(
+                  `💭 Thought about: ${content.trim().split("\n")[0]}`,
+                )
               ),
         }}
       />
       <div
         className="pt-2 text-xs prose dark:prose-invert prose-sm max-w-none"
         dangerouslySetInnerHTML={{
-          __html: isOpen
-            ? marked(content.trim())
-            : marked(content.trim().split("\n").slice(1).join("\n")),
+          __html: /** @type {string} */ (
+            isOpen
+              ? marked(content.trim())
+              : marked(content.trim().split("\n").slice(1).join("\n"))
+          ),
         }}
       />
     </details>

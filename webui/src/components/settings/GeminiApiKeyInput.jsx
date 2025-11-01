@@ -5,7 +5,9 @@ export function GeminiApiKeyInput({ apiKey, setApiKey, hasApiKey }) {
       <input
         type="password"
         value={apiKey}
-        onInput={(e) => setApiKey(e.target.value)}
+        onInput={(e) =>
+          setApiKey(/** @type {HTMLInputElement} */ (e.target).value)
+        }
         className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded placeholder:dark:text-gray-400 placeholder:text-gray-500"
         placeholder="Enter your API key"
         autoFocus={!hasApiKey}

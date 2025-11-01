@@ -55,7 +55,9 @@ export function ChatHeader({
         </button>
         <select
           value={theme}
-          onChange={(e) => setTheme(e.target.value)}
+          onChange={(e) =>
+            setTheme(/** @type {HTMLSelectElement} */ (e.target).value)
+          }
           className="text-xs bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
         >
           <option value="system">System</option>
