@@ -98,14 +98,22 @@ export function getDeviceType(device) {
   const canHaveDrumPads = device.getProperty("can_have_drum_pads");
 
   if (typeValue === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
-    if (canHaveDrumPads) return DEVICE_TYPE.DRUM_RACK;
-    if (canHaveChains) return DEVICE_TYPE.INSTRUMENT_RACK;
+    if (canHaveDrumPads) {
+      return DEVICE_TYPE.DRUM_RACK;
+    }
+    if (canHaveChains) {
+      return DEVICE_TYPE.INSTRUMENT_RACK;
+    }
     return DEVICE_TYPE.INSTRUMENT;
   } else if (typeValue === LIVE_API_DEVICE_TYPE_AUDIO_EFFECT) {
-    if (canHaveChains) return DEVICE_TYPE.AUDIO_EFFECT_RACK;
+    if (canHaveChains) {
+      return DEVICE_TYPE.AUDIO_EFFECT_RACK;
+    }
     return DEVICE_TYPE.AUDIO_EFFECT;
   } else if (typeValue === LIVE_API_DEVICE_TYPE_MIDI_EFFECT) {
-    if (canHaveChains) return DEVICE_TYPE.MIDI_EFFECT_RACK;
+    if (canHaveChains) {
+      return DEVICE_TYPE.MIDI_EFFECT_RACK;
+    }
     return DEVICE_TYPE.MIDI_EFFECT;
   }
 
@@ -118,7 +126,9 @@ export function getDeviceType(device) {
  * @returns {Object|Array} Cleaned object/array
  */
 export function cleanupInternalDrumChains(obj) {
-  if (!obj || typeof obj !== "object") return obj;
+  if (!obj || typeof obj !== "object") {
+    return obj;
+  }
 
   if (Array.isArray(obj)) {
     return obj.map(cleanupInternalDrumChains);

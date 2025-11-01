@@ -69,25 +69,27 @@ if (process.env.ENABLE_RAW_LIVE_API === "true") {
 
 function callTool(toolName, args) {
   const tool = tools[toolName];
-  if (!tool) throw new Error(`Unknown tool: ${tool}`);
+  if (!tool) {
+    throw new Error(`Unknown tool: ${tool}`);
+  }
   return tool(args);
 }
 
 let isCompactOutputEnabled = true;
 export function compactOutput(enabled) {
-  isCompactOutputEnabled = !!enabled;
+  isCompactOutputEnabled = Boolean(enabled);
 }
 
 export function smallModelMode(enabled) {
-  context.smallModelMode = !!enabled;
+  context.smallModelMode = Boolean(enabled);
 }
 
 export function projectNotesEnabled(enabled) {
-  context.projectNotes.enabled = !!enabled;
+  context.projectNotes.enabled = Boolean(enabled);
 }
 
 export function projectNotesWritable(writable) {
-  context.projectNotes.writable = !!writable;
+  context.projectNotes.writable = Boolean(writable);
 }
 
 export function projectNotes(_text, content) {

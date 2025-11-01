@@ -188,24 +188,57 @@ export function parseIncludeArray(includeArray, defaults = {}) {
 export function includeArrayFromFlags(includeFlags) {
   const includes = [];
 
-  if (includeFlags.includeDrumChains) includes.push("drum-chains");
-  if (includeFlags.includeDrumMaps) includes.push("drum-maps");
-  if (includeFlags.includeClipNotes) includes.push("clip-notes");
-  if (includeFlags.includeRackChains) includes.push("rack-chains");
-  if (includeFlags.includeScenes) includes.push("scenes");
-  if (includeFlags.includeMidiEffects) includes.push("midi-effects");
-  if (includeFlags.includeInstruments) includes.push("instruments");
-  if (includeFlags.includeAudioEffects) includes.push("audio-effects");
-  if (includeFlags.includeRoutings) includes.push("routings");
-  if (includeFlags.includeAvailableRoutings)
+  if (includeFlags.includeDrumChains) {
+    includes.push("drum-chains");
+  }
+  if (includeFlags.includeDrumMaps) {
+    includes.push("drum-maps");
+  }
+  if (includeFlags.includeClipNotes) {
+    includes.push("clip-notes");
+  }
+  if (includeFlags.includeRackChains) {
+    includes.push("rack-chains");
+  }
+  if (includeFlags.includeScenes) {
+    includes.push("scenes");
+  }
+  if (includeFlags.includeMidiEffects) {
+    includes.push("midi-effects");
+  }
+  if (includeFlags.includeInstruments) {
+    includes.push("instruments");
+  }
+  if (includeFlags.includeAudioEffects) {
+    includes.push("audio-effects");
+  }
+  if (includeFlags.includeRoutings) {
+    includes.push("routings");
+  }
+  if (includeFlags.includeAvailableRoutings) {
     includes.push("available-routings");
-  if (includeFlags.includeSessionClips) includes.push("session-clips");
-  if (includeFlags.includeArrangementClips) includes.push("arrangement-clips");
-  if (includeFlags.includeClips) includes.push("clips");
-  if (includeFlags.includeRegularTracks) includes.push("regular-tracks");
-  if (includeFlags.includeReturnTracks) includes.push("return-tracks");
-  if (includeFlags.includeMasterTrack) includes.push("master-track");
-  if (includeFlags.includeColor) includes.push("color");
+  }
+  if (includeFlags.includeSessionClips) {
+    includes.push("session-clips");
+  }
+  if (includeFlags.includeArrangementClips) {
+    includes.push("arrangement-clips");
+  }
+  if (includeFlags.includeClips) {
+    includes.push("clips");
+  }
+  if (includeFlags.includeRegularTracks) {
+    includes.push("regular-tracks");
+  }
+  if (includeFlags.includeReturnTracks) {
+    includes.push("return-tracks");
+  }
+  if (includeFlags.includeMasterTrack) {
+    includes.push("master-track");
+  }
+  if (includeFlags.includeColor) {
+    includes.push("color");
+  }
 
   return includes;
 }

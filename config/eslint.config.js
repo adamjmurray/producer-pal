@@ -131,6 +131,12 @@ export default [
       eqeqeq: ["error", "always", { null: "ignore" }],
       "no-var": "error",
       "prefer-const": "error",
+      "no-debugger": "error",
+      curly: ["error", "all"],
+      "no-throw-literal": "error",
+      "no-implicit-coercion": "error",
+      "default-param-last": "error",
+      "no-lonely-if": "error",
     },
   },
   {

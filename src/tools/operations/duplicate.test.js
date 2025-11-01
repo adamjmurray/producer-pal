@@ -2115,12 +2115,15 @@ describe("duplicate", () => {
 
       // Mock IDs for creation order - track2 has higher ID than track0
       liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0" || this._id === "id track0")
+        if (this._path === "live_set tracks 0" || this._id === "id track0") {
           return "100";
-        if (this._path === "live_set tracks 1" || this._id === "id track2")
-          return "200"; // Our source track
-        if (this._path === "live_set tracks 2" || this._id === "id track3")
+        }
+        if (this._path === "live_set tracks 1" || this._id === "id track2") {
+          return "200";
+        } // Our source track
+        if (this._path === "live_set tracks 2" || this._id === "id track3") {
           return "300";
+        }
         return this._id;
       });
 

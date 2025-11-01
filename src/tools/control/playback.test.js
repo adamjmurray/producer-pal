@@ -350,10 +350,15 @@ describe("transport", () => {
       },
     });
     liveApiType.mockImplementation(function () {
-      if (this._path === "live_set") return "LiveSet";
-      if (this._path === "scene1") return "Scene";
-      if (this._path === "id track1" || this._path === "id track2")
+      if (this._path === "live_set") {
+        return "LiveSet";
+      }
+      if (this._path === "scene1") {
+        return "Scene";
+      }
+      if (this._path === "id track1" || this._path === "id track2") {
         return "Track";
+      }
       return this._type; // Fall back to default MockLiveAPI logic
     });
 
@@ -794,11 +799,18 @@ describe("transport", () => {
         },
       });
       liveApiType.mockImplementation(function () {
-        if (this._path === "live_set") return "LiveSet";
-        if (this._path === "live_app view") return "AppView";
-        if (this._path === "scene1") return "Scene";
-        if (this._path === "id track1" || this._path === "id track2")
+        if (this._path === "live_set") {
+          return "LiveSet";
+        }
+        if (this._path === "live_app view") {
+          return "AppView";
+        }
+        if (this._path === "scene1") {
+          return "Scene";
+        }
+        if (this._path === "id track1" || this._path === "id track2") {
           return "Track";
+        }
         return this._type; // Fall back to default MockLiveAPI logic
       });
 

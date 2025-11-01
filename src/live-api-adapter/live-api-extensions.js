@@ -88,7 +88,9 @@ if (typeof LiveAPI !== "undefined") {
   LiveAPI.prototype.getChildIds = function (name) {
     const idArray = this.get(name);
 
-    if (!Array.isArray(idArray)) return [];
+    if (!Array.isArray(idArray)) {
+      return [];
+    }
 
     const children = [];
     for (let i = 0; i < idArray.length; i += 2) {
@@ -105,7 +107,9 @@ if (typeof LiveAPI !== "undefined") {
 
   LiveAPI.prototype.getColor = function () {
     const colorValue = this.getProperty("color");
-    if (colorValue === undefined) return null;
+    if (colorValue === undefined) {
+      return null;
+    }
 
     const r = (colorValue >> 16) & 0xff;
     const g = (colorValue >> 8) & 0xff;
@@ -193,7 +197,9 @@ if (typeof LiveAPI !== "undefined") {
       get: function () {
         // Try scene path first
         let match = this.path.match(/live_set scenes (\d+)/);
-        if (match) return Number(match[1]);
+        if (match) {
+          return Number(match[1]);
+        }
 
         // Also try clip_slots path (scene index is the clip slot index in session view)
         match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
@@ -209,7 +215,9 @@ if (typeof LiveAPI !== "undefined") {
       get: function () {
         // Try clip_slots path first
         let match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
-        if (match) return Number(match[1]);
+        if (match) {
+          return Number(match[1]);
+        }
 
         // Also try scene path (clip slot index is the scene index in session view)
         match = this.path.match(/live_set scenes (\d+)/);

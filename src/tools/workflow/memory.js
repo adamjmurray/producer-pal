@@ -6,7 +6,7 @@
  * @param {Object} context - The context object from main.js
  * @returns {Object} Project context information
  */
-export function memory({ action, content } = {}, context) {
+export function memory({ action, content } = {}, context = {}) {
   if (!action) {
     throw new Error("Action is required");
   }

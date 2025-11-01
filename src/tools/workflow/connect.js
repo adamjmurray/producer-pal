@@ -13,7 +13,7 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
  * @param {Object} context - The userContext from main.js
  * @returns {Object} Connection status and basic Live Set info
  */
-export function connect(_params = {}, context) {
+export function connect(_params = {}, context = {}) {
   const liveSet = new LiveAPI("live_set");
   const liveApp = new LiveAPI("live_app");
 
@@ -65,7 +65,9 @@ export function connect(_params = {}, context) {
           break;
         }
       }
-      if (foundAnyInstrument) break;
+      if (foundAnyInstrument) {
+        break;
+      }
     }
   }
   if (!foundAnyInstrument) {

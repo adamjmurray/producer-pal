@@ -1278,8 +1278,12 @@ describe("readTrack", () => {
 
     it("returns empty array when the drum rack has no pads", () => {
       liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0") return "track1";
-        if (this._path === "live_set tracks 0 devices 0") return "drumrack";
+        if (this._path === "live_set tracks 0") {
+          return "track1";
+        }
+        if (this._path === "live_set tracks 0 devices 0") {
+          return "drumrack";
+        }
         return this._id;
       });
       mockLiveApiGet({
@@ -2331,10 +2335,18 @@ describe("readTrack", () => {
       });
 
       liveApiType.mockImplementation(function () {
-        if (this._path === "id arr_clip1") return "Clip";
-        if (this._path === "id clip1") return "Clip";
-        if (this._path === "id synth1") return "Device";
-        if (this._path === "id effect1") return "Device";
+        if (this._path === "id arr_clip1") {
+          return "Clip";
+        }
+        if (this._path === "id clip1") {
+          return "Clip";
+        }
+        if (this._path === "id synth1") {
+          return "Device";
+        }
+        if (this._path === "id effect1") {
+          return "Device";
+        }
         return this._type; // Fall back to default MockLiveAPI logic
       });
 

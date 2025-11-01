@@ -259,25 +259,23 @@ export function createClip({
     // Add view-specific properties
     if (view === "session") {
       clipResult.sceneIndex = currentSceneIndex;
-    } else {
+    } else if (i === 0) {
       // Calculate bar|beat position for this clip
-      if (i === 0) {
-        clipResult.arrangementStartTime = arrangementStartTime;
-      } else {
-        // Convert clipLength back to bar|beat format and add to original position
-        const clipLengthInMusicalBeats =
-          clipLength * (songTimeSigDenominator / 4);
-        const totalOffsetBeats = i * clipLengthInMusicalBeats;
-        const originalBeats = barBeatToBeats(
-          arrangementStartTime,
-          songTimeSigNumerator,
-        );
-        const newPositionBeats = originalBeats + totalOffsetBeats;
-        clipResult.arrangementStartTime = beatsToBarBeat(
-          newPositionBeats,
-          songTimeSigNumerator,
-        );
-      }
+      clipResult.arrangementStartTime = arrangementStartTime;
+    } else {
+      // Convert clipLength back to bar|beat format and add to original position
+      const clipLengthInMusicalBeats =
+        clipLength * (songTimeSigDenominator / 4);
+      const totalOffsetBeats = i * clipLengthInMusicalBeats;
+      const originalBeats = barBeatToBeats(
+        arrangementStartTime,
+        songTimeSigNumerator,
+      );
+      const newPositionBeats = originalBeats + totalOffsetBeats;
+      clipResult.arrangementStartTime = beatsToBarBeat(
+        newPositionBeats,
+        songTimeSigNumerator,
+      );
     }
 
     // Only include noteCount if notes were provided

@@ -18,7 +18,9 @@ export const log = (...any) => {
 };
 
 export const info = (...any) => {
-  if (verbose) Max.post(format(any));
+  if (verbose) {
+    Max.post(format(any));
+  }
 };
 
 export const warn = (...any) => {

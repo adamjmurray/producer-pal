@@ -739,7 +739,9 @@ describe("createClip", () => {
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arrangement_clip") return "arrangement_clip";
+        if (this._path === "id arrangement_clip") {
+          return "arrangement_clip";
+        }
         return this._id;
       });
 
@@ -785,7 +787,9 @@ describe("createClip", () => {
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arrangement_clip") return "arrangement_clip";
+        if (this._path === "id arrangement_clip") {
+          return "arrangement_clip";
+        }
         return this._id;
       });
 
@@ -1082,7 +1086,9 @@ describe("createClip", () => {
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arrangement_clip") return "arrangement_clip";
+        if (this._path === "id arrangement_clip") {
+          return "arrangement_clip";
+        }
         return this._id;
       });
 

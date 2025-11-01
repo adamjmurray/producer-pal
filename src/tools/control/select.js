@@ -305,8 +305,12 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
     trackAPI = validateIdType(trackId, "track", "select");
     songView.setProperty("selected_track", trackAPI.id);
     result.selectedTrackId = trackId;
-    if (category != null) result.selectedCategory = category;
-    if (trackIndex != null) result.selectedTrackIndex = trackIndex;
+    if (category != null) {
+      result.selectedCategory = category;
+    }
+    if (trackIndex != null) {
+      result.selectedTrackIndex = trackIndex;
+    }
   } else if (category != null || trackIndex != null) {
     // Select by category/index
     const finalCategory = category || "regular";
@@ -345,7 +349,9 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
     const sceneAPI = validateIdType(sceneId, "scene", "select");
     songView.setProperty("selected_scene", sceneAPI.id);
     result.selectedSceneId = sceneId;
-    if (sceneIndex != null) result.selectedSceneIndex = sceneIndex;
+    if (sceneIndex != null) {
+      result.selectedSceneIndex = sceneIndex;
+    }
   } else if (sceneIndex != null) {
     // Select by index
     const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);

@@ -284,9 +284,15 @@ describe("readLiveSet", () => {
 
   it("includes device information across multiple tracks with includeDrumChains", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
-      if (this._path === "live_set tracks 1") return "track2";
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
+      if (this._path === "live_set tracks 1") {
+        return "track2";
+      }
       return this._id;
     });
 
@@ -372,14 +378,24 @@ describe("readLiveSet", () => {
 
   it("excludes drum rack devices by default", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
-      if (this._path === "live_set tracks 0 devices 0") return "drum_rack1";
-      if (this._path === "live_set tracks 0 devices 1") return "reverb1";
-      if (this._path === "live_set tracks 0 devices 0 drum_pads 36")
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
+      if (this._path === "live_set tracks 0 devices 0") {
+        return "drum_rack1";
+      }
+      if (this._path === "live_set tracks 0 devices 1") {
+        return "reverb1";
+      }
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36") {
         return "kick_pad";
-      if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0")
+      }
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0") {
         return "kick_chain";
+      }
       return this._id;
     });
 
@@ -477,8 +493,12 @@ describe("readLiveSet", () => {
 
   it("includes routing information in tracks when includeRoutings is true", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
       return this._id;
     });
 
@@ -547,8 +567,12 @@ describe("readLiveSet", () => {
 
   it("excludes routing information from tracks when includeRoutings is false", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
       return this._id;
     });
 
@@ -1163,7 +1187,9 @@ describe("readLiveSet", () => {
 
   it("omits name property when Live Set name is empty string", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set";
+      if (this._path === "live_set") {
+        return "live_set";
+      }
       return "id 0";
     });
 

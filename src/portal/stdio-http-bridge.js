@@ -33,7 +33,9 @@ export class StdioHttpBridge {
     const tools = [];
 
     for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
-      if (name === "ppal-raw-live-api") continue; // Skip development-only tool
+      if (name === "ppal-raw-live-api") {
+        continue;
+      } // Skip development-only tool
 
       tools.push({
         name: name,
