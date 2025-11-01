@@ -8,19 +8,18 @@ export default [
   {
     // Global ignores for generated/build files
     ignores: [
-      "dist/**",
-      "node_modules/**",
-      "coverage/**",
       "claude-desktop-extension/**",
-      "release/**",
-      "max-for-live-device/**",
-      "knowledge-base/**",
       "config/**",
+      "coverage/**",
+      "dist/**",
+      "knowledge-base/**",
+      "max-for-live-device/**",
+      "node_modules/**",
+      "release/**",
     ],
   },
   {
-    // Lint entire webui/src folder
-    files: ["webui/src/**/*.{js,jsx,ts,tsx}"],
+    files: ["webui/**/*.{js,jsx,ts,tsx,mjs,cjs}"],
     ...js.configs.recommended,
     languageOptions: {
       parser: tsParser,
@@ -42,6 +41,44 @@ export default [
       ...tsPlugin.configs.recommended.rules,
       ...reactHooksPlugin.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  {
+    files: ["scripts/**/*.{js,jsx,ts,tsx,mjs,cjs}"],
+    ...js.configs.recommended,
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tsPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ];

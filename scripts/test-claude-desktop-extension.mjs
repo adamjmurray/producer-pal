@@ -124,7 +124,7 @@ function parseResponse(data) {
     const response = JSON.parse(responseBuffer.trim());
     responseBuffer = ""; // Clear buffer on successful parse
     return response;
-  } catch (e) {
+  } catch (_e) {
     // If parse fails, check if we have a complete JSON by counting braces
     const openBraces = (responseBuffer.match(/\{/g) || []).length;
     const closeBraces = (responseBuffer.match(/\}/g) || []).length;

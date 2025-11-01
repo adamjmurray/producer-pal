@@ -39,7 +39,7 @@ async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
     console.log(`Removed existing outputDir: ${outputDir}`);
-  } catch (error) {
+  } catch (_error) {
     // Directory doesn't exist, which is fine
   }
   await fs.mkdir(outputDir, { recursive: true });
@@ -187,7 +187,7 @@ async function copyDirectoriesAndFiles(excludeGroups) {
         await copyFile(sourcePath, targetPath);
         console.log(`  ${item.src} → ${targetName}`);
       }
-    } catch (error) {
+    } catch (_error) {
       console.log(`  Skipping ${item.src} (not found)`);
     }
   }
@@ -272,7 +272,7 @@ async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
             : item.group) || "misc";
         addToGroup(fileGroups, groupName, sourcePath);
       }
-    } catch (error) {
+    } catch (_error) {
       console.log(`  Skipping ${item.src} (not found)`);
     }
   }
