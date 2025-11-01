@@ -17,6 +17,7 @@ export default [
       "node_modules/**",
       "release/**",
       "src/notation/barbeat/barbeat-parser.js", // Generated parser
+      "**/*.d.ts", // TypeScript declaration files
     ],
   },
   {
@@ -96,24 +97,7 @@ export default [
     },
   },
   {
-    files: [
-      "src/live-api-adapter/**/*.{js,ts,mjs,cjs}",
-      "src/mcp-server/**/*.{js,ts,mjs,cjs}",
-      "src/notation/**/*.{js,ts,mjs,cjs}",
-      "src/portal/**/*.{js,ts,mjs,cjs}",
-      "src/shared/**/*.{js,ts,mjs,cjs}",
-      "src/skills/**/*.{js,ts,mjs,cjs}",
-      "src/test/**/*.{js,ts,mjs,cjs}",
-      "src/tools/clip/**/*.{js,ts,mjs,cjs}",
-      "src/tools/control/**/*.{js,ts,mjs,cjs}",
-      "src/tools/device/**/*.{js,ts,mjs,cjs}",
-      "src/tools/live-set/**/*.{js,ts,mjs,cjs}",
-      // "src/tools/operations/**/*.{js,ts,mjs,cjs}",
-      "src/tools/scene/**/*.{js,ts,mjs,cjs}",
-      "src/tools/shared/**/*.{js,ts,mjs,cjs}",
-      "src/tools/track/**/*.{js,ts,mjs,cjs}",
-      "src/tools/workflow/**/*.{js,ts,mjs,cjs}",
-    ],
+    files: ["src/**/*.{js,ts,mjs,cjs}"],
     ...js.configs.recommended,
     languageOptions: {
       ecmaVersion: 2022,

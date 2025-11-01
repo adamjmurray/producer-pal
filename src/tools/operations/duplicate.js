@@ -565,7 +565,7 @@ function duplicateTrack(
           "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
         );
       }
-    } catch (error) {
+    } catch (_error) {
       // If we can't access this_device, just continue without removing anything
       console.error(
         "Warning: Could not check for Producer Pal device in duplicated track",
@@ -902,8 +902,8 @@ function duplicateClipToArrangement(
   arrangementStartTimeBeats,
   name,
   arrangementLength,
-  songTimeSigNumerator,
-  songTimeSigDenominator,
+  _songTimeSigNumerator,
+  _songTimeSigDenominator,
 ) {
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clip = LiveAPI.from(clipId);
