@@ -27,6 +27,13 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
  * For UI-friendly format, use formatGeminiMessages() from gemini-formatter.js
  */
 export class GeminiClient {
+  ai: any;
+  mcpUrl: string;
+  config: any;
+  chat: any;
+  mcpClient: any;
+  chatHistory: any[];
+
   /**
    * @param {string} apiKey - Gemini API key
    * @param {object} config - Configuration options
@@ -37,7 +44,7 @@ export class GeminiClient {
    * @param {object} [config.thinkingConfig] - Thinking mode configuration
    * @param {Array} [config.chatHistory] - Initial chat history to resume from
    */
-  constructor(apiKey, config = {}) {
+  constructor(apiKey: string, config: any = {}) {
     this.ai = new GoogleGenAI({ apiKey });
     this.mcpUrl = config.mcpUrl || "http://localhost:3350/mcp";
     this.config = config;
@@ -147,10 +154,10 @@ export class GeminiClient {
           part.text &&
           lastPart?.text &&
           // if we switch between thoughts and normal text, don't concatenate:
-          !!part.thought === !!lastPart.thought &&
+          !!(part as any).thought === !!(lastPart as any).thought &&
           // if anything has a thoughtSignature, don't concatenate (https://ai.google.dev/gemini-api/docs/thinking#signatures):
-          !lastPart.thoughtSignature &&
-          !part.thoughtSignature
+          !(lastPart as any).thoughtSignature &&
+          !(part as any).thoughtSignature
         ) {
           lastPart.text += part.text;
         } else {

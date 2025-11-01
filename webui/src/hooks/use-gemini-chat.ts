@@ -44,7 +44,7 @@ export function useGeminiChat({
   }, []);
 
   const initializeChat = useCallback(
-    async (chatHistory) => {
+    async (chatHistory?: any) => {
       // Auto-retry MCP connection if it failed
       if (mcpStatus === "error") {
         await checkMcpConnection();
@@ -54,7 +54,7 @@ export function useGeminiChat({
       }
 
       const thinkingBudget = getThinkingBudget(thinking);
-      const config = {
+      const config: any = {
         model,
         temperature,
         systemInstruction: SYSTEM_INSTRUCTION,

@@ -101,17 +101,21 @@ const itemsToCopy = [
     isDir: true,
     exclude: ["node_modules", "dist"],
     group: ({ relativePath }) => {
+      // Test case files (data fixtures for tests)
+      if (relativePath.includes("/test-cases/")) {
+        return "webui--test.ts";
+      }
       // Test files
       if (relativePath.match(/\.test\.\w+$/)) {
-        return "webui--test.js";
+        return "webui--test.ts";
       }
-      // JSX files (React components)
-      if (relativePath.endsWith(".jsx")) {
-        return "webui--jsx";
+      // TSX files (React components)
+      if (relativePath.endsWith(".tsx")) {
+        return "webui--tsx";
       }
-      // JS files (hooks, utilities, etc.)
-      if (relativePath.endsWith(".js")) {
-        return "webui--js";
+      // TS files (hooks, utilities, etc.)
+      if (relativePath.endsWith(".ts")) {
+        return "webui--ts";
       }
       // Everything else (CSS, HTML, SVG, etc.)
       return "webui--other";

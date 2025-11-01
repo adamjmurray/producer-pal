@@ -10,9 +10,7 @@ export function ThinkingSettings({
         <label className="block text-sm mb-2">Thinking</label>
         <select
           value={thinking}
-          onChange={(e) =>
-            setThinking(/** @type {HTMLSelectElement} */ (e.target).value)
-          }
+          onChange={(e) => setThinking((e.target as HTMLSelectElement).value)}
           className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
         >
           <option value="Off">Off</option>
@@ -30,9 +28,7 @@ export function ThinkingSettings({
             id="showThoughts"
             checked={showThoughts}
             onChange={(e) =>
-              setShowThoughts(
-                /** @type {HTMLInputElement} */ (e.target).checked,
-              )
+              setShowThoughts((e.target as HTMLInputElement).checked)
             }
           />
           <label htmlFor="showThoughts" className="text-sm">

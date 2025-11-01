@@ -35,7 +35,7 @@ Key entry points:
 - MCP Server: `src/mcp-server/mcp-server.js`
 - Max V8 code: `src/live-api-adapter/live-api-adapter.js`
 - Portal: `src/portal/producer-pal-portal.js`
-- Chat UI: `webui/src/main.jsx`
+- Chat UI: `webui/src/main.tsx`
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
 - Tools: `src/tools/**/*.js`
 
@@ -44,8 +44,8 @@ web UI architecture.
 
 ## Critical Coding Rules
 
-- **File naming**: React components use PascalCase (e.g., `ChatHeader.jsx`). All
-  other files use kebab-case (e.g., `use-gemini-chat.js`, `live-api-adapter.js`)
+- **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
+  other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.js`)
 
 - **Import extensions**: Always include `.js` in imports
 
@@ -75,7 +75,7 @@ web UI architecture.
   UI build succeeds.
 
 - **UI testing**: Webui tests use vitest + @testing-library/preact. Tests are
-  colocated with source files (e.g., `ChatHeader.jsx` has `ChatHeader.test.jsx`
+  colocated with source files (e.g., `ChatHeader.tsx` has `ChatHeader.test.tsx`
   in the same directory).
 
 ## TypeScript (WebUI Only)
@@ -102,8 +102,7 @@ web UI architecture.
 
 ## Project Constraints
 
-- JavaScript only (no TypeScript source files - TypeScript used only for
-  type-checking JS via JSDoc in webui)
+- JavaScript for core project, TypeScript (.ts/.tsx) for webui source files
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution

@@ -26,6 +26,7 @@ The UI connects to two external services:
 ## Technology Stack
 
 - **Framework**: Preact (lightweight React alternative)
+- **Language**: TypeScript (.ts/.tsx source files)
 - **Build Tool**: Vite with plugins
 - **Styling**: Tailwind CSS
 - **State Management**: React hooks + localStorage
@@ -40,28 +41,29 @@ The UI connects to two external services:
 ```
 webui/
 ├── index.html              # Main entry point
+├── tsconfig.json           # TypeScript configuration
 └── src/
-    ├── main.jsx            # Preact entry point, renders App
+    ├── main.tsx            # Preact entry point, renders App
     ├── components/
-    │   ├── App.jsx         # Root component, manages screens
+    │   ├── App.tsx         # Root component, manages screens
     │   ├── chat/           # Chat interface components
-    │   │   ├── ChatScreen.jsx
-    │   │   ├── MessageList.jsx
+    │   │   ├── ChatScreen.tsx
+    │   │   ├── MessageList.tsx
     │   │   └── ...         # Message rendering components
     │   └── settings/       # Settings screen components
     ├── hooks/              # Custom React hooks (kebab-case)
-    │   ├── use-gemini-chat.js    # Core chat logic and streaming
-    │   ├── use-settings.js       # Settings + localStorage
+    │   ├── use-gemini-chat.ts    # Core chat logic and streaming
+    │   ├── use-settings.ts       # Settings + localStorage
     │   └── ...
     ├── chat/               # Chat utilities (kebab-case)
-    │   ├── gemini-client.js      # Gemini API + MCP tool integration
-    │   └── gemini-formatter.js   # Formats raw API data for UI
+    │   ├── gemini-client.ts      # Gemini API + MCP tool integration
+    │   └── gemini-formatter.ts   # Formats raw API data for UI
     └── utils/              # General utilities
 ```
 
 ## Key UI Components
 
-**App.jsx** - Root component:
+**App.tsx** - Root component:
 
 - Screen Management
   - Shows SettingsScreen if no API key saved
@@ -72,7 +74,7 @@ webui/
   - Passes all state and callbacks to subcomponent props
 - Data Flow
   ```
-  App.jsx
+  App.tsx
     ├─> useSettings()         → localStorage persistence
     ├─> useTheme()            → dark/light mode
     ├─> useMcpConnection()    → MCP health check
@@ -81,14 +83,14 @@ webui/
           └─> formatGeminiMessages() → UI-friendly format
   ```
 
-**ChatScreen.jsx** - Main chat interface:
+**ChatScreen.tsx** - Main chat interface:
 
 - Header with MCP status and settings
 - MessageList (scrollable message history)
 - ChatInput (user input form)
 - Shows ChatStart when no messages
 
-**MessageList.jsx** - Message rendering:
+**MessageList.tsx** - Message rendering:
 
 - Renders user and assistant messages
 - Shows retry button next to assistant messages
@@ -179,11 +181,11 @@ npm run build     # Includes UI build
 
 - UI only: `npm run ui:dev` for hot reload at localhost:3355
 - Full-stack: Run `npm run dev` + `npm run ui:dev` in separate terminals
-- Tests colocated with source (`.test.js` / `.test.jsx`), run with `npm test`
+- Tests colocated with source (`.test.ts` / `.test.tsx`), run with `npm test`
 - See `DEVELOPERS.md` for detailed workflow scenarios
 
 **File naming:**
 
-- React components: PascalCase (`ChatHeader.jsx`)
-- Everything else: kebab-case (`use-gemini-chat.js`)
-- Always include `.js` / `.jsx` extensions in imports
+- React components: PascalCase (`ChatHeader.tsx`)
+- Everything else: kebab-case (`use-gemini-chat.ts`)
+- Always include `.js` extensions in imports (TypeScript compiled to JS)

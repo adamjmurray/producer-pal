@@ -23,5 +23,5 @@
     "isolatedModules": true
   },
   "include": ["src/**/*"],
-  "exclude": ["src/**/*.test.js", "src/**/*.test.jsx"]
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }
