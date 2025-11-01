@@ -1,5 +1,8 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import { GeminiClient, type GeminiClientConfig } from "../chat/gemini-client.js";
+import {
+  GeminiClient,
+  type GeminiClientConfig,
+} from "../chat/gemini-client.js";
 import { formatGeminiMessages } from "../chat/gemini-formatter.js";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 import type { GeminiMessage, UIMessage } from "../types/messages.js";
@@ -120,7 +123,7 @@ export function useGeminiChat({
   );
 
   const handleSend = useCallback(
-    async (message) => {
+    async (message: string) => {
       if (!apiKey) return;
       if (!message?.trim()) return;
 
@@ -153,7 +156,7 @@ export function useGeminiChat({
   );
 
   const handleRetry = useCallback(
-    async (mergedMessageIndex) => {
+    async (mergedMessageIndex: number) => {
       if (!apiKey) return;
 
       const message = messages[mergedMessageIndex];

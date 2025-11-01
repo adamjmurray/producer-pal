@@ -1,6 +1,16 @@
 import logoSvg from "../../assets/producer-pal-logo.svg";
 import { getModelName } from "../../config.js";
 
+interface ChatHeaderProps {
+  mcpStatus: "connected" | "connecting" | "error";
+  activeModel: string | null;
+  activeThinking: string | null;
+  activeTemperature: number | null;
+  theme: string;
+  setTheme: (theme: string) => void;
+  onOpenSettings: () => void;
+}
+
 export function ChatHeader({
   mcpStatus,
   activeModel,
@@ -9,7 +19,7 @@ export function ChatHeader({
   theme,
   setTheme,
   onOpenSettings,
-}) {
+}: ChatHeaderProps) {
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-baseline">
       <img

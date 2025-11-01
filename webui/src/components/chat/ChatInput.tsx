@@ -1,9 +1,17 @@
 import { useState } from "preact/hooks";
 
-export function ChatInput({ handleSend, isAssistantResponding }) {
+interface ChatInputProps {
+  handleSend: (message: string) => Promise<void>;
+  isAssistantResponding: boolean;
+}
+
+export function ChatInput({
+  handleSend,
+  isAssistantResponding,
+}: ChatInputProps) {
   const [input, setInput] = useState("");
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (!isAssistantResponding && input.trim()) {

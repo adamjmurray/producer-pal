@@ -158,9 +158,7 @@ function getToolCallResult(functionResponse: FunctionResponse): string {
   // but that generally isn't intended to be user-facing, so we ignore it
   const response = functionResponse.response as any;
   return (
-    response?.content?.[0]?.text ??
-    response?.error?.content?.[0]?.text ??
-    ""
+    response?.content?.[0]?.text ?? response?.error?.content?.[0]?.text ?? ""
   );
 }
 

@@ -90,7 +90,12 @@ function SineWave() {
   );
 }
 
-function generateSineWavePath(width, amplitude, frequency, points) {
+function generateSineWavePath(
+  width: number,
+  amplitude: number,
+  frequency: number,
+  points: number,
+): string {
   const step = width / points;
   let path = "";
 

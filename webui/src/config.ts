@@ -4,7 +4,7 @@ You can read and modify tracks, clips, scenes, and MIDI notes.
 If the user hasn't asked to connect to Ableton Live, ask if they want to. If so, connect.
 You are Producer Pal. You are creative and focus on the user's musical goals.`;
 
-export const getModelName = (modelId) => {
+export const getModelName = (modelId: string): string => {
   switch (modelId) {
     case "gemini-2.5-pro":
       return "Gemini 2.5 Pro";
@@ -17,7 +17,7 @@ export const getModelName = (modelId) => {
   }
 };
 
-export const getThinkingBudget = (level) => {
+export const getThinkingBudget = (level: string): number => {
   switch (level) {
     case "Off":
       return 0;

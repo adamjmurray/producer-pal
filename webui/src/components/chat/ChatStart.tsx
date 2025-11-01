@@ -1,9 +1,16 @@
+interface ChatStartProps {
+  mcpStatus: "connected" | "connecting" | "error";
+  mcpError: string | null;
+  checkMcpConnection: () => Promise<void>;
+  handleSend: (message: string) => Promise<void>;
+}
+
 export function ChatStart({
   mcpStatus,
   mcpError,
   checkMcpConnection,
   handleSend,
-}) {
+}: ChatStartProps) {
   return (
     <div className="h-full items-center justify-center flex flex-col gap-8">
       {mcpStatus === "connected" && (

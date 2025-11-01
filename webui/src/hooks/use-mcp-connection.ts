@@ -21,9 +21,7 @@ export function useMcpConnection(): UseMcpConnectionReturn {
       setMcpStatus("connected");
     } catch (error: unknown) {
       setMcpStatus("error");
-      setMcpError(
-        error instanceof Error ? error.message : "Unknown error"
-      );
+      setMcpError(error instanceof Error ? error.message : "Unknown error");
     }
   }, []);
 

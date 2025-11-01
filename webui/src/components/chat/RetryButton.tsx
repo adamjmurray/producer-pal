@@ -1,4 +1,8 @@
-export function RetryButton({ onClick }) {
+interface RetryButtonProps {
+  onClick: () => void;
+}
+
+export function RetryButton({ onClick }: RetryButtonProps) {
   return (
     <button
       onClick={onClick}

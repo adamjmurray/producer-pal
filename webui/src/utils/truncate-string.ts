@@ -1,12 +1,16 @@
 /**
  * Truncate a string to a maximum length, adding a suffix if truncated.
  *
- * @param {string} str - The string to truncate
- * @param {number} maxLength - Maximum length before truncation
- * @param {string} suffix - Suffix to add when truncated (default: "…")
- * @returns {string} The truncated string
+ * @param str - The string to truncate
+ * @param maxLength - Maximum length before truncation
+ * @param suffix - Suffix to add when truncated (default: "…")
+ * @returns The truncated string
  */
-export function truncateString(str, maxLength, suffix = "…") {
+export function truncateString(
+  str: string,
+  maxLength: number,
+  suffix = "…",
+): string {
   if (str == null) return str;
   if (str.length <= maxLength) return str;
   const cutoff = Math.max(0, maxLength - suffix.length);

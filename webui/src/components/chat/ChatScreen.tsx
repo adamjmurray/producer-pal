@@ -2,6 +2,23 @@ import { ChatHeader } from "./ChatHeader.jsx";
 import { ChatInput } from "./ChatInput.jsx";
 import { ChatStart } from "./ChatStart.jsx";
 import { MessageList } from "./MessageList.jsx";
+import type { UIMessage } from "../../types/messages.js";
+
+interface ChatScreenProps {
+  messages: UIMessage[];
+  isAssistantResponding: boolean;
+  handleSend: (message: string) => Promise<void>;
+  handleRetry: (messageIndex: number) => Promise<void>;
+  activeModel: string | null;
+  activeThinking: string | null;
+  activeTemperature: number | null;
+  mcpStatus: "connected" | "connecting" | "error";
+  mcpError: string | null;
+  checkMcpConnection: () => Promise<void>;
+  theme: string;
+  setTheme: (theme: string) => void;
+  onOpenSettings: () => void;
+}
 
 export function ChatScreen({
   messages,
@@ -17,7 +34,7 @@ export function ChatScreen({
   theme,
   setTheme,
   onOpenSettings,
-}) {
+}: ChatScreenProps) {
   return (
     <div className="flex flex-col h-screen">
       <ChatHeader
