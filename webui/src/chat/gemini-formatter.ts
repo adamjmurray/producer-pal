@@ -1,3 +1,4 @@
+import type { FunctionResponse, Part } from "@google/genai/web";
 import type {
   GeminiMessage,
   UIMessage,
@@ -148,20 +149,21 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
   return messages;
 }
 
-function isFunctionResponse(parts: any[]): boolean {
+function isFunctionResponse(parts: Part[]): boolean {
   return !!parts?.[0]?.functionResponse;
 }
 
-function getToolCallResult(functionResponse: any): string {
+function getToolCallResult(functionResponse: FunctionResponse): string {
   // Warnings can be returned in the additional content entries,
   // but that generally isn't intended to be user-facing, so we ignore it
+  const response = functionResponse.response as any;
   return (
-    functionResponse.response?.content?.[0]?.text ??
-    functionResponse.response?.error?.content?.[0]?.text ??
+    response?.content?.[0]?.text ??
+    response?.error?.content?.[0]?.text ??
     ""
   );
 }
 
-function isToolCallError(functionResponse: any): boolean {
+function isToolCallError(functionResponse: FunctionResponse): boolean {
   return functionResponse.response?.error != null;
 }
