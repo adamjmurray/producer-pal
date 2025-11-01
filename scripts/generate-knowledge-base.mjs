@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 const outputDir = path.join(projectRoot, "knowledge-base");
 
-const IGNORE_PATTERNS = [/^\.DS_Store$/, /\.bak$/];
+const IGNORE_PATTERNS = [/^\.DS_Store$/, /\.bak$/, /\.svg$/];
 
 const FLAT_SEP = "--";
 
