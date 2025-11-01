@@ -164,7 +164,7 @@ export function useGeminiChat({
       if (!apiKey) return;
 
       const message = messages[mergedMessageIndex];
-      if (!message || message.role !== "user") return;
+      if (message?.role !== "user") return;
 
       if (!geminiRef.current) return;
 

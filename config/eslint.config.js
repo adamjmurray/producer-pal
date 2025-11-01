@@ -27,6 +27,7 @@ export default [
         ecmaVersion: 2022,
         sourceType: "module",
         ecmaFeatures: { jsx: true },
+        project: "./webui/tsconfig.json",
       },
       globals: {
         ...globals.browser,
@@ -51,6 +52,8 @@ export default [
       ],
       "@typescript-eslint/no-non-null-assertion": "error",
       "@typescript-eslint/consistent-type-imports": "error",
+      "@typescript-eslint/prefer-nullish-coalescing": "error",
+      "@typescript-eslint/prefer-optional-chain": "error",
       eqeqeq: ["error", "always", { null: "ignore" }],
       "no-var": "error",
       "prefer-const": "error",

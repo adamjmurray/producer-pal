@@ -52,11 +52,11 @@ export class GeminiClient {
    */
   constructor(apiKey: string, config: GeminiClientConfig = {}) {
     this.ai = new GoogleGenAI({ apiKey });
-    this.mcpUrl = config.mcpUrl || "http://localhost:3350/mcp";
+    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp";
     this.config = config;
     this.chat = null;
     this.mcpClient = null;
-    this.chatHistory = config.chatHistory || [];
+    this.chatHistory = config.chatHistory ?? [];
   }
 
   /**
@@ -100,7 +100,7 @@ export class GeminiClient {
     };
 
     this.chat = this.ai.chats.create({
-      model: this.config.model || "gemini-2.5-flash-lite",
+      model: this.config.model ?? "gemini-2.5-flash-lite",
       config: chatConfig,
       history: this.chatHistory,
     });

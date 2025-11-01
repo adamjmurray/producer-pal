@@ -18,7 +18,7 @@ vi.mock("./assistant/AssistantMessage.jsx", () => ({
     <div data-testid="assistant-message">
       {parts.map((p, i: number) => {
         const part = p as { content?: string };
-        return <span key={i}>{part.content || ""}</span>;
+        return <span key={i}>{part.content ?? ""}</span>;
       })}
     </div>
   ),
