@@ -21,7 +21,7 @@ export default [
     ],
   },
   {
-    files: ["webui/**/*.{js,jsx,ts,tsx,mjs,cjs}"],
+    files: ["webui/**/*.{ts,tsx}"],
     ...js.configs.recommended,
     languageOptions: {
       parser: tsParser,
@@ -141,7 +141,7 @@ export default [
   },
   {
     // Test files - relax no-non-null-assertion rule
-    files: ["**/*.test.{ts,tsx}"],
+    files: ["**/*.test.{js,ts,tsx}"],
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
     },

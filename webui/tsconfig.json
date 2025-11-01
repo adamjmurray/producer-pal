@@ -9,8 +9,6 @@
     "allowJs": false,
 
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,

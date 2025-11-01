@@ -7,9 +7,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, "..");
 
 try {
-  // Find any .js or .jsx files in webui/ (excluding node_modules)
+  // Find any .js, .jsx, .cjs, or .mjs files in webui/ (excluding node_modules)
   const result = execSync(
-    'find webui -type f \\( -name "*.js" -o -name "*.jsx" \\) ! -path "*/node_modules/*"',
+    'find webui -type f \\( -name "*.js" -o -name "*.jsx" -o -name "*.cjs" -o -name "*.mjs" \\) ! -path "*/node_modules/*"',
     {
       cwd: rootDir,
       encoding: "utf8",
