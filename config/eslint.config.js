@@ -96,11 +96,15 @@ export default [
     },
   },
   {
-    // Limited src folders, still phasing in the linter here
     files: [
-      "src/test/**/*.{js,ts,mjs,cjs}",
-      "src/shared/**/*.{js,ts,mjs,cjs}",
+      "src/live-api-adapter/**/*.{js,ts,mjs,cjs}",
       "src/mcp-server/**/*.{js,ts,mjs,cjs}",
+      "src/notation/**/*.{js,ts,mjs,cjs}",
+      "src/portal/**/*.{js,ts,mjs,cjs}",
+      "src/shared/**/*.{js,ts,mjs,cjs}",
+      "src/skills/**/*.{js,ts,mjs,cjs}",
+      "src/test/**/*.{js,ts,mjs,cjs}",
+      // TODO: "src/tools/**/*.{js,ts,mjs,cjs}",
     ],
     ...js.configs.recommended,
     languageOptions: {

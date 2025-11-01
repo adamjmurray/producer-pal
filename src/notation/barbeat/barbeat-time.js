@@ -148,7 +148,7 @@ export function abletonBeatsToBarBeatDuration(
 export function barBeatDurationToMusicalBeats(
   barBeatDuration,
   timeSigNumerator,
-  timeSigDenominator,
+  _timeSigDenominator,
 ) {
   // Check if it's bar:beat format or beat-only
   if (barBeatDuration.includes(":")) {
