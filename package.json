@@ -26,6 +26,8 @@
     "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.mjs",
     "test:setup": "npm run parser:build",
     "coverage": "npm run test:coverage",
+    "check": "npm run lint && npm run typecheck && npm run format:check && npm test",
+    "fix": "npm run format && npm run lint:fix",
     "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write .",

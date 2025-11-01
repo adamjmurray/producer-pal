@@ -9,15 +9,13 @@ through a Max for Live device using the Model Context Protocol (MCP).
 # Build with all tools (use this for development/testing!)
 npm run build:all
 
-# Run tests
-npm test
-npm run test:coverage
-
-# Code formatting
-npm run format
-
-# Type checking
+# Code quality checks
+npm run fix   # Auto-fix formatting and linting issues
+npm run check # Run all checks: lint + typecheck + format check + tests
+npm run lint
 npm run typecheck
+npm run format
+npm test
 
 # Parser rebuild (when modifying bar|beat grammar)
 npm run parser:build
@@ -85,20 +83,23 @@ web UI architecture.
 **Requirements:**
 
 - All webui code must pass: `npm run typecheck`
+- All webui code must pass: `npm run lint`
 - Prefer explicit return types on exported functions
 
-**Before committing:** `npm run typecheck` must pass with zero errors
+**Before committing:** `npm run check` must pass with zero errors
 
 ## Testing After Changes
 
-- After ALL code changes: Run `npm test`
-- After webui changes: Run `npm run typecheck`
+- After ALL code changes: Run `npm run check` (runs lint, typecheck, format
+  check, and tests)
 - End-to-end validation and investigation (upon request):
   ```
   node scripts/cli.mjs tools/list
   node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
   ```
-- Before claiming you are done: ALWAYS run `npm run format`
+- Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
+  and linting issues), then `npm run check` (validates all checks pass). This
+  saves time and tokens by pre-emptively fixing likely errors before validation.
 
 ## Project Constraints
 

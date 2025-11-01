@@ -47,6 +47,9 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Run tests with coverage
         id: tests
         if: success()
