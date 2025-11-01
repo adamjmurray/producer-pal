@@ -45,12 +45,13 @@ jobs:
         run: npm run typecheck
 
       - name: Run tests with coverage
+        id: tests
         if: success()
         run: FORCE_COLOR=3 npm run test:coverage
 
       - name: "Report Coverage"
-        # Runs if tests ran (whether they passed or failed), but not if typecheck failed
-        if: success() || failure()
+        # Runs only if tests step ran (whether it passed or failed), not if it was skipped
+        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           file-coverage-mode: "all"
