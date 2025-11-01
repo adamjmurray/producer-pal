@@ -6,8 +6,7 @@ Choose your AI for installation steps:
   setup
 - ⭐️ [Producer Pal Chat UI](#producer-pal-chat-ui) - Standalone web interface -
   platform independent
-- ⭐️ [Gemini CLI](#gemini-cli) - Google's command line agent - generous free
-  tier
+- [Gemini CLI](#gemini-cli) - Google's command line agent
 - [Codex CLI](#codex-cli) - OpenAI's command line agent
 - [Claude Code](#claude-code) - Anthropic's command line agent
 - [claude.ai Web App](#claudeai-web-app) - Anthropic's web app
