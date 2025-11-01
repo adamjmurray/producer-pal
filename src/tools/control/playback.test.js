@@ -215,7 +215,7 @@ describe("transport", () => {
       return this._path;
     });
 
-    const result = playback({
+    playback({
       action: "play-session-clips",
       clipIds: "clip1,clip2,clip3",
     });
@@ -767,7 +767,7 @@ describe("transport", () => {
         },
       });
 
-      const result = playback({
+      playback({
         action: "play-arrangement",
         switchView: true,
       });
@@ -802,7 +802,7 @@ describe("transport", () => {
         return this._type; // Fall back to default MockLiveAPI logic
       });
 
-      const result = playback({
+      playback({
         action: "play-scene",
         sceneId: "scene1",
         switchView: true,
@@ -830,7 +830,7 @@ describe("transport", () => {
         return this._path;
       });
 
-      const result = playback({
+      playback({
         action: "play-session-clips",
         clipIds: "clip1",
         switchView: true,
@@ -850,7 +850,7 @@ describe("transport", () => {
         },
       });
 
-      const result = playback({
+      playback({
         action: "play-arrangement",
         switchView: false,
       });
@@ -873,7 +873,7 @@ describe("transport", () => {
         },
       });
 
-      const result = playback({
+      playback({
         action: "stop",
         switchView: true,
       });

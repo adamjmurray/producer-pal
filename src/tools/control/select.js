@@ -250,7 +250,7 @@ function validateParameters({
   sceneIndex,
   deviceId,
   instrument,
-  clipSlot,
+  clipSlot: _clipSlot,
 }) {
   // Track selection validation
   if (category === "master" && trackIndex != null) {
@@ -363,7 +363,7 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
     // Select specific device by ID and validate it's a device
-    const deviceAPI = validateIdType(deviceId, "device", "select");
+    const _deviceAPI = validateIdType(deviceId, "device", "select");
     const songView = new LiveAPI("live_set view");
     // Ensure proper "id X" format for select_device call
     const deviceIdStr = deviceId.toString();

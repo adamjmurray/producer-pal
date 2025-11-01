@@ -105,7 +105,7 @@ export default [
       "src/skills/**/*.{js,ts,mjs,cjs}",
       "src/test/**/*.{js,ts,mjs,cjs}",
       "src/tools/clip/**/*.{js,ts,mjs,cjs}",
-      // "src/tools/control/**/*.{js,ts,mjs,cjs}",
+      "src/tools/control/**/*.{js,ts,mjs,cjs}",
       "src/tools/device/**/*.{js,ts,mjs,cjs}",
       "src/tools/live-set/**/*.{js,ts,mjs,cjs}",
       // "src/tools/operations/**/*.{js,ts,mjs,cjs}",

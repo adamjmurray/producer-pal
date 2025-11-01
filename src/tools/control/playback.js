@@ -104,7 +104,7 @@ export function playback({
       // No playback state change, just the loop and follow settings above
       break;
 
-    case "play-scene":
+    case "play-scene": {
       if (sceneId == null) {
         throw new Error(
           `playback failed: sceneId is required for action "play-scene"`,
@@ -116,8 +116,9 @@ export function playback({
 
       isPlaying = true;
       break;
+    }
 
-    case "play-session-clips":
+    case "play-session-clips": {
       if (!clipIds) {
         throw new Error(
           `playback failed: clipIds is required for action "play-session-clips"`,
@@ -159,8 +160,9 @@ export function playback({
 
       isPlaying = true;
       break;
+    }
 
-    case "stop-session-clips":
+    case "stop-session-clips": {
       if (!clipIds) {
         throw new Error(
           `playback failed: clipIds is required for action "stop-session-clips"`,
@@ -196,6 +198,7 @@ export function playback({
       }
       // this doesn't affect the isPlaying state
       break;
+    }
 
     case "stop-all-session-clips":
       liveSet.call("stop_all_clips");
