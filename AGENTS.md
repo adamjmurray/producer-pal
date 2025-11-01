@@ -16,6 +16,9 @@ npm run test:coverage
 # Code formatting
 npm run format
 
+# Type checking
+npm run typecheck
+
 # Parser rebuild (when modifying bar|beat grammar)
 npm run parser:build
 
@@ -75,9 +78,21 @@ web UI architecture.
   colocated with source files (e.g., `ChatHeader.jsx` has `ChatHeader.test.jsx`
   in the same directory).
 
+## TypeScript (WebUI Only)
+
+**Scope:** TypeScript is ONLY used in `webui/` directory.
+
+**Requirements:**
+
+- All webui code must pass: `npm run typecheck`
+- Prefer explicit return types on exported functions
+
+**Before committing:** `npm run typecheck` must pass with zero errors
+
 ## Testing After Changes
 
 - After ALL code changes: Run `npm test`
+- After webui changes: Run `npm run typecheck`
 - End-to-end validation and investigation (upon request):
   ```
   node scripts/cli.mjs tools/list
@@ -87,7 +102,8 @@ web UI architecture.
 
 ## Project Constraints
 
-- JavaScript only (no TypeScript)
+- JavaScript only (no TypeScript source files - TypeScript used only for
+  type-checking JS via JSDoc in webui)
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution

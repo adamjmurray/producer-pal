@@ -41,6 +41,9 @@ jobs:
             exit 1
           fi
 
+      - name: Type check
+        run: npm run typecheck
+
       - run: FORCE_COLOR=3 npm run test:coverage
 
       - name: "Report Coverage"

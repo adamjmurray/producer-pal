@@ -37,10 +37,11 @@ Watch for changes and auto-build:
 npm run dev
 ```
 
-Automated tests must always pass:
+Automated tests and type checking must always pass:
 
 ```
 npm test
+npm run typecheck  # UI code only
 ```
 
 ## Web UI Development
@@ -71,6 +72,16 @@ npm run ui:build
 
 Builds a single self-contained `max-for-live-device/chat-ui.html` file. This is
 automatically included in `npm run build`.
+
+### Type Checking
+
+```bash
+npm run typecheck
+```
+
+Runs TypeScript type checking on the UI code (JavaScript files with JSDoc
+annotations). Currently only checks production code, not tests. All UI changes
+should pass type checking before committing.
 
 ### Development Workflows
 

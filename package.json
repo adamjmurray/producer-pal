@@ -41,8 +41,11 @@
     "version:bump:major": "node scripts/bump-version.mjs major",
     "release:prepare": "node scripts/prepare-release.mjs",
     "release:prep": "node scripts/prepare-release.mjs",
+    "tc": "npm run typecheck",
+    "typecheck": "npm run ui:typecheck",
     "ui:build": "vite build --config config/vite.config.mjs",
-    "ui:dev": "vite --config config/vite.config.mjs"
+    "ui:dev": "vite --config config/vite.config.mjs",
+    "ui:typecheck": "tsc --project webui/tsconfig.json"
   },
   "dependencies": {
     "@google/genai": "^1.28.0",
@@ -74,6 +77,7 @@
     "prettier": "^3.6.2",
     "rollup": "^4.52.5",
     "rollup-plugin-copy": "^3.5.0",
+    "typescript": "^5.9.3",
     "vite": "^7.1.12",
     "vite-plugin-singlefile": "^2.3.0",
     "vitest": "^4.0.6"
