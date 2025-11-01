@@ -90,13 +90,18 @@ export function formatGeminiMessages(history) {
             result: null,
           });
         } else if (functionResponse) {
-          if (
-            lastPart?.type === "tool" &&
-            lastPart.name === functionResponse.name
-          ) {
-            lastPart.result = getToolCallResult(functionResponse);
+          // Find the first tool call with matching name that doesn't have a result yet
+          const toolPart = currentParts.find(
+            (part) =>
+              part.type === "tool" &&
+              part.name === functionResponse.name &&
+              part.result === null,
+          );
+
+          if (toolPart) {
+            toolPart.result = getToolCallResult(functionResponse);
             if (isToolCallError(functionResponse)) {
-              lastPart.isError = true;
+              toolPart.isError = true;
             }
           } else {
             console.error(

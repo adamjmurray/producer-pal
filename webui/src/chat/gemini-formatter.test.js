@@ -14,6 +14,10 @@ import {
   historyEndingInThought,
 } from "./test-cases/gemini-formatter/history-ending-in-thought-test-case.js";
 import {
+  expected as expectedParallelToolCalls,
+  parallelToolCallHistory,
+} from "./test-cases/gemini-formatter/parallel-tool-calls-test-case.js";
+import {
   expectedNonThoughtTextWithSignature,
   historyNonThoughtTextWithSignature,
 } from "./test-cases/gemini-formatter/thought-signatures-test-case.js";
@@ -56,6 +60,12 @@ describe("formatGeminiMessages", () => {
   it("creates new model message for error when no preceding model exists", () => {
     expect(formatGeminiMessages(historyWithErrorNoModel)).toStrictEqual(
       expectedWithErrorNoModel,
+    );
+  });
+
+  it("handles parallel tool calls", () => {
+    expect(formatGeminiMessages(parallelToolCallHistory)).toStrictEqual(
+      expectedParallelToolCalls,
     );
   });
 });
