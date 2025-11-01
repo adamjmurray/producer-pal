@@ -23,7 +23,6 @@
   },
   "include": ["src/**/*"],
   "exclude": [
-    "src/components/chat/MessageList.test.tsx",
     "src/components/chat/ChatInput.test.tsx",
     "src/components/settings/SettingsScreen.test.tsx"
   ]
