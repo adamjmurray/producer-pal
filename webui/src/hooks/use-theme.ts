@@ -32,6 +32,7 @@ export function useTheme() {
       mediaQuery.addEventListener("change", applyTheme);
       return () => mediaQuery.removeEventListener("change", applyTheme);
     }
+    return undefined;
   }, [theme]);
 
   return { theme, setTheme };

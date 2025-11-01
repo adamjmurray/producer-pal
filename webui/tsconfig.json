@@ -13,7 +13,7 @@
     "strictNullChecks": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noImplicitReturns": false,
+    "noImplicitReturns": true,
 
     "resolveJsonModule": true,
     "esModuleInterop": true,
