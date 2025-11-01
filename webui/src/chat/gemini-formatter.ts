@@ -159,7 +159,12 @@ function isFunctionResponse(parts: Part[]): boolean {
 function getToolCallResult(functionResponse: FunctionResponse): string {
   // Warnings can be returned in the additional content entries,
   // but that generally isn't intended to be user-facing, so we ignore it
-  const response = functionResponse.response as any;
+  const response = functionResponse.response as
+    | {
+        content?: Array<{ text?: string }>;
+        error?: { content?: Array<{ text?: string }> };
+      }
+    | undefined;
   return (
     response?.content?.[0]?.text ?? response?.error?.content?.[0]?.text ?? ""
   );
