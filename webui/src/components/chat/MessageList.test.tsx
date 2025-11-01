@@ -28,7 +28,11 @@ describe("MessageList", () => {
   describe("rendering messages", () => {
     it("renders empty list when no messages", () => {
       const { container } = render(
-        <MessageList messages={[]} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={[]}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
       expect(container.querySelector(".space-y-4")).toBeDefined();
     });
@@ -42,7 +46,11 @@ describe("MessageList", () => {
         },
       ];
       const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
 
       expect(screen.getByText("Hello there")).toBeDefined();
@@ -55,12 +63,22 @@ describe("MessageList", () => {
         {
           role: "model" as const,
           parts: [
-            { type: "error" as const, content: "Something went wrong", isError: true as const },
+            {
+              type: "error" as const,
+              content: "Something went wrong",
+              isError: true as const,
+            },
           ],
           rawHistoryIndex: 0,
         },
       ];
-      render(<MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.getByText("Something went wrong")).toBeDefined();
     });
@@ -73,18 +91,42 @@ describe("MessageList", () => {
           rawHistoryIndex: 0,
         },
       ];
-      render(<MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.getByTestId("assistant-message")).toBeDefined();
     });
 
     it("renders multiple messages", () => {
       const messages = [
-        { role: "user" as const, parts: [{ type: "text" as const, content: "Hello" }], rawHistoryIndex: 0 },
-        { role: "model" as const, parts: [{ type: "text" as const, content: "Hi" }], rawHistoryIndex: 1 },
-        { role: "user" as const, parts: [{ type: "text" as const, content: "How are you?" }], rawHistoryIndex: 2 },
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "Hello" }],
+          rawHistoryIndex: 0,
+        },
+        {
+          role: "model" as const,
+          parts: [{ type: "text" as const, content: "Hi" }],
+          rawHistoryIndex: 1,
+        },
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "How are you?" }],
+          rawHistoryIndex: 2,
+        },
       ];
-      render(<MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.getByText("Hello")).toBeDefined();
       expect(screen.getByText("How are you?")).toBeDefined();
@@ -96,15 +138,29 @@ describe("MessageList", () => {
     it("filters out messages without content", () => {
       const messages = [
         { role: "user" as const, parts: [], rawHistoryIndex: 0 },
-        { role: "user" as const, parts: [{ type: "text" as const, content: "Valid message" }], rawHistoryIndex: 1 },
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "Valid message" }],
+          rawHistoryIndex: 1,
+        },
         { role: "model" as const, parts: [], rawHistoryIndex: 2 },
       ];
-      render(<MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.getByText("Valid message")).toBeDefined();
       // Should only have one message div
       const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
       expect(container.querySelectorAll(".rounded-lg").length).toBe(1);
     });
@@ -115,7 +171,11 @@ describe("MessageList", () => {
         { role: "model" as const, rawHistoryIndex: 1 } as any, // no parts or content
       ];
       const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
 
       expect(container.querySelectorAll(".rounded-lg").length).toBe(0);
@@ -124,13 +184,25 @@ describe("MessageList", () => {
 
   describe("ActivityIndicator display", () => {
     it("shows ActivityIndicator when assistant is responding", () => {
-      render(<MessageList messages={[]} isAssistantResponding={true} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={[]}
+          isAssistantResponding={true}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.getByTestId("activity-indicator")).toBeDefined();
     });
 
     it("hides ActivityIndicator when assistant is not responding", () => {
-      render(<MessageList messages={[]} isAssistantResponding={false} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={[]}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.queryByTestId("activity-indicator")).toBeNull();
     });
@@ -141,11 +213,20 @@ describe("MessageList", () => {
       const messages = [
         {
           role: "user" as const,
-          parts: [{ type: "text" as const, content: "Part 1 " }, { type: "text" as const, content: "Part 2" }],
+          parts: [
+            { type: "text" as const, content: "Part 1 " },
+            { type: "text" as const, content: "Part 2" },
+          ],
           rawHistoryIndex: 0,
         },
       ];
-      render(<MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.getByText("Part 1 Part 2")).toBeDefined();
     });
@@ -154,11 +235,21 @@ describe("MessageList", () => {
       const messages = [
         {
           role: "user" as const,
-          parts: [{ type: "text" as const, content: "Hello" }, {} as any, { type: "text" as const, content: "World" }],
+          parts: [
+            { type: "text" as const, content: "Hello" },
+            {} as any,
+            { type: "text" as const, content: "World" },
+          ],
           rawHistoryIndex: 0,
         },
       ];
-      render(<MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />);
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
 
       expect(screen.getByText("HelloWorld")).toBeDefined();
     });
@@ -174,7 +265,11 @@ describe("MessageList", () => {
         },
       ];
       const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
 
       const messageDiv = container.querySelector(".bg-blue-100");
@@ -186,12 +281,22 @@ describe("MessageList", () => {
       const messages = [
         {
           role: "model" as const,
-          parts: [{ type: "error" as const, content: "Error message", isError: true as const }],
+          parts: [
+            {
+              type: "error" as const,
+              content: "Error message",
+              isError: true as const,
+            },
+          ],
           rawHistoryIndex: 0,
         },
       ];
       const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
 
       // Check that error is rendered within a model message container
@@ -209,7 +314,11 @@ describe("MessageList", () => {
         },
       ];
       const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
 
       const messageDiv = container.querySelector(".bg-gray-100");
@@ -220,7 +329,11 @@ describe("MessageList", () => {
   describe("auto-scroll", () => {
     it("includes scroll target div", () => {
       const { container } = render(
-        <MessageList messages={[]} isAssistantResponding={false} handleRetry={handleRetry} />,
+        <MessageList
+          messages={[]}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
       );
 
       // The messagesEndRef div should exist

@@ -7,23 +7,30 @@ import { SettingsScreen } from "./SettingsScreen.jsx";
 
 // Mock child components
 vi.mock("./GeminiApiKeyInput.jsx", () => ({
-  GeminiApiKeyInput: ({ apiKey, hasApiKey }) => (
+  GeminiApiKeyInput: ({
+    hasApiKey,
+  }: {
+    apiKey: string;
+    hasApiKey: boolean;
+  }) => (
     <div data-testid="api-key-input">API Key: {hasApiKey ? "***" : "none"}</div>
   ),
 }));
 
 vi.mock("./ModelSelector.jsx", () => ({
-  ModelSelector: ({ model }) => <div data-testid="model-selector">{model}</div>,
+  ModelSelector: ({ model }: { model: string }) => (
+    <div data-testid="model-selector">{model}</div>
+  ),
 }));
 
 vi.mock("./ThinkingSettings.jsx", () => ({
-  ThinkingSettings: ({ thinking }) => (
+  ThinkingSettings: ({ thinking }: { thinking: string }) => (
     <div data-testid="thinking-settings">{thinking}</div>
   ),
 }));
 
 vi.mock("./RandomnessSlider.jsx", () => ({
-  RandomnessSlider: ({ temperature }) => (
+  RandomnessSlider: ({ temperature }: { temperature: number }) => (
     <div data-testid="randomness-slider">{temperature}</div>
   ),
 }));
@@ -117,14 +124,18 @@ describe("SettingsScreen", () => {
     it("is disabled when no API key", () => {
       render(<SettingsScreen {...defaultProps} apiKey="" />);
 
-      const button = screen.getByRole("button", { name: "Save" });
+      const button = screen.getByRole("button", {
+        name: "Save",
+      }) as HTMLButtonElement;
       expect(button.disabled).toBe(true);
     });
 
     it("is enabled when API key is provided", () => {
       render(<SettingsScreen {...defaultProps} apiKey="test-key" />);
 
-      const button = screen.getByRole("button", { name: "Save" });
+      const button = screen.getByRole("button", {
+        name: "Save",
+      }) as HTMLButtonElement;
       expect(button.disabled).toBe(false);
     });
 

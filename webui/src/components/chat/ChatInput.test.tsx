@@ -54,7 +54,7 @@ describe("ChatInput", () => {
         <ChatInput handleSend={handleSend} isAssistantResponding={false} />,
       );
 
-      const textarea = screen.getByRole("textbox");
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       fireEvent.input(textarea, { target: { value: "Hello" } });
 
       expect(textarea.value).toBe("Hello");
@@ -68,7 +68,7 @@ describe("ChatInput", () => {
         <ChatInput handleSend={handleSend} isAssistantResponding={false} />,
       );
 
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button") as HTMLButtonElement;
       expect(button.disabled).toBe(true);
     });
 
@@ -81,7 +81,7 @@ describe("ChatInput", () => {
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
 
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button") as HTMLButtonElement;
       expect(button.disabled).toBe(false);
     });
 
@@ -94,7 +94,7 @@ describe("ChatInput", () => {
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
 
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button") as HTMLButtonElement;
       expect(button.disabled).toBe(true);
     });
 
@@ -107,7 +107,7 @@ describe("ChatInput", () => {
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "   " } });
 
-      const button = screen.getByRole("button");
+      const button = screen.getByRole("button") as HTMLButtonElement;
       expect(button.disabled).toBe(true);
     });
 
@@ -133,7 +133,7 @@ describe("ChatInput", () => {
         <ChatInput handleSend={handleSend} isAssistantResponding={false} />,
       );
 
-      const textarea = screen.getByRole("textbox");
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       fireEvent.input(textarea, { target: { value: "Hello" } });
 
       const button = screen.getByRole("button");
@@ -164,7 +164,7 @@ describe("ChatInput", () => {
         <ChatInput handleSend={handleSend} isAssistantResponding={false} />,
       );
 
-      const textarea = screen.getByRole("textbox");
+      const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       fireEvent.input(textarea, { target: { value: "Hello" } });
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 

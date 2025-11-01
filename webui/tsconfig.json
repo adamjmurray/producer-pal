@@ -21,9 +21,5 @@
     "noEmit": true,
     "isolatedModules": true
   },
-  "include": ["src/**/*"],
-  "exclude": [
-    "src/components/chat/ChatInput.test.tsx",
-    "src/components/settings/SettingsScreen.test.tsx"
-  ]
+  "include": ["src/**/*"]
 }
