@@ -80,7 +80,7 @@ Currently supports Google's Gemini API with more LLMs planned. Access it by
 clicking the "Open Chat UI" button in the Max device or visiting the URL
 directly in your browser.
 
-<img src="./doc/img/producer-pal-device-advanced-tab.png" alt="Producer Pal Advanced tab with Open Chat UI button" width="400">
+<img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
 
 <img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
 

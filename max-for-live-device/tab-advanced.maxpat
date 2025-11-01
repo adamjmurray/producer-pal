@@ -15,6 +15,26 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"angle" : 270.0,
+					"annotation" : "Open the built-in AI chat UI in a web browser.",
+					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
+					"hint" : "",
+					"id" : "obj-63",
+					"ignoreclick" : 0,
+					"maxclass" : "panel",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 123.666670352220535, 168.000005006790161, 128.0, 128.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 144.000004291534424, 92.666669428348541, 105.999995708465576, 48.333334773778915 ],
+					"proportion" : 0.39,
+					"varname" : "Open Chat UI"
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-71",
 					"linecount" : 2,
 					"maxclass" : "newobj",
@@ -180,7 +200,7 @@
 , 			{
 				"box" : 				{
 					"angle" : 270.0,
-					"annotation" : "Displays the current status of the Producer Pal server that AI uses to control Live. If it says anything other than \"Producer Pal Running\", AI will not be able to connect. Click the \"start\" button in the \"Advanced\" tab to manually start the server.",
+					"annotation" : "Displays the current status of the Producer Pal server that AI uses to control Live. If it says anything other than \"Running\", AI will not be able to connect. Click the \"start\" button to manually start the server.",
 					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
 					"id" : "obj-33",
 					"ignoreclick" : 0,
@@ -190,7 +210,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 614.0, 404.0, 84.0, 94.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 280.0, 244.0, 176.0, 26.0 ],
+					"presentation_rect" : [ 6.0, 21.0, 61.0, 32.0 ],
 					"proportion" : 0.39,
 					"varname" : "Producer Pal Status"
 				}
@@ -403,7 +423,7 @@
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Open the experimental built-in AI chat UI in a web browser. Currently only works with Google Gemini (which can be used for free with any Google account).",
+					"annotation" : "Open the built-in AI chat UI in a web browser.",
 					"annotation_name" : "Open Chat UI",
 					"fontsize" : 10.0,
 					"hidden" : 1,
@@ -421,7 +441,7 @@
 						"valueof" : 						{
 							"parameter_annotation_name" : "Open Chat UI",
 							"parameter_enum" : [ "val1", "val2" ],
-							"parameter_info" : "Open the experimental built-in AI chat UI in a web browser. Currently only works with Google Gemini (which can be used for free with any Google account).",
+							"parameter_info" : "Open the built-in AI chat UI in a web browser.",
 							"parameter_invisible" : 2,
 							"parameter_longname" : "live.text[3]",
 							"parameter_mmax" : 1,
@@ -637,7 +657,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 585.0, 376.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 347.0, 198.0, 21.0 ],
+					"presentation_rect" : [ 4.00000011920929, 54.33333495259285, 135.99999988079071, 28.666667520999908 ],
 					"proportion" : 0.39,
 					"varname" : "Server Port"
 				}
@@ -657,7 +677,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 570.0, 361.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 326.0, 198.0, 21.0 ],
+					"presentation_rect" : [ 4.00000011920929, 85.000002533197403, 135.99999988079071, 25.999997466802597 ],
 					"proportion" : 0.39,
 					"varname" : "Timeout"
 				}
@@ -677,7 +697,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 555.0, 346.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 307.0, 198.0, 21.0 ],
+					"presentation_rect" : [ 150.000004470348358, 52.666668236255646, 95.999995529651642, 30.333331763744354 ],
 					"proportion" : 0.39,
 					"varname" : "Verbose Logs"
 				}
@@ -697,7 +717,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 540.0, 331.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 288.0, 198.0, 21.0 ],
+					"presentation_rect" : [ 150.000004470348358, 25.00000074505806, 96.000002861022949, 27.99999925494194 ],
 					"proportion" : 0.39,
 					"varname" : "JSON Output"
 				}
@@ -717,7 +737,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 525.0, 316.0, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 31.0, 270.0, 198.0, 21.0 ],
+					"presentation_rect" : [ 4.00000011920929, 113.333336710929871, 135.666670709848404, 33.000000983476639 ],
 					"proportion" : 0.39,
 					"varname" : "Small Model Mode"
 				}

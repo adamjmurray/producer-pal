@@ -147,11 +147,11 @@ Support for LLMs other than Gemini will be added in the future.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Open the "Advanced" tab in the device and click "Open Chat UI", or visit
+2. Open the "Setup" tab in the device and click "Open Chat UI", or visit
    [http://localhost:3350/chat](http://localhost:3350/chat) (or whatever port
    you're using)
 
-   <img src="./doc/img/producer-pal-device-advanced-tab.png" alt="Producer Pal Advanced tab with Open Chat UI button" width="400">
+   <img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
 
 3. If it's your first time, enter your Gemini API key in the chat UI settings
    and click "Save".
@@ -532,7 +532,7 @@ However, completely offline and private usage is compelling.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Optional / Recommended: In Producer Pal's "Advanced" tab, enable "Small Model
+2. Optional / Recommended: In Producer Pal's "Setup" tab, enable "Small Model
    Mode":
 
    <img src="./doc/img/small-model-mode.png" alt="small model mode setting" width="300">
@@ -638,8 +638,8 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 #### Advanced: Customizing Skills
 
 Local models vary widely in capabilities. **First, try enabling "Small Model
-Mode" in Producer Pal's Advanced tab** (see LM Studio installation step 2
-above) - this uses a simplified instruction set designed for smaller models.
+Mode" in Producer Pal's Setup tab** (see LM Studio installation step 2 above) -
+this uses a simplified instruction set designed for smaller models.
 
 If Small Model Mode isn't working well for you, or you want to experiment
 further, you can customize Producer Pal's behavior for your specific model:
