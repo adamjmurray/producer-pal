@@ -17,14 +17,24 @@ In no particular order:
 
 ### Improved Built-in Chat
 
-Along with Gemini, support these in the built-in chat UI:
+Support more models:
 
 - Mistral API with free tier API keys
 - Local LM Studio server
+- Other providers with free tier API keys
+- Maybe pay-as-you-go APIs?
 
-Any other free options, and possibly reasonably priced flat subscriptions, will
-take priority over pay-as-you-go options. The cost of pay-as-you-go may be a
-barrier to many.
+UI Improvements:
+
+- Edit and resend any previous message
+- Change model settings mid-chat
+
+### Voice Interaction
+
+Allow for controlling Ableton Live by simply talking:
+
+- Realtime bi-directional audio-chat
+- Auto-transcribe-and-send (VAD) with text-to-speech responses
 
 ### Behavior Customization
 
