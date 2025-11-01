@@ -10,7 +10,7 @@ describe("ModelSelector", () => {
     const setModel = vi.fn();
     render(<ModelSelector model="gemini-2.5-flash" setModel={setModel} />);
 
-    const select = screen.getByRole("combobox");
+    const select = screen.getByRole("combobox") as HTMLSelectElement;
     expect(select.value).toBe("gemini-2.5-flash");
   });
 
@@ -33,7 +33,7 @@ describe("ModelSelector", () => {
     const setModel = vi.fn();
     render(<ModelSelector model="gemini-2.5-flash" setModel={setModel} />);
 
-    const options = screen.getAllByRole("option");
+    const options = screen.getAllByRole("option") as HTMLOptionElement[];
     expect(options[0].value).toBe("gemini-2.5-pro");
     expect(options[1].value).toBe("gemini-2.5-flash");
     expect(options[2].value).toBe("gemini-2.5-flash-lite");

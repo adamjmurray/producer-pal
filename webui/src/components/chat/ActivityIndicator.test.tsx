@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/preact";
+import { render } from "@testing-library/preact";
 import { ActivityIndicator } from "./ActivityIndicator.jsx";
 
 describe("ActivityIndicator", () => {
@@ -32,8 +32,8 @@ describe("ActivityIndicator", () => {
   it("has proper SVG dimensions", () => {
     const { container } = render(<ActivityIndicator />);
     const svg = container.querySelector("svg");
-    expect(svg.getAttribute("width")).toBe("400");
-    expect(svg.getAttribute("height")).toBe("40");
+    expect(svg!.getAttribute("width")).toBe("400");
+    expect(svg!.getAttribute("height")).toBe("40");
   });
 
   it("includes animation filter", () => {
@@ -46,9 +46,9 @@ describe("ActivityIndicator", () => {
     const { container } = render(<ActivityIndicator />);
     const style = container.querySelector("style");
     expect(style).toBeDefined();
-    expect(style.textContent).toContain("@keyframes pulse1");
-    expect(style.textContent).toContain("@keyframes pulse2");
-    expect(style.textContent).toContain("@keyframes colorShift1");
-    expect(style.textContent).toContain("@keyframes colorShift2");
+    expect(style!.textContent).toContain("@keyframes pulse1");
+    expect(style!.textContent).toContain("@keyframes pulse2");
+    expect(style!.textContent).toContain("@keyframes colorShift1");
+    expect(style!.textContent).toContain("@keyframes colorShift2");
   });
 });

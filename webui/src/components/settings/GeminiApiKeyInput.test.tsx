@@ -16,7 +16,7 @@ describe("GeminiApiKeyInput", () => {
       />,
     );
 
-    const input = screen.getByPlaceholderText("Enter your API key");
+    const input = screen.getByPlaceholderText("Enter your API key") as HTMLInputElement;
     expect(input.type).toBe("password");
     expect(input.value).toBe("test-key");
   });
@@ -92,7 +92,7 @@ describe("GeminiApiKeyInput", () => {
       <GeminiApiKeyInput apiKey="" setApiKey={setApiKey} hasApiKey={false} />,
     );
 
-    const link = screen.getByRole("link", { name: "Get a Gemini API Key" });
+    const link = screen.getByRole("link", { name: "Get a Gemini API Key" }) as HTMLAnchorElement;
     expect(link.href).toBe("https://aistudio.google.com/api-keys");
     expect(link.target).toBe("_blank");
   });

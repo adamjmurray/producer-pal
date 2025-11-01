@@ -12,7 +12,7 @@ describe("RandomnessSlider", () => {
       <RandomnessSlider temperature={1.0} setTemperature={setTemperature} />,
     );
 
-    const slider = screen.getByRole("slider");
+    const slider = screen.getByRole("slider") as HTMLInputElement;
     expect(slider.value).toBe("1");
   });
 
