@@ -78,7 +78,10 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
         return messages;
       }
 
-      if (lastMessage?.role === role || isFunctionResponse(parts)) {
+      if (
+        lastMessage &&
+        (lastMessage.role === role || isFunctionResponse(parts))
+      ) {
         currentMessage = lastMessage;
       } else {
         currentMessage = {
@@ -97,8 +100,8 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
         if (functionCall) {
           currentParts.push({
             type: "tool",
-            name: functionCall.name,
-            args: functionCall.args,
+            name: functionCall.name ?? "",
+            args: functionCall.args ?? {},
             result: null,
           });
         } else if (functionResponse) {

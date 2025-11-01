@@ -135,6 +135,10 @@ export function useGeminiChat({
           await initializeChat();
         }
 
+        if (!geminiRef.current) {
+          throw new Error("Failed to initialize Gemini client");
+        }
+
         const stream = geminiRef.current.sendMessage(userMessage);
 
         for await (const chatHistory of stream) {
@@ -162,6 +166,8 @@ export function useGeminiChat({
       const message = messages[mergedMessageIndex];
       if (!message || message.role !== "user") return;
 
+      if (!geminiRef.current) return;
+
       const rawIndex = message.rawHistoryIndex;
       const rawMessage = geminiRef.current.chatHistory[rawIndex];
       if (!rawMessage) return;
@@ -180,6 +186,10 @@ export function useGeminiChat({
         const slicedHistory = geminiRef.current.chatHistory.slice(0, rawIndex);
 
         await initializeChat(slicedHistory);
+
+        if (!geminiRef.current) {
+          throw new Error("Failed to initialize Gemini client");
+        }
 
         const stream = geminiRef.current.sendMessage(userMessage);
 

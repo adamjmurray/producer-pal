@@ -147,17 +147,19 @@ export class GeminiClient {
     for await (const chunk of stream) {
       // console.log("chunk:", JSON.stringify(chunk, null, 2));
       const response = chunk.candidates?.[0] ?? {};
+      if (!response.content) continue;
       const { role, parts = [] } = response.content;
 
       for (const part of parts) {
-        if (currentTurn?.role !== role) {
+        if (currentTurn.role !== role) {
           currentTurn = { role, parts: [] };
           this.chatHistory.push(currentTurn);
         }
 
         // Merge text chunks: if current part is text and last part is also text with same thought flag,
         // append to existing text instead of creating a new part
-        const lastPart = currentTurn.parts.at(-1);
+        // Note: parts is always defined because we initialize it in currentTurn
+        const lastPart = currentTurn.parts!.at(-1);
         if (
           // if consecutive parts are text, we potentially can concatenate
           part.text &&
@@ -170,7 +172,7 @@ export class GeminiClient {
         ) {
           lastPart.text += part.text;
         } else {
-          currentTurn.parts.push(part);
+          currentTurn.parts!.push(part);
         }
 
         yield this.chatHistory;

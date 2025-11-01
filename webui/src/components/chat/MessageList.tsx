@@ -15,7 +15,7 @@ export function MessageList({
   isAssistantResponding,
   handleRetry,
 }: MessageListProps) {
-  const messagesEndRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
