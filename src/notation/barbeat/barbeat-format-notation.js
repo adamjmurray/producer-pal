@@ -17,7 +17,9 @@ import {
  * @returns {string} bar|beat representation
  */
 export function formatNotation(clipNotes, options = {}) {
-  if (!clipNotes || clipNotes.length === 0) return "";
+  if (!clipNotes || clipNotes.length === 0) {
+    return "";
+  }
 
   const {
     beatsPerBar: beatsPerBarOption,
@@ -104,13 +106,14 @@ export function formatNotation(clipNotes, options = {}) {
           currentVelocity = velocityMin;
           currentVelocityDeviation = noteVelocityDeviation;
         }
-      } else {
+      } else if (
+        noteVelocity !== currentVelocity ||
+        currentVelocityDeviation > 0
+      ) {
         // Output single velocity if no deviation
-        if (noteVelocity !== currentVelocity || currentVelocityDeviation > 0) {
-          elements.push(`v${noteVelocity}`);
-          currentVelocity = noteVelocity;
-          currentVelocityDeviation = 0;
-        }
+        elements.push(`v${noteVelocity}`);
+        currentVelocity = noteVelocity;
+        currentVelocityDeviation = 0;
       }
 
       // Check duration change

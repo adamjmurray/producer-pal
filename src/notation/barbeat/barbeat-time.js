@@ -49,8 +49,12 @@ export function barBeatToBeats(barBeat, beatsPerBar) {
     beat = Number.parseFloat(beatStr);
   }
 
-  if (bar < 1) throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
-  if (beat < 1) throw new Error(`Beat must be 1 or greater, got: ${beat}`);
+  if (bar < 1) {
+    throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
+  }
+  if (beat < 1) {
+    throw new Error(`Beat must be 1 or greater, got: ${beat}`);
+  }
 
   return (bar - 1) * beatsPerBar + (beat - 1);
 }
@@ -148,7 +152,7 @@ export function abletonBeatsToBarBeatDuration(
 export function barBeatDurationToMusicalBeats(
   barBeatDuration,
   timeSigNumerator,
-  timeSigDenominator,
+  _timeSigDenominator,
 ) {
   // Check if it's bar:beat format or beat-only
   if (barBeatDuration.includes(":")) {
@@ -178,10 +182,12 @@ export function barBeatDurationToMusicalBeats(
       beats = Number.parseFloat(beatsStr);
     }
 
-    if (bars < 0)
+    if (bars < 0) {
       throw new Error(`Bars in duration must be 0 or greater, got: ${bars}`);
-    if (beats < 0)
+    }
+    if (beats < 0) {
       throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
+    }
 
     const musicalBeatsPerBar = timeSigNumerator;
     return bars * musicalBeatsPerBar + beats; // RETURN EARLY (musical beats)

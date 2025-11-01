@@ -198,7 +198,7 @@ describe("MCP Express App", () => {
       // For this test, we need the mock response handler from test-setup.js
       // The real handleLiveApiResult would try to actually handle the response
       // but we want the mock to provide a fake response
-      const mockHandler = vi.fn((message, requestId, tool, argsJSON) => {
+      const mockHandler = vi.fn((message, requestId, _tool, _argsJSON) => {
         if (message === "mcp_request") {
           // Simulate the response from Max after a short delay
           setTimeout(() => {

@@ -699,8 +699,12 @@ describe("LiveAPI extensions", () => {
       it("should return correct time signature for LiveSet objects", () => {
         const liveSet = new LiveAPI("live_set");
         liveSet.getProperty = vi.fn((prop) => {
-          if (prop === "signature_numerator") return 4;
-          if (prop === "signature_denominator") return 4;
+          if (prop === "signature_numerator") {
+            return 4;
+          }
+          if (prop === "signature_denominator") {
+            return 4;
+          }
           return null;
         });
 
@@ -714,8 +718,12 @@ describe("LiveAPI extensions", () => {
       it("should return correct time signature for Clip objects", () => {
         const clip = new LiveAPI("live_set tracks 0 clip_slots 0 clip");
         clip.getProperty = vi.fn((prop) => {
-          if (prop === "signature_numerator") return 3;
-          if (prop === "signature_denominator") return 4;
+          if (prop === "signature_numerator") {
+            return 3;
+          }
+          if (prop === "signature_denominator") {
+            return 4;
+          }
           return null;
         });
 
@@ -727,8 +735,12 @@ describe("LiveAPI extensions", () => {
       it("should return correct time signature for Scene objects", () => {
         const scene = new LiveAPI("live_set scenes 0");
         scene.getProperty = vi.fn((prop) => {
-          if (prop === "time_signature_numerator") return 6;
-          if (prop === "time_signature_denominator") return 8;
+          if (prop === "time_signature_numerator") {
+            return 6;
+          }
+          if (prop === "time_signature_denominator") {
+            return 8;
+          }
           return null;
         });
 
@@ -751,8 +763,12 @@ describe("LiveAPI extensions", () => {
       it("should return null when only numerator is available", () => {
         const liveSet = new LiveAPI("live_set");
         liveSet.getProperty = vi.fn((prop) => {
-          if (prop === "signature_numerator") return 4;
-          if (prop === "signature_denominator") return null;
+          if (prop === "signature_numerator") {
+            return 4;
+          }
+          if (prop === "signature_denominator") {
+            return null;
+          }
           return null;
         });
 
@@ -762,8 +778,12 @@ describe("LiveAPI extensions", () => {
       it("should return null when only denominator is available", () => {
         const liveSet = new LiveAPI("live_set");
         liveSet.getProperty = vi.fn((prop) => {
-          if (prop === "signature_numerator") return null;
-          if (prop === "signature_denominator") return 4;
+          if (prop === "signature_numerator") {
+            return null;
+          }
+          if (prop === "signature_denominator") {
+            return 4;
+          }
           return null;
         });
 
@@ -774,8 +794,12 @@ describe("LiveAPI extensions", () => {
         // Create an API object with an unknown type
         const unknownObj = new LiveAPI("unknown_object");
         unknownObj.getProperty = vi.fn((prop) => {
-          if (prop === "signature_numerator") return 2;
-          if (prop === "signature_denominator") return 2;
+          if (prop === "signature_numerator") {
+            return 2;
+          }
+          if (prop === "signature_denominator") {
+            return 2;
+          }
           return null;
         });
 

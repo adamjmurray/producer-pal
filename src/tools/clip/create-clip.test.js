@@ -731,7 +731,7 @@ describe("createClip", () => {
         },
       });
 
-      liveApiCall.mockImplementation((method, ...args) => {
+      liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_midi_clip") {
           return ["id", "arrangement_clip"];
         }
@@ -739,7 +739,9 @@ describe("createClip", () => {
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arrangement_clip") return "arrangement_clip";
+        if (this._path === "id arrangement_clip") {
+          return "arrangement_clip";
+        }
         return this._id;
       });
 
@@ -777,7 +779,7 @@ describe("createClip", () => {
         Track: { exists: () => true },
       });
 
-      liveApiCall.mockImplementation((method, ...args) => {
+      liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_midi_clip") {
           return ["id", "arrangement_clip"];
         }
@@ -785,7 +787,9 @@ describe("createClip", () => {
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arrangement_clip") return "arrangement_clip";
+        if (this._path === "id arrangement_clip") {
+          return "arrangement_clip";
+        }
         return this._id;
       });
 
@@ -1082,7 +1086,9 @@ describe("createClip", () => {
       });
 
       liveApiId.mockImplementation(function () {
-        if (this._path === "id arrangement_clip") return "arrangement_clip";
+        if (this._path === "id arrangement_clip") {
+          return "arrangement_clip";
+        }
         return this._id;
       });
 

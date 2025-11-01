@@ -18,7 +18,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.test.js", "webui/**/*.test.js", "webui/**/*.test.jsx"],
+    include: ["src/**/*.test.js", "webui/**/*.test.ts", "webui/**/*.test.tsx"],
     setupFiles: ["src/test/test-setup.js"],
     clearMocks: true,
     restoreMocks: true,

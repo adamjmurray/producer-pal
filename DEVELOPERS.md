@@ -37,10 +37,28 @@ Watch for changes and auto-build:
 npm run dev
 ```
 
-Automated tests must always pass:
+Auto-fix formatting and linting issues:
 
 ```
+npm run fix  # Runs format + lint:fix
+```
+
+Code quality checks must always pass:
+
+```
+npm run check  # Runs all checks: lint + typecheck + format check + tests
+```
+
+**Recommended workflow**: Run `npm run fix` before `npm run check` to
+automatically fix issues and save time.
+
+Or run checks individually:
+
+```
+npm run lint
+npm run typecheck  # UI code only
 npm test
+npm run format:check
 ```
 
 ## Web UI Development
@@ -71,6 +89,29 @@ npm run ui:build
 
 Builds a single self-contained `max-for-live-device/chat-ui.html` file. This is
 automatically included in `npm run build`.
+
+### Linting
+
+```bash
+npm run lint
+```
+
+Runs ESLint on the UI code (`webui/src/**`). Enforces code quality rules
+including strict TypeScript typing (no `any` types) and React best practices
+(like avoiding JSX in try/catch blocks). All code changes should pass linting
+before committing.
+
+Use `npm run lint:fix` to automatically fix issues where possible.
+
+### Type Checking
+
+```bash
+npm run typecheck
+```
+
+Runs TypeScript type checking on the UI code (JavaScript files with JSDoc
+annotations). Currently only checks production code, not tests. All UI changes
+should pass type checking before committing.
 
 ### Development Workflows
 

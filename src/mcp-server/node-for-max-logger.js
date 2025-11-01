@@ -6,9 +6,10 @@ const format = (loggerArgs) => `[${now()}] ${loggerArgs.join("\n")}`;
 
 let verbose = false;
 
-// very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], etc
 Max.addHandler(
   "verbose",
+  // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], etc
+  // eslint-disable-next-line eqeqeq
   (input) => (verbose = input == 1 || input === "true"),
 );
 
@@ -17,7 +18,9 @@ export const log = (...any) => {
 };
 
 export const info = (...any) => {
-  if (verbose) Max.post(format(any));
+  if (verbose) {
+    Max.post(format(any));
+  }
 };
 
 export const warn = (...any) => {

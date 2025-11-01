@@ -4,7 +4,6 @@ import {
   expectedClip,
   liveApiId,
   liveApiPath,
-  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
 import { readScene } from "./read-scene";
@@ -214,7 +213,7 @@ describe("readScene", () => {
           ...expectedClip({ id: "clip_1_0", sceneIndex: 0, trackIndex: 1 }),
           color: undefined,
         },
-      ].map(({ color, ...clip }) => clip),
+      ].map(({ color: _color, ...clip }) => clip),
     });
   });
 
@@ -388,7 +387,7 @@ describe("readScene", () => {
             ...expectedClip({ id: "clip_1_2", sceneIndex: 2, trackIndex: 1 }),
             color: undefined,
           },
-        ].map(({ color, ...clip }) => clip),
+        ].map(({ color: _color, ...clip }) => clip),
       });
     });
 

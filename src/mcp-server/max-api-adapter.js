@@ -97,7 +97,9 @@ function handleLiveApiResult(requestId, ...params) {
       for (const error of maxErrors) {
         let msg = `${error}`;
         // Remove v8: prefix and trim whitespace
-        if (msg.startsWith("v8:")) msg = msg.slice(3).trim();
+        if (msg.startsWith("v8:")) {
+          msg = msg.slice(3).trim();
+        }
         // Only add if there's actual content after cleaning
         if (msg.length > 0) {
           const errorText = `WARNING: ${msg}`;

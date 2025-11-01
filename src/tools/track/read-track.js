@@ -115,8 +115,10 @@ function categorizeDevices(
 
 // Helper function to strip chains from device objects
 function stripChains(device) {
-  if (!device || typeof device !== "object") return device;
-  const { chains, ...rest } = device;
+  if (!device || typeof device !== "object") {
+    return device;
+  }
+  const { chains: _chains, ...rest } = device;
   return rest;
 }
 
@@ -241,13 +243,11 @@ export function readTrackGeneric({
         })
         .filter(Boolean).length;
     }
-  } else {
+  } else if (includeSessionClips) {
     // Return and master tracks don't have session clips
-    if (includeSessionClips) {
-      result.sessionClips = [];
-    } else {
-      result.sessionClipCount = 0;
-    }
+    result.sessionClips = [];
+  } else {
+    result.sessionClipCount = 0;
   }
 
   // Arrangement clips - group tracks, return tracks, and master track have no arrangement clips
@@ -258,22 +258,20 @@ export function readTrackGeneric({
     } else {
       result.arrangementClipCount = 0;
     }
+  } else if (includeArrangementClips) {
+    result.arrangementClips = track
+      .getChildIds("arrangement_clips")
+      .map((clipId) =>
+        readClip({
+          clipId,
+          include: include,
+        }),
+      )
+      .filter((clip) => clip.id != null);
   } else {
-    if (includeArrangementClips) {
-      result.arrangementClips = track
-        .getChildIds("arrangement_clips")
-        .map((clipId) =>
-          readClip({
-            clipId,
-            include: include,
-          }),
-        )
-        .filter((clip) => clip.id != null);
-    } else {
-      // When not including full clip details, just return the count
-      const clipIds = track.getChildIds("arrangement_clips");
-      result.arrangementClipCount = clipIds.length;
-    }
+    // When not including full clip details, just return the count
+    const clipIds = track.getChildIds("arrangement_clips");
+    result.arrangementClipCount = clipIds.length;
   }
 
   // Categorize devices into separate arrays

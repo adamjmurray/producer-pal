@@ -250,7 +250,7 @@ function validateParameters({
   sceneIndex,
   deviceId,
   instrument,
-  clipSlot,
+  clipSlot: _clipSlot,
 }) {
   // Track selection validation
   if (category === "master" && trackIndex != null) {
@@ -305,8 +305,12 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
     trackAPI = validateIdType(trackId, "track", "select");
     songView.setProperty("selected_track", trackAPI.id);
     result.selectedTrackId = trackId;
-    if (category != null) result.selectedCategory = category;
-    if (trackIndex != null) result.selectedTrackIndex = trackIndex;
+    if (category != null) {
+      result.selectedCategory = category;
+    }
+    if (trackIndex != null) {
+      result.selectedTrackIndex = trackIndex;
+    }
   } else if (category != null || trackIndex != null) {
     // Select by category/index
     const finalCategory = category || "regular";
@@ -345,7 +349,9 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
     const sceneAPI = validateIdType(sceneId, "scene", "select");
     songView.setProperty("selected_scene", sceneAPI.id);
     result.selectedSceneId = sceneId;
-    if (sceneIndex != null) result.selectedSceneIndex = sceneIndex;
+    if (sceneIndex != null) {
+      result.selectedSceneIndex = sceneIndex;
+    }
   } else if (sceneIndex != null) {
     // Select by index
     const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
@@ -363,7 +369,7 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
     // Select specific device by ID and validate it's a device
-    const deviceAPI = validateIdType(deviceId, "device", "select");
+    const _deviceAPI = validateIdType(deviceId, "device", "select");
     const songView = new LiveAPI("live_set view");
     // Ensure proper "id X" format for select_device call
     const deviceIdStr = deviceId.toString();

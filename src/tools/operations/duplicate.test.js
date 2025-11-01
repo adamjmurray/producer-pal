@@ -908,9 +908,8 @@ describe("duplicate", () => {
           },
         });
 
-        let clipCounter = 0;
         liveApiCall.mockImplementation(
-          function (method, clipIdOrStartTime, startTimeOrLength) {
+          function (method, clipIdOrStartTime, _startTimeOrLength) {
             if (method === "duplicate_clip_to_arrangement") {
               // Extract track index from the clip ID path
               const trackMatch = clipIdOrStartTime.match(/tracks\/(\d+)/);
@@ -934,7 +933,6 @@ describe("duplicate", () => {
                 "id",
                 `live_set tracks ${trackIndex} arrangement_clips 0`,
               ];
-              clipCounter++;
               return result;
             }
             if (method === "get_notes_extended") {
@@ -1045,7 +1043,7 @@ describe("duplicate", () => {
 
         let clipCounter = 0;
         liveApiCall.mockImplementation(
-          function (method, clipIdOrStartTime, startTimeOrLength) {
+          function (method, _clipIdOrStartTime, _startTimeOrLength) {
             if (method === "duplicate_clip_to_arrangement") {
               // Return unique clip IDs for each duplication
               const clipId = `live_set tracks 0 arrangement_clips ${clipCounter}`;
@@ -2117,12 +2115,15 @@ describe("duplicate", () => {
 
       // Mock IDs for creation order - track2 has higher ID than track0
       liveApiId.mockImplementation(function () {
-        if (this._path === "live_set tracks 0" || this._id === "id track0")
+        if (this._path === "live_set tracks 0" || this._id === "id track0") {
           return "100";
-        if (this._path === "live_set tracks 1" || this._id === "id track2")
-          return "200"; // Our source track
-        if (this._path === "live_set tracks 2" || this._id === "id track3")
+        }
+        if (this._path === "live_set tracks 1" || this._id === "id track2") {
+          return "200";
+        } // Our source track
+        if (this._path === "live_set tracks 2" || this._id === "id track3") {
           return "300";
+        }
         return this._id;
       });
 
@@ -2234,7 +2235,7 @@ describe("duplicate", () => {
         },
       });
 
-      const result = duplicate({
+      duplicate({
         type: "track",
         id: "track1",
         routeToSource: true,
@@ -2289,7 +2290,7 @@ describe("duplicate", () => {
         },
       });
 
-      const result = duplicate({
+      duplicate({
         type: "clip",
         id: "clip1",
         destination: "arrangement",
@@ -2323,7 +2324,7 @@ describe("duplicate", () => {
         },
       });
 
-      const result = duplicate({
+      duplicate({
         type: "clip",
         id: "clip1",
         destination: "session",
@@ -2341,7 +2342,7 @@ describe("duplicate", () => {
         return this._path;
       });
 
-      const result = duplicate({
+      duplicate({
         type: "track",
         id: "track1",
         switchView: true,
@@ -2358,7 +2359,7 @@ describe("duplicate", () => {
         return this._path;
       });
 
-      const result = duplicate({
+      duplicate({
         type: "scene",
         id: "scene1",
         switchView: true,
@@ -2375,7 +2376,7 @@ describe("duplicate", () => {
         return this._path;
       });
 
-      const result = duplicate({
+      duplicate({
         type: "track",
         id: "track1",
         switchView: false,

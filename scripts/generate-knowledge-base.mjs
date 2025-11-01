@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 const outputDir = path.join(projectRoot, "knowledge-base");
 
-const IGNORE_PATTERNS = [/^\.DS_Store$/, /\.bak$/];
+const IGNORE_PATTERNS = [/^\.DS_Store$/, /\.bak$/, /\.svg$/];
 
 const FLAT_SEP = "--";
 
@@ -39,7 +39,7 @@ async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
     console.log(`Removed existing outputDir: ${outputDir}`);
-  } catch (error) {
+  } catch (_error) {
     // Directory doesn't exist, which is fine
   }
   await fs.mkdir(outputDir, { recursive: true });
@@ -101,17 +101,21 @@ const itemsToCopy = [
     isDir: true,
     exclude: ["node_modules", "dist"],
     group: ({ relativePath }) => {
+      // Test case files (data fixtures for tests)
+      if (relativePath.includes("/test-cases/")) {
+        return "webui--test.ts";
+      }
       // Test files
       if (relativePath.match(/\.test\.\w+$/)) {
-        return "webui--test.js";
+        return "webui--test.ts";
       }
-      // JSX files (React components)
-      if (relativePath.endsWith(".jsx")) {
-        return "webui--jsx";
+      // TSX files (React components)
+      if (relativePath.endsWith(".tsx")) {
+        return "webui--tsx";
       }
-      // JS files (hooks, utilities, etc.)
-      if (relativePath.endsWith(".js")) {
-        return "webui--js";
+      // TS files (hooks, utilities, etc.)
+      if (relativePath.endsWith(".ts")) {
+        return "webui--ts";
       }
       // Everything else (CSS, HTML, SVG, etc.)
       return "webui--other";
@@ -183,7 +187,7 @@ async function copyDirectoriesAndFiles(excludeGroups) {
         await copyFile(sourcePath, targetPath);
         console.log(`  ${item.src} → ${targetName}`);
       }
-    } catch (error) {
+    } catch (_error) {
       console.log(`  Skipping ${item.src} (not found)`);
     }
   }
@@ -268,7 +272,7 @@ async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
             : item.group) || "misc";
         addToGroup(fileGroups, groupName, sourcePath);
       }
-    } catch (error) {
+    } catch (_error) {
       console.log(`  Skipping ${item.src} (not found)`);
     }
   }

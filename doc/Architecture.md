@@ -51,6 +51,24 @@ LLMs locally with no online dependencies.
 +-----------------------------+
 ```
 
+## Language Choices
+
+TypeScript is used only in `webui/` directory. The main codebase (`src/`)
+remains JavaScript.
+
+**Why webui uses TypeScript:**
+
+- Complex React component state and props benefit from static typing
+- Integrates multiple AI SDKs (Google GenAI, OpenAI) with different APIs
+- Complex response mapping to normalized UI format requires type safety
+- Streaming protocols and message parsing have many edge cases
+
+**Why src/ stays JavaScript:**
+
+- Zod schemas validate tool inputs to avoid unexpected runtime values
+- Live API has no type definitions (would require extensive `.d.ts` work - it's
+  been tried and failed multiple times before)
+
 ## Component Details
 
 ### 1. Producer Pal Portal (`src/portal/producer-pal-portal.js`)
@@ -130,7 +148,7 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
 
 ### Chat UI Bundle
 
-- **Entry:** `webui/src/main.jsx`
+- **Entry:** `webui/src/main.tsx`
 - **Output:** `max-for-live-device/chat-ui.html`
 - **Target:** Browser (served at `http://localhost:3350/chat`, opened via Max)
 - **Build Tool:** Vite with custom plugins

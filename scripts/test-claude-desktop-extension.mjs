@@ -95,7 +95,7 @@ const listToolsMessage = {
   id: 2,
 };
 
-let testSequence = ["initialize", "tools/list"];
+const testSequence = ["initialize", "tools/list"];
 
 // Add specific tool call if provided
 if (toolName) {
@@ -107,7 +107,7 @@ console.log(`Test sequence: ${testSequence.join(" → ")}`);
 console.log("");
 
 let responseCount = 0;
-let startTime = Date.now();
+const startTime = Date.now();
 
 function sendMessage(message, description) {
   console.log(`[${Date.now() - startTime}ms] Sending ${description}...`);
@@ -124,7 +124,7 @@ function parseResponse(data) {
     const response = JSON.parse(responseBuffer.trim());
     responseBuffer = ""; // Clear buffer on successful parse
     return response;
-  } catch (e) {
+  } catch (_e) {
     // If parse fails, check if we have a complete JSON by counting braces
     const openBraces = (responseBuffer.match(/\{/g) || []).length;
     const closeBraces = (responseBuffer.match(/\}/g) || []).length;

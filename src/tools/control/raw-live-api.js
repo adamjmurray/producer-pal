@@ -51,13 +51,14 @@ export function rawLiveApi({ path, operations } = {}) {
           result = api[operation.property];
           break;
 
-        case "call_method":
+        case "call_method": {
           if (!operation.method) {
             throw new Error("call_method operation requires method");
           }
           const args = operation.args || [];
           result = api[operation.method](...args);
           break;
+        }
 
         // Convenience shortcuts
         case "get":
@@ -77,13 +78,14 @@ export function rawLiveApi({ path, operations } = {}) {
           result = api.set(operation.property, operation.value);
           break;
 
-        case "call":
+        case "call": {
           if (!operation.method) {
             throw new Error("call operation requires method");
           }
           const callArgs = operation.args || [];
           result = api.call(operation.method, ...callArgs);
           break;
+        }
 
         case "goto":
           if (!operation.value) {
