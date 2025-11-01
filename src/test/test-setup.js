@@ -38,7 +38,7 @@ class Max {
     }
   });
 
-  static outlet = vi.fn((message, requestId, tool, argsJSON) => {
+  static outlet = vi.fn((message, requestId, _tool, _argsJSON) => {
     if (message === "mcp_request" && Max.mcpResponseHandler) {
       // Defer calling the handler, otherwise the code inside the Promise returned by callLiveApi() hasn't executed yet
       // and the pendingRequests map won't be in the correct state for the handler to work properly.
