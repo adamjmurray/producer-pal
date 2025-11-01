@@ -44,12 +44,13 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      - run: FORCE_COLOR=3 npm run test:coverage
+      - name: Run tests with coverage
+        if: success()
+        run: FORCE_COLOR=3 npm run test:coverage
 
       - name: "Report Coverage"
-        # Set if: always() to also generate the report if tests are failing
-        # Only works if you set `reportOnFailure: true` in your vite config as specified above
-        if: always()
+        # Runs if tests ran (whether they passed or failed), but not if typecheck failed
+        if: success() || failure()
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           file-coverage-mode: "all"
