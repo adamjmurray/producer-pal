@@ -8,7 +8,7 @@
     "jsxImportSource": "preact",
     "allowJs": false,
 
-    "strict": false,
+    "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
     "noUnusedLocals": true,
