@@ -5,7 +5,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import type { GeminiMessage } from "../types/messages.js";
 
 // Configuration for GeminiClient
-interface GeminiClientConfig {
+export interface GeminiClientConfig {
   mcpUrl?: string;
   model?: string;
   temperature?: number;

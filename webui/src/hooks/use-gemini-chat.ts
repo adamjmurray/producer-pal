@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import { GeminiClient } from "../chat/gemini-client.js";
+import { GeminiClient, type GeminiClientConfig } from "../chat/gemini-client.js";
 import { formatGeminiMessages } from "../chat/gemini-formatter.js";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 import type { GeminiMessage, UIMessage } from "../types/messages.js";
@@ -82,7 +82,7 @@ export function useGeminiChat({
       }
 
       const thinkingBudget = getThinkingBudget(thinking);
-      const config: any = {
+      const config: GeminiClientConfig = {
         model,
         temperature,
         systemInstruction: SYSTEM_INSTRUCTION,

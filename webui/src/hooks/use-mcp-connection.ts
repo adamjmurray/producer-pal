@@ -19,9 +19,11 @@ export function useMcpConnection(): UseMcpConnectionReturn {
     try {
       await GeminiClient.testConnection();
       setMcpStatus("connected");
-    } catch (error: any) {
+    } catch (error: unknown) {
       setMcpStatus("error");
-      setMcpError(error?.message ?? "Unknown error");
+      setMcpError(
+        error instanceof Error ? error.message : "Unknown error"
+      );
     }
   }, []);
 
