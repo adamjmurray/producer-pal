@@ -2,8 +2,19 @@ import { useEffect, useRef } from "preact/hooks";
 import { ActivityIndicator } from "./ActivityIndicator.jsx";
 import { AssistantMessage } from "./assistant/AssistantMessage.jsx";
 import { RetryButton } from "./RetryButton.jsx";
+import type { UIMessage } from "../../types/messages.js";
 
-export function MessageList({ messages, isAssistantResponding, handleRetry }) {
+interface MessageListProps {
+  messages: UIMessage[];
+  isAssistantResponding: boolean;
+  handleRetry: (messageIndex: number) => void;
+}
+
+export function MessageList({
+  messages,
+  isAssistantResponding,
+  handleRetry,
+}: MessageListProps) {
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when messages change
@@ -12,7 +23,7 @@ export function MessageList({ messages, isAssistantResponding, handleRetry }) {
   }, [messages]);
 
   // Find the previous user message index for retry
-  const findPreviousUserMessageIndex = (currentIdx) => {
+  const findPreviousUserMessageIndex = (currentIdx: number): number => {
     for (let i = currentIdx - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
         return i;
@@ -67,10 +78,17 @@ export function MessageList({ messages, isAssistantResponding, handleRetry }) {
   );
 }
 
-function hasContent(message) {
-  return (message.parts ?? []).length > 0 || (message.content ?? "").length > 0;
+function hasContent(message: UIMessage): boolean {
+  return (message.parts ?? []).length > 0;
 }
 
-function formatUserContent(message) {
-  return (message.parts ?? []).map(({ content }) => content ?? "").join("");
+function formatUserContent(message: UIMessage): string {
+  return (message.parts ?? [])
+    .map((part) => {
+      if ("content" in part) {
+        return part.content ?? "";
+      }
+      return "";
+    })
+    .join("");
 }

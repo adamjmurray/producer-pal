@@ -1,3 +1,10 @@
+import type {
+  GeminiMessage,
+  UIMessage,
+  UIPart,
+  UIToolPart,
+} from "../types/messages.js";
+
 /**
  * Formats Gemini's raw chat history into a UI-friendly structure.
  *
@@ -11,8 +18,8 @@
  * 4. Marks the last thought part with `isOpen: true` for activity indicators
  * 5. Tracks `rawHistoryIndex` to map merged messages back to original indices (for retry functionality)
  *
- * @param {Array} history - Raw chat history from GeminiClient
- * @returns {Array} Formatted messages ready for UI rendering
+ * @param history - Raw chat history from GeminiClient
+ * @returns Formatted messages ready for UI rendering
  *
  * @example
  * // Raw history:
@@ -34,11 +41,11 @@
  *   ], rawHistoryIndex: 1 }
  * ]
  */
-export function formatGeminiMessages(history) {
-  const messages = history.reduce(
+export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
+  const messages = history.reduce<UIMessage[]>(
     (messages, { role, parts = [] }, rawIndex) => {
       const lastMessage = messages.at(-1);
-      let currentMessage;
+      let currentMessage: UIMessage;
 
       // Handle error-role messages
       if (role === "error") {
@@ -73,10 +80,14 @@ export function formatGeminiMessages(history) {
       if (lastMessage?.role === role || isFunctionResponse(parts)) {
         currentMessage = lastMessage;
       } else {
-        currentMessage = { role, parts: [], rawHistoryIndex: rawIndex };
+        currentMessage = {
+          role: role as "user" | "model",
+          parts: [],
+          rawHistoryIndex: rawIndex,
+        };
         messages.push(currentMessage);
       }
-      const currentParts = currentMessage.parts;
+      const currentParts: UIPart[] = currentMessage.parts;
 
       for (const part of parts) {
         const lastPart = currentParts.at(-1);
@@ -92,7 +103,7 @@ export function formatGeminiMessages(history) {
         } else if (functionResponse) {
           // Find the first tool call with matching name that doesn't have a result yet
           const toolPart = currentParts.find(
-            (part) =>
+            (part): part is UIToolPart =>
               part.type === "tool" &&
               part.name === functionResponse.name &&
               part.result === null,
@@ -137,19 +148,20 @@ export function formatGeminiMessages(history) {
   return messages;
 }
 
-function isFunctionResponse(parts) {
+function isFunctionResponse(parts: any[]): boolean {
   return !!parts?.[0]?.functionResponse;
 }
 
-function getToolCallResult(functionResponse) {
+function getToolCallResult(functionResponse: any): string {
   // Warnings can be returned in the additional content entries,
   // but that generally isn't intended to be user-facing, so we ignore it
   return (
     functionResponse.response?.content?.[0]?.text ??
-    functionResponse.response?.error?.content?.[0]?.text
+    functionResponse.response?.error?.content?.[0]?.text ??
+    ""
   );
 }
 
-function isToolCallError(functionResponse) {
+function isToolCallError(functionResponse: any): boolean {
   return functionResponse.response?.error != null;
 }

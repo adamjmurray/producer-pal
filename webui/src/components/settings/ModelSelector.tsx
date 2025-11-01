@@ -1,4 +1,9 @@
-export function ModelSelector({ model, setModel }) {
+interface ModelSelectorProps {
+  model: string;
+  setModel: (model: string) => void;
+}
+
+export function ModelSelector({ model, setModel }: ModelSelectorProps) {
   return (
     <div>
       <label className="block text-sm mb-2">Model</label>

@@ -1,9 +1,16 @@
+interface ThinkingSettingsProps {
+  thinking: string;
+  setThinking: (thinking: string) => void;
+  showThoughts: boolean;
+  setShowThoughts: (show: boolean) => void;
+}
+
 export function ThinkingSettings({
   thinking,
   setThinking,
   showThoughts,
   setShowThoughts,
-}) {
+}: ThinkingSettingsProps) {
   return (
     <>
       <div>

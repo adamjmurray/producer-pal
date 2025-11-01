@@ -104,18 +104,6 @@ describe("MessageList", () => {
       expect(container.querySelectorAll(".rounded-lg").length).toBe(1);
     });
 
-    it("keeps message with content field", () => {
-      const messages = [
-        { role: "user", content: "Message with content field", parts: [] },
-      ];
-      const { container } = render(
-        <MessageList messages={messages} isAssistantResponding={false} />,
-      );
-
-      // Message should be kept even though parts is empty
-      expect(container.querySelectorAll(".rounded-lg").length).toBe(1);
-    });
-
     it("filters message with no parts and no content", () => {
       const messages = [
         { role: "user", parts: [] },

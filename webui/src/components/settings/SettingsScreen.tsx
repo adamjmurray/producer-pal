@@ -3,6 +3,25 @@ import { ModelSelector } from "./ModelSelector.jsx";
 import { ThinkingSettings } from "./ThinkingSettings.jsx";
 import { RandomnessSlider } from "./RandomnessSlider.jsx";
 
+interface SettingsScreenProps {
+  apiKey: string;
+  setApiKey: (key: string) => void;
+  model: string;
+  setModel: (model: string) => void;
+  thinking: string;
+  setThinking: (thinking: string) => void;
+  temperature: number;
+  setTemperature: (temp: number) => void;
+  showThoughts: boolean;
+  setShowThoughts: (show: boolean) => void;
+  saveSettings: () => void;
+  cancelSettings: () => void;
+  hasApiKey: boolean;
+  clearConversation: () => void;
+  messageCount: number;
+  activeModel: string | null;
+}
+
 export function SettingsScreen({
   apiKey,
   setApiKey,
@@ -20,7 +39,7 @@ export function SettingsScreen({
   clearConversation,
   messageCount,
   activeModel,
-}) {
+}: SettingsScreenProps) {
   return (
     <div className="flex items-center justify-center h-screen p-4">
       <div className="max-w-md w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 space-y-4">

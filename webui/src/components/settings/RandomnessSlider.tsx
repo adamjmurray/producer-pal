@@ -1,4 +1,12 @@
-export function RandomnessSlider({ temperature, setTemperature }) {
+interface RandomnessSliderProps {
+  temperature: number;
+  setTemperature: (temp: number) => void;
+}
+
+export function RandomnessSlider({
+  temperature,
+  setTemperature,
+}: RandomnessSliderProps) {
   return (
     <div>
       <label className="block text-sm mb-2">

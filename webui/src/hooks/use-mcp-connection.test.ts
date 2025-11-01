@@ -23,7 +23,7 @@ describe("useMcpConnection", () => {
     const { result } = renderHook(() => useMcpConnection());
 
     expect(result.current.mcpStatus).toBe("connecting");
-    expect(result.current.mcpError).toBe("");
+    expect(result.current.mcpError).toBe(null);
   });
 
   it("sets status to connected on successful connection", async () => {

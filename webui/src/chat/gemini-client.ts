@@ -1,6 +1,17 @@
 import { GoogleGenAI, mcpToTool } from "@google/genai/web";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import type { GeminiMessage } from "../types/messages.js";
+
+// Configuration for GeminiClient
+interface GeminiClientConfig {
+  mcpUrl?: string;
+  model?: string;
+  temperature?: number;
+  systemInstruction?: string;
+  thinkingConfig?: any;
+  chatHistory?: GeminiMessage[];
+}
 
 /**
  * Client for interacting with the Gemini API with MCP (Model Context Protocol) tool support.
@@ -27,24 +38,18 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
  * For UI-friendly format, use formatGeminiMessages() from gemini-formatter.js
  */
 export class GeminiClient {
-  ai: any;
+  ai: GoogleGenAI;
   mcpUrl: string;
-  config: any;
-  chat: any;
-  mcpClient: any;
-  chatHistory: any[];
+  config: GeminiClientConfig;
+  chat: any; // Gemini SDK doesn't export a type for this
+  mcpClient: Client | null;
+  chatHistory: GeminiMessage[];
 
   /**
-   * @param {string} apiKey - Gemini API key
-   * @param {object} config - Configuration options
-   * @param {string} [config.mcpUrl="http://localhost:3350/mcp"] - MCP server URL
-   * @param {string} [config.model] - Gemini model name
-   * @param {number} [config.temperature] - Response randomness (0-2)
-   * @param {string} [config.systemInstruction] - System instruction for the model
-   * @param {object} [config.thinkingConfig] - Thinking mode configuration
-   * @param {Array} [config.chatHistory] - Initial chat history to resume from
+   * @param apiKey - Gemini API key
+   * @param config - Configuration options
    */
-  constructor(apiKey: string, config: any = {}) {
+  constructor(apiKey: string, config: GeminiClientConfig = {}) {
     this.ai = new GoogleGenAI({ apiKey });
     this.mcpUrl = config.mcpUrl || "http://localhost:3350/mcp";
     this.config = config;
@@ -55,10 +60,12 @@ export class GeminiClient {
 
   /**
    * Tests connection to the MCP server without creating a client instance.
-   * @param {string} [mcpUrl="http://localhost:3350/mcp"] - MCP server URL to test
-   * @throws {Error} If connection fails
+   * @param mcpUrl - MCP server URL to test
+   * @throws If connection fails
    */
-  static async testConnection(mcpUrl = "http://localhost:3350/mcp") {
+  static async testConnection(
+    mcpUrl = "http://localhost:3350/mcp",
+  ): Promise<void> {
     const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
     const client = new Client({
       name: "producer-pal-chat-ui-test",
@@ -71,9 +78,9 @@ export class GeminiClient {
   /**
    * Initializes the MCP connection and creates a Gemini chat session with MCP tools.
    * Must be called before sending messages.
-   * @throws {Error} If MCP connection or chat creation fails
+   * @throws If MCP connection or chat creation fails
    */
-  async initialize() {
+  async initialize(): Promise<void> {
     // Connect to MCP server
     const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
     this.mcpClient = new Client({
@@ -105,9 +112,9 @@ export class GeminiClient {
    * consumers to track the conversation state in real-time. The history includes
    * the user's message, model responses, tool calls, and tool results.
    *
-   * @param {string} message - User message to send
-   * @yields {Array} Complete chat history in Gemini's raw format after each update
-   * @throws {Error} If chat is not initialized or if message sending fails
+   * @param message - User message to send
+   * @yields Complete chat history in Gemini's raw format after each update
+   * @throws If chat is not initialized or if message sending fails
    *
    * @example
    * const stream = client.sendMessage("Hello");
@@ -118,13 +125,14 @@ export class GeminiClient {
    *   // [{ role: "user", ... }, { role: "model", parts: [{ text: "Hi" }] }]
    * }
    */
-  async *sendMessage(message) {
+  async *sendMessage(
+    message: string,
+  ): AsyncGenerator<GeminiMessage[], void, unknown> {
     if (!this.chat) {
       throw new Error("Chat not initialized. Call initialize() first.");
     }
 
-    /** @type {{ role: string, parts: any[] }} */
-    let currentTurn = {
+    let currentTurn: GeminiMessage = {
       role: "user",
       parts: [{ text: message }],
     };

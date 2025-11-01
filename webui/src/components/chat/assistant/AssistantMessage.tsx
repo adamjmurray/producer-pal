@@ -2,8 +2,13 @@ import { AssistantError } from "./AssistantError.jsx";
 import { AssistantText } from "./AssistantText.jsx";
 import { AssistantThought } from "./AssistantThought.jsx";
 import { AssistantToolCall } from "./AssistantToolCall.jsx";
+import type { UIPart } from "../../../types/messages.js";
 
-export function AssistantMessage({ parts }) {
+interface AssistantMessageProps {
+  parts: UIPart[];
+}
+
+export function AssistantMessage({ parts }: AssistantMessageProps) {
   return (
     <div className="flex flex-col gap-3 pt-2 pb-1">
       {parts?.map((part, i) => {
@@ -33,7 +38,7 @@ export function AssistantMessage({ parts }) {
         return (
           <details className="p-2 text-xs bg-gray-200 dark:bg-gray-900 rounded">
             <summary className="font-semibold text-red-700 dark:text-red-400">
-              Unexpected message part type "{part.type}"
+              Unexpected message part type "{(part as any).type}"
             </summary>
             <pre className="whitespace-pre-wrap text-xs text-gray-500 dark:text-gray-500">
               {JSON.stringify(part, null, 2)}

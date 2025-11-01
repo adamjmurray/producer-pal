@@ -2,8 +2,12 @@ import { useCallback, useRef, useState } from "preact/hooks";
 import { GeminiClient } from "../chat/gemini-client.js";
 import { formatGeminiMessages } from "../chat/gemini-formatter.js";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
+import type { GeminiMessage, UIMessage } from "../types/messages.js";
 
-function createErrorMessage(error, chatHistory) {
+function createErrorMessage(
+  error: unknown,
+  chatHistory: GeminiMessage[],
+): UIMessage[] {
   console.error(error);
   let errorMessage = `${error}`;
   if (!errorMessage.startsWith("Error")) {
@@ -18,6 +22,28 @@ function createErrorMessage(error, chatHistory) {
   return formatGeminiMessages([...chatHistory, errorEntry]);
 }
 
+interface UseGeminiChatProps {
+  apiKey: string;
+  model: string;
+  thinking: string;
+  temperature: number;
+  showThoughts: boolean;
+  mcpStatus: "connected" | "connecting" | "error";
+  mcpError: string | null;
+  checkMcpConnection: () => Promise<void>;
+}
+
+interface UseGeminiChatReturn {
+  messages: UIMessage[];
+  isAssistantResponding: boolean;
+  activeModel: string | null;
+  activeThinking: string | null;
+  activeTemperature: number | null;
+  handleSend: (message: string) => Promise<void>;
+  handleRetry: (mergedMessageIndex: number) => Promise<void>;
+  clearConversation: () => void;
+}
+
 export function useGeminiChat({
   apiKey,
   model,
@@ -27,13 +53,15 @@ export function useGeminiChat({
   mcpStatus,
   mcpError,
   checkMcpConnection,
-}) {
-  const [messages, setMessages] = useState([]);
+}: UseGeminiChatProps): UseGeminiChatReturn {
+  const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
-  const [activeModel, setActiveModel] = useState(null);
-  const [activeThinking, setActiveThinking] = useState(null);
-  const [activeTemperature, setActiveTemperature] = useState(null);
-  const geminiRef = useRef(null);
+  const [activeModel, setActiveModel] = useState<string | null>(null);
+  const [activeThinking, setActiveThinking] = useState<string | null>(null);
+  const [activeTemperature, setActiveTemperature] = useState<number | null>(
+    null,
+  );
+  const geminiRef = useRef<GeminiClient | null>(null);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -44,7 +72,7 @@ export function useGeminiChat({
   }, []);
 
   const initializeChat = useCallback(
-    async (chatHistory?: any) => {
+    async (chatHistory?: GeminiMessage[]) => {
       // Auto-retry MCP connection if it failed
       if (mcpStatus === "error") {
         await checkMcpConnection();

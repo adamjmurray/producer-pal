@@ -1,6 +1,11 @@
 import { marked } from "marked";
 
-export function AssistantThought({ content, isOpen }) {
+interface AssistantThoughtProps {
+  content: string;
+  isOpen?: boolean;
+}
+
+export function AssistantThought({ content, isOpen }: AssistantThoughtProps) {
   return (
     <details
       className={`p-2 text-xs bg-gray-200 dark:bg-gray-700 rounded border-l-3 border-green-500 ${

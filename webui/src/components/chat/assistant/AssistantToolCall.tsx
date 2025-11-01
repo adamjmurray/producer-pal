@@ -1,7 +1,19 @@
 import { toolNames } from "../../../config.js";
 import { truncateString } from "../../../utils/truncate-string.js";
 
-export function AssistantToolCall({ name, args, result, isError }) {
+interface AssistantToolCallProps {
+  name: string;
+  args: Record<string, unknown>;
+  result: string | null;
+  isError?: boolean;
+}
+
+export function AssistantToolCall({
+  name,
+  args,
+  result,
+  isError,
+}: AssistantToolCallProps) {
   return (
     <details
       className={`text-xs p-2 font-mono bg-gray-200 dark:bg-gray-900 rounded ${
@@ -32,7 +44,7 @@ export function AssistantToolCall({ name, args, result, isError }) {
   );
 }
 
-function FullResultDetails({ result }) {
+function FullResultDetails({ result }: { result: string }) {
   let s = `${result}`;
   if (s.startsWith("{")) {
     try {

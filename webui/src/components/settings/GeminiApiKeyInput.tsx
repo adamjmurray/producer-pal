@@ -1,4 +1,14 @@
-export function GeminiApiKeyInput({ apiKey, setApiKey, hasApiKey }) {
+interface GeminiApiKeyInputProps {
+  apiKey: string;
+  setApiKey: (key: string) => void;
+  hasApiKey: boolean;
+}
+
+export function GeminiApiKeyInput({
+  apiKey,
+  setApiKey,
+  hasApiKey,
+}: GeminiApiKeyInputProps) {
   return (
     <div>
       <label className="block text-sm mb-2">Gemini API Key (required)</label>

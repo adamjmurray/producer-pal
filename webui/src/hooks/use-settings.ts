@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
+import type { UseSettingsReturn } from "../types/settings.js";
 
-export function useSettings() {
+export function useSettings(): UseSettingsReturn {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gemini-2.5-flash");
   const [thinking, setThinking] = useState("Auto");
