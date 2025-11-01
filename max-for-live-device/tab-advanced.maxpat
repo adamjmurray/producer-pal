@@ -15,26 +15,6 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
-					"angle" : 270.0,
-					"annotation" : "Open the built-in AI chat UI in a web browser.",
-					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
-					"hint" : "",
-					"id" : "obj-63",
-					"ignoreclick" : 0,
-					"maxclass" : "panel",
-					"mode" : 0,
-					"numinlets" : 1,
-					"numoutlets" : 0,
-					"patching_rect" : [ 123.666670352220535, 168.000005006790161, 128.0, 128.0 ],
-					"presentation" : 1,
-					"presentation_rect" : [ 144.000004291534424, 92.666669428348541, 105.999995708465576, 48.333334773778915 ],
-					"proportion" : 0.39,
-					"varname" : "Open Chat UI"
-				}
-
-			}
-, 			{
-				"box" : 				{
 					"id" : "obj-71",
 					"linecount" : 2,
 					"maxclass" : "newobj",
@@ -1151,6 +1131,26 @@
 
 					}
 
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"angle" : 270.0,
+					"annotation" : "Open the built-in AI chat UI in a web browser.",
+					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
+					"hint" : "",
+					"id" : "obj-63",
+					"ignoreclick" : 0,
+					"maxclass" : "panel",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 123.666670352220535, 168.000005006790161, 128.0, 128.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 144.000004291534424, 92.666669428348541, 105.999995708465576, 48.333334773778915 ],
+					"proportion" : 0.39,
+					"varname" : "Open Chat UI"
 				}
 
 			}
