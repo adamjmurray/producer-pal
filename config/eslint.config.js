@@ -1,7 +1,7 @@
-import tsParser from "@typescript-eslint/parser";
-import tsPlugin from "@typescript-eslint/eslint-plugin";
-import reactHooksPlugin from "eslint-plugin-react-hooks";
 import js from "@eslint/js";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
+import tsParser from "@typescript-eslint/parser";
+import reactHooksPlugin from "eslint-plugin-react-hooks";
 import globals from "globals";
 
 export default [
@@ -19,9 +19,8 @@ export default [
     ],
   },
   {
-    // Phase 1: Only lint webui/src/chat/ initially
-    // Everything else is implicitly not linted since we only match these files
-    files: ["webui/src/chat/**/*.{js,jsx,ts,tsx}"],
+    // Lint entire webui/src folder
+    files: ["webui/src/**/*.{js,jsx,ts,tsx}"],
     ...js.configs.recommended,
     languageOptions: {
       parser: tsParser,

@@ -3,6 +3,7 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
+import type { UIMessage } from "../../types/messages.js";
 import { MessageList } from "./MessageList.jsx";
 
 // Mock child components
@@ -15,9 +16,10 @@ vi.mock("./ActivityIndicator.jsx", () => ({
 vi.mock("./assistant/AssistantMessage.jsx", () => ({
   AssistantMessage: ({ parts }: { parts: unknown[] }) => (
     <div data-testid="assistant-message">
-      {parts.map((p: any, i: number) => (
-        <span key={i}>{p.content || ""}</span>
-      ))}
+      {parts.map((p, i: number) => {
+        const part = p as { content?: string };
+        return <span key={i}>{part.content || ""}</span>;
+      })}
     </div>
   ),
 }));
@@ -168,8 +170,12 @@ describe("MessageList", () => {
     it("filters message with no parts and no content", () => {
       const messages = [
         { role: "user" as const, parts: [], rawHistoryIndex: 0 },
-        { role: "model" as const, rawHistoryIndex: 1 } as any, // no parts or content
-      ];
+        {
+          role: "model" as const,
+          rawHistoryIndex: 1,
+          parts: undefined,
+        } as unknown,
+      ] as UIMessage[];
       const { container } = render(
         <MessageList
           messages={messages}
@@ -237,12 +243,12 @@ describe("MessageList", () => {
           role: "user" as const,
           parts: [
             { type: "text" as const, content: "Hello" },
-            {} as any,
+            {} as unknown,
             { type: "text" as const, content: "World" },
-          ],
+          ] as unknown,
           rawHistoryIndex: 0,
-        },
-      ];
+        } as unknown,
+      ] as UIMessage[];
       render(
         <MessageList
           messages={messages}

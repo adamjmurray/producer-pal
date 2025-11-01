@@ -46,15 +46,19 @@ export function AssistantToolCall({
 
 function FullResultDetails({ result }: { result: string }) {
   let s = `${result}`;
+  let formatted: string | null = null;
+
   if (s.startsWith("{")) {
     try {
       const obj = JSON.parse(s);
-      return (
-        <pre className="whitespace-pre-wrap">
-          {JSON.stringify(obj, null, 2).replaceAll("\\n", "\n")}
-        </pre>
-      );
-    } catch {}
+      formatted = JSON.stringify(obj, null, 2).replaceAll("\\n", "\n");
+    } catch {
+      // JSON parsing failed, will render as plain text
+    }
+  }
+
+  if (formatted) {
+    return <pre className="whitespace-pre-wrap">{formatted}</pre>;
   }
   return <>{s}</>;
 }
