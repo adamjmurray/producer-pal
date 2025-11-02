@@ -40,10 +40,48 @@ const MISTRAL_MODELS = [
 ];
 
 const OPENROUTER_MODELS = [
-  { value: "minimax/minimax-m2:free", label: "MiniMax M2" },
-  { value: "qwen/qwq-32b:free", label: "QwQ 32B" },
-  { value: "qwen/qwen3-235b-a22b:free", label: "Qwen3 235B A22B" },
-  { value: "google/gemini-2.0-flash-exp:free", label: "Gemini 2.0 Flash Exp" },
+  // Free models
+  { value: "minimax/minimax-m2:free", label: "[Free] MiniMax M2" },
+  { value: "qwen/qwen3-235b-a22b:free", label: "[Free] Qwen3 235B A22B" },
+  // Paid models - Moonshot AI
+  { value: "moonshotai/kimi-k2", label: "[Paid] Kimi K2" },
+  // Paid models - Perplexity
+  {
+    value: "perplexity/sonar-reasoning-pro",
+    label: "[Paid] Sonar Reasoning Pro (smart)",
+  },
+  {
+    value: "perplexity/sonar-reasoning",
+    label: "[Paid] Sonar Reasoning (fast)",
+  },
+  // Paid models - xAI
+  { value: "x-ai/grok-4", label: "[Paid] Grok 4 (smart)" },
+  { value: "x-ai/grok-4-fast", label: "[Paid] Grok 4 Fast (fast)" },
+
+  // Paid models - Anthropic
+  {
+    value: "anthropic/claude-sonnet-4-5-20250929",
+    label: "[Paid] Claude Sonnet 4.5 (smart)",
+  },
+  {
+    value: "anthropic/claude-haiku-4-5-20250514",
+    label: "[Paid] Claude Haiku 4.5 (fast)",
+  },
+  // Paid models - Google
+  { value: "google/gemini-2.5-pro", label: "[Paid] Gemini 2.5 Pro (smart)" },
+  { value: "google/gemini-2.5-flash", label: "[Paid] Gemini 2.5 Flash (fast)" },
+  // Paid models - Mistral
+  {
+    value: "mistralai/magistral-medium-2506:thinking",
+    label: "[Paid] Magistral Medium (thinking)",
+  },
+  {
+    value: "mistralai/mistral-medium-3.1",
+    label: "[Paid] Mistral Medium 3.1 (basic)",
+  },
+  // Paid models - OpenAI
+  { value: "openai/gpt-5", label: "[Paid] GPT-5 (smart)" },
+  { value: "openai/gpt-5-mini", label: "[Paid] GPT-5 Mini (fast)" },
 ];
 
 export function ModelSelector({
