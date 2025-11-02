@@ -39,6 +39,13 @@ const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     temperature: 1.0,
     showThoughts: true,
   },
+  openrouter: {
+    apiKey: "",
+    model: "minimax/minimax-m2:free",
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
   custom: {
     apiKey: "",
     model: "",
@@ -119,6 +126,8 @@ export function useSettings(): UseSettingsReturn {
   const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.mistral,
   );
+  const [openrouterSettings, setOpenrouterSettings] =
+    useState<ProviderSettings>(DEFAULT_SETTINGS.openrouter);
   const [customSettings, setCustomSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.custom,
   );
@@ -133,7 +142,9 @@ export function useSettings(): UseSettingsReturn {
           ? groqSettings
           : provider === "mistral"
             ? mistralSettings
-            : customSettings;
+            : provider === "openrouter"
+              ? openrouterSettings
+              : customSettings;
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -152,6 +163,7 @@ export function useSettings(): UseSettingsReturn {
     setOpenaiSettings(loadProviderSettings("openai"));
     setGroqSettings(loadProviderSettings("groq"));
     setMistralSettings(loadProviderSettings("mistral"));
+    setOpenrouterSettings(loadProviderSettings("openrouter"));
     setCustomSettings(loadProviderSettings("custom"));
   }, []);
 
@@ -161,6 +173,7 @@ export function useSettings(): UseSettingsReturn {
     saveProviderSettings("openai", openaiSettings);
     saveProviderSettings("groq", groqSettings);
     saveProviderSettings("mistral", mistralSettings);
+    saveProviderSettings("openrouter", openrouterSettings);
     saveProviderSettings("custom", customSettings);
   }, [
     provider,
@@ -168,6 +181,7 @@ export function useSettings(): UseSettingsReturn {
     openaiSettings,
     groqSettings,
     mistralSettings,
+    openrouterSettings,
     customSettings,
   ]);
 
@@ -185,6 +199,7 @@ export function useSettings(): UseSettingsReturn {
     setOpenaiSettings(loadProviderSettings("openai"));
     setGroqSettings(loadProviderSettings("groq"));
     setMistralSettings(loadProviderSettings("mistral"));
+    setOpenrouterSettings(loadProviderSettings("openrouter"));
     setCustomSettings(loadProviderSettings("custom"));
   }, []);
 
@@ -199,6 +214,8 @@ export function useSettings(): UseSettingsReturn {
         setGroqSettings((prev) => ({ ...prev, apiKey: key }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, apiKey: key }));
+      } else if (provider === "openrouter") {
+        setOpenrouterSettings((prev) => ({ ...prev, apiKey: key }));
       } else {
         setCustomSettings((prev) => ({ ...prev, apiKey: key }));
       }
@@ -216,6 +233,8 @@ export function useSettings(): UseSettingsReturn {
         setGroqSettings((prev) => ({ ...prev, model: m }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, model: m }));
+      } else if (provider === "openrouter") {
+        setOpenrouterSettings((prev) => ({ ...prev, model: m }));
       } else {
         setCustomSettings((prev) => ({ ...prev, model: m }));
       }
@@ -242,6 +261,8 @@ export function useSettings(): UseSettingsReturn {
         setGroqSettings((prev) => ({ ...prev, thinking: t }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, thinking: t }));
+      } else if (provider === "openrouter") {
+        setOpenrouterSettings((prev) => ({ ...prev, thinking: t }));
       } else {
         setCustomSettings((prev) => ({ ...prev, thinking: t }));
       }
@@ -259,6 +280,8 @@ export function useSettings(): UseSettingsReturn {
         setGroqSettings((prev) => ({ ...prev, temperature: temp }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, temperature: temp }));
+      } else if (provider === "openrouter") {
+        setOpenrouterSettings((prev) => ({ ...prev, temperature: temp }));
       } else {
         setCustomSettings((prev) => ({ ...prev, temperature: temp }));
       }
@@ -276,6 +299,8 @@ export function useSettings(): UseSettingsReturn {
         setGroqSettings((prev) => ({ ...prev, showThoughts: show }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, showThoughts: show }));
+      } else if (provider === "openrouter") {
+        setOpenrouterSettings((prev) => ({ ...prev, showThoughts: show }));
       } else {
         setCustomSettings((prev) => ({ ...prev, showThoughts: show }));
       }

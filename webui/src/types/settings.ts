@@ -6,11 +6,18 @@
  * - OpenAI
  * - Groq (OpenAI-compatible)
  * - Mistral (OpenAI-compatible)
+ * - OpenRouter (OpenAI-compatible)
  * - Custom (any OpenAI-compatible provider)
  */
 
 // Provider types
-export type Provider = "gemini" | "openai" | "groq" | "mistral" | "custom";
+export type Provider =
+  | "gemini"
+  | "openai"
+  | "groq"
+  | "mistral"
+  | "openrouter"
+  | "custom";
 
 // Gemini-specific settings
 export interface GeminiSettings {
@@ -31,6 +38,7 @@ export interface ProviderSettings {
   openaiApiKey: string;
   groqApiKey: string;
   mistralApiKey: string;
+  openrouterApiKey: string;
   customApiKey: string;
 
   // Custom provider base URL

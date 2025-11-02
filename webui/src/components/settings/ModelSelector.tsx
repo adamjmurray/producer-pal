@@ -39,6 +39,13 @@ const MISTRAL_MODELS = [
   { value: "magistral-small-2509", label: "Magistral Small" },
 ];
 
+const OPENROUTER_MODELS = [
+  { value: "minimax/minimax-m2:free", label: "MiniMax M2" },
+  { value: "qwen/qwq-32b:free", label: "QwQ 32B" },
+  { value: "qwen/qwen3-235b-a22b:free", label: "Qwen3 235B A22B" },
+  { value: "google/gemini-2.0-flash-exp:free", label: "Gemini 2.0 Flash Exp" },
+];
+
 export function ModelSelector({
   provider,
   model,
@@ -68,7 +75,9 @@ export function ModelSelector({
         ? OPENAI_MODELS
         : provider === "groq"
           ? GROQ_MODELS
-          : MISTRAL_MODELS;
+          : provider === "mistral"
+            ? MISTRAL_MODELS
+            : OPENROUTER_MODELS;
 
   return (
     <div>
