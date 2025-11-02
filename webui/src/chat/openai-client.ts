@@ -4,42 +4,55 @@ import OpenAI from "openai";
 import type { OpenAIMessage, OpenAIToolCall } from "../types/messages.js";
 
 /**
- * Processes a streaming delta chunk and updates the message content.
- * Handles both regular content and reasoning fields from OpenAI/OpenRouter.
- *
- * @param currentContent - The current accumulated content string
- * @param delta - The delta object from a streaming chunk
- * @returns The updated content string
+ * Reasoning detail structure from OpenRouter/OpenAI streaming responses.
  */
-export function processDeltaContent(
-  currentContent: string,
+export interface ReasoningDetail {
+  type: string;
+  text?: string;
+  index?: number;
+}
+
+/**
+ * Extended OpenAI assistant message type that includes reasoning fields.
+ * These fields are not in the official types yet but are supported by OpenRouter and OpenAI o-series models.
+ */
+export interface OpenAIAssistantMessageWithReasoning {
+  role: "assistant";
+  content: string;
+  tool_calls?: OpenAIToolCall[];
+  reasoning_details?: ReasoningDetail[];
+}
+
+/**
+ * Processes a streaming delta chunk to extract reasoning content.
+ * Handles both OpenAI's reasoning_content field and OpenRouter's reasoning_details array.
+ *
+ * @param delta - The delta object from a streaming chunk
+ * @returns The reasoning text from this delta, or empty string if none
+ */
+export function extractReasoningFromDelta(
   delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
 ): string {
-  let content = currentContent;
-
-  // Accumulate regular content
-  if (delta.content) {
-    content += delta.content;
-  }
-
-  // Accumulate reasoning content (for OpenAI o1/o3/GPT-5 and OpenRouter reasoning models)
-  // reasoning_content is OpenAI's official field, reasoning_details is the standard streaming format
   // @ts-expect-error - reasoning fields not in official types yet
   if (delta.reasoning_content) {
     // @ts-expect-error - reasoning fields not in official types yet
-    content += delta.reasoning_content;
-    // @ts-expect-error - reasoning fields not in official types yet
-  } else if (delta.reasoning_details) {
+    return delta.reasoning_content;
+  }
+
+  // @ts-expect-error - reasoning fields not in official types yet
+  if (delta.reasoning_details) {
+    let text = "";
     // Extract text from reasoning_details array (standard OpenRouter format)
     // @ts-expect-error - reasoning fields not in official types yet
     for (const detail of delta.reasoning_details) {
       if (detail.type === "reasoning.text" && detail.text) {
-        content += detail.text;
+        text += detail.text;
       }
     }
+    return text;
   }
 
-  return content;
+  return "";
 }
 
 // Configuration for OpenAIClient
@@ -59,15 +72,19 @@ export interface OpenAIClientConfig {
  * Returns chat history in OpenAI's raw API format:
  * - `{ role: "system", content: string }` - system prompt (internal)
  * - `{ role: "user", content: string }` - user messages
- * - `{ role: "assistant", content: string, tool_calls?: [...] }` - assistant responses
+ * - `{ role: "assistant", content: string, tool_calls?: [...], reasoning_details?: [...] }` - assistant responses
  * - `{ role: "tool", tool_call_id: string, content: string }` - tool results
+ *
+ * The `reasoning_details` field contains thinking/reasoning content from models that support it
+ * (OpenAI o-series, OpenRouter reasoning models). This is kept separate from regular content
+ * to maintain proper API contract and enable the UI to display it as collapsible thoughts.
  *
  * Example raw history:
  * ```js
  * [
  *   { role: "system", content: "System prompt" },
  *   { role: "user", content: "Hello" },
- *   { role: "assistant", content: "Hi there!" },
+ *   { role: "assistant", content: "Hi there!", reasoning_details: [{ type: "reasoning.text", text: "Thinking...", index: 0 }] },
  *   { role: "assistant", content: "", tool_calls: [{ id: "call_123", function: { name: "search", arguments: '{"query":"foo"}' } }] },
  *   { role: "tool", tool_call_id: "call_123", content: '{"text":"result"}' },
  *   { role: "assistant", content: "Based on the search..." }
@@ -226,21 +243,31 @@ export class OpenAIClient {
       });
 
       // Accumulate streaming response
-      const currentMessage: OpenAIMessage = { role: "assistant", content: "" };
+      const currentMessage: OpenAIAssistantMessageWithReasoning = {
+        role: "assistant",
+        content: "",
+      };
       const toolCallsMap = new Map<number, OpenAIToolCall>();
+      let reasoningText = ""; // Accumulate reasoning separately
 
       for await (const chunk of stream) {
         // console.log("OpenAIClient chunk:", JSON.stringify(chunk, null, 2));
         const delta = chunk.choices[0]?.delta;
         if (!delta) continue;
 
-        // Accumulate content and reasoning
-        // Note: In streaming, content is always a string, not an array
-        const currentContent =
-          typeof currentMessage.content === "string"
-            ? currentMessage.content
-            : "";
-        currentMessage.content = processDeltaContent(currentContent, delta);
+        // Accumulate regular content
+        if (delta.content) {
+          currentMessage.content =
+            (typeof currentMessage.content === "string"
+              ? currentMessage.content
+              : "") + delta.content;
+        }
+
+        // Accumulate reasoning separately (don't merge into content)
+        const reasoning = extractReasoningFromDelta(delta);
+        if (reasoning) {
+          reasoningText += reasoning;
+        }
 
         // Accumulate tool calls
         if (delta.tool_calls) {
@@ -263,24 +290,34 @@ export class OpenAIClient {
           }
         }
 
+        // Build the message to add to history
+        const messageToAdd: OpenAIAssistantMessageWithReasoning = {
+          ...currentMessage,
+          tool_calls:
+            toolCallsMap.size > 0
+              ? Array.from(toolCallsMap.values())
+              : undefined,
+        };
+
+        // Add reasoning_details if we accumulated any reasoning
+        if (reasoningText) {
+          messageToAdd.reasoning_details = [
+            {
+              type: "reasoning.text",
+              text: reasoningText,
+              index: 0,
+            },
+          ];
+        }
+
         // Update message in history
         const lastMsg = this.chatHistory.at(-1);
         if (lastMsg?.role === "assistant") {
-          this.chatHistory[this.chatHistory.length - 1] = {
-            ...currentMessage,
-            tool_calls:
-              toolCallsMap.size > 0
-                ? Array.from(toolCallsMap.values())
-                : undefined,
-          };
+          // Cast to OpenAIMessage - reasoning_details will be preserved as extra property
+          this.chatHistory[this.chatHistory.length - 1] =
+            messageToAdd as unknown as OpenAIMessage;
         } else {
-          this.chatHistory.push({
-            ...currentMessage,
-            tool_calls:
-              toolCallsMap.size > 0
-                ? Array.from(toolCallsMap.values())
-                : undefined,
-          });
+          this.chatHistory.push(messageToAdd as unknown as OpenAIMessage);
         }
 
         yield this.chatHistory;

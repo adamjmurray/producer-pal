@@ -1,32 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { processDeltaContent } from "./openai-client.js";
+import { extractReasoningFromDelta } from "./openai-client.js";
 import type OpenAI from "openai";
 
-describe("processDeltaContent", () => {
-  it("should accumulate regular content", () => {
+describe("extractReasoningFromDelta", () => {
+  it("should return empty string for regular content (not reasoning)", () => {
     const delta = {
       content: "Hello",
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
-    expect(result).toBe("Hello");
+    const result = extractReasoningFromDelta(delta);
+    expect(result).toBe("");
   });
 
-  it("should concatenate multiple content chunks", () => {
-    const delta = {
-      content: " world",
-    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
-
-    const result = processDeltaContent("Hello", delta);
-    expect(result).toBe("Hello world");
-  });
-
-  it("should handle empty delta", () => {
+  it("should return empty string for empty delta", () => {
     const delta =
       {} as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("Hello", delta);
-    expect(result).toBe("Hello");
+    const result = extractReasoningFromDelta(delta);
+    expect(result).toBe("");
   });
 
   it("should extract reasoning from reasoning_content (OpenAI format)", () => {
@@ -34,7 +25,7 @@ describe("processDeltaContent", () => {
       reasoning_content: "Thinking about the problem...",
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
+    const result = extractReasoningFromDelta(delta);
     expect(result).toBe("Thinking about the problem...");
   });
 
@@ -49,7 +40,7 @@ describe("processDeltaContent", () => {
       ],
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
+    const result = extractReasoningFromDelta(delta);
     expect(result).toBe("Let me analyze this step by step.");
   });
 
@@ -69,7 +60,7 @@ describe("processDeltaContent", () => {
       ],
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
+    const result = extractReasoningFromDelta(delta);
     expect(result).toBe("First, I need to understand the requirements.");
   });
 
@@ -89,7 +80,7 @@ describe("processDeltaContent", () => {
       ],
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
+    const result = extractReasoningFromDelta(delta);
     expect(result).toBe("This should be included");
   });
 
@@ -105,21 +96,21 @@ describe("processDeltaContent", () => {
       ],
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
+    const result = extractReasoningFromDelta(delta);
     expect(result).toBe("From reasoning_content");
   });
 
-  it("should handle both content and reasoning_content", () => {
+  it("should ignore regular content and only extract reasoning", () => {
     const delta = {
       content: "Response: ",
       reasoning_content: "After careful thought, ",
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
-    expect(result).toBe("Response: After careful thought, ");
+    const result = extractReasoningFromDelta(delta);
+    expect(result).toBe("After careful thought, ");
   });
 
-  it("should handle both content and reasoning_details", () => {
+  it("should ignore regular content when reasoning_details present", () => {
     const delta = {
       content: "Answer: ",
       reasoning_details: [
@@ -131,8 +122,8 @@ describe("processDeltaContent", () => {
       ],
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
-    expect(result).toBe("Answer: Based on my analysis, ");
+    const result = extractReasoningFromDelta(delta);
+    expect(result).toBe("Based on my analysis, ");
   });
 
   it("should handle real-world OpenRouter minimax-m2 chunk structure", () => {
@@ -150,13 +141,13 @@ describe("processDeltaContent", () => {
       ],
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
+    const result = extractReasoningFromDelta(delta);
     expect(result).toBe(
       'The user has just greeted me with "hi". They haven\'t asked me to connect to Ableton Live yet, so I should respond as Producer Pal and ask if they want to connect.',
     );
   });
 
-  it("should handle empty content with reasoning (common in reasoning models)", () => {
+  it("should extract reasoning even when content is empty (common in reasoning models)", () => {
     const delta = {
       content: "",
       reasoning_details: [
@@ -168,7 +159,7 @@ describe("processDeltaContent", () => {
       ],
     } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
 
-    const result = processDeltaContent("", delta);
+    const result = extractReasoningFromDelta(delta);
     expect(result).toBe("Reasoning text when content is empty");
   });
 });

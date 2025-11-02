@@ -1,4 +1,10 @@
-import type { OpenAIMessage, UIMessage, UIPart } from "../types/messages.js";
+import type {
+  OpenAIMessage,
+  UIMessage,
+  UIPart,
+  UIThoughtPart,
+} from "../types/messages.js";
+import type { ReasoningDetail } from "./openai-client.js";
 
 /**
  * Formats OpenAI's raw chat history into a UI-friendly structure.
@@ -10,8 +16,10 @@ import type { OpenAIMessage, UIMessage, UIPart } from "../types/messages.js";
  * 4. Integrates tool results by matching tool_call_id
  * 5. Converts raw message structures into typed parts for the UI:
  *    - User/assistant `content` → `{ type: "text", content }`
+ *    - Assistant `reasoning_details` → `{ type: "thought", content }` (collapsible thinking)
  *    - Assistant `tool_calls` → `{ type: "tool", name, args, result }` (result from matching tool message)
- * 6. Tracks `rawHistoryIndex` to map merged messages back to original indices (for retry functionality)
+ * 6. Marks the last thought part with `isOpen: true` for activity indicators
+ * 7. Tracks `rawHistoryIndex` to map merged messages back to original indices (for retry functionality)
  *
  * @param history - Raw chat history from OpenAIClient
  * @returns Formatted messages ready for UI rendering
@@ -21,7 +29,7 @@ import type { OpenAIMessage, UIMessage, UIPart } from "../types/messages.js";
  * [
  *   { role: "system", content: "System prompt" },
  *   { role: "user", content: "Search for docs" },
- *   { role: "assistant", content: "", tool_calls: [{ id: "call_123", function: { name: "search", arguments: '{"query":"docs"}' } }] },
+ *   { role: "assistant", content: "", reasoning_details: [{ type: "reasoning.text", text: "Thinking...", index: 0 }], tool_calls: [{ id: "call_123", function: { name: "search", arguments: '{"query":"docs"}' } }] },
  *   { role: "tool", tool_call_id: "call_123", content: '{"text":"Found docs..."}' },
  *   { role: "assistant", content: "Based on the search results..." }
  * ]
@@ -30,6 +38,7 @@ import type { OpenAIMessage, UIMessage, UIPart } from "../types/messages.js";
  * [
  *   { role: "user", parts: [{ type: "text", content: "Search for docs" }], rawHistoryIndex: 1 },
  *   { role: "model", parts: [
+ *     { type: "thought", content: "Thinking..." },
  *     { type: "tool", name: "search", args: { query: "docs" }, result: '{"text":"Found docs..."}' },
  *     { type: "text", content: "Based on the search results..." }
  *   ], rawHistoryIndex: 2 }
@@ -66,6 +75,30 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
     const parts: UIPart[] = currentMessage.parts;
 
     if (msg.role === "user" || msg.role === "assistant") {
+      // Add reasoning content (assistant only) - this comes before regular content
+      if (msg.role === "assistant" && "reasoning_details" in msg) {
+        const reasoningDetails = msg.reasoning_details as
+          | ReasoningDetail[]
+          | undefined;
+        if (reasoningDetails && reasoningDetails.length > 0) {
+          // Extract all reasoning text
+          const reasoningText = reasoningDetails
+            .filter((detail) => detail.type === "reasoning.text" && detail.text)
+            .map((detail) => detail.text)
+            .join("");
+
+          if (reasoningText) {
+            const lastPart = parts.at(-1);
+            if (lastPart?.type === "thought") {
+              // Merge with previous thought part
+              lastPart.content += reasoningText;
+            } else {
+              parts.push({ type: "thought", content: reasoningText });
+            }
+          }
+        }
+      }
+
       // Add text content (handle both string and array content types)
       const content = typeof msg.content === "string" ? msg.content : undefined;
       if (content) {
@@ -124,6 +157,15 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
           });
         }
       }
+    }
+  }
+
+  // Mark the last thought part as open (similar to Gemini's implementation)
+  const lastMessage = messages.at(-1);
+  if (lastMessage) {
+    const lastPart = lastMessage.parts.at(-1);
+    if (lastPart?.type === "thought") {
+      (lastPart as UIThoughtPart).isOpen = true; // show the thought as currently active
     }
   }
 
