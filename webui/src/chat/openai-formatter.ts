@@ -80,11 +80,13 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
 
       // Add tool calls (assistant only)
       if (msg.role === "assistant" && "tool_calls" in msg && msg.tool_calls) {
-        for (const tc of msg.tool_calls) {
+        for (const toolCall of msg.tool_calls) {
           // Only handle function tool calls (skip custom tool calls)
-          if (tc.type !== "function") continue;
+          if (toolCall.type !== "function") continue;
 
-          const args = JSON.parse(tc.function.arguments);
+          const args = toolCall.function.arguments
+            ? JSON.parse(toolCall.function.arguments)
+            : {};
 
           // Look ahead for matching tool result
           let result: string | null = null;
@@ -96,7 +98,7 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
             if (
               nextMsg.role === "tool" &&
               "tool_call_id" in nextMsg &&
-              nextMsg.tool_call_id === tc.id
+              nextMsg.tool_call_id === toolCall.id
             ) {
               const toolContent =
                 typeof nextMsg.content === "string"
@@ -115,7 +117,7 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
 
           parts.push({
             type: "tool",
-            name: tc.function.name,
+            name: toolCall.function.name,
             args,
             result,
             isError: isError ? true : undefined,

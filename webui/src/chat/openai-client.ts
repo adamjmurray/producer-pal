@@ -6,7 +6,7 @@ import type { OpenAIMessage, OpenAIToolCall } from "../types/messages.js";
 // Configuration for OpenAIClient
 export interface OpenAIClientConfig {
   mcpUrl?: string;
-  model?: string;
+  model: string;
   temperature?: number;
   systemInstruction?: string;
   reasoningEffort?: "low" | "medium" | "high"; // For o1/o3 models
@@ -48,7 +48,7 @@ export class OpenAIClient {
    * @param apiKey - OpenAI API key (or compatible provider key)
    * @param config - Configuration options
    */
-  constructor(apiKey: string, config: OpenAIClientConfig = {}) {
+  constructor(apiKey: string, config: OpenAIClientConfig) {
     // Suppress x-stainless headers for non-OpenAI providers (e.g., Mistral)
     // These headers cause CORS issues with some OpenAI-compatible APIs
     const isNonOpenAI =
@@ -178,11 +178,11 @@ export class OpenAIClient {
       iteration++;
 
       const stream = await this.ai.chat.completions.create({
-        model: this.config.model ?? "gpt-4o",
+        model: this.config.model,
         messages: this.chatHistory,
         tools: tools.length > 0 ? tools : undefined,
         temperature: this.config.temperature,
-        reasoning_effort: this.config.reasoningEffort, // For o1/o3 models
+        reasoning_effort: this.config.reasoningEffort,
         stream: true,
       });
 
@@ -191,6 +191,7 @@ export class OpenAIClient {
       const toolCallsMap = new Map<number, OpenAIToolCall>();
 
       for await (const chunk of stream) {
+        // console.log("OpenAIClient chunk:", JSON.stringify(chunk, null, 2));
         const delta = chunk.choices[0]?.delta;
         if (!delta) continue;
 

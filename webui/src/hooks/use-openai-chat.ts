@@ -175,6 +175,10 @@ export function useOpenAIChat({
         const stream = openaiRef.current.sendMessage(userMessage);
 
         for await (const chatHistory of stream) {
+          // console.log(
+          //   "useOpenAIChat() received chunk, now history is",
+          //   JSON.stringify(chatHistory, null, 2),
+          // );
           setMessages(formatOpenAIMessages(chatHistory));
         }
       } catch (error) {
