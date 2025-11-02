@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Provider } from "../../types/settings.js";
 
 interface ModelSelectorProps {
@@ -13,12 +14,14 @@ const GEMINI_MODELS = [
     value: "gemini-2.5-flash-lite",
     label: "Gemini 2.5 Flash-Lite (ultra fast)",
   },
+  { value: "OTHER", label: "Other..." },
 ];
 
 const OPENAI_MODELS = [
   { value: "gpt-5-2025-08-07", label: "GPT-5 (most capable)" },
   { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini (fast & affordable)" },
   { value: "gpt-5-nano-2025-08-07", label: "GPT-5 Nano (ultra fast)" },
+  { value: "OTHER", label: "Other..." },
 ];
 
 const MISTRAL_MODELS = [
@@ -27,6 +30,7 @@ const MISTRAL_MODELS = [
   { value: "mistral-small-latest", label: "Mistral Small" },
   { value: "magistral-medium-2509", label: "Magistral Medium" },
   { value: "magistral-small-2509", label: "Magistral Small" },
+  { value: "OTHER", label: "Other..." },
 ];
 
 const OPENROUTER_MODELS = [
@@ -81,6 +85,7 @@ const OPENROUTER_MODELS = [
   // Paid models - OpenAI
   { value: "openai/gpt-5", label: "[Paid] GPT-5 (smart)" },
   { value: "openai/gpt-5-mini", label: "[Paid] GPT-5 Mini (fast)" },
+  { value: "OTHER", label: "Other..." },
 ];
 
 export function ModelSelector({
@@ -88,6 +93,54 @@ export function ModelSelector({
   model,
   setModel,
 }: ModelSelectorProps) {
+  // Determine preset models for this provider
+  const presetModels = useMemo(() => {
+    return provider === "gemini"
+      ? GEMINI_MODELS
+      : provider === "openai"
+        ? OPENAI_MODELS
+        : provider === "mistral"
+          ? MISTRAL_MODELS
+          : provider === "openrouter"
+            ? OPENROUTER_MODELS
+            : [];
+  }, [provider]);
+
+  // Track whether custom input is shown (for non-custom providers)
+  const [showCustomInput, setShowCustomInput] = useState(() => {
+    if (provider === "custom" || presetModels.length === 0) return false;
+    // Check if current model matches any preset (excluding "OTHER")
+    return !presetModels.some((m) => m.value === model && m.value !== "OTHER");
+  });
+
+  // Ref for autofocusing the custom input when "Other..." is selected
+  const customInputRef = useRef<HTMLInputElement>(null);
+  const previousShowCustomInputRef = useRef(showCustomInput);
+
+  // Sync showCustomInput when model or provider changes
+  useEffect(() => {
+    if (provider === "custom" || presetModels.length === 0) {
+      setShowCustomInput(false);
+      return;
+    }
+    const isCustom = !presetModels.some(
+      (m) => m.value === model && m.value !== "OTHER",
+    );
+    setShowCustomInput(isCustom);
+  }, [model, provider, presetModels]);
+
+  // Autofocus custom input when user selects "Other..." (but not on initial load)
+  useEffect(() => {
+    if (
+      showCustomInput &&
+      !previousShowCustomInputRef.current &&
+      customInputRef.current
+    ) {
+      customInputRef.current.focus();
+    }
+    previousShowCustomInputRef.current = showCustomInput;
+  }, [showCustomInput]);
+
   // For custom provider, use free-form text input
   if (provider === "custom") {
     return (
@@ -105,29 +158,45 @@ export function ModelSelector({
   }
 
   // Provider-specific dropdowns
-  const models =
-    provider === "gemini"
-      ? GEMINI_MODELS
-      : provider === "openai"
-        ? OPENAI_MODELS
-        : provider === "mistral"
-          ? MISTRAL_MODELS
-          : OPENROUTER_MODELS;
+  const dropdownValue = showCustomInput ? "OTHER" : model;
+
+  const handleDropdownChange = (value: string) => {
+    if (value === "OTHER") {
+      setShowCustomInput(true);
+      // Keep current model value - user will edit in text input
+    } else {
+      setShowCustomInput(false);
+      setModel(value);
+    }
+  };
 
   return (
     <div>
       <label className="block text-sm mb-2">Model</label>
       <select
-        value={model}
-        onChange={(e) => setModel((e.target as HTMLSelectElement).value)}
+        value={dropdownValue}
+        onChange={(e) =>
+          handleDropdownChange((e.target as HTMLSelectElement).value)
+        }
         className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
       >
-        {models.map(({ value, label }) => (
+        {presetModels.map(({ value, label }) => (
           <option key={value} value={value}>
             {label}
           </option>
         ))}
       </select>
+
+      {showCustomInput && (
+        <input
+          ref={customInputRef}
+          type="text"
+          value={model}
+          onChange={(e) => setModel((e.target as HTMLInputElement).value)}
+          placeholder="e.g., gpt-4, claude-3-opus"
+          className="w-full px-3 py-2 mt-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+        />
+      )}
     </div>
   );
 }
