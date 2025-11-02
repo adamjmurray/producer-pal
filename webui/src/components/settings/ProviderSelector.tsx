@@ -21,7 +21,6 @@ export function ProviderSelector({
       >
         <option value="gemini">Google</option>
         <option value="openai">OpenAI</option>
-        <option value="groq">Groq</option>
         <option value="mistral">Mistral</option>
         <option value="openrouter">OpenRouter</option>
         <option value="custom">Custom (OpenAI-compatible)</option>

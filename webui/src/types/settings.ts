@@ -4,7 +4,6 @@
  * Supports multiple LLM providers:
  * - Gemini (Google)
  * - OpenAI
- * - Groq (OpenAI-compatible)
  * - Mistral (OpenAI-compatible)
  * - OpenRouter (OpenAI-compatible)
  * - Custom (any OpenAI-compatible provider)
@@ -14,7 +13,6 @@
 export type Provider =
   | "gemini"
   | "openai"
-  | "groq"
   | "mistral"
   | "openrouter"
   | "custom";
@@ -36,7 +34,6 @@ export interface ProviderSettings {
   // Per-provider API keys
   geminiApiKey: string;
   openaiApiKey: string;
-  groqApiKey: string;
   mistralApiKey: string;
   openrouterApiKey: string;
   customApiKey: string;

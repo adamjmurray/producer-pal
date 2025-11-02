@@ -97,11 +97,6 @@ describe("SettingsScreen", () => {
       expect(screen.queryByTestId("thinking-settings")).toBeNull();
     });
 
-    it("hides thinking settings for Groq", () => {
-      render(<SettingsScreen {...defaultProps} provider="groq" />);
-      expect(screen.queryByTestId("thinking-settings")).toBeNull();
-    });
-
     it("hides thinking settings for Mistral", () => {
       render(<SettingsScreen {...defaultProps} provider="mistral" />);
       expect(screen.queryByTestId("thinking-settings")).toBeNull();

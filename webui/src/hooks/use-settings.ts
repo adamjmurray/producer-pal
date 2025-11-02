@@ -25,13 +25,6 @@ const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     temperature: 1.0,
     showThoughts: true,
   },
-  groq: {
-    apiKey: "",
-    model: "moonshotai/kimi-k2-instruct-0905",
-    thinking: "Auto",
-    temperature: 1.0,
-    showThoughts: true,
-  },
   mistral: {
     apiKey: "",
     model: "mistral-medium-latest",
@@ -120,9 +113,6 @@ export function useSettings(): UseSettingsReturn {
   const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.openai,
   );
-  const [groqSettings, setGroqSettings] = useState<ProviderSettings>(
-    DEFAULT_SETTINGS.groq,
-  );
   const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.mistral,
   );
@@ -138,13 +128,11 @@ export function useSettings(): UseSettingsReturn {
       ? geminiSettings
       : provider === "openai"
         ? openaiSettings
-        : provider === "groq"
-          ? groqSettings
-          : provider === "mistral"
-            ? mistralSettings
-            : provider === "openrouter"
-              ? openrouterSettings
-              : customSettings;
+        : provider === "mistral"
+          ? mistralSettings
+          : provider === "openrouter"
+            ? openrouterSettings
+            : customSettings;
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -161,7 +149,6 @@ export function useSettings(): UseSettingsReturn {
     // Load settings for each provider
     setGeminiSettings(loadProviderSettings("gemini"));
     setOpenaiSettings(loadProviderSettings("openai"));
-    setGroqSettings(loadProviderSettings("groq"));
     setMistralSettings(loadProviderSettings("mistral"));
     setOpenrouterSettings(loadProviderSettings("openrouter"));
     setCustomSettings(loadProviderSettings("custom"));
@@ -171,7 +158,6 @@ export function useSettings(): UseSettingsReturn {
     localStorage.setItem("producer_pal_current_provider", provider);
     saveProviderSettings("gemini", geminiSettings);
     saveProviderSettings("openai", openaiSettings);
-    saveProviderSettings("groq", groqSettings);
     saveProviderSettings("mistral", mistralSettings);
     saveProviderSettings("openrouter", openrouterSettings);
     saveProviderSettings("custom", customSettings);
@@ -179,7 +165,6 @@ export function useSettings(): UseSettingsReturn {
     provider,
     geminiSettings,
     openaiSettings,
-    groqSettings,
     mistralSettings,
     openrouterSettings,
     customSettings,
@@ -197,7 +182,6 @@ export function useSettings(): UseSettingsReturn {
     // Reload settings for each provider
     setGeminiSettings(loadProviderSettings("gemini"));
     setOpenaiSettings(loadProviderSettings("openai"));
-    setGroqSettings(loadProviderSettings("groq"));
     setMistralSettings(loadProviderSettings("mistral"));
     setOpenrouterSettings(loadProviderSettings("openrouter"));
     setCustomSettings(loadProviderSettings("custom"));
@@ -210,8 +194,6 @@ export function useSettings(): UseSettingsReturn {
         setGeminiSettings((prev) => ({ ...prev, apiKey: key }));
       } else if (provider === "openai") {
         setOpenaiSettings((prev) => ({ ...prev, apiKey: key }));
-      } else if (provider === "groq") {
-        setGroqSettings((prev) => ({ ...prev, apiKey: key }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, apiKey: key }));
       } else if (provider === "openrouter") {
@@ -229,8 +211,6 @@ export function useSettings(): UseSettingsReturn {
         setGeminiSettings((prev) => ({ ...prev, model: m }));
       } else if (provider === "openai") {
         setOpenaiSettings((prev) => ({ ...prev, model: m }));
-      } else if (provider === "groq") {
-        setGroqSettings((prev) => ({ ...prev, model: m }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, model: m }));
       } else if (provider === "openrouter") {
@@ -257,8 +237,6 @@ export function useSettings(): UseSettingsReturn {
         setGeminiSettings((prev) => ({ ...prev, thinking: t }));
       } else if (provider === "openai") {
         setOpenaiSettings((prev) => ({ ...prev, thinking: t }));
-      } else if (provider === "groq") {
-        setGroqSettings((prev) => ({ ...prev, thinking: t }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, thinking: t }));
       } else if (provider === "openrouter") {
@@ -276,8 +254,6 @@ export function useSettings(): UseSettingsReturn {
         setGeminiSettings((prev) => ({ ...prev, temperature: temp }));
       } else if (provider === "openai") {
         setOpenaiSettings((prev) => ({ ...prev, temperature: temp }));
-      } else if (provider === "groq") {
-        setGroqSettings((prev) => ({ ...prev, temperature: temp }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, temperature: temp }));
       } else if (provider === "openrouter") {
@@ -295,8 +271,6 @@ export function useSettings(): UseSettingsReturn {
         setGeminiSettings((prev) => ({ ...prev, showThoughts: show }));
       } else if (provider === "openai") {
         setOpenaiSettings((prev) => ({ ...prev, showThoughts: show }));
-      } else if (provider === "groq") {
-        setGroqSettings((prev) => ({ ...prev, showThoughts: show }));
       } else if (provider === "mistral") {
         setMistralSettings((prev) => ({ ...prev, showThoughts: show }));
       } else if (provider === "openrouter") {

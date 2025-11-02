@@ -288,11 +288,11 @@ describe("useSettings", () => {
     });
 
     await act(() => {
-      result.current.setProvider("groq");
+      result.current.setProvider("openrouter");
     });
     await act(() => {
-      result.current.setApiKey("groq-key");
-      result.current.setModel("meta-llama/llama-4-maverick-17b-128e-instruct");
+      result.current.setApiKey("openrouter-key");
+      result.current.setModel("minimax/minimax-m2:free");
       result.current.setTemperature(0.8);
     });
 
@@ -327,14 +327,12 @@ describe("useSettings", () => {
     expect(openaiSettings.thinking).toBe("Low");
     expect(openaiSettings.temperature).toBe(1.5);
 
-    const groqSettings = JSON.parse(
-      localStorage.getItem("producer_pal_provider_groq") ?? "{}",
+    const openrouterSettings = JSON.parse(
+      localStorage.getItem("producer_pal_provider_openrouter") ?? "{}",
     );
-    expect(groqSettings.apiKey).toBe("groq-key");
-    expect(groqSettings.model).toBe(
-      "meta-llama/llama-4-maverick-17b-128e-instruct",
-    );
-    expect(groqSettings.temperature).toBe(0.8);
+    expect(openrouterSettings.apiKey).toBe("openrouter-key");
+    expect(openrouterSettings.model).toBe("minimax/minimax-m2:free");
+    expect(openrouterSettings.temperature).toBe(0.8);
 
     const mistralSettings = JSON.parse(
       localStorage.getItem("producer_pal_provider_mistral") ?? "{}",
@@ -370,12 +368,10 @@ describe("useSettings", () => {
     expect(result2.current.temperature).toBe(1.5);
 
     await act(() => {
-      result2.current.setProvider("groq");
+      result2.current.setProvider("openrouter");
     });
-    expect(result2.current.apiKey).toBe("groq-key");
-    expect(result2.current.model).toBe(
-      "meta-llama/llama-4-maverick-17b-128e-instruct",
-    );
+    expect(result2.current.apiKey).toBe("openrouter-key");
+    expect(result2.current.model).toBe("minimax/minimax-m2:free");
     expect(result2.current.temperature).toBe(0.8);
   });
 });

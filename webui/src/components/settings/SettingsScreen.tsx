@@ -54,13 +54,11 @@ export function SettingsScreen({
       ? "Gemini"
       : provider === "openai"
         ? "OpenAI"
-        : provider === "groq"
-          ? "Groq"
-          : provider === "mistral"
-            ? "Mistral"
-            : provider === "openrouter"
-              ? "OpenRouter"
-              : "Custom";
+        : provider === "mistral"
+          ? "Mistral"
+          : provider === "openrouter"
+            ? "OpenRouter"
+            : "Custom";
 
   // Determine if we should show thinking settings
   const isO1OrO3Model = (m: string) => m === "o1" || m === "o3-mini";

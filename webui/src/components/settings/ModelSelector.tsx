@@ -21,16 +21,6 @@ const OPENAI_MODELS = [
   { value: "gpt-5-nano-2025-08-07", label: "GPT-5 Nano (ultra fast)" },
 ];
 
-const GROQ_MODELS = [
-  { value: "openai/gpt-oss-120b", label: "GPT-OSS 120B" },
-  {
-    value: "meta-llama/llama-4-maverick-17b-128e-instruct",
-    label: "Llama 4 Maverick 17B",
-  },
-  { value: "moonshotai/kimi-k2-instruct-0905", label: "Kimi K2" },
-  { value: "qwen/qwen3-32b", label: "Qwen 3 32B" },
-];
-
 const MISTRAL_MODELS = [
   { value: "mistral-large-latest", label: "Mistral Large" },
   { value: "mistral-medium-latest", label: "Mistral Medium" },
@@ -111,11 +101,9 @@ export function ModelSelector({
       ? GEMINI_MODELS
       : provider === "openai"
         ? OPENAI_MODELS
-        : provider === "groq"
-          ? GROQ_MODELS
-          : provider === "mistral"
-            ? MISTRAL_MODELS
-            : OPENROUTER_MODELS;
+        : provider === "mistral"
+          ? MISTRAL_MODELS
+          : OPENROUTER_MODELS;
 
   return (
     <div>

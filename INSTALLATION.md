@@ -125,8 +125,8 @@ Producer Pal includes its own standalone web interface, independent from Claude
 Desktop, Gemini CLI, or any other AI platform. The chat UI is served from the
 Max for Live device and opens in your system's default browser.
 
-It currently requires a Gemini API key (which is free with a Google account).
-Support for LLMs other than Gemini will be added in the future.
+The chat UI supports multiple LLM providers including Google Gemini (free tier
+available), OpenAI, Mistral, OpenRouter, and custom OpenAI-compatible providers.
 
 ### Requirements
 
@@ -159,8 +159,25 @@ Support for LLMs other than Gemini will be added in the future.
 
    <img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
 
-The chat UI connects directly to Google's Gemini API and uses Producer Pal's MCP
-tools automatically.
+The chat UI connects directly to your chosen LLM provider's API and uses
+Producer Pal's MCP tools automatically.
+
+### Using Custom Providers
+
+To use other OpenAI-compatible providers beyond the built-in options:
+
+1. Open the chat UI settings
+2. Select "Custom (OpenAI-compatible)" as the provider
+3. Enter your API key
+4. Set the Base URL for your provider
+5. Enter the model name
+
+**Example: Using Groq**
+
+- Provider: Custom (OpenAI-compatible)
+- Base URL: `https://api.groq.com/openai/v1`
+- Model: `moonshotai/kimi-k2-instruct` (or other available models like
+  `openai/gpt-oss-120b`, `qwen/qwen3-32b`)
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
