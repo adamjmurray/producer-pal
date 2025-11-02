@@ -54,7 +54,10 @@ export function MessageList({
               } ${message.role === "model" ? "flex-1" : ""} rounded-lg py-0.5 px-3 max-w-[90%]`}
             >
               {message.role === "model" && (
-                <AssistantMessage parts={message.parts} />
+                <AssistantMessage
+                  parts={message.parts}
+                  isResponding={isAssistantResponding}
+                />
               )}
               {message.role === "user" && (
                 <div className="prose dark:prose-invert prose-sm">

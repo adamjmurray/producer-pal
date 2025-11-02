@@ -6,9 +6,13 @@ import type { UIPart } from "../../../types/messages.js";
 
 interface AssistantMessageProps {
   parts: UIPart[];
+  isResponding?: boolean;
 }
 
-export function AssistantMessage({ parts }: AssistantMessageProps) {
+export function AssistantMessage({
+  parts,
+  isResponding,
+}: AssistantMessageProps) {
   return (
     <div className="flex flex-col gap-3 pt-2 pb-1">
       {parts.map((part, i) => {
@@ -18,6 +22,7 @@ export function AssistantMessage({ parts }: AssistantMessageProps) {
               key={i}
               content={part.content}
               isOpen={part.isOpen}
+              isResponding={isResponding}
             />
           );
         } else if (part.type === "tool") {
