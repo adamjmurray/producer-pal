@@ -3,6 +3,45 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import OpenAI from "openai";
 import type { OpenAIMessage, OpenAIToolCall } from "../types/messages.js";
 
+/**
+ * Processes a streaming delta chunk and updates the message content.
+ * Handles both regular content and reasoning fields from OpenAI/OpenRouter.
+ *
+ * @param currentContent - The current accumulated content string
+ * @param delta - The delta object from a streaming chunk
+ * @returns The updated content string
+ */
+export function processDeltaContent(
+  currentContent: string,
+  delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
+): string {
+  let content = currentContent;
+
+  // Accumulate regular content
+  if (delta.content) {
+    content += delta.content;
+  }
+
+  // Accumulate reasoning content (for OpenAI o1/o3/GPT-5 and OpenRouter reasoning models)
+  // reasoning_content is OpenAI's official field, reasoning_details is the standard streaming format
+  // @ts-expect-error - reasoning fields not in official types yet
+  if (delta.reasoning_content) {
+    // @ts-expect-error - reasoning fields not in official types yet
+    content += delta.reasoning_content;
+    // @ts-expect-error - reasoning fields not in official types yet
+  } else if (delta.reasoning_details) {
+    // Extract text from reasoning_details array (standard OpenRouter format)
+    // @ts-expect-error - reasoning fields not in official types yet
+    for (const detail of delta.reasoning_details) {
+      if (detail.type === "reasoning.text" && detail.text) {
+        content += detail.text;
+      }
+    }
+  }
+
+  return content;
+}
+
 // Configuration for OpenAIClient
 export interface OpenAIClientConfig {
   mcpUrl?: string;
@@ -195,11 +234,13 @@ export class OpenAIClient {
         const delta = chunk.choices[0]?.delta;
         if (!delta) continue;
 
-        // Accumulate content
-        if (delta.content) {
-          currentMessage.content =
-            (currentMessage.content ?? "") + delta.content;
-        }
+        // Accumulate content and reasoning
+        // Note: In streaming, content is always a string, not an array
+        const currentContent =
+          typeof currentMessage.content === "string"
+            ? currentMessage.content
+            : "";
+        currentMessage.content = processDeltaContent(currentContent, delta);
 
         // Accumulate tool calls
         if (delta.tool_calls) {
