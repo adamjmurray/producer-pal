@@ -33,6 +33,15 @@ const OPENROUTER_MODELS = [
   // Free models
   { value: "minimax/minimax-m2:free", label: "[Free] MiniMax M2" },
   { value: "qwen/qwen3-235b-a22b:free", label: "[Free] Qwen3 235B A22B" },
+  // Paid models - MiniMax
+  { value: "minimax/minimax-m1", label: "[Paid] MiniMax M1 (smart)" },
+  { value: "minimax/minimax-m2", label: "[Paid] MiniMax M2 (basic)" },
+  // Paid models - Qwen
+  { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max (smart)" },
+  {
+    value: "qwen/qwen3-235b-a22b-07-25",
+    label: "[Paid] Qwen3 235B A22B (basic)",
+  },
   // Paid models - Moonshot AI
   { value: "moonshotai/kimi-k2", label: "[Paid] Kimi K2" },
   // Paid models - Perplexity
