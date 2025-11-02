@@ -17,17 +17,11 @@ In no particular order:
 
 ### Improved Built-in Chat
 
-Support more models:
-
-- Mistral API with free tier API keys
-- Local LM Studio server
-- Other providers with free tier API keys
-- Maybe pay-as-you-go APIs?
-
-UI Improvements:
-
 - Edit and resend any previous message
 - Change model settings mid-chat
+- Support for additional providers such as HuggingFace and FireworksAI via a
+  backend LLM proxy (CORS rules block direct API calls to these platforms from
+  the web UI)
 
 ### Voice Interaction
 
