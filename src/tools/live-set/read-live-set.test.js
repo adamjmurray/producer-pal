@@ -9,7 +9,6 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import {
-  DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "../constants.js";
@@ -170,7 +169,7 @@ describe("readLiveSet", () => {
               ...expectedClip({ id: "clip2", trackIndex: 0, sceneIndex: 2 }),
               color: undefined,
             },
-          ].map(({ color, ...clip }) => clip),
+          ].map(({ color: _color, ...clip }) => clip),
           instrument: null,
         },
         {
@@ -190,11 +189,11 @@ describe("readLiveSet", () => {
               ...expectedClip({ id: "clip3", trackIndex: 1, sceneIndex: 0 }),
               color: undefined,
             },
-          ].map(({ color, ...clip }) => clip),
+          ].map(({ color: _color, ...clip }) => clip),
           instrument: null,
         },
         (() => {
-          const { color, ...track } = expectedTrack({
+          const { color: _color, ...track } = expectedTrack({
             id: "track3",
             trackIndex: 2,
           });
@@ -285,9 +284,15 @@ describe("readLiveSet", () => {
 
   it("includes device information across multiple tracks with includeDrumChains", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
-      if (this._path === "live_set tracks 1") return "track2";
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
+      if (this._path === "live_set tracks 1") {
+        return "track2";
+      }
       return this._id;
     });
 
@@ -373,14 +378,24 @@ describe("readLiveSet", () => {
 
   it("excludes drum rack devices by default", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
-      if (this._path === "live_set tracks 0 devices 0") return "drum_rack1";
-      if (this._path === "live_set tracks 0 devices 1") return "reverb1";
-      if (this._path === "live_set tracks 0 devices 0 drum_pads 36")
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
+      if (this._path === "live_set tracks 0 devices 0") {
+        return "drum_rack1";
+      }
+      if (this._path === "live_set tracks 0 devices 1") {
+        return "reverb1";
+      }
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36") {
         return "kick_pad";
-      if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0")
+      }
+      if (this._path === "live_set tracks 0 devices 0 drum_pads 36 chains 0") {
         return "kick_chain";
+      }
       return this._id;
     });
 
@@ -478,8 +493,12 @@ describe("readLiveSet", () => {
 
   it("includes routing information in tracks when includeRoutings is true", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
       return this._id;
     });
 
@@ -548,8 +567,12 @@ describe("readLiveSet", () => {
 
   it("excludes routing information from tracks when includeRoutings is false", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set_id";
-      if (this._path === "live_set tracks 0") return "track1";
+      if (this._path === "live_set") {
+        return "live_set_id";
+      }
+      if (this._path === "live_set tracks 0") {
+        return "track1";
+      }
       return this._id;
     });
 
@@ -1164,7 +1187,9 @@ describe("readLiveSet", () => {
 
   it("omits name property when Live Set name is empty string", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set") return "live_set";
+      if (this._path === "live_set") {
+        return "live_set";
+      }
       return "id 0";
     });
 

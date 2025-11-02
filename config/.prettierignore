@@ -3,3 +3,6 @@
 ../coverage
 ../knowledge-base
 ../src/**/barbeat-parser.js
+../max-for-live-device
+../claude-desktop-extension
+../release

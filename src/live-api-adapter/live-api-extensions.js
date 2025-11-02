@@ -24,7 +24,7 @@ if (typeof LiveAPI !== "undefined") {
     return new LiveAPI(idOrPath);
   };
   LiveAPI.prototype.exists = function () {
-    return this.id !== "id 0" && this.id != "0";
+    return this.id !== "id 0" && this.id !== "0" && this.id !== 0;
   };
 
   LiveAPI.prototype.getProperty = function (property) {
@@ -39,17 +39,18 @@ if (typeof LiveAPI !== "undefined") {
       case "input_routing_channel":
       case "input_routing_type":
       case "output_routing_channel":
-      case "output_routing_type":
+      case "output_routing_type": {
         const rawValue = this.get(property);
         if (rawValue && rawValue[0]) {
           try {
             const parsed = JSON.parse(rawValue[0]);
             return parsed[property];
-          } catch (e) {
+          } catch (_e) {
             return null;
           }
         }
         return null;
+      }
       default:
         return this.get(property)?.[0];
     }
@@ -60,14 +61,15 @@ if (typeof LiveAPI !== "undefined") {
       case "input_routing_type":
       case "input_routing_channel":
       case "output_routing_type":
-      case "output_routing_channel":
+      case "output_routing_channel": {
         // Convert value to JSON format expected by Live API
         const jsonValue = JSON.stringify({ [property]: value });
         return this.set(property, jsonValue);
+      }
       case "selected_track":
       case "selected_scene":
       case "detail_clip":
-      case "highlighted_clip_slot":
+      case "highlighted_clip_slot": {
         // Properties that expect "id X" format - automatically format IDs
         const formattedValue =
           typeof value === "string" &&
@@ -76,6 +78,7 @@ if (typeof LiveAPI !== "undefined") {
             ? `id ${value}`
             : value;
         return this.set(property, formattedValue);
+      }
       default:
         // For all other properties, use regular set
         return this.set(property, value);
@@ -85,7 +88,9 @@ if (typeof LiveAPI !== "undefined") {
   LiveAPI.prototype.getChildIds = function (name) {
     const idArray = this.get(name);
 
-    if (!Array.isArray(idArray)) return [];
+    if (!Array.isArray(idArray)) {
+      return [];
+    }
 
     const children = [];
     for (let i = 0; i < idArray.length; i += 2) {
@@ -102,7 +107,9 @@ if (typeof LiveAPI !== "undefined") {
 
   LiveAPI.prototype.getColor = function () {
     const colorValue = this.getProperty("color");
-    if (colorValue === undefined) return null;
+    if (colorValue === undefined) {
+      return null;
+    }
 
     const r = (colorValue >> 16) & 0xff;
     const g = (colorValue >> 8) & 0xff;
@@ -190,7 +197,9 @@ if (typeof LiveAPI !== "undefined") {
       get: function () {
         // Try scene path first
         let match = this.path.match(/live_set scenes (\d+)/);
-        if (match) return Number(match[1]);
+        if (match) {
+          return Number(match[1]);
+        }
 
         // Also try clip_slots path (scene index is the clip slot index in session view)
         match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
@@ -206,7 +215,9 @@ if (typeof LiveAPI !== "undefined") {
       get: function () {
         // Try clip_slots path first
         let match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);
-        if (match) return Number(match[1]);
+        if (match) {
+          return Number(match[1]);
+        }
 
         // Also try scene path (clip slot index is the scene index in session view)
         match = this.path.match(/live_set scenes (\d+)/);

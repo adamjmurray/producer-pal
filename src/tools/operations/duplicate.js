@@ -384,56 +384,54 @@ export function duplicate({
           songTimeSigDenominator,
         );
       }
-    } else {
+    } else if (type === "track") {
       // Session view operations (no bar|beat conversion needed)
-      if (type === "track") {
-        const trackIndex = object.trackIndex;
-        if (trackIndex == null) {
-          throw new Error(
-            `duplicate failed: no track index for id "${id}" (path="${object.path}")`,
-          );
-        }
-        // For multiple tracks, we need to account for previously created tracks
-        const actualTrackIndex = trackIndex + i;
-        newObjectMetadata = duplicateTrack(
-          actualTrackIndex,
-          objectName,
-          withoutClips,
-          withoutDevices,
-          routeToSource,
-          trackIndex, // Pass original source track index for routing
-        );
-      } else if (type === "scene") {
-        const sceneIndex = object.sceneIndex;
-        if (sceneIndex == null) {
-          throw new Error(
-            `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-          );
-        }
-        const actualSceneIndex = sceneIndex + i;
-        newObjectMetadata = duplicateScene(
-          actualSceneIndex,
-          objectName,
-          withoutClips,
-        );
-      } else if (type === "clip") {
-        const trackIndex = object.trackIndex;
-        const sceneIndex = object.sceneIndex;
-        if (trackIndex == null || sceneIndex == null) {
-          throw new Error(
-            `duplicate failed: no track or clip slot index for clip id "${id}" (path="${object.path}")`,
-          );
-        }
-
-        // For session clips, duplicate_clip_slot always creates at source+1,
-        // so we call it on the progressively increasing source index
-        const sourceSceneIndex = sceneIndex + i;
-        newObjectMetadata = duplicateClipSlot(
-          trackIndex,
-          sourceSceneIndex,
-          objectName,
+      const trackIndex = object.trackIndex;
+      if (trackIndex == null) {
+        throw new Error(
+          `duplicate failed: no track index for id "${id}" (path="${object.path}")`,
         );
       }
+      // For multiple tracks, we need to account for previously created tracks
+      const actualTrackIndex = trackIndex + i;
+      newObjectMetadata = duplicateTrack(
+        actualTrackIndex,
+        objectName,
+        withoutClips,
+        withoutDevices,
+        routeToSource,
+        trackIndex, // Pass original source track index for routing
+      );
+    } else if (type === "scene") {
+      const sceneIndex = object.sceneIndex;
+      if (sceneIndex == null) {
+        throw new Error(
+          `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
+        );
+      }
+      const actualSceneIndex = sceneIndex + i;
+      newObjectMetadata = duplicateScene(
+        actualSceneIndex,
+        objectName,
+        withoutClips,
+      );
+    } else if (type === "clip") {
+      const trackIndex = object.trackIndex;
+      const sceneIndex = object.sceneIndex;
+      if (trackIndex == null || sceneIndex == null) {
+        throw new Error(
+          `duplicate failed: no track or clip slot index for clip id "${id}" (path="${object.path}")`,
+        );
+      }
+
+      // For session clips, duplicate_clip_slot always creates at source+1,
+      // so we call it on the progressively increasing source index
+      const sourceSceneIndex = sceneIndex + i;
+      newObjectMetadata = duplicateClipSlot(
+        trackIndex,
+        sourceSceneIndex,
+        objectName,
+      );
     }
 
     createdObjects.push(newObjectMetadata);
@@ -565,7 +563,7 @@ function duplicateTrack(
           "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
         );
       }
-    } catch (error) {
+    } catch (_error) {
       // If we can't access this_device, just continue without removing anything
       console.error(
         "Warning: Could not check for Producer Pal device in duplicated track",
@@ -902,8 +900,8 @@ function duplicateClipToArrangement(
   arrangementStartTimeBeats,
   name,
   arrangementLength,
-  songTimeSigNumerator,
-  songTimeSigDenominator,
+  _songTimeSigNumerator,
+  _songTimeSigDenominator,
 ) {
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clip = LiveAPI.from(clipId);

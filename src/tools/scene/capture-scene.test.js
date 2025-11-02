@@ -69,8 +69,9 @@ describe("captureScene", () => {
 
   it("should set the scene name when provided", () => {
     liveApiPath.mockImplementation(function () {
-      if (this._path === "live_set view selected_scene")
+      if (this._path === "live_set view selected_scene") {
         return "live_set scenes 1";
+      }
       return this._path;
     });
     mockLiveApiGet({

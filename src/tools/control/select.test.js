@@ -391,24 +391,37 @@ describe("view", () => {
 
       // Update LiveAPI mock to handle specific device and track view paths
       global.LiveAPI.mockImplementation(function (path) {
-        if (path === "live_app view")
+        if (path === "live_app view") {
           return {
             ...mockAppView,
             getProperty: vi.fn().mockReturnValue(1), // session view
             call: vi.fn().mockReturnValue(0), // no special views visible
           };
-        if (path === "live_set view") return mockSongView;
-        if (path === "live_set view selected_track")
+        }
+        if (path === "live_set view") {
+          return mockSongView;
+        }
+        if (path === "live_set view selected_track") {
           return { exists: vi.fn().mockReturnValue(false) };
-        if (path === "live_set view selected_scene")
+        }
+        if (path === "live_set view selected_scene") {
           return { exists: vi.fn().mockReturnValue(false) };
-        if (path === "live_set view detail_clip")
+        }
+        if (path === "live_set view detail_clip") {
           return { exists: vi.fn().mockReturnValue(false) };
-        if (path === "live_set view highlighted_clip_slot")
+        }
+        if (path === "live_set view highlighted_clip_slot") {
           return { exists: vi.fn().mockReturnValue(false) };
-        if (path === "id device_123") return mockDeviceWithPath;
-        if (path === "live_set tracks 0") return mockTrackAPI;
-        if (path === "live_set tracks 0 view") return mockTrackView;
+        }
+        if (path === "id device_123") {
+          return mockDeviceWithPath;
+        }
+        if (path === "live_set tracks 0") {
+          return mockTrackAPI;
+        }
+        if (path === "live_set tracks 0 view") {
+          return mockTrackView;
+        }
         return {};
       });
 
@@ -440,13 +453,16 @@ describe("view", () => {
     it("selects instrument on currently selected track", () => {
       // Mock a selected track in the read state
       global.LiveAPI.mockImplementation(function (path) {
-        if (path === "live_app view")
+        if (path === "live_app view") {
           return {
             getProperty: vi.fn().mockReturnValue(1), // session view
             call: vi.fn().mockReturnValue(0), // no special views visible
           };
-        if (path === "live_set view") return mockSongView;
-        if (path === "live_set view selected_track")
+        }
+        if (path === "live_set view") {
+          return mockSongView;
+        }
+        if (path === "live_set view selected_track") {
           return {
             exists: vi.fn().mockReturnValue(true),
             category: "regular",
@@ -454,18 +470,23 @@ describe("view", () => {
             id: "id track_123",
             path: "live_set tracks 1",
           };
-        if (path === "live_set view selected_scene")
+        }
+        if (path === "live_set view selected_scene") {
           return { exists: vi.fn().mockReturnValue(false) };
-        if (path === "live_set view detail_clip")
+        }
+        if (path === "live_set view detail_clip") {
           return { exists: vi.fn().mockReturnValue(false) };
-        if (path === "live_set view highlighted_clip_slot")
+        }
+        if (path === "live_set view highlighted_clip_slot") {
           return { exists: vi.fn().mockReturnValue(false) };
-        if (path === "live_set tracks 1 view")
+        }
+        if (path === "live_set tracks 1 view") {
           return {
             exists: vi.fn().mockReturnValue(true),
             call: liveApiCall,
             get: vi.fn().mockReturnValue(null), // No selected device
           };
+        }
         return {};
       });
 
@@ -722,28 +743,40 @@ describe("view", () => {
       // Mock LiveAPI constructor to return appropriate instances
       global.LiveAPI.mockImplementation(function (path) {
         const instance = (() => {
-          if (path === "live_app view") return mockAppView;
-          if (path === "live_set view selected_track") return mockSelectedTrack;
-          if (path === "live_set view selected_scene") return mockSelectedScene;
-          if (path === "live_set view detail_clip") return mockDetailClip;
-          if (path === "live_set view highlighted_clip_slot")
+          if (path === "live_app view") {
+            return mockAppView;
+          }
+          if (path === "live_set view selected_track") {
+            return mockSelectedTrack;
+          }
+          if (path === "live_set view selected_scene") {
+            return mockSelectedScene;
+          }
+          if (path === "live_set view detail_clip") {
+            return mockDetailClip;
+          }
+          if (path === "live_set view highlighted_clip_slot") {
             return mockHighlightedSlot;
+          }
           // Handle dynamic track view paths
-          if (path.match(/^live_set tracks \d+ view$/))
+          if (path.match(/^live_set tracks \d+ view$/)) {
             return {
               exists: vi.fn().mockReturnValue(true),
               get: vi.fn().mockReturnValue(["id", 456]),
             };
-          if (path.match(/^live_set return_tracks \d+ view$/))
+          }
+          if (path.match(/^live_set return_tracks \d+ view$/)) {
             return {
               exists: vi.fn().mockReturnValue(true),
               get: vi.fn().mockReturnValue(["id", 456]),
             };
-          if (path === "live_set master_track view")
+          }
+          if (path === "live_set master_track view") {
             return {
               exists: vi.fn().mockReturnValue(false),
               get: vi.fn().mockReturnValue(null),
             };
+          }
           return {};
         })();
         return instance;
@@ -792,8 +825,9 @@ describe("view", () => {
         if (
           method === "is_view_visible" &&
           view === LIVE_API_VIEW_NAMES.DETAIL_CLIP
-        )
+        ) {
           return 1;
+        }
         return 0;
       });
       mockSelectedTrack.exists.mockReturnValue(false);

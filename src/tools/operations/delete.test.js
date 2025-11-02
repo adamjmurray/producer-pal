@@ -29,7 +29,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === id) return "Track";
+      if (this._id === id) {
+        return "Track";
+      }
     });
 
     const result = deleteObject({ ids: id, type: "track" });
@@ -69,7 +71,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (["track_0", "track_1", "track_2"].includes(this._id)) return "Track";
+      if (["track_0", "track_1", "track_2"].includes(this._id)) {
+        return "Track";
+      }
     });
 
     const result = deleteObject({ ids, type: "track" });
@@ -122,7 +126,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === id) return "Scene";
+      if (this._id === id) {
+        return "Scene";
+      }
     });
 
     const result = deleteObject({ ids: id, type: "scene" });
@@ -158,7 +164,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (["scene_0", "scene_2"].includes(this._id)) return "Scene";
+      if (["scene_0", "scene_2"].includes(this._id)) {
+        return "Scene";
+      }
     });
 
     const result = deleteObject({ ids, type: "scene" });
@@ -206,7 +214,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (["clip_0_0", "clip_1_1"].includes(this._id)) return "Clip";
+      if (["clip_0_0", "clip_1_1"].includes(this._id)) {
+        return "Clip";
+      }
     });
 
     const result = deleteObject({ ids, type: "clip" });
@@ -260,7 +270,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === "123") return "Track";
+      if (this._id === "123") {
+        return "Track";
+      }
     });
 
     const consoleErrorSpy = vi.spyOn(console, "error");
@@ -285,8 +297,12 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === "track_1") return "Track";
-      if (this._id === "scene_1") return "Scene";
+      if (this._id === "track_1") {
+        return "Track";
+      }
+      if (this._id === "scene_1") {
+        return "Scene";
+      }
     });
 
     const consoleErrorSpy = vi.spyOn(console, "error");
@@ -327,7 +343,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (["track_0", "track_2"].includes(this._id)) return "Track";
+      if (["track_0", "track_2"].includes(this._id)) {
+        return "Track";
+      }
     });
 
     const consoleErrorSpy = vi.spyOn(console, "error");
@@ -416,7 +434,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (["track_0", "track_1"].includes(this._id)) return "Track";
+      if (["track_0", "track_1"].includes(this._id)) {
+        return "Track";
+      }
     });
 
     const result = deleteObject({ ids, type: "track" });
@@ -449,7 +469,9 @@ describe("deleteObject", () => {
       }
     });
     liveApiType.mockImplementation(function () {
-      if (["track_0", "track_1"].includes(this._id)) return "Track";
+      if (["track_0", "track_1"].includes(this._id)) {
+        return "Track";
+      }
     });
 
     const singleResult = deleteObject({ ids: "track_0", type: "track" });
@@ -469,15 +491,21 @@ describe("deleteObject", () => {
 
   it("should throw error when track path is malformed (no track index)", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set tracks 0") return "track_0";
+      if (this._path === "live_set tracks 0") {
+        return "track_0";
+      }
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
-      if (this._id === "track_0") return "invalid_path_without_track_index";
+      if (this._id === "track_0") {
+        return "invalid_path_without_track_index";
+      }
       return this._path;
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === "track_0") return "Track";
+      if (this._id === "track_0") {
+        return "Track";
+      }
     });
 
     expect(() => deleteObject({ ids: "track_0", type: "track" })).toThrow(
@@ -487,15 +515,21 @@ describe("deleteObject", () => {
 
   it("should throw error when scene path is malformed (no scene index)", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set scenes 0") return "scene_0";
+      if (this._path === "live_set scenes 0") {
+        return "scene_0";
+      }
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
-      if (this._id === "scene_0") return "invalid_path_without_scene_index";
+      if (this._id === "scene_0") {
+        return "invalid_path_without_scene_index";
+      }
       return this._path;
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === "scene_0") return "Scene";
+      if (this._id === "scene_0") {
+        return "Scene";
+      }
     });
 
     expect(() => deleteObject({ ids: "scene_0", type: "scene" })).toThrow(
@@ -505,15 +539,21 @@ describe("deleteObject", () => {
 
   it("should throw error when clip path is malformed (no track index)", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "live_set tracks 0 clip_slots 0 clip") return "clip_0";
+      if (this._path === "live_set tracks 0 clip_slots 0 clip") {
+        return "clip_0";
+      }
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
-      if (this._id === "clip_0") return "invalid_path_without_track_index";
+      if (this._id === "clip_0") {
+        return "invalid_path_without_track_index";
+      }
       return this._path;
     });
     liveApiType.mockImplementation(function () {
-      if (this._id === "clip_0") return "Clip";
+      if (this._id === "clip_0") {
+        return "Clip";
+      }
     });
 
     expect(() => deleteObject({ ids: "clip_0", type: "clip" })).toThrow(

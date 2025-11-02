@@ -59,7 +59,9 @@ function expandRepeatPattern(
  * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>}
  */
 export function interpretNotation(barBeatExpression, options = {}) {
-  if (!barBeatExpression) return [];
+  if (!barBeatExpression) {
+    return [];
+  }
 
   const {
     beatsPerBar: beatsPerBarOption,

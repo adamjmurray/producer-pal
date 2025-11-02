@@ -75,11 +75,10 @@ export function createClip({
 
   const liveSet = new LiveAPI("live_set");
   let timeSigNumerator, timeSigDenominator;
-  let songTimeSigNumerator, songTimeSigDenominator;
 
   // Get song time signature for arrangementStartTime conversion
-  songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
@@ -260,25 +259,23 @@ export function createClip({
     // Add view-specific properties
     if (view === "session") {
       clipResult.sceneIndex = currentSceneIndex;
-    } else {
+    } else if (i === 0) {
       // Calculate bar|beat position for this clip
-      if (i === 0) {
-        clipResult.arrangementStartTime = arrangementStartTime;
-      } else {
-        // Convert clipLength back to bar|beat format and add to original position
-        const clipLengthInMusicalBeats =
-          clipLength * (songTimeSigDenominator / 4);
-        const totalOffsetBeats = i * clipLengthInMusicalBeats;
-        const originalBeats = barBeatToBeats(
-          arrangementStartTime,
-          songTimeSigNumerator,
-        );
-        const newPositionBeats = originalBeats + totalOffsetBeats;
-        clipResult.arrangementStartTime = beatsToBarBeat(
-          newPositionBeats,
-          songTimeSigNumerator,
-        );
-      }
+      clipResult.arrangementStartTime = arrangementStartTime;
+    } else {
+      // Convert clipLength back to bar|beat format and add to original position
+      const clipLengthInMusicalBeats =
+        clipLength * (songTimeSigDenominator / 4);
+      const totalOffsetBeats = i * clipLengthInMusicalBeats;
+      const originalBeats = barBeatToBeats(
+        arrangementStartTime,
+        songTimeSigNumerator,
+      );
+      const newPositionBeats = originalBeats + totalOffsetBeats;
+      clipResult.arrangementStartTime = beatsToBarBeat(
+        newPositionBeats,
+        songTimeSigNumerator,
+      );
     }
 
     // Only include noteCount if notes were provided
@@ -301,7 +298,7 @@ export function createClip({
   // Handle automatic playback for Session clips
   if (auto && view === "session") {
     switch (auto) {
-      case "play-scene":
+      case "play-scene": {
         // Launch the entire scene for synchronization
         const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
         if (!scene.exists()) {
@@ -311,6 +308,7 @@ export function createClip({
         }
         scene.call("fire");
         break;
+      }
 
       case "play-clip":
         // Fire individual clips (original autoplay behavior)

@@ -51,7 +51,7 @@ export function pitchClassNameToNumber(pitchClassName) {
   }
 
   // case-insensitive lookup
-  let pitchClassNumber =
+  const pitchClassNumber =
     PITCH_CLASS_VALUES_LOWERCASE[pitchClassName.toLowerCase()];
 
   if (pitchClassNumber === undefined) {

@@ -29,7 +29,9 @@ describe("rawLiveApi", () => {
     });
 
     global.LiveAPI.prototype.getChildIds = vi.fn((childType) => {
-      if (!childType) throw new Error("Missing child type");
+      if (!childType) {
+        throw new Error("Missing child type");
+      }
       return [`id_${childType}_1`, `id_${childType}_2`];
     });
 

@@ -64,7 +64,9 @@ export class LiveAPI {
   get sceneIndex() {
     // Try scene path first
     let match = this.path.match(/live_set scenes (\d+)/);
-    if (match) return Number(match[1]);
+    if (match) {
+      return Number(match[1]);
+    }
 
     // Also try clip_slots path (scene index is the clip slot index in session view)
     match = this.path.match(/live_set tracks \d+ clip_slots (\d+)/);

@@ -3,9 +3,9 @@
 ## File Naming
 
 - **React Components**: PascalCase matching the component name (e.g.,
-  `ChatHeader.jsx`, `ModelSelector.jsx`)
-- **All other files**: kebab-case (e.g., `use-gemini-chat.js`,
-  `merge-messages.js`, `live-api-adapter.js`)
+  `ChatHeader.tsx`, `ModelSelector.tsx`)
+- **All other files**: kebab-case (e.g., `use-gemini-chat.ts` in webui,
+  `merge-messages.js`, `live-api-adapter.js` in core)
 
 This applies throughout the codebase including hooks, utilities, configuration,
 tests, and modules.

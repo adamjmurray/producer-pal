@@ -41,12 +41,25 @@ jobs:
             exit 1
           fi
 
-      - run: FORCE_COLOR=3 npm run test:coverage
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      # Always fails in CI
+      # TODO: figure out why, try to re-enable
+      # - name: Check formatting
+      #   run: npm run format:check
+
+      - name: Run tests with coverage
+        id: tests
+        if: success()
+        run: FORCE_COLOR=3 npm run test:coverage
 
       - name: "Report Coverage"
-        # Set if: always() to also generate the report if tests are failing
-        # Only works if you set `reportOnFailure: true` in your vite config as specified above
-        if: always()
+        # Runs only if tests step ran (whether it passed or failed), not if it was skipped
+        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
           file-coverage-mode: "all"
