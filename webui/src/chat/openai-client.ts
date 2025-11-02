@@ -49,10 +49,27 @@ export class OpenAIClient {
    * @param config - Configuration options
    */
   constructor(apiKey: string, config: OpenAIClientConfig = {}) {
+    // Suppress x-stainless headers for non-OpenAI providers (e.g., Mistral)
+    // These headers cause CORS issues with some OpenAI-compatible APIs
+    const isNonOpenAI =
+      config.baseUrl && config.baseUrl !== "https://api.openai.com/v1";
+
     this.ai = new OpenAI({
       apiKey,
       baseURL: config.baseUrl ?? "https://api.openai.com/v1",
       dangerouslyAllowBrowser: true,
+      ...(isNonOpenAI && {
+        defaultHeaders: {
+          "X-Stainless-Lang": null,
+          "X-Stainless-Package-Version": null,
+          "X-Stainless-OS": null,
+          "X-Stainless-Arch": null,
+          "X-Stainless-Runtime": null,
+          "X-Stainless-Runtime-Version": null,
+          "X-Stainless-Retry-Count": null,
+          "X-Stainless-Timeout": null,
+        },
+      }),
     });
     this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp";
     this.config = config;
