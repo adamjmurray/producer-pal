@@ -1,12 +1,16 @@
 /**
  * Type definitions for provider settings and configuration.
  *
- * Currently supports Gemini only, but structured to allow
- * for future multi-provider support (OpenAI, etc.)
+ * Supports multiple LLM providers:
+ * - Gemini (Google)
+ * - OpenAI
+ * - Groq (OpenAI-compatible)
+ * - Mistral (OpenAI-compatible)
+ * - Custom (any OpenAI-compatible provider)
  */
 
-// Provider types - currently only Gemini is supported
-export type Provider = "gemini";
+// Provider types
+export type Provider = "gemini" | "openai" | "groq" | "mistral" | "custom";
 
 // Gemini-specific settings
 export interface GeminiSettings {
@@ -18,27 +22,35 @@ export interface GeminiSettings {
 }
 
 // Provider settings interface
-// Currently mirrors GeminiSettings, but prepared for future expansion
 export interface ProviderSettings {
-  // Current provider (only "gemini" for now)
+  // Active provider
   provider: Provider;
 
-  // Gemini settings
+  // Per-provider API keys
   geminiApiKey: string;
+  openaiApiKey: string;
+  groqApiKey: string;
+  mistralApiKey: string;
+  customApiKey: string;
+
+  // Custom provider base URL
+  customBaseUrl: string;
+
+  // Common settings
   model: string;
   temperature: number;
   thinking: string;
   showThoughts: boolean;
-
-  // Future: OpenAI settings
-  // openaiApiKey?: string;
-  // openaiBaseUrl?: string; // For OpenAI-compatible providers
 }
 
 // Hook return type for useSettings
 export interface UseSettingsReturn {
+  provider: Provider;
+  setProvider: (provider: Provider) => void;
   apiKey: string;
   setApiKey: (key: string) => void;
+  baseUrl?: string; // Only for custom provider
+  setBaseUrl?: (url: string) => void;
   model: string;
   setModel: (model: string) => void;
   thinking: string;

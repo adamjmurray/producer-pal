@@ -1,80 +1,318 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
-import type { UseSettingsReturn } from "../types/settings.js";
+import type { Provider, UseSettingsReturn } from "../types/settings.js";
+
+interface ProviderSettings {
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
+  thinking: string;
+  temperature: number;
+  showThoughts: boolean;
+}
+
+const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
+  gemini: {
+    apiKey: "",
+    model: "gemini-2.5-flash",
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
+  openai: {
+    apiKey: "",
+    model: "gpt-5-2025-08-07",
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
+  groq: {
+    apiKey: "",
+    model: "moonshotai/kimi-k2-instruct-0905",
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
+  mistral: {
+    apiKey: "",
+    model: "mistral-medium-latest",
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
+  custom: {
+    apiKey: "",
+    model: "",
+    baseUrl: "",
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
+};
+
+function loadProviderSettings(provider: Provider): ProviderSettings {
+  const newFormatKey = `producer_pal_provider_${provider}`;
+  const newFormatData = localStorage.getItem(newFormatKey);
+
+  // Try new format first
+  if (newFormatData) {
+    try {
+      const parsed = JSON.parse(newFormatData);
+      return { ...DEFAULT_SETTINGS[provider], ...parsed };
+    } catch {
+      // Invalid JSON, fall through to defaults or migration
+    }
+  }
+
+  // Backward compatibility: only for Gemini provider
+  if (provider === "gemini") {
+    const legacySettings: Partial<ProviderSettings> = {};
+
+    const apiKey = localStorage.getItem("gemini_api_key");
+    if (apiKey) legacySettings.apiKey = apiKey;
+
+    const model =
+      localStorage.getItem("gemini_model") ?? localStorage.getItem("model");
+    if (model) legacySettings.model = model;
+
+    const thinking =
+      localStorage.getItem("thinking") ??
+      localStorage.getItem("gemini_thinking");
+    if (thinking) legacySettings.thinking = thinking;
+
+    const temperature =
+      localStorage.getItem("temperature") ??
+      localStorage.getItem("gemini_temperature");
+    if (temperature != null) {
+      legacySettings.temperature = parseFloat(temperature);
+    }
+
+    const showThoughts =
+      localStorage.getItem("showThoughts") ??
+      localStorage.getItem("gemini_showThoughts");
+    if (showThoughts != null) {
+      legacySettings.showThoughts = showThoughts === "true";
+    }
+
+    return { ...DEFAULT_SETTINGS.gemini, ...legacySettings };
+  }
+
+  // For non-Gemini providers, just use defaults
+  return DEFAULT_SETTINGS[provider];
+}
+
+function saveProviderSettings(provider: Provider, settings: ProviderSettings) {
+  const key = `producer_pal_provider_${provider}`;
+  localStorage.setItem(key, JSON.stringify(settings));
+}
 
 export function useSettings(): UseSettingsReturn {
-  const [apiKey, setApiKey] = useState("");
-  const [model, setModel] = useState("gemini-2.5-flash");
-  const [thinking, setThinking] = useState("Auto");
-  const [temperature, setTemperature] = useState(1.0);
-  const [showThoughts, setShowThoughts] = useState(true);
+  const [provider, setProvider] = useState<Provider>("gemini");
+  const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
+    DEFAULT_SETTINGS.gemini,
+  );
+  const [openaiSettings, setOpenaiSettings] = useState<ProviderSettings>(
+    DEFAULT_SETTINGS.openai,
+  );
+  const [groqSettings, setGroqSettings] = useState<ProviderSettings>(
+    DEFAULT_SETTINGS.groq,
+  );
+  const [mistralSettings, setMistralSettings] = useState<ProviderSettings>(
+    DEFAULT_SETTINGS.mistral,
+  );
+  const [customSettings, setCustomSettings] = useState<ProviderSettings>(
+    DEFAULT_SETTINGS.custom,
+  );
+
+  // Get the current provider's settings
+  const currentSettings =
+    provider === "gemini"
+      ? geminiSettings
+      : provider === "openai"
+        ? openaiSettings
+        : provider === "groq"
+          ? groqSettings
+          : provider === "mistral"
+            ? mistralSettings
+            : customSettings;
 
   // Load settings from localStorage on mount
   useEffect(() => {
-    const savedKey = localStorage.getItem("gemini_api_key");
-    if (savedKey) {
-      setApiKey(savedKey);
+    // Load current provider
+    const savedProvider =
+      (localStorage.getItem(
+        "producer_pal_current_provider",
+      ) as Provider | null) ??
+      (localStorage.getItem("provider") as Provider | null);
+    if (savedProvider != null) {
+      setProvider(savedProvider);
     }
-    const savedModel = localStorage.getItem("gemini_model");
-    if (savedModel) {
-      setModel(savedModel);
-    }
-    const savedThinking = localStorage.getItem("gemini_thinking");
-    if (savedThinking) {
-      setThinking(savedThinking);
-    }
-    const savedTemperature = localStorage.getItem("gemini_temperature");
-    if (savedTemperature != null) {
-      setTemperature(parseFloat(savedTemperature));
-    }
-    const savedShowThoughts = localStorage.getItem("gemini_showThoughts");
-    if (savedShowThoughts != null) {
-      setShowThoughts(savedShowThoughts === "true");
-    }
+
+    // Load settings for each provider
+    setGeminiSettings(loadProviderSettings("gemini"));
+    setOpenaiSettings(loadProviderSettings("openai"));
+    setGroqSettings(loadProviderSettings("groq"));
+    setMistralSettings(loadProviderSettings("mistral"));
+    setCustomSettings(loadProviderSettings("custom"));
   }, []);
 
   const saveSettings = useCallback(() => {
-    localStorage.setItem("gemini_api_key", apiKey);
-    localStorage.setItem("gemini_model", model);
-    localStorage.setItem("gemini_thinking", thinking);
-    localStorage.setItem("gemini_temperature", temperature.toString());
-    localStorage.setItem("gemini_showThoughts", showThoughts.toString());
-  }, [apiKey, model, thinking, temperature, showThoughts]);
+    localStorage.setItem("producer_pal_current_provider", provider);
+    saveProviderSettings("gemini", geminiSettings);
+    saveProviderSettings("openai", openaiSettings);
+    saveProviderSettings("groq", groqSettings);
+    saveProviderSettings("mistral", mistralSettings);
+    saveProviderSettings("custom", customSettings);
+  }, [
+    provider,
+    geminiSettings,
+    openaiSettings,
+    groqSettings,
+    mistralSettings,
+    customSettings,
+  ]);
 
   const cancelSettings = useCallback(() => {
-    const savedKey = localStorage.getItem("gemini_api_key");
-    if (savedKey) {
-      setApiKey(savedKey);
-    }
-    const savedModel = localStorage.getItem("gemini_model");
-    if (savedModel) {
-      setModel(savedModel);
-    }
-    const savedThinking = localStorage.getItem("gemini_thinking");
-    if (savedThinking) {
-      setThinking(savedThinking);
-    }
-    const savedTemperature = localStorage.getItem("gemini_temperature");
-    if (savedTemperature != null) {
-      setTemperature(parseFloat(savedTemperature));
-    }
-    const savedShowThoughts = localStorage.getItem("gemini_showThoughts");
-    if (savedShowThoughts != null) {
-      setShowThoughts(savedShowThoughts === "true");
-    }
+    // Reload current provider
+    const savedProvider =
+      (localStorage.getItem(
+        "producer_pal_current_provider",
+      ) as Provider | null) ??
+      (localStorage.getItem("provider") as Provider | null);
+    if (savedProvider != null) setProvider(savedProvider);
+
+    // Reload settings for each provider
+    setGeminiSettings(loadProviderSettings("gemini"));
+    setOpenaiSettings(loadProviderSettings("openai"));
+    setGroqSettings(loadProviderSettings("groq"));
+    setMistralSettings(loadProviderSettings("mistral"));
+    setCustomSettings(loadProviderSettings("custom"));
   }, []);
 
-  const hasApiKey = !!localStorage.getItem("gemini_api_key");
+  // Individual setters that update the current provider's settings
+  const setApiKey = useCallback(
+    (key: string) => {
+      if (provider === "gemini") {
+        setGeminiSettings((prev) => ({ ...prev, apiKey: key }));
+      } else if (provider === "openai") {
+        setOpenaiSettings((prev) => ({ ...prev, apiKey: key }));
+      } else if (provider === "groq") {
+        setGroqSettings((prev) => ({ ...prev, apiKey: key }));
+      } else if (provider === "mistral") {
+        setMistralSettings((prev) => ({ ...prev, apiKey: key }));
+      } else {
+        setCustomSettings((prev) => ({ ...prev, apiKey: key }));
+      }
+    },
+    [provider],
+  );
+
+  const setModel = useCallback(
+    (m: string) => {
+      if (provider === "gemini") {
+        setGeminiSettings((prev) => ({ ...prev, model: m }));
+      } else if (provider === "openai") {
+        setOpenaiSettings((prev) => ({ ...prev, model: m }));
+      } else if (provider === "groq") {
+        setGroqSettings((prev) => ({ ...prev, model: m }));
+      } else if (provider === "mistral") {
+        setMistralSettings((prev) => ({ ...prev, model: m }));
+      } else {
+        setCustomSettings((prev) => ({ ...prev, model: m }));
+      }
+    },
+    [provider],
+  );
+
+  const setBaseUrl = useCallback(
+    (url: string) => {
+      if (provider === "custom") {
+        setCustomSettings((prev) => ({ ...prev, baseUrl: url }));
+      }
+    },
+    [provider],
+  );
+
+  const setThinking = useCallback(
+    (t: string) => {
+      if (provider === "gemini") {
+        setGeminiSettings((prev) => ({ ...prev, thinking: t }));
+      } else if (provider === "openai") {
+        setOpenaiSettings((prev) => ({ ...prev, thinking: t }));
+      } else if (provider === "groq") {
+        setGroqSettings((prev) => ({ ...prev, thinking: t }));
+      } else if (provider === "mistral") {
+        setMistralSettings((prev) => ({ ...prev, thinking: t }));
+      } else {
+        setCustomSettings((prev) => ({ ...prev, thinking: t }));
+      }
+    },
+    [provider],
+  );
+
+  const setTemperature = useCallback(
+    (temp: number) => {
+      if (provider === "gemini") {
+        setGeminiSettings((prev) => ({ ...prev, temperature: temp }));
+      } else if (provider === "openai") {
+        setOpenaiSettings((prev) => ({ ...prev, temperature: temp }));
+      } else if (provider === "groq") {
+        setGroqSettings((prev) => ({ ...prev, temperature: temp }));
+      } else if (provider === "mistral") {
+        setMistralSettings((prev) => ({ ...prev, temperature: temp }));
+      } else {
+        setCustomSettings((prev) => ({ ...prev, temperature: temp }));
+      }
+    },
+    [provider],
+  );
+
+  const setShowThoughts = useCallback(
+    (show: boolean) => {
+      if (provider === "gemini") {
+        setGeminiSettings((prev) => ({ ...prev, showThoughts: show }));
+      } else if (provider === "openai") {
+        setOpenaiSettings((prev) => ({ ...prev, showThoughts: show }));
+      } else if (provider === "groq") {
+        setGroqSettings((prev) => ({ ...prev, showThoughts: show }));
+      } else if (provider === "mistral") {
+        setMistralSettings((prev) => ({ ...prev, showThoughts: show }));
+      } else {
+        setCustomSettings((prev) => ({ ...prev, showThoughts: show }));
+      }
+    },
+    [provider],
+  );
+
+  // Check if current provider has an API key saved
+  const hasApiKey = localStorage.getItem(`producer_pal_provider_${provider}`)
+    ? (() => {
+        try {
+          const data = JSON.parse(
+            localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
+          );
+          return !!data.apiKey;
+        } catch {
+          return false;
+        }
+      })()
+    : provider === "gemini"
+      ? !!localStorage.getItem("gemini_api_key")
+      : false;
 
   return {
-    apiKey,
+    provider,
+    setProvider,
+    apiKey: currentSettings.apiKey,
     setApiKey,
-    model,
+    baseUrl: provider === "custom" ? currentSettings.baseUrl : undefined,
+    setBaseUrl: provider === "custom" ? setBaseUrl : undefined,
+    model: currentSettings.model,
     setModel,
-    thinking,
+    thinking: currentSettings.thinking,
     setThinking,
-    temperature,
+    temperature: currentSettings.temperature,
     setTemperature,
-    showThoughts,
+    showThoughts: currentSettings.showThoughts,
     setShowThoughts,
     saveSettings,
     cancelSettings,

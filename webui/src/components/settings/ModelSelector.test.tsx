@@ -8,7 +8,13 @@ import { ModelSelector } from "./ModelSelector.jsx";
 describe("ModelSelector", () => {
   it("renders with correct selected model", () => {
     const setModel = vi.fn();
-    render(<ModelSelector model="gemini-2.5-flash" setModel={setModel} />);
+    render(
+      <ModelSelector
+        provider="gemini"
+        model="gemini-2.5-flash"
+        setModel={setModel}
+      />,
+    );
 
     const select = screen.getByRole("combobox") as HTMLSelectElement;
     expect(select.value).toBe("gemini-2.5-flash");
@@ -16,7 +22,13 @@ describe("ModelSelector", () => {
 
   it("displays all model options", () => {
     const setModel = vi.fn();
-    render(<ModelSelector model="gemini-2.5-flash" setModel={setModel} />);
+    render(
+      <ModelSelector
+        provider="gemini"
+        model="gemini-2.5-flash"
+        setModel={setModel}
+      />,
+    );
 
     expect(
       screen.getByRole("option", { name: /Gemini 2.5 Pro/ }),
@@ -31,7 +43,13 @@ describe("ModelSelector", () => {
 
   it("has correct option values", () => {
     const setModel = vi.fn();
-    render(<ModelSelector model="gemini-2.5-flash" setModel={setModel} />);
+    render(
+      <ModelSelector
+        provider="gemini"
+        model="gemini-2.5-flash"
+        setModel={setModel}
+      />,
+    );
 
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
     expect(options[0]!.value).toBe("gemini-2.5-pro");
@@ -41,7 +59,13 @@ describe("ModelSelector", () => {
 
   it("triggers setModel callback on change", () => {
     const setModel = vi.fn();
-    render(<ModelSelector model="gemini-2.5-flash" setModel={setModel} />);
+    render(
+      <ModelSelector
+        provider="gemini"
+        model="gemini-2.5-flash"
+        setModel={setModel}
+      />,
+    );
 
     const select = screen.getByRole("combobox");
     fireEvent.change(select, { target: { value: "gemini-2.5-pro" } });
@@ -52,7 +76,13 @@ describe("ModelSelector", () => {
 
   it("can select gemini-2.5-flash-lite", () => {
     const setModel = vi.fn();
-    render(<ModelSelector model="gemini-2.5-flash" setModel={setModel} />);
+    render(
+      <ModelSelector
+        provider="gemini"
+        model="gemini-2.5-flash"
+        setModel={setModel}
+      />,
+    );
 
     const select = screen.getByRole("combobox");
     fireEvent.change(select, { target: { value: "gemini-2.5-flash-lite" } });

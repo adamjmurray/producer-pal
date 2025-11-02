@@ -7,11 +7,14 @@
  * - Message formatter and chat client interfaces
  */
 
-// Import authoritative types from Gemini SDK
+// Import authoritative types from SDKs
 import type { Content as GeminiContent } from "@google/genai";
+import type OpenAI from "openai";
 
-// Re-export Gemini types for use throughout the application
+// Re-export provider types for use throughout the application
 export type GeminiMessage = GeminiContent;
+export type OpenAIMessage = OpenAI.Chat.ChatCompletionMessageParam;
+export type OpenAIToolCall = OpenAI.Chat.ChatCompletionMessageToolCall;
 
 // UI Part Types
 // These represent the different types of content that can appear in a message
@@ -68,12 +71,10 @@ export interface ChatClient<TRawMessage> {
   sendMessage(message: string): AsyncGenerator<TRawMessage[], void, unknown>;
 }
 
-// Concrete Types for Current Implementation
+// Concrete Types for Provider Implementations
 
 export type GeminiFormatter = MessageFormatter<GeminiMessage>;
 export type GeminiChatClient = ChatClient<GeminiMessage>;
 
-// Future provider types can be added here:
-// export type OpenAIMessage = ...;
-// export type OpenAIFormatter = MessageFormatter<OpenAIMessage>;
-// export type OpenAIChatClient = ChatClient<OpenAIMessage>;
+export type OpenAIFormatter = MessageFormatter<OpenAIMessage>;
+export type OpenAIChatClient = ChatClient<OpenAIMessage>;

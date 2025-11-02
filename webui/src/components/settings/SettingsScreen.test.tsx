@@ -6,17 +6,6 @@ import { render, screen, fireEvent } from "@testing-library/preact";
 import { SettingsScreen } from "./SettingsScreen.jsx";
 
 // Mock child components
-vi.mock("./GeminiApiKeyInput.jsx", () => ({
-  GeminiApiKeyInput: ({
-    hasApiKey,
-  }: {
-    apiKey: string;
-    hasApiKey: boolean;
-  }) => (
-    <div data-testid="api-key-input">API Key: {hasApiKey ? "***" : "none"}</div>
-  ),
-}));
-
 vi.mock("./ModelSelector.jsx", () => ({
   ModelSelector: ({ model }: { model: string }) => (
     <div data-testid="model-selector">{model}</div>
@@ -24,8 +13,18 @@ vi.mock("./ModelSelector.jsx", () => ({
 }));
 
 vi.mock("./ThinkingSettings.jsx", () => ({
-  ThinkingSettings: ({ thinking }: { thinking: string }) => (
-    <div data-testid="thinking-settings">{thinking}</div>
+  ThinkingSettings: ({
+    provider,
+    model,
+    thinking,
+  }: {
+    provider: string;
+    model: string;
+    thinking: string;
+  }) => (
+    <div data-testid="thinking-settings">
+      {provider}-{model}-{thinking}
+    </div>
   ),
 }));
 
@@ -37,6 +36,8 @@ vi.mock("./RandomnessSlider.jsx", () => ({
 
 describe("SettingsScreen", () => {
   const defaultProps = {
+    provider: "gemini" as const,
+    setProvider: vi.fn(),
     apiKey: "",
     setApiKey: vi.fn(),
     model: "gemini-2.5-pro",
@@ -61,10 +62,13 @@ describe("SettingsScreen", () => {
       expect(screen.getByText("Producer Pal Chat Settings")).toBeDefined();
     });
 
-    it("renders all child components", () => {
+    it("renders all child components for Gemini", () => {
       render(<SettingsScreen {...defaultProps} />);
 
-      expect(screen.getByTestId("api-key-input")).toBeDefined();
+      // Check for API key input (no longer uses GeminiApiKeyInput)
+      expect(
+        screen.getByPlaceholderText(/Enter your Gemini API key/i),
+      ).toBeDefined();
       expect(screen.getByTestId("model-selector")).toBeDefined();
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
       expect(screen.getByTestId("randomness-slider")).toBeDefined();
@@ -73,6 +77,39 @@ describe("SettingsScreen", () => {
     it("renders Save button", () => {
       render(<SettingsScreen {...defaultProps} />);
       expect(screen.getByRole("button", { name: "Save" })).toBeDefined();
+    });
+  });
+
+  describe("thinking settings visibility", () => {
+    it("shows thinking settings for Gemini", () => {
+      render(<SettingsScreen {...defaultProps} provider="gemini" />);
+      expect(screen.getByTestId("thinking-settings")).toBeDefined();
+    });
+
+    it("hides thinking settings for OpenAI (no reasoning models)", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="openai"
+          model="gpt-5-2025-08-07"
+        />,
+      );
+      expect(screen.queryByTestId("thinking-settings")).toBeNull();
+    });
+
+    it("hides thinking settings for Groq", () => {
+      render(<SettingsScreen {...defaultProps} provider="groq" />);
+      expect(screen.queryByTestId("thinking-settings")).toBeNull();
+    });
+
+    it("hides thinking settings for Mistral", () => {
+      render(<SettingsScreen {...defaultProps} provider="mistral" />);
+      expect(screen.queryByTestId("thinking-settings")).toBeNull();
+    });
+
+    it("hides thinking settings for Custom provider", () => {
+      render(<SettingsScreen {...defaultProps} provider="custom" />);
+      expect(screen.queryByTestId("thinking-settings")).toBeNull();
     });
   });
 
@@ -245,11 +282,20 @@ describe("SettingsScreen", () => {
         />,
       );
 
-      expect(screen.getByTestId("api-key-input").textContent).toContain("***");
+      // API key input now uses password input (no longer GeminiApiKeyInput component)
+      const apiKeyInput = screen.getByPlaceholderText(
+        /Enter your Gemini API key/i,
+      ) as HTMLInputElement;
+      expect(apiKeyInput.value).toBe("my-key");
+      expect(apiKeyInput.type).toBe("password");
+
       expect(screen.getByTestId("model-selector").textContent).toBe(
         "gemini-2.5-flash",
       );
-      expect(screen.getByTestId("thinking-settings").textContent).toBe("High");
+      // ThinkingSettings now receives provider-model-thinking
+      expect(screen.getByTestId("thinking-settings").textContent).toBe(
+        "gemini-gemini-2.5-flash-High",
+      );
       expect(screen.getByTestId("randomness-slider").textContent).toBe("1.5");
     });
   });

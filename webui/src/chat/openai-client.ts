@@ -1,0 +1,279 @@
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import OpenAI from "openai";
+import type { OpenAIMessage, OpenAIToolCall } from "../types/messages.js";
+
+// Configuration for OpenAIClient
+export interface OpenAIClientConfig {
+  mcpUrl?: string;
+  model?: string;
+  temperature?: number;
+  systemInstruction?: string;
+  reasoningEffort?: "low" | "medium" | "high"; // For o1/o3 models
+  chatHistory?: OpenAIMessage[];
+  baseUrl?: string; // For OpenAI-compatible providers
+}
+
+/**
+ * Client for interacting with OpenAI-compatible APIs with MCP (Model Context Protocol) tool support.
+ *
+ * Returns chat history in OpenAI's raw API format:
+ * - `{ role: "system", content: string }` - system prompt (internal)
+ * - `{ role: "user", content: string }` - user messages
+ * - `{ role: "assistant", content: string, tool_calls?: [...] }` - assistant responses
+ * - `{ role: "tool", tool_call_id: string, content: string }` - tool results
+ *
+ * Example raw history:
+ * ```js
+ * [
+ *   { role: "system", content: "System prompt" },
+ *   { role: "user", content: "Hello" },
+ *   { role: "assistant", content: "Hi there!" },
+ *   { role: "assistant", content: "", tool_calls: [{ id: "call_123", function: { name: "search", arguments: '{"query":"foo"}' } }] },
+ *   { role: "tool", tool_call_id: "call_123", content: '{"text":"result"}' },
+ *   { role: "assistant", content: "Based on the search..." }
+ * ]
+ * ```
+ *
+ * For UI-friendly format, use formatOpenAIMessages() from openai-formatter.js
+ */
+export class OpenAIClient {
+  ai: OpenAI;
+  mcpUrl: string;
+  config: OpenAIClientConfig;
+  mcpClient: Client | null;
+  chatHistory: OpenAIMessage[];
+
+  /**
+   * @param apiKey - OpenAI API key (or compatible provider key)
+   * @param config - Configuration options
+   */
+  constructor(apiKey: string, config: OpenAIClientConfig = {}) {
+    this.ai = new OpenAI({
+      apiKey,
+      baseURL: config.baseUrl ?? "https://api.openai.com/v1",
+      dangerouslyAllowBrowser: true,
+    });
+    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp";
+    this.config = config;
+    this.mcpClient = null;
+    this.chatHistory = config.chatHistory ?? [];
+
+    // Add system message if provided and not in history
+    if (
+      config.systemInstruction &&
+      this.chatHistory.length === 0 &&
+      !this.chatHistory.find((msg) => msg.role === "system")
+    ) {
+      this.chatHistory.push({
+        role: "system",
+        content: config.systemInstruction,
+      });
+    }
+  }
+
+  /**
+   * Tests connection to the MCP server without creating a client instance.
+   * @param mcpUrl - MCP server URL to test
+   * @throws If connection fails
+   */
+  static async testConnection(
+    mcpUrl = "http://localhost:3350/mcp",
+  ): Promise<void> {
+    const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
+    const client = new Client({
+      name: "producer-pal-chat-ui-test",
+      version: "1.0.0",
+    });
+    await client.connect(transport);
+    await client.close();
+  }
+
+  /**
+   * Initializes the MCP connection.
+   * Must be called before sending messages.
+   * @throws If MCP connection fails
+   */
+  async initialize(): Promise<void> {
+    const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
+    this.mcpClient = new Client({
+      name: "producer-pal-chat-ui",
+      version: "1.0.0",
+    });
+    await this.mcpClient.connect(transport);
+  }
+
+  /**
+   * Sends a message to OpenAI and streams back the chat history as it updates.
+   *
+   * This async generator yields the full chat history after each update, allowing
+   * consumers to track the conversation state in real-time. The history includes
+   * the user's message, model responses, tool calls, and tool results.
+   *
+   * Unlike Gemini, OpenAI requires manual tool calling loop:
+   * 1. Stream assistant response
+   * 2. If tool_calls present, execute each via MCP
+   * 3. Add tool result messages
+   * 4. Continue streaming with updated history
+   * 5. Repeat until no tool_calls
+   *
+   * @param message - User message to send
+   * @yields Complete chat history in OpenAI's raw format after each update
+   * @throws If MCP client is not initialized or if message sending fails
+   *
+   * @example
+   * const stream = client.sendMessage("Hello");
+   * for await (const history of stream) {
+   *   console.log("Current history:", history);
+   * }
+   */
+  async *sendMessage(
+    message: string,
+  ): AsyncGenerator<OpenAIMessage[], void, unknown> {
+    if (!this.mcpClient) {
+      throw new Error("MCP client not initialized. Call initialize() first.");
+    }
+
+    // Add user message
+    const userMessage: OpenAIMessage = { role: "user", content: message };
+    this.chatHistory.push(userMessage);
+    yield this.chatHistory;
+
+    // Get MCP tools
+    const toolsResult = await this.mcpClient.listTools();
+    const tools: OpenAI.Chat.ChatCompletionTool[] = toolsResult.tools.map(
+      (tool) => ({
+        type: "function",
+        function: {
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.inputSchema as Record<string, unknown>,
+        },
+      }),
+    );
+
+    // Manual tool calling loop
+    let continueLoop = true;
+    const maxIterations = 10; // Prevent infinite loops
+    let iteration = 0;
+
+    while (continueLoop && iteration < maxIterations) {
+      iteration++;
+
+      const stream = await this.ai.chat.completions.create({
+        model: this.config.model ?? "gpt-4o",
+        messages: this.chatHistory,
+        tools: tools.length > 0 ? tools : undefined,
+        temperature: this.config.temperature,
+        reasoning_effort: this.config.reasoningEffort, // For o1/o3 models
+        stream: true,
+      });
+
+      // Accumulate streaming response
+      const currentMessage: OpenAIMessage = { role: "assistant", content: "" };
+      const toolCallsMap = new Map<number, OpenAIToolCall>();
+
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta;
+        if (!delta) continue;
+
+        // Accumulate content
+        if (delta.content) {
+          currentMessage.content =
+            (currentMessage.content ?? "") + delta.content;
+        }
+
+        // Accumulate tool calls
+        if (delta.tool_calls) {
+          for (const tcDelta of delta.tool_calls) {
+            if (!toolCallsMap.has(tcDelta.index)) {
+              toolCallsMap.set(tcDelta.index, {
+                id: tcDelta.id ?? "",
+                type: "function",
+                function: { name: "", arguments: "" },
+              });
+            }
+            const tc = toolCallsMap.get(tcDelta.index);
+            if (!tc) continue;
+            if (tc.type !== "function") continue;
+            if (tcDelta.id) tc.id = tcDelta.id;
+            if (tcDelta.function?.name)
+              tc.function.name = tcDelta.function.name;
+            if (tcDelta.function?.arguments)
+              tc.function.arguments += tcDelta.function.arguments;
+          }
+        }
+
+        // Update message in history
+        const lastMsg = this.chatHistory.at(-1);
+        if (lastMsg?.role === "assistant") {
+          this.chatHistory[this.chatHistory.length - 1] = {
+            ...currentMessage,
+            tool_calls:
+              toolCallsMap.size > 0
+                ? Array.from(toolCallsMap.values())
+                : undefined,
+          };
+        } else {
+          this.chatHistory.push({
+            ...currentMessage,
+            tool_calls:
+              toolCallsMap.size > 0
+                ? Array.from(toolCallsMap.values())
+                : undefined,
+          });
+        }
+
+        yield this.chatHistory;
+      }
+
+      // Check for tool calls
+      const finalMessage = this.chatHistory.at(-1);
+      if (finalMessage?.role === "assistant" && finalMessage.tool_calls) {
+        // Execute tools
+        for (const toolCall of finalMessage.tool_calls) {
+          // Only handle function tool calls
+          if (toolCall.type !== "function") continue;
+
+          try {
+            const args = JSON.parse(toolCall.function.arguments);
+            const result = await this.mcpClient.callTool({
+              name: toolCall.function.name,
+              arguments: args,
+            });
+
+            const toolMessage: OpenAIMessage = {
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify(result.content),
+            };
+            this.chatHistory.push(toolMessage);
+            yield this.chatHistory;
+          } catch (error) {
+            // Add error as tool result
+            const toolMessage: OpenAIMessage = {
+              role: "tool",
+              tool_call_id: toolCall.id,
+              content: JSON.stringify({
+                error: error instanceof Error ? error.message : String(error),
+                isError: true,
+              }),
+            };
+            this.chatHistory.push(toolMessage);
+            yield this.chatHistory;
+          }
+        }
+        // Continue loop to get model's response to tool results
+      } else {
+        continueLoop = false;
+      }
+    }
+
+    if (iteration >= maxIterations) {
+      console.warn(
+        "OpenAI tool calling loop reached max iterations:",
+        maxIterations,
+      );
+    }
+  }
+}
