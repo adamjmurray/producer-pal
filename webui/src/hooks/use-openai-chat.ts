@@ -7,9 +7,9 @@ import { formatOpenAIMessages } from "../chat/openai-formatter.js";
 import { SYSTEM_INSTRUCTION } from "../config.js";
 import type { OpenAIMessage, UIMessage } from "../types/messages.js";
 
-function createErrorMessage(
-  error: unknown,
+function historyWithError(
   chatHistory: OpenAIMessage[],
+  error: unknown,
 ): UIMessage[] {
   console.error(error);
   let errorMessage = `${error}`;
@@ -17,13 +17,23 @@ function createErrorMessage(
     errorMessage = `Error: ${errorMessage}`;
   }
 
-  // Add error as assistant message for OpenAI format
-  const errorEntry: OpenAIMessage = {
-    role: "assistant",
-    content: errorMessage,
+  // Format existing chat history as UI messages, then append error message
+  const formattedHistory = formatOpenAIMessages(chatHistory);
+
+  // Create error message with proper error part (not text part)
+  const errorMessage_ui: UIMessage = {
+    role: "model",
+    parts: [
+      {
+        type: "error",
+        content: errorMessage,
+        isError: true,
+      },
+    ],
+    rawHistoryIndex: chatHistory.length,
   };
 
-  return formatOpenAIMessages([...chatHistory, errorEntry]);
+  return [...formattedHistory, errorMessage_ui];
 }
 
 interface UseOpenAIChatProps {
@@ -183,7 +193,7 @@ export function useOpenAIChat({
         }
       } catch (error) {
         setMessages(
-          createErrorMessage(error, openaiRef.current?.chatHistory ?? []),
+          historyWithError(openaiRef.current?.chatHistory ?? [], error),
         );
       } finally {
         setIsAssistantResponding(false);
@@ -227,7 +237,7 @@ export function useOpenAIChat({
           setMessages(formatOpenAIMessages(chatHistory));
         }
       } catch (error) {
-        setMessages(createErrorMessage(error, openaiRef.current.chatHistory));
+        setMessages(historyWithError(openaiRef.current.chatHistory, error));
       } finally {
         setIsAssistantResponding(false);
       }
