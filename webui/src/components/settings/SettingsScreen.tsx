@@ -11,6 +11,8 @@ interface SettingsScreenProps {
   setApiKey: (key: string) => void;
   baseUrl?: string;
   setBaseUrl?: (url: string) => void;
+  port?: number;
+  setPort?: (port: number) => void;
   model: string;
   setModel: (model: string) => void;
   thinking: string;
@@ -34,6 +36,8 @@ export function SettingsScreen({
   setApiKey,
   baseUrl,
   setBaseUrl,
+  port,
+  setPort,
   model,
   setModel,
   thinking,
@@ -58,12 +62,11 @@ export function SettingsScreen({
           ? "Mistral"
           : provider === "openrouter"
             ? "OpenRouter"
-            : "Custom";
-
-  // Determine if we should show thinking settings
-  const isO1OrO3Model = (m: string) => m === "o1" || m === "o3-mini";
-  const shouldShowThinking =
-    provider === "gemini" || (provider === "openai" && isO1OrO3Model(model));
+            : provider === "lmstudio"
+              ? "LM Studio"
+              : provider === "ollama"
+                ? "Ollama"
+                : "Custom";
 
   return (
     <div className="flex items-center justify-center h-screen p-4">
@@ -71,17 +74,47 @@ export function SettingsScreen({
         <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
         <ProviderSelector provider={provider} setProvider={setProvider} />
 
-        {/* API Key Input */}
-        <div>
-          <label className="block text-sm mb-2">{providerLabel} API Key</label>
-          <input
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
-            placeholder={`Enter your ${providerLabel} API key`}
-            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-          />
-        </div>
+        {/* API Key Input (not for local providers) */}
+        {provider !== "lmstudio" && provider !== "ollama" && (
+          <div>
+            <label className="block text-sm mb-2">
+              {providerLabel} API Key
+            </label>
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
+              placeholder={`Enter your ${providerLabel} API key`}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+            />
+          </div>
+        )}
+
+        {/* Port field for local providers */}
+        {(provider === "lmstudio" || provider === "ollama") && setPort && (
+          <div>
+            <label className="block text-sm mb-2">Port</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={port?.toString() ?? ""}
+              onChange={(e) => {
+                const value = (e.target as HTMLInputElement).value;
+                const numValue = parseInt(value, 10);
+                if (!isNaN(numValue)) {
+                  setPort(numValue);
+                }
+              }}
+              placeholder={provider === "lmstudio" ? "1234" : "11434"}
+              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Base URL: http://localhost:
+              {port ?? (provider === "lmstudio" ? 1234 : 11434)}/v1
+            </p>
+          </div>
+        )}
 
         {/* Base URL (custom provider only) */}
         {provider === "custom" && setBaseUrl && (
@@ -101,16 +134,14 @@ export function SettingsScreen({
         )}
 
         <ModelSelector provider={provider} model={model} setModel={setModel} />
-        {shouldShowThinking && (
-          <ThinkingSettings
-            provider={provider}
-            model={model}
-            thinking={thinking}
-            setThinking={setThinking}
-            showThoughts={showThoughts}
-            setShowThoughts={setShowThoughts}
-          />
-        )}
+        <ThinkingSettings
+          provider={provider}
+          model={model}
+          thinking={thinking}
+          setThinking={setThinking}
+          showThoughts={showThoughts}
+          setShowThoughts={setShowThoughts}
+        />
         <RandomnessSlider
           temperature={temperature}
           setTemperature={setTemperature}
@@ -123,7 +154,9 @@ export function SettingsScreen({
         <div className="flex gap-2">
           <button
             onClick={saveSettings}
-            disabled={!apiKey}
+            disabled={
+              provider !== "lmstudio" && provider !== "ollama" && !apiKey
+            }
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
           >
             Save

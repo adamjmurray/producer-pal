@@ -23,6 +23,8 @@ export function ProviderSelector({
         <option value="openai">OpenAI</option>
         <option value="mistral">Mistral</option>
         <option value="openrouter">OpenRouter</option>
+        <option value="lmstudio">LM Studio (local)</option>
+        <option value="ollama">Ollama (local)</option>
         <option value="custom">Custom (OpenAI-compatible)</option>
       </select>
     </div>

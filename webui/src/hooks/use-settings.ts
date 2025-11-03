@@ -5,6 +5,7 @@ interface ProviderSettings {
   apiKey: string;
   model: string;
   baseUrl?: string;
+  port?: number;
   thinking: string;
   temperature: number;
   showThoughts: boolean;
@@ -35,6 +36,22 @@ const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   openrouter: {
     apiKey: "",
     model: "minimax/minimax-m2:free",
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
+  lmstudio: {
+    apiKey: "",
+    model: "",
+    port: 1234,
+    thinking: "Auto",
+    temperature: 1.0,
+    showThoughts: true,
+  },
+  ollama: {
+    apiKey: "",
+    model: "",
+    port: 11434,
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
@@ -118,6 +135,12 @@ export function useSettings(): UseSettingsReturn {
   );
   const [openrouterSettings, setOpenrouterSettings] =
     useState<ProviderSettings>(DEFAULT_SETTINGS.openrouter);
+  const [lmstudioSettings, setLmstudioSettings] = useState<ProviderSettings>(
+    DEFAULT_SETTINGS.lmstudio,
+  );
+  const [ollamaSettings, setOllamaSettings] = useState<ProviderSettings>(
+    DEFAULT_SETTINGS.ollama,
+  );
   const [customSettings, setCustomSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.custom,
   );
@@ -132,7 +155,11 @@ export function useSettings(): UseSettingsReturn {
           ? mistralSettings
           : provider === "openrouter"
             ? openrouterSettings
-            : customSettings;
+            : provider === "lmstudio"
+              ? lmstudioSettings
+              : provider === "ollama"
+                ? ollamaSettings
+                : customSettings;
 
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -151,6 +178,8 @@ export function useSettings(): UseSettingsReturn {
     setOpenaiSettings(loadProviderSettings("openai"));
     setMistralSettings(loadProviderSettings("mistral"));
     setOpenrouterSettings(loadProviderSettings("openrouter"));
+    setLmstudioSettings(loadProviderSettings("lmstudio"));
+    setOllamaSettings(loadProviderSettings("ollama"));
     setCustomSettings(loadProviderSettings("custom"));
   }, []);
 
@@ -160,6 +189,8 @@ export function useSettings(): UseSettingsReturn {
     saveProviderSettings("openai", openaiSettings);
     saveProviderSettings("mistral", mistralSettings);
     saveProviderSettings("openrouter", openrouterSettings);
+    saveProviderSettings("lmstudio", lmstudioSettings);
+    saveProviderSettings("ollama", ollamaSettings);
     saveProviderSettings("custom", customSettings);
   }, [
     provider,
@@ -167,6 +198,8 @@ export function useSettings(): UseSettingsReturn {
     openaiSettings,
     mistralSettings,
     openrouterSettings,
+    lmstudioSettings,
+    ollamaSettings,
     customSettings,
   ]);
 
@@ -184,6 +217,8 @@ export function useSettings(): UseSettingsReturn {
     setOpenaiSettings(loadProviderSettings("openai"));
     setMistralSettings(loadProviderSettings("mistral"));
     setOpenrouterSettings(loadProviderSettings("openrouter"));
+    setLmstudioSettings(loadProviderSettings("lmstudio"));
+    setOllamaSettings(loadProviderSettings("ollama"));
     setCustomSettings(loadProviderSettings("custom"));
   }, []);
 
@@ -198,6 +233,10 @@ export function useSettings(): UseSettingsReturn {
         setMistralSettings((prev) => ({ ...prev, apiKey: key }));
       } else if (provider === "openrouter") {
         setOpenrouterSettings((prev) => ({ ...prev, apiKey: key }));
+      } else if (provider === "lmstudio") {
+        setLmstudioSettings((prev) => ({ ...prev, apiKey: key }));
+      } else if (provider === "ollama") {
+        setOllamaSettings((prev) => ({ ...prev, apiKey: key }));
       } else {
         setCustomSettings((prev) => ({ ...prev, apiKey: key }));
       }
@@ -215,6 +254,10 @@ export function useSettings(): UseSettingsReturn {
         setMistralSettings((prev) => ({ ...prev, model: m }));
       } else if (provider === "openrouter") {
         setOpenrouterSettings((prev) => ({ ...prev, model: m }));
+      } else if (provider === "lmstudio") {
+        setLmstudioSettings((prev) => ({ ...prev, model: m }));
+      } else if (provider === "ollama") {
+        setOllamaSettings((prev) => ({ ...prev, model: m }));
       } else {
         setCustomSettings((prev) => ({ ...prev, model: m }));
       }
@@ -231,6 +274,17 @@ export function useSettings(): UseSettingsReturn {
     [provider],
   );
 
+  const setPort = useCallback(
+    (port: number) => {
+      if (provider === "lmstudio") {
+        setLmstudioSettings((prev) => ({ ...prev, port }));
+      } else if (provider === "ollama") {
+        setOllamaSettings((prev) => ({ ...prev, port }));
+      }
+    },
+    [provider],
+  );
+
   const setThinking = useCallback(
     (t: string) => {
       if (provider === "gemini") {
@@ -241,6 +295,10 @@ export function useSettings(): UseSettingsReturn {
         setMistralSettings((prev) => ({ ...prev, thinking: t }));
       } else if (provider === "openrouter") {
         setOpenrouterSettings((prev) => ({ ...prev, thinking: t }));
+      } else if (provider === "lmstudio") {
+        setLmstudioSettings((prev) => ({ ...prev, thinking: t }));
+      } else if (provider === "ollama") {
+        setOllamaSettings((prev) => ({ ...prev, thinking: t }));
       } else {
         setCustomSettings((prev) => ({ ...prev, thinking: t }));
       }
@@ -258,6 +316,10 @@ export function useSettings(): UseSettingsReturn {
         setMistralSettings((prev) => ({ ...prev, temperature: temp }));
       } else if (provider === "openrouter") {
         setOpenrouterSettings((prev) => ({ ...prev, temperature: temp }));
+      } else if (provider === "lmstudio") {
+        setLmstudioSettings((prev) => ({ ...prev, temperature: temp }));
+      } else if (provider === "ollama") {
+        setOllamaSettings((prev) => ({ ...prev, temperature: temp }));
       } else {
         setCustomSettings((prev) => ({ ...prev, temperature: temp }));
       }
@@ -275,6 +337,10 @@ export function useSettings(): UseSettingsReturn {
         setMistralSettings((prev) => ({ ...prev, showThoughts: show }));
       } else if (provider === "openrouter") {
         setOpenrouterSettings((prev) => ({ ...prev, showThoughts: show }));
+      } else if (provider === "lmstudio") {
+        setLmstudioSettings((prev) => ({ ...prev, showThoughts: show }));
+      } else if (provider === "ollama") {
+        setOllamaSettings((prev) => ({ ...prev, showThoughts: show }));
       } else {
         setCustomSettings((prev) => ({ ...prev, showThoughts: show }));
       }
@@ -283,20 +349,25 @@ export function useSettings(): UseSettingsReturn {
   );
 
   // Check if current provider has an API key saved
-  const hasApiKey = localStorage.getItem(`producer_pal_provider_${provider}`)
-    ? (() => {
-        try {
-          const data = JSON.parse(
-            localStorage.getItem(`producer_pal_provider_${provider}`) ?? "{}",
-          );
-          return !!data.apiKey;
-        } catch {
-          return false;
-        }
-      })()
-    : provider === "gemini"
-      ? !!localStorage.getItem("gemini_api_key")
-      : false;
+  // Local providers (lmstudio, ollama) don't require API keys
+  const hasApiKey =
+    provider === "lmstudio" || provider === "ollama"
+      ? !!localStorage.getItem(`producer_pal_provider_${provider}`)
+      : localStorage.getItem(`producer_pal_provider_${provider}`)
+        ? (() => {
+            try {
+              const data = JSON.parse(
+                localStorage.getItem(`producer_pal_provider_${provider}`) ??
+                  "{}",
+              );
+              return !!data.apiKey;
+            } catch {
+              return false;
+            }
+          })()
+        : provider === "gemini"
+          ? !!localStorage.getItem("gemini_api_key")
+          : false;
 
   return {
     provider,
@@ -305,6 +376,12 @@ export function useSettings(): UseSettingsReturn {
     setApiKey,
     baseUrl: provider === "custom" ? currentSettings.baseUrl : undefined,
     setBaseUrl: provider === "custom" ? setBaseUrl : undefined,
+    port:
+      provider === "lmstudio" || provider === "ollama"
+        ? currentSettings.port
+        : undefined,
+    setPort:
+      provider === "lmstudio" || provider === "ollama" ? setPort : undefined,
     model: currentSettings.model,
     setModel,
     thinking: currentSettings.thinking,

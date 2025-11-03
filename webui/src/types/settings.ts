@@ -6,6 +6,8 @@
  * - OpenAI
  * - Mistral (OpenAI-compatible)
  * - OpenRouter (OpenAI-compatible)
+ * - LM Studio (local OpenAI-compatible)
+ * - Ollama (local OpenAI-compatible)
  * - Custom (any OpenAI-compatible provider)
  */
 
@@ -15,6 +17,8 @@ export type Provider =
   | "openai"
   | "mistral"
   | "openrouter"
+  | "lmstudio"
+  | "ollama"
   | "custom";
 
 // Gemini-specific settings
@@ -36,7 +40,13 @@ export interface ProviderSettings {
   openaiApiKey: string;
   mistralApiKey: string;
   openrouterApiKey: string;
+  lmstudioApiKey: string;
+  ollamaApiKey: string;
   customApiKey: string;
+
+  // Local provider ports
+  lmstudioPort: number;
+  ollamaPort: number;
 
   // Custom provider base URL
   customBaseUrl: string;
@@ -56,6 +66,8 @@ export interface UseSettingsReturn {
   setApiKey: (key: string) => void;
   baseUrl?: string; // Only for custom provider
   setBaseUrl?: (url: string) => void;
+  port?: number; // Only for lmstudio and ollama providers
+  setPort?: (port: number) => void;
   model: string;
   setModel: (model: string) => void;
   thinking: string;

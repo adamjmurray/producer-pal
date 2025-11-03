@@ -25,7 +25,11 @@ export function App() {
       ? settings.baseUrl
       : settings.provider === "gemini"
         ? undefined
-        : PROVIDER_BASE_URLS[settings.provider];
+        : settings.provider === "lmstudio"
+          ? `http://localhost:${settings.port ?? 1234}/v1`
+          : settings.provider === "ollama"
+            ? `http://localhost:${settings.port ?? 11434}/v1`
+            : PROVIDER_BASE_URLS[settings.provider];
 
   // Use Gemini chat for Gemini provider
   const geminiChat = useGeminiChat({
@@ -41,7 +45,10 @@ export function App() {
 
   // Use OpenAI chat for OpenAI-compatible providers
   const openaiChat = useOpenAIChat({
-    apiKey: settings.apiKey,
+    apiKey:
+      settings.provider === "lmstudio" || settings.provider === "ollama"
+        ? settings.apiKey || "not-needed"
+        : settings.apiKey,
     model: settings.model,
     thinking: settings.thinking,
     temperature: settings.temperature,
@@ -75,6 +82,8 @@ export function App() {
         setApiKey={settings.setApiKey}
         baseUrl={settings.baseUrl}
         setBaseUrl={settings.setBaseUrl}
+        port={settings.port}
+        setPort={settings.setPort}
         model={settings.model}
         setModel={settings.setModel}
         thinking={settings.thinking}

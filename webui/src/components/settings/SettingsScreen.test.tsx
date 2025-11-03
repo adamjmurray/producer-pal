@@ -86,7 +86,7 @@ describe("SettingsScreen", () => {
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
 
-    it("hides thinking settings for OpenAI (no reasoning models)", () => {
+    it("shows thinking settings for OpenAI", () => {
       render(
         <SettingsScreen
           {...defaultProps}
@@ -94,17 +94,17 @@ describe("SettingsScreen", () => {
           model="gpt-5-2025-08-07"
         />,
       );
-      expect(screen.queryByTestId("thinking-settings")).toBeNull();
+      expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
 
-    it("hides thinking settings for Mistral", () => {
+    it("shows thinking settings for Mistral", () => {
       render(<SettingsScreen {...defaultProps} provider="mistral" />);
-      expect(screen.queryByTestId("thinking-settings")).toBeNull();
+      expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
 
-    it("hides thinking settings for Custom provider", () => {
+    it("shows thinking settings for Custom provider", () => {
       render(<SettingsScreen {...defaultProps} provider="custom" />);
-      expect(screen.queryByTestId("thinking-settings")).toBeNull();
+      expect(screen.getByTestId("thinking-settings")).toBeDefined();
     });
   });
 

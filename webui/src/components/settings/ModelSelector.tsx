@@ -141,8 +141,16 @@ export function ModelSelector({
     previousShowCustomInputRef.current = showCustomInput;
   }, [showCustomInput]);
 
-  // For custom provider, use free-form text input
-  if (provider === "custom") {
+  // For custom and local providers, use free-form text input
+  if (
+    provider === "custom" ||
+    provider === "lmstudio" ||
+    provider === "ollama"
+  ) {
+    const placeholder =
+      provider === "lmstudio" || provider === "ollama"
+        ? "e.g., llama-3.1-70b, qwen-2.5-72b"
+        : "e.g., gpt-4, llama-3.1-70b";
     return (
       <div>
         <label className="block text-sm mb-2">Model</label>
@@ -150,7 +158,7 @@ export function ModelSelector({
           type="text"
           value={model}
           onChange={(e) => setModel((e.target as HTMLInputElement).value)}
-          placeholder="e.g., gpt-4, llama-3.1-70b"
+          placeholder={placeholder}
           className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
         />
       </div>
