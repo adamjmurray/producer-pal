@@ -20,7 +20,7 @@
 - Slice arrangement clips
 - Modify warp markers
 
-### 1.3 - Modulation & MIDI Enhancement
+### 1.3 - Modulation
 
 - Apply curves to MIDI velocity and audio parameters
 - Randomize velocity and timing
@@ -36,16 +36,13 @@
 - Sandboxed JavaScript for algorithmic composition
 - LLM-generated MIDI transformation algorithms
 
-### 1.6 - Advanced Harmony
+### 1.6 - Harmony
 
-- Scale degrees and chord notation
-- Alternate tunings and temperaments
+- Chord notation
+- Pitches as scale/chord degrees, instead of absolute pitches
 - Microtonal support
 
 ### 1.7 - Voice Interaction
-
-- Auto-transcribe-and-send (VAD)
-- Realtime bi-directional audio chat
 
 ## Future Ideas
 
