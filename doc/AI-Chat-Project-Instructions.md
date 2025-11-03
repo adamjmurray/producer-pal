@@ -15,7 +15,7 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
 
 ## Key Constraints
 
-- **Language**: JavaScript only (embedded environment constraint)
+- **Language**: JavaScript in `src/`, TypeScript in `webui/`
 - **Platform**: Live 12.2, Max 9, Node.js 20
 - **Repository**: https://github.com/adamjmurray/producer-pal
 - **Documentation**: See AGENTS.md in project resources for coding standards
@@ -26,8 +26,6 @@ CLI or OpenAI Codex CLI). Outputs here are typically:
   tools)
 - **Manual Testing**: After changing tool descriptions, toggle extension off/on
   in Claude Desktop (and in the future, other .mcpb compatible desktop apps)
-- **Files**: All source files must have `// path/to/file.js` as first line
-  comment
 - **Missing Files**: Don't infer contents - ask if files are missing
 - **Duplicate Files**: Report any duplicates immediately
 
