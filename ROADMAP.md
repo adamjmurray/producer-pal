@@ -33,13 +33,12 @@
 
 ### 1.5 - Code Execution
 
-- Sandboxed JavaScript for algorithmic composition
-- LLM-generated MIDI transformation algorithms
+- Sandboxed JavaScript for algorithmic composition and transformation
 
 ### 1.6 - Harmony
 
 - Chord notation
-- Pitches as scale/chord degrees, instead of absolute pitches
+- Pitches as scale/chord degrees (instead of absolute pitches)
 - Microtonal support
 
 ### 1.7 - Voice Interaction
