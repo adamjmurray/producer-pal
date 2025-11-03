@@ -44,6 +44,8 @@
 
 ### 1.7 - Voice Interaction
 
+- Speak aloud the stuff you want to happen, and it will be so
+
 ## Future Ideas
 
 - **Adaptive Learning**: AI learns preferences, specialized personas with
