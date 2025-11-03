@@ -1,88 +1,55 @@
 # Producer Pal Roadmap
 
-Rough plans that are subject to change.
+## Released
 
-## 1.x / 2.0
+- **0.9** - Public Beta with Claude Desktop
+- **1.0** - Full feature set, multi-LLM support, documentation
 
-In no particular order:
+## Planned
 
-### MIDI Manipulation
+### 1.1 - Chat UI
 
-- Randomize velocity and timing when creating and updating clips
-- Shuffle and groove support (non-random timing manipulation)
-- MIDI pattern generators and transformers (pre-defined algorithms the LLM can
-  use)
-- Run sand-boxed LLM-generated JavaScript code to generate and transform MIDI
-  (LLM-generated algorithms)
+- Built-in UI supporting Google Gemini, OpenAI, Mistral, OpenRouter, LM Studio,
+  Ollama
 
-### Audio Clip Support
+### 1.2 - Audio Clips
 
-Functionality will be very limited due to general lack of audio clip support in
-the Live API, but the following should be possible:
+- Read/update audio properties: gain, pitch, warp mode
+- Slice arrangement clips (duplicate, adjust lengths, reassemble)
+- Modify warp markers
 
-- Read and update audio clip properties:
-  - name
-  - color
-  - gain
-  - pitch shift
-  - warp mode
-  - warp enabled
-  - start/end/loop position
-  - anything else the Live API supports
-- Add and move (and remove?) warp markers in audio clips
-- Split an Arrangement audio clip (i.e. duplicate, adjust lengths, reassemble)
+### 1.3 - Modulation & MIDI Enhancement
 
-### Improved Built-in Chat
+- Apply curves to MIDI velocity and audio parameters
+- Randomize velocity and timing
+- Shuffle and groove support
 
-- Edit and resend any previous message
-- Change model settings mid-chat
+### 1.4 - Device Control
 
-### Voice Interaction
+- Read/write synth and effect parameters
+- Randomize instrument rack macros
+- Store and recall rack variations
+- Add devices
 
-Allow for controlling Ableton Live by simply talking:
+### 1.5 - Code Execution
 
-- Realtime bi-directional audio-chat
-- Auto-transcribe-and-send (VAD) with text-to-speech responses
+- Sandboxed JavaScript for algorithmic composition
+- LLM-generated MIDI transformation algorithms
 
-### Behavior Customization
+### 1.6 - Advanced Harmony
 
-- Customizable "Producer Pal Skills" to adjust Producer Pal's behavior globally
-  across all Live Sets
-- A large markdown-based UI editor in a popup window for project notes and the
-  skills
+- Scale degrees and chord notation
+- Alternate tunings and temperaments
+- Microtonal support (19-EDO, etc.)
 
-### General Features
+### 1.7 - Voice Interaction
 
-- Arrangement clip length modification support
-- Stop/restart MCP server when Producer Pal Max for Live device is
-  disabled/re-enabled (easy kill switch)
-- Version update notifications in the UI
+- Auto-transcribe-and-send (VAD)
+- Realtime bi-directional audio chat
 
 ## Future Ideas
 
-### Device Control
-
-- Read and write device parameters
-- Randomize instrument rack macros
-- Store and recall rack variations
-- Insert devices into tracks whenever the Live API supports it
-
-### Microtonal support
-
-- Support working with scales with other than 12 notes per octave, such as
-  19-EDO
-
-### Adaptive Learning System
-
-- AI (optionally) automatically learns from your conversations to remember your
-  preferences and project goals
-- Completely open: rewrite or delete memories as you see fit
-- Create specialized personas (Jazz Producer, Techno Minimalist, etc.) with
-  independent memory systems (skills + memory?)
-- Import/export personas for sharing or backup
-
-### Additional Model Support
-
-- Support for additional providers in the built-in chat UI, such as HuggingFace
-  and FireworksAI. This requires a backend LLM proxy because CORS rules block
-  direct API calls to these platforms from the web UI
+- **Adaptive Learning**: AI learns preferences, specialized personas with
+  independent memory, import/export personas
+- **Extended Model Support**: HuggingFace, FireworksAI (requires CORS-bypassing
+  backend proxy)
