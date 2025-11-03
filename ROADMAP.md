@@ -3,19 +3,21 @@
 ## Released
 
 - **0.9** - Public Beta with Claude Desktop
-- **1.0** - Full feature set, multi-LLM support, documentation
+- **1.0** - Full feature set, multi-LLM support
 
-## Planned
+## In Progress
 
 ### 1.1 - Chat UI
 
-- Built-in UI supporting Google Gemini, OpenAI, Mistral, OpenRouter, LM Studio,
-  Ollama
+- Built-in UI with direct API integrations: Google Gemini, OpenAI, Mistral,
+  OpenRouter, LM Studio, Ollama
+
+## Planned
 
 ### 1.2 - Audio Clips
 
 - Read/update audio properties: gain, pitch, warp mode
-- Slice arrangement clips (duplicate, adjust lengths, reassemble)
+- Slice arrangement clips
 - Modify warp markers
 
 ### 1.3 - Modulation & MIDI Enhancement
@@ -27,8 +29,6 @@
 ### 1.4 - Device Control
 
 - Read/write synth and effect parameters
-- Randomize instrument rack macros
-- Store and recall rack variations
 - Add devices
 
 ### 1.5 - Code Execution
@@ -40,7 +40,7 @@
 
 - Scale degrees and chord notation
 - Alternate tunings and temperaments
-- Microtonal support (19-EDO, etc.)
+- Microtonal support
 
 ### 1.7 - Voice Interaction
 
