@@ -80,7 +80,7 @@
     "@vitest/coverage-v8": "^4.0.6",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
-    "eslint": "^9.39.0",
+    "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "happy-dom": "^20.0.10",
     "peggy": "^5.0.6",
