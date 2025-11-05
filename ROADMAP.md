@@ -22,7 +22,7 @@
 
 ### 1.3 - Modulation
 
-- Apply curves to MIDI velocity and audio parameters
+- Apply ramps and curves to MIDI velocity and other properties
 - Randomize velocity and timing
 - Shuffle and groove support
 
@@ -31,19 +31,19 @@
 - Read/write synth and effect parameters
 - Add devices
 
-### 1.5 - Code Execution
+### 1.5 - Voice Interaction
+
+- Speak to Producer Pal instead of typing
+
+### 1.6 - Code Execution
 
 - Sandboxed JavaScript for algorithmic composition and transformation
 
-### 1.6 - Harmony
+### 1.7 - Harmony
 
 - Chord notation
 - Pitches as scale/chord degrees (instead of absolute pitches)
 - Microtonal support
-
-### 1.7 - Voice Interaction
-
-- Speak aloud the stuff you want to happen, and it will be so
 
 ## Future Ideas
 
