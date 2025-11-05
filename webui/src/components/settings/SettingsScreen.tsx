@@ -60,6 +60,15 @@ export function SettingsScreen({
     openrouter: "https://openrouter.ai/settings/keys",
   };
 
+  const modelDocsUrls: Record<string, string | undefined> = {
+    gemini: "https://ai.google.dev/gemini-api/docs/models",
+    openai: "https://platform.openai.com/docs/models",
+    mistral: "https://docs.mistral.ai/getting-started/models",
+    openrouter: "https://openrouter.ai/models",
+    lmstudio: "https://lmstudio.ai/models",
+    ollama: "https://ollama.com/search",
+  };
+
   const providerLabel =
     provider === "gemini"
       ? "Gemini"
@@ -153,6 +162,18 @@ export function SettingsScreen({
         )}
 
         <ModelSelector provider={provider} model={model} setModel={setModel} />
+        {modelDocsUrls[provider] && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+            <a
+              href={modelDocsUrls[provider]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              {providerLabel} models
+            </a>
+          </p>
+        )}
         <ThinkingSettings
           provider={provider}
           model={model}

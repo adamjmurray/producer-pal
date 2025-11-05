@@ -385,4 +385,87 @@ describe("SettingsScreen", () => {
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
     });
   });
+
+  describe("Model documentation links", () => {
+    it("shows Gemini models link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="gemini" />);
+      const link = screen.getByText("Gemini models");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://ai.google.dev/gemini-api/docs/models",
+      );
+      expect((link as HTMLAnchorElement).target).toBe("_blank");
+    });
+
+    it("shows OpenAI models link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="openai" />);
+      const link = screen.getByText("OpenAI models");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://platform.openai.com/docs/models",
+      );
+    });
+
+    it("shows Mistral models link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="mistral" />);
+      const link = screen.getByText("Mistral models");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://docs.mistral.ai/getting-started/models",
+      );
+    });
+
+    it("shows OpenRouter models link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="openrouter" />);
+      const link = screen.getByText("OpenRouter models");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://openrouter.ai/models",
+      );
+    });
+
+    it("shows LM Studio models link with correct URL", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="lmstudio"
+          port={1234}
+          setPort={vi.fn()}
+        />,
+      );
+      const link = screen.getByText("LM Studio models");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://lmstudio.ai/models",
+      );
+    });
+
+    it("shows Ollama models link with correct URL", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="ollama"
+          port={11434}
+          setPort={vi.fn()}
+        />,
+      );
+      const link = screen.getByText("Ollama models");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://ollama.com/search",
+      );
+    });
+
+    it("does not show models link for custom provider", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="custom"
+          baseUrl="https://api.example.com/v1"
+          setBaseUrl={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText(/models$/)).toBeNull();
+    });
+  });
 });
