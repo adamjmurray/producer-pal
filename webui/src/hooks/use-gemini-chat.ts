@@ -124,10 +124,23 @@ export function useGeminiChat({
 
   const handleSend = useCallback(
     async (message: string) => {
-      if (!apiKey) return;
       if (!message.trim()) return;
 
       const userMessage = message.trim();
+
+      if (!apiKey) {
+        const userMessageEntry: GeminiMessage = {
+          role: "user",
+          parts: [{ text: userMessage }],
+        };
+        setMessages(
+          createErrorMessage(
+            "No API key configured. Please add your Gemini API key in Settings.",
+            [userMessageEntry],
+          ),
+        );
+        return;
+      }
       setIsAssistantResponding(true);
 
       try {

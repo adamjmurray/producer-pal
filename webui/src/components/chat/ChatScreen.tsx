@@ -44,6 +44,7 @@ export function ChatScreen({
         activeThinking={activeThinking}
         activeTemperature={activeTemperature}
         activeProvider={activeProvider}
+        hasMessages={messages.length > 0}
         onOpenSettings={onOpenSettings}
         onClearConversation={onClearConversation}
       />

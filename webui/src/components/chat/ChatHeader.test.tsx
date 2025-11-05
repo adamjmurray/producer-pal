@@ -12,6 +12,7 @@ describe("ChatHeader", () => {
     activeThinking: null,
     activeTemperature: null,
     activeProvider: null,
+    hasMessages: false,
     onOpenSettings: vi.fn(),
     onClearConversation: vi.fn(),
   };
@@ -274,19 +275,13 @@ describe("ChatHeader", () => {
   });
 
   describe("Restart button", () => {
-    it("does not show Restart button when activeModel is null", () => {
-      render(<ChatHeader {...defaultProps} activeModel={null} />);
+    it("does not show Restart button when hasMessages is false", () => {
+      render(<ChatHeader {...defaultProps} hasMessages={false} />);
       expect(screen.queryByRole("button", { name: "Restart" })).toBeNull();
     });
 
-    it("shows Restart button when activeModel is set", () => {
-      render(
-        <ChatHeader
-          {...defaultProps}
-          activeModel="gemini-2.5-pro"
-          activeProvider="gemini"
-        />,
-      );
+    it("shows Restart button when hasMessages is true", () => {
+      render(<ChatHeader {...defaultProps} hasMessages={true} />);
       expect(screen.getByRole("button", { name: "Restart" })).toBeDefined();
     });
 
@@ -294,13 +289,7 @@ describe("ChatHeader", () => {
       const originalConfirm = window.confirm;
       window.confirm = vi.fn().mockReturnValue(false);
 
-      render(
-        <ChatHeader
-          {...defaultProps}
-          activeModel="gemini-2.5-pro"
-          activeProvider="gemini"
-        />,
-      );
+      render(<ChatHeader {...defaultProps} hasMessages={true} />);
 
       const button = screen.getByRole("button", { name: "Restart" });
       fireEvent.click(button);
@@ -319,8 +308,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-pro"
-          activeProvider="gemini"
+          hasMessages={true}
           onClearConversation={onClearConversation}
         />,
       );
@@ -340,8 +328,7 @@ describe("ChatHeader", () => {
       render(
         <ChatHeader
           {...defaultProps}
-          activeModel="gemini-2.5-pro"
-          activeProvider="gemini"
+          hasMessages={true}
           onClearConversation={onClearConversation}
         />,
       );

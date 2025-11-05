@@ -8,6 +8,7 @@ interface ChatHeaderProps {
   activeThinking: string | null;
   activeTemperature: number | null;
   activeProvider: Provider | null;
+  hasMessages: boolean;
   onOpenSettings: () => void;
   onClearConversation: () => void;
 }
@@ -37,6 +38,7 @@ export function ChatHeader({
   activeThinking,
   activeTemperature,
   activeProvider,
+  hasMessages,
   onOpenSettings,
   onClearConversation,
 }: ChatHeaderProps) {
@@ -66,8 +68,8 @@ export function ChatHeader({
           <span className="text-red-600 dark:text-red-400">✗ Error</span>
         )}
       </div>
-      {activeModel && <div className="flex-1" />}
-      {activeModel && (
+      {hasMessages && <div className="flex-1" />}
+      {hasMessages && (
         <button
           onClick={handleRestart}
           className="text-xs px-2 py-1 bg-red-700 text-white rounded hover:bg-red-800"
@@ -75,10 +77,10 @@ export function ChatHeader({
           Restart
         </button>
       )}
-      {activeModel && <div className="flex-1" />}
+      {hasMessages && <div className="flex-1" />}
       <div
         className={
-          activeModel
+          hasMessages
             ? "flex gap-3 items-baseline"
             : "ml-auto flex gap-3 items-baseline"
         }

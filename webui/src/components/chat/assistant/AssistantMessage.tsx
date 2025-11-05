@@ -1,8 +1,8 @@
+import type { UIPart } from "../../../types/messages.js";
 import { AssistantError } from "./AssistantError.jsx";
 import { AssistantText } from "./AssistantText.jsx";
 import { AssistantThought } from "./AssistantThought.jsx";
 import { AssistantToolCall } from "./AssistantToolCall.jsx";
-import type { UIPart } from "../../../types/messages.js";
 
 interface AssistantMessageProps {
   parts: UIPart[];
@@ -14,7 +14,7 @@ export function AssistantMessage({
   isResponding,
 }: AssistantMessageProps) {
   return (
-    <div className="flex flex-col gap-3 pt-2 pb-1">
+    <div className="flex flex-col gap-3 py-2">
       {parts.map((part, i) => {
         if (part.type === "thought") {
           return (

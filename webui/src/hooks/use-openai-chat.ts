@@ -167,10 +167,23 @@ export function useOpenAIChat({
 
   const handleSend = useCallback(
     async (message: string) => {
-      if (!apiKey) return;
       if (!message.trim()) return;
 
       const userMessage = message.trim();
+
+      if (!apiKey) {
+        const userMessageEntry: OpenAIMessage = {
+          role: "user",
+          content: userMessage,
+        };
+        setMessages(
+          historyWithError(
+            [userMessageEntry],
+            "No API key configured. Please add your API key in Settings.",
+          ),
+        );
+        return;
+      }
       setIsAssistantResponding(true);
 
       try {
