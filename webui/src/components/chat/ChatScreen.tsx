@@ -15,8 +15,6 @@ interface ChatScreenProps {
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
-  theme: string;
-  setTheme: (theme: string) => void;
   onOpenSettings: () => void;
 }
 
@@ -31,8 +29,6 @@ export function ChatScreen({
   mcpStatus,
   mcpError,
   checkMcpConnection,
-  theme,
-  setTheme,
   onOpenSettings,
 }: ChatScreenProps) {
   return (
@@ -42,8 +38,6 @@ export function ChatScreen({
         activeModel={activeModel}
         activeThinking={activeThinking}
         activeTemperature={activeTemperature}
-        theme={theme}
-        setTheme={setTheme}
         onOpenSettings={onOpenSettings}
       />
 

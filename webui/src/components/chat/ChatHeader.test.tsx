@@ -11,8 +11,6 @@ describe("ChatHeader", () => {
     activeModel: null,
     activeThinking: null,
     activeTemperature: null,
-    theme: "system" as const,
-    setTheme: vi.fn(),
     onOpenSettings: vi.fn(),
   };
 
@@ -31,19 +29,6 @@ describe("ChatHeader", () => {
     it("renders Settings button", () => {
       render(<ChatHeader {...defaultProps} />);
       expect(screen.getByRole("button", { name: "Settings" })).toBeDefined();
-    });
-
-    it("renders theme selector", () => {
-      render(<ChatHeader {...defaultProps} />);
-      const select = screen.getByRole("combobox");
-      expect(select).toBeDefined();
-    });
-
-    it("has theme options", () => {
-      render(<ChatHeader {...defaultProps} />);
-      expect(screen.getByRole("option", { name: "System" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Dark" })).toBeDefined();
     });
   });
 
@@ -139,25 +124,6 @@ describe("ChatHeader", () => {
     it("shows 25% random when temperature is 0.5", () => {
       render(<ChatHeader {...defaultProps} activeTemperature={0.5} />);
       expect(screen.getByText("25% random")).toBeDefined();
-    });
-  });
-
-  describe("theme selector", () => {
-    it("has correct initial value", () => {
-      render(<ChatHeader {...defaultProps} theme="dark" />);
-      const select = screen.getByRole("combobox") as HTMLSelectElement;
-      expect(select.value).toBe("dark");
-    });
-
-    it("calls setTheme when changed", () => {
-      const setTheme = vi.fn();
-      render(<ChatHeader {...defaultProps} setTheme={setTheme} />);
-
-      const select = screen.getByRole("combobox");
-      fireEvent.change(select, { target: { value: "dark" } });
-
-      expect(setTheme).toHaveBeenCalledOnce();
-      expect(setTheme).toHaveBeenCalledWith("dark");
     });
   });
 

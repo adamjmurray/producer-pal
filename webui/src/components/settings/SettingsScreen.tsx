@@ -21,9 +21,11 @@ interface SettingsScreenProps {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
+  theme: string;
+  setTheme: (theme: string) => void;
   saveSettings: () => void;
   cancelSettings: () => void;
-  hasApiKey: boolean;
+  settingsConfigured: boolean;
   clearConversation: () => void;
   messageCount: number;
   activeModel: string | null;
@@ -46,9 +48,11 @@ export function SettingsScreen({
   setTemperature,
   showThoughts,
   setShowThoughts,
+  theme,
+  setTheme,
   saveSettings,
   cancelSettings,
-  hasApiKey,
+  settingsConfigured,
   clearConversation,
   messageCount,
   activeModel,
@@ -186,8 +190,23 @@ export function SettingsScreen({
           temperature={temperature}
           setTemperature={setTemperature}
         />
+        <div>
+          <label htmlFor="theme-select" className="block text-sm mb-2">
+            Appearance
+          </label>
+          <select
+            id="theme-select"
+            value={theme}
+            onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}
+            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+          >
+            <option value="system">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+          </select>
+        </div>
         <p className="text-xs text-gray-500 dark:text-gray-400">
-          {hasApiKey
+          {settingsConfigured
             ? "Note: Settings changes apply to new conversations."
             : "Settings will be stored in this web browser."}
         </p>
@@ -198,7 +217,7 @@ export function SettingsScreen({
           >
             Save
           </button>
-          {hasApiKey && (
+          {settingsConfigured && (
             <button
               onClick={cancelSettings}
               className="px-4 py-2 bg-gray-600 text-white rounded"

@@ -6,8 +6,6 @@ interface ChatHeaderProps {
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
-  theme: string;
-  setTheme: (theme: string) => void;
   onOpenSettings: () => void;
 }
 
@@ -16,8 +14,6 @@ export function ChatHeader({
   activeModel,
   activeThinking,
   activeTemperature,
-  theme,
-  setTheme,
   onOpenSettings,
 }: ChatHeaderProps) {
   return (
@@ -63,15 +59,6 @@ export function ChatHeader({
         >
           Settings
         </button>
-        <select
-          value={theme}
-          onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}
-          className="text-xs bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
-        >
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
       </div>
     </header>
   );

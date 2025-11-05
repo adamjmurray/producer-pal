@@ -48,9 +48,12 @@ describe("SettingsScreen", () => {
     setTemperature: vi.fn(),
     showThoughts: false,
     setShowThoughts: vi.fn(),
+    theme: "system",
+    setTheme: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     hasApiKey: false,
+    settingsConfigured: false,
     clearConversation: vi.fn(),
     messageCount: 0,
     activeModel: null,
@@ -77,6 +80,37 @@ describe("SettingsScreen", () => {
     it("renders Save button", () => {
       render(<SettingsScreen {...defaultProps} />);
       expect(screen.getByRole("button", { name: "Save" })).toBeDefined();
+    });
+  });
+
+  describe("theme selector", () => {
+    it("renders Appearance label", () => {
+      render(<SettingsScreen {...defaultProps} />);
+      expect(screen.getByText("Appearance")).toBeDefined();
+    });
+
+    it("renders theme selector with options", () => {
+      render(<SettingsScreen {...defaultProps} />);
+      expect(screen.getByRole("option", { name: "System" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Dark" })).toBeDefined();
+    });
+
+    it("has correct initial value", () => {
+      render(<SettingsScreen {...defaultProps} theme="dark" />);
+      const select = screen.getByLabelText("Appearance") as HTMLSelectElement;
+      expect(select.value).toBe("dark");
+    });
+
+    it("calls setTheme when changed", () => {
+      const setTheme = vi.fn();
+      render(<SettingsScreen {...defaultProps} setTheme={setTheme} />);
+
+      const select = screen.getByLabelText("Appearance");
+      fireEvent.change(select, { target: { value: "light" } });
+
+      expect(setTheme).toHaveBeenCalledOnce();
+      expect(setTheme).toHaveBeenCalledWith("light");
     });
   });
 
@@ -109,15 +143,15 @@ describe("SettingsScreen", () => {
   });
 
   describe("conditional note text", () => {
-    it("shows browser storage message when no API key", () => {
-      render(<SettingsScreen {...defaultProps} hasApiKey={false} />);
+    it("shows browser storage message when settings not configured", () => {
+      render(<SettingsScreen {...defaultProps} settingsConfigured={false} />);
       expect(
         screen.getByText("Settings will be stored in this web browser."),
       ).toBeDefined();
     });
 
-    it("shows new conversation message when API key exists", () => {
-      render(<SettingsScreen {...defaultProps} hasApiKey={true} />);
+    it("shows new conversation message when settings configured", () => {
+      render(<SettingsScreen {...defaultProps} settingsConfigured={true} />);
       expect(
         screen.getByText("Note: Settings changes apply to new conversations."),
       ).toBeDefined();
@@ -125,13 +159,13 @@ describe("SettingsScreen", () => {
   });
 
   describe("Cancel button", () => {
-    it("is not shown when no API key", () => {
-      render(<SettingsScreen {...defaultProps} hasApiKey={false} />);
+    it("is not shown when settings not configured", () => {
+      render(<SettingsScreen {...defaultProps} settingsConfigured={false} />);
       expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
     });
 
-    it("is shown when API key exists", () => {
-      render(<SettingsScreen {...defaultProps} hasApiKey={true} />);
+    it("is shown when settings configured", () => {
+      render(<SettingsScreen {...defaultProps} settingsConfigured={true} />);
       expect(screen.getByRole("button", { name: "Cancel" })).toBeDefined();
     });
 
@@ -140,7 +174,7 @@ describe("SettingsScreen", () => {
       render(
         <SettingsScreen
           {...defaultProps}
-          hasApiKey={true}
+          settingsConfigured={true}
           cancelSettings={cancelSettings}
         />,
       );
@@ -286,7 +320,6 @@ describe("SettingsScreen", () => {
         <SettingsScreen
           {...defaultProps}
           apiKey="my-key"
-          hasApiKey={true}
           model="gemini-2.5-flash"
           thinking="High"
           temperature={1.5}

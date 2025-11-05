@@ -1,4 +1,4 @@
-import { useState } from "preact/hooks";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { useGeminiChat } from "../hooks/use-gemini-chat.js";
 import { useMcpConnection } from "../hooks/use-mcp-connection.js";
 import { useOpenAIChat } from "../hooks/use-openai-chat.js";
@@ -65,13 +65,27 @@ export function App() {
     !settings.settingsConfigured,
   );
 
+  // Track original theme when settings opened (for cancel)
+  const originalThemeRef = useRef(theme);
+  const prevShowSettingsRef = useRef(showSettings);
+
+  // Save original theme only when settings transitions from closed to open
+  useEffect(() => {
+    if (showSettings && !prevShowSettingsRef.current) {
+      originalThemeRef.current = theme;
+    }
+    prevShowSettingsRef.current = showSettings;
+  }, [showSettings, theme]);
+
   const handleSaveSettings = () => {
     settings.saveSettings();
+    // Theme already applied via setTheme, no action needed
     setShowSettings(false);
   };
 
   const handleCancelSettings = () => {
     settings.cancelSettings();
+    setTheme(originalThemeRef.current); // Revert theme to original
     setShowSettings(false);
   };
 
@@ -94,9 +108,11 @@ export function App() {
         setTemperature={settings.setTemperature}
         showThoughts={settings.showThoughts}
         setShowThoughts={settings.setShowThoughts}
+        theme={theme}
+        setTheme={setTheme}
         saveSettings={handleSaveSettings}
         cancelSettings={handleCancelSettings}
-        hasApiKey={settings.hasApiKey}
+        settingsConfigured={settings.settingsConfigured}
         clearConversation={chat.clearConversation}
         messageCount={chat.messages.length}
         activeModel={chat.activeModel}
@@ -116,8 +132,6 @@ export function App() {
       mcpStatus={mcpStatus}
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}
-      theme={theme}
-      setTheme={setTheme}
       onOpenSettings={() => setShowSettings(true)}
     />
   );
