@@ -196,6 +196,20 @@ storage for convenience. If that concerns you, use a private browser session,
 clear it after use (change the key to "junk" and save before closing), or delete
 local storage. Generally, you can delete and regenerate API keys at any time.
 
+### Chat UI Model Settings
+
+**Thinking**: Some models support extended reasoning where they "think through"
+problems before responding. This increases response time and token usage but can
+improve quality for complex tasks. Enable if your model supports it and you need
+more sophisticated musical decisions. Some reasoning models, such as Gemini,
+support showing their "thoughts".
+
+**Randomness** (0.0-1.0): Controls response randomness. Lower values (0.0 - 0.5)
+make the model more focused and deterministic. Higher values (0.5 - 1.0) make it
+more creative but potentially less coherent. Default is 0.5. For music
+composition, try higher values depending on how experimental you want the
+results.
+
 ### Using Local Providers
 
 #### LM Studio with the Producer Pal Chat UI
