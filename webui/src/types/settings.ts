@@ -79,4 +79,5 @@ export interface UseSettingsReturn {
   saveSettings: () => void;
   cancelSettings: () => void;
   hasApiKey: boolean;
+  settingsConfigured: boolean;
 }

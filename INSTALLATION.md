@@ -193,8 +193,8 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
 **Privacy Note for Online APIs:** Your API key is stored in the browser's local
 storage for convenience. If that concerns you, use a private browser session,
-clear it after use (change the key to "junk" and save before closing), or delete
-local storage. Generally, you can delete and regenerate API keys at any time.
+delete the key from settings after use, or delete browser local storage.
+Generally, you can delete and regenerate API keys at any time.
 
 ### Chat UI Model Settings
 

@@ -154,9 +154,6 @@ export function SettingsScreen({
         <div className="flex gap-2">
           <button
             onClick={saveSettings}
-            disabled={
-              provider !== "lmstudio" && provider !== "ollama" && !apiKey
-            }
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
           >
             Save

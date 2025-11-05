@@ -124,6 +124,9 @@ function saveProviderSettings(provider: Provider, settings: ProviderSettings) {
 
 export function useSettings(): UseSettingsReturn {
   const [provider, setProvider] = useState<Provider>("gemini");
+  const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
+    () => localStorage.getItem("producer_pal_settings_configured") === "true",
+  );
   const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.gemini,
   );
@@ -185,6 +188,8 @@ export function useSettings(): UseSettingsReturn {
 
   const saveSettings = useCallback(() => {
     localStorage.setItem("producer_pal_current_provider", provider);
+    localStorage.setItem("producer_pal_settings_configured", "true");
+    setSettingsConfigured(true);
     saveProviderSettings("gemini", geminiSettings);
     saveProviderSettings("openai", openaiSettings);
     saveProviderSettings("mistral", mistralSettings);
@@ -393,5 +398,6 @@ export function useSettings(): UseSettingsReturn {
     saveSettings,
     cancelSettings,
     hasApiKey,
+    settingsConfigured,
   };
 }

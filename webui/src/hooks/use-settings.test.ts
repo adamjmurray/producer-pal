@@ -374,4 +374,30 @@ describe("useSettings", () => {
     expect(result2.current.model).toBe("minimax/minimax-m2:free");
     expect(result2.current.temperature).toBe(0.8);
   });
+
+  it("settingsConfigured is false by default", () => {
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.settingsConfigured).toBe(false);
+  });
+
+  it("loads settingsConfigured from localStorage", () => {
+    localStorage.setItem("producer_pal_settings_configured", "true");
+    const { result } = renderHook(() => useSettings());
+    expect(result.current.settingsConfigured).toBe(true);
+  });
+
+  it("sets settingsConfigured to true after saveSettings is called", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    expect(result.current.settingsConfigured).toBe(false);
+
+    await act(() => {
+      result.current.saveSettings();
+    });
+
+    expect(result.current.settingsConfigured).toBe(true);
+    expect(localStorage.getItem("producer_pal_settings_configured")).toBe(
+      "true",
+    );
+  });
 });

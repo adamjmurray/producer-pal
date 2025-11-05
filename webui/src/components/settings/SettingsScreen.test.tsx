@@ -153,13 +153,13 @@ describe("SettingsScreen", () => {
   });
 
   describe("Save button", () => {
-    it("is disabled when no API key", () => {
+    it("is enabled even when no API key", () => {
       render(<SettingsScreen {...defaultProps} apiKey="" />);
 
       const button = screen.getByRole("button", {
         name: "Save",
       }) as HTMLButtonElement;
-      expect(button.disabled).toBe(true);
+      expect(button.disabled).toBe(false);
     });
 
     it("is enabled when API key is provided", () => {
@@ -171,7 +171,23 @@ describe("SettingsScreen", () => {
       expect(button.disabled).toBe(false);
     });
 
-    it("calls saveSettings when clicked", () => {
+    it("calls saveSettings when clicked with empty API key", () => {
+      const saveSettings = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          apiKey=""
+          saveSettings={saveSettings}
+        />,
+      );
+
+      const button = screen.getByRole("button", { name: "Save" });
+      fireEvent.click(button);
+
+      expect(saveSettings).toHaveBeenCalledOnce();
+    });
+
+    it("calls saveSettings when clicked with API key", () => {
       const saveSettings = vi.fn();
       render(
         <SettingsScreen

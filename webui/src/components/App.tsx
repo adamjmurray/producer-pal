@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import { useGeminiChat } from "../hooks/use-gemini-chat.js";
-import { useOpenAIChat } from "../hooks/use-openai-chat.js";
 import { useMcpConnection } from "../hooks/use-mcp-connection.js";
+import { useOpenAIChat } from "../hooks/use-openai-chat.js";
 import { useSettings } from "../hooks/use-settings.js";
 import { useTheme } from "../hooks/use-theme.js";
 import { ChatScreen } from "./chat/ChatScreen.jsx";
@@ -61,7 +61,9 @@ export function App() {
   // Route to appropriate chat based on provider
   const chat = settings.provider === "gemini" ? geminiChat : openaiChat;
 
-  const [showSettings, setShowSettings] = useState(!settings.hasApiKey);
+  const [showSettings, setShowSettings] = useState(
+    !settings.settingsConfigured,
+  );
 
   const handleSaveSettings = () => {
     settings.saveSettings();
