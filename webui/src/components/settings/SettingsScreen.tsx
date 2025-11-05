@@ -3,6 +3,7 @@ import { ModelSelector } from "./ModelSelector.jsx";
 import { ProviderSelector } from "./ProviderSelector.jsx";
 import { ThinkingSettings } from "./ThinkingSettings.jsx";
 import { RandomnessSlider } from "./RandomnessSlider.jsx";
+import { SettingsTabs } from "./SettingsTabs.jsx";
 
 interface SettingsScreenProps {
   provider: Provider;
@@ -83,128 +84,168 @@ export function SettingsScreen({
                 : "Custom";
 
   return (
-    <div className="flex items-center justify-center h-screen p-4">
-      <div className="max-w-md w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 space-y-4">
-        <h2 className="text-xl font-semibold">Producer Pal Chat Settings</h2>
-        <ProviderSelector provider={provider} setProvider={setProvider} />
+    <div className="flex justify-center min-h-screen p-4 pt-20">
+      <div className="max-w-md w-full bg-gray-100 dark:bg-gray-800 rounded-lg p-6 self-start">
+        <h2 className="text-xl font-semibold mb-4">
+          Producer Pal Chat Settings
+        </h2>
 
-        {/* API Key Input (not for local providers) */}
-        {provider !== "lmstudio" && provider !== "ollama" && (
-          <div>
-            <label className="block text-sm mb-2">
-              {providerLabel} API Key
-            </label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
-              placeholder={`Enter your ${providerLabel} API key`}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-            />
-            {apiKeyUrls[provider] && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <a
-                  href={apiKeyUrls[provider]}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-blue-600 dark:text-blue-400 hover:underline"
-                >
-                  {providerLabel} API keys
-                </a>
-              </p>
-            )}
-          </div>
-        )}
+        <SettingsTabs>
+          {(activeTab) => (
+            <div className="space-y-4">
+              {/* Connection Tab */}
+              {activeTab === "connection" && (
+                <>
+                  <ProviderSelector
+                    provider={provider}
+                    setProvider={setProvider}
+                  />
 
-        {/* Port field for local providers */}
-        {(provider === "lmstudio" || provider === "ollama") && setPort && (
-          <div>
-            <label className="block text-sm mb-2">Port</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              value={port?.toString() ?? ""}
-              onChange={(e) => {
-                const value = (e.target as HTMLInputElement).value;
-                const numValue = parseInt(value, 10);
-                if (!isNaN(numValue)) {
-                  setPort(numValue);
-                }
-              }}
-              placeholder={provider === "lmstudio" ? "1234" : "11434"}
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              Base URL: http://localhost:
-              {port ?? (provider === "lmstudio" ? 1234 : 11434)}/v1
-            </p>
-          </div>
-        )}
+                  {/* API Key Input (not for local providers) */}
+                  {provider !== "lmstudio" && provider !== "ollama" && (
+                    <div>
+                      <label className="block text-sm mb-2">
+                        {providerLabel} API Key
+                      </label>
+                      <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) =>
+                          setApiKey((e.target as HTMLInputElement).value)
+                        }
+                        placeholder={`Enter your ${providerLabel} API key`}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+                      />
+                      {apiKeyUrls[provider] && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <a
+                            href={apiKeyUrls[provider]}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 dark:text-blue-400 hover:underline"
+                          >
+                            {providerLabel} API keys
+                          </a>
+                        </p>
+                      )}
+                    </div>
+                  )}
 
-        {/* Base URL (custom provider only) */}
-        {provider === "custom" && setBaseUrl && (
-          <div>
-            <label className="block text-sm mb-2">Base URL</label>
-            <input
-              type="text"
-              value={baseUrl ?? ""}
-              onChange={(e) => setBaseUrl((e.target as HTMLInputElement).value)}
-              placeholder="https://api.example.com/v1"
-              className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-            />
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              OpenAI-compatible API endpoint
-            </p>
-          </div>
-        )}
+                  {/* Port field for local providers */}
+                  {(provider === "lmstudio" || provider === "ollama") &&
+                    setPort && (
+                      <div>
+                        <label className="block text-sm mb-2">Port</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          value={port?.toString() ?? ""}
+                          onChange={(e) => {
+                            const value = (e.target as HTMLInputElement).value;
+                            const numValue = parseInt(value, 10);
+                            if (!isNaN(numValue)) {
+                              setPort(numValue);
+                            }
+                          }}
+                          placeholder={
+                            provider === "lmstudio" ? "1234" : "11434"
+                          }
+                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          Base URL: http://localhost:
+                          {port ?? (provider === "lmstudio" ? 1234 : 11434)}/v1
+                        </p>
+                      </div>
+                    )}
 
-        <ModelSelector provider={provider} model={model} setModel={setModel} />
-        {modelDocsUrls[provider] && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-            <a
-              href={modelDocsUrls[provider]}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 hover:underline"
-            >
-              {providerLabel} models
-            </a>
-          </p>
-        )}
-        <ThinkingSettings
-          provider={provider}
-          model={model}
-          thinking={thinking}
-          setThinking={setThinking}
-          showThoughts={showThoughts}
-          setShowThoughts={setShowThoughts}
-        />
-        <RandomnessSlider
-          temperature={temperature}
-          setTemperature={setTemperature}
-        />
-        <div>
-          <label htmlFor="theme-select" className="block text-sm mb-2">
-            Appearance
-          </label>
-          <select
-            id="theme-select"
-            value={theme}
-            onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}
-            className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-          >
-            <option value="system">System</option>
-            <option value="light">Light</option>
-            <option value="dark">Dark</option>
-          </select>
-        </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {/* Base URL (custom provider only) */}
+                  {provider === "custom" && setBaseUrl && (
+                    <div>
+                      <label className="block text-sm mb-2">Base URL</label>
+                      <input
+                        type="text"
+                        value={baseUrl ?? ""}
+                        onChange={(e) =>
+                          setBaseUrl((e.target as HTMLInputElement).value)
+                        }
+                        placeholder="https://api.example.com/v1"
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+                      />
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        OpenAI-compatible API endpoint
+                      </p>
+                    </div>
+                  )}
+
+                  <ModelSelector
+                    provider={provider}
+                    model={model}
+                    setModel={setModel}
+                  />
+                  {modelDocsUrls[provider] && (
+                    <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
+                      <a
+                        href={modelDocsUrls[provider]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        {providerLabel} models
+                      </a>
+                    </p>
+                  )}
+                </>
+              )}
+
+              {/* Behavior Tab */}
+              {activeTab === "behavior" && (
+                <>
+                  <ThinkingSettings
+                    provider={provider}
+                    model={model}
+                    thinking={thinking}
+                    setThinking={setThinking}
+                    showThoughts={showThoughts}
+                    setShowThoughts={setShowThoughts}
+                  />
+                  <RandomnessSlider
+                    temperature={temperature}
+                    setTemperature={setTemperature}
+                  />
+                </>
+              )}
+
+              {/* Appearance Tab */}
+              {activeTab === "appearance" && (
+                <div>
+                  <label htmlFor="theme-select" className="block text-sm mb-2">
+                    Theme
+                  </label>
+                  <select
+                    id="theme-select"
+                    value={theme}
+                    onChange={(e) =>
+                      setTheme((e.target as HTMLSelectElement).value)
+                    }
+                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+                  >
+                    <option value="system">System</option>
+                    <option value="light">Light</option>
+                    <option value="dark">Dark</option>
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+        </SettingsTabs>
+        <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
           {settingsConfigured
             ? "Note: Settings changes apply to new conversations."
             : "Settings will be stored in this web browser."}
         </p>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-4">
           <button
             onClick={saveSettings}
             className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
