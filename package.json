@@ -63,7 +63,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@anthropic-ai/mcpb": "^1.2.0",
+    "@anthropic-ai/mcpb": "^2.0.1",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
