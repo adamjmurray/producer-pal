@@ -266,21 +266,21 @@ describe("MCP Express App", () => {
     });
 
     it("should handle tool with missing required arguments", async () => {
-      await expect(
-        client.callTool({
-          name: "delete-scene",
-          arguments: {}, // Missing sceneIndex
-        }),
-      ).rejects.toThrow();
+      const result = await client.callTool({
+        name: "delete-scene",
+        arguments: {}, // Missing sceneIndex
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("MCP error -32602");
     });
 
     it("should handle unknown tool", async () => {
-      await expect(
-        client.callTool({
-          name: "nonexistent-tool",
-          arguments: {},
-        }),
-      ).rejects.toThrow();
+      const result = await client.callTool({
+        name: "nonexistent-tool",
+        arguments: {},
+      });
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("MCP error -32602");
     });
 
     it("should return isError: true when Max.outlet throws", async () => {

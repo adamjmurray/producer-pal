@@ -115,6 +115,9 @@ async function main() {
       });
 
       console.log("\nResult:");
+      if (result.isError) {
+        console.log("ERROR:");
+      }
       if (result.content) {
         result.content.forEach((content, index) => {
           if (content.type === "text") {
