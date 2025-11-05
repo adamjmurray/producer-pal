@@ -2,10 +2,9 @@
 
 Choose your AI for installation steps:
 
-- ⭐️ [Claude Desktop](#claude-desktop) - Anthropic's desktop GUI - easiest
-  setup
-- ⭐️ [Producer Pal Chat UI](#producer-pal-chat-ui) - Standalone web interface -
-  platform independent
+- ⭐️ [Claude Desktop](#claude-desktop) - Anthropic's desktop GUI
+- ⭐️ [Producer Pal Chat UI](#producer-pal-chat-ui) - Built-in chat interface
+  supporting Gemini, Mistral, offline models via Ollama, and more
 - [Gemini CLI](#gemini-cli) - Google's command line agent
 - [Codex CLI](#codex-cli) - OpenAI's command line agent
 - [Claude Code](#claude-code) - Anthropic's command line agent
@@ -128,12 +127,37 @@ Max for Live device and opens in your system's default browser.
 The chat UI supports multiple LLM providers including Google Gemini (free tier
 available), OpenAI, Mistral, OpenRouter, and custom OpenAI-compatible providers.
 
+Note: Some options use pay-as-you-go pricing for API access, which can incur
+cost quickly when using the most advanced models and having long conversations.
+Always monitor your API key usage when using pay-as-you-go options.
+
 ### Requirements
 
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/)
-- Google Gemini API key (free tier available,
-  [get your API key](https://aistudio.google.com/apikey))
+- Any LLM API that supports tools and has an OpenAI-compatible interface, or
+  Google's Gemini API.
+
+  This can be either:
+  - Online LLM APIs. Supported APIs include:
+    - ⭐️ [Google Gemini API](https://ai.google.dev/gemini-api) (recommended):
+      All Google accounts can use the free tier with generous daily quotas.
+      [Get a Gemini API key](https://aistudio.google.com/apikey).
+    - [OpenAI API](https://openai.com/api/): Requires pay-as-you-go pricing.
+      [Get an OpenAI API key](https://platform.openai.com/api-keys).
+    - [Mistral](https://mistral.ai/): AI developed in France. Can be used for
+      free but with fairly aggressive quotas.
+      [Get a Mistral API key](https://console.mistral.ai/home?workspace_dialog=apiKeys).
+    - [OpenRouter](https://openrouter.ai): An "AI gateway" with hundreds of LLMs
+      available in one place. Includes free and pay-as-you-go options.
+      [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
+    - Custom: Any other compatible LLM. See
+      [Using Custom Providers](#using-custom-providers).
+
+  Or:
+  - Offline LLMs running locally. Supported options:
+    - [LM Studio](#lm-studio-with-the-producer-pal-chat-ui)
+    - [Ollama](#ollama)
 
 ### Installation
 
@@ -152,15 +176,55 @@ available), OpenAI, Mistral, OpenRouter, and custom OpenAI-compatible providers.
 
    <img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
 
-3. If it's your first time, enter your Gemini API key in the chat UI settings
-   and click "Save".
+3. If it's your first time, choose a provider, enter an API key (if using an
+   online LLM), and choose a model. See below for examples and more info about
+   the various settings. One you've configured your settings, click "Save".
 
 4. Click the "Quick Connect" button to start a chat:
 
    <img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
 
+   Or type whatever you want into the text input.
+
 The chat UI connects directly to your chosen LLM provider's API and uses
 Producer Pal's MCP tools automatically.
+
+If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+**Privacy Note:** Your API key is stored in the browser's local storage for
+convenience. If that concerns you, use a private browser session, clear it after
+use (change the key to "junk" and save before closing), or delete local storage.
+Generally, you can delete and regenerate API keys at any time.
+
+### Using Local Providers
+
+#### LM Studio with the Producer Pal Chat UI
+
+1. Install [LM Studio](https://lmstudio.ai/) and download some models
+2. Go to the LM Studio developer tab
+3. Open Server Settings and Enable CORS. Producer Pal's chat UI cannot connect
+   to LM Studio without this option:
+
+   <img src="./doc/img/lm-studio-server-settings.png" width="600">
+
+4. Start LM Studio server. It should say: "Status: Running"
+5. Configure the Producer Pal Chat UI:
+   - Provider: LM Studio (local)
+   - Port: 1234 (This is the default. If you change it in LM Studio settings,
+     change this setting to match)
+   - Model: A model that supports tools, such as `qwen/qwen3-vl-8b`,
+     `openai/gpt-oss-20b`, or `mistralai/magistral-small-2509`
+6. Save the Chat UI settings and use the Quick Connect button to start a
+   conversation.
+
+See the [LM Studio install guide](#lm-studio) (the instructions on how to setup
+using LM Studio's chat UI instead of Producer Pal's UI) for tips on choosing and
+configuring models with LM Studio. It's recommended you enable the "Small Model
+Mode" option in the Producer Pal Setup tab.
+
+#### Ollama
+
+TODO
 
 ### Using Custom Providers
 
@@ -172,19 +236,12 @@ To use other OpenAI-compatible providers beyond the built-in options:
 4. Set the Base URL for your provider
 5. Enter the model name
 
-**Example: Using Groq**
+#### Custom Provider Example: Groq
 
 - Provider: Custom (OpenAI-compatible)
 - Base URL: `https://api.groq.com/openai/v1`
 - Model: `moonshotai/kimi-k2-instruct` (or other available models like
   `openai/gpt-oss-120b`, `qwen/qwen3-32b`)
-
-If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
-
-**Privacy Note:** Your API key is stored in the browser's local storage for
-convenience. If that concerns you, use a private browser session, clear it after
-use (change the key to "junk" and save before closing), or delete local storage.
-You can also delete and regenerate Gemini API keys at any time.
 
 <br><br>
 
