@@ -310,4 +310,79 @@ describe("SettingsScreen", () => {
       expect(screen.getByTestId("randomness-slider").textContent).toBe("1.5");
     });
   });
+
+  describe("API key links", () => {
+    it("shows Gemini API key link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="gemini" />);
+      const link = screen.getByText("Gemini API keys");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://aistudio.google.com/apikey",
+      );
+      expect((link as HTMLAnchorElement).target).toBe("_blank");
+    });
+
+    it("shows OpenAI API key link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="openai" />);
+      const link = screen.getByText("OpenAI API keys");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://platform.openai.com/api-keys",
+      );
+    });
+
+    it("shows Mistral API key link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="mistral" />);
+      const link = screen.getByText("Mistral API keys");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://console.mistral.ai/home?workspace_dialog=apiKeys",
+      );
+    });
+
+    it("shows OpenRouter API key link with correct URL", () => {
+      render(<SettingsScreen {...defaultProps} provider="openrouter" />);
+      const link = screen.getByText("OpenRouter API keys");
+      expect(link).toBeDefined();
+      expect((link as HTMLAnchorElement).href).toBe(
+        "https://openrouter.ai/settings/keys",
+      );
+    });
+
+    it("does not show API key link for LM Studio", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="lmstudio"
+          port={1234}
+          setPort={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText(/Get a.*API key/)).toBeNull();
+    });
+
+    it("does not show API key link for Ollama", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="ollama"
+          port={11434}
+          setPort={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText(/Get a.*API key/)).toBeNull();
+    });
+
+    it("does not show API key link for custom provider", () => {
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="custom"
+          baseUrl="https://api.example.com/v1"
+          setBaseUrl={vi.fn()}
+        />,
+      );
+      expect(screen.queryByText(/Get a.*API key/)).toBeNull();
+    });
+  });
 });
