@@ -52,11 +52,7 @@ describe("SettingsScreen", () => {
     setTheme: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
-    hasApiKey: false,
     settingsConfigured: false,
-    clearConversation: vi.fn(),
-    messageCount: 0,
-    activeModel: null,
   };
 
   describe("basic rendering", () => {
@@ -235,82 +231,6 @@ describe("SettingsScreen", () => {
       fireEvent.click(button);
 
       expect(saveSettings).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe("Clear Conversation button", () => {
-    it("is not shown when no messages and no active model", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          messageCount={0}
-          activeModel={null}
-        />,
-      );
-
-      expect(
-        screen.queryByRole("button", { name: "Clear & Restart Conversation" }),
-      ).toBeNull();
-    });
-
-    it("is shown when messageCount > 0", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          messageCount={5}
-          activeModel={null}
-        />,
-      );
-
-      expect(
-        screen.getByRole("button", { name: "Clear & Restart Conversation" }),
-      ).toBeDefined();
-    });
-
-    it("is shown when activeModel is set", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          messageCount={0}
-          activeModel="gemini-2.5-pro"
-        />,
-      );
-
-      expect(
-        screen.getByRole("button", { name: "Clear & Restart Conversation" }),
-      ).toBeDefined();
-    });
-
-    it("is shown when both messageCount and activeModel are set", () => {
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          messageCount={3}
-          activeModel="gemini-2.5-pro"
-        />,
-      );
-
-      expect(
-        screen.getByRole("button", { name: "Clear & Restart Conversation" }),
-      ).toBeDefined();
-    });
-
-    it("calls clearConversation when clicked", () => {
-      const clearConversation = vi.fn();
-      render(
-        <SettingsScreen
-          {...defaultProps}
-          messageCount={1}
-          clearConversation={clearConversation}
-        />,
-      );
-
-      const button = screen.getByRole("button", {
-        name: "Clear & Restart Conversation",
-      });
-      fireEvent.click(button);
-
-      expect(clearConversation).toHaveBeenCalledOnce();
     });
   });
 

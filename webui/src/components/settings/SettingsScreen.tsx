@@ -26,9 +26,6 @@ interface SettingsScreenProps {
   saveSettings: () => void;
   cancelSettings: () => void;
   settingsConfigured: boolean;
-  clearConversation: () => void;
-  messageCount: number;
-  activeModel: string | null;
 }
 
 export function SettingsScreen({
@@ -53,9 +50,6 @@ export function SettingsScreen({
   saveSettings,
   cancelSettings,
   settingsConfigured,
-  clearConversation,
-  messageCount,
-  activeModel,
 }: SettingsScreenProps) {
   const apiKeyUrls: Record<string, string | undefined> = {
     gemini: "https://aistudio.google.com/apikey",
@@ -226,16 +220,6 @@ export function SettingsScreen({
             </button>
           )}
         </div>
-        {(messageCount > 0 || activeModel) && (
-          <div className="pt-2 border-t border-gray-300 dark:border-gray-600">
-            <button
-              onClick={clearConversation}
-              className="w-full px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-            >
-              Clear & Restart Conversation
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

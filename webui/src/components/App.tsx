@@ -113,9 +113,6 @@ export function App() {
         saveSettings={handleSaveSettings}
         cancelSettings={handleCancelSettings}
         settingsConfigured={settings.settingsConfigured}
-        clearConversation={chat.clearConversation}
-        messageCount={chat.messages.length}
-        activeModel={chat.activeModel}
       />
     );
   }
@@ -129,10 +126,12 @@ export function App() {
       activeModel={chat.activeModel}
       activeThinking={chat.activeThinking}
       activeTemperature={chat.activeTemperature}
+      activeProvider={chat.activeModel ? settings.provider : null}
       mcpStatus={mcpStatus}
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}
       onOpenSettings={() => setShowSettings(true)}
+      onClearConversation={chat.clearConversation}
     />
   );
 }

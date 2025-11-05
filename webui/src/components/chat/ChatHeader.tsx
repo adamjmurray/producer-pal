@@ -1,12 +1,34 @@
 import logoSvg from "../../assets/producer-pal-logo.svg";
 import { getModelName } from "../../config.js";
+import type { Provider } from "../../types/settings.js";
 
 interface ChatHeaderProps {
   mcpStatus: "connected" | "connecting" | "error";
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
+  activeProvider: Provider | null;
   onOpenSettings: () => void;
+  onClearConversation: () => void;
+}
+
+function getProviderName(provider: Provider): string {
+  switch (provider) {
+    case "gemini":
+      return "Google";
+    case "openai":
+      return "OpenAI";
+    case "mistral":
+      return "Mistral";
+    case "openrouter":
+      return "OpenRouter";
+    case "lmstudio":
+      return "LM Studio";
+    case "ollama":
+      return "Ollama";
+    case "custom":
+      return "Custom";
+  }
 }
 
 export function ChatHeader({
@@ -14,8 +36,15 @@ export function ChatHeader({
   activeModel,
   activeThinking,
   activeTemperature,
+  activeProvider,
   onOpenSettings,
+  onClearConversation,
 }: ChatHeaderProps) {
+  const handleRestart = () => {
+    if (window.confirm("Clear all messages and restart conversation?")) {
+      onClearConversation();
+    }
+  };
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-baseline">
       <img
@@ -37,10 +66,26 @@ export function ChatHeader({
           <span className="text-red-600 dark:text-red-400">✗ Error</span>
         )}
       </div>
-      <div className="ml-auto flex gap-3 items-baseline">
-        {activeModel && (
+      {activeModel && <div className="flex-1" />}
+      {activeModel && (
+        <button
+          onClick={handleRestart}
+          className="text-xs px-2 py-1 bg-red-700 text-white rounded hover:bg-red-800"
+        >
+          Restart
+        </button>
+      )}
+      {activeModel && <div className="flex-1" />}
+      <div
+        className={
+          activeModel
+            ? "flex gap-3 items-baseline"
+            : "ml-auto flex gap-3 items-baseline"
+        }
+      >
+        {activeModel && activeProvider && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {getModelName(activeModel)}
+            {getProviderName(activeProvider)} | {getModelName(activeModel)}
           </span>
         )}
         {activeThinking && (

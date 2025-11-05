@@ -3,6 +3,7 @@ import { ChatInput } from "./ChatInput.jsx";
 import { ChatStart } from "./ChatStart.jsx";
 import { MessageList } from "./MessageList.jsx";
 import type { UIMessage } from "../../types/messages.js";
+import type { Provider } from "../../types/settings.js";
 
 interface ChatScreenProps {
   messages: UIMessage[];
@@ -12,10 +13,12 @@ interface ChatScreenProps {
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
+  activeProvider: Provider | null;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
+  onClearConversation: () => void;
 }
 
 export function ChatScreen({
@@ -26,10 +29,12 @@ export function ChatScreen({
   activeModel,
   activeThinking,
   activeTemperature,
+  activeProvider,
   mcpStatus,
   mcpError,
   checkMcpConnection,
   onOpenSettings,
+  onClearConversation,
 }: ChatScreenProps) {
   return (
     <div className="flex flex-col h-screen">
@@ -38,7 +43,9 @@ export function ChatScreen({
         activeModel={activeModel}
         activeThinking={activeThinking}
         activeTemperature={activeTemperature}
+        activeProvider={activeProvider}
         onOpenSettings={onOpenSettings}
+        onClearConversation={onClearConversation}
       />
 
       <div class="flex-1 overflow-y-auto">
