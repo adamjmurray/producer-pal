@@ -247,7 +247,16 @@ models.
 
 #### Ollama
 
-TODO
+1. Install [Ollama](https://ollama.com/)
+2. If you haven't already, run Ollama, select some of the downloadable
+   (non-cloud) models, and start a chat with them to download them.
+3. With Ollama running, configure the Producer Pal Chat UI:
+   - Provider: Ollama (local)
+   - Port: 11434 (This is the default. You generally don't need to change this)
+   - Model: A [model that supports tools](https://ollama.com/search?c=tools),
+     such as `qwen3-vl:8b`, `qwen-3-coder`, or `gpt-oss:20b`
+4. Save the Chat UI settings and use the Quick Connect button to start a
+   conversation.
 
 ### Using Custom Providers
 
