@@ -170,15 +170,15 @@ Always monitor your API key usage when using pay-as-you-go options.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Open the "Setup" tab in the device and click "Open Chat UI", or visit
+2. Open the "Setup" tab in the device and click "Open Chat UI", which will open
    [http://localhost:3350/chat](http://localhost:3350/chat) (or whatever port
-   you're using)
+   Producer Pal is setup to use)
 
    <img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
 
 3. If it's your first time, choose a provider, enter an API key (if using an
    online LLM), and choose a model. See below for examples and more info about
-   the various settings. One you've configured your settings, click "Save".
+   the various settings. Once you've configured your settings, click "Save".
 
 4. Click the "Quick Connect" button to start a chat:
 
@@ -191,36 +191,45 @@ Producer Pal's MCP tools automatically.
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
-**Privacy Note:** Your API key is stored in the browser's local storage for
-convenience. If that concerns you, use a private browser session, clear it after
-use (change the key to "junk" and save before closing), or delete local storage.
-Generally, you can delete and regenerate API keys at any time.
+**Privacy Note for Online APIs:** Your API key is stored in the browser's local
+storage for convenience. If that concerns you, use a private browser session,
+clear it after use (change the key to "junk" and save before closing), or delete
+local storage. Generally, you can delete and regenerate API keys at any time.
 
 ### Using Local Providers
 
 #### LM Studio with the Producer Pal Chat UI
 
-1. Install [LM Studio](https://lmstudio.ai/) and download some models
-2. Go to the LM Studio developer tab
-3. Open Server Settings and Enable CORS. Producer Pal's chat UI cannot connect
-   to LM Studio without this option:
+1.  Install [LM Studio](https://lmstudio.ai/) and download some models
+2.  Go to the LM Studio developer tab
+3.  Open Server Settings and Enable CORS. Producer Pal's chat UI runs in the
+    browser and cannot directly connect to LM Studio without this option:
 
-   <img src="./doc/img/lm-studio-server-settings.png" width="600">
+    <img src="./doc/img/lm-studio-server-settings.png" width="600">
 
-4. Start LM Studio server. It should say: "Status: Running"
-5. Configure the Producer Pal Chat UI:
-   - Provider: LM Studio (local)
-   - Port: 1234 (This is the default. If you change it in LM Studio settings,
-     change this setting to match)
-   - Model: A model that supports tools, such as `qwen/qwen3-vl-8b`,
-     `openai/gpt-oss-20b`, or `mistralai/magistral-small-2509`
-6. Save the Chat UI settings and use the Quick Connect button to start a
-   conversation.
+4.  Start LM Studio server. It should say: "Status: Running"
+5.  Configure the Producer Pal Chat UI:
+    - Provider: LM Studio (local)
+    - Port: 1234 (This is the default. If you change it in LM Studio settings,
+      change this setting to match)
+    - Model: A model that supports tools, such as `qwen/qwen3-vl-8b`,
+      `openai/gpt-oss-20b`, or `mistralai/magistral-small-2509`
+
+      **Note:** If the model responds with garbled text like
+      `<|tool_call_start|>...` or says it has no way of connecting to Ableton,
+      the model likely doesn't support tools. Try a different model. Look for a
+      hammer icon next to the model:
+
+      <img src="./doc/img/lm-studio-tool-icon.png" width="400">
+
+6.  Save the Chat UI settings and use the Quick Connect button to start a
+    conversation.
 
 See the [LM Studio install guide](#lm-studio) (the instructions on how to setup
 using LM Studio's chat UI instead of Producer Pal's UI) for tips on choosing and
 configuring models with LM Studio. It's recommended you enable the "Small Model
-Mode" option in the Producer Pal Setup tab.
+Mode" option in the Producer Pal Setup tab for better compatibility with local
+models.
 
 #### Ollama
 
