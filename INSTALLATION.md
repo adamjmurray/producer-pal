@@ -101,6 +101,12 @@ Pal.
 
    <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">
 
+   _**About the security warning:** Anthropic displays this warning for all
+   extensions as a general security measure. Producer Pal is open source and you
+   can review the entire codebase on
+   [GitHub](https://github.com/adamjmurray/producer-pal) before installing. The
+   extension only accesses Ableton Live through the Max for Live device._
+
 5. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
    sure it's enabled when starting a conversation):
 
