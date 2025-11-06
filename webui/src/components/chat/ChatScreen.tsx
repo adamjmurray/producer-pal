@@ -19,6 +19,10 @@ interface ChatScreenProps {
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
   onClearConversation: () => void;
+  apiKey?: string;
+  model?: string;
+  temperature?: number;
+  enableVoice?: boolean;
 }
 
 export function ChatScreen({
@@ -35,6 +39,10 @@ export function ChatScreen({
   checkMcpConnection,
   onOpenSettings,
   onClearConversation,
+  apiKey,
+  model,
+  temperature,
+  enableVoice = false,
 }: ChatScreenProps) {
   return (
     <div className="flex flex-col h-screen">
@@ -69,6 +77,10 @@ export function ChatScreen({
       <ChatInput
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
+        apiKey={apiKey}
+        model={model}
+        temperature={temperature}
+        enableVoice={enableVoice}
       />
     </div>
   );

@@ -132,6 +132,10 @@ export function App() {
       checkMcpConnection={checkMcpConnection}
       onOpenSettings={() => setShowSettings(true)}
       onClearConversation={chat.clearConversation}
+      apiKey={settings.apiKey}
+      model={settings.model}
+      temperature={settings.temperature}
+      enableVoice={settings.provider === "gemini"}
     />
   );
 }
