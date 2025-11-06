@@ -46,6 +46,7 @@ interface UseGeminiChatReturn {
   handleSend: (message: string) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
+  stopResponse: () => void;
 }
 
 export function useGeminiChat({
@@ -67,6 +68,7 @@ export function useGeminiChat({
     null,
   );
   const geminiRef = useRef<GeminiClient | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -74,6 +76,11 @@ export function useGeminiChat({
     setActiveModel(null);
     setActiveThinking(null);
     setActiveTemperature(null);
+  }, []);
+
+  const stopResponse = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setIsAssistantResponding(false);
   }, []);
 
   const initializeChat = useCallback(
@@ -156,7 +163,13 @@ export function useGeminiChat({
           throw new Error("Failed to initialize Gemini client");
         }
 
-        const stream = geminiRef.current.sendMessage(userMessage);
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const stream = geminiRef.current.sendMessage(
+          userMessage,
+          controller.signal,
+        );
 
         for await (const chatHistory of stream) {
           // console.log(
@@ -166,10 +179,15 @@ export function useGeminiChat({
           setMessages(formatGeminiMessages(chatHistory));
         }
       } catch (error) {
+        // Ignore abort errors (expected when user cancels)
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         setMessages(
           createErrorMessage(error, geminiRef.current?.chatHistory ?? []),
         );
       } finally {
+        abortControllerRef.current = null;
         setIsAssistantResponding(false);
       }
     },
@@ -204,14 +222,25 @@ export function useGeminiChat({
 
         await initializeChat(slicedHistory);
 
-        const stream = geminiRef.current.sendMessage(userMessage);
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const stream = geminiRef.current.sendMessage(
+          userMessage,
+          controller.signal,
+        );
 
         for await (const chatHistory of stream) {
           setMessages(formatGeminiMessages(chatHistory));
         }
       } catch (error) {
+        // Ignore abort errors (expected when user cancels)
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         setMessages(createErrorMessage(error, geminiRef.current.chatHistory));
       } finally {
+        abortControllerRef.current = null;
         setIsAssistantResponding(false);
       }
     },
@@ -227,5 +256,6 @@ export function useGeminiChat({
     handleSend,
     handleRetry,
     clearConversation,
+    stopResponse,
   };
 }

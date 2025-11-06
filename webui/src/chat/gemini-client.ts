@@ -168,6 +168,7 @@ export class GeminiClient {
    */
   async *sendMessage(
     message: string,
+    abortSignal?: AbortSignal,
   ): AsyncGenerator<GeminiMessage[], void, unknown> {
     if (!this.chat || !this.mcpClient) {
       throw new Error("Chat not initialized. Call initialize() first.");
@@ -294,6 +295,10 @@ export class GeminiClient {
         }
 
         // Continue loop to get model's response to tool results
+        // Check for abort signal
+        if (abortSignal?.aborted) {
+          continueLoop = false;
+        }
       } else {
         continueLoop = false;
       }

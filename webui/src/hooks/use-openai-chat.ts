@@ -57,6 +57,7 @@ interface UseOpenAIChatReturn {
   handleSend: (message: string) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
+  stopResponse: () => void;
 }
 
 /**
@@ -111,6 +112,7 @@ export function useOpenAIChat({
     null,
   );
   const openaiRef = useRef<OpenAIClient | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -118,6 +120,11 @@ export function useOpenAIChat({
     setActiveModel(null);
     setActiveThinking(null);
     setActiveTemperature(null);
+  }, []);
+
+  const stopResponse = useCallback(() => {
+    abortControllerRef.current?.abort();
+    setIsAssistantResponding(false);
   }, []);
 
   const initializeChat = useCallback(
@@ -199,7 +206,13 @@ export function useOpenAIChat({
           throw new Error("Failed to initialize OpenAI client");
         }
 
-        const stream = openaiRef.current.sendMessage(userMessage);
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const stream = openaiRef.current.sendMessage(
+          userMessage,
+          controller.signal,
+        );
 
         for await (const chatHistory of stream) {
           // console.log(
@@ -209,10 +222,15 @@ export function useOpenAIChat({
           setMessages(formatOpenAIMessages(chatHistory));
         }
       } catch (error) {
+        // Ignore abort errors (expected when user cancels)
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         setMessages(
           historyWithError(openaiRef.current?.chatHistory ?? [], error),
         );
       } finally {
+        abortControllerRef.current = null;
         setIsAssistantResponding(false);
       }
     },
@@ -248,14 +266,25 @@ export function useOpenAIChat({
 
         await initializeChat(slicedHistory);
 
-        const stream = openaiRef.current.sendMessage(userMessage);
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const stream = openaiRef.current.sendMessage(
+          userMessage,
+          controller.signal,
+        );
 
         for await (const chatHistory of stream) {
           setMessages(formatOpenAIMessages(chatHistory));
         }
       } catch (error) {
+        // Ignore abort errors (expected when user cancels)
+        if (error instanceof Error && error.name === "AbortError") {
+          return;
+        }
         setMessages(historyWithError(openaiRef.current.chatHistory, error));
       } finally {
+        abortControllerRef.current = null;
         setIsAssistantResponding(false);
       }
     },
@@ -271,5 +300,6 @@ export function useOpenAIChat({
     handleSend,
     handleRetry,
     clearConversation,
+    stopResponse,
   };
 }

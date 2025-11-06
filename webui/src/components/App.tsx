@@ -139,6 +139,7 @@ export function App() {
       checkMcpConnection={checkMcpConnection}
       onOpenSettings={() => setShowSettings(true)}
       onClearConversation={chat.clearConversation}
+      onStop={chat.stopResponse}
     />
   );
 }

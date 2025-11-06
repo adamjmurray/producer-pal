@@ -19,6 +19,7 @@ interface ChatScreenProps {
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
   onClearConversation: () => void;
+  onStop: () => void;
 }
 
 export function ChatScreen({
@@ -35,6 +36,7 @@ export function ChatScreen({
   checkMcpConnection,
   onOpenSettings,
   onClearConversation,
+  onStop,
 }: ChatScreenProps) {
   return (
     <div className="flex flex-col h-screen">
@@ -69,6 +71,7 @@ export function ChatScreen({
       <ChatInput
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
+        onStop={onStop}
       />
     </div>
   );

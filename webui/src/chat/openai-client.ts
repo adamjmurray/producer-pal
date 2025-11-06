@@ -203,6 +203,7 @@ export class OpenAIClient {
    */
   async *sendMessage(
     message: string,
+    abortSignal?: AbortSignal,
   ): AsyncGenerator<OpenAIMessage[], void, unknown> {
     if (!this.mcpClient) {
       throw new Error("MCP client not initialized. Call initialize() first.");
@@ -366,6 +367,10 @@ export class OpenAIClient {
           }
         }
         // Continue loop to get model's response to tool results
+        // Check for abort signal
+        if (abortSignal?.aborted) {
+          continueLoop = false;
+        }
       } else {
         continueLoop = false;
       }
