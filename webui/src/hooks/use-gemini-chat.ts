@@ -43,7 +43,10 @@ interface UseGeminiChatReturn {
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (
+    message: string,
+    options?: { thinking?: string; temperature?: number },
+  ) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
@@ -84,7 +87,10 @@ export function useGeminiChat({
   }, []);
 
   const initializeChat = useCallback(
-    async (chatHistory?: GeminiMessage[]) => {
+    async (
+      chatHistory?: GeminiMessage[],
+      overrides?: { thinking?: string; temperature?: number },
+    ) => {
       // Auto-retry MCP connection if it failed
       if (mcpStatus === "error") {
         await checkMcpConnection();
@@ -93,10 +99,13 @@ export function useGeminiChat({
         throw new Error(`MCP connection failed: ${mcpError}`);
       }
 
-      const thinkingBudget = getThinkingBudget(thinking);
+      const effectiveThinking = overrides?.thinking ?? thinking;
+      const effectiveTemperature = overrides?.temperature ?? temperature;
+
+      const thinkingBudget = getThinkingBudget(effectiveThinking);
       const config: GeminiClientConfig = {
         model,
-        temperature,
+        temperature: effectiveTemperature,
         systemInstruction: SYSTEM_INSTRUCTION,
         enabledTools,
       };
@@ -117,8 +126,8 @@ export function useGeminiChat({
       geminiRef.current = new GeminiClient(apiKey, config);
       await geminiRef.current.initialize();
       setActiveModel(model);
-      setActiveThinking(thinking);
-      setActiveTemperature(temperature);
+      setActiveThinking(effectiveThinking);
+      setActiveTemperature(effectiveTemperature);
     },
     [
       mcpStatus,
@@ -134,7 +143,10 @@ export function useGeminiChat({
   );
 
   const handleSend = useCallback(
-    async (message: string) => {
+    async (
+      message: string,
+      options?: { thinking?: string; temperature?: number },
+    ) => {
       if (!message.trim()) return;
 
       const userMessage = message.trim();
@@ -156,7 +168,7 @@ export function useGeminiChat({
 
       try {
         if (!geminiRef.current) {
-          await initializeChat();
+          await initializeChat(undefined, options);
         }
 
         if (!geminiRef.current) {

@@ -2,7 +2,10 @@ interface ChatStartProps {
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (
+    message: string,
+    options?: { thinking?: string; temperature?: number },
+  ) => Promise<void>;
 }
 
 export function ChatStart({

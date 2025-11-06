@@ -134,6 +134,10 @@ export function App() {
       activeThinking={chat.activeThinking}
       activeTemperature={chat.activeTemperature}
       activeProvider={chat.activeModel ? settings.provider : null}
+      provider={settings.provider}
+      model={settings.model}
+      defaultThinking={settings.thinking}
+      defaultTemperature={settings.temperature}
       mcpStatus={mcpStatus}
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}

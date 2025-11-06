@@ -54,7 +54,10 @@ interface UseOpenAIChatReturn {
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (
+    message: string,
+    options?: { thinking?: string; temperature?: number },
+  ) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
@@ -128,7 +131,10 @@ export function useOpenAIChat({
   }, []);
 
   const initializeChat = useCallback(
-    async (chatHistory?: OpenAIMessage[]) => {
+    async (
+      chatHistory?: OpenAIMessage[],
+      overrides?: { thinking?: string; temperature?: number },
+    ) => {
       // Auto-retry MCP connection if it failed
       if (mcpStatus === "error") {
         await checkMcpConnection();
@@ -137,9 +143,12 @@ export function useOpenAIChat({
         throw new Error(`MCP connection failed: ${mcpError}`);
       }
 
+      const effectiveThinking = overrides?.thinking ?? thinking;
+      const effectiveTemperature = overrides?.temperature ?? temperature;
+
       const config: OpenAIClientConfig = {
         model,
-        temperature,
+        temperature: effectiveTemperature,
         systemInstruction: SYSTEM_INSTRUCTION,
         baseUrl,
         enabledTools,
@@ -151,7 +160,7 @@ export function useOpenAIChat({
 
       // Only include reasoning_effort when using actual OpenAI API (not Groq/Mistral/etc)
       if (isOpenAIProvider(baseUrl)) {
-        const reasoningEffort = mapThinkingToReasoningEffort(thinking);
+        const reasoningEffort = mapThinkingToReasoningEffort(effectiveThinking);
         if (reasoningEffort) {
           config.reasoningEffort = reasoningEffort;
         }
@@ -160,8 +169,8 @@ export function useOpenAIChat({
       openaiRef.current = new OpenAIClient(apiKey, config);
       await openaiRef.current.initialize();
       setActiveModel(model);
-      setActiveThinking(thinking);
-      setActiveTemperature(temperature);
+      setActiveThinking(effectiveThinking);
+      setActiveTemperature(effectiveTemperature);
     },
     [
       mcpStatus,
@@ -177,7 +186,10 @@ export function useOpenAIChat({
   );
 
   const handleSend = useCallback(
-    async (message: string) => {
+    async (
+      message: string,
+      options?: { thinking?: string; temperature?: number },
+    ) => {
       if (!message.trim()) return;
 
       const userMessage = message.trim();
@@ -199,7 +211,7 @@ export function useOpenAIChat({
 
       try {
         if (!openaiRef.current) {
-          await initializeChat();
+          await initializeChat(undefined, options);
         }
 
         if (!openaiRef.current) {
