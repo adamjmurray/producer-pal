@@ -72,7 +72,7 @@ export function ChatHeader({
       {hasMessages && (
         <button
           onClick={handleRestart}
-          className="text-xs px-2 py-1 bg-red-700 text-white rounded hover:bg-red-800"
+          className="text-xs px-2 py-1 border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-white rounded transition-colors"
         >
           Restart
         </button>
