@@ -59,8 +59,8 @@ If you have issues after upgrading, see the
 
 ## Claude Desktop
 
-Anthropic's Claude Desktop app is the easiest, recommended way to use Producer
-Pal.
+⭐️ Anthropic's Claude Desktop app is one of the easiest (and recommended) ways
+to use Producer Pal.
 
 ### Requirements
 
@@ -126,12 +126,16 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
 ## Producer Pal Chat UI
 
-Producer Pal includes its own standalone web interface, independent from Claude
-Desktop, Gemini CLI, or any other AI platform. The chat UI is served from the
-Max for Live device and opens in your system's default browser.
+Producer Pal includes its own chat interface, independent from Claude Desktop,
+Gemini CLI, or any other AI platform. Its chat UI is served as a web page from
+the Max for Live device and opens in your system's default browser.
 
-The chat UI supports multiple LLM providers including Google Gemini (free tier
-available), OpenAI, Mistral, OpenRouter, and custom OpenAI-compatible providers.
+The chat UI supports multiple LLM providers including Google Gemini, OpenAI,
+Mistral, OpenRouter, local models via LM Studio and Ollama, and custom
+OpenAI-compatible providers.
+
+⭐️ Using the built-in chat UI with Google Gemini's free tier is one of the
+easiest (and recommended) ways to use Produce Pal.
 
 Note: Some options use pay-as-you-go pricing for API access, which can incur
 cost quickly when using the most advanced models and having long conversations.
@@ -150,13 +154,15 @@ Always monitor your API key usage when using pay-as-you-go options.
       All Google accounts can use the free tier with generous daily quotas.
       [Get a Gemini API key](https://aistudio.google.com/apikey).
     - [OpenAI API](https://openai.com/api/): Requires pay-as-you-go pricing.
-      [Get an OpenAI API key](https://platform.openai.com/api-keys).
+      [Get an OpenAI API key](https://platform.openai.com/api-keys). Also
+      consider [Codex CLI](#codex-cli) to use OpenAI with Producer Pal on a
+      subscription plan (flat rate, not pay-as-you-go).
     - [Mistral](https://mistral.ai/): AI developed in France. Can be used for
       free but with fairly aggressive quotas.
       [Get a Mistral API key](https://console.mistral.ai/home?workspace_dialog=apiKeys).
     - [OpenRouter](https://openrouter.ai): An "AI gateway" with hundreds of LLMs
       available in one place. Includes free and pay-as-you-go options.
-      [Get an OpenRouter API key](https://openrouter.ai/settings/keys)
+      [Get an OpenRouter API key](https://openrouter.ai/settings/keys).
     - Custom: Any other compatible LLM. See
       [Using Custom Providers](#using-custom-providers).
 
@@ -199,8 +205,9 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
 **Privacy Note for Online APIs:** Your API key is stored in the browser's local
 storage for convenience. If that concerns you, use a private browser session,
-delete the key from settings after use, or delete browser local storage.
-Generally, you can delete and regenerate API keys at any time.
+delete the key from settings after use, or delete browser local storage after
+use. You can delete and regenerate API keys with the AI provider if a key is
+accidentally shared.
 
 ### Chat UI Model Settings
 
@@ -210,15 +217,18 @@ improve quality for complex tasks. Enable if your model supports it and you need
 more sophisticated musical decisions. Some reasoning models, such as Gemini,
 support showing their "thoughts".
 
-**Randomness** (0.0-1.0): Controls response randomness. Lower values (0.0 - 0.5)
-make the model more focused and deterministic. Higher values (0.5 - 1.0) make it
-more creative but potentially less coherent. Default is 0.5. For music
+**Randomness** (0%-100%): Controls AI response randomness. Lower values (0% -
+50%) make the model more focused and deterministic. Higher values (50% - 100%)
+make it more creative but potentially less coherent. Default is 50%. For music
 composition, try higher values depending on how experimental you want the
 results.
 
 ### Using Local Providers
 
 #### LM Studio with the Producer Pal Chat UI
+
+You can use LM Studio with the built-in chat UI as explained here, or you can
+[use LM Studio's UI](#lm-studio) if you prefer.
 
 1.  Install [LM Studio](https://lmstudio.ai/) and download some models
 2.  Go to the LM Studio developer tab
@@ -287,6 +297,10 @@ To use other OpenAI-compatible providers beyond the built-in options:
 
 Use Producer Pal with Google's command line coding assistant. No subscription
 needed.
+
+If you feel comfortable with the command line, this is a good option for using
+Producer Pal. Also consider using Gemini with Producer Pal's
+[built-in chat UI](#producer-pal-chat-ui)
 
 ### Requirements
 
@@ -366,6 +380,12 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 ## Codex CLI
 
 Use Producer Pal with OpenAI's command line coding assistant.
+
+If you feel comfortable with the command line and have an OpenAI subscription,
+this is a good option for using Producer Pal. It's the recommended way to use
+OpenAI models with Producer Pal because using an OpenAI key with the
+[built-in chat UI](#producer-pal-chat-ui) requires pay-as-you-go pricing for
+OpenAI's API.
 
 ### Requirements
 
@@ -710,6 +730,9 @@ However, completely offline and private usage is compelling.
    <img src="./doc/img/lm-studio-success.png" alt="LM Studio successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+Note: You can also use LM Studio with
+[Producer Pal's built-in chat UI](#producer-pal-chat-ui).
 
 ### Local Model Tips
 
