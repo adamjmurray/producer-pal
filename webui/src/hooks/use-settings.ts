@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   openai: {
     apiKey: "",
     model: "gpt-5-2025-08-07",
-    thinking: "Auto",
+    thinking: "Medium",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -75,7 +75,14 @@ function loadProviderSettings(provider: Provider): ProviderSettings {
   if (newFormatData) {
     try {
       const parsed = JSON.parse(newFormatData);
-      return { ...DEFAULT_SETTINGS[provider], ...parsed };
+      const settings = { ...DEFAULT_SETTINGS[provider], ...parsed };
+
+      // Normalize thinking value for OpenAI if it's invalid
+      if (provider === "openai") {
+        settings.thinking = normalizeThinkingForOpenAI(settings.thinking);
+      }
+
+      return settings;
     } catch {
       // Invalid JSON, fall through to defaults or migration
     }
@@ -123,8 +130,19 @@ function saveProviderSettings(provider: Provider, settings: ProviderSettings) {
   localStorage.setItem(key, JSON.stringify(settings));
 }
 
+function normalizeThinkingForOpenAI(thinking: string): string {
+  // OpenAI only supports "Low", "Medium", "High"
+  if (thinking === "Off" || thinking === "Auto") {
+    return "Low";
+  }
+  if (thinking === "Ultra") {
+    return "High";
+  }
+  return thinking;
+}
+
 export function useSettings(): UseSettingsReturn {
-  const [provider, setProvider] = useState<Provider>("gemini");
+  const [provider, setProviderState] = useState<Provider>("gemini");
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
@@ -187,7 +205,7 @@ export function useSettings(): UseSettingsReturn {
       ) as Provider | null) ??
       (localStorage.getItem("provider") as Provider | null);
     if (savedProvider != null) {
-      setProvider(savedProvider);
+      setProviderState(savedProvider);
     }
 
     // Load settings for each provider
@@ -234,7 +252,7 @@ export function useSettings(): UseSettingsReturn {
         "producer_pal_current_provider",
       ) as Provider | null) ??
       (localStorage.getItem("provider") as Provider | null);
-    if (savedProvider != null) setProvider(savedProvider);
+    if (savedProvider != null) setProviderState(savedProvider);
 
     // Reload enabled tools
     const saved = localStorage.getItem("producer_pal_enabled_tools");
@@ -387,6 +405,22 @@ export function useSettings(): UseSettingsReturn {
     [provider],
   );
 
+  // Custom setProvider that normalizes thinking value when switching providers
+  const setProvider = useCallback(
+    (newProvider: Provider) => {
+      // If switching to OpenAI, normalize the thinking value
+      if (newProvider === "openai") {
+        const normalized = normalizeThinkingForOpenAI(currentSettings.thinking);
+        if (normalized !== currentSettings.thinking) {
+          // Update OpenAI settings with normalized thinking value
+          setOpenaiSettings((prev) => ({ ...prev, thinking: normalized }));
+        }
+      }
+      setProviderState(newProvider);
+    },
+    [currentSettings.thinking],
+  );
+
   // Check if current provider has an API key saved
   // Local providers (lmstudio, ollama) don't require API keys
   const hasApiKey =
@@ -437,9 +471,9 @@ export function useSettings(): UseSettingsReturn {
 
   const resetBehaviorToDefaults = useCallback(() => {
     setTemperature(1.0);
-    setThinking("Auto");
+    setThinking(DEFAULT_SETTINGS[provider].thinking);
     setShowThoughts(true);
-  }, [setTemperature, setThinking, setShowThoughts]);
+  }, [provider, setTemperature, setThinking, setShowThoughts]);
 
   const isToolEnabled = useCallback(
     (toolId: string) => {
