@@ -4,6 +4,7 @@ import { ProviderSelector } from "./ProviderSelector.jsx";
 import { ThinkingSettings } from "./ThinkingSettings.jsx";
 import { RandomnessSlider } from "./RandomnessSlider.jsx";
 import { SettingsTabs } from "./SettingsTabs.jsx";
+import { ToolToggles } from "./ToolToggles.jsx";
 
 interface SettingsScreenProps {
   provider: Provider;
@@ -24,6 +25,10 @@ interface SettingsScreenProps {
   setShowThoughts: (show: boolean) => void;
   theme: string;
   setTheme: (theme: string) => void;
+  enabledTools: Record<string, boolean>;
+  setEnabledTools: (tools: Record<string, boolean>) => void;
+  enableAllTools: () => void;
+  disableAllTools: () => void;
   saveSettings: () => void;
   cancelSettings: () => void;
   settingsConfigured: boolean;
@@ -48,6 +53,10 @@ export function SettingsScreen({
   setShowThoughts,
   theme,
   setTheme,
+  enabledTools,
+  setEnabledTools,
+  enableAllTools,
+  disableAllTools,
   saveSettings,
   cancelSettings,
   settingsConfigured,
@@ -215,6 +224,16 @@ export function SettingsScreen({
                     setTemperature={setTemperature}
                   />
                 </>
+              )}
+
+              {/* Tools Tab */}
+              {activeTab === "tools" && (
+                <ToolToggles
+                  enabledTools={enabledTools}
+                  setEnabledTools={setEnabledTools}
+                  enableAllTools={enableAllTools}
+                  disableAllTools={disableAllTools}
+                />
               )}
 
               {/* Appearance Tab */}

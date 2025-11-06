@@ -38,6 +38,7 @@ export function App() {
     thinking: settings.thinking,
     temperature: settings.temperature,
     showThoughts: settings.showThoughts,
+    enabledTools: settings.enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
@@ -53,6 +54,7 @@ export function App() {
     thinking: settings.thinking,
     temperature: settings.temperature,
     baseUrl,
+    enabledTools: settings.enabledTools,
     mcpStatus,
     mcpError,
     checkMcpConnection,
@@ -110,6 +112,10 @@ export function App() {
         setShowThoughts={settings.setShowThoughts}
         theme={theme}
         setTheme={setTheme}
+        enabledTools={settings.enabledTools}
+        setEnabledTools={settings.setEnabledTools}
+        enableAllTools={settings.enableAllTools}
+        disableAllTools={settings.disableAllTools}
         saveSettings={handleSaveSettings}
         cancelSettings={handleCancelSettings}
         settingsConfigured={settings.settingsConfigured}

@@ -1,4 +1,8 @@
-import { GoogleGenAI, mcpToTool } from "@google/genai/web";
+import {
+  GoogleGenAI,
+  mcpToTool,
+  FunctionCallingConfigMode,
+} from "@google/genai/web";
 import type { Chat, ThinkingConfig } from "@google/genai/web";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
@@ -12,6 +16,7 @@ export interface GeminiClientConfig {
   systemInstruction?: string;
   thinkingConfig?: ThinkingConfig;
   chatHistory?: GeminiMessage[];
+  enabledTools?: Record<string, boolean>;
 }
 
 /**
@@ -90,12 +95,30 @@ export class GeminiClient {
     });
     await this.mcpClient.connect(transport);
 
+    // Get enabled tool names from settings
+    const enabledTools = this.config.enabledTools;
+    const enabledToolNames = enabledTools
+      ? Object.entries(enabledTools)
+          .filter(([_, enabled]) => enabled)
+          .map(([name, _]) => name)
+      : undefined;
+
     // Create chat with MCP tools
     const chatConfig = {
       tools: [mcpToTool(this.mcpClient)],
       automaticFunctionCalling: {
         // Gemini will automatically execute MCP tools
       },
+      ...(enabledToolNames && enabledToolNames.length > 0
+        ? {
+            toolConfig: {
+              functionCallingConfig: {
+                mode: FunctionCallingConfigMode.VALIDATED,
+                allowedFunctionNames: enabledToolNames,
+              },
+            },
+          }
+        : {}),
       ...this.config,
     };
 

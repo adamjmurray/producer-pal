@@ -42,6 +42,7 @@ interface UseOpenAIChatProps {
   thinking: string; // Will be mapped to reasoningEffort
   temperature: number;
   baseUrl?: string;
+  enabledTools: Record<string, boolean>;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
@@ -97,6 +98,7 @@ export function useOpenAIChat({
   thinking,
   temperature,
   baseUrl,
+  enabledTools,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -133,6 +135,7 @@ export function useOpenAIChat({
         temperature,
         systemInstruction: SYSTEM_INSTRUCTION,
         baseUrl,
+        enabledTools,
       };
 
       if (chatHistory) {
@@ -161,6 +164,7 @@ export function useOpenAIChat({
       model,
       temperature,
       baseUrl,
+      enabledTools,
       apiKey,
     ],
   );

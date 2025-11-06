@@ -64,6 +64,7 @@ export interface OpenAIClientConfig {
   reasoningEffort?: "low" | "medium" | "high"; // For o1/o3 models
   chatHistory?: OpenAIMessage[];
   baseUrl?: string; // For OpenAI-compatible providers
+  enabledTools?: Record<string, boolean>;
 }
 
 /**
@@ -214,7 +215,12 @@ export class OpenAIClient {
 
     // Get MCP tools
     const toolsResult = await this.mcpClient.listTools();
-    const tools: OpenAI.Chat.ChatCompletionTool[] = toolsResult.tools.map(
+    // Filter tools based on enabled settings
+    const enabledTools = this.config.enabledTools;
+    const filteredTools = enabledTools
+      ? toolsResult.tools.filter((tool) => enabledTools[tool.name] !== false)
+      : toolsResult.tools;
+    const tools: OpenAI.Chat.ChatCompletionTool[] = filteredTools.map(
       (tool) => ({
         type: "function",
         function: {

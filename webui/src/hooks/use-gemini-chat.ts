@@ -31,6 +31,7 @@ interface UseGeminiChatProps {
   thinking: string;
   temperature: number;
   showThoughts: boolean;
+  enabledTools: Record<string, boolean>;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
@@ -53,6 +54,7 @@ export function useGeminiChat({
   thinking,
   temperature,
   showThoughts,
+  enabledTools,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -89,6 +91,7 @@ export function useGeminiChat({
         model,
         temperature,
         systemInstruction: SYSTEM_INSTRUCTION,
+        enabledTools,
       };
 
       if (chatHistory) {
@@ -118,6 +121,7 @@ export function useGeminiChat({
       model,
       temperature,
       showThoughts,
+      enabledTools,
       apiKey,
     ],
   );

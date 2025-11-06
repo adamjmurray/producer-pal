@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import type { Provider, UseSettingsReturn } from "../types/settings.js";
+import { DEFAULT_ENABLED_TOOLS, TOOLS } from "../constants/tools.js";
 
 interface ProviderSettings {
   apiKey: string;
@@ -127,6 +128,19 @@ export function useSettings(): UseSettingsReturn {
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
+  const [enabledTools, setEnabledToolsState] = useState<
+    Record<string, boolean>
+  >(() => {
+    const saved = localStorage.getItem("producer_pal_enabled_tools");
+    if (saved) {
+      try {
+        return { ...DEFAULT_ENABLED_TOOLS, ...JSON.parse(saved) };
+      } catch {
+        return DEFAULT_ENABLED_TOOLS;
+      }
+    }
+    return DEFAULT_ENABLED_TOOLS;
+  });
   const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.gemini,
   );
@@ -190,6 +204,10 @@ export function useSettings(): UseSettingsReturn {
     localStorage.setItem("producer_pal_current_provider", provider);
     localStorage.setItem("producer_pal_settings_configured", "true");
     setSettingsConfigured(true);
+    localStorage.setItem(
+      "producer_pal_enabled_tools",
+      JSON.stringify(enabledTools),
+    );
     saveProviderSettings("gemini", geminiSettings);
     saveProviderSettings("openai", openaiSettings);
     saveProviderSettings("mistral", mistralSettings);
@@ -199,6 +217,7 @@ export function useSettings(): UseSettingsReturn {
     saveProviderSettings("custom", customSettings);
   }, [
     provider,
+    enabledTools,
     geminiSettings,
     openaiSettings,
     mistralSettings,
@@ -216,6 +235,21 @@ export function useSettings(): UseSettingsReturn {
       ) as Provider | null) ??
       (localStorage.getItem("provider") as Provider | null);
     if (savedProvider != null) setProvider(savedProvider);
+
+    // Reload enabled tools
+    const saved = localStorage.getItem("producer_pal_enabled_tools");
+    if (saved) {
+      try {
+        setEnabledToolsState({
+          ...DEFAULT_ENABLED_TOOLS,
+          ...JSON.parse(saved),
+        });
+      } catch {
+        setEnabledToolsState(DEFAULT_ENABLED_TOOLS);
+      }
+    } else {
+      setEnabledToolsState(DEFAULT_ENABLED_TOOLS);
+    }
 
     // Reload settings for each provider
     setGeminiSettings(loadProviderSettings("gemini"));
@@ -374,6 +408,40 @@ export function useSettings(): UseSettingsReturn {
           ? !!localStorage.getItem("gemini_api_key")
           : false;
 
+  // Tool toggle helper functions
+  const setEnabledTools = useCallback((tools: Record<string, boolean>) => {
+    setEnabledToolsState(tools);
+  }, []);
+
+  const enableAllTools = useCallback(() => {
+    const allEnabled = TOOLS.reduce(
+      (acc, tool) => {
+        acc[tool.id] = true;
+        return acc;
+      },
+      {} as Record<string, boolean>,
+    );
+    setEnabledToolsState(allEnabled);
+  }, []);
+
+  const disableAllTools = useCallback(() => {
+    const allDisabled = TOOLS.reduce(
+      (acc, tool) => {
+        acc[tool.id] = false;
+        return acc;
+      },
+      {} as Record<string, boolean>,
+    );
+    setEnabledToolsState(allDisabled);
+  }, []);
+
+  const isToolEnabled = useCallback(
+    (toolId: string) => {
+      return enabledTools[toolId] ?? true;
+    },
+    [enabledTools],
+  );
+
   return {
     provider,
     setProvider,
@@ -399,5 +467,10 @@ export function useSettings(): UseSettingsReturn {
     cancelSettings,
     hasApiKey,
     settingsConfigured,
+    enabledTools,
+    setEnabledTools,
+    enableAllTools,
+    disableAllTools,
+    isToolEnabled,
   };
 }
