@@ -29,6 +29,7 @@ Watch the Producer Pal walk-through video with Claude Desktop:
   <br>
 </figure>
 </a>
+<br>
 
 Also see these other helpful videos:
 
