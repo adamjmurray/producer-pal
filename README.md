@@ -10,7 +10,7 @@ local models.
 
 ## Demo
 
-Watch the Producer Pal 1.0 walkthrough video:
+Watch the Producer Pal walk-through video with Claude Desktop:
 
 - 0:00:
   [Installation with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
@@ -29,10 +29,16 @@ Watch the Producer Pal 1.0 walkthrough video:
   <br>
 </figure>
 </a>
-<br>
 
-Or
-[watch how to setup Producer Pal with Gemini CLI.](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
+Also see these other helpful videos:
+
+- ⭐️
+  [How to setup Producer Pal with Google Gemini and the built-in chat UI](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
+  (along with Claude Desktop as shown in the walk-through above, this is the
+  recommended way to use Producer Pal)
+- Or
+  [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX),
+  for people comfortable with the command line.
 
 ## Installation
 
