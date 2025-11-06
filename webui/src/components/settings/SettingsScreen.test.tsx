@@ -58,6 +58,7 @@ describe("SettingsScreen", () => {
     setEnabledTools: vi.fn(),
     enableAllTools: vi.fn(),
     disableAllTools: vi.fn(),
+    resetBehaviorToDefaults: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     settingsConfigured: false,

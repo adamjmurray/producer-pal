@@ -116,6 +116,7 @@ export function App() {
         setEnabledTools={settings.setEnabledTools}
         enableAllTools={settings.enableAllTools}
         disableAllTools={settings.disableAllTools}
+        resetBehaviorToDefaults={settings.resetBehaviorToDefaults}
         saveSettings={handleSaveSettings}
         cancelSettings={handleCancelSettings}
         settingsConfigured={settings.settingsConfigured}

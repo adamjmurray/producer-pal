@@ -435,6 +435,12 @@ export function useSettings(): UseSettingsReturn {
     setEnabledToolsState(allDisabled);
   }, []);
 
+  const resetBehaviorToDefaults = useCallback(() => {
+    setTemperature(1.0);
+    setThinking("Auto");
+    setShowThoughts(true);
+  }, [setTemperature, setThinking, setShowThoughts]);
+
   const isToolEnabled = useCallback(
     (toolId: string) => {
       return enabledTools[toolId] ?? true;
@@ -471,6 +477,7 @@ export function useSettings(): UseSettingsReturn {
     setEnabledTools,
     enableAllTools,
     disableAllTools,
+    resetBehaviorToDefaults,
     isToolEnabled,
   };
 }
