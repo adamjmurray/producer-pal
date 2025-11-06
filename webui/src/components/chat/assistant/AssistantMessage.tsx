@@ -1,16 +1,20 @@
+import type { UIPart } from "../../../types/messages.js";
 import { AssistantError } from "./AssistantError.jsx";
 import { AssistantText } from "./AssistantText.jsx";
 import { AssistantThought } from "./AssistantThought.jsx";
 import { AssistantToolCall } from "./AssistantToolCall.jsx";
-import type { UIPart } from "../../../types/messages.js";
 
 interface AssistantMessageProps {
   parts: UIPart[];
+  isResponding?: boolean;
 }
 
-export function AssistantMessage({ parts }: AssistantMessageProps) {
+export function AssistantMessage({
+  parts,
+  isResponding,
+}: AssistantMessageProps) {
   return (
-    <div className="flex flex-col gap-3 pt-2 pb-1">
+    <div className="flex flex-col gap-3 py-2">
       {parts.map((part, i) => {
         if (part.type === "thought") {
           return (
@@ -18,6 +22,7 @@ export function AssistantMessage({ parts }: AssistantMessageProps) {
               key={i}
               content={part.content}
               isOpen={part.isOpen}
+              isResponding={isResponding}
             />
           );
         } else if (part.type === "tool") {

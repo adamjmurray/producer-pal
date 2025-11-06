@@ -1,14 +1,35 @@
 import logoSvg from "../../assets/producer-pal-logo.svg";
 import { getModelName } from "../../config.js";
+import type { Provider } from "../../types/settings.js";
 
 interface ChatHeaderProps {
   mcpStatus: "connected" | "connecting" | "error";
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
-  theme: string;
-  setTheme: (theme: string) => void;
+  activeProvider: Provider | null;
+  hasMessages: boolean;
   onOpenSettings: () => void;
+  onClearConversation: () => void;
+}
+
+function getProviderName(provider: Provider): string {
+  switch (provider) {
+    case "gemini":
+      return "Google";
+    case "openai":
+      return "OpenAI";
+    case "mistral":
+      return "Mistral";
+    case "openrouter":
+      return "OpenRouter";
+    case "lmstudio":
+      return "LM Studio";
+    case "ollama":
+      return "Ollama";
+    case "custom":
+      return "Custom";
+  }
 }
 
 export function ChatHeader({
@@ -16,10 +37,16 @@ export function ChatHeader({
   activeModel,
   activeThinking,
   activeTemperature,
-  theme,
-  setTheme,
+  activeProvider,
+  hasMessages,
   onOpenSettings,
+  onClearConversation,
 }: ChatHeaderProps) {
+  const handleRestart = () => {
+    if (window.confirm("Clear all messages and restart conversation?")) {
+      onClearConversation();
+    }
+  };
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-baseline">
       <img
@@ -41,10 +68,26 @@ export function ChatHeader({
           <span className="text-red-600 dark:text-red-400">✗ Error</span>
         )}
       </div>
-      <div className="ml-auto flex gap-3 items-baseline">
-        {activeModel && (
+      {hasMessages && <div className="flex-1" />}
+      {hasMessages && (
+        <button
+          onClick={handleRestart}
+          className="text-xs px-2 py-1 border border-red-500 text-red-500 bg-transparent hover:bg-red-500 hover:text-white rounded transition-colors"
+        >
+          Restart
+        </button>
+      )}
+      {hasMessages && <div className="flex-1" />}
+      <div
+        className={
+          hasMessages
+            ? "flex gap-3 items-baseline"
+            : "ml-auto flex gap-3 items-baseline"
+        }
+      >
+        {activeModel && activeProvider && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {getModelName(activeModel)}
+            {getProviderName(activeProvider)} | {getModelName(activeModel)}
           </span>
         )}
         {activeThinking && (
@@ -63,15 +106,6 @@ export function ChatHeader({
         >
           Settings
         </button>
-        <select
-          value={theme}
-          onChange={(e) => setTheme((e.target as HTMLSelectElement).value)}
-          className="text-xs bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded px-2 py-1"
-        >
-          <option value="system">System</option>
-          <option value="light">Light</option>
-          <option value="dark">Dark</option>
-        </select>
       </div>
     </header>
   );

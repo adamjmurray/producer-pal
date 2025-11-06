@@ -15,6 +15,99 @@
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
+					"id" : "obj-75",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 344.0, 254.0, 104.0, 22.0 ],
+					"presentation_linecount" : 2,
+					"text" : "chatUIEnabled $1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-73",
+					"maxclass" : "newobj",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 344.0, 212.0, 61.0, 22.0 ],
+					"text" : "pipe 1000"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Enable the built-in chat UI. Disabling the chat UI makes it inaccessible over the local network.",
+					"annotation_name" : "Enable Chat UI",
+					"id" : "obj-37",
+					"maxclass" : "live.toggle",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"parameter_enable" : 1,
+					"patching_rect" : [ 344.0, 172.5, 15.0, 15.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 157.0, 95.0, 15.0, 15.0 ],
+					"saved_attribute_attributes" : 					{
+						"valueof" : 						{
+							"parameter_annotation_name" : "Enable Chat UI",
+							"parameter_enum" : [ "off", "on" ],
+							"parameter_info" : "Enable the built-in chat UI. Disabling the chat UI makes it inaccessible over the local network.",
+							"parameter_initial" : [ 1 ],
+							"parameter_initial_enable" : 1,
+							"parameter_invisible" : 1,
+							"parameter_longname" : "live.toggle",
+							"parameter_mmax" : 1,
+							"parameter_modmode" : 0,
+							"parameter_shortname" : "live.toggle",
+							"parameter_type" : 2
+						}
+
+					}
+,
+					"varname" : "disable-chat-ui"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"angle" : 270.0,
+					"annotation" : "Enable the built-in chat UI. Disabling the chat UI makes it inaccessible over the local network.",
+					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
+					"hint" : "",
+					"id" : "obj-72",
+					"ignoreclick" : 0,
+					"maxclass" : "panel",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 614.0, 351.0, 128.0, 128.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 144.0, 84.75, 106.0, 34.5 ],
+					"proportion" : 0.39,
+					"varname" : "Enable Chat UI"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-65",
+					"maxclass" : "live.comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 339.0, 156.5, 87.0, 18.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 173.0, 93.0, 79.397429999999986, 18.0 ],
+					"text" : "Enable Chat UI",
+					"textjustification" : 0
+				}
+
+			}
+, 			{
+				"box" : 				{
 					"id" : "obj-71",
 					"linecount" : 2,
 					"maxclass" : "newobj",
@@ -406,7 +499,6 @@
 					"annotation" : "Open the built-in AI chat UI in a web browser.",
 					"annotation_name" : "Open Chat UI",
 					"fontsize" : 10.0,
-					"hidden" : 1,
 					"id" : "obj-32",
 					"maxclass" : "live.text",
 					"mode" : 0,
@@ -416,7 +508,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 557.5, 37.5, 83.0, 24.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 158.0, 106.0, 80.0, 20.0 ],
+					"presentation_rect" : [ 157.0, 119.83333720266819, 80.0, 20.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Open Chat UI",
@@ -949,7 +1041,7 @@
 					"maxclass" : "comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 311.0, 189.0, 130.0, 100.0 ],
+					"patching_rect" : [ 721.5, 177.0, 130.0, 100.0 ],
 					"text" : "The [pipe]s attempt to avoid a \"Node script not ready can't handle message verbose\" error.\nTODO: Needs a robust sotluion"
 				}
 
@@ -1148,7 +1240,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 123.666670352220535, 168.000005006790161, 128.0, 128.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 144.000004291534424, 92.666669428348541, 105.999995708465576, 48.333334773778915 ],
+					"presentation_rect" : [ 144.0, 115.5, 106.0, 34.5 ],
 					"proportion" : 0.39,
 					"varname" : "Open Chat UI"
 				}
@@ -1282,6 +1374,13 @@
 				"patchline" : 				{
 					"destination" : [ "obj-53", 0 ],
 					"source" : [ "obj-36", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-73", 0 ],
+					"source" : [ "obj-37", 0 ]
 				}
 
 			}
@@ -1525,8 +1624,22 @@
 			}
 , 			{
 				"patchline" : 				{
+					"destination" : [ "obj-75", 0 ],
+					"source" : [ "obj-73", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
 					"destination" : [ "obj-10", 0 ],
 					"source" : [ "obj-74", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-9", 0 ],
+					"source" : [ "obj-75", 0 ]
 				}
 
 			}
@@ -1542,6 +1655,7 @@
 			"obj-17" : [ "json-output", "json-output", 0 ],
 			"obj-21" : [ "small-model-mode", "small-model-mode", 0 ],
 			"obj-32" : [ "live.text[3]", "live.text[3]", 0 ],
+			"obj-37" : [ "live.toggle", "live.toggle", 0 ],
 			"obj-55" : [ "live.button", "live.button", 0 ],
 			"obj-64" : [ "port", "port", 0 ],
 			"obj-68" : [ "timeout", "timeout", 0 ],

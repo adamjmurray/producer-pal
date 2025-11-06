@@ -34,15 +34,59 @@ describe("AssistantThought", () => {
       const details = document.querySelector("details");
       expect(details!.open).toBe(false);
     });
+  });
 
-    it("has animate-pulse class when isOpen is true", () => {
-      render(<AssistantThought content="Test thought" isOpen={true} />);
+  describe("animation behavior", () => {
+    it("has animate-pulse class when isOpen and isResponding are both true", () => {
+      render(
+        <AssistantThought
+          content="Test thought"
+          isOpen={true}
+          isResponding={true}
+        />,
+      );
       const details = document.querySelector("details");
       expect(details!.className).toContain("animate-pulse");
     });
 
+    it("does not have animate-pulse class when isOpen is true but isResponding is false", () => {
+      render(
+        <AssistantThought
+          content="Test thought"
+          isOpen={true}
+          isResponding={false}
+        />,
+      );
+      const details = document.querySelector("details");
+      expect(details!.className).not.toContain("animate-pulse");
+    });
+
+    it("does not have animate-pulse class when isOpen is true but isResponding is undefined", () => {
+      render(<AssistantThought content="Test thought" isOpen={true} />);
+      const details = document.querySelector("details");
+      expect(details!.className).not.toContain("animate-pulse");
+    });
+
     it("does not have animate-pulse class when isOpen is false", () => {
-      render(<AssistantThought content="Test thought" isOpen={false} />);
+      render(
+        <AssistantThought
+          content="Test thought"
+          isOpen={false}
+          isResponding={true}
+        />,
+      );
+      const details = document.querySelector("details");
+      expect(details!.className).not.toContain("animate-pulse");
+    });
+
+    it("does not have animate-pulse class when both are false", () => {
+      render(
+        <AssistantThought
+          content="Test thought"
+          isOpen={false}
+          isResponding={false}
+        />,
+      );
       const details = document.querySelector("details");
       expect(details!.className).not.toContain("animate-pulse");
     });

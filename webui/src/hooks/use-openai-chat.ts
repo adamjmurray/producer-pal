@@ -1,15 +1,15 @@
 import { useCallback, useRef, useState } from "preact/hooks";
 import {
-  GeminiClient,
-  type GeminiClientConfig,
-} from "../chat/gemini-client.js";
-import { formatGeminiMessages } from "../chat/gemini-formatter.js";
-import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
-import type { GeminiMessage, UIMessage } from "../types/messages.js";
+  OpenAIClient,
+  type OpenAIClientConfig,
+} from "../chat/openai-client.js";
+import { formatOpenAIMessages } from "../chat/openai-formatter.js";
+import { SYSTEM_INSTRUCTION } from "../config.js";
+import type { OpenAIMessage, UIMessage } from "../types/messages.js";
 
-function createErrorMessage(
+function historyWithError(
+  chatHistory: OpenAIMessage[],
   error: unknown,
-  chatHistory: GeminiMessage[],
 ): UIMessage[] {
   console.error(error);
   let errorMessage = `${error}`;
@@ -17,27 +17,38 @@ function createErrorMessage(
     errorMessage = `Error: ${errorMessage}`;
   }
 
-  const errorEntry = {
-    role: "error",
-    parts: [{ text: errorMessage }],
+  // Format existing chat history as UI messages, then append error message
+  const formattedHistory = formatOpenAIMessages(chatHistory);
+
+  // Create error message with proper error part (not text part)
+  const errorMessage_ui: UIMessage = {
+    role: "model",
+    parts: [
+      {
+        type: "error",
+        content: errorMessage,
+        isError: true,
+      },
+    ],
+    rawHistoryIndex: chatHistory.length,
   };
 
-  return formatGeminiMessages([...chatHistory, errorEntry]);
+  return [...formattedHistory, errorMessage_ui];
 }
 
-interface UseGeminiChatProps {
+interface UseOpenAIChatProps {
   apiKey: string;
   model: string;
-  thinking: string;
+  thinking: string; // Will be mapped to reasoningEffort
   temperature: number;
-  showThoughts: boolean;
+  baseUrl?: string;
   enabledTools: Record<string, boolean>;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
 }
 
-interface UseGeminiChatReturn {
+interface UseOpenAIChatReturn {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   activeModel: string | null;
@@ -49,17 +60,50 @@ interface UseGeminiChatReturn {
   stopResponse: () => void;
 }
 
-export function useGeminiChat({
+/**
+ * Check if we're using the actual OpenAI API (not OpenAI-compatible providers like Groq/Mistral).
+ * reasoning_effort is only supported by OpenAI's API.
+ */
+function isOpenAIProvider(baseUrl?: string): boolean {
+  // If no baseUrl, OpenAIClient defaults to OpenAI
+  if (!baseUrl) return true;
+  // Check if it's the OpenAI API URL
+  return baseUrl === "https://api.openai.com/v1";
+}
+
+/**
+ * Maps Gemini thinking setting to OpenAI reasoning_effort parameter.
+ * Note: Most OpenAI models don't support reasoning_effort (only o1/o3 series).
+ */
+function mapThinkingToReasoningEffort(
+  thinking: string,
+): "low" | "medium" | "high" | undefined {
+  switch (thinking) {
+    case "Low":
+      return "low";
+    case "High":
+    case "Ultra":
+      return "high";
+    case "Auto":
+    case "Medium":
+      return "medium";
+    default:
+      // "Off" or specific budgets - OpenAI doesn't support granular control
+      return undefined;
+  }
+}
+
+export function useOpenAIChat({
   apiKey,
   model,
   thinking,
   temperature,
-  showThoughts,
+  baseUrl,
   enabledTools,
   mcpStatus,
   mcpError,
   checkMcpConnection,
-}: UseGeminiChatProps): UseGeminiChatReturn {
+}: UseOpenAIChatProps): UseOpenAIChatReturn {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const [activeModel, setActiveModel] = useState<string | null>(null);
@@ -67,12 +111,12 @@ export function useGeminiChat({
   const [activeTemperature, setActiveTemperature] = useState<number | null>(
     null,
   );
-  const geminiRef = useRef<GeminiClient | null>(null);
+  const openaiRef = useRef<OpenAIClient | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
-    geminiRef.current = null;
+    openaiRef.current = null;
     setActiveModel(null);
     setActiveThinking(null);
     setActiveTemperature(null);
@@ -84,7 +128,7 @@ export function useGeminiChat({
   }, []);
 
   const initializeChat = useCallback(
-    async (chatHistory?: GeminiMessage[]) => {
+    async (chatHistory?: OpenAIMessage[]) => {
       // Auto-retry MCP connection if it failed
       if (mcpStatus === "error") {
         await checkMcpConnection();
@@ -93,11 +137,11 @@ export function useGeminiChat({
         throw new Error(`MCP connection failed: ${mcpError}`);
       }
 
-      const thinkingBudget = getThinkingBudget(thinking);
-      const config: GeminiClientConfig = {
+      const config: OpenAIClientConfig = {
         model,
         temperature,
         systemInstruction: SYSTEM_INSTRUCTION,
+        baseUrl,
         enabledTools,
       };
 
@@ -105,17 +149,16 @@ export function useGeminiChat({
         config.chatHistory = chatHistory;
       }
 
-      // Only set thinkingConfig if thinking is not disabled (0)
-      // For Auto mode (-1) or specific budgets (>0), include thoughts based on user setting
-      if (thinkingBudget !== 0) {
-        config.thinkingConfig = {
-          thinkingBudget,
-          includeThoughts: showThoughts,
-        };
+      // Only include reasoning_effort when using actual OpenAI API (not Groq/Mistral/etc)
+      if (isOpenAIProvider(baseUrl)) {
+        const reasoningEffort = mapThinkingToReasoningEffort(thinking);
+        if (reasoningEffort) {
+          config.reasoningEffort = reasoningEffort;
+        }
       }
 
-      geminiRef.current = new GeminiClient(apiKey, config);
-      await geminiRef.current.initialize();
+      openaiRef.current = new OpenAIClient(apiKey, config);
+      await openaiRef.current.initialize();
       setActiveModel(model);
       setActiveThinking(thinking);
       setActiveTemperature(temperature);
@@ -127,7 +170,7 @@ export function useGeminiChat({
       thinking,
       model,
       temperature,
-      showThoughts,
+      baseUrl,
       enabledTools,
       apiKey,
     ],
@@ -140,14 +183,14 @@ export function useGeminiChat({
       const userMessage = message.trim();
 
       if (!apiKey) {
-        const userMessageEntry: GeminiMessage = {
+        const userMessageEntry: OpenAIMessage = {
           role: "user",
-          parts: [{ text: userMessage }],
+          content: userMessage,
         };
         setMessages(
-          createErrorMessage(
-            "No API key configured. Please add your Gemini API key in Settings.",
+          historyWithError(
             [userMessageEntry],
+            "No API key configured. Please add your API key in Settings.",
           ),
         );
         return;
@@ -155,28 +198,28 @@ export function useGeminiChat({
       setIsAssistantResponding(true);
 
       try {
-        if (!geminiRef.current) {
+        if (!openaiRef.current) {
           await initializeChat();
         }
 
-        if (!geminiRef.current) {
-          throw new Error("Failed to initialize Gemini client");
+        if (!openaiRef.current) {
+          throw new Error("Failed to initialize OpenAI client");
         }
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        const stream = geminiRef.current.sendMessage(
+        const stream = openaiRef.current.sendMessage(
           userMessage,
           controller.signal,
         );
 
         for await (const chatHistory of stream) {
           // console.log(
-          //   "useGeminiChat received chunk, now history is",
+          //   "useOpenAIChat() received chunk, now history is",
           //   JSON.stringify(chatHistory, null, 2),
           // );
-          setMessages(formatGeminiMessages(chatHistory));
+          setMessages(formatOpenAIMessages(chatHistory));
         }
       } catch (error) {
         // Ignore abort errors (expected when user cancels)
@@ -184,7 +227,7 @@ export function useGeminiChat({
           return;
         }
         setMessages(
-          createErrorMessage(error, geminiRef.current?.chatHistory ?? []),
+          historyWithError(openaiRef.current?.chatHistory ?? [], error),
         );
       } finally {
         abortControllerRef.current = null;
@@ -201,16 +244,17 @@ export function useGeminiChat({
       const message = messages[mergedMessageIndex];
       if (message?.role !== "user") return;
 
-      if (!geminiRef.current) return;
+      if (!openaiRef.current) return;
 
       const rawIndex = message.rawHistoryIndex;
-      const rawMessage = geminiRef.current.chatHistory[rawIndex];
+      const rawMessage = openaiRef.current.chatHistory[rawIndex];
       if (!rawMessage) return;
 
       // Extract the user message text
-      const userMessage = rawMessage.parts
-        ?.find((part) => part.text)
-        ?.text?.trim();
+      const userMessage =
+        rawMessage.role === "user" && typeof rawMessage.content === "string"
+          ? rawMessage.content.trim()
+          : undefined;
 
       if (!userMessage) return;
 
@@ -218,27 +262,27 @@ export function useGeminiChat({
 
       try {
         // Slice history to exclude this message and everything after
-        const slicedHistory = geminiRef.current.chatHistory.slice(0, rawIndex);
+        const slicedHistory = openaiRef.current.chatHistory.slice(0, rawIndex);
 
         await initializeChat(slicedHistory);
 
         const controller = new AbortController();
         abortControllerRef.current = controller;
 
-        const stream = geminiRef.current.sendMessage(
+        const stream = openaiRef.current.sendMessage(
           userMessage,
           controller.signal,
         );
 
         for await (const chatHistory of stream) {
-          setMessages(formatGeminiMessages(chatHistory));
+          setMessages(formatOpenAIMessages(chatHistory));
         }
       } catch (error) {
         // Ignore abort errors (expected when user cancels)
         if (error instanceof Error && error.name === "AbortError") {
           return;
         }
-        setMessages(createErrorMessage(error, geminiRef.current.chatHistory));
+        setMessages(historyWithError(openaiRef.current.chatHistory, error));
       } finally {
         abortControllerRef.current = null;
         setIsAssistantResponding(false);

@@ -11,9 +11,10 @@ describe("ChatHeader", () => {
     activeModel: null,
     activeThinking: null,
     activeTemperature: null,
-    theme: "system" as const,
-    setTheme: vi.fn(),
+    activeProvider: null,
+    hasMessages: false,
     onOpenSettings: vi.fn(),
+    onClearConversation: vi.fn(),
   };
 
   describe("basic rendering", () => {
@@ -31,19 +32,6 @@ describe("ChatHeader", () => {
     it("renders Settings button", () => {
       render(<ChatHeader {...defaultProps} />);
       expect(screen.getByRole("button", { name: "Settings" })).toBeDefined();
-    });
-
-    it("renders theme selector", () => {
-      render(<ChatHeader {...defaultProps} />);
-      const select = screen.getByRole("combobox");
-      expect(select).toBeDefined();
-    });
-
-    it("has theme options", () => {
-      render(<ChatHeader {...defaultProps} />);
-      expect(screen.getByRole("option", { name: "System" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Light" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Dark" })).toBeDefined();
     });
   });
 
@@ -70,26 +58,59 @@ describe("ChatHeader", () => {
       expect(screen.queryByText(/Gemini/)).toBeNull();
     });
 
-    it("shows model name when activeModel is set", () => {
-      render(<ChatHeader {...defaultProps} activeModel="gemini-2.5-pro" />);
-      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
-    });
-
-    it("shows Flash model name", () => {
-      render(<ChatHeader {...defaultProps} activeModel="gemini-2.5-flash" />);
-      expect(screen.getByText("Gemini 2.5 Flash")).toBeDefined();
-    });
-
-    it("shows Flash-Lite model name", () => {
+    it("shows provider and model name when both are set", () => {
       render(
-        <ChatHeader {...defaultProps} activeModel="gemini-2.5-flash-lite" />,
+        <ChatHeader
+          {...defaultProps}
+          activeModel="gemini-2.5-pro"
+          activeProvider="gemini"
+        />,
       );
-      expect(screen.getByText("Gemini 2.5 Flash-Lite")).toBeDefined();
+      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
     });
 
-    it("shows unknown model ID as-is", () => {
-      render(<ChatHeader {...defaultProps} activeModel="unknown-model" />);
-      expect(screen.getByText("unknown-model")).toBeDefined();
+    it("shows Flash model with provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="gemini-2.5-flash"
+          activeProvider="gemini"
+        />,
+      );
+      expect(screen.getByText("Google | Gemini 2.5 Flash")).toBeDefined();
+    });
+
+    it("shows Flash-Lite model with provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="gemini-2.5-flash-lite"
+          activeProvider="gemini"
+        />,
+      );
+      expect(screen.getByText("Google | Gemini 2.5 Flash-Lite")).toBeDefined();
+    });
+
+    it("shows unknown model ID as-is with provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="unknown-model"
+          activeProvider="openai"
+        />,
+      );
+      expect(screen.getByText("OpenAI | unknown-model")).toBeDefined();
+    });
+
+    it("does not show model when activeProvider is null", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="gemini-2.5-pro"
+          activeProvider={null}
+        />,
+      );
+      expect(screen.queryByText(/Gemini 2.5 Pro/)).toBeNull();
     });
   });
 
@@ -142,25 +163,6 @@ describe("ChatHeader", () => {
     });
   });
 
-  describe("theme selector", () => {
-    it("has correct initial value", () => {
-      render(<ChatHeader {...defaultProps} theme="dark" />);
-      const select = screen.getByRole("combobox") as HTMLSelectElement;
-      expect(select.value).toBe("dark");
-    });
-
-    it("calls setTheme when changed", () => {
-      const setTheme = vi.fn();
-      render(<ChatHeader {...defaultProps} setTheme={setTheme} />);
-
-      const select = screen.getByRole("combobox");
-      fireEvent.change(select, { target: { value: "dark" } });
-
-      expect(setTheme).toHaveBeenCalledOnce();
-      expect(setTheme).toHaveBeenCalledWith("dark");
-    });
-  });
-
   describe("Settings button", () => {
     it("calls onOpenSettings when clicked", () => {
       const onOpenSettings = vi.fn();
@@ -180,15 +182,162 @@ describe("ChatHeader", () => {
           {...defaultProps}
           mcpStatus="connected"
           activeModel="gemini-2.5-pro"
+          activeProvider="gemini"
           activeThinking="High"
           activeTemperature={1.5}
         />,
       );
 
       expect(screen.getByText("✓ Ready")).toBeDefined();
-      expect(screen.getByText("Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
       expect(screen.getByText("Thinking: High")).toBeDefined();
       expect(screen.getByText("75% random")).toBeDefined();
+    });
+  });
+
+  describe("provider display format", () => {
+    it("shows Google for gemini provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="gemini-2.5-pro"
+          activeProvider="gemini"
+        />,
+      );
+      expect(screen.getByText(/Google \|/)).toBeDefined();
+    });
+
+    it("shows OpenAI for openai provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="gpt-4"
+          activeProvider="openai"
+        />,
+      );
+      expect(screen.getByText(/OpenAI \|/)).toBeDefined();
+    });
+
+    it("shows Mistral for mistral provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="mistral-large"
+          activeProvider="mistral"
+        />,
+      );
+      expect(screen.getByText(/Mistral \|/)).toBeDefined();
+    });
+
+    it("shows OpenRouter for openrouter provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="some-model"
+          activeProvider="openrouter"
+        />,
+      );
+      expect(screen.getByText(/OpenRouter \|/)).toBeDefined();
+    });
+
+    it("shows LM Studio for lmstudio provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="local-model"
+          activeProvider="lmstudio"
+        />,
+      );
+      expect(screen.getByText(/LM Studio \|/)).toBeDefined();
+    });
+
+    it("shows Ollama for ollama provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="llama2"
+          activeProvider="ollama"
+        />,
+      );
+      expect(screen.getByText(/Ollama \|/)).toBeDefined();
+    });
+
+    it("shows Custom for custom provider", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          activeModel="custom-model"
+          activeProvider="custom"
+        />,
+      );
+      expect(screen.getByText(/Custom \|/)).toBeDefined();
+    });
+  });
+
+  describe("Restart button", () => {
+    it("does not show Restart button when hasMessages is false", () => {
+      render(<ChatHeader {...defaultProps} hasMessages={false} />);
+      expect(screen.queryByRole("button", { name: "Restart" })).toBeNull();
+    });
+
+    it("shows Restart button when hasMessages is true", () => {
+      render(<ChatHeader {...defaultProps} hasMessages={true} />);
+      expect(screen.getByRole("button", { name: "Restart" })).toBeDefined();
+    });
+
+    it("calls window.confirm when Restart clicked", () => {
+      const originalConfirm = window.confirm;
+      window.confirm = vi.fn().mockReturnValue(false);
+
+      render(<ChatHeader {...defaultProps} hasMessages={true} />);
+
+      const button = screen.getByRole("button", { name: "Restart" });
+      fireEvent.click(button);
+
+      expect(window.confirm).toHaveBeenCalledWith(
+        "Clear all messages and restart conversation?",
+      );
+      window.confirm = originalConfirm;
+    });
+
+    it("does not call onClearConversation when user cancels confirmation", () => {
+      const originalConfirm = window.confirm;
+      window.confirm = vi.fn().mockReturnValue(false);
+
+      const onClearConversation = vi.fn();
+      render(
+        <ChatHeader
+          {...defaultProps}
+          hasMessages={true}
+          onClearConversation={onClearConversation}
+        />,
+      );
+
+      const button = screen.getByRole("button", { name: "Restart" });
+      fireEvent.click(button);
+
+      expect(onClearConversation).not.toHaveBeenCalled();
+      window.confirm = originalConfirm;
+    });
+
+    it("calls onClearConversation when user confirms", () => {
+      const originalConfirm = window.confirm;
+      window.confirm = vi.fn().mockReturnValue(true);
+
+      const onClearConversation = vi.fn();
+      render(
+        <ChatHeader
+          {...defaultProps}
+          hasMessages={true}
+          onClearConversation={onClearConversation}
+        />,
+      );
+
+      const button = screen.getByRole("button", { name: "Restart" });
+      fireEvent.click(button);
+
+      expect(onClearConversation).toHaveBeenCalledOnce();
+      window.confirm = originalConfirm;
     });
   });
 });

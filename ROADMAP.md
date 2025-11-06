@@ -1,74 +1,53 @@
 # Producer Pal Roadmap
 
-Rough plans that are subject to change.
+## Released
 
-## 1.x / 2.0
+- **0.9** - Public Beta with Claude Desktop
+- **1.0** - Full feature set, multi-LLM support
 
-In no particular order:
+## In Progress
 
-### MIDI Manipulation
+### 1.1 - Chat UI
 
-- Randomize velocity and timing when creating and updating clips
-- Shuffle and groove support (non-random timing manipulation)
-- MIDI pattern generators and transformers (pre-defined algorithms the LLM can
-  use)
-- Run sand-boxed LLM-generated JavaScript code to generate and transform MIDI
-  (LLM-generated algorithms)
+- Built-in UI with direct API integrations: Google Gemini, OpenAI, Mistral,
+  OpenRouter, LM Studio, Ollama
 
-### Improved Built-in Chat
+## Planned
 
-Support more models:
+### 1.2 - Audio Clips
 
-- Mistral API with free tier API keys
-- Local LM Studio server
-- Other providers with free tier API keys
-- Maybe pay-as-you-go APIs?
+- Read/update audio properties: gain, pitch, warp mode
+- Slice arrangement clips
+- Modify warp markers
 
-UI Improvements:
+### 1.3 - Modulation
 
-- Edit and resend any previous message
-- Change model settings mid-chat
+- Apply ramps and curves to MIDI velocity and other properties
+- Randomize velocity and timing
+- Shuffle and groove support
 
-### Voice Interaction
+### 1.4 - Device Control
 
-Allow for controlling Ableton Live by simply talking:
+- Read/write synth and effect parameters
+- Add devices
 
-- Realtime bi-directional audio-chat
-- Auto-transcribe-and-send (VAD) with text-to-speech responses
+### 1.5 - Voice Interaction
 
-### Behavior Customization
+- Speak to Producer Pal instead of typing
 
-- Customizable "Producer Pal Skills" to adjust Producer Pal's behavior globally
-  across all Live Sets
-- A large markdown-based UI editor in a popup window for project notes and the
-  skills
+### 1.6 - Code Execution
 
-### General Features
+- Sandboxed JavaScript for algorithmic composition and transformation
 
-- Arrangement clip length modification support
-- Stop/restart MCP server when Producer Pal Max for Live device is
-  disabled/re-enabled (easy kill switch)
-- Version update notifications in the UI
+### 1.7 - Harmony
+
+- Chord notation
+- Pitches as scale/chord degrees (instead of absolute pitches)
+- Microtonal support
 
 ## Future Ideas
 
-### Device Control
-
-- Read and write device parameters
-- Randomize instrument rack macros
-- Store and recall rack variations
-- Insert devices into tracks whenever the Live API supports it
-
-### Microtonal support
-
-- Support working with scales with other than 12 notes per octave, such as
-  19-EDO
-
-### Adaptive Learning System
-
-- AI (optionally) automatically learns from your conversations to remember your
-  preferences and project goals
-- Completely open: rewrite or delete memories as you see fit
-- Create specialized personas (Jazz Producer, Techno Minimalist, etc.) with
-  independent memory systems (skills + memory?)
-- Import/export personas for sharing or backup
+- **Adaptive Learning**: AI learns preferences, specialized personas with
+  independent memory, import/export personas
+- **Extended Model Support**: HuggingFace, FireworksAI (requires CORS-bypassing
+  backend proxy)

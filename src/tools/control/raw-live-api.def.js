@@ -53,14 +53,14 @@ export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
             .optional()
             .describe("Method name for call_method/call operations"),
           args: z
-            .array(z.any())
+            .array(z.union([z.string(), z.number(), z.boolean()]))
             .optional()
             .describe("Arguments for call_method/call operations"),
           value: z
-            .any()
+            .union([z.string(), z.number(), z.boolean(), z.array(z.number())])
             .optional()
             .describe(
-              "Value for set_property/set operations, path for goto operations, or color for setColor operations",
+              "Value for set_property/set operations, path for goto operations, or color for setColor operations (color is array of numbers)",
             ),
         }),
       )

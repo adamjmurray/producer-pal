@@ -3,13 +3,18 @@ import { marked } from "marked";
 interface AssistantThoughtProps {
   content: string;
   isOpen?: boolean;
+  isResponding?: boolean;
 }
 
-export function AssistantThought({ content, isOpen }: AssistantThoughtProps) {
+export function AssistantThought({
+  content,
+  isOpen,
+  isResponding,
+}: AssistantThoughtProps) {
   return (
     <details
       className={`p-2 text-xs bg-gray-200 dark:bg-gray-700 rounded border-l-3 border-green-500 ${
-        isOpen ? "animate-pulse" : ""
+        isOpen && isResponding ? "animate-pulse" : ""
       }`}
       open={isOpen}
     >

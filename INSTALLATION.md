@@ -2,10 +2,9 @@
 
 Choose your AI for installation steps:
 
-- ⭐️ [Claude Desktop](#claude-desktop) - Anthropic's desktop GUI - easiest
-  setup
-- ⭐️ [Producer Pal Chat UI](#producer-pal-chat-ui) - Standalone web interface -
-  platform independent
+- ⭐️ [Claude Desktop](#claude-desktop) - Anthropic's desktop GUI
+- ⭐️ [Producer Pal Chat UI](#producer-pal-chat-ui) - Built-in chat interface
+  supporting Gemini, Mistral, offline models via Ollama, and more
 - [Gemini CLI](#gemini-cli) - Google's command line agent
 - [Codex CLI](#codex-cli) - OpenAI's command line agent
 - [Claude Code](#claude-code) - Anthropic's command line agent
@@ -60,8 +59,8 @@ If you have issues after upgrading, see the
 
 ## Claude Desktop
 
-Anthropic's Claude Desktop app is the easiest, recommended way to use Producer
-Pal.
+⭐️ Anthropic's Claude Desktop app is one of the easiest (and recommended) ways
+to use Producer Pal.
 
 ### Requirements
 
@@ -102,6 +101,12 @@ Pal.
 
    <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">
 
+   _**About the security warning:** Anthropic displays this warning for all
+   extensions as a general security measure. Producer Pal is open source and you
+   can review the entire codebase on
+   [GitHub](https://github.com/adamjmurray/producer-pal) before installing. The
+   extension only accesses Ableton Live through the Max for Live device._
+
 5. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
    sure it's enabled when starting a conversation):
 
@@ -121,19 +126,50 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
 ## Producer Pal Chat UI
 
-Producer Pal includes its own standalone web interface, independent from Claude
-Desktop, Gemini CLI, or any other AI platform. The chat UI is served from the
-Max for Live device and opens in your system's default browser.
+Producer Pal includes its own chat interface, independent from Claude Desktop,
+Gemini CLI, or any other AI platform. Its chat UI is served as a web page from
+the Max for Live device and opens in your system's default browser.
 
-It currently requires a Gemini API key (which is free with a Google account).
-Support for LLMs other than Gemini will be added in the future.
+The chat UI supports multiple LLM providers including Google Gemini, OpenAI,
+Mistral, OpenRouter, local models via LM Studio and Ollama, and custom
+OpenAI-compatible providers.
+
+⭐️ Using the built-in chat UI with Google Gemini's free tier is one of the
+easiest (and recommended) ways to use Produce Pal.
+
+Note: Some options use pay-as-you-go pricing for API access, which can incur
+cost quickly when using the most advanced models and having long conversations.
+Always monitor your API key usage when using pay-as-you-go options.
 
 ### Requirements
 
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with
   [Max for Live](https://www.ableton.com/live/max-for-live/)
-- Google Gemini API key (free tier available,
-  [get your API key](https://aistudio.google.com/apikey))
+- Any LLM API that supports tools and has an OpenAI-compatible interface, or
+  Google's Gemini API.
+
+  This can be either:
+  - Online LLM APIs. Supported APIs include:
+    - ⭐️ [Google Gemini API](https://ai.google.dev/gemini-api) (recommended):
+      All Google accounts can use the free tier with generous daily quotas.
+      [Get a Gemini API key](https://aistudio.google.com/apikey).
+    - [OpenAI API](https://openai.com/api/): Requires pay-as-you-go pricing.
+      [Get an OpenAI API key](https://platform.openai.com/api-keys). Also
+      consider [Codex CLI](#codex-cli) to use OpenAI with Producer Pal on a
+      subscription plan (flat rate, not pay-as-you-go).
+    - [Mistral](https://mistral.ai/): AI developed in France. Can be used for
+      free but with fairly aggressive quotas.
+      [Get a Mistral API key](https://console.mistral.ai/home?workspace_dialog=apiKeys).
+    - [OpenRouter](https://openrouter.ai): An "AI gateway" with hundreds of LLMs
+      available in one place. Includes free and pay-as-you-go options.
+      [Get an OpenRouter API key](https://openrouter.ai/settings/keys).
+    - Custom: Any other compatible LLM. See
+      [Using Custom Providers](#using-custom-providers).
+
+  Or:
+  - Offline LLMs running locally. Supported options:
+    - [LM Studio](#lm-studio-with-the-producer-pal-chat-ui)
+    - [Ollama](#ollama)
 
 ### Installation
 
@@ -146,28 +182,114 @@ Support for LLMs other than Gemini will be added in the future.
 
    _It should display "Producer Pal Running" or something isn't working._
 
-2. Open the "Setup" tab in the device and click "Open Chat UI", or visit
+2. Open the "Setup" tab in the device and click "Open Chat UI", which will open
    [http://localhost:3350/chat](http://localhost:3350/chat) (or whatever port
-   you're using)
+   Producer Pal is setup to use)
 
    <img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
 
-3. If it's your first time, enter your Gemini API key in the chat UI settings
-   and click "Save".
+3. If it's your first time, choose a provider, enter an API key (if using an
+   online LLM), and choose a model. See below for examples and more info about
+   the various settings. Once you've configured your settings, click "Save".
 
 4. Click the "Quick Connect" button to start a chat:
 
    <img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
 
-The chat UI connects directly to Google's Gemini API and uses Producer Pal's MCP
-tools automatically.
+   Or type whatever you want into the text input.
+
+The chat UI connects directly to your chosen LLM provider's API and uses
+Producer Pal's MCP tools automatically.
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
-**Privacy Note:** Your API key is stored in the browser's local storage for
-convenience. If that concerns you, use a private browser session, clear it after
-use (change the key to "junk" and save before closing), or delete local storage.
-You can also delete and regenerate Gemini API keys at any time.
+**Privacy Note for Online APIs:** Your API key is stored in the browser's local
+storage for convenience. If that concerns you, use a private browser session,
+delete the key from settings after use, or delete browser local storage after
+use. You can delete and regenerate API keys with the AI provider if a key is
+accidentally shared.
+
+### Chat UI Model Settings
+
+**Thinking**: Some models support extended reasoning where they "think through"
+problems before responding. This increases response time and token usage but can
+improve quality for complex tasks. Enable if your model supports it and you need
+more sophisticated musical decisions. Some reasoning models, such as Gemini,
+support showing their "thoughts".
+
+**Randomness** (0%-100%): Controls AI response randomness. Lower values (0% -
+50%) make the model more focused and deterministic. Higher values (50% - 100%)
+make it more creative but potentially less coherent. Default is 50%. For music
+composition, try higher values depending on how experimental you want the
+results.
+
+### Using Local Providers
+
+#### LM Studio with the Producer Pal Chat UI
+
+You can use LM Studio with the built-in chat UI as explained here, or you can
+[use LM Studio's UI](#lm-studio) if you prefer.
+
+1.  Install [LM Studio](https://lmstudio.ai/) and download some models
+2.  Go to the LM Studio developer tab
+3.  Open Server Settings and Enable CORS. Producer Pal's chat UI runs in the
+    browser and cannot directly connect to LM Studio without this option:
+
+    <img src="./doc/img/lm-studio-server-settings.png" width="600">
+
+4.  Start LM Studio server. It should say: "Status: Running"
+5.  Configure the Producer Pal Chat UI:
+    - Provider: LM Studio (local)
+    - Port: 1234 (This is the default. If you change it in LM Studio settings,
+      change this setting to match)
+    - Model: A model that supports tools, such as `qwen/qwen3-vl-8b`,
+      `openai/gpt-oss-20b`, or `mistralai/magistral-small-2509`
+
+      **Note:** If the model responds with garbled text like
+      `<|tool_call_start|>...` or says it has no way of connecting to Ableton,
+      the model likely doesn't support tools. Try a different model. Look for a
+      hammer icon next to the model:
+
+      <img src="./doc/img/lm-studio-tool-icon.png" width="400">
+
+6.  Save the Chat UI settings and use the Quick Connect button to start a
+    conversation.
+
+See the [LM Studio install guide](#lm-studio) (the instructions on how to setup
+using LM Studio's chat UI instead of Producer Pal's UI) for tips on choosing and
+configuring models with LM Studio. It's recommended you enable the "Small Model
+Mode" option in the Producer Pal Setup tab for better compatibility with local
+models.
+
+#### Ollama
+
+1. Install [Ollama](https://ollama.com/)
+2. If you haven't already, run Ollama, select some of the downloadable
+   (non-cloud) models, and start a chat with them to download them.
+3. With Ollama running, configure the Producer Pal Chat UI:
+   - Provider: Ollama (local)
+   - Port: 11434 (This is the default. You generally don't need to change this)
+   - Model: A [model that supports tools](https://ollama.com/search?c=tools),
+     such as `qwen3-vl:8b`, `qwen-3-coder`, or `gpt-oss:20b`
+4. Save the Chat UI settings and use the Quick Connect button to start a
+   conversation.
+
+### Using Custom Providers
+
+To use other OpenAI-compatible providers beyond the built-in options:
+
+1. Open the chat UI settings
+2. Select "Custom (OpenAI-compatible)" as the provider
+3. Enter your API key
+4. Set the Base URL for your provider
+5. Enter the model name
+
+#### Custom Provider Example: Groq
+
+- Provider: Custom (OpenAI-compatible)
+- Base URL: `https://api.groq.com/openai/v1`
+- Model: `moonshotai/kimi-k2-instruct` (or other available models like
+  `openai/gpt-oss-120b`, `qwen/qwen3-32b`)
 
 <br><br>
 
@@ -175,6 +297,10 @@ You can also delete and regenerate Gemini API keys at any time.
 
 Use Producer Pal with Google's command line coding assistant. No subscription
 needed.
+
+If you feel comfortable with the command line, this is a good option for using
+Producer Pal. Also consider using Gemini with Producer Pal's
+[built-in chat UI](#producer-pal-chat-ui)
 
 ### Requirements
 
@@ -254,6 +380,12 @@ If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 ## Codex CLI
 
 Use Producer Pal with OpenAI's command line coding assistant.
+
+If you feel comfortable with the command line and have an OpenAI subscription,
+this is a good option for using Producer Pal. It's the recommended way to use
+OpenAI models with Producer Pal because using an OpenAI key with the
+[built-in chat UI](#producer-pal-chat-ui) requires pay-as-you-go pricing for
+OpenAI's API.
 
 ### Requirements
 
@@ -598,6 +730,9 @@ However, completely offline and private usage is compelling.
    <img src="./doc/img/lm-studio-success.png" alt="LM Studio successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
+
+Note: You can also use LM Studio with
+[Producer Pal's built-in chat UI](#producer-pal-chat-ui).
 
 ### Local Model Tips
 

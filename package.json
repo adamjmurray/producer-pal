@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://github.com/adamjmurray/producer-pal#readme",
   "repository": {
@@ -48,21 +48,22 @@
     "tc": "npm run typecheck",
     "typecheck": "npm run ui:typecheck",
     "ui:build": "vite build --config config/vite.config.mjs",
-    "ui:dev": "vite --config config/vite.config.mjs",
+    "ui:dev": "ENABLE_RAW_LIVE_API=true vite --config config/vite.config.mjs",
     "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json",
     "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs"
   },
   "dependencies": {
-    "@google/genai": "^1.28.0",
-    "@modelcontextprotocol/sdk": "^1.20.2",
+    "@google/genai": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.21.0",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.1.0",
     "marked": "^16.4.1",
+    "openai": "^6.8.1",
     "preact": "^10.19.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@anthropic-ai/mcpb": "^1.2.0",
+    "@anthropic-ai/mcpb": "^2.0.1",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
@@ -73,13 +74,13 @@
     "@testing-library/preact": "^3.2.4",
     "@types/express": "^5.0.5",
     "@types/max-api": "^2.0.3",
-    "@types/node": "^24.9.2",
-    "@typescript-eslint/eslint-plugin": "^8.46.2",
+    "@types/node": "^24.10.0",
+    "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.2",
-    "@vitest/coverage-v8": "^4.0.6",
+    "@vitest/coverage-v8": "^4.0.7",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
-    "eslint": "^9.39.0",
+    "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "happy-dom": "^20.0.10",
     "peggy": "^5.0.6",
@@ -87,8 +88,8 @@
     "rollup": "^4.52.5",
     "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.9.3",
-    "vite": "^7.1.12",
+    "vite": "^7.2.1",
     "vite-plugin-singlefile": "^2.3.0",
-    "vitest": "^4.0.6"
+    "vitest": "^4.0.7"
   }
 }

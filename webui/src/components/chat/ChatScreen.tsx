@@ -3,6 +3,7 @@ import { ChatInput } from "./ChatInput.jsx";
 import { ChatStart } from "./ChatStart.jsx";
 import { MessageList } from "./MessageList.jsx";
 import type { UIMessage } from "../../types/messages.js";
+import type { Provider } from "../../types/settings.js";
 
 interface ChatScreenProps {
   messages: UIMessage[];
@@ -12,12 +13,13 @@ interface ChatScreenProps {
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
+  activeProvider: Provider | null;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
-  theme: string;
-  setTheme: (theme: string) => void;
   onOpenSettings: () => void;
+  onClearConversation: () => void;
+  onStop: () => void;
 }
 
 export function ChatScreen({
@@ -28,12 +30,13 @@ export function ChatScreen({
   activeModel,
   activeThinking,
   activeTemperature,
+  activeProvider,
   mcpStatus,
   mcpError,
   checkMcpConnection,
-  theme,
-  setTheme,
   onOpenSettings,
+  onClearConversation,
+  onStop,
 }: ChatScreenProps) {
   return (
     <div className="flex flex-col h-screen">
@@ -42,9 +45,10 @@ export function ChatScreen({
         activeModel={activeModel}
         activeThinking={activeThinking}
         activeTemperature={activeTemperature}
-        theme={theme}
-        setTheme={setTheme}
+        activeProvider={activeProvider}
+        hasMessages={messages.length > 0}
         onOpenSettings={onOpenSettings}
+        onClearConversation={onClearConversation}
       />
 
       <div class="flex-1 overflow-y-auto">
@@ -67,6 +71,7 @@ export function ChatScreen({
       <ChatInput
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
+        onStop={onStop}
       />
     </div>
   );
