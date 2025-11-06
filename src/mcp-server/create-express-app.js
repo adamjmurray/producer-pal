@@ -1,10 +1,19 @@
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
+import Max from "max-api";
+import chatUiHtml from "virtual:chat-ui-html";
 import { createMcpServer } from "./create-mcp-server";
 import { callLiveApi } from "./max-api-adapter.js";
 import * as console from "./node-for-max-logger";
-import chatUiHtml from "virtual:chat-ui-html";
+
+let chatUIEnabled = true; // default
+Max.addHandler(
+  "chatUIEnabled",
+  // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], etc
+  // eslint-disable-next-line eqeqeq
+  (input) => (chatUIEnabled = input == 1 || input === "true"),
+);
 
 const methodNotAllowed = {
   jsonrpc: "2.0",
@@ -76,6 +85,14 @@ export function createExpressApp() {
   app.delete("/mcp", async (_req, res) =>
     res.status(405).json(methodNotAllowed),
   );
+
+  // Allow chat UI to be disabled for security
+  app.use("/chat", (req, res, next) => {
+    if (!chatUIEnabled) {
+      return res.status(403).send("Chat UI is disabled");
+    }
+    next();
+  });
 
   // Serve the chat UI (inlined for frozen .amxd builds)
   app.get("/chat", (_req, res) => {
