@@ -333,6 +333,8 @@ describe("readClip", () => {
       pitchShift: 0,
       sampleLength: 0,
       sampleRate: 0,
+      warpMode: "beats",
+      warping: false,
     });
   });
 
