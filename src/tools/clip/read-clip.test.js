@@ -328,7 +328,35 @@ describe("readClip", () => {
       // loopStart omitted when it equals startMarker
       playing: true,
       timeSignature: "4/4",
+      gain: 0,
+      gainDisplay: 0,
+      pitchShift: 0,
+      sampleLength: 0,
+      sampleRate: 0,
+      warpMode: "beats",
+      warping: false,
     });
+  });
+
+  it("reads warp mode and warping state when warp-markers included", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 0,
+        name: "Warped Audio",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        warp_mode: 4, // Complex mode
+        warping: 1,
+      },
+    });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["warp-markers"],
+    });
+    expect(result.warpMode).toBe("complex");
+    expect(result.warping).toBe(true);
   });
 
   it("reads a session clip by ID", () => {

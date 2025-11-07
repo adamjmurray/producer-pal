@@ -4,7 +4,17 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
-import { MAX_CLIP_BEATS } from "../constants.js";
+import {
+  MAX_CLIP_BEATS,
+  LIVE_API_WARP_MODE_BEATS,
+  LIVE_API_WARP_MODE_TONES,
+  LIVE_API_WARP_MODE_TEXTURE,
+  LIVE_API_WARP_MODE_REPITCH,
+  LIVE_API_WARP_MODE_COMPLEX,
+  LIVE_API_WARP_MODE_REX,
+  LIVE_API_WARP_MODE_PRO,
+  WARP_MODE,
+} from "../constants.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
@@ -13,7 +23,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param {string} [args.notes] - Musical notation string
- * @param {string} args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
+ * @param {string} [args.noteUpdateMode="merge"] - How to handle existing notes: 'replace' or 'merge'
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -21,12 +31,16 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars)
  * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
+ * @param {number} [args.gain] - Audio clip gain (0-1)
+ * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
+ * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
+ * @param {boolean} [args.warping] - Audio clip warping on/off
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
 export function updateClip({
   ids,
   notes: notationString,
-  noteUpdateMode,
+  noteUpdateMode = "merge",
   name,
   color,
   timeSignature,
@@ -34,6 +48,14 @@ export function updateClip({
   length,
   loop,
   loopStart,
+  gain,
+  pitchShift,
+  warpMode,
+  warping,
+  warpOp,
+  warpBeatTime,
+  warpSampleTime,
+  warpDistance,
 } = {}) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
@@ -103,6 +125,40 @@ export function updateClip({
       looping: loop,
     });
 
+    // Audio-specific parameters (only for audio clips)
+    const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+    if (isAudioClip) {
+      if (gain !== undefined) {
+        clip.set("gain", gain);
+      }
+
+      if (pitchShift !== undefined) {
+        const pitchCoarse = Math.floor(pitchShift);
+        const pitchFine = Math.round((pitchShift - pitchCoarse) * 100);
+        clip.set("pitch_coarse", pitchCoarse);
+        clip.set("pitch_fine", pitchFine);
+      }
+
+      if (warpMode !== undefined) {
+        const warpModeValue = {
+          [WARP_MODE.BEATS]: LIVE_API_WARP_MODE_BEATS,
+          [WARP_MODE.TONES]: LIVE_API_WARP_MODE_TONES,
+          [WARP_MODE.TEXTURE]: LIVE_API_WARP_MODE_TEXTURE,
+          [WARP_MODE.REPITCH]: LIVE_API_WARP_MODE_REPITCH,
+          [WARP_MODE.COMPLEX]: LIVE_API_WARP_MODE_COMPLEX,
+          [WARP_MODE.REX]: LIVE_API_WARP_MODE_REX,
+          [WARP_MODE.PRO]: LIVE_API_WARP_MODE_PRO,
+        }[warpMode];
+        if (warpModeValue !== undefined) {
+          clip.set("warp_mode", warpModeValue);
+        }
+      }
+
+      if (warping !== undefined) {
+        clip.set("warping", warping ? 1 : 0);
+      }
+    }
+
     if (notationString != null) {
       let combinedNotationString = notationString;
 
@@ -139,6 +195,49 @@ export function updateClip({
         clip.call("get_notes_extended", 0, 128, 0, lengthBeats),
       );
       finalNoteCount = actualNotesResult?.notes?.length || 0;
+    }
+
+    // Handle warp marker operations (audio clips only)
+    if (warpOp != null) {
+      // Validate audio clip
+      const hasAudioFile = clip.getProperty("file_path") != null;
+      if (!hasAudioFile) {
+        throw new Error(
+          `Warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
+        );
+      }
+
+      // Validate required parameters per operation
+      if (warpBeatTime == null) {
+        throw new Error(`warpBeatTime required for ${warpOp} operation`);
+      }
+
+      switch (warpOp) {
+        case "add": {
+          // Add warp marker with optional sample time
+          const args =
+            warpSampleTime != null
+              ? { beat_time: warpBeatTime, sample_time: warpSampleTime }
+              : { beat_time: warpBeatTime };
+
+          clip.call("add_warp_marker", args);
+          break;
+        }
+
+        case "move": {
+          if (warpDistance == null) {
+            throw new Error("warpDistance required for move operation");
+          }
+
+          clip.call("move_warp_marker", warpBeatTime, warpDistance);
+          break;
+        }
+
+        case "remove": {
+          clip.call("remove_warp_marker", warpBeatTime);
+          break;
+        }
+      }
     }
 
     // Build optimistic result object

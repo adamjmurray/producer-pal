@@ -3,6 +3,16 @@ import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
 } from "../../notation/barbeat/barbeat-time.js";
+import {
+  LIVE_API_WARP_MODE_BEATS,
+  LIVE_API_WARP_MODE_COMPLEX,
+  LIVE_API_WARP_MODE_PRO,
+  LIVE_API_WARP_MODE_REPITCH,
+  LIVE_API_WARP_MODE_REX,
+  LIVE_API_WARP_MODE_TEXTURE,
+  LIVE_API_WARP_MODE_TONES,
+  WARP_MODE,
+} from "../constants.js";
 import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
@@ -10,7 +20,7 @@ import {
 } from "../shared/include-params.js";
 
 /**
- * Read a MIDI clip from Ableton Live and return its notes as a notation string
+ * Read a MIDI or audio clip from Ableton Live
  * @param {Object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.sceneIndex] - Clip slot index (0-based)
@@ -22,10 +32,8 @@ import {
 export function readClip(args = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const { includeClipNotes, includeColor } = parseIncludeArray(
-    args.include,
-    READ_CLIP_DEFAULTS,
-  );
+  const { includeClipNotes, includeColor, includeWarpMarkers } =
+    parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and sceneIndex must be provided",
@@ -146,6 +154,69 @@ export function readClip(args = {}) {
         timeSigNumerator,
         timeSigDenominator,
       });
+    }
+  }
+
+  if (result.type === "audio") {
+    result.gain = clip.getProperty("gain");
+    result.gainDisplay = clip.getProperty("gain_display_string");
+
+    const filePath = clip.getProperty("file_path");
+    if (filePath) {
+      // Extract just filename, handle both Unix and Windows paths
+      result.filename = filePath.split(/[/\\]/).pop();
+    }
+
+    const pitchCoarse = clip.getProperty("pitch_coarse");
+    const pitchFine = clip.getProperty("pitch_fine");
+    result.pitchShift = pitchCoarse + pitchFine / 100;
+
+    result.sampleLength = clip.getProperty("sample_length");
+    result.sampleRate = clip.getProperty("sample_rate");
+
+    // Warping state
+    result.warping = clip.getProperty("warping") > 0;
+    const warpModeValue = clip.getProperty("warp_mode");
+    result.warpMode =
+      {
+        [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
+        [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
+        [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
+        [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
+        [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
+        [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
+        [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
+      }[warpModeValue] ?? "unknown";
+  }
+
+  // Add warp markers array for audio clips when requested
+  if (result.type === "audio" && includeWarpMarkers) {
+    try {
+      const warpMarkersJson = clip.getProperty("warp_markers");
+      if (warpMarkersJson && warpMarkersJson !== "") {
+        const warpMarkersData = JSON.parse(warpMarkersJson);
+        // Handle both possible structures: direct array or nested in warp_markers property
+        // Transform snake_case properties to camelCase for consistency with update-clip
+        if (Array.isArray(warpMarkersData)) {
+          result.warpMarkers = warpMarkersData.map((marker) => ({
+            sampleTime: marker.sample_time,
+            beatTime: marker.beat_time,
+          }));
+        } else if (
+          warpMarkersData.warp_markers &&
+          Array.isArray(warpMarkersData.warp_markers)
+        ) {
+          result.warpMarkers = warpMarkersData.warp_markers.map((marker) => ({
+            sampleTime: marker.sample_time,
+            beatTime: marker.beat_time,
+          }));
+        }
+      }
+    } catch (error) {
+      // Fail gracefully - clip might not support warp markers or format might be unexpected
+      console.error(
+        `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
+      );
     }
   }
 

@@ -4,21 +4,18 @@
 
 - **0.9** - Public Beta with Claude Desktop
 - **1.0** - Full feature set, multi-LLM support
+- **1.1** - Built-in chat UI with direct API integrations: Google Gemini,
+  OpenAI, Mistral, OpenRouter, LM Studio, Ollama, and more
 
 ## In Progress
 
-### 1.1 - Chat UI
-
-- Built-in UI with direct API integrations: Google Gemini, OpenAI, Mistral,
-  OpenRouter, LM Studio, Ollama
-
-## Planned
-
 ### 1.2 - Audio Clips
 
-- Read/update audio properties: gain, pitch, warp mode
+- Read/write audio clip properties: gain, pitch
+- Read/write warp mode and warp markers
 - Slice arrangement clips
-- Modify warp markers
+
+## Planned
 
 ### 1.3 - Modulation
 
