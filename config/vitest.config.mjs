@@ -41,6 +41,10 @@ export default defineConfig({
         // ignore typedefs:
         "**/*.d.ts",
 
+        // ignore type definition files (pure TypeScript interfaces/types):
+        "**/tsconfig.json",
+        "webui/src/types/**",
+
         // ignore static assets:
         "**/*.html",
         "**/*.css",
