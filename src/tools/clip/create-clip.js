@@ -1,3 +1,4 @@
+import { interpretNotation } from "../../notation//barbeat/barbeat-interpreter.js";
 import {
   abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
@@ -6,7 +7,6 @@ import {
   beatsToBarBeat,
   timeSigToAbletonBeatsPerBar,
 } from "../../notation/barbeat/barbeat-time";
-import { interpretNotation } from "../../notation/notation";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { select } from "../control/select.js";
 import { parseTimeSignature } from "../shared/utils.js";

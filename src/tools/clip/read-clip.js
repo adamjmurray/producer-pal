@@ -1,8 +1,8 @@
+import { formatNotation } from "../../notation//barbeat/barbeat-format-notation.js";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
 } from "../../notation/barbeat/barbeat-time.js";
-import { formatNotation } from "../../notation/notation.js";
 import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,

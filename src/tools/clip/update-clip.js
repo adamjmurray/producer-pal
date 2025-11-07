@@ -1,8 +1,9 @@
+import { formatNotation } from "../../notation//barbeat/barbeat-format-notation.js";
+import { interpretNotation } from "../../notation//barbeat/barbeat-interpreter.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time";
-import { interpretNotation, formatNotation } from "../../notation/notation";
+} from "../../notation/barbeat/barbeat-time.js";
 import { MAX_CLIP_BEATS } from "../constants.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
