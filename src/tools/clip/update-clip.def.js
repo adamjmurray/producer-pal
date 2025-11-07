@@ -3,7 +3,7 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
-  description: "Update clip(s) and MIDI notes",
+  description: "Update clip(s), MIDI notes, and audio properties",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -23,6 +23,20 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe("bar|beat position of loop start"),
+    gain: z
+      .number()
+      .min(0)
+      .max(1)
+      .optional()
+      .describe("audio clip gain 0-1 (ignored for MIDI)"),
+    pitchShift: z
+      .number()
+      .min(-48)
+      .max(48)
+      .optional()
+      .describe(
+        "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
+      ),
     notes: z
       .string()
       .optional()

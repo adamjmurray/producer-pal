@@ -10,7 +10,7 @@ import {
 } from "../shared/include-params.js";
 
 /**
- * Read a MIDI clip from Ableton Live and return its notes as a notation string
+ * Read a MIDI or audio clip from Ableton Live
  * @param {Object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.sceneIndex] - Clip slot index (0-based)
@@ -22,10 +22,8 @@ import {
 export function readClip(args = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const { includeClipNotes, includeColor } = parseIncludeArray(
-    args.include,
-    READ_CLIP_DEFAULTS,
-  );
+  const { includeClipNotes, includeAudioInfo, includeColor } =
+    parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and sceneIndex must be provided",
@@ -147,6 +145,24 @@ export function readClip(args = {}) {
         timeSigDenominator,
       });
     }
+  }
+
+  if (result.type === "audio" && includeAudioInfo) {
+    result.gain = clip.getProperty("gain");
+    result.gainDisplay = clip.getProperty("gain_display_string");
+
+    const filePath = clip.getProperty("file_path");
+    if (filePath) {
+      // Extract just filename, handle both Unix and Windows paths
+      result.filename = filePath.split(/[/\\]/).pop();
+    }
+
+    const pitchCoarse = clip.getProperty("pitch_coarse");
+    const pitchFine = clip.getProperty("pitch_fine");
+    result.pitchShift = pitchCoarse + pitchFine / 100;
+
+    result.sampleLength = clip.getProperty("sample_length");
+    result.sampleRate = clip.getProperty("sample_rate");
   }
 
   return result;

@@ -40,7 +40,7 @@ const ALL_INCLUDE_OPTIONS = {
     "color",
   ],
   scene: ["clips", "clip-notes", "color"],
-  clip: ["clip-notes", "color"],
+  clip: ["clip-notes", "audio-info", "color"],
 };
 
 /**
@@ -112,6 +112,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeDrumChains: Boolean(defaults.includeDrumChains),
       includeDrumMaps: Boolean(defaults.includeDrumMaps),
       includeClipNotes: Boolean(defaults.includeClipNotes),
+      includeAudioInfo: Boolean(defaults.includeAudioInfo),
       includeRackChains: Boolean(defaults.includeRackChains),
       includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
@@ -141,6 +142,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeDrumChains: false,
       includeDrumMaps: false,
       includeClipNotes: false,
+      includeAudioInfo: false,
       includeRackChains: false,
       includeScenes: false,
       includeMidiEffects: false,
@@ -162,6 +164,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeDrumChains: includeSet.has("drum-chains"),
     includeDrumMaps: includeSet.has("drum-maps"),
     includeClipNotes: includeSet.has("clip-notes"),
+    includeAudioInfo: includeSet.has("audio-info"),
     includeRackChains: includeSet.has("rack-chains"),
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has("midi-effects"),
@@ -196,6 +199,9 @@ export function includeArrayFromFlags(includeFlags) {
   }
   if (includeFlags.includeClipNotes) {
     includes.push("clip-notes");
+  }
+  if (includeFlags.includeAudioInfo) {
+    includes.push("audio-info");
   }
   if (includeFlags.includeRackChains) {
     includes.push("rack-chains");
@@ -296,5 +302,6 @@ export const READ_SCENE_DEFAULTS = {
  */
 export const READ_CLIP_DEFAULTS = {
   includeClipNotes: true,
+  includeAudioInfo: true,
   includeColor: false,
 };

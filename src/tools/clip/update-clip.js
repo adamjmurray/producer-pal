@@ -21,6 +21,8 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars)
  * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
  * @param {boolean} [args.loop] - Enable looping for the clip
+ * @param {number} [args.gain] - Audio clip gain (0-1)
+ * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
 export function updateClip({
@@ -34,6 +36,8 @@ export function updateClip({
   length,
   loop,
   loopStart,
+  gain,
+  pitchShift,
 } = {}) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
@@ -102,6 +106,21 @@ export function updateClip({
       loop_end: loopEndBeats,
       looping: loop,
     });
+
+    // Audio-specific parameters (only for audio clips)
+    const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+    if (isAudioClip) {
+      if (gain !== undefined) {
+        clip.set("gain", gain);
+      }
+
+      if (pitchShift !== undefined) {
+        const pitchCoarse = Math.floor(pitchShift);
+        const pitchFine = Math.round((pitchShift - pitchCoarse) * 100);
+        clip.set("pitch_coarse", pitchCoarse);
+        clip.set("pitch_fine", pitchFine);
+      }
+    }
 
     if (notationString != null) {
       let combinedNotationString = notationString;

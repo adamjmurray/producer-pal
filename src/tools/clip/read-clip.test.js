@@ -328,6 +328,11 @@ describe("readClip", () => {
       // loopStart omitted when it equals startMarker
       playing: true,
       timeSignature: "4/4",
+      gain: 0,
+      gainDisplay: 0,
+      pitchShift: 0,
+      sampleLength: 0,
+      sampleRate: 0,
     });
   });
 
