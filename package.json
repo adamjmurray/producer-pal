@@ -80,7 +80,7 @@
     "@types/node": "^24.10.0",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.2",
-    "@vitest/coverage-v8": "^4.0.7",
+    "@vitest/coverage-v8": "^4.0.8",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
     "eslint": "^9.39.1",
@@ -93,6 +93,6 @@
     "typescript": "^5.9.3",
     "vite": "^7.2.2",
     "vite-plugin-singlefile": "^2.3.0",
-    "vitest": "^4.0.7"
+    "vitest": "^4.0.8"
   }
 }
