@@ -31,6 +31,7 @@ Re-read after moves/deletes for updated state.`,
           "all-clips",
           "clip-notes",
           "color",
+          "warp-markers",
           "*",
         ]),
       )

@@ -45,6 +45,8 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       ),
     noteUpdateMode: z
       .enum(["replace", "merge"])
+      .optional()
+      .default("merge")
       .describe(
         '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
       ),

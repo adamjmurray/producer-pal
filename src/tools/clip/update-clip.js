@@ -13,7 +13,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param {string} [args.notes] - Musical notation string
- * @param {string} args.noteUpdateMode - How to handle existing notes: 'replace' or 'merge'
+ * @param {string} [args.noteUpdateMode="merge"] - How to handle existing notes: 'replace' or 'merge'
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -28,7 +28,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 export function updateClip({
   ids,
   notes: notationString,
-  noteUpdateMode,
+  noteUpdateMode = "merge",
   name,
   color,
   timeSignature,

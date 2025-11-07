@@ -21,6 +21,7 @@ const ALL_INCLUDE_OPTIONS = {
     "all-devices",
     "all-clips",
     "color",
+    "warp-markers",
   ],
   track: [
     "drum-chains",
@@ -38,9 +39,10 @@ const ALL_INCLUDE_OPTIONS = {
     "all-routings",
     "all-clips",
     "color",
+    "warp-markers",
   ],
-  scene: ["clips", "clip-notes", "color"],
-  clip: ["clip-notes", "audio-info", "color"],
+  scene: ["clips", "clip-notes", "color", "warp-markers"],
+  clip: ["clip-notes", "audio-info", "color", "warp-markers"],
 };
 
 /**
@@ -127,6 +129,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeReturnTracks: Boolean(defaults.includeReturnTracks),
       includeMasterTrack: Boolean(defaults.includeMasterTrack),
       includeColor: Boolean(defaults.includeColor),
+      includeWarpMarkers: Boolean(defaults.includeWarpMarkers),
     };
   }
 
@@ -157,6 +160,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeReturnTracks: false,
       includeMasterTrack: false,
       includeColor: false,
+      includeWarpMarkers: false,
     };
   }
 
@@ -179,6 +183,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeReturnTracks: includeSet.has("return-tracks"),
     includeMasterTrack: includeSet.has("master-track"),
     includeColor: includeSet.has("color"),
+    includeWarpMarkers: includeSet.has("warp-markers"),
   };
   return result;
 }
@@ -245,6 +250,9 @@ export function includeArrayFromFlags(includeFlags) {
   if (includeFlags.includeColor) {
     includes.push("color");
   }
+  if (includeFlags.includeWarpMarkers) {
+    includes.push("warp-markers");
+  }
 
   return includes;
 }
@@ -268,6 +276,7 @@ export const READ_SONG_DEFAULTS = {
   includeReturnTracks: false,
   includeMasterTrack: false,
   includeColor: false,
+  includeWarpMarkers: false,
 };
 
 /**
@@ -286,6 +295,7 @@ export const READ_TRACK_DEFAULTS = {
   includeSessionClips: true,
   includeArrangementClips: true,
   includeColor: false,
+  includeWarpMarkers: false,
 };
 
 /**
@@ -295,6 +305,7 @@ export const READ_SCENE_DEFAULTS = {
   includeClips: false,
   includeClipNotes: false,
   includeColor: false,
+  includeWarpMarkers: false,
 };
 
 /**
@@ -304,4 +315,5 @@ export const READ_CLIP_DEFAULTS = {
   includeClipNotes: true,
   includeAudioInfo: true,
   includeColor: false,
+  includeWarpMarkers: false,
 };

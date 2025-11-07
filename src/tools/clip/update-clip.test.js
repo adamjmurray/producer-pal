@@ -65,21 +65,60 @@ describe("updateClip", () => {
     );
   });
 
-  it("should require noteUpdateMode parameter when notes are provided", () => {
+  it("should default to merge mode when noteUpdateMode not provided", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
+        length: 4,
       },
     });
 
-    // Should work without noteUpdateMode when no notes provided
-    expect(() => updateClip({ ids: "123", name: "Test" })).not.toThrow();
+    // Mock existing notes, then return added notes on subsequent calls
+    let addedNotes = [];
+    const existingNotes = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      },
+    ];
 
-    // Should fail validation at MCP level when notes provided without noteUpdateMode
-    // This will be caught by the zod schema validation in the MCP server
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        addedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        // First call returns existing notes, subsequent calls return added notes
+        if (addedNotes.length === 0) {
+          return JSON.stringify({ notes: existingNotes });
+        }
+        return JSON.stringify({ notes: addedNotes });
+      }
+      return {};
+    });
+
+    // Should default to merge mode when noteUpdateMode not specified
+    const result = updateClip({
+      ids: "123",
+      notes: "D3 1|2",
+    });
+
+    // Should call get_notes_extended (merge mode behavior)
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "get_notes_extended",
+      0,
+      128,
+      0,
+      1000000,
+    );
+
+    expect(result).toEqual({ id: "123", noteCount: 2 }); // Existing C3 + new D3
   });
 
   it("should log warning when clip ID doesn't exist", () => {

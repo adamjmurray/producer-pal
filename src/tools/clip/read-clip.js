@@ -22,8 +22,12 @@ import {
 export function readClip(args = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const { includeClipNotes, includeAudioInfo, includeColor } =
-    parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
+  const {
+    includeClipNotes,
+    includeAudioInfo,
+    includeColor,
+    includeWarpMarkers,
+  } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and sceneIndex must be provided",
@@ -163,6 +167,30 @@ export function readClip(args = {}) {
 
     result.sampleLength = clip.getProperty("sample_length");
     result.sampleRate = clip.getProperty("sample_rate");
+  }
+
+  // Add warp marker data for audio clips when requested
+  if (result.type === "audio" && includeWarpMarkers) {
+    try {
+      const warpMarkersJson = clip.getProperty("warp_markers");
+      if (warpMarkersJson && warpMarkersJson !== "") {
+        const warpMarkersData = JSON.parse(warpMarkersJson);
+        // Handle both possible structures: direct array or nested in warp_markers property
+        if (Array.isArray(warpMarkersData)) {
+          result.warpMarkers = warpMarkersData;
+        } else if (
+          warpMarkersData.warp_markers &&
+          Array.isArray(warpMarkersData.warp_markers)
+        ) {
+          result.warpMarkers = warpMarkersData.warp_markers;
+        }
+      }
+    } catch (error) {
+      // Fail gracefully - clip might not support warp markers or format might be unexpected
+      console.error(
+        `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
+      );
+    }
   }
 
   return result;

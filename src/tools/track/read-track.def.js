@@ -38,6 +38,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "available-routings",
           "all-routings",
           "color",
+          "warp-markers",
           "*",
         ]),
       )
