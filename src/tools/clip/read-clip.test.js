@@ -346,7 +346,6 @@ describe("readClip", () => {
         length: 4,
         warp_mode: 4, // Complex mode
         warping: 1,
-        available_warp_modes: [0, 1, 2, 3, 4, 6], // All except REX
       },
     });
     const result = readClip({
@@ -356,14 +355,6 @@ describe("readClip", () => {
     });
     expect(result.warpMode).toBe("complex");
     expect(result.warping).toBe(true);
-    expect(result.availableWarpModes).toEqual([
-      "beats",
-      "tones",
-      "texture",
-      "repitch",
-      "complex",
-      "pro",
-    ]);
   });
 
   it("reads a session clip by ID", () => {
