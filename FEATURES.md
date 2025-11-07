@@ -89,6 +89,8 @@ create.
 - See notes in musical notation (C3, D#4, etc.)
 - Check loop settings and time signatures
 - Works with Session and Arrangement clips
+- Audio clip properties: gain, pitch shift, sample info (rate, length, filename)
+- Audio warp settings: enabled/disabled, warp mode, warp markers
 
 ### Update Clip (`ppal-update-clip`)
 
@@ -98,6 +100,8 @@ create.
 - Adjust loop settings
 - Update or merge note patterns
 - Bulk edit multiple clips
+- Audio clip modifications: gain, pitch shift, warping on/off, warp mode
+- Warp marker operations: add, move, or remove markers
 
 ### Custom Music Notation
 
