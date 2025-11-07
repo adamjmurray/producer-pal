@@ -38,6 +38,10 @@ export function updateClip({
   loopStart,
   gain,
   pitchShift,
+  warpOp,
+  warpBeatTime,
+  warpSampleTime,
+  warpDistance,
 } = {}) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
@@ -158,6 +162,49 @@ export function updateClip({
         clip.call("get_notes_extended", 0, 128, 0, lengthBeats),
       );
       finalNoteCount = actualNotesResult?.notes?.length || 0;
+    }
+
+    // Handle warp marker operations (audio clips only)
+    if (warpOp != null) {
+      // Validate audio clip
+      const hasAudioFile = clip.getProperty("file_path") != null;
+      if (!hasAudioFile) {
+        throw new Error(
+          `Warp markers only available on audio clips (clip ${clip.id} is MIDI or empty)`,
+        );
+      }
+
+      // Validate required parameters per operation
+      if (warpBeatTime == null) {
+        throw new Error(`warpBeatTime required for ${warpOp} operation`);
+      }
+
+      switch (warpOp) {
+        case "add": {
+          // Add warp marker with optional sample time
+          const args =
+            warpSampleTime != null
+              ? { beat_time: warpBeatTime, sample_time: warpSampleTime }
+              : { beat_time: warpBeatTime };
+
+          clip.call("add_warp_marker", args);
+          break;
+        }
+
+        case "move": {
+          if (warpDistance == null) {
+            throw new Error("warpDistance required for move operation");
+          }
+
+          clip.call("move_warp_marker", warpBeatTime, warpDistance);
+          break;
+        }
+
+        case "remove": {
+          clip.call("remove_warp_marker", warpBeatTime);
+          break;
+        }
+      }
     }
 
     // Build optimistic result object

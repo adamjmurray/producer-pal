@@ -3,7 +3,7 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefUpdateClip = defineTool("ppal-update-clip", {
   title: "Update Clip",
-  description: "Update clip(s), MIDI notes, and audio properties",
+  description: "Update clip(s), MIDI notes, and warp markers (audio clips)",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -48,5 +48,27 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         '"replace" (clear all notes first) or "merge" (overlay notes, v0 deletes)',
       ),
+    warpOp: z
+      .enum(["add", "move", "remove"])
+      .optional()
+      .describe(
+        'warp marker operation: "add" (create at beat), "move" (shift by distance), "remove" (delete at beat)',
+      ),
+    warpBeatTime: z
+      .number()
+      .optional()
+      .describe(
+        "beat position from clip 1.1.1 (exact value from read-clip for move/remove, target for add)",
+      ),
+    warpSampleTime: z
+      .number()
+      .optional()
+      .describe(
+        "sample time in seconds (optional for add - omit to preserve timing)",
+      ),
+    warpDistance: z
+      .number()
+      .optional()
+      .describe("beats to shift (+forward, -backward) for move operation"),
   },
 });
