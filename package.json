@@ -88,7 +88,7 @@
     "happy-dom": "^20.0.10",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
-    "rollup": "^4.52.5",
+    "rollup": "^4.53.0",
     "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.2",
