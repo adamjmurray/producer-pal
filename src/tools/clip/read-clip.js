@@ -32,12 +32,8 @@ import {
 export function readClip(args = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
-  const {
-    includeClipNotes,
-    includeAudioInfo,
-    includeColor,
-    includeWarpMarkers,
-  } = parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
+  const { includeClipNotes, includeColor, includeWarpMarkers } =
+    parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and sceneIndex must be provided",
@@ -161,7 +157,7 @@ export function readClip(args = {}) {
     }
   }
 
-  if (result.type === "audio" && includeAudioInfo) {
+  if (result.type === "audio") {
     result.gain = clip.getProperty("gain");
     result.gainDisplay = clip.getProperty("gain_display_string");
 

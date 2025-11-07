@@ -26,8 +26,8 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .optional()
       .describe("0-based index for session clips"),
     include: z
-      .array(z.enum(["clip-notes", "audio-info", "color", "warp-markers"]))
-      .default(["clip-notes", "audio-info"])
-      .describe("data: clip-notes, audio-info, color, warp-markers"),
+      .array(z.enum(["clip-notes", "color", "warp-markers"]))
+      .default(["clip-notes"])
+      .describe("data: clip-notes, color, warp-markers"),
   },
 });
