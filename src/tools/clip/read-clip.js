@@ -3,6 +3,16 @@ import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
 } from "../../notation/barbeat/barbeat-time.js";
+import {
+  LIVE_API_WARP_MODE_BEATS,
+  LIVE_API_WARP_MODE_TONES,
+  LIVE_API_WARP_MODE_TEXTURE,
+  LIVE_API_WARP_MODE_REPITCH,
+  LIVE_API_WARP_MODE_COMPLEX,
+  LIVE_API_WARP_MODE_REX,
+  LIVE_API_WARP_MODE_PRO,
+  WARP_MODE,
+} from "../constants.js";
 import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
@@ -184,6 +194,38 @@ export function readClip(args = {}) {
         ) {
           result.warpMarkers = warpMarkersData.warp_markers;
         }
+      }
+
+      // Read warp mode and warping state
+      const warpModeValue = clip.getProperty("warp_mode");
+      result.warpMode =
+        {
+          [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
+          [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
+          [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
+          [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
+          [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
+          [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
+          [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
+        }[warpModeValue] ?? "unknown";
+
+      result.warping = clip.getProperty("warping") > 0;
+
+      // Read available warp modes
+      const availableWarpModesArray = clip.getProperty("available_warp_modes");
+      if (Array.isArray(availableWarpModesArray)) {
+        result.availableWarpModes = availableWarpModesArray.map(
+          (mode) =>
+            ({
+              [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
+              [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
+              [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
+              [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
+              [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
+              [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
+              [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
+            }[mode] ?? "unknown"),
+        );
       }
     } catch (error) {
       // Fail gracefully - clip might not support warp markers or format might be unexpected

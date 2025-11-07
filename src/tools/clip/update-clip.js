@@ -4,7 +4,17 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
-import { MAX_CLIP_BEATS } from "../constants.js";
+import {
+  MAX_CLIP_BEATS,
+  LIVE_API_WARP_MODE_BEATS,
+  LIVE_API_WARP_MODE_TONES,
+  LIVE_API_WARP_MODE_TEXTURE,
+  LIVE_API_WARP_MODE_REPITCH,
+  LIVE_API_WARP_MODE_COMPLEX,
+  LIVE_API_WARP_MODE_REX,
+  LIVE_API_WARP_MODE_PRO,
+  WARP_MODE,
+} from "../constants.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
@@ -23,6 +33,8 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {boolean} [args.loop] - Enable looping for the clip
  * @param {number} [args.gain] - Audio clip gain (0-1)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
+ * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
+ * @param {boolean} [args.warping] - Audio clip warping on/off
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
 export function updateClip({
@@ -38,6 +50,8 @@ export function updateClip({
   loopStart,
   gain,
   pitchShift,
+  warpMode,
+  warping,
   warpOp,
   warpBeatTime,
   warpSampleTime,
@@ -123,6 +137,25 @@ export function updateClip({
         const pitchFine = Math.round((pitchShift - pitchCoarse) * 100);
         clip.set("pitch_coarse", pitchCoarse);
         clip.set("pitch_fine", pitchFine);
+      }
+
+      if (warpMode !== undefined) {
+        const warpModeValue = {
+          [WARP_MODE.BEATS]: LIVE_API_WARP_MODE_BEATS,
+          [WARP_MODE.TONES]: LIVE_API_WARP_MODE_TONES,
+          [WARP_MODE.TEXTURE]: LIVE_API_WARP_MODE_TEXTURE,
+          [WARP_MODE.REPITCH]: LIVE_API_WARP_MODE_REPITCH,
+          [WARP_MODE.COMPLEX]: LIVE_API_WARP_MODE_COMPLEX,
+          [WARP_MODE.REX]: LIVE_API_WARP_MODE_REX,
+          [WARP_MODE.PRO]: LIVE_API_WARP_MODE_PRO,
+        }[warpMode];
+        if (warpModeValue !== undefined) {
+          clip.set("warp_mode", warpModeValue);
+        }
+      }
+
+      if (warping !== undefined) {
+        clip.set("warping", warping ? 1 : 0);
       }
     }
 

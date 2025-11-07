@@ -37,6 +37,14 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "audio clip pitch shift in semitones, supports decimals (ignored for MIDI)",
       ),
+    warpMode: z
+      .enum(["beats", "tones", "texture", "repitch", "complex", "rex", "pro"])
+      .optional()
+      .describe("audio clip warp mode (ignored for MIDI)"),
+    warping: z
+      .boolean()
+      .optional()
+      .describe("audio clip warping on/off (ignored for MIDI)"),
     notes: z
       .string()
       .optional()

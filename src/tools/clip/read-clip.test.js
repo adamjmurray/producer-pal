@@ -336,6 +336,36 @@ describe("readClip", () => {
     });
   });
 
+  it("reads warp mode and warping state when warp-markers included", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 0,
+        name: "Warped Audio",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        warp_mode: 4, // Complex mode
+        warping: 1,
+        available_warp_modes: [0, 1, 2, 3, 4, 6], // All except REX
+      },
+    });
+    const result = readClip({
+      trackIndex: 0,
+      sceneIndex: 0,
+      include: ["warp-markers"],
+    });
+    expect(result.warpMode).toBe("complex");
+    expect(result.warping).toBe(true);
+    expect(result.availableWarpModes).toEqual([
+      "beats",
+      "tones",
+      "texture",
+      "repitch",
+      "complex",
+      "pro",
+    ]);
+  });
+
   it("reads a session clip by ID", () => {
     mockLiveApiGet({
       session_clip_id: {

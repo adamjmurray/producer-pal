@@ -1419,4 +1419,85 @@ describe("updateClip", () => {
 
     expect(result).toEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
   });
+
+  it("should update warp mode for audio clips", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "123",
+      warpMode: "complex",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warp_mode",
+      4, // Complex mode = 4
+    );
+
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should update warping on/off for audio clips", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "123",
+      warping: true,
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warping",
+      1, // true = 1
+    );
+
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should update both warp mode and warping together", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "123",
+      warpMode: "beats",
+      warping: false,
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warp_mode",
+      0, // Beats mode = 0
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warping",
+      0, // false = 0
+    );
+
+    expect(result).toEqual({ id: "123" });
+  });
 });
