@@ -224,7 +224,7 @@ export function readClip(args = {}) {
               [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
               [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
               [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
-            }[mode] ?? "unknown"),
+            })[mode] ?? "unknown",
         );
       }
     } catch (error) {
