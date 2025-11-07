@@ -182,13 +182,20 @@ export function readClip(args = {}) {
       if (warpMarkersJson && warpMarkersJson !== "") {
         const warpMarkersData = JSON.parse(warpMarkersJson);
         // Handle both possible structures: direct array or nested in warp_markers property
+        // Transform snake_case properties to camelCase for consistency with update-clip
         if (Array.isArray(warpMarkersData)) {
-          result.warpMarkers = warpMarkersData;
+          result.warpMarkers = warpMarkersData.map((marker) => ({
+            sampleTime: marker.sample_time,
+            beatTime: marker.beat_time,
+          }));
         } else if (
           warpMarkersData.warp_markers &&
           Array.isArray(warpMarkersData.warp_markers)
         ) {
-          result.warpMarkers = warpMarkersData.warp_markers;
+          result.warpMarkers = warpMarkersData.warp_markers.map((marker) => ({
+            sampleTime: marker.sample_time,
+            beatTime: marker.beat_time,
+          }));
         }
       }
 
