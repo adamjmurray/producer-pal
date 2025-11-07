@@ -22,7 +22,7 @@ jobs:
 
       - uses: actions/setup-node@v6
         with:
-          node-version: "23.x"
+          node-version: "24.x"
 
       - run: npm ci
 
@@ -62,5 +62,5 @@ jobs:
         if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
         uses: davelosert/vitest-coverage-report-action@v2
         with:
-          vite-config-path: './config/vite.config.mjs'
+          vite-config-path: "./config/vite.config.mjs"
           file-coverage-mode: "all"

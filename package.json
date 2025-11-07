@@ -10,6 +10,9 @@
   "type": "module",
   "author": "Adam Murray",
   "license": "MIT License",
+  "engines": {
+    "node": "^24.0.0"
+  },
   "keywords": [
     "music",
     "ai",
