@@ -30,6 +30,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
       ),
+    arrangementStart: z
+      .string()
+      .optional()
+      .describe(
+        "bar|beat position to move arrangement clip (arrangement clips only)",
+      ),
     gain: z
       .number()
       .min(0)

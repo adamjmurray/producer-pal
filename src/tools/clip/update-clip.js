@@ -31,6 +31,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.length] - Duration in bar:beat format. end = start + length
  * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
  * @param {boolean} [args.looping] - Enable looping for the clip
+ * @param {string} [args.arrangementStart] - Bar|beat position to move arrangement clip (arrangement clips only)
  * @param {number} [args.gain] - Audio clip gain (0-1)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
@@ -48,6 +49,7 @@ export function updateClip({
   length,
   firstStart,
   looping,
+  arrangementStart,
   gain,
   pitchShift,
   warpMode,
@@ -69,7 +71,24 @@ export function updateClip({
     skipInvalid: true,
   });
 
+  // Get song time signature for arrangementStart conversion
+  let songTimeSigNumerator, songTimeSigDenominator;
+  let arrangementStartBeats = null;
+  if (arrangementStart != null) {
+    const liveSet = new LiveAPI("live_set");
+    songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+    songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+    arrangementStartBeats = barBeatToAbletonBeats(
+      arrangementStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+  }
+
   const updatedClips = [];
+
+  // Track which tracks have multiple clips being moved (for overlap warning)
+  const tracksWithMovedClips = new Map(); // trackIndex -> count
 
   for (const clip of clips) {
     // Parse time signature if provided to get numerator/denominator
@@ -325,9 +344,48 @@ export function updateClip({
       }
     }
 
+    // Handle arrangementStart (move clip) after all property updates
+    let finalClipId = clip.id;
+    if (arrangementStartBeats != null) {
+      const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+
+      if (!isArrangementClip) {
+        console.error(
+          `Warning: arrangementStart parameter ignored for session clip (id ${clip.id})`,
+        );
+      } else {
+        // Get track and duplicate clip to new position
+        const trackIndex = clip.trackIndex;
+        if (trackIndex == null) {
+          throw new Error(
+            `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
+          );
+        }
+
+        const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
+        // Track clips being moved to same track
+        const moveCount = (tracksWithMovedClips.get(trackIndex) || 0) + 1;
+        tracksWithMovedClips.set(trackIndex, moveCount);
+
+        const newClipResult = track.call(
+          "duplicate_clip_to_arrangement",
+          `id ${clip.id}`,
+          arrangementStartBeats,
+        );
+        const newClip = LiveAPI.from(newClipResult);
+
+        // Delete original clip
+        track.call("delete_clip", `id ${clip.id}`);
+
+        // Update clip ID to the new clip
+        finalClipId = newClip.id;
+      }
+    }
+
     // Build optimistic result object
     const clipResult = {
-      id: clip.id,
+      id: finalClipId,
     };
 
     // Only include noteCount if notes were modified
@@ -336,6 +394,17 @@ export function updateClip({
     }
 
     updatedClips.push(clipResult);
+  }
+
+  // Emit warning if multiple clips from same track were moved to same position
+  if (arrangementStartBeats != null) {
+    for (const [trackIndex, count] of tracksWithMovedClips.entries()) {
+      if (count > 1) {
+        console.error(
+          `Warning: ${count} clips on track ${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
+        );
+      }
+    }
   }
 
   // Return single object if one valid result, array for multiple results or empty array for none
