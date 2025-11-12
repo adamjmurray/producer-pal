@@ -440,6 +440,63 @@ If problems are found during pre-release testing:
 This is acceptable for pre-releases since they're explicitly marked as not
 production-ready.
 
+### Publishing to npm
+
+The npm package provides the portal script (`producer-pal-portal.js`) for users
+who want to run `npx producer-pal` instead of downloading the portal script and
+configuring the path to that file. This is an alternative distribution channel
+alongside GitHub releases.
+
+**Prerequisites:**
+
+- npm account with publish access to `producer-pal` package
+- Version numbers must already be updated in `package.json` (root) and
+  `npm/package.json`
+
+**Publishing Process:**
+
+```sh
+# Build everything (including npm/ folder)
+npm run build
+
+# Change to npm directory
+cd npm
+
+# Test packaging
+npm pack
+tar -tzf producer-pal-X.Y.Z.tgz  # Inspect contents
+
+# Test local installation
+npm install -g ./producer-pal-X.Y.Z.tgz
+npx producer-pal # actually use this with an MCP Client, running it on the command line does nothing visible
+npm uninstall -g producer-pal
+
+# When ready to publish
+npm publish
+
+# Return to root directory
+cd ..
+```
+
+**Notes:**
+
+- The `prepublishOnly` hook in `npm/package.json` automatically runs
+  `npm run build` before publishing to ensure fresh build artifacts
+- Published files (defined in `npm/package.json` `files` array):
+  - `producer-pal-portal.js` (bundled portal script with shebang)
+  - `LICENSE` (MIT license)
+  - `licenses/` (only portal dependencies: MCP SDK, zod, zod-to-json-schema)
+  - `README.md` (npm-specific documentation)
+  - `producer-pal-logo.svg` (logo for npm page)
+- Build artifacts in `npm/` are gitignored (never committed)
+- Version numbers in root `package.json` and `npm/package.json` should match
+
+**Version Management:**
+
+When bumping versions with `npm run version:bump`, you must manually update
+`npm/package.json` to match the root `package.json` version. The version bump
+script does not automatically update `npm/package.json`.
+
 ### Stable Download URLs
 
 After release, these URLs will always point to the latest version:
