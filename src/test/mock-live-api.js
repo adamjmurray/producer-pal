@@ -276,12 +276,12 @@ export const expectedClip = (overrides = {}) => ({
   sceneIndex: 1,
   name: "Test Clip",
   color: "#3DC300",
-  length: "1:0", // 1 bar duration
-  startMarker: "1|2", // bar|beat format (1 Ableton beat = bar 1 beat 2)
-  loop: false,
-  // loopStart omitted when it equals startMarker
-  // playing, triggered, recording, overdubbing, muted omitted when false
   timeSignature: "4/4",
+  looping: false,
+  start: "1|2", // bar|beat format (1 Ableton beat = bar 1 beat 2)
+  end: "2|2", // end_marker (5 beats = 2|2)
+  length: "1:0", // 1 bar duration
+  // playing, triggered, recording, overdubbing, muted omitted when false
   noteCount: 0,
   notes: "",
   ...overrides,

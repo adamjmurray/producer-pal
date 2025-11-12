@@ -69,16 +69,65 @@ export function readClip(args = {}) {
   const lengthBeats = clip.getProperty("length"); // Live API already gives us the effective length!
 
   const clipName = clip.getProperty("name");
-  const startMarker = abletonBeatsToBarBeat(
-    clip.getProperty("start_marker"),
+
+  // Read boundary properties from Live
+  const startMarkerBeats = clip.getProperty("start_marker");
+  const loopStartBeats = clip.getProperty("loop_start");
+  const loopEndBeats = clip.getProperty("loop_end");
+  const endMarkerBeats = clip.getProperty("end_marker");
+
+  // Calculate start based on looping state
+  let startBeats;
+  if (isLooping) {
+    startBeats = loopStartBeats;
+  } else {
+    startBeats = startMarkerBeats;
+  }
+
+  // Calculate end based on looping state
+  let endBeats;
+  if (isLooping) {
+    endBeats = loopEndBeats;
+  } else {
+    endBeats = endMarkerBeats;
+  }
+
+  // Sanity check for non-looping clips
+  if (!isLooping) {
+    const derivedStart = endBeats - lengthBeats;
+    if (Math.abs(derivedStart - startBeats) > 0.001) {
+      console.error(
+        `Warning: Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
+      );
+    }
+  }
+
+  // Convert to bar|beat notation
+  const start = abletonBeatsToBarBeat(
+    startBeats,
     timeSigNumerator,
     timeSigDenominator,
   );
-  const loopStart = abletonBeatsToBarBeat(
-    clip.getProperty("loop_start"),
+  const end = abletonBeatsToBarBeat(
+    endBeats,
     timeSigNumerator,
     timeSigDenominator,
   );
+  const length = abletonBeatsToBarBeatDuration(
+    endBeats - startBeats,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  // Check if firstStart differs from start
+  const firstStart =
+    Math.abs(startMarkerBeats - startBeats) > 0.001
+      ? abletonBeatsToBarBeat(
+          startMarkerBeats,
+          timeSigNumerator,
+          timeSigDenominator,
+        )
+      : null;
 
   const result = {
     id: clip.id,
@@ -86,15 +135,12 @@ export function readClip(args = {}) {
     ...(clipName && { name: clipName }),
     view: isArrangementClip ? "arrangement" : "session",
     ...(includeColor && { color: clip.getColor() }),
-    loop: isLooping,
-    length: abletonBeatsToBarBeatDuration(
-      lengthBeats,
-      timeSigNumerator,
-      timeSigDenominator,
-    ),
-    ...(startMarker !== "1|1" && { startMarker }),
-    ...(loopStart !== startMarker && { loopStart }),
     timeSignature: clip.timeSignature,
+    looping: isLooping,
+    start: start,
+    end: end,
+    length: length,
+    ...(firstStart != null && { firstStart }),
   };
 
   // Only include these boolean properties when true

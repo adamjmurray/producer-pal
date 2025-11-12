@@ -186,7 +186,7 @@ describe("createClip", () => {
       trackIndex: 0,
       sceneIndex: 0,
       length: "1:3",
-      loop: false,
+      looping: false,
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -207,7 +207,7 @@ describe("createClip", () => {
       trackIndex: 0,
       sceneIndex: 0,
       length: "2:0",
-      loop: true,
+      looping: true,
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -425,7 +425,7 @@ describe("createClip", () => {
         notes: "C3 D3 E3 1|1",
         name: "New Clip",
         color: "#FF0000",
-        loop: true,
+        looping: true,
         auto: "play-clip",
       });
 
@@ -1022,7 +1022,7 @@ describe("createClip", () => {
     );
   });
 
-  it("should set start and loop markers when provided", () => {
+  it("should set start and firstStart when provided", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4, signature_denominator: 4 },
@@ -1034,8 +1034,8 @@ describe("createClip", () => {
       sceneIndex: 0,
       name: "Test Clip",
       notes: "C3 D3",
-      startMarker: "1|2",
-      loopStart: "1|3",
+      start: "1|3",
+      firstStart: "1|2",
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(

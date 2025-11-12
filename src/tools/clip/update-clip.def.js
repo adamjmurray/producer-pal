@@ -13,16 +13,23 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
     name: z.string().optional().describe("clip name"),
     color: z.string().optional().describe("#RRGGBB"),
     timeSignature: z.string().optional().describe("N/D (4/4)"),
-    startMarker: z.string().optional().describe("starting bar|beat position"),
+    start: z
+      .string()
+      .optional()
+      .describe("bar|beat position where loop/clip region begins"),
+    firstStart: z
+      .string()
+      .optional()
+      .describe(
+        "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
+      ),
     length: z
       .string()
       .optional()
-      .describe("duration (beats or bar:beat) relative to startMarker"),
-    loop: z.boolean().optional().describe("looping?"),
-    loopStart: z
-      .string()
-      .optional()
-      .describe("bar|beat position of loop start"),
+      .describe(
+        "duration in bar:beat format. When looping, this is the loop duration (from start to end). When not looping, this is the clip duration (from start to end). end = start + length",
+      ),
+    looping: z.boolean().optional().describe("enable looping for the clip"),
     gain: z
       .number()
       .min(0)

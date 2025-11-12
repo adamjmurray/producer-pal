@@ -27,10 +27,10 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.startMarker] - Start marker position in bar|beat format relative to clip start
- * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars)
- * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
- * @param {boolean} [args.loop] - Enable looping for the clip
+ * @param {string} [args.start] - Bar|beat position where loop/clip region begins
+ * @param {string} [args.length] - Duration in bar:beat format. end = start + length
+ * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
+ * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {number} [args.gain] - Audio clip gain (0-1)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
@@ -44,10 +44,10 @@ export function updateClip({
   name,
   color,
   timeSignature,
-  startMarker,
+  start,
   length,
-  loop,
-  loopStart,
+  firstStart,
+  looping,
   gain,
   pitchShift,
   warpMode,
@@ -86,44 +86,129 @@ export function updateClip({
     // Track final note count for response
     let finalNoteCount = null;
 
-    // Convert length parameter to end_marker and loop_end
-    let endMarkerBeats = null;
-    let loopEndBeats = null;
+    // Determine current looping state (needed for boundary calculations)
+    const isLooping =
+      looping != null ? looping : clip.getProperty("looping") > 0;
+
+    // Handle firstStart warning for non-looping clips
+    if (firstStart != null && !isLooping) {
+      console.error(
+        "Warning: firstStart parameter ignored for non-looping clips",
+      );
+    }
+
+    // Calculate boundary positions
+    let startBeats = null;
+    let endBeats = null;
+    let firstStartBeats = null;
+    let startMarkerBeats = null;
+
+    // Convert start to beats if provided
+    if (start != null) {
+      startBeats = barBeatToAbletonBeats(
+        start,
+        timeSigNumerator,
+        timeSigDenominator,
+      );
+    }
+
+    // Calculate end from start + length
     if (length != null) {
       const lengthBeats = barBeatDurationToAbletonBeats(
         length,
         timeSigNumerator,
         timeSigDenominator,
       );
-      const startMarkerBeats =
-        barBeatToAbletonBeats(
-          startMarker,
-          timeSigNumerator,
-          timeSigDenominator,
-        ) || 0;
-      endMarkerBeats = startMarkerBeats + lengthBeats;
-      loopEndBeats = startMarkerBeats + lengthBeats;
+
+      // If start not provided, read current value from clip
+      if (startBeats == null) {
+        if (isLooping) {
+          startBeats = clip.getProperty("loop_start");
+        } else {
+          // For non-looping clips, derive from end_marker - length
+          const currentEndMarker = clip.getProperty("end_marker");
+          const currentStartMarker = clip.getProperty("start_marker");
+          startBeats = currentEndMarker - lengthBeats;
+
+          // Sanity check: warn if derived start doesn't match start_marker
+          if (
+            Math.abs(startBeats - currentStartMarker) > 0.001 &&
+            currentStartMarker != null
+          ) {
+            console.error(
+              `Warning: Derived start (${startBeats}) differs from current start_marker (${currentStartMarker})`,
+            );
+          }
+        }
+      }
+
+      endBeats = startBeats + lengthBeats;
     }
 
-    clip.setAll({
+    // Handle firstStart for looping clips
+    if (firstStart != null && isLooping) {
+      firstStartBeats = barBeatToAbletonBeats(
+        firstStart,
+        timeSigNumerator,
+        timeSigDenominator,
+      );
+    }
+
+    // Determine start_marker value
+    if (firstStartBeats != null) {
+      // firstStart takes precedence
+      startMarkerBeats = firstStartBeats;
+    } else if (startBeats != null && !isLooping) {
+      // For non-looping clips, start_marker = start
+      startMarkerBeats = startBeats;
+    } else if (startBeats != null && isLooping) {
+      // For looping clips without firstStart, start_marker = start
+      startMarkerBeats = startBeats;
+    }
+
+    // Determine if we need to set end before start to avoid "LoopStart behind LoopEnd" error
+    let setEndFirst = false;
+    if (isLooping && startBeats != null && endBeats != null) {
+      const currentLoopEnd = clip.getProperty("loop_end");
+      // If new start would be beyond current end, set end first
+      if (startBeats > currentLoopEnd) {
+        setEndFirst = true;
+      }
+    }
+
+    // Set properties based on looping state and ordering requirements
+    const propsToSet = {
       name: name,
       color: color,
       signature_numerator: timeSignature != null ? timeSigNumerator : null,
       signature_denominator: timeSignature != null ? timeSigDenominator : null,
-      start_marker: barBeatToAbletonBeats(
-        startMarker,
-        timeSigNumerator,
-        timeSigDenominator,
-      ),
-      end_marker: endMarkerBeats,
-      loop_start: barBeatToAbletonBeats(
-        loopStart,
-        timeSigNumerator,
-        timeSigDenominator,
-      ),
-      loop_end: loopEndBeats,
-      looping: loop,
-    });
+      start_marker: startMarkerBeats,
+      looping: looping,
+    };
+
+    // Set loop properties for looping clips (order matters!)
+    if (isLooping || looping == null) {
+      if (setEndFirst && endBeats != null && looping !== false) {
+        // Set end first to avoid "LoopStart behind LoopEnd" error
+        propsToSet.loop_end = endBeats;
+      }
+      if (startBeats != null && looping !== false) {
+        propsToSet.loop_start = startBeats;
+      }
+      if (!setEndFirst && endBeats != null && looping !== false) {
+        // Set end after start in normal case
+        propsToSet.loop_end = endBeats;
+      }
+    }
+
+    // Set end_marker for non-looping clips
+    if (!isLooping || looping === false) {
+      if (endBeats != null) {
+        propsToSet.end_marker = endBeats;
+      }
+    }
+
+    clip.setAll(propsToSet);
 
     // Audio-specific parameters (only for audio clips)
     const isAudioClip = clip.getProperty("is_audio_clip") > 0;

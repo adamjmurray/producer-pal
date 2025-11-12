@@ -77,11 +77,11 @@ describe("readClip", () => {
       sceneIndex: 1,
       trackIndex: 1,
       view: "session",
-      length: "1:0", // 1 bar duration (from Live API)
-      loop: false,
-      startMarker: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
-      // loopStart omitted when it equals startMarker
       timeSignature: "4/4",
+      looping: false,
+      start: "1|2", // 1 Ableton beat = bar 1 beat 2 in 4/4
+      end: "2|2", // end_marker (5 beats = 2|2)
+      length: "1:0", // 1 bar duration
       notes: "C3 1|1 D3 1|2 E3 1|3", // Real bar|beat output
       noteCount: 3,
     });
@@ -154,11 +154,11 @@ describe("readClip", () => {
       sceneIndex: 1,
       trackIndex: 1,
       view: "session",
-      length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
-      loop: false,
-      startMarker: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
-      // loopStart omitted when it equals startMarker
       timeSignature: "6/8",
+      looping: false,
+      start: "1|3", // 1 Ableton beat = 2 musical beats = bar 1 beat 3 in 6/8
+      end: "2|5", // end_marker (5 beats = 2|5 in 6/8)
+      length: "1:2", // 1 bar + 2 beats (4 Ableton beats in 6/8)
       notes: "C3 1|1 D3 1|3 E3 1|5", // Real bar|beat output in 6/8
       noteCount: 3,
     });
@@ -232,6 +232,11 @@ describe("readClip", () => {
         signature_numerator: 6,
         signature_denominator: 8,
         length: 3, // Ableton beats
+        start_marker: 0,
+        end_marker: 3,
+        loop_start: 0,
+        loop_end: 3,
+        looping: 0,
       },
     });
 
@@ -322,12 +327,12 @@ describe("readClip", () => {
       sceneIndex: 0,
       trackIndex: 0,
       view: "session",
-      length: "1:0", // 1 bar (from Live API)
-      loop: true,
-      startMarker: "1|2",
-      // loopStart omitted when it equals startMarker
-      playing: true,
       timeSignature: "4/4",
+      looping: true,
+      start: "1|2", // loop_start
+      end: "2|2", // loop_end (5 beats = 2|2)
+      length: "1:0", // 1 bar
+      playing: true,
       gain: 0,
       gainDisplay: 0,
       pitchShift: 0,
@@ -386,7 +391,7 @@ describe("readClip", () => {
     expect(result.sceneIndex).toBe(4);
     expect(result.view).toBe("session");
     expect(result.length).toBe("1:0");
-    expect(result.startMarker).toBe("1|2");
+    expect(result.start).toBe("1|2");
   });
 
   it("reads an Arrangement clip by ID using song time signature for arrangementStartTime", () => {
@@ -432,7 +437,7 @@ describe("readClip", () => {
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
     expect(result.length).toBe("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
-    expect(result.startMarker).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
+    expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 
   it("throws an error when neither clipId nor trackIndex+sceneIndex are provided", () => {
@@ -529,12 +534,12 @@ describe("readClip", () => {
       name: "Test Clip",
       trackIndex: 0,
       sceneIndex: 0,
-      length: "1:0",
-      startMarker: "1|2",
-      loop: false,
-      // loopStart omitted when it equals startMarker
-      triggered: true,
       timeSignature: "4/4",
+      looping: false,
+      start: "1|2",
+      end: "2|2", // end_marker (5 beats = 2|2)
+      length: "1:0",
+      triggered: true,
       noteCount: 4,
       notes: "t0.25 C1 1|1 v90 D1 1|2 v100 C1 1|3 v90 D1 1|4",
     });
@@ -547,9 +552,12 @@ describe("readClip", () => {
         name: "",
         signature_numerator: 4,
         signature_denominator: 4,
-        length: 4,
-        start_marker: 0,
-        loop_start: 0,
+        length: 5,
+        start_marker: 1,
+        loop_start: 1,
+        loop_end: 6,
+        end_marker: 6,
+        looping: 0,
       },
     });
 
@@ -562,49 +570,55 @@ describe("readClip", () => {
       sceneIndex: 0,
       trackIndex: 0,
       view: "session",
-      length: "1:0",
-      // startMarker omitted when "1|1"
-      // loopStart omitted when it equals startMarker
-      loop: false,
       timeSignature: "4/4",
+      looping: false,
+      start: "1|2",
+      end: "2|3",
+      length: "1:1",
       noteCount: 0,
     });
   });
 
-  it("omits startMarker when 1|1", () => {
+  it("omits firstStart when it equals start", () => {
     mockLiveApiGet({
       Clip: {
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
         length: 8,
-        start_marker: 0, // "1|1"
-        loop_start: 4,
+        start_marker: 4, // "2|1" - same as loop_start
+        loop_start: 4, // "2|1"
+        loop_end: 12,
+        end_marker: 12,
+        looping: 1,
       },
     });
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 
-    expect(result.startMarker).toBeUndefined(); // Omitted when "1|1"
-    expect(result.loopStart).toBe("2|1"); // Included because it differs from startMarker
+    expect(result.start).toBe("2|1");
+    expect(result.firstStart).toBeUndefined(); // Omitted when it equals start
   });
 
-  it("includes startMarker when not 1|1", () => {
+  it("includes firstStart when it differs from start", () => {
     mockLiveApiGet({
       Clip: {
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
-        length: 8,
-        start_marker: 4, // "2|1" - not the default
-        loop_start: 4,
+        length: 16,
+        start_marker: 8, // "3|1" - playback offset
+        loop_start: 0, // "1|1" - loop start
+        loop_end: 16,
+        end_marker: 16,
+        looping: 1,
       },
     });
 
     const result = readClip({ trackIndex: 0, sceneIndex: 0, include: [] });
 
-    expect(result.startMarker).toBe("2|1"); // Included because it's not "1|1"
-    expect(result.loopStart).toBeUndefined(); // Omitted because it equals startMarker
+    expect(result.start).toBe("1|1"); // loop_start
+    expect(result.firstStart).toBe("3|1"); // Included because it differs from start
   });
 
   it("includes recording, overdubbing, and muted when true", () => {
@@ -705,7 +719,7 @@ describe("readClip", () => {
     const resultExplicit = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["clip-notes", "color"],
+      include: ["clip-notes", "audio-info", "color", "warp-markers"],
     });
 
     // Results should be identical
@@ -776,9 +790,11 @@ describe("readClip", () => {
       sceneIndex: 0,
       trackIndex: 0,
       view: "session",
-      length: "1:0",
-      loop: false,
       timeSignature: "4/4",
+      looping: false,
+      start: "1|1", // start_marker (0 = 1|1)
+      end: "2|1", // end_marker (4 = 2|1)
+      length: "1:0",
       notes: "G8 1|1",
       noteCount: 1,
     });

@@ -23,10 +23,10 @@ import { parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
- * @param {string} [args.startMarker] - Start marker position in bar|beat format relative to clip start
- * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars)
- * @param {string} [args.loopStart] - Loop start position in bar|beat format relative to clip start
- * @param {boolean} [args.loop] - Enable looping for the clip
+ * @param {string} [args.start] - Bar|beat position where loop/clip region begins
+ * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars). end = start + length
+ * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
+ * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only. Puts tracks into non-following state.
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
@@ -41,10 +41,10 @@ export function createClip({
   name = null,
   color = null,
   timeSignature = null,
-  startMarker = null,
+  start = null,
   length = null,
-  loop = null,
-  loopStart = null,
+  firstStart = null,
+  looping = null,
   auto = null,
   switchView,
 }) {
@@ -96,29 +96,34 @@ export function createClip({
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
-  const startMarkerBeats = barBeatToAbletonBeats(
-    startMarker,
+  const startBeats = barBeatToAbletonBeats(
+    start,
     timeSigNumerator,
     timeSigDenominator,
   );
-  const loopStartBeats = barBeatToAbletonBeats(
-    loopStart,
+  const firstStartBeats = barBeatToAbletonBeats(
+    firstStart,
     timeSigNumerator,
     timeSigDenominator,
   );
 
-  // Convert length parameter to endMarker and loopEnd
-  let endMarkerBeats = null;
-  let loopEndBeats = null;
+  // Handle firstStart warning for non-looping clips
+  if (firstStart != null && looping === false) {
+    console.error(
+      "Warning: firstStart parameter ignored for non-looping clips",
+    );
+  }
+
+  // Convert length parameter to end position
+  let endBeats = null;
   if (length != null) {
     const lengthBeats = barBeatDurationToAbletonBeats(
       length,
       timeSigNumerator,
       timeSigDenominator,
     );
-    const startOffsetBeats = startMarkerBeats || 0;
-    endMarkerBeats = startOffsetBeats + lengthBeats;
-    loopEndBeats = startOffsetBeats + lengthBeats;
+    const startOffsetBeats = startBeats || 0;
+    endBeats = startOffsetBeats + lengthBeats;
   }
 
   const notes =
@@ -131,12 +136,9 @@ export function createClip({
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   let clipLength;
-  if (loop && loopEndBeats != null) {
-    // For looping clips, use loopEnd
-    clipLength = loopEndBeats;
-  } else if (endMarkerBeats != null) {
-    // For non-looping clips, use endMarker
-    clipLength = endMarkerBeats;
+  if (endBeats != null) {
+    // Use calculated end position
+    clipLength = endBeats;
   } else if (notes.length > 0) {
     // Find the latest note start time (not end time)
     const lastNoteStartTimeAbletonBeats = Math.max(
@@ -233,17 +235,44 @@ export function createClip({
       }
     }
 
-    clip.setAll({
+    // Determine start_marker value
+    let startMarkerBeats = null;
+    if (firstStartBeats != null && looping !== false) {
+      // firstStart takes precedence for looping clips
+      startMarkerBeats = firstStartBeats;
+    } else if (startBeats != null) {
+      // Use start as start_marker
+      startMarkerBeats = startBeats;
+    }
+
+    // Set properties based on looping state
+    const propsToSet = {
       name: clipName,
       color: color,
       signature_numerator: timeSigNumerator,
       signature_denominator: timeSigDenominator,
       start_marker: startMarkerBeats,
-      end_marker: endMarkerBeats,
-      loop_start: loopStartBeats,
-      loop_end: loopEndBeats,
-      looping: loop,
-    });
+      looping: looping,
+    };
+
+    // Set loop properties for looping clips
+    if (looping === true || looping == null) {
+      if (startBeats != null) {
+        propsToSet.loop_start = startBeats;
+      }
+      if (endBeats != null) {
+        propsToSet.loop_end = endBeats;
+      }
+    }
+
+    // Set end_marker for non-looping clips
+    if (looping === false) {
+      if (endBeats != null) {
+        propsToSet.end_marker = endBeats;
+      }
+    }
+
+    clip.setAll(propsToSet);
 
     // v0 notes already filtered by applyV0Deletions in interpretNotation
     if (notes.length > 0) {
