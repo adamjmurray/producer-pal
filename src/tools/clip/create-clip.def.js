@@ -21,7 +21,7 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .min(0)
       .optional()
       .describe("0-based scene index for session clips"),
-    arrangementStartTime: z
+    arrangementStart: z
       .string()
       .optional()
       .describe("start bar|beat position for arrangement clips"),
@@ -43,12 +43,6 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe("bar|beat position where loop/clip region begins"),
-    firstStart: z
-      .string()
-      .optional()
-      .describe(
-        "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
-      ),
     length: z
       .string()
       .optional()
@@ -56,6 +50,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
         "duration in bar:beat format. When looping, this is the loop duration (from start to end). When not looping, this is the clip duration (from start to end). end = start + length. Defaults to next full bar after latest note start.",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
+    firstStart: z
+      .string()
+      .optional()
+      .describe(
+        "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
+      ),
     notes: z
       .string()
       .optional()

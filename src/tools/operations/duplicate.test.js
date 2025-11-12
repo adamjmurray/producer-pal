@@ -864,7 +864,7 @@ describe("duplicate", () => {
             destination: "arrangement",
           }),
         ).toThrow(
-          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'",
+          "duplicate failed: arrangementStart is required when destination is 'arrangement'",
         );
       });
 
@@ -981,7 +981,7 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           destination: "arrangement",
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
         });
 
         // Track 0 clip (4 beats) should use duplicate_clip_to_arrangement since it already exists
@@ -1000,7 +1000,7 @@ describe("duplicate", () => {
         );
 
         expect(result).toStrictEqual({
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
           clips: [
             {
               id: "live_set tracks 0 arrangement_clips 0",
@@ -1107,7 +1107,7 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           destination: "arrangement",
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
           count: 3,
           name: "Scene Copy",
         });
@@ -1135,7 +1135,7 @@ describe("duplicate", () => {
 
         expect(result).toStrictEqual([
           {
-            arrangementStartTime: "5|1",
+            arrangementStart: "5|1",
             clips: [
               {
                 id: "live_set tracks 0 arrangement_clips 0",
@@ -1145,7 +1145,7 @@ describe("duplicate", () => {
             ],
           },
           {
-            arrangementStartTime: "7|1",
+            arrangementStart: "7|1",
             clips: [
               {
                 id: "live_set tracks 0 arrangement_clips 1",
@@ -1155,7 +1155,7 @@ describe("duplicate", () => {
             ],
           },
           {
-            arrangementStartTime: "9|1",
+            arrangementStart: "9|1",
             clips: [
               {
                 id: "live_set tracks 0 arrangement_clips 2",
@@ -1188,11 +1188,11 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           destination: "arrangement",
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
         });
 
         expect(result).toStrictEqual({
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
           clips: [],
         });
       });
@@ -1221,7 +1221,7 @@ describe("duplicate", () => {
           type: "scene",
           id: "scene1",
           destination: "arrangement",
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
           withoutClips: true,
         });
 
@@ -1235,7 +1235,7 @@ describe("duplicate", () => {
         // Verify that show_view was still called
 
         expect(result).toStrictEqual({
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
           clips: [],
         });
       });
@@ -1367,7 +1367,7 @@ describe("duplicate", () => {
         expect(() =>
           duplicate({ type: "clip", id: "clip1", destination: "arrangement" }),
         ).toThrow(
-          "duplicate failed: arrangementStartTime is required when destination is 'arrangement'",
+          "duplicate failed: arrangementStart is required when destination is 'arrangement'",
         );
       });
 
@@ -1406,7 +1406,7 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           destination: "arrangement",
-          arrangementStartTime: "3|1",
+          arrangementStart: "3|1",
         });
 
         expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -1419,7 +1419,7 @@ describe("duplicate", () => {
         expect(result).toStrictEqual({
           id: "live_set tracks 0 arrangement_clips 0",
           trackIndex: 0,
-          arrangementStartTime: "3|1",
+          arrangementStart: "3|1",
         });
       });
 
@@ -1472,7 +1472,7 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           destination: "arrangement",
-          arrangementStartTime: "3|1",
+          arrangementStart: "3|1",
           count: 3,
           name: "Custom Clip",
         });
@@ -1481,17 +1481,17 @@ describe("duplicate", () => {
           {
             id: "live_set tracks 0 arrangement_clips 0",
             trackIndex: 0,
-            arrangementStartTime: "3|1",
+            arrangementStart: "3|1",
           },
           {
             id: "live_set tracks 0 arrangement_clips 1",
             trackIndex: 0,
-            arrangementStartTime: "4|1",
+            arrangementStart: "4|1",
           },
           {
             id: "live_set tracks 0 arrangement_clips 2",
             trackIndex: 0,
-            arrangementStartTime: "5|1",
+            arrangementStart: "5|1",
           },
         ]);
 
@@ -1607,13 +1607,13 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStartTime: "5|1",
+        arrangementStart: "5|1",
         arrangementLength: "1:0", // 4 beats - shorter than original 8 beats
       });
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        arrangementStartTime: "5|1",
+        arrangementStart: "5|1",
       });
 
       // Should create clip with exact length instead of duplicating and shortening
@@ -1708,7 +1708,7 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStartTime: "5|1",
+        arrangementStart: "5|1",
         arrangementLength: "1:2", // 6 beats - longer than original 4 beats
       });
 
@@ -1784,7 +1784,7 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStartTime: "5|1",
+        arrangementStart: "5|1",
         arrangementLength: "2:0", // 8 beats - longer than original 4 beats
       });
 
@@ -1802,7 +1802,7 @@ describe("duplicate", () => {
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        arrangementStartTime: "5|1",
+        arrangementStart: "5|1",
       });
     });
 
@@ -1872,7 +1872,7 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStartTime: "1|1",
+        arrangementStart: "1|1",
         arrangementLength: "1:0", // This should be 3 Ableton beats in 6/8 time
       });
 
@@ -1886,7 +1886,7 @@ describe("duplicate", () => {
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        arrangementStartTime: "1|1",
+        arrangementStart: "1|1",
       });
     });
 
@@ -1951,7 +1951,7 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStartTime: "1|1",
+        arrangementStart: "1|1",
         arrangementLength: "1:0", // This should be 4 Ableton beats in 2/2 time
       });
 
@@ -1965,7 +1965,7 @@ describe("duplicate", () => {
 
       expect(result).toStrictEqual({
         id: "live_set tracks 0 arrangement_clips 0",
-        arrangementStartTime: "1|1",
+        arrangementStart: "1|1",
       });
     });
 
@@ -1990,7 +1990,7 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           destination: "arrangement",
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
           arrangementLength: "0:0", // 0 bars + 0 beats = 0 total
         }),
       ).toThrow(
@@ -2037,7 +2037,7 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStartTime: "5|1",
+        arrangementStart: "5|1",
         // No arrangementLength specified
       });
 
@@ -2057,7 +2057,7 @@ describe("duplicate", () => {
       expect(result).toMatchObject({
         id: expect.any(String),
         trackIndex: expect.any(Number),
-        arrangementStartTime: expect.any(String),
+        arrangementStart: expect.any(String),
       });
     });
   });
@@ -2294,7 +2294,7 @@ describe("duplicate", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStartTime: "1|1",
+        arrangementStart: "1|1",
         switchView: true,
       });
 

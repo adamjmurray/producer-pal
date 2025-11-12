@@ -394,11 +394,12 @@ describe("readClip", () => {
     expect(result.start).toBe("1|2");
   });
 
-  it("reads an Arrangement clip by ID using song time signature for arrangementStartTime", () => {
+  it("reads an Arrangement clip by ID using song time signature for arrangementStart and arrangementLength", () => {
     mockLiveApiGet({
       arrangement_clip_id: {
         is_arrangement_clip: 1,
         start_time: 16.0, // Ableton beats
+        end_time: 20.0, // Ableton beats (start_time + length)
         signature_numerator: 6, // Clip is in 6/8
         signature_denominator: 8,
         length: 4,
@@ -432,8 +433,10 @@ describe("readClip", () => {
     expect(result.view).toBe("arrangement");
     expect(result.trackIndex).toBe(3);
     expect(result.sceneIndex).toBeUndefined();
-    // arrangementStartTime uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
-    expect(result.arrangementStartTime).toBe("5|1");
+    // arrangementStart uses song time signature (4/4), so 16 Ableton beats = bar 5 beat 1
+    expect(result.arrangementStart).toBe("5|1");
+    // arrangementLength also uses song time signature (4/4), so 4 Ableton beats = 1:0
+    expect(result.arrangementLength).toBe("1:0");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
     expect(result.length).toBe("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8

@@ -17,7 +17,7 @@ import { parseTimeSignature } from "../shared/utils.js";
  * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {number} [args.sceneIndex] - The scene/clip slot index (0-based), required for Session view
- * @param {string} [args.arrangementStartTime] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
+ * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.name] - Base name for the clips
@@ -35,7 +35,7 @@ export function createClip({
   view,
   trackIndex,
   sceneIndex = null,
-  arrangementStartTime = null,
+  arrangementStart = null,
   count = 1,
   notes: notationString = null,
   name = null,
@@ -63,9 +63,9 @@ export function createClip({
     );
   }
 
-  if (view === "arrangement" && arrangementStartTime == null) {
+  if (view === "arrangement" && arrangementStart == null) {
     throw new Error(
-      "createClip failed: arrangementStartTime is required when view is 'Arrangement'",
+      "createClip failed: arrangementStart is required when view is 'Arrangement'",
     );
   }
 
@@ -76,7 +76,7 @@ export function createClip({
   const liveSet = new LiveAPI("live_set");
   let timeSigNumerator, timeSigDenominator;
 
-  // Get song time signature for arrangementStartTime conversion
+  // Get song time signature for arrangementStart conversion
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
@@ -91,8 +91,8 @@ export function createClip({
   }
 
   // Convert bar|beat timing parameters to Ableton beats
-  const arrangementStartTimeBeats = barBeatToAbletonBeats(
-    arrangementStartTime,
+  const arrangementStartBeats = barBeatToAbletonBeats(
+    arrangementStart,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -179,7 +179,7 @@ export function createClip({
         : undefined;
 
     let clip;
-    let currentSceneIndex, currentArrangementStartTimeBeats;
+    let currentSceneIndex, currentArrangementStartBeats;
 
     if (view === "session") {
       currentSceneIndex = sceneIndex + i;
@@ -214,8 +214,7 @@ export function createClip({
       clip = new LiveAPI(`${clipSlot.path} clip`);
     } else {
       // Arrangement view
-      currentArrangementStartTimeBeats =
-        arrangementStartTimeBeats + i * clipLength;
+      currentArrangementStartBeats = arrangementStartBeats + i * clipLength;
 
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
       if (!track.exists()) {
@@ -226,7 +225,7 @@ export function createClip({
 
       const newClipResult = track.call(
         "create_midi_clip",
-        currentArrangementStartTimeBeats,
+        currentArrangementStartBeats,
         clipLength,
       );
       clip = LiveAPI.from(newClipResult);
@@ -290,18 +289,18 @@ export function createClip({
       clipResult.sceneIndex = currentSceneIndex;
     } else if (i === 0) {
       // Calculate bar|beat position for this clip
-      clipResult.arrangementStartTime = arrangementStartTime;
+      clipResult.arrangementStart = arrangementStart;
     } else {
       // Convert clipLength back to bar|beat format and add to original position
       const clipLengthInMusicalBeats =
         clipLength * (songTimeSigDenominator / 4);
       const totalOffsetBeats = i * clipLengthInMusicalBeats;
       const originalBeats = barBeatToBeats(
-        arrangementStartTime,
+        arrangementStart,
         songTimeSigNumerator,
       );
       const newPositionBeats = originalBeats + totalOffsetBeats;
-      clipResult.arrangementStartTime = beatsToBarBeat(
+      clipResult.arrangementStart = beatsToBarBeat(
         newPositionBeats,
         songTimeSigNumerator,
       );

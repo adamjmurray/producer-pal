@@ -22,7 +22,7 @@ describe("createClip", () => {
       "createClip failed: sceneIndex is required when view is 'Session'",
     );
     expect(() => createClip({ view: "arrangement", trackIndex: 0 })).toThrow(
-      "createClip failed: arrangementStartTime is required when view is 'Arrangement'",
+      "createClip failed: arrangementStart is required when view is 'Arrangement'",
     );
   });
 
@@ -748,7 +748,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "arrangement",
         trackIndex: 0,
-        arrangementStartTime: "3|1",
+        arrangementStart: "3|1",
         notes: "C3 D3 E3 1|1",
         name: "Arrangement Clip",
       });
@@ -768,7 +768,7 @@ describe("createClip", () => {
       expect(result).toEqual({
         id: "arrangement_clip",
         trackIndex: 0,
-        arrangementStartTime: "3|1",
+        arrangementStart: "3|1",
         noteCount: 3,
         length: "1:0",
       });
@@ -796,7 +796,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "arrangement",
         trackIndex: 0,
-        arrangementStartTime: "3|1",
+        arrangementStart: "3|1",
         count: 3,
         name: "Sequence",
         notes: "C3 1|1 D3 1|2",
@@ -826,21 +826,21 @@ describe("createClip", () => {
         {
           id: "arrangement_clip",
           trackIndex: 0,
-          arrangementStartTime: "3|1",
+          arrangementStart: "3|1",
           noteCount: 2,
           length: "1:0",
         },
         {
           id: "arrangement_clip",
           trackIndex: 0,
-          arrangementStartTime: "4|1",
+          arrangementStart: "4|1",
           noteCount: 2,
           length: "1:0",
         },
         {
           id: "arrangement_clip",
           trackIndex: 0,
-          arrangementStartTime: "5|1",
+          arrangementStart: "5|1",
           noteCount: 2,
           length: "1:0",
         },
@@ -854,7 +854,7 @@ describe("createClip", () => {
         createClip({
           view: "arrangement",
           trackIndex: 99,
-          arrangementStartTime: "3|1",
+          arrangementStart: "3|1",
         }),
       ).toThrow("createClip failed: track with index 99 does not exist");
     });
@@ -1095,7 +1095,7 @@ describe("createClip", () => {
       const result = createClip({
         view: "arrangement",
         trackIndex: 0,
-        arrangementStartTime: "1|1",
+        arrangementStart: "1|1",
         switchView: true,
       });
 
@@ -1103,7 +1103,7 @@ describe("createClip", () => {
       expect(result).toEqual({
         id: "arrangement_clip",
         trackIndex: 0,
-        arrangementStartTime: "1|1",
+        arrangementStart: "1|1",
       });
     });
 

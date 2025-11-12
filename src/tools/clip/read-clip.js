@@ -174,8 +174,15 @@ export function readClip(args = {}) {
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
     result.trackIndex = clip.trackIndex;
-    result.arrangementStartTime = abletonBeatsToBarBeat(
-      clip.getProperty("start_time"),
+    const startTimeBeats = clip.getProperty("start_time");
+    const endTimeBeats = clip.getProperty("end_time");
+    result.arrangementStart = abletonBeatsToBarBeat(
+      startTimeBeats,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+    result.arrangementLength = abletonBeatsToBarBeatDuration(
+      endTimeBeats - startTimeBeats,
       songTimeSigNumerator,
       songTimeSigDenominator,
     );

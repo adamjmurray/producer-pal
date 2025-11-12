@@ -17,12 +17,6 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .string()
       .optional()
       .describe("bar|beat position where loop/clip region begins"),
-    firstStart: z
-      .string()
-      .optional()
-      .describe(
-        "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
-      ),
     length: z
       .string()
       .optional()
@@ -30,6 +24,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
         "duration in bar:beat format. When looping, this is the loop duration (from start to end). When not looping, this is the clip duration (from start to end). end = start + length",
       ),
     looping: z.boolean().optional().describe("enable looping for the clip"),
+    firstStart: z
+      .string()
+      .optional()
+      .describe(
+        "bar|beat position for initial playback start (only for looping clips, only needed when different from start)",
+      ),
     gain: z
       .number()
       .min(0)

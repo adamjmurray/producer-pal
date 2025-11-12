@@ -9,28 +9,29 @@
 
 ## In Progress
 
-### 1.2 - Audio Clips
+### 1.2 - Audio Clips & Improved Clip Handling
 
-- Read/write audio clip properties: gain, pitch
-- Read/write warp mode and warp markers
-- Slice arrangement clips
+- [x] Read/write audio clip properties: gain, pitch
+- [x] Read/write warp mode and warp markers
+- [ ] Ability to change clip's arrangement start time and arrangement length
+- [ ] Slice audio clips in the arrangement
 
 ## Planned
 
-### 1.3 - Modulation
+### 1.3 - Voice Interaction
+
+- Speak to Producer Pal instead of typing
+
+### 1.4 - Modulation
 
 - Apply ramps and curves to MIDI velocity and other properties
 - Randomize velocity and timing
 - Shuffle and groove support
 
-### 1.4 - Device Control
+### 1.5 - Device Control
 
 - Read/write synth and effect parameters
 - Add devices
-
-### 1.5 - Voice Interaction
-
-- Speak to Producer Pal instead of typing
 
 ### 1.6 - Code Execution
 

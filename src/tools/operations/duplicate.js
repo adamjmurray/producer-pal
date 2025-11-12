@@ -52,7 +52,7 @@ function parseArrangementLength(
  * Create clips to fill the specified arrangement length
  * @param {LiveAPI} sourceClip - The source clip to duplicate
  * @param {LiveAPI} track - The track to create clips on
- * @param {number} arrangementStartTimeBeats - Start time in beats  (TODO: clarify if this is ableton beats or musical beats)
+ * @param {number} arrangementStartBeats - Start time in beats  (TODO: clarify if this is ableton beats or musical beats)
  * @param {number} arrangementLengthBeats - Total length to fill in beats (TODO: clarify if this is ableton beats or musical beats)
  * @param {string} [name] - Optional name for the clips
  * @param {Array<string>} [omitFields] - Optional fields to omit from clip info
@@ -61,7 +61,7 @@ function parseArrangementLength(
 function createClipsForLength(
   sourceClip,
   track,
-  arrangementStartTimeBeats,
+  arrangementStartBeats,
   arrangementLengthBeats,
   name,
   omitFields = [],
@@ -110,7 +110,7 @@ function createClipsForLength(
     // Case 1: Shorter than or equal to clip length - create clip with exact length
     const newClipResult = track.call(
       "create_midi_clip",
-      arrangementStartTimeBeats,
+      arrangementStartBeats,
       arrangementLengthBeats,
     );
     const newClip = LiveAPI.from(newClipResult);
@@ -121,7 +121,7 @@ function createClipsForLength(
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else if (isLooping) {
     // Case 2: Longer than clip length and clip is looping - create multiple clips
-    let currentStartBeats = arrangementStartTimeBeats;
+    let currentStartBeats = arrangementStartBeats;
     let remainingLength = arrangementLengthBeats;
 
     while (remainingLength > 0) {
@@ -146,7 +146,7 @@ function createClipsForLength(
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
       `id ${sourceClip.id}`,
-      arrangementStartTimeBeats,
+      arrangementStartBeats,
     );
     const newClip = LiveAPI.from(newClipResult);
 
@@ -255,7 +255,7 @@ function copyClipPropertiesFromData(sourceClipData, destClip, name) {
  * @param {string} args.id - ID of the object to duplicate
  * @param {number} [args.count=1] - Number of duplicates to create
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement"), required when type is "clip"
- * @param {string} [args.arrangementStartTime] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
+ * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
@@ -269,7 +269,7 @@ export function duplicate({
   id,
   count = 1,
   destination,
-  arrangementStartTime,
+  arrangementStart,
   arrangementLength,
   name,
   withoutClips,
@@ -339,9 +339,9 @@ export function duplicate({
     }
   }
 
-  if (destination === "arrangement" && arrangementStartTime == null) {
+  if (destination === "arrangement" && arrangementStart == null) {
     throw new Error(
-      "duplicate failed: arrangementStartTime is required when destination is 'arrangement'",
+      "duplicate failed: arrangementStart is required when destination is 'arrangement'",
     );
   }
 
@@ -368,9 +368,9 @@ export function duplicate({
         "signature_denominator",
       );
 
-      // Convert arrangementStartTime from bar|beat to Ableton beats once
+      // Convert arrangementStart from bar|beat to Ableton beats once
       const baseArrangementStartBeats = barBeatToAbletonBeats(
-        arrangementStartTime,
+        arrangementStart,
         songTimeSigNumerator,
         songTimeSigDenominator,
       );
@@ -506,14 +506,14 @@ function getMinimalClipInfo(clip, omitFields = []) {
       );
     }
 
-    const arrangementStartTimeBeats = clip.getProperty("start_time");
+    const arrangementStartBeats = clip.getProperty("start_time");
 
     // Convert to bar|beat format using song time signature
     const liveSet = new LiveAPI("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
-    const arrangementStartTime = abletonBeatsToBarBeat(
-      arrangementStartTimeBeats,
+    const arrangementStart = abletonBeatsToBarBeat(
+      arrangementStartBeats,
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
@@ -525,8 +525,8 @@ function getMinimalClipInfo(clip, omitFields = []) {
     if (!omitFields.includes("trackIndex")) {
       result.trackIndex = trackIndex;
     }
-    if (!omitFields.includes("arrangementStartTime")) {
-      result.arrangementStartTime = arrangementStartTime;
+    if (!omitFields.includes("arrangementStart")) {
+      result.arrangementStart = arrangementStart;
     }
 
     return result;
@@ -811,7 +811,7 @@ function calculateSceneLength(sceneIndex) {
 
 function duplicateSceneToArrangement(
   sceneId,
-  arrangementStartTimeBeats,
+  arrangementStartBeats,
   name,
   withoutClips,
   arrangementLength,
@@ -864,14 +864,14 @@ function duplicateSceneToArrangement(
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
         // Use the new length-aware clip creation logic
-        // Omit arrangementStartTime since all clips share the same start time
+        // Omit arrangementStart since all clips share the same start time
         const clipsForTrack = createClipsForLength(
           clip,
           track,
-          arrangementStartTimeBeats,
+          arrangementStartBeats,
           arrangementLengthBeats,
           name,
-          ["arrangementStartTime"],
+          ["arrangementStart"],
         );
 
         // Add the scene name to each clip result if provided
@@ -887,8 +887,8 @@ function duplicateSceneToArrangement(
   }
 
   return {
-    arrangementStartTime: abletonBeatsToBarBeat(
-      arrangementStartTimeBeats,
+    arrangementStart: abletonBeatsToBarBeat(
+      arrangementStartBeats,
       songTimeSigNumerator,
       songTimeSigDenominator,
     ),
@@ -923,7 +923,7 @@ function duplicateClipSlot(trackIndex, sourceSceneIndex, name) {
 
 function duplicateClipToArrangement(
   clipId,
-  arrangementStartTimeBeats,
+  arrangementStartBeats,
   name,
   arrangementLength,
   _songTimeSigNumerator,
@@ -959,7 +959,7 @@ function duplicateClipToArrangement(
     const clipsCreated = createClipsForLength(
       clip,
       track,
-      arrangementStartTimeBeats,
+      arrangementStartBeats,
       arrangementLengthBeats,
       name,
       ["trackIndex"],
@@ -970,7 +970,7 @@ function duplicateClipToArrangement(
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
       `id ${clip.id}`,
-      arrangementStartTimeBeats,
+      arrangementStartBeats,
     );
     const newClip = LiveAPI.from(newClipResult);
 
