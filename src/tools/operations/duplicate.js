@@ -70,6 +70,42 @@ function createClipsForLength(
   const isLooping = sourceClip.getProperty("looping") > 0;
   const duplicatedClips = [];
 
+  // IMPORTANT: Preserve source clip data BEFORE creating any new clips.
+  // Ableton's create_midi_clip deletes any existing clip at the exact same position and length,
+  // so we must read all data from sourceClip before it potentially gets deleted.
+  const sourceClipData = {
+    name: sourceClip.getProperty("name"),
+    color: sourceClip.getColor(),
+    signature_numerator: sourceClip.getProperty("signature_numerator"),
+    signature_denominator: sourceClip.getProperty("signature_denominator"),
+    looping: sourceClip.getProperty("looping"),
+    loop_start: sourceClip.getProperty("loop_start"),
+    loop_end: sourceClip.getProperty("loop_end"),
+    is_midi_clip: sourceClip.getProperty("is_midi_clip"),
+    notes: null,
+  };
+
+  // Get notes if it's a MIDI clip
+  if (sourceClipData.is_midi_clip) {
+    const notesResult = sourceClip.call(
+      "get_notes_extended",
+      0,
+      128,
+      0,
+      MAX_CLIP_BEATS,
+    );
+    if (notesResult != null) {
+      const { notes } = JSON.parse(notesResult);
+      if (notes && notes.length > 0) {
+        // Remove note IDs since we'll be creating new notes
+        for (const note of notes) {
+          delete note.note_id;
+        }
+        sourceClipData.notes = notes;
+      }
+    }
+  }
+
   if (arrangementLengthBeats <= originalClipLength) {
     // Case 1: Shorter than or equal to clip length - create clip with exact length
     const newClipResult = track.call(
@@ -79,8 +115,8 @@ function createClipsForLength(
     );
     const newClip = LiveAPI.from(newClipResult);
 
-    // Copy all properties from the original clip
-    copyClipProperties(sourceClip, newClip, name);
+    // Copy all properties from the preserved clip data
+    copyClipPropertiesFromData(sourceClipData, newClip, name);
 
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
   } else if (isLooping) {
@@ -97,8 +133,8 @@ function createClipsForLength(
       );
       const newClip = LiveAPI.from(newClipResult);
 
-      // Copy all properties from the original clip
-      copyClipProperties(sourceClip, newClip, name);
+      // Copy all properties from the preserved clip data
+      copyClipPropertiesFromData(sourceClipData, newClip, name);
 
       duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
 
@@ -186,38 +222,28 @@ function findRoutingOptionForDuplicateNames(
 }
 
 /**
- * Copy all properties from source clip to destination clip
- * @param {LiveAPI} sourceClip - The clip to copy from
+ * Copy clip properties from preserved data object to destination clip
+ * @param {Object} sourceClipData - Preserved clip data
  * @param {LiveAPI} destClip - The clip to copy to
  * @param {string} [name] - Optional name override
  */
-function copyClipProperties(sourceClip, destClip, name) {
-  // Get all the properties we want to copy
+function copyClipPropertiesFromData(sourceClipData, destClip, name) {
+  // Set all properties using setAll
   const properties = {
-    name: (name ?? sourceClip.getProperty("name")) || null, // empty names are not allowed
-    color: sourceClip.getColor(), // Use getColor() to get hex format
-    signature_numerator: sourceClip.getProperty("signature_numerator"),
-    signature_denominator: sourceClip.getProperty("signature_denominator"),
-    looping: sourceClip.getProperty("looping"),
-    loop_start: sourceClip.getProperty("loop_start"),
-    loop_end: sourceClip.getProperty("loop_end"),
+    name: (name ?? sourceClipData.name) || null, // empty names are not allowed
+    color: sourceClipData.color,
+    signature_numerator: sourceClipData.signature_numerator,
+    signature_denominator: sourceClipData.signature_denominator,
+    looping: sourceClipData.looping,
+    loop_start: sourceClipData.loop_start,
+    loop_end: sourceClipData.loop_end,
   };
 
-  // Set all properties using setAll
   destClip.setAll(properties);
 
-  // Copy notes if it's a MIDI clip
-  if (sourceClip.getProperty("is_midi_clip")) {
-    const { notes } = JSON.parse(
-      sourceClip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
-    );
-    if (notes && notes.length > 0) {
-      for (const note of notes) {
-        delete note.note_id; // we must remove these IDs to create new notes in a new clip
-      }
-      // Add notes to destination clip
-      destClip.call("add_new_notes", { notes });
-    }
+  // Add notes if we have them
+  if (sourceClipData.notes && sourceClipData.notes.length > 0) {
+    destClip.call("add_new_notes", { notes: sourceClipData.notes });
   }
 }
 
