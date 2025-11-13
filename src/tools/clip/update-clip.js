@@ -711,10 +711,10 @@ export function updateClip({
               continue;
             }
 
-            // Phase 3b: If current arrangement length > clip content length,
-            // first shorten to match content before tiling
-            if (currentArrangementLength > clipLength) {
-              const newEndTime = currentStartTime + clipLength;
+            // Phase 3b: If current arrangement length > total content length,
+            // first shorten to match content (including pre-roll) before tiling
+            if (currentArrangementLength > totalContentLength) {
+              const newEndTime = currentStartTime + totalContentLength;
               const tempClipLength = currentEndTime - newEndTime;
 
               // Critical validation: temp clip must not extend past original end_time
@@ -736,7 +736,7 @@ export function updateClip({
               track.call("delete_clip", `id ${tempClip.id}`);
 
               // Update currentEndTime after shortening
-              currentEndTime = currentStartTime + clipLength;
+              currentEndTime = currentStartTime + totalContentLength;
             }
 
             // Calculate tiling requirements based on desired length
