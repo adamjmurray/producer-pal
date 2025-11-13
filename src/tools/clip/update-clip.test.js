@@ -2019,21 +2019,46 @@ describe("updateClip", () => {
         789: {
           is_arrangement_clip: 1,
           is_midi_clip: 1,
+          is_audio_clip: 0,
           start_time: 0.0,
           end_time: 4.0, // 1 bar currently visible
           loop_start: 0.0,
           loop_end: 12.0, // clip.length = 12 beats (3 bars of content)
           start_marker: 0.0,
+          end_marker: 12.0,
+          name: "Test",
+          color: 0,
           signature_numerator: 4,
           signature_denominator: 4,
+          looping: 1,
           trackIndex,
         },
         LiveSet: {
           tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
         },
         "live_set tracks 0": {
           arrangement_clips: ["id", 789],
         },
+      });
+
+      // Mock Phase 3a recreation flow
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({ notes: [] });
+        }
+        if (method === "create_midi_clip") {
+          const id = 1000;
+          mockLiveApiGet({
+            [id]: {
+              is_midi_clip: 1,
+              is_audio_clip: 0,
+            },
+          });
+          return `id ${id}`;
+        }
+        return undefined;
       });
 
       const result = updateClip({
@@ -2041,17 +2066,19 @@ describe("updateClip", () => {
         arrangementLength: "3:0", // 3 bars = 12 beats, matches clip.length exactly
       });
 
-      // Current arrangement is 4 beats, we want 12 beats total
-      // effectiveLength = min(12, 12) = 12
-      // fullTiles = floor(12/12) = 1 (just the existing clip extended to 12 beats)
-      // No duplicate_clip_to_arrangement should be called (existing clip covers it)
+      // Phase 3a: Recreate clip from 4→12 beats
+      // currentArrangementLength (4) < clipLength (12) triggers recreation
+      // recreatedLength = min(12, 12) = 12 beats
+      // No tiling needed since recreatedLength == desired length
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 0, 12);
       expect(liveApiCall).not.toHaveBeenCalledWith(
         "duplicate_clip_to_arrangement",
         expect.anything(),
         expect.anything(),
       );
 
-      expect(result).toEqual({ id: "789" });
+      expect(result).toEqual({ id: "1000" }); // Recreated clip ID
     });
 
     // TODO: Fix this test - needs to be rewritten for Phase 2+3 implementation
@@ -2161,54 +2188,6 @@ describe("updateClip", () => {
       );
 
       expect(result).toEqual({ id: "789" });
-    });
-
-    it("should throw error when target range overlaps existing clip", () => {
-      const trackIndex = 0;
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789" || this._id === "888") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
-        if (this._path === "live_set") {
-          return "live_set";
-        }
-        if (this._path === "live_set tracks 0") {
-          return "live_set tracks 0";
-        }
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        789: {
-          is_arrangement_clip: 1,
-          is_midi_clip: 1,
-          start_time: 0.0,
-          end_time: 4.0,
-          loop_start: 0.0,
-          loop_end: 8.0, // 8 beat clip content
-          start_marker: 0.0,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          trackIndex,
-        },
-        888: {
-          start_time: 6.0, // Overlaps with target range (would need 2 tiles = 8 beats)
-          end_time: 10.0,
-        },
-        LiveSet: {
-          tracks: ["id", 0],
-        },
-        "live_set tracks 0": {
-          arrangement_clips: ["id", 789, "id", 888],
-        },
-      });
-
-      expect(() =>
-        updateClip({
-          ids: "789",
-          arrangementLength: "2:0", // 8 beats = clip.length, would extend to beat 8, overlapping clip 888
-        }),
-      ).toThrow(/target range overlaps existing clip/);
     });
 
     it("should handle Phase 3 (insufficient content) by tiling what exists", () => {
@@ -2361,6 +2340,129 @@ describe("updateClip", () => {
         expect.anything(),
       );
 
+      expect(result).toEqual({ id: "789" });
+    });
+  });
+
+  describe("arrangementLength (Phase 4: expose hidden content)", () => {
+    it("should expose hidden content by recreating clip", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789" || this._id === 1000 || this._id === 2000) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          start_time: 0.0,
+          end_time: 4.0, // Currently showing 4 beats (1 bar)
+          loop_start: 0.0,
+          loop_end: 8.0, // clip.length = 8 beats (2 bars) - has hidden content
+          start_marker: 0.0,
+          end_marker: 8.0,
+          name: "Test Clip",
+          color: 16711680, // Red
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 1,
+          trackIndex,
+        },
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Mock get_notes_extended for readClipProperties
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({
+            notes: [
+              { pitch: 60, start: 0, duration: 1, velocity: 100 },
+              { pitch: 62, start: 2, duration: 1, velocity: 100 },
+            ],
+          });
+        }
+        if (method === "create_midi_clip") {
+          const id = 1000;
+          mockLiveApiGet({
+            [id]: {
+              is_midi_clip: 1,
+              is_audio_clip: 0,
+            },
+          });
+          return `id ${id}`;
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          const id = 2000;
+          mockLiveApiGet({
+            [id]: {},
+          });
+          return `id ${id}`;
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "1:2", // 6 beats - more than current 4, less than clip.length 8
+      });
+
+      // Should call get_notes_extended to read properties
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "get_notes_extended",
+        0,
+        128,
+        0,
+        1000000,
+      );
+
+      // Should create holding clip
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "create_midi_clip",
+        44, // Holding area start (bar 11: ceil(4/4) + 10 in 4/4)
+        6, // Target length
+      );
+
+      // Should delete original
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
+
+      // Should duplicate from holding area to original position
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 1000",
+        0.0,
+      );
+
+      // Should delete holding clip
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 1000");
+
+      // Should emit warning about envelope loss
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Clip arrangement length expanded by recreating clip. " +
+          "Automation envelopes were lost due to Live API limitations.",
+      );
+
+      consoleErrorSpy.mockRestore();
       expect(result).toEqual({ id: "789" });
     });
   });

@@ -42,6 +42,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "bar:beat duration for arrangement span (visible region in timeline). " +
           "Shortening preserves all data. " +
+          "Lengthening to expose hidden content recreates clip (envelope loss). " +
           "Lengthening via tiling requires arrangementLength >= clip.length. " +
           "Arrangement clips only.",
       ),

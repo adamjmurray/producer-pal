@@ -1,3 +1,4 @@
+import * as console from "../../shared/v8-max-console.js";
 import { formatNotation } from "../../notation//barbeat/barbeat-format-notation.js";
 import { interpretNotation } from "../../notation//barbeat/barbeat-interpreter.js";
 import {
@@ -37,7 +38,7 @@ function calculateHoldingArea(liveSet) {
     const clipIds = track.getChildIds("arrangement_clips");
 
     for (const clipId of clipIds) {
-      const clip = new LiveAPI(`id ${clipId}`);
+      const clip = LiveAPI.from(clipId);
       const endTime = clip.getProperty("end_time");
       highestEndTime = Math.max(highestEndTime, endTime);
     }
@@ -51,45 +52,89 @@ function calculateHoldingArea(liveSet) {
 }
 
 /**
- * Check for overlapping clips in target range
- * Throws if any clips (except excludeClipId) overlap the range
- * @param {Object} track - LiveAPI track instance
- * @param {number} targetStart - Start position in beats
- * @param {number} targetEnd - End position in beats
- * @param {string} excludeClipId - Clip ID to exclude from check
+ * Read all copyable properties from a clip (for Phase 4 recreation)
+ * @param {Object} clip - LiveAPI clip instance
+ * @returns {Object} Clip properties and data
  */
-function checkAdjacentClipConflict(
-  track,
-  targetStart,
-  targetEnd,
-  excludeClipId,
-) {
-  const existingClips = track.getChildIds("arrangement_clips");
+function readClipProperties(clip) {
+  const props = {
+    name: clip.getProperty("name"),
+    color: clip.getColor(),
+    signature_numerator: clip.getProperty("signature_numerator"),
+    signature_denominator: clip.getProperty("signature_denominator"),
+    looping: clip.getProperty("looping"),
+    loop_start: clip.getProperty("loop_start"),
+    loop_end: clip.getProperty("loop_end"),
+    start_marker: clip.getProperty("start_marker"),
+    end_marker: clip.getProperty("end_marker"),
+    is_midi_clip: clip.getProperty("is_midi_clip"),
+    is_audio_clip: clip.getProperty("is_audio_clip"),
+  };
 
-  for (const clipId of existingClips) {
-    // Handle both "id 789" and "789" formats
-    const normalizedClipId = String(clipId).replace(/^id\s+/, "");
-    const normalizedExcludeId = String(excludeClipId).replace(/^id\s+/, "");
-
-    if (normalizedClipId === normalizedExcludeId) {
-      continue;
+  // Read MIDI notes
+  if (props.is_midi_clip) {
+    const notesResult = clip.call(
+      "get_notes_extended",
+      0,
+      128,
+      0,
+      MAX_CLIP_BEATS,
+    );
+    if (notesResult != null) {
+      const { notes } = JSON.parse(notesResult);
+      if (notes && notes.length > 0) {
+        // Remove note IDs since we'll be creating new notes
+        for (const note of notes) {
+          delete note.note_id;
+        }
+        props.notes = notes;
+      }
     }
+  }
 
-    const clip = LiveAPI.from(clipId);
-    const clipStart = clip.getProperty("start_time");
-    const clipEnd = clip.getProperty("end_time");
+  // Read audio properties
+  if (props.is_audio_clip) {
+    props.gain = clip.getProperty("gain");
+    props.pitch_coarse = clip.getProperty("pitch_coarse");
+    props.pitch_fine = clip.getProperty("pitch_fine");
+    props.warp_mode = clip.getProperty("warp_mode");
+    props.warping = clip.getProperty("warping");
+  }
 
-    // Check for overlap
-    if (
-      (clipStart >= targetStart && clipStart < targetEnd) ||
-      (clipEnd > targetStart && clipEnd <= targetEnd) ||
-      (clipStart <= targetStart && clipEnd >= targetEnd)
-    ) {
-      throw new Error(
-        `Cannot tile clip: target range overlaps existing clip at ` +
-          `position ${clipStart} to ${clipEnd}`,
-      );
-    }
+  return props;
+}
+
+/**
+ * Apply properties to a clip (for Phase 4 recreation)
+ * @param {Object} props - Properties to apply
+ * @param {Object} targetClip - LiveAPI clip instance
+ */
+function applyClipProperties(props, targetClip) {
+  // Basic properties via setAll for efficiency
+  targetClip.setAll({
+    name: props.name || null,
+    color: props.color,
+    signature_numerator: props.signature_numerator,
+    signature_denominator: props.signature_denominator,
+    looping: props.looping,
+    loop_start: props.loop_start,
+    loop_end: props.loop_end,
+    start_marker: props.start_marker,
+    end_marker: props.end_marker,
+  });
+
+  // MIDI notes
+  if (props.notes && props.notes.length > 0) {
+    targetClip.call("add_new_notes", { notes: props.notes });
+  }
+
+  // Audio properties (must use individual set calls)
+  if (props.is_audio_clip) {
+    targetClip.set("gain", props.gain);
+    targetClip.set("pitch_coarse", props.pitch_coarse);
+    targetClip.set("pitch_fine", props.pitch_fine);
+    targetClip.set("warp_mode", props.warp_mode);
+    targetClip.set("warping", props.warping);
   }
 }
 
@@ -107,7 +152,7 @@ function checkAdjacentClipConflict(
  * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.arrangementStart] - Bar|beat position to move arrangement clip (arrangement clips only)
- * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (Phase 1-3: shortening + tiling)
+ * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (Phase 1-4: shortening, hidden content exposure, tiling)
  * @param {number} [args.gain] - Audio clip gain (0-1)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
@@ -492,89 +537,247 @@ export function updateClip({
           // Calculate holding area once for reuse
           const holdingArea = calculateHoldingArea(liveSet);
 
-          // Phase 3: If current arrangement length > clip content length,
-          // first shorten to match content before tiling
-          if (currentArrangementLength > clipLength) {
-            const newEndTime = currentStartTime + clipLength;
-            const tempClipLength = currentEndTime - newEndTime;
+          // Branch: Phase 4 (expose hidden content) vs Phase 2-3 (tiling)
+          if (arrangementLengthBeats < clipLength) {
+            // Phase 4: Expose hidden content by recreating clip
+            // The clip has sufficient internal content, but we can't extend end_time directly
+            // Must recreate the clip with the desired arrangement length
 
-            // Critical validation: temp clip must not extend past original end_time
-            if (newEndTime + tempClipLength !== currentEndTime) {
-              throw new Error(
-                `Phase 3 shortening validation failed: calculation error in temp clip bounds`,
-              );
+            // Step 1: Read all clip properties BEFORE any destructive operations
+            const clipProps = readClipProperties(clip);
+
+            // Step 2: Validate holding area is empty
+            const holdingAreaEnd =
+              holdingArea.startBeats + arrangementLengthBeats;
+            const existingClips = track.getChildIds("arrangement_clips");
+
+            for (const clipId of existingClips) {
+              const existingClip = LiveAPI.from(clipId);
+              const existingStart = existingClip.getProperty("start_time");
+              const existingEnd = existingClip.getProperty("end_time");
+
+              // Check for overlap with holding area
+              if (
+                (existingStart >= holdingArea.startBeats &&
+                  existingStart < holdingAreaEnd) ||
+                (existingEnd > holdingArea.startBeats &&
+                  existingEnd <= holdingAreaEnd) ||
+                (existingStart <= holdingArea.startBeats &&
+                  existingEnd >= holdingAreaEnd)
+              ) {
+                throw new Error(
+                  `Holding area at bar ${holdingArea.bar} is occupied. ` +
+                    `Please ensure bars ${holdingArea.bar} to ${Math.ceil(holdingAreaEnd / holdingArea.abletonBeatsPerBar)} are empty.`,
+                );
+              }
             }
 
-            // Create temp clip to truncate
-            const tempClipPath = track.call(
-              "create_midi_clip",
-              newEndTime,
-              tempClipLength,
-            );
-            const tempClip = LiveAPI.from(tempClipPath);
-
-            // Delete temp clip - this leaves target clip shortened
-            track.call("delete_clip", `id ${tempClip.id}`);
-
-            // Update currentEndTime after shortening
-            currentEndTime = currentStartTime + clipLength;
-          }
-
-          // Calculate tiling requirements based on desired length
-          // Phase 2/3: Tile the (now properly-sized) clip
-          const fullTiles = Math.floor(arrangementLengthBeats / clipLength);
-          const remainder = arrangementLengthBeats % clipLength;
-
-          // Validate target range is clear (exclude source clip)
-          const targetStart = currentStartTime;
-          const targetEnd = currentStartTime + arrangementLengthBeats;
-          checkAdjacentClipConflict(track, targetStart, targetEnd, clip.id);
-
-          // Create full tiles (first tile is existing clip, so start at i=1)
-          let lastClipEnd = currentEndTime;
-          for (let i = 1; i < fullTiles; i++) {
-            const tilePosition = lastClipEnd;
-            const result = track.call(
-              "duplicate_clip_to_arrangement",
-              `id ${clip.id}`,
-              tilePosition,
-            );
-            const newClip = LiveAPI.from(result);
-            lastClipEnd = newClip.getProperty("end_time");
-          }
-
-          // Handle partial final tile if remainder exists
-          if (remainder > 0.001) {
-            // Duplicate source to holding area
-            const holdingResult = track.call(
-              "duplicate_clip_to_arrangement",
-              `id ${clip.id}`,
+            // Step 3: Create new clip at holding area with desired arrangementLength
+            const createMethod = clipProps.is_midi_clip
+              ? "create_midi_clip"
+              : "create_audio_clip";
+            const holdingClipPath = track.call(
+              createMethod,
               holdingArea.startBeats,
+              arrangementLengthBeats,
             );
-            const holdingClip = LiveAPI.from(holdingResult);
+            const holdingClip = LiveAPI.from(holdingClipPath);
 
-            // Shorten holding clip to remainder (Phase 1 pattern)
-            const holdingClipEnd = holdingClip.getProperty("end_time");
-            const newHoldingEnd = holdingArea.startBeats + remainder;
-            const tempLength = holdingClipEnd - newHoldingEnd;
+            // Step 4: Apply all properties to new clip
+            applyClipProperties(clipProps, holdingClip);
 
-            const tempResult = track.call(
-              "create_midi_clip",
-              newHoldingEnd,
-              tempLength,
-            );
-            const tempClip = LiveAPI.from(tempResult);
-            track.call("delete_clip", `id ${tempClip.id}`);
+            // Step 5: Delete original clip at target position
+            track.call("delete_clip", `id ${clip.id}`);
 
-            // Duplicate shortened clip to final position
+            // Step 6: Move new clip from holding area to target position
             track.call(
               "duplicate_clip_to_arrangement",
               `id ${holdingClip.id}`,
-              lastClipEnd,
+              currentStartTime,
             );
 
-            // Clean up holding area immediately
+            // Step 7: Clean up holding area
             track.call("delete_clip", `id ${holdingClip.id}`);
+
+            // Step 8: Emit warning about envelope loss
+            console.error(
+              "Clip arrangement length expanded by recreating clip. " +
+                "Automation envelopes were lost due to Live API limitations.",
+            );
+          } else {
+            // Phases 2-3: Clean Tiling
+            // The desired length requires tiling the clip content
+
+            // Phase 3a: If clip not showing full content, recreate it
+            if (currentArrangementLength < clipLength) {
+              // Create clip at min(desired, content) then tile if needed
+              const recreatedLength = Math.min(
+                arrangementLengthBeats,
+                clipLength,
+              );
+
+              // 1. Copy all clip data
+              const clipProps = readClipProperties(clip);
+
+              // 2. Delete original
+              track.call("delete_clip", `id ${clip.id}`);
+
+              // 3. Create new clip at original position
+              const newClipPath = track.call(
+                "create_midi_clip",
+                currentStartTime,
+                recreatedLength,
+              );
+              const recreatedClip = LiveAPI.from(newClipPath);
+
+              // 4. Apply properties
+              applyClipProperties(clipProps, recreatedClip);
+
+              // 5. Emit warning about envelope loss
+              console.error(
+                "Clip recreated to adjust arrangement length. " +
+                  "Automation envelopes were lost due to Live API limitations.",
+              );
+
+              // 6. If tiling needed, apply it now
+              if (arrangementLengthBeats > recreatedLength) {
+                const fullTiles = Math.floor(
+                  arrangementLengthBeats / clipLength,
+                );
+                const remainder = arrangementLengthBeats % clipLength;
+
+                // Create full tiles (first tile is recreated clip, so start at i=1)
+                let lastClipEnd = currentStartTime + recreatedLength;
+                for (let i = 1; i < fullTiles; i++) {
+                  const tilePosition = lastClipEnd;
+                  const result = track.call(
+                    "duplicate_clip_to_arrangement",
+                    `id ${recreatedClip.id}`,
+                    tilePosition,
+                  );
+                  const tileClip = LiveAPI.from(result);
+                  lastClipEnd = tileClip.getProperty("end_time");
+                }
+
+                // Handle partial final tile if remainder exists
+                if (remainder > 0.001) {
+                  // Duplicate to holding area
+                  const holdingResult = track.call(
+                    "duplicate_clip_to_arrangement",
+                    `id ${recreatedClip.id}`,
+                    holdingArea.startBeats,
+                  );
+                  const holdingClip = LiveAPI.from(holdingResult);
+
+                  // Shorten to remainder
+                  const holdingClipEnd = holdingClip.getProperty("end_time");
+                  const newHoldingEnd = holdingArea.startBeats + remainder;
+                  const tempLength = holdingClipEnd - newHoldingEnd;
+
+                  const tempResult = track.call(
+                    "create_midi_clip",
+                    newHoldingEnd,
+                    tempLength,
+                  );
+                  const tempClip = LiveAPI.from(tempResult);
+                  track.call("delete_clip", `id ${tempClip.id}`);
+
+                  // Duplicate to final position
+                  track.call(
+                    "duplicate_clip_to_arrangement",
+                    `id ${holdingClip.id}`,
+                    lastClipEnd,
+                  );
+
+                  // Cleanup
+                  track.call("delete_clip", `id ${holdingClip.id}`);
+                }
+              }
+
+              // Add result and skip remaining Phase 2-3 logic
+              updatedClips.push({ id: recreatedClip.id });
+              continue;
+            }
+
+            // Phase 3b: If current arrangement length > clip content length,
+            // first shorten to match content before tiling
+            if (currentArrangementLength > clipLength) {
+              const newEndTime = currentStartTime + clipLength;
+              const tempClipLength = currentEndTime - newEndTime;
+
+              // Critical validation: temp clip must not extend past original end_time
+              if (newEndTime + tempClipLength !== currentEndTime) {
+                throw new Error(
+                  `Phase 3b shortening validation failed: calculation error in temp clip bounds`,
+                );
+              }
+
+              // Create temp clip to truncate
+              const tempClipPath = track.call(
+                "create_midi_clip",
+                newEndTime,
+                tempClipLength,
+              );
+              const tempClip = LiveAPI.from(tempClipPath);
+
+              // Delete temp clip - this leaves target clip shortened
+              track.call("delete_clip", `id ${tempClip.id}`);
+
+              // Update currentEndTime after shortening
+              currentEndTime = currentStartTime + clipLength;
+            }
+
+            // Calculate tiling requirements based on desired length
+            // Phase 2/3: Tile the (now properly-sized) clip
+            const fullTiles = Math.floor(arrangementLengthBeats / clipLength);
+            const remainder = arrangementLengthBeats % clipLength;
+
+            // Create full tiles (first tile is existing clip, so start at i=1)
+            let lastClipEnd = currentEndTime;
+            for (let i = 1; i < fullTiles; i++) {
+              const tilePosition = lastClipEnd;
+              const result = track.call(
+                "duplicate_clip_to_arrangement",
+                `id ${clip.id}`,
+                tilePosition,
+              );
+              const newClip = LiveAPI.from(result);
+              lastClipEnd = newClip.getProperty("end_time");
+            }
+
+            // Handle partial final tile if remainder exists
+            if (remainder > 0.001) {
+              // Duplicate source to holding area
+              const holdingResult = track.call(
+                "duplicate_clip_to_arrangement",
+                `id ${clip.id}`,
+                holdingArea.startBeats,
+              );
+              const holdingClip = LiveAPI.from(holdingResult);
+
+              // Shorten holding clip to remainder (Phase 1 pattern)
+              const holdingClipEnd = holdingClip.getProperty("end_time");
+              const newHoldingEnd = holdingArea.startBeats + remainder;
+              const tempLength = holdingClipEnd - newHoldingEnd;
+
+              const tempResult = track.call(
+                "create_midi_clip",
+                newHoldingEnd,
+                tempLength,
+              );
+              const tempClip = LiveAPI.from(tempResult);
+              track.call("delete_clip", `id ${tempClip.id}`);
+
+              // Duplicate shortened clip to final position
+              track.call(
+                "duplicate_clip_to_arrangement",
+                `id ${holdingClip.id}`,
+                lastClipEnd,
+              );
+
+              // Clean up holding area immediately
+              track.call("delete_clip", `id ${holdingClip.id}`);
+            }
           }
         } else if (arrangementLengthBeats < currentArrangementLength) {
           // Shortening: Use temp clip overlay pattern
