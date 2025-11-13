@@ -18,6 +18,7 @@ import {
 } from "../constants.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
+import { tileClipToRange } from "../shared/arrangement-tiling.js";
 
 /**
  * Read all copyable properties from a clip (for clip recreation)
@@ -569,83 +570,16 @@ export function updateClip(
               if (arrangementLengthBeats > recreatedLength) {
                 // Calculate remaining space after first tile
                 const remainingSpace = arrangementLengthBeats - recreatedLength;
-                const fullTiles = Math.floor(remainingSpace / clipLength);
-                const remainder = remainingSpace % clipLength;
 
-                // Create full tiles (first tile is recreated clip, so start at i=0 for subsequent tiles)
-                let lastClipEnd = currentStartTime + recreatedLength;
-                for (let i = 0; i < fullTiles; i++) {
-                  const tilePosition = lastClipEnd;
-                  const result = track.call(
-                    "duplicate_clip_to_arrangement",
-                    `id ${recreatedClip.id}`,
-                    tilePosition,
-                  );
-                  const tileClip = LiveAPI.from(result);
-
-                  // For subsequent tiles when firstStart < start, adjust start_marker to equal loop_start
-                  if (clipStartMarker < clipLoopStart) {
-                    tileClip.set("start_marker", clipLoopStart);
-
-                    // Shorten clip by the pre-roll amount
-                    const preRollLength = clipLoopStart - clipStartMarker;
-                    const tileEnd = tileClip.getProperty("end_time");
-                    const newTileEnd = tileEnd - preRollLength;
-                    const tempClipLength = tileEnd - newTileEnd;
-
-                    const tempClipPath = track.call(
-                      "create_midi_clip",
-                      newTileEnd,
-                      tempClipLength,
-                    );
-                    const tempClip = LiveAPI.from(tempClipPath);
-                    track.call("delete_clip", `id ${tempClip.id}`);
-                  }
-
-                  lastClipEnd = tileClip.getProperty("end_time");
-                }
-
-                // Handle partial final tile if remainder exists
-                if (remainder > 0.001) {
-                  // Duplicate to holding area
-                  const holdingResult = track.call(
-                    "duplicate_clip_to_arrangement",
-                    `id ${recreatedClip.id}`,
-                    context.holdingAreaStartBeats,
-                  );
-                  const holdingClip = LiveAPI.from(holdingResult);
-
-                  // Shorten to remainder
-                  const holdingClipEnd = holdingClip.getProperty("end_time");
-                  const newHoldingEnd =
-                    context.holdingAreaStartBeats + remainder;
-                  const tempLength = holdingClipEnd - newHoldingEnd;
-
-                  const tempResult = track.call(
-                    "create_midi_clip",
-                    newHoldingEnd,
-                    tempLength,
-                  );
-                  const tempClip = LiveAPI.from(tempResult);
-                  track.call("delete_clip", `id ${tempClip.id}`);
-
-                  // Duplicate to final position
-                  const finalTileResult = track.call(
-                    "duplicate_clip_to_arrangement",
-                    `id ${holdingClip.id}`,
-                    lastClipEnd,
-                  );
-                  const finalTile = LiveAPI.from(finalTileResult);
-
-                  // For subsequent tiles when firstStart < start, adjust start_marker to equal loop_start
-                  // Note: Don't shorten the partial tile - remainder already accounts for loop length
-                  if (clipStartMarker < clipLoopStart) {
-                    finalTile.set("start_marker", clipLoopStart);
-                  }
-
-                  // Cleanup
-                  track.call("delete_clip", `id ${holdingClip.id}`);
-                }
+                // Tile the remaining space using shared helper
+                tileClipToRange(
+                  recreatedClip,
+                  track,
+                  currentStartTime + recreatedLength,
+                  remainingSpace,
+                  context.holdingAreaStartBeats,
+                  { adjustPreRoll: true },
+                );
               }
 
               // Add result and skip remaining tiling logic
@@ -682,86 +616,18 @@ export function updateClip(
             }
 
             // Calculate tiling requirements based on desired length
-            // Tile the (now properly-sized) clip
-            // Note: currentEndTime - currentStartTime might include pre-roll if firstStart < start
+            // Tile the (now properly-sized) clip using shared helper
             const firstTileLength = currentEndTime - currentStartTime;
             const remainingSpace = arrangementLengthBeats - firstTileLength;
-            const fullTiles = Math.floor(remainingSpace / clipLength);
-            const remainder = remainingSpace % clipLength;
 
-            // Create full tiles (first tile is existing clip, so start at i=0 for subsequent tiles)
-            let lastClipEnd = currentEndTime;
-            for (let i = 0; i < fullTiles; i++) {
-              const tilePosition = lastClipEnd;
-              const result = track.call(
-                "duplicate_clip_to_arrangement",
-                `id ${clip.id}`,
-                tilePosition,
-              );
-              const newClip = LiveAPI.from(result);
-
-              // For subsequent tiles when firstStart < start, adjust start_marker to equal loop_start
-              if (clipStartMarker < clipLoopStart) {
-                newClip.set("start_marker", clipLoopStart);
-
-                // Shorten clip by the pre-roll amount
-                const preRollLength = clipLoopStart - clipStartMarker;
-                const tileEnd = newClip.getProperty("end_time");
-                const newTileEnd = tileEnd - preRollLength;
-                const tempClipLength = tileEnd - newTileEnd;
-
-                const tempClipPath = track.call(
-                  "create_midi_clip",
-                  newTileEnd,
-                  tempClipLength,
-                );
-                const tempClip = LiveAPI.from(tempClipPath);
-                track.call("delete_clip", `id ${tempClip.id}`);
-              }
-
-              lastClipEnd = newClip.getProperty("end_time");
-            }
-
-            // Handle partial final tile if remainder exists
-            if (remainder > 0.001) {
-              // Duplicate source to holding area
-              const holdingResult = track.call(
-                "duplicate_clip_to_arrangement",
-                `id ${clip.id}`,
-                context.holdingAreaStartBeats,
-              );
-              const holdingClip = LiveAPI.from(holdingResult);
-
-              // Shorten holding clip to remainder
-              const holdingClipEnd = holdingClip.getProperty("end_time");
-              const newHoldingEnd = context.holdingAreaStartBeats + remainder;
-              const tempLength = holdingClipEnd - newHoldingEnd;
-
-              const tempResult = track.call(
-                "create_midi_clip",
-                newHoldingEnd,
-                tempLength,
-              );
-              const tempClip = LiveAPI.from(tempResult);
-              track.call("delete_clip", `id ${tempClip.id}`);
-
-              // Duplicate shortened clip to final position
-              const finalTileResult = track.call(
-                "duplicate_clip_to_arrangement",
-                `id ${holdingClip.id}`,
-                lastClipEnd,
-              );
-              const finalTile = LiveAPI.from(finalTileResult);
-
-              // For subsequent tiles when firstStart < start, adjust start_marker to equal loop_start
-              // Note: Don't shorten the partial tile - remainder already accounts for loop length
-              if (clipStartMarker < clipLoopStart) {
-                finalTile.set("start_marker", clipLoopStart);
-              }
-
-              // Clean up holding area immediately
-              track.call("delete_clip", `id ${holdingClip.id}`);
-            }
+            tileClipToRange(
+              clip,
+              track,
+              currentEndTime,
+              remainingSpace,
+              context.holdingAreaStartBeats,
+              { adjustPreRoll: true },
+            );
           }
         } else if (arrangementLengthBeats < currentArrangementLength) {
           // Shortening: Use temp clip overlay pattern
