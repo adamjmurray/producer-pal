@@ -1773,51 +1773,6 @@ describe("updateClip", () => {
       expect(result).toEqual({ id: "789" });
     });
 
-    it("should throw error when attempting to lengthen", () => {
-      const trackIndex = 0;
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
-        if (this._path === "live_set") {
-          return "live_set";
-        }
-        if (this._path === "live_set tracks 0") {
-          return "live_set tracks 0";
-        }
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        789: {
-          is_arrangement_clip: 1,
-          is_midi_clip: 1,
-          start_time: 0.0,
-          end_time: 16.0, // 4 bars
-          loop_start: 0.0,
-          loop_end: 16.0,
-          start_marker: 0.0,
-          signature_numerator: 4,
-          signature_denominator: 4,
-          trackIndex,
-        },
-        LiveSet: {
-          tracks: ["id", 0],
-        },
-        "live_set tracks 0": {
-          arrangement_clips: ["id", 789],
-        },
-      });
-
-      expect(() =>
-        updateClip({
-          ids: "789",
-          firstStart: "1|2", // Different from start_marker (0.0) - will trigger Phase 5 error
-          arrangementLength: "6:0", // 6 bars (longer than current 4)
-        }),
-      ).toThrow(/Phase 5.*not yet implemented/);
-    });
-
     it("should emit warning and ignore for session clips", () => {
       const consoleErrorSpy = vi
         .spyOn(console, "error")
@@ -2254,42 +2209,6 @@ describe("updateClip", () => {
       );
 
       expect(result).toEqual({ id: "789" });
-    });
-
-    it("should throw error when firstStart != start", () => {
-      const trackIndex = 0;
-      liveApiPath.mockImplementation(function () {
-        if (this._id === "789") {
-          return "live_set tracks 0 arrangement_clips 0";
-        }
-        if (this._path === "live_set") {
-          return "live_set";
-        }
-        return this._path;
-      });
-
-      mockLiveApiGet({
-        789: {
-          is_arrangement_clip: 1,
-          is_midi_clip: 1,
-          start_time: 0.0,
-          end_time: 4.0,
-          loop_start: 0.0,
-          loop_end: 4.0,
-          start_marker: 0.0, // firstStart would be different
-          signature_numerator: 4,
-          signature_denominator: 4,
-          trackIndex,
-        },
-      });
-
-      expect(() =>
-        updateClip({
-          ids: "789",
-          firstStart: "2|1", // Different from start_marker (0.0) - 2|1 = 4 beats
-          arrangementLength: "3:0",
-        }),
-      ).toThrow(/Phase 5.*not yet implemented/);
     });
 
     it("should work with no remainder (single tile)", () => {
