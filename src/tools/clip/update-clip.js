@@ -19,6 +19,81 @@ import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**
+ * Calculate dynamic holding area for temporary clip operations
+ * Returns safe position at highest bar + 10 bars (minimum bar 10)
+ * @param {Object} liveSet - LiveAPI instance for live_set
+ * @returns {Object} { bar, startBeats, abletonBeatsPerBar }
+ */
+function calculateHoldingArea(liveSet) {
+  const timeSigNumerator = liveSet.getProperty("signature_numerator");
+  const timeSigDenominator = liveSet.getProperty("signature_denominator");
+  const abletonBeatsPerBar = (timeSigNumerator / timeSigDenominator) * 4;
+
+  const trackCount = liveSet.getChildIds("tracks").length;
+  let highestEndTime = 0;
+
+  for (let i = 0; i < trackCount; i++) {
+    const track = new LiveAPI(`live_set tracks ${i}`);
+    const clipIds = track.getChildIds("arrangement_clips");
+
+    for (const clipId of clipIds) {
+      const clip = new LiveAPI(`id ${clipId}`);
+      const endTime = clip.getProperty("end_time");
+      highestEndTime = Math.max(highestEndTime, endTime);
+    }
+  }
+
+  const highestBar = Math.ceil(highestEndTime / abletonBeatsPerBar);
+  const holdingBar = Math.max(highestBar + 10, 10);
+  const holdingAreaStart = holdingBar * abletonBeatsPerBar;
+
+  return { bar: holdingBar, startBeats: holdingAreaStart, abletonBeatsPerBar };
+}
+
+/**
+ * Check for overlapping clips in target range
+ * Throws if any clips (except excludeClipId) overlap the range
+ * @param {Object} track - LiveAPI track instance
+ * @param {number} targetStart - Start position in beats
+ * @param {number} targetEnd - End position in beats
+ * @param {string} excludeClipId - Clip ID to exclude from check
+ */
+function checkAdjacentClipConflict(
+  track,
+  targetStart,
+  targetEnd,
+  excludeClipId,
+) {
+  const existingClips = track.getChildIds("arrangement_clips");
+
+  for (const clipId of existingClips) {
+    // Handle both "id 789" and "789" formats
+    const normalizedClipId = String(clipId).replace(/^id\s+/, "");
+    const normalizedExcludeId = String(excludeClipId).replace(/^id\s+/, "");
+
+    if (normalizedClipId === normalizedExcludeId) {
+      continue;
+    }
+
+    const clip = LiveAPI.from(clipId);
+    const clipStart = clip.getProperty("start_time");
+    const clipEnd = clip.getProperty("end_time");
+
+    // Check for overlap
+    if (
+      (clipStart >= targetStart && clipStart < targetEnd) ||
+      (clipEnd > targetStart && clipEnd <= targetEnd) ||
+      (clipStart <= targetStart && clipEnd >= targetEnd)
+    ) {
+      throw new Error(
+        `Cannot tile clip: target range overlaps existing clip at ` +
+          `position ${clipStart} to ${clipEnd}`,
+      );
+    }
+  }
+}
+
+/**
  * Updates properties of existing clips
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
@@ -32,7 +107,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.arrangementStart] - Bar|beat position to move arrangement clip (arrangement clips only)
- * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (Phase 1: shortening only)
+ * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (Phase 1-3: shortening + tiling)
  * @param {number} [args.gain] - Audio clip gain (0-1)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
@@ -374,16 +449,133 @@ export function updateClip({
       } else {
         // Get current clip dimensions
         const currentStartTime = clip.getProperty("start_time");
-        const currentEndTime = clip.getProperty("end_time");
+        let currentEndTime = clip.getProperty("end_time");
         const currentArrangementLength = currentEndTime - currentStartTime;
 
-        // Check if shortening or lengthening
+        // Check if shortening, lengthening, or same
         if (arrangementLengthBeats > currentArrangementLength) {
-          // Phase 1: Lengthening not supported
-          throw new Error(
-            "Lengthening arrangement clips not yet supported. " +
-              "Currently only shortening is available. Feature coming in next release.",
-          );
+          // Lengthening: Phases 2-3 (clean tiling)
+          // Check firstStart condition (must equal start or not be provided)
+          let firstStartMatches = true;
+          if (firstStart != null) {
+            const clipStart = clip.getProperty("start_marker");
+            const firstStartBeats = barBeatToAbletonBeats(
+              firstStart,
+              songTimeSigNumerator,
+              songTimeSigDenominator,
+            );
+            firstStartMatches = Math.abs(firstStartBeats - clipStart) < 0.001;
+          }
+
+          if (!firstStartMatches) {
+            throw new Error(
+              "Cannot lengthen clip: firstStart must equal start. " +
+                "Phase 5 (firstStart != start) not yet implemented.",
+            );
+          }
+
+          const clipLoopStart = clip.getProperty("loop_start");
+          const clipLoopEnd = clip.getProperty("loop_end");
+          const clipLength = clipLoopEnd - clipLoopStart;
+
+          // Phases 2-3: Clean Tiling
+          const trackIndex = clip.trackIndex;
+          if (trackIndex == null) {
+            throw new Error(
+              `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
+            );
+          }
+
+          const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+          const liveSet = new LiveAPI("live_set");
+
+          // Calculate holding area once for reuse
+          const holdingArea = calculateHoldingArea(liveSet);
+
+          // Phase 3: If current arrangement length > clip content length,
+          // first shorten to match content before tiling
+          if (currentArrangementLength > clipLength) {
+            const newEndTime = currentStartTime + clipLength;
+            const tempClipLength = currentEndTime - newEndTime;
+
+            // Critical validation: temp clip must not extend past original end_time
+            if (newEndTime + tempClipLength !== currentEndTime) {
+              throw new Error(
+                `Phase 3 shortening validation failed: calculation error in temp clip bounds`,
+              );
+            }
+
+            // Create temp clip to truncate
+            const tempClipPath = track.call(
+              "create_midi_clip",
+              newEndTime,
+              tempClipLength,
+            );
+            const tempClip = LiveAPI.from(tempClipPath);
+
+            // Delete temp clip - this leaves target clip shortened
+            track.call("delete_clip", `id ${tempClip.id}`);
+
+            // Update currentEndTime after shortening
+            currentEndTime = currentStartTime + clipLength;
+          }
+
+          // Calculate tiling requirements based on desired length
+          // Phase 2/3: Tile the (now properly-sized) clip
+          const fullTiles = Math.floor(arrangementLengthBeats / clipLength);
+          const remainder = arrangementLengthBeats % clipLength;
+
+          // Validate target range is clear (exclude source clip)
+          const targetStart = currentStartTime;
+          const targetEnd = currentStartTime + arrangementLengthBeats;
+          checkAdjacentClipConflict(track, targetStart, targetEnd, clip.id);
+
+          // Create full tiles (first tile is existing clip, so start at i=1)
+          let lastClipEnd = currentEndTime;
+          for (let i = 1; i < fullTiles; i++) {
+            const tilePosition = lastClipEnd;
+            const result = track.call(
+              "duplicate_clip_to_arrangement",
+              `id ${clip.id}`,
+              tilePosition,
+            );
+            const newClip = LiveAPI.from(result);
+            lastClipEnd = newClip.getProperty("end_time");
+          }
+
+          // Handle partial final tile if remainder exists
+          if (remainder > 0.001) {
+            // Duplicate source to holding area
+            const holdingResult = track.call(
+              "duplicate_clip_to_arrangement",
+              `id ${clip.id}`,
+              holdingArea.startBeats,
+            );
+            const holdingClip = LiveAPI.from(holdingResult);
+
+            // Shorten holding clip to remainder (Phase 1 pattern)
+            const holdingClipEnd = holdingClip.getProperty("end_time");
+            const newHoldingEnd = holdingArea.startBeats + remainder;
+            const tempLength = holdingClipEnd - newHoldingEnd;
+
+            const tempResult = track.call(
+              "create_midi_clip",
+              newHoldingEnd,
+              tempLength,
+            );
+            const tempClip = LiveAPI.from(tempResult);
+            track.call("delete_clip", `id ${tempClip.id}`);
+
+            // Duplicate shortened clip to final position
+            track.call(
+              "duplicate_clip_to_arrangement",
+              `id ${holdingClip.id}`,
+              lastClipEnd,
+            );
+
+            // Clean up holding area immediately
+            track.call("delete_clip", `id ${holdingClip.id}`);
+          }
         } else if (arrangementLengthBeats < currentArrangementLength) {
           // Shortening: Use temp clip overlay pattern
           const newEndTime = currentStartTime + arrangementLengthBeats;

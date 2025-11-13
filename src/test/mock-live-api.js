@@ -61,6 +61,22 @@ export class LiveAPI {
     return match ? Number(match[1]) : null;
   }
 
+  getChildIds(name) {
+    const idArray = this.get(name);
+
+    if (!Array.isArray(idArray)) {
+      return [];
+    }
+
+    const children = [];
+    for (let i = 0; i < idArray.length; i += 2) {
+      if (idArray[i] === "id") {
+        children.push(`id ${idArray[i + 1]}`);
+      }
+    }
+    return children;
+  }
+
   get sceneIndex() {
     // Try scene path first
     let match = this.path.match(/live_set scenes (\d+)/);
