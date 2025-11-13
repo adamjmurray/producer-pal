@@ -151,7 +151,10 @@ export function updateClip(
     warpSampleTime,
     warpDistance,
   } = {},
-  context = { holdingAreaStartBeats: 40000 },
+  context = {
+    holdingAreaStartBeats: 40000,
+    preserveEnvelopesOnExtend: false,
+  },
 ) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
@@ -488,45 +491,65 @@ export function updateClip(
 
           // Branch: expose hidden content vs tiling
           if (arrangementLengthBeats < clipLength) {
-            // Expose hidden content by recreating clip
-            // The clip has sufficient internal content, but we can't extend end_time directly
-            // Must recreate the clip with the desired arrangement length
+            if (!context.preserveEnvelopesOnExtend) {
+              // Expose hidden content by recreating clip
+              // The clip has sufficient internal content, but we can't extend end_time directly
+              // Must recreate the clip with the desired arrangement length
 
-            // Step 1: Read all clip properties BEFORE any destructive operations
-            const clipProps = readClipProperties(clip);
+              // Step 1: Read all clip properties BEFORE any destructive operations
+              const clipProps = readClipProperties(clip);
 
-            // Step 2: Create new clip at holding area with desired arrangementLength
-            const createMethod = clipProps.is_midi_clip
-              ? "create_midi_clip"
-              : "create_audio_clip";
-            const holdingClipPath = track.call(
-              createMethod,
-              context.holdingAreaStartBeats,
-              arrangementLengthBeats,
-            );
-            const holdingClip = LiveAPI.from(holdingClipPath);
+              // Step 2: Create new clip at holding area with desired arrangementLength
+              const createMethod = clipProps.is_midi_clip
+                ? "create_midi_clip"
+                : "create_audio_clip";
+              const holdingClipPath = track.call(
+                createMethod,
+                context.holdingAreaStartBeats,
+                arrangementLengthBeats,
+              );
+              const holdingClip = LiveAPI.from(holdingClipPath);
 
-            // Step 4: Apply all properties to new clip
-            applyClipProperties(clipProps, holdingClip);
+              // Step 4: Apply all properties to new clip
+              applyClipProperties(clipProps, holdingClip);
 
-            // Step 5: Delete original clip at target position
-            track.call("delete_clip", `id ${clip.id}`);
+              // Step 5: Delete original clip at target position
+              track.call("delete_clip", `id ${clip.id}`);
 
-            // Step 6: Move new clip from holding area to target position
-            track.call(
-              "duplicate_clip_to_arrangement",
-              `id ${holdingClip.id}`,
-              currentStartTime,
-            );
+              // Step 6: Move new clip from holding area to target position
+              track.call(
+                "duplicate_clip_to_arrangement",
+                `id ${holdingClip.id}`,
+                currentStartTime,
+              );
 
-            // Step 7: Clean up holding area
-            track.call("delete_clip", `id ${holdingClip.id}`);
+              // Step 7: Clean up holding area
+              track.call("delete_clip", `id ${holdingClip.id}`);
 
-            // Step 8: Emit warning about envelope loss
-            console.error(
-              "Clip arrangement length expanded by recreating clip. " +
-                "Automation envelopes were lost due to Live API limitations.",
-            );
+              // Step 8: Emit warning about envelope loss
+              console.error(
+                "Clip arrangement length expanded by recreating clip. " +
+                  "Automation envelopes were lost due to Live API limitations.",
+              );
+            } else {
+              // Preserve envelopes by tiling the existing clip
+              // Trade-off: tiles at current arrangement length instead of exposing hidden content
+              const tiledClips = tileClipToRange(
+                clip,
+                track,
+                currentStartTime,
+                arrangementLengthBeats,
+                context.holdingAreaStartBeats,
+                { adjustPreRoll: false },
+              );
+
+              // Delete original clip
+              track.call("delete_clip", `id ${clip.id}`);
+
+              // Add all tiled clips to results
+              updatedClips.push(...tiledClips);
+              continue;
+            }
           } else {
             // Lengthening via clean tiling
             // The desired length requires tiling the clip content
@@ -537,54 +560,75 @@ export function updateClip(
 
             // If clip not showing full content, recreate it
             if (currentArrangementLength < totalContentLength) {
-              // Create clip at min(desired, content) then tile if needed
-              const recreatedLength = Math.min(
-                arrangementLengthBeats,
-                totalContentLength,
-              );
+              if (!context.preserveEnvelopesOnExtend) {
+                // Create clip at min(desired, content) then tile if needed
+                const recreatedLength = Math.min(
+                  arrangementLengthBeats,
+                  totalContentLength,
+                );
 
-              // 1. Copy all clip data
-              const clipProps = readClipProperties(clip);
+                // 1. Copy all clip data
+                const clipProps = readClipProperties(clip);
 
-              // 2. Delete original
-              track.call("delete_clip", `id ${clip.id}`);
+                // 2. Delete original
+                track.call("delete_clip", `id ${clip.id}`);
 
-              // 3. Create new clip at original position
-              const newClipPath = track.call(
-                "create_midi_clip",
-                currentStartTime,
-                recreatedLength,
-              );
-              const recreatedClip = LiveAPI.from(newClipPath);
+                // 3. Create new clip at original position
+                const newClipPath = track.call(
+                  "create_midi_clip",
+                  currentStartTime,
+                  recreatedLength,
+                );
+                const recreatedClip = LiveAPI.from(newClipPath);
 
-              // 4. Apply properties
-              applyClipProperties(clipProps, recreatedClip);
+                // 4. Apply properties
+                applyClipProperties(clipProps, recreatedClip);
 
-              // 5. Emit warning about envelope loss
-              console.error(
-                "Clip recreated to adjust arrangement length. " +
-                  "Automation envelopes were lost due to Live API limitations.",
-              );
+                // 5. Emit warning about envelope loss
+                console.error(
+                  "Clip recreated to adjust arrangement length. " +
+                    "Automation envelopes were lost due to Live API limitations.",
+                );
 
-              // 6. If tiling needed, apply it now
-              if (arrangementLengthBeats > recreatedLength) {
-                // Calculate remaining space after first tile
-                const remainingSpace = arrangementLengthBeats - recreatedLength;
+                // 6. If tiling needed, apply it now
+                if (arrangementLengthBeats > recreatedLength) {
+                  // Calculate remaining space after first tile
+                  const remainingSpace =
+                    arrangementLengthBeats - recreatedLength;
 
-                // Tile the remaining space using shared helper
-                tileClipToRange(
-                  recreatedClip,
+                  // Tile the remaining space using shared helper
+                  tileClipToRange(
+                    recreatedClip,
+                    track,
+                    currentStartTime + recreatedLength,
+                    remainingSpace,
+                    context.holdingAreaStartBeats,
+                    { adjustPreRoll: true },
+                  );
+                }
+
+                // Add result and skip remaining tiling logic
+                updatedClips.push({ id: recreatedClip.id });
+                continue;
+              } else {
+                // Preserve envelopes by tiling existing clip without recreating
+                // Adjust pre-roll on subsequent tiles to avoid unwanted lead-in
+                const tiledClips = tileClipToRange(
+                  clip,
                   track,
-                  currentStartTime + recreatedLength,
-                  remainingSpace,
+                  currentStartTime,
+                  arrangementLengthBeats,
                   context.holdingAreaStartBeats,
                   { adjustPreRoll: true },
                 );
-              }
 
-              // Add result and skip remaining tiling logic
-              updatedClips.push({ id: recreatedClip.id });
-              continue;
+                // Delete original clip
+                track.call("delete_clip", `id ${clip.id}`);
+
+                // Add all tiled clips to results
+                updatedClips.push(...tiledClips);
+                continue;
+              }
             }
 
             // If current arrangement length > total content length,

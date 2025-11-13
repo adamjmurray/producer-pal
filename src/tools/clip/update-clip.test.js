@@ -2267,6 +2267,106 @@ describe("updateClip", () => {
 
       expect(result).toEqual({ id: "789" });
     });
+
+    it("should preserve envelopes when tiling clip with hidden content (preserveEnvelopesOnExtend)", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === "789" ||
+          this._id === 1000 ||
+          this._id === 1001 ||
+          this._id === 1002
+        ) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          start_time: 0.0,
+          end_time: 4.0, // Currently showing 4 beats
+          loop_start: 0.0,
+          loop_end: 8.0, // clip.length = 8 beats (has hidden content)
+          start_marker: 2.0, // Pre-roll: starts at beat 2 but playback from beat 0
+          end_marker: 8.0,
+          name: "Test Clip",
+          trackIndex,
+        },
+        1000: { end_time: 8.0, start_marker: 2.0, loop_start: 0.0 }, // First full tile (8 beats)
+        1001: { end_time: 40004.0 }, // Holding clip for partial tile
+        1002: { end_time: 12.0, start_marker: 0.0, loop_start: 0.0 }, // Partial tile (4 beats)
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Mock duplicate_clip_to_arrangement and create_midi_clip calls for tiling
+      let callCount = 0;
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          callCount++;
+          if (callCount === 1) {
+            return `id 1000`; // First full tile (8 beats)
+          } else if (callCount === 2) {
+            return `id 1001`; // Holding clip for partial
+          } else if (callCount === 3) {
+            return `id 1002`; // Partial tile moved to position
+          }
+        }
+        if (method === "create_midi_clip") {
+          return `id 1001`; // Temp clip for shortening
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: "789",
+          arrangementLength: "3:0", // 12 beats - tiles to 3 full tiles
+        },
+        { ...mockContext, preserveEnvelopesOnExtend: true },
+      );
+
+      // Should tile using loop length (8 beats), not arrangement length (4 beats)
+      // Creates 1 full tile + 1 partial tile for total of 12 beats
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        0.0,
+      );
+
+      // Should delete original clip
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
+
+      // Should NOT emit envelope warning
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Automation envelopes were lost"),
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Should return 2 tiles: 1 full (8 beats) + 1 partial (4 beats)
+      expect(result).toEqual([{ id: "1000" }, { id: "1002" }]);
+    });
   });
 
   describe("arrangementLength (expose hidden content)", () => {
@@ -2392,6 +2492,113 @@ describe("updateClip", () => {
 
       consoleErrorSpy.mockRestore();
       expect(result).toEqual({ id: "789" });
+    });
+
+    it("should preserve envelopes by tiling when preserveEnvelopesOnExtend is true", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === "789" ||
+          this._id === 1000 ||
+          this._id === 2000 ||
+          this._id === 3000
+        ) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          start_time: 0.0,
+          end_time: 4.0, // Currently showing 4 beats
+          loop_start: 0.0,
+          loop_end: 8.0, // clip.length = 8 beats - has hidden content
+          start_marker: 0.0,
+          end_marker: 8.0,
+          name: "Test Clip",
+          trackIndex,
+        },
+        1000: { end_time: 40008.0 }, // Holding clip at holding area (8 beats long)
+        1500: {}, // Temp clip for shortening
+        2000: { end_time: 6.0, start_marker: 0.0, loop_start: 0.0 }, // Final partial tile at position 0
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Mock duplicate_clip_to_arrangement calls for tiling
+      let callCount = 0;
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          callCount++;
+          if (callCount === 1) {
+            return `id 1000`; // Holding clip for partial
+          } else if (callCount === 2) {
+            return `id 2000`; // Final partial tile
+          }
+        }
+        if (method === "create_midi_clip") {
+          return `id 1500`; // Temp clip for shortening in holding area
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: "789",
+          arrangementLength: "1:2", // 6 beats - tiles 4-beat arrangement view
+        },
+        { ...mockContext, preserveEnvelopesOnExtend: true },
+      );
+
+      // Should duplicate original clip to holding area (no full tiles since 6 < 8)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        40000,
+      );
+
+      // Should create temp clip to shorten holding clip
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 40006, 2);
+
+      // Should duplicate from holding to target position
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 1000",
+        0.0,
+      );
+
+      // Should delete original clip
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
+
+      // Should NOT emit envelope warning
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Automation envelopes were lost"),
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Should return single partial tile (no full tiles)
+      expect(result).toEqual({ id: "2000" });
     });
   });
 });
