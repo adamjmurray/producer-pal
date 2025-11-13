@@ -14,7 +14,22 @@
 - [x] Read/write audio clip properties: gain, pitch
 - [x] Read/write warp mode and warp markers
 - [ ] Ability to change clip's arrangement start time and arrangement length
+  - [x] looped MIDI clips
+  - [ ] looped audio clips
+  - [ ] unlooped clips
+- [ ] Improve the duplicate clip tool to be completely non-destructive (don't
+      lose clip envelopes when "tiling" clips in the arrangement, don't
+      overwrite any clips later in the timeline)
+
+### 1.2.1
+
+- [ ] Ability to scan a folder for audio files and create audio clips from those
+      files
 - [ ] Slice audio clips in the arrangement
+- [ ] Improve handling of clip (and track and scene) colors by being explicit
+      about how Ableton maps arbitrary RGB to a limited color pallette
+- [ ] Maybe: "macro" operations to "mangle" audio clips via warp marker
+      modifications and audio clip slicing + audio clip property modifications
 
 ## Planned
 
