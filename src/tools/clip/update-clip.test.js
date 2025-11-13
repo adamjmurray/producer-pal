@@ -1502,7 +1502,7 @@ describe("updateClip", () => {
     expect(result).toEqual({ id: "123" });
   });
 
-  describe("Clip boundaries (Phase 1)", () => {
+  describe("Clip boundaries (shortening)", () => {
     it("should set length without explicit start using current loop_start", () => {
       mockLiveApiGet({
         123: {
@@ -1668,7 +1668,7 @@ describe("updateClip", () => {
     });
   });
 
-  describe("arrangementLength (Phase 1: shortening only)", () => {
+  describe("arrangementLength (shortening only)", () => {
     it("should shorten arrangement clip to 50% of original length", () => {
       const trackIndex = 0;
       liveApiPath.mockImplementation(function () {
@@ -1954,7 +1954,7 @@ describe("updateClip", () => {
     });
   });
 
-  describe("arrangementLength (Phase 2: clean tiling)", () => {
+  describe("arrangementLength (clean tiling)", () => {
     it("should tile clip with exact multiples (no remainder) - extends existing", () => {
       const trackIndex = 0;
       liveApiPath.mockImplementation(function () {
@@ -1998,7 +1998,7 @@ describe("updateClip", () => {
         },
       });
 
-      // Mock Phase 3a recreation flow
+      // Mock recreation flow for hidden content
       liveApiCall.mockImplementation(function (method, ..._args) {
         if (method === "get_notes_extended") {
           return JSON.stringify({ notes: [] });
@@ -2021,7 +2021,7 @@ describe("updateClip", () => {
         arrangementLength: "3:0", // 3 bars = 12 beats, matches clip.length exactly
       });
 
-      // Phase 3a: Recreate clip from 4→12 beats
+      // Recreate clip from 4→12 beats to expose hidden content
       // currentArrangementLength (4) < clipLength (12) triggers recreation
       // recreatedLength = min(12, 12) = 12 beats
       // No tiling needed since recreatedLength == desired length
@@ -2036,7 +2036,7 @@ describe("updateClip", () => {
       expect(result).toEqual({ id: "1000" }); // Recreated clip ID
     });
 
-    // TODO: Fix this test - needs to be rewritten for Phase 2+3 implementation
+    // TODO: Fix this test - needs to be rewritten for tiling implementation
     it.skip("should handle tiling with sufficient clip content", () => {
       const trackIndex = 0;
       liveApiPath.mockImplementation(function () {
@@ -2145,7 +2145,7 @@ describe("updateClip", () => {
       expect(result).toEqual({ id: "789" });
     });
 
-    it("should handle Phase 3 (insufficient content) by tiling what exists", () => {
+    it("should handle insufficient content by tiling what exists", () => {
       const trackIndex = 0;
       liveApiPath.mockImplementation(function () {
         if (this._id === "789" || this._id === 1000) {
@@ -2263,7 +2263,7 @@ describe("updateClip", () => {
     });
   });
 
-  describe("arrangementLength (Phase 4: expose hidden content)", () => {
+  describe("arrangementLength (expose hidden content)", () => {
     it("should expose hidden content by recreating clip", () => {
       const trackIndex = 0;
       liveApiPath.mockImplementation(function () {

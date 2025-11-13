@@ -52,7 +52,7 @@ function calculateHoldingArea(liveSet) {
 }
 
 /**
- * Read all copyable properties from a clip (for Phase 4 recreation)
+ * Read all copyable properties from a clip (for clip recreation)
  * @param {Object} clip - LiveAPI clip instance
  * @returns {Object} Clip properties and data
  */
@@ -105,7 +105,7 @@ function readClipProperties(clip) {
 }
 
 /**
- * Apply properties to a clip (for Phase 4 recreation)
+ * Apply properties to a clip (for clip recreation)
  * @param {Object} props - Properties to apply
  * @param {Object} targetClip - LiveAPI clip instance
  */
@@ -152,7 +152,7 @@ function applyClipProperties(props, targetClip) {
  * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.arrangementStart] - Bar|beat position to move arrangement clip (arrangement clips only)
- * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (Phase 1-4: shortening, hidden content exposure, tiling)
+ * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (supports shortening, hidden content exposure, and tiling)
  * @param {number} [args.gain] - Audio clip gain (0-1)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
@@ -483,7 +483,7 @@ export function updateClip({
       }
     }
 
-    // Handle arrangementLength (Phase 1: shortening only)
+    // Handle arrangementLength (shortening, hidden content exposure, and tiling)
     if (arrangementLengthBeats != null) {
       const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
 
@@ -499,12 +499,12 @@ export function updateClip({
 
         // Check if shortening, lengthening, or same
         if (arrangementLengthBeats > currentArrangementLength) {
-          // Lengthening: Phases 2-3 (clean tiling)
+          // Lengthening via tiling or hidden content exposure
           const clipLoopStart = clip.getProperty("loop_start");
           const clipLoopEnd = clip.getProperty("loop_end");
           const clipLength = clipLoopEnd - clipLoopStart;
 
-          // Phases 2-3: Clean Tiling
+          // Set up for lengthening operation
           const trackIndex = clip.trackIndex;
           if (trackIndex == null) {
             throw new Error(
@@ -518,9 +518,9 @@ export function updateClip({
           // Calculate holding area once for reuse
           const holdingArea = calculateHoldingArea(liveSet);
 
-          // Branch: Phase 4 (expose hidden content) vs Phase 2-3 (tiling)
+          // Branch: expose hidden content vs tiling
           if (arrangementLengthBeats < clipLength) {
-            // Phase 4: Expose hidden content by recreating clip
+            // Expose hidden content by recreating clip
             // The clip has sufficient internal content, but we can't extend end_time directly
             // Must recreate the clip with the desired arrangement length
 
@@ -586,14 +586,14 @@ export function updateClip({
                 "Automation envelopes were lost due to Live API limitations.",
             );
           } else {
-            // Phases 2-3: Clean Tiling
+            // Lengthening via clean tiling
             // The desired length requires tiling the clip content
 
             // Calculate total content length (includes pre-roll if firstStart < start)
             const clipStartMarker = clip.getProperty("start_marker");
             const totalContentLength = clipLoopEnd - clipStartMarker;
 
-            // Phase 3a: If clip not showing full content, recreate it
+            // If clip not showing full content, recreate it
             if (currentArrangementLength < totalContentLength) {
               // Create clip at min(desired, content) then tile if needed
               const recreatedLength = Math.min(
@@ -706,12 +706,12 @@ export function updateClip({
                 }
               }
 
-              // Add result and skip remaining Phase 2-3 logic
+              // Add result and skip remaining tiling logic
               updatedClips.push({ id: recreatedClip.id });
               continue;
             }
 
-            // Phase 3b: If current arrangement length > total content length,
+            // If current arrangement length > total content length,
             // first shorten to match content (including pre-roll) before tiling
             if (currentArrangementLength > totalContentLength) {
               const newEndTime = currentStartTime + totalContentLength;
@@ -720,7 +720,7 @@ export function updateClip({
               // Critical validation: temp clip must not extend past original end_time
               if (newEndTime + tempClipLength !== currentEndTime) {
                 throw new Error(
-                  `Phase 3b shortening validation failed: calculation error in temp clip bounds`,
+                  `Shortening validation failed: calculation error in temp clip bounds`,
                 );
               }
 
@@ -740,7 +740,7 @@ export function updateClip({
             }
 
             // Calculate tiling requirements based on desired length
-            // Phase 2/3: Tile the (now properly-sized) clip
+            // Tile the (now properly-sized) clip
             // Note: currentEndTime - currentStartTime might include pre-roll if firstStart < start
             const firstTileLength = currentEndTime - currentStartTime;
             const remainingSpace = arrangementLengthBeats - firstTileLength;
@@ -790,7 +790,7 @@ export function updateClip({
               );
               const holdingClip = LiveAPI.from(holdingResult);
 
-              // Shorten holding clip to remainder (Phase 1 pattern)
+              // Shorten holding clip to remainder
               const holdingClipEnd = holdingClip.getProperty("end_time");
               const newHoldingEnd = holdingArea.startBeats + remainder;
               const tempLength = holdingClipEnd - newHoldingEnd;
