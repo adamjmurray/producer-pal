@@ -32,6 +32,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.arrangementStart] - Bar|beat position to move arrangement clip (arrangement clips only)
+ * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (Phase 1: shortening only)
  * @param {number} [args.gain] - Audio clip gain (0-1)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
@@ -50,6 +51,7 @@ export function updateClip({
   firstStart,
   looping,
   arrangementStart,
+  arrangementLength,
   gain,
   pitchShift,
   warpMode,
@@ -71,18 +73,35 @@ export function updateClip({
     skipInvalid: true,
   });
 
-  // Get song time signature for arrangementStart conversion
+  // Get song time signature for arrangementStart/arrangementLength conversion
   let songTimeSigNumerator, songTimeSigDenominator;
   let arrangementStartBeats = null;
-  if (arrangementStart != null) {
+  let arrangementLengthBeats = null;
+
+  if (arrangementStart != null || arrangementLength != null) {
     const liveSet = new LiveAPI("live_set");
     songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     songTimeSigDenominator = liveSet.getProperty("signature_denominator");
-    arrangementStartBeats = barBeatToAbletonBeats(
-      arrangementStart,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+
+    if (arrangementStart != null) {
+      arrangementStartBeats = barBeatToAbletonBeats(
+        arrangementStart,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+    }
+
+    if (arrangementLength != null) {
+      arrangementLengthBeats = barBeatDurationToAbletonBeats(
+        arrangementLength,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+
+      if (arrangementLengthBeats <= 0) {
+        throw new Error("arrangementLength must be greater than 0");
+      }
+    }
   }
 
   const updatedClips = [];
@@ -341,6 +360,64 @@ export function updateClip({
           clip.call("remove_warp_marker", warpBeatTime);
           break;
         }
+      }
+    }
+
+    // Handle arrangementLength (Phase 1: shortening only)
+    if (arrangementLengthBeats != null) {
+      const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+
+      if (!isArrangementClip) {
+        console.error(
+          `Warning: arrangementLength parameter ignored for session clip (id ${clip.id})`,
+        );
+      } else {
+        // Get current clip dimensions
+        const currentStartTime = clip.getProperty("start_time");
+        const currentEndTime = clip.getProperty("end_time");
+        const currentArrangementLength = currentEndTime - currentStartTime;
+
+        // Check if shortening or lengthening
+        if (arrangementLengthBeats > currentArrangementLength) {
+          // Phase 1: Lengthening not supported
+          throw new Error(
+            "Lengthening arrangement clips not yet supported. " +
+              "Currently only shortening is available. Feature coming in next release.",
+          );
+        } else if (arrangementLengthBeats < currentArrangementLength) {
+          // Shortening: Use temp clip overlay pattern
+          const newEndTime = currentStartTime + arrangementLengthBeats;
+          const tempClipLength = currentEndTime - newEndTime;
+
+          // Critical validation: temp clip must not extend past original end_time
+          if (newEndTime + tempClipLength !== currentEndTime) {
+            throw new Error(
+              `Internal error: temp clip boundary calculation failed for clip ${clip.id}`,
+            );
+          }
+
+          // Get track
+          const trackIndex = clip.trackIndex;
+          if (trackIndex == null) {
+            throw new Error(
+              `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
+            );
+          }
+
+          const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
+          // Create temporary clip to truncate target
+          const tempClipResult = track.call(
+            "create_midi_clip",
+            newEndTime,
+            tempClipLength,
+          );
+          const tempClip = LiveAPI.from(tempClipResult);
+
+          // Delete temporary clip (target is now shortened)
+          track.call("delete_clip", `id ${tempClip.id}`);
+        }
+        // else: same length, no-op
       }
     }
 

@@ -36,6 +36,15 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .describe(
         "bar|beat position to move arrangement clip (arrangement clips only)",
       ),
+    arrangementLength: z
+      .string()
+      .optional()
+      .describe(
+        "bar:beat duration for arrangement span (visible region in timeline). " +
+          "Phase 1: Only shortening supported - lengthening will error. " +
+          "Shortening preserves all data (notes, envelopes, automation). " +
+          "Arrangement clips only.",
+      ),
     gain: z
       .number()
       .min(0)
