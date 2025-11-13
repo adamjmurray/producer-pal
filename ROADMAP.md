@@ -45,8 +45,27 @@
 
 ### 1.5 - Device Control
 
+Requires Live 12.3 to be released for add/delete device capabilities in the Live
+API
+
+- Add device
+- Delete device
 - Read/write synth and effect parameters
-- Add devices
+- A/B comparison of device parameters
+- Rack macro variation management
+  - Select macro variation
+  - Save macro variation
+  - Delete macro variation
+  - Randomize macros
+
+- Add device
+- Delete device
+- Read/write synth and effect parameters
+- A/B comparison of device parameters
+- ## Rack macro management
+  - Add/update macro variation
+  - Delete macro variation
+  - Randomize macros
 
 ### 1.6 - Code Execution
 
