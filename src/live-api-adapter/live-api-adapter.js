@@ -37,6 +37,7 @@ const context = {
     content: "",
   },
   smallModelMode: false,
+  holdingAreaStartBeats: 40000,
 };
 
 /*
@@ -55,7 +56,7 @@ const tools = {
   "ppal-update-scene": (args) => updateScene(args),
   "ppal-create-clip": (args) => createClip(args),
   "ppal-read-clip": (args) => readClip(args),
-  "ppal-update-clip": (args) => updateClip(args),
+  "ppal-update-clip": (args) => updateClip(args, context),
   "ppal-playback": (args) => playback(args),
   "ppal-select": (args) => select(args),
   "ppal-delete": (args) => deleteObject(args),
@@ -94,6 +95,10 @@ export function projectNotesWritable(writable) {
 
 export function projectNotes(_text, content) {
   context.projectNotes.content = content ?? "";
+}
+
+export function holdingAreaStartBeats(beats) {
+  context.holdingAreaStartBeats = Number(beats) || 40000;
 }
 
 function sendResponse(requestId, result) {

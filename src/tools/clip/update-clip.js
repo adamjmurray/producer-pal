@@ -20,38 +20,6 @@ import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**
- * Calculate dynamic holding area for temporary clip operations
- * Returns safe position at highest bar + 10 bars (minimum bar 10)
- * @param {Object} liveSet - LiveAPI instance for live_set
- * @returns {Object} { bar, startBeats, abletonBeatsPerBar }
- */
-function calculateHoldingArea(liveSet) {
-  const timeSigNumerator = liveSet.getProperty("signature_numerator");
-  const timeSigDenominator = liveSet.getProperty("signature_denominator");
-  const abletonBeatsPerBar = (timeSigNumerator / timeSigDenominator) * 4;
-
-  const trackCount = liveSet.getChildIds("tracks").length;
-  let highestEndTime = 0;
-
-  for (let i = 0; i < trackCount; i++) {
-    const track = new LiveAPI(`live_set tracks ${i}`);
-    const clipIds = track.getChildIds("arrangement_clips");
-
-    for (const clipId of clipIds) {
-      const clip = LiveAPI.from(clipId);
-      const endTime = clip.getProperty("end_time");
-      highestEndTime = Math.max(highestEndTime, endTime);
-    }
-  }
-
-  const highestBar = Math.ceil(highestEndTime / abletonBeatsPerBar);
-  const holdingBar = Math.max(highestBar + 10, 10);
-  const holdingAreaStart = holdingBar * abletonBeatsPerBar;
-
-  return { bar: holdingBar, startBeats: holdingAreaStart, abletonBeatsPerBar };
-}
-
-/**
  * Read all copyable properties from a clip (for clip recreation)
  * @param {Object} clip - LiveAPI clip instance
  * @returns {Object} Clip properties and data
@@ -159,28 +127,31 @@ function applyClipProperties(props, targetClip) {
  * @param {boolean} [args.warping] - Audio clip warping on/off
  * @returns {Object|Array<Object>} Single clip object or array of clip objects
  */
-export function updateClip({
-  ids,
-  notes: notationString,
-  noteUpdateMode = "merge",
-  name,
-  color,
-  timeSignature,
-  start,
-  length,
-  firstStart,
-  looping,
-  arrangementStart,
-  arrangementLength,
-  gain,
-  pitchShift,
-  warpMode,
-  warping,
-  warpOp,
-  warpBeatTime,
-  warpSampleTime,
-  warpDistance,
-} = {}) {
+export function updateClip(
+  {
+    ids,
+    notes: notationString,
+    noteUpdateMode = "merge",
+    name,
+    color,
+    timeSignature,
+    start,
+    length,
+    firstStart,
+    looping,
+    arrangementStart,
+    arrangementLength,
+    gain,
+    pitchShift,
+    warpMode,
+    warping,
+    warpOp,
+    warpBeatTime,
+    warpSampleTime,
+    warpDistance,
+  } = {},
+  context = { holdingAreaStartBeats: 40000 },
+) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");
   }
@@ -513,10 +484,6 @@ export function updateClip({
           }
 
           const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-          const liveSet = new LiveAPI("live_set");
-
-          // Calculate holding area once for reuse
-          const holdingArea = calculateHoldingArea(liveSet);
 
           // Branch: expose hidden content vs tiling
           if (arrangementLengthBeats < clipLength) {
@@ -527,39 +494,13 @@ export function updateClip({
             // Step 1: Read all clip properties BEFORE any destructive operations
             const clipProps = readClipProperties(clip);
 
-            // Step 2: Validate holding area is empty
-            const holdingAreaEnd =
-              holdingArea.startBeats + arrangementLengthBeats;
-            const existingClips = track.getChildIds("arrangement_clips");
-
-            for (const clipId of existingClips) {
-              const existingClip = LiveAPI.from(clipId);
-              const existingStart = existingClip.getProperty("start_time");
-              const existingEnd = existingClip.getProperty("end_time");
-
-              // Check for overlap with holding area
-              if (
-                (existingStart >= holdingArea.startBeats &&
-                  existingStart < holdingAreaEnd) ||
-                (existingEnd > holdingArea.startBeats &&
-                  existingEnd <= holdingAreaEnd) ||
-                (existingStart <= holdingArea.startBeats &&
-                  existingEnd >= holdingAreaEnd)
-              ) {
-                throw new Error(
-                  `Holding area at bar ${holdingArea.bar} is occupied. ` +
-                    `Please ensure bars ${holdingArea.bar} to ${Math.ceil(holdingAreaEnd / holdingArea.abletonBeatsPerBar)} are empty.`,
-                );
-              }
-            }
-
-            // Step 3: Create new clip at holding area with desired arrangementLength
+            // Step 2: Create new clip at holding area with desired arrangementLength
             const createMethod = clipProps.is_midi_clip
               ? "create_midi_clip"
               : "create_audio_clip";
             const holdingClipPath = track.call(
               createMethod,
-              holdingArea.startBeats,
+              context.holdingAreaStartBeats,
               arrangementLengthBeats,
             );
             const holdingClip = LiveAPI.from(holdingClipPath);
@@ -670,13 +611,14 @@ export function updateClip({
                   const holdingResult = track.call(
                     "duplicate_clip_to_arrangement",
                     `id ${recreatedClip.id}`,
-                    holdingArea.startBeats,
+                    context.holdingAreaStartBeats,
                   );
                   const holdingClip = LiveAPI.from(holdingResult);
 
                   // Shorten to remainder
                   const holdingClipEnd = holdingClip.getProperty("end_time");
-                  const newHoldingEnd = holdingArea.startBeats + remainder;
+                  const newHoldingEnd =
+                    context.holdingAreaStartBeats + remainder;
                   const tempLength = holdingClipEnd - newHoldingEnd;
 
                   const tempResult = track.call(
@@ -786,13 +728,13 @@ export function updateClip({
               const holdingResult = track.call(
                 "duplicate_clip_to_arrangement",
                 `id ${clip.id}`,
-                holdingArea.startBeats,
+                context.holdingAreaStartBeats,
               );
               const holdingClip = LiveAPI.from(holdingResult);
 
               // Shorten holding clip to remainder
               const holdingClipEnd = holdingClip.getProperty("end_time");
-              const newHoldingEnd = holdingArea.startBeats + remainder;
+              const newHoldingEnd = context.holdingAreaStartBeats + remainder;
               const tempLength = holdingClipEnd - newHoldingEnd;
 
               const tempResult = track.call(

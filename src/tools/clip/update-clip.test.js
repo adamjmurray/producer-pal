@@ -10,6 +10,9 @@ import {
 import { updateClip } from "./update-clip";
 
 describe("updateClip", () => {
+  const mockContext = {
+    holdingAreaStartBeats: 40000,
+  };
   beforeEach(() => {
     // Track added notes per clip ID for get_notes_extended mocking
     const addedNotesByClipId = {};
@@ -2103,10 +2106,13 @@ describe("updateClip", () => {
         return undefined;
       });
 
-      const result = updateClip({
-        ids: "789",
-        arrangementLength: "2:2", // 2.5 bars = 10 beats (2 full tiles + 2 beat partial)
-      });
+      const result = updateClip(
+        {
+          ids: "789",
+          arrangementLength: "2:2", // 2.5 bars = 10 beats (2 full tiles + 2 beat partial)
+        },
+        mockContext,
+      );
 
       // Should create 1 full tile
       expect(liveApiCall).toHaveBeenCalledWith(
@@ -2341,10 +2347,13 @@ describe("updateClip", () => {
         .spyOn(console, "error")
         .mockImplementation(() => {});
 
-      const result = updateClip({
-        ids: "789",
-        arrangementLength: "1:2", // 6 beats - more than current 4, less than clip.length 8
-      });
+      const result = updateClip(
+        {
+          ids: "789",
+          arrangementLength: "1:2", // 6 beats - more than current 4, less than clip.length 8
+        },
+        mockContext,
+      );
 
       // Should call get_notes_extended to read properties
       expect(liveApiCall).toHaveBeenCalledWith(
@@ -2358,7 +2367,7 @@ describe("updateClip", () => {
       // Should create holding clip
       expect(liveApiCall).toHaveBeenCalledWith(
         "create_midi_clip",
-        44, // Holding area start (bar 11: ceil(4/4) + 10 in 4/4)
+        40000, // Holding area start (configurable constant)
         6, // Target length
       );
 
