@@ -14,6 +14,7 @@ import * as console from "../../shared/v8-max-console.js";
  * @param {Object} track - LiveAPI track instance
  * @param {number} targetLength - Desired clip length in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
+ * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @returns {{holdingClipId: number, holdingClip: Object}} Holding clip ID and instance
  */
 export function createShortenedClipInHolding(
@@ -21,6 +22,7 @@ export function createShortenedClipInHolding(
   track,
   targetLength,
   holdingAreaStart,
+  isMidiClip,
 ) {
   // Store clip ID to prevent object staleness issues
   // sourceClip.id returns just the numeric ID string (e.g., "547")
@@ -39,7 +41,9 @@ export function createShortenedClipInHolding(
   const newHoldingEnd = holdingAreaStart + targetLength;
   const tempLength = holdingClipEnd - newHoldingEnd;
 
-  const tempResult = track.call("create_midi_clip", newHoldingEnd, tempLength);
+  // Use appropriate clip creation method based on clip type
+  const createMethod = isMidiClip ? "create_midi_clip" : "create_audio_clip";
+  const tempResult = track.call(createMethod, newHoldingEnd, tempLength);
   const tempClip = LiveAPI.from(tempResult);
   track.call("delete_clip", `id ${tempClip.id}`);
 
@@ -79,8 +83,9 @@ export function moveClipFromHolding(holdingClipId, track, targetPosition) {
  *
  * @param {Object} clip - LiveAPI clip instance
  * @param {Object} track - LiveAPI track instance
+ * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
  */
-export function adjustClipPreRoll(clip, track) {
+export function adjustClipPreRoll(clip, track, isMidiClip) {
   const startMarker = clip.getProperty("start_marker");
   const loopStart = clip.getProperty("loop_start");
 
@@ -95,11 +100,9 @@ export function adjustClipPreRoll(clip, track) {
     const newClipEnd = clipEnd - preRollLength;
     const tempClipLength = clipEnd - newClipEnd;
 
-    const tempClipPath = track.call(
-      "create_midi_clip",
-      newClipEnd,
-      tempClipLength,
-    );
+    // Use appropriate clip creation method based on clip type
+    const createMethod = isMidiClip ? "create_midi_clip" : "create_audio_clip";
+    const tempClipPath = track.call(createMethod, newClipEnd, tempClipLength);
     const tempClip = LiveAPI.from(tempClipPath);
     track.call("delete_clip", `id ${tempClip.id}`);
   }
@@ -114,6 +117,7 @@ export function adjustClipPreRoll(clip, track) {
  * @param {number} targetPosition - Target position in beats
  * @param {number} partialLength - Length of partial tile in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
+ * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
  * @param {boolean} [adjustPreRoll=true] - Whether to adjust pre-roll on the created tile
  * @param {number} [contentOffset=0] - Content offset in beats for start_marker
  * @returns {Object} The created partial tile clip (LiveAPI instance)
@@ -124,6 +128,7 @@ export function createPartialTile(
   targetPosition,
   partialLength,
   holdingAreaStart,
+  isMidiClip,
   adjustPreRoll = true,
   contentOffset = 0,
 ) {
@@ -133,6 +138,7 @@ export function createPartialTile(
     track,
     partialLength,
     holdingAreaStart,
+    isMidiClip,
   );
 
   // Move from holding to target position
@@ -147,7 +153,7 @@ export function createPartialTile(
 
   // Optionally adjust pre-roll
   if (adjustPreRoll) {
-    adjustClipPreRoll(partialTile, track);
+    adjustClipPreRoll(partialTile, track, isMidiClip);
   }
 
   return partialTile;
@@ -181,6 +187,9 @@ export function tileClipToRange(
   // Store clip ID and track index before loop to prevent object staleness issues
   const sourceClipId = sourceClip.id;
   const trackIndex = sourceClip.trackIndex;
+
+  // Detect if clip is MIDI or audio for proper clip creation method
+  const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
 
   // Get clip loop length for tiling
   const clipLoopStart = sourceClip.getProperty("loop_start");
@@ -265,7 +274,7 @@ export function tileClipToRange(
 
     // Adjust pre-roll for subsequent tiles if requested
     if (adjustPreRoll) {
-      adjustClipPreRoll(freshClip, freshTrack);
+      adjustClipPreRoll(freshClip, freshTrack, isMidiClip);
     }
 
     createdClips.push({ id: clipId });
@@ -281,6 +290,7 @@ export function tileClipToRange(
       currentPosition,
       remainder,
       holdingAreaStart,
+      isMidiClip,
       adjustPreRoll,
       currentContentOffset,
     );

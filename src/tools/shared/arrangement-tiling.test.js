@@ -35,7 +35,13 @@ describe("createShortenedClipInHolding", () => {
     // Mock track.call for create_midi_clip (temp clip)
     liveApiCall.mockReturnValueOnce(["id", "300"]); // Returns temp clip
 
-    const result = createShortenedClipInHolding(sourceClip, track, 8, 1000);
+    const result = createShortenedClipInHolding(
+      sourceClip,
+      track,
+      8,
+      1000,
+      true,
+    );
 
     // Verify duplicate_clip_to_arrangement was called correctly
     expect(liveApiCall).toHaveBeenNthCalledWith(
@@ -74,7 +80,7 @@ describe("createShortenedClipInHolding", () => {
 
     liveApiCall.mockReturnValueOnce(["id", "300"]); // Temp clip
 
-    createShortenedClipInHolding(sourceClip, track, 12, 2000);
+    createShortenedClipInHolding(sourceClip, track, 12, 2000, true);
 
     // Target length 12, original 32, so temp clip should be 20 beats
     expect(liveApiCall).toHaveBeenNthCalledWith(
@@ -141,7 +147,7 @@ describe("adjustClipPreRoll", () => {
 
     const track = new LiveAPI("live_set tracks 0");
 
-    adjustClipPreRoll(clip, track);
+    adjustClipPreRoll(clip, track, true);
 
     // No calls should be made
     expect(liveApiCall).not.toHaveBeenCalled();
@@ -159,7 +165,7 @@ describe("adjustClipPreRoll", () => {
 
     const track = new LiveAPI("live_set tracks 0");
 
-    adjustClipPreRoll(clip, track);
+    adjustClipPreRoll(clip, track, true);
 
     expect(liveApiCall).not.toHaveBeenCalled();
   });
@@ -179,7 +185,7 @@ describe("adjustClipPreRoll", () => {
 
     liveApiCall.mockReturnValueOnce(["id", "300"]); // Temp clip
 
-    adjustClipPreRoll(clip, track);
+    adjustClipPreRoll(clip, track, true);
 
     // Verify start_marker set to loop_start
     expect(clip.set).toHaveBeenCalledWith("start_marker", 6);
@@ -208,7 +214,7 @@ describe("adjustClipPreRoll", () => {
 
     liveApiCall.mockReturnValueOnce(["id", "400"]);
 
-    adjustClipPreRoll(clip, track);
+    adjustClipPreRoll(clip, track, true);
 
     expect(clip.set).toHaveBeenCalledWith("start_marker", 8);
 
@@ -229,7 +235,7 @@ describe("createPartialTile", () => {
     liveApiCall.mockReturnValueOnce(["id", "400"]); // Final tile
     mockLiveApiGet({ "id 400": { start_marker: 2, loop_start: 2 } });
 
-    const result = createPartialTile(sourceClip, track, 500, 6, 1000);
+    const result = createPartialTile(sourceClip, track, 500, 6, 1000, true);
 
     expect(result).toBeInstanceOf(LiveAPI);
   });
@@ -253,7 +259,7 @@ describe("createPartialTile", () => {
     // Mock moveClipFromHolding
     liveApiCall.mockReturnValueOnce(["id", "400"]);
 
-    createPartialTile(sourceClip, track, 500, 8, 1000, false);
+    createPartialTile(sourceClip, track, 500, 8, 1000, true, false);
 
     // Should only have 5 calls: duplicate to holding, temp for shorten, delete temp, move, cleanup
     // No pre-roll adjustment calls
