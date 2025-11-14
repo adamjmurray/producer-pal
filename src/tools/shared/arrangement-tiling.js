@@ -4,6 +4,8 @@
  * arrangement clips using the holding area technique.
  */
 
+import * as console from "../../shared/v8-max-console.js";
+
 /**
  * Creates a shortened copy of a clip in the holding area.
  * Uses the temp clip shortening technique to achieve the target length.
@@ -20,10 +22,14 @@ export function createShortenedClipInHolding(
   targetLength,
   holdingAreaStart,
 ) {
+  // Store clip ID to prevent object staleness issues
+  // sourceClip.id returns just the numeric ID string (e.g., "547")
+  const sourceClipId = sourceClip.id;
+
   // Duplicate source clip to holding area
   const holdingResult = track.call(
     "duplicate_clip_to_arrangement",
-    `id ${sourceClip.id}`,
+    `id ${sourceClipId}`,
     holdingAreaStart,
   );
   const holdingClip = LiveAPI.from(holdingResult);
@@ -109,6 +115,7 @@ export function adjustClipPreRoll(clip, track) {
  * @param {number} partialLength - Length of partial tile in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} [adjustPreRoll=true] - Whether to adjust pre-roll on the created tile
+ * @param {number} [contentOffset=0] - Content offset in beats for start_marker
  * @returns {Object} The created partial tile clip (LiveAPI instance)
  */
 export function createPartialTile(
@@ -118,6 +125,7 @@ export function createPartialTile(
   partialLength,
   holdingAreaStart,
   adjustPreRoll = true,
+  contentOffset = 0,
 ) {
   // Create shortened clip in holding area
   const { holdingClipId } = createShortenedClipInHolding(
@@ -129,6 +137,13 @@ export function createPartialTile(
 
   // Move from holding to target position
   const partialTile = moveClipFromHolding(holdingClipId, track, targetPosition);
+
+  // Set start_marker to show correct portion of clip content
+  const clipLoopStart = sourceClip.getProperty("loop_start");
+  const clipLoopEnd = sourceClip.getProperty("loop_end");
+  const clipLength = clipLoopEnd - clipLoopStart;
+  const tileStartMarker = clipLoopStart + (contentOffset % clipLength);
+  partialTile.set("start_marker", tileStartMarker);
 
   // Optionally adjust pre-roll
   if (adjustPreRoll) {
@@ -149,6 +164,8 @@ export function createPartialTile(
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {Object} options - Configuration options
  * @param {boolean} [options.adjustPreRoll=true] - Whether to adjust pre-roll on subsequent tiles
+ * @param {number} [options.startOffset=0] - Content offset in beats to start tiling from
+ * @param {number} [options.tileLength=null] - Arrangement length per tile (defaults to clip content length)
  * @returns {Array<Object>} Array of created clip objects with {id} property
  */
 export function tileClipToRange(
@@ -157,36 +174,103 @@ export function tileClipToRange(
   startPosition,
   totalLength,
   holdingAreaStart,
-  { adjustPreRoll = true } = {},
+  { adjustPreRoll = true, startOffset = 0, tileLength = null } = {},
 ) {
   const createdClips = [];
+
+  // Store clip ID and track index before loop to prevent object staleness issues
+  const sourceClipId = sourceClip.id;
+  const trackIndex = sourceClip.trackIndex;
 
   // Get clip loop length for tiling
   const clipLoopStart = sourceClip.getProperty("loop_start");
   const clipLoopEnd = sourceClip.getProperty("loop_end");
   const clipLength = clipLoopEnd - clipLoopStart;
 
-  // Calculate tiling requirements
-  const fullTiles = Math.floor(totalLength / clipLength);
-  const remainder = totalLength % clipLength;
+  // Safety mechanism: Ensure end_marker is set to loop_end before tiling
+  // This prevents "invalid syntax" errors when setting start_marker on duplicates
+  // (start_marker cannot exceed end_marker)
+  const currentEndMarker = sourceClip.getProperty("end_marker");
+  if (currentEndMarker !== clipLoopEnd) {
+    console.error(
+      `DEBUG: Correcting end_marker from ${currentEndMarker} to ${clipLoopEnd}`,
+    );
+    sourceClip.set("end_marker", clipLoopEnd);
+  }
+
+  // Determine arrangement length per tile (defaults to clip content length)
+  const arrangementTileLength = tileLength ?? clipLength;
+
+  console.error(
+    `DEBUG tileClipToRange: clipLength=${clipLength}, tileLength=${tileLength}, arrangementTileLength=${arrangementTileLength}`,
+  );
+  console.error(
+    `DEBUG tileClipToRange: totalLength=${totalLength}, startPosition=${startPosition}`,
+  );
+
+  // Calculate tiling requirements based on arrangement tile length
+  const fullTiles = Math.floor(totalLength / arrangementTileLength);
+  const remainder = totalLength % arrangementTileLength;
+
+  console.error(
+    `DEBUG tileClipToRange: fullTiles=${fullTiles}, remainder=${remainder}`,
+  );
+
+  // Track content offset for setting start_marker on each tile
+  let currentContentOffset = startOffset;
 
   // Create full tiles
   let currentPosition = startPosition;
   for (let i = 0; i < fullTiles; i++) {
-    const result = track.call(
+    // Create fresh track object for each iteration to avoid staleness issues
+    const freshTrack = new LiveAPI(`live_set tracks ${trackIndex}`);
+
+    // Full tiles ALWAYS use simple duplication (regardless of arrangementTileLength vs clipLength)
+    const result = freshTrack.call(
       "duplicate_clip_to_arrangement",
-      `id ${sourceClip.id}`,
+      `id ${sourceClipId}`,
       currentPosition,
     );
+    console.error(
+      `DEBUG tile ${i}: duplicate_clip_to_arrangement returned: ${JSON.stringify(result)}`,
+    );
+
     const tileClip = LiveAPI.from(result);
+    const clipId = tileClip.id;
+    console.error(`DEBUG tile ${i}: Got clip ID: ${clipId}`);
+
+    // Recreate LiveAPI object with fresh reference
+    const freshClip = new LiveAPI(`id ${clipId}`);
+    console.error(
+      `DEBUG tile ${i}: Fresh clip exists=${freshClip.exists()}, type=${freshClip.type}`,
+    );
+
+    // Set start_marker to show correct portion of clip content
+    let tileStartMarker = clipLoopStart + (currentContentOffset % clipLength);
+
+    // Wrap start_marker if it would equal or exceed loop_end
+    if (tileStartMarker >= clipLoopEnd) {
+      tileStartMarker = clipLoopStart;
+    }
+
+    // Try setting on fresh clip object
+    console.error(
+      `DEBUG tile ${i}: Trying to set start_marker to ${tileStartMarker}`,
+    );
+
+    freshClip.set("start_marker", tileStartMarker);
+    console.error(
+      `DEBUG tile ${i}: After set: start_marker=${freshClip.getProperty("start_marker")}`,
+    );
 
     // Adjust pre-roll for subsequent tiles if requested
     if (adjustPreRoll) {
-      adjustClipPreRoll(tileClip, track);
+      adjustClipPreRoll(freshClip, freshTrack);
     }
 
-    createdClips.push({ id: tileClip.id });
-    currentPosition = tileClip.getProperty("end_time");
+    createdClips.push({ id: clipId });
+    currentPosition += arrangementTileLength; // Space tiles at arrangement intervals
+    currentContentOffset += arrangementTileLength; // Advance through content
   }
 
   // Handle partial final tile if remainder exists
@@ -198,6 +282,7 @@ export function tileClipToRange(
       remainder,
       holdingAreaStart,
       adjustPreRoll,
+      currentContentOffset,
     );
 
     createdClips.push({ id: partialTile.id });

@@ -21,93 +21,6 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 import { tileClipToRange } from "../shared/arrangement-tiling.js";
 
 /**
- * Read all copyable properties from a clip (for clip recreation)
- * @param {Object} clip - LiveAPI clip instance
- * @returns {Object} Clip properties and data
- */
-function readClipProperties(clip) {
-  const props = {
-    name: clip.getProperty("name"),
-    color: clip.getColor(),
-    signature_numerator: clip.getProperty("signature_numerator"),
-    signature_denominator: clip.getProperty("signature_denominator"),
-    looping: clip.getProperty("looping"),
-    loop_start: clip.getProperty("loop_start"),
-    loop_end: clip.getProperty("loop_end"),
-    start_marker: clip.getProperty("start_marker"),
-    end_marker: clip.getProperty("end_marker"),
-    is_midi_clip: clip.getProperty("is_midi_clip"),
-    is_audio_clip: clip.getProperty("is_audio_clip"),
-  };
-
-  // Read MIDI notes
-  if (props.is_midi_clip) {
-    const notesResult = clip.call(
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      MAX_CLIP_BEATS,
-    );
-    if (notesResult != null) {
-      const { notes } = JSON.parse(notesResult);
-      if (notes && notes.length > 0) {
-        // Remove note IDs since we'll be creating new notes
-        for (const note of notes) {
-          delete note.note_id;
-        }
-        props.notes = notes;
-      }
-    }
-  }
-
-  // Read audio properties
-  if (props.is_audio_clip) {
-    props.gain = clip.getProperty("gain");
-    props.pitch_coarse = clip.getProperty("pitch_coarse");
-    props.pitch_fine = clip.getProperty("pitch_fine");
-    props.warp_mode = clip.getProperty("warp_mode");
-    props.warping = clip.getProperty("warping");
-  }
-
-  return props;
-}
-
-/**
- * Apply properties to a clip (for clip recreation)
- * @param {Object} props - Properties to apply
- * @param {Object} targetClip - LiveAPI clip instance
- */
-function applyClipProperties(props, targetClip) {
-  // Basic properties via setAll for efficiency
-  targetClip.setAll({
-    name: props.name || null,
-    color: props.color,
-    signature_numerator: props.signature_numerator,
-    signature_denominator: props.signature_denominator,
-    looping: props.looping,
-    loop_start: props.loop_start,
-    loop_end: props.loop_end,
-    start_marker: props.start_marker,
-    end_marker: props.end_marker,
-  });
-
-  // MIDI notes
-  if (props.notes && props.notes.length > 0) {
-    targetClip.call("add_new_notes", { notes: props.notes });
-  }
-
-  // Audio properties (must use individual set calls)
-  if (props.is_audio_clip) {
-    targetClip.set("gain", props.gain);
-    targetClip.set("pitch_coarse", props.pitch_coarse);
-    targetClip.set("pitch_fine", props.pitch_fine);
-    targetClip.set("warp_mode", props.warp_mode);
-    targetClip.set("warping", props.warping);
-  }
-}
-
-/**
  * Updates properties of existing clips
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
@@ -153,7 +66,6 @@ export function updateClip(
   } = {},
   context = {
     holdingAreaStartBeats: 40000,
-    preserveEnvelopesOnExtend: false,
   },
 ) {
   if (!ids) {
@@ -491,65 +403,34 @@ export function updateClip(
 
           // Branch: expose hidden content vs tiling
           if (arrangementLengthBeats < clipLength) {
-            if (!context.preserveEnvelopesOnExtend) {
-              // Expose hidden content by recreating clip
-              // The clip has sufficient internal content, but we can't extend end_time directly
-              // Must recreate the clip with the desired arrangement length
+            // Expose hidden content by tiling with start_marker offsets
+            // This preserves automation envelopes while revealing the correct content
+            const clipStartMarker = clip.getProperty("start_marker");
+            const currentOffset = clipStartMarker - clipLoopStart;
 
-              // Step 1: Read all clip properties BEFORE any destructive operations
-              const clipProps = readClipProperties(clip);
+            // Keep the source clip and tile AFTER it
+            const remainingLength =
+              arrangementLengthBeats - currentArrangementLength;
+            console.error(
+              `DEBUG update-clip scenario A: arrangementLengthBeats=${arrangementLengthBeats}, currentArrangementLength=${currentArrangementLength}, remainingLength=${remainingLength}`,
+            );
+            const tiledClips = tileClipToRange(
+              clip,
+              track,
+              currentEndTime, // Start tiling after the existing clip
+              remainingLength, // Only tile the remaining space
+              context.holdingAreaStartBeats,
+              {
+                adjustPreRoll: false,
+                startOffset: currentOffset + currentArrangementLength,
+                tileLength: currentArrangementLength,
+              },
+            );
 
-              // Step 2: Create new clip at holding area with desired arrangementLength
-              const createMethod = clipProps.is_midi_clip
-                ? "create_midi_clip"
-                : "create_audio_clip";
-              const holdingClipPath = track.call(
-                createMethod,
-                context.holdingAreaStartBeats,
-                arrangementLengthBeats,
-              );
-              const holdingClip = LiveAPI.from(holdingClipPath);
-
-              // Step 4: Apply all properties to new clip
-              applyClipProperties(clipProps, holdingClip);
-
-              // Step 5: Delete original clip at target position
-              track.call("delete_clip", `id ${clip.id}`);
-
-              // Step 6: Move new clip from holding area to target position
-              track.call(
-                "duplicate_clip_to_arrangement",
-                `id ${holdingClip.id}`,
-                currentStartTime,
-              );
-
-              // Step 7: Clean up holding area
-              track.call("delete_clip", `id ${holdingClip.id}`);
-
-              // Step 8: Emit warning about envelope loss
-              console.error(
-                "Clip arrangement length expanded by recreating clip. " +
-                  "Automation envelopes were lost due to Live API limitations.",
-              );
-            } else {
-              // Preserve envelopes by tiling the existing clip
-              // Trade-off: tiles at current arrangement length instead of exposing hidden content
-              const tiledClips = tileClipToRange(
-                clip,
-                track,
-                currentStartTime,
-                arrangementLengthBeats,
-                context.holdingAreaStartBeats,
-                { adjustPreRoll: false },
-              );
-
-              // Delete original clip
-              track.call("delete_clip", `id ${clip.id}`);
-
-              // Add all tiled clips to results
-              updatedClips.push(...tiledClips);
-              continue;
-            }
+            // Add original clip and tiled clips to results
+            updatedClips.push({ id: clip.id });
+            updatedClips.push(...tiledClips);
+            continue;
           } else {
             // Lengthening via clean tiling
             // The desired length requires tiling the clip content
@@ -558,77 +439,32 @@ export function updateClip(
             const clipStartMarker = clip.getProperty("start_marker");
             const totalContentLength = clipLoopEnd - clipStartMarker;
 
-            // If clip not showing full content, recreate it
+            // If clip not showing full content, tile with start_marker offsets
             if (currentArrangementLength < totalContentLength) {
-              if (!context.preserveEnvelopesOnExtend) {
-                // Create clip at min(desired, content) then tile if needed
-                const recreatedLength = Math.min(
-                  arrangementLengthBeats,
-                  totalContentLength,
-                );
+              // Preserve envelopes by tiling existing clip with proper start_marker values
+              // Keep the source clip and tile AFTER it
+              const remainingLength =
+                arrangementLengthBeats - currentArrangementLength;
+              console.error(
+                `DEBUG update-clip scenario B: arrangementLengthBeats=${arrangementLengthBeats}, currentArrangementLength=${currentArrangementLength}, totalContentLength=${totalContentLength}, remainingLength=${remainingLength}`,
+              );
+              const tiledClips = tileClipToRange(
+                clip,
+                track,
+                currentEndTime, // Start tiling after the existing clip
+                remainingLength, // Only tile the remaining space
+                context.holdingAreaStartBeats,
+                {
+                  adjustPreRoll: true,
+                  startOffset: currentArrangementLength,
+                  tileLength: currentArrangementLength,
+                },
+              );
 
-                // 1. Copy all clip data
-                const clipProps = readClipProperties(clip);
-
-                // 2. Delete original
-                track.call("delete_clip", `id ${clip.id}`);
-
-                // 3. Create new clip at original position
-                const newClipPath = track.call(
-                  "create_midi_clip",
-                  currentStartTime,
-                  recreatedLength,
-                );
-                const recreatedClip = LiveAPI.from(newClipPath);
-
-                // 4. Apply properties
-                applyClipProperties(clipProps, recreatedClip);
-
-                // 5. Emit warning about envelope loss
-                console.error(
-                  "Clip recreated to adjust arrangement length. " +
-                    "Automation envelopes were lost due to Live API limitations.",
-                );
-
-                // 6. If tiling needed, apply it now
-                if (arrangementLengthBeats > recreatedLength) {
-                  // Calculate remaining space after first tile
-                  const remainingSpace =
-                    arrangementLengthBeats - recreatedLength;
-
-                  // Tile the remaining space using shared helper
-                  tileClipToRange(
-                    recreatedClip,
-                    track,
-                    currentStartTime + recreatedLength,
-                    remainingSpace,
-                    context.holdingAreaStartBeats,
-                    { adjustPreRoll: true },
-                  );
-                }
-
-                // Add result and skip remaining tiling logic
-                updatedClips.push({ id: recreatedClip.id });
-                continue;
-              } else {
-                // Preserve envelopes by tiling existing clip without recreating
-                // Adjust pre-roll on subsequent tiles to avoid unwanted lead-in
-                const tiledClips = tileClipToRange(
-                  clip,
-                  track,
-                  currentStartTime,
-                  arrangementLengthBeats,
-                  context.holdingAreaStartBeats,
-                  { adjustPreRoll: true },
-                );
-
-                // Delete original clip
-                track.call("delete_clip", `id ${clip.id}`);
-
-                // Add all tiled clips to results
-                updatedClips.push(...tiledClips);
-                continue;
-              }
+              // Add original clip and tiled clips to results
+              updatedClips.push({ id: clip.id });
+              updatedClips.push(...tiledClips);
+              continue;
             }
 
             // If current arrangement length > total content length,
@@ -664,14 +500,19 @@ export function updateClip(
             const firstTileLength = currentEndTime - currentStartTime;
             const remainingSpace = arrangementLengthBeats - firstTileLength;
 
-            tileClipToRange(
+            const tiledClips = tileClipToRange(
               clip,
               track,
               currentEndTime,
               remainingSpace,
               context.holdingAreaStartBeats,
-              { adjustPreRoll: true },
+              { adjustPreRoll: true, tileLength: firstTileLength },
             );
+
+            // Add original clip and tiled clips to results
+            updatedClips.push({ id: clip.id });
+            updatedClips.push(...tiledClips);
+            continue;
           }
         } else if (arrangementLengthBeats < currentArrangementLength) {
           // Shortening: Use temp clip overlay pattern
