@@ -7,6 +7,49 @@
 import * as console from "../../shared/v8-max-console.js";
 
 /**
+ * Creates an audio clip in session view with controlled length.
+ * Uses session view because create_audio_clip in arrangement doesn't support length control.
+ *
+ * @param {Object} track - LiveAPI track instance
+ * @param {number} targetLength - Desired clip length in beats
+ * @param {string} silenceWavPath - Path to silent WAV file
+ * @returns {{clip: Object, slot: Object}} The created clip and slot in session view
+ */
+export function createAudioClipInSession(track, targetLength, silenceWavPath) {
+  const liveSet = new LiveAPI("live_set");
+  const sceneIds = liveSet.getChildIds("scenes");
+  const lastSceneId = sceneIds.at(-1);
+  const lastScene = LiveAPI.from(lastSceneId);
+
+  // Check if last scene is empty, if not create a new one
+  const isEmpty = lastScene.getProperty("is_empty") === 1;
+  let workingSceneId = lastSceneId;
+  if (!isEmpty) {
+    const newSceneResult = liveSet.call("create_scene", sceneIds.length);
+    workingSceneId = LiveAPI.from(newSceneResult).id;
+  }
+
+  // Get track index to find corresponding clip slot
+  const trackIndex = track.trackIndex;
+  const sceneIndex = liveSet.getChildIds("scenes").indexOf(workingSceneId);
+
+  // Create clip in session slot
+  const slot = new LiveAPI(
+    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+  );
+  const clipPath = slot.call("create_audio_clip", silenceWavPath);
+  const clip = LiveAPI.from(clipPath);
+
+  // Enable warping and looping, then set length via loop_end
+  clip.set("warping", 1);
+  clip.set("looping", 1);
+  clip.set("loop_end", targetLength);
+
+  // Return both clip and slot for cleanup
+  return { clip, slot };
+}
+
+/**
  * Creates a shortened copy of a clip in the holding area.
  * Uses the temp clip shortening technique to achieve the target length.
  *
@@ -15,6 +58,7 @@ import * as console from "../../shared/v8-max-console.js";
  * @param {number} targetLength - Desired clip length in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
+ * @param {Object} context - Context object with silenceWavPath for audio clips
  * @returns {{holdingClipId: number, holdingClip: Object}} Holding clip ID and instance
  */
 export function createShortenedClipInHolding(
@@ -23,6 +67,7 @@ export function createShortenedClipInHolding(
   targetLength,
   holdingAreaStart,
   isMidiClip,
+  context,
 ) {
   // Store clip ID to prevent object staleness issues
   // sourceClip.id returns just the numeric ID string (e.g., "547")
@@ -41,11 +86,36 @@ export function createShortenedClipInHolding(
   const newHoldingEnd = holdingAreaStart + targetLength;
   const tempLength = holdingClipEnd - newHoldingEnd;
 
-  // Use appropriate clip creation method based on clip type
-  const createMethod = isMidiClip ? "create_midi_clip" : "create_audio_clip";
-  const tempResult = track.call(createMethod, newHoldingEnd, tempLength);
-  const tempClip = LiveAPI.from(tempResult);
-  track.call("delete_clip", `id ${tempClip.id}`);
+  // For audio clips, create in session then duplicate to arrangement
+  // For MIDI clips, create directly in arrangement
+  if (isMidiClip) {
+    const tempResult = track.call(
+      "create_midi_clip",
+      newHoldingEnd,
+      tempLength,
+    );
+    const tempClip = LiveAPI.from(tempResult);
+    track.call("delete_clip", `id ${tempClip.id}`);
+  } else {
+    // Create audio clip in session with exact length
+    const { clip: sessionClip, slot } = createAudioClipInSession(
+      track,
+      tempLength,
+      context.silenceWavPath,
+    );
+
+    // Duplicate to arrangement at the truncation position
+    const tempResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sessionClip.id}`,
+      newHoldingEnd,
+    );
+    const tempClip = LiveAPI.from(tempResult);
+
+    // Delete both session and arrangement clips
+    slot.call("delete_clip");
+    track.call("delete_clip", `id ${tempClip.id}`);
+  }
 
   return {
     holdingClipId: holdingClip.id,
@@ -84,8 +154,9 @@ export function moveClipFromHolding(holdingClipId, track, targetPosition) {
  * @param {Object} clip - LiveAPI clip instance
  * @param {Object} track - LiveAPI track instance
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
+ * @param {Object} context - Context object with silenceWavPath for audio clips
  */
-export function adjustClipPreRoll(clip, track, isMidiClip) {
+export function adjustClipPreRoll(clip, track, isMidiClip, context) {
   const startMarker = clip.getProperty("start_marker");
   const loopStart = clip.getProperty("loop_start");
 
@@ -100,11 +171,36 @@ export function adjustClipPreRoll(clip, track, isMidiClip) {
     const newClipEnd = clipEnd - preRollLength;
     const tempClipLength = clipEnd - newClipEnd;
 
-    // Use appropriate clip creation method based on clip type
-    const createMethod = isMidiClip ? "create_midi_clip" : "create_audio_clip";
-    const tempClipPath = track.call(createMethod, newClipEnd, tempClipLength);
-    const tempClip = LiveAPI.from(tempClipPath);
-    track.call("delete_clip", `id ${tempClip.id}`);
+    // For audio clips, create in session then duplicate to arrangement
+    // For MIDI clips, create directly in arrangement
+    if (isMidiClip) {
+      const tempClipPath = track.call(
+        "create_midi_clip",
+        newClipEnd,
+        tempClipLength,
+      );
+      const tempClip = LiveAPI.from(tempClipPath);
+      track.call("delete_clip", `id ${tempClip.id}`);
+    } else {
+      // Create audio clip in session with exact length
+      const { clip: sessionClip, slot } = createAudioClipInSession(
+        track,
+        tempClipLength,
+        context.silenceWavPath,
+      );
+
+      // Duplicate to arrangement at the truncation position
+      const tempResult = track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sessionClip.id}`,
+        newClipEnd,
+      );
+      const tempClip = LiveAPI.from(tempResult);
+
+      // Delete both session and arrangement clips
+      slot.call("delete_clip");
+      track.call("delete_clip", `id ${tempClip.id}`);
+    }
   }
 }
 
@@ -118,6 +214,7 @@ export function adjustClipPreRoll(clip, track, isMidiClip) {
  * @param {number} partialLength - Length of partial tile in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
+ * @param {Object} context - Context object with silenceWavPath for audio clips
  * @param {boolean} [adjustPreRoll=true] - Whether to adjust pre-roll on the created tile
  * @param {number} [contentOffset=0] - Content offset in beats for start_marker
  * @returns {Object} The created partial tile clip (LiveAPI instance)
@@ -129,6 +226,7 @@ export function createPartialTile(
   partialLength,
   holdingAreaStart,
   isMidiClip,
+  context,
   adjustPreRoll = true,
   contentOffset = 0,
 ) {
@@ -139,6 +237,7 @@ export function createPartialTile(
     partialLength,
     holdingAreaStart,
     isMidiClip,
+    context,
   );
 
   // Move from holding to target position
@@ -153,7 +252,7 @@ export function createPartialTile(
 
   // Optionally adjust pre-roll
   if (adjustPreRoll) {
-    adjustClipPreRoll(partialTile, track, isMidiClip);
+    adjustClipPreRoll(partialTile, track, isMidiClip, context);
   }
 
   return partialTile;
@@ -168,6 +267,7 @@ export function createPartialTile(
  * @param {number} startPosition - Start position for tiling in beats
  * @param {number} totalLength - Total length to fill with tiles in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
+ * @param {Object} context - Context object with silenceWavPath for audio clips
  * @param {Object} options - Configuration options
  * @param {boolean} [options.adjustPreRoll=true] - Whether to adjust pre-roll on subsequent tiles
  * @param {number} [options.startOffset=0] - Content offset in beats to start tiling from
@@ -180,6 +280,7 @@ export function tileClipToRange(
   startPosition,
   totalLength,
   holdingAreaStart,
+  context,
   { adjustPreRoll = true, startOffset = 0, tileLength = null } = {},
 ) {
   const createdClips = [];
@@ -274,7 +375,7 @@ export function tileClipToRange(
 
     // Adjust pre-roll for subsequent tiles if requested
     if (adjustPreRoll) {
-      adjustClipPreRoll(freshClip, freshTrack, isMidiClip);
+      adjustClipPreRoll(freshClip, freshTrack, isMidiClip, context);
     }
 
     createdClips.push({ id: clipId });
@@ -291,6 +392,7 @@ export function tileClipToRange(
       remainder,
       holdingAreaStart,
       isMidiClip,
+      context,
       adjustPreRoll,
       currentContentOffset,
     );

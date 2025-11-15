@@ -18,7 +18,10 @@ import {
 } from "../constants.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
-import { tileClipToRange } from "../shared/arrangement-tiling.js";
+import {
+  tileClipToRange,
+  createAudioClipInSession,
+} from "../shared/arrangement-tiling.js";
 
 /**
  * Updates properties of existing clips
@@ -420,6 +423,7 @@ export function updateClip(
               currentEndTime, // Start tiling after the existing clip
               remainingLength, // Only tile the remaining space
               context.holdingAreaStartBeats,
+              context,
               {
                 adjustPreRoll: false,
                 startOffset: currentOffset + currentArrangementLength,
@@ -454,6 +458,7 @@ export function updateClip(
                 currentEndTime, // Start tiling after the existing clip
                 remainingLength, // Only tile the remaining space
                 context.holdingAreaStartBeats,
+                context,
                 {
                   adjustPreRoll: true,
                   startOffset: currentArrangementLength,
@@ -480,16 +485,36 @@ export function updateClip(
                 );
               }
 
-              // Create temp clip to truncate
-              const tempClipPath = track.call(
-                "create_midi_clip",
-                newEndTime,
-                tempClipLength,
-              );
-              const tempClip = LiveAPI.from(tempClipPath);
+              // Create temp clip to truncate (use appropriate method for clip type)
+              if (isAudioClip) {
+                // Create audio clip in session with exact length
+                const { clip: sessionClip, slot } = createAudioClipInSession(
+                  track,
+                  tempClipLength,
+                  context.silenceWavPath,
+                );
 
-              // Delete temp clip - this leaves target clip shortened
-              track.call("delete_clip", `id ${tempClip.id}`);
+                // Duplicate to arrangement at the truncation position
+                const tempResult = track.call(
+                  "duplicate_clip_to_arrangement",
+                  `id ${sessionClip.id}`,
+                  newEndTime,
+                );
+                const tempClip = LiveAPI.from(tempResult);
+
+                // Delete both session and arrangement clips
+                slot.call("delete_clip");
+                track.call("delete_clip", `id ${tempClip.id}`);
+              } else {
+                // MIDI clips can be created directly in arrangement
+                const tempClipPath = track.call(
+                  "create_midi_clip",
+                  newEndTime,
+                  tempClipLength,
+                );
+                const tempClip = LiveAPI.from(tempClipPath);
+                track.call("delete_clip", `id ${tempClip.id}`);
+              }
 
               // Update currentEndTime after shortening
               currentEndTime = currentStartTime + totalContentLength;
@@ -506,6 +531,7 @@ export function updateClip(
               currentEndTime,
               remainingSpace,
               context.holdingAreaStartBeats,
+              context,
               { adjustPreRoll: true, tileLength: firstTileLength },
             );
 
@@ -536,16 +562,42 @@ export function updateClip(
 
           const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-          // Create temporary clip to truncate target
-          const tempClipResult = track.call(
-            "create_midi_clip",
-            newEndTime,
-            tempClipLength,
-          );
-          const tempClip = LiveAPI.from(tempClipResult);
+          // Create temporary clip to truncate target (use appropriate method for clip type)
+          if (isAudioClip) {
+            // Create audio clip in session with exact length
+            const { clip: sessionClip, slot } = createAudioClipInSession(
+              track,
+              tempClipLength,
+              context.silenceWavPath,
+            );
 
-          // Delete temporary clip (target is now shortened)
-          track.call("delete_clip", `id ${tempClip.id}`);
+            // Duplicate to arrangement at the truncation position
+            const tempResult = track.call(
+              "duplicate_clip_to_arrangement",
+              `id ${sessionClip.id}`,
+              newEndTime,
+            );
+            const tempClip = LiveAPI.from(tempResult);
+
+            // CRITICAL: Re-apply warping and looping to arrangement clip
+            // (duplicate_clip_to_arrangement doesn't preserve these settings)
+            tempClip.set("warping", 1);
+            tempClip.set("looping", 1);
+            tempClip.set("loop_end", tempClipLength);
+
+            // Delete both session and arrangement clips
+            slot.call("delete_clip");
+            track.call("delete_clip", `id ${tempClip.id}`);
+          } else {
+            // MIDI clips can be created directly in arrangement
+            const tempClipResult = track.call(
+              "create_midi_clip",
+              newEndTime,
+              tempClipLength,
+            );
+            const tempClip = LiveAPI.from(tempClipResult);
+            track.call("delete_clip", `id ${tempClip.id}`);
+          }
         }
         // else: same length, no-op
       }

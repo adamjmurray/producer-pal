@@ -12,6 +12,11 @@ import {
   tileClipToRange,
 } from "./arrangement-tiling.js";
 
+// Mock context for tests
+const mockContext = {
+  silenceWavPath: "/tmp/test-silence.wav",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -89,6 +94,98 @@ describe("createShortenedClipInHolding", () => {
       2012,
       20,
     );
+  });
+
+  it("creates audio clip in session for audio clip shortening", () => {
+    const sourceClip = new LiveAPI("id 100");
+    const track = new LiveAPI("live_set tracks 0");
+
+    // Mock duplicate_clip_to_arrangement (holding clip)
+    liveApiCall.mockReturnValueOnce(["id", "200"]);
+
+    // Mock holding clip properties - last scene NOT empty to test full path
+    mockLiveApiGet({
+      "id 200": {
+        end_time: 1000 + 16, // holdingAreaStart (1000) + clip length (16)
+      },
+      live_set: {
+        "scenes.*.id": ["id 1", "id 2"],
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+      "id 2": {
+        is_empty: 0, // NOT empty, will create new scene
+      },
+      "id 3": {
+        // Newly created scene
+      },
+      "id 400": {
+        // Session clip properties after creation
+      },
+      "id 500": {
+        // Temp clip properties
+      },
+    });
+
+    // Mock create_scene since last scene is not empty
+    liveApiCall.mockReturnValueOnce(["id", "3"]);
+
+    // Mock create_audio_clip in session
+    liveApiCall.mockReturnValueOnce(["id", "400"]);
+
+    // Mock duplicate_clip_to_arrangement for temp clip
+    liveApiCall.mockReturnValueOnce(["id", "500"]);
+
+    const result = createShortenedClipInHolding(
+      sourceClip,
+      track,
+      8,
+      1000,
+      false, // isAudioClip
+      mockContext,
+    );
+
+    // Verify call sequence
+    expect(liveApiCall).toHaveBeenNthCalledWith(
+      1,
+      "duplicate_clip_to_arrangement", // Source to holding
+      "id 100",
+      1000,
+    );
+
+    expect(liveApiCall).toHaveBeenNthCalledWith(
+      2,
+      "create_scene", // New scene because last is not empty
+      2,
+    );
+
+    expect(liveApiCall).toHaveBeenNthCalledWith(
+      3,
+      "create_audio_clip", // Session clip creation
+      "/tmp/test-silence.wav",
+    );
+
+    // Verify session clip was set up with warping and looping
+    const sessionClip = new LiveAPI("id 400");
+    expect(sessionClip.set).toHaveBeenCalledWith("warping", 1);
+    expect(sessionClip.set).toHaveBeenCalledWith("looping", 1);
+    expect(sessionClip.set).toHaveBeenCalledWith("loop_end", 8);
+
+    expect(liveApiCall).toHaveBeenNthCalledWith(
+      4,
+      "duplicate_clip_to_arrangement", // Session to arrangement temp clip
+      "id 400",
+      1008,
+    );
+
+    expect(liveApiCall).toHaveBeenNthCalledWith(5, "delete_clip"); // Session slot
+    expect(liveApiCall).toHaveBeenNthCalledWith(6, "delete_clip", "id 500"); // Temp clip
+
+    // Verify return value
+    expect(result).toEqual({
+      holdingClipId: "200",
+      holdingClip: expect.any(LiveAPI),
+    });
   });
 });
 
@@ -301,7 +398,14 @@ describe("tileClipToRange", () => {
     liveApiCall.mockReturnValueOnce(["id", "201"]);
     liveApiCall.mockReturnValueOnce(["id", "202"]);
 
-    const result = tileClipToRange(sourceClip, track, 100, 12, 1000);
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      12,
+      1000,
+      mockContext,
+    );
 
     // Should create 3 full tiles (12 / 4 = 3)
     expect(liveApiCall).toHaveBeenCalledTimes(3);
@@ -342,7 +446,14 @@ describe("tileClipToRange", () => {
     liveApiCall.mockReturnValue(["id", "200"]);
 
     // 10 beats / 4 beat clip = 2 full + 1 partial
-    const result = tileClipToRange(sourceClip, track, 100, 10, 1000);
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      10,
+      1000,
+      mockContext,
+    );
 
     expect(result.length).toBeGreaterThan(2);
   });
@@ -359,7 +470,14 @@ describe("tileClipToRange", () => {
     liveApiCall.mockReturnValueOnce(["id", "200"]);
 
     // Total length 4.0005 should create 1 full tile, no partial
-    const result = tileClipToRange(sourceClip, track, 100, 4.0005, 1000);
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      4.0005,
+      1000,
+      mockContext,
+    );
 
     expect(liveApiCall).toHaveBeenCalledTimes(1);
     expect(result).toHaveLength(1);
@@ -385,7 +503,9 @@ describe("tileClipToRange", () => {
 
     liveApiCall.mockReturnValueOnce(["id", "200"]);
 
-    tileClipToRange(sourceClip, track, 100, 4, 1000, { adjustPreRoll: false });
+    tileClipToRange(sourceClip, track, 100, 4, 1000, mockContext, {
+      adjustPreRoll: false,
+    });
 
     // Only 1 call for duplicate, no pre-roll adjustment
     expect(liveApiCall).toHaveBeenCalledTimes(1);
@@ -404,7 +524,14 @@ describe("tileClipToRange", () => {
       },
     });
 
-    const result = tileClipToRange(sourceClip, track, 100, 0, 1000);
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      0,
+      1000,
+      mockContext,
+    );
 
     expect(liveApiCall).not.toHaveBeenCalled();
     expect(result).toEqual([]);
@@ -420,7 +547,14 @@ describe("tileClipToRange", () => {
 
     liveApiCall.mockReturnValue(["id", "300"]);
 
-    const result = tileClipToRange(sourceClip, track, 100, 3, 1000);
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      3,
+      1000,
+      mockContext,
+    );
 
     // No full tiles, only partial
     expect(result).toHaveLength(1);
@@ -463,9 +597,17 @@ describe("tileClipToRange", () => {
     // Tile 1: start_marker = 2 + (3 % 8) = 5
     // Tile 2: start_marker = 2 + (11 % 8) = 5
     // Tile 3: start_marker = 2 + (19 % 8) = 5
-    const result = tileClipToRange(sourceClip, track, 100, 24, 1000, {
-      startOffset: 3,
-    });
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      24,
+      1000,
+      mockContext,
+      {
+        startOffset: 3,
+      },
+    );
 
     // Verify start_marker is set on each tile
     const tile1 = new LiveAPI("id 200");
@@ -501,9 +643,17 @@ describe("tileClipToRange", () => {
     // Tile 1: start_marker = 0 + (0 % 4) = 0
     // Tile 2: start_marker = 0 + (4 % 4) = 0 (wraps)
     // Tile 3: start_marker = 0 + (8 % 4) = 0 (wraps)
-    const result = tileClipToRange(sourceClip, track, 100, 12, 1000, {
-      startOffset: 0,
-    });
+    const result = tileClipToRange(
+      sourceClip,
+      track,
+      100,
+      12,
+      1000,
+      mockContext,
+      {
+        startOffset: 0,
+      },
+    );
 
     const tile1 = new LiveAPI("id 200");
     const tile2 = new LiveAPI("id 201");

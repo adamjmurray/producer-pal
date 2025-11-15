@@ -133,10 +133,22 @@ function sendResponse(requestId, result) {
 }
 
 // Handle messages from Node for Max
-export async function mcp_request(requestId, tool, argsJSON) {
+export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
   let result;
   try {
     const args = JSON.parse(argsJSON);
+
+    // Merge incoming context (if provided) into existing context
+    if (contextJSON != null) {
+      try {
+        const incomingContext = JSON.parse(contextJSON);
+        Object.assign(context, incomingContext);
+      } catch (contextError) {
+        console.error(
+          `Warning: Failed to parse contextJSON: ${contextError.message}`,
+        );
+      }
+    }
 
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys
