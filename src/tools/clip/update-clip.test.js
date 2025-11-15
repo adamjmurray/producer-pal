@@ -2163,11 +2163,13 @@ describe("updateClip", () => {
         789: {
           is_arrangement_clip: 1,
           is_midi_clip: 1,
+          looping: 1, // This is a looped clip
           start_time: 0.0,
           end_time: 4.0,
           loop_start: 0.0,
           loop_end: 4.0, // clip.length = 4 beats
           start_marker: 0.0,
+          end_marker: 4.0,
           signature_numerator: 4,
           signature_denominator: 4,
           trackIndex,
@@ -2299,6 +2301,7 @@ describe("updateClip", () => {
           is_arrangement_clip: 1,
           is_midi_clip: 1,
           is_audio_clip: 0,
+          looping: 1, // This is a looped clip
           start_time: 0.0,
           end_time: 4.0, // Currently showing 4 beats
           loop_start: 0.0,

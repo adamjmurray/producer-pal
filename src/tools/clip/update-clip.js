@@ -1,27 +1,27 @@
-import * as console from "../../shared/v8-max-console.js";
 import { formatNotation } from "../../notation//barbeat/barbeat-format-notation.js";
 import { interpretNotation } from "../../notation//barbeat/barbeat-interpreter.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
+import * as console from "../../shared/v8-max-console.js";
 import {
-  MAX_CLIP_BEATS,
   LIVE_API_WARP_MODE_BEATS,
-  LIVE_API_WARP_MODE_TONES,
-  LIVE_API_WARP_MODE_TEXTURE,
-  LIVE_API_WARP_MODE_REPITCH,
   LIVE_API_WARP_MODE_COMPLEX,
-  LIVE_API_WARP_MODE_REX,
   LIVE_API_WARP_MODE_PRO,
+  LIVE_API_WARP_MODE_REPITCH,
+  LIVE_API_WARP_MODE_REX,
+  LIVE_API_WARP_MODE_TEXTURE,
+  LIVE_API_WARP_MODE_TONES,
+  MAX_CLIP_BEATS,
   WARP_MODE,
 } from "../constants.js";
+import {
+  createAudioClipInSession,
+  tileClipToRange,
+} from "../shared/arrangement-tiling.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
-import {
-  tileClipToRange,
-  createAudioClipInSession,
-} from "../shared/arrangement-tiling.js";
 
 /**
  * Updates properties of existing clips
@@ -390,9 +390,19 @@ export function updateClip(
         // Check if shortening, lengthening, or same
         if (arrangementLengthBeats > currentArrangementLength) {
           // Lengthening via tiling or hidden content exposure
+
+          // Check if clip is looped to determine behavior
+          const isLooping = clip.getProperty("looping") > 0;
           const clipLoopStart = clip.getProperty("loop_start");
           const clipLoopEnd = clip.getProperty("loop_end");
-          const clipLength = clipLoopEnd - clipLoopStart;
+          const clipStartMarker = clip.getProperty("start_marker");
+          const clipEndMarker = clip.getProperty("end_marker");
+
+          // For unlooped clips, use end_marker - start_marker (actual playback length)
+          // For looped clips, use loop region
+          const clipLength = isLooping
+            ? clipLoopEnd - clipLoopStart
+            : clipEndMarker - clipStartMarker;
 
           // Set up for lengthening operation
           const trackIndex = clip.trackIndex;
@@ -404,7 +414,85 @@ export function updateClip(
 
           const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
-          // Branch: expose hidden content vs tiling
+          // Handle unlooped clips separately from looped clips
+          if (!isLooping) {
+            // For unlooped clips, we need different behavior than looping clips
+            const spaceNeeded =
+              arrangementLengthBeats - currentArrangementLength;
+
+            if (currentArrangementLength < clipLength) {
+              // Case: Hidden content exists - reveal it via tiling
+              const revealLength = Math.min(clipLength, arrangementLengthBeats);
+              const remainingToReveal = revealLength - currentArrangementLength;
+
+              console.error(
+                `DEBUG unlooped reveal: clipLength=${clipLength}, currentArrangementLength=${currentArrangementLength}, revealLength=${revealLength}, remainingToReveal=${remainingToReveal}`,
+              );
+
+              const tiledClips = tileClipToRange(
+                clip,
+                track,
+                currentEndTime,
+                remainingToReveal,
+                context.holdingAreaStartBeats,
+                context,
+                {
+                  adjustPreRoll: false,
+                  startOffset: currentArrangementLength,
+                  tileLength: currentArrangementLength,
+                },
+              );
+
+              updatedClips.push({ id: clip.id });
+              updatedClips.push(...tiledClips);
+
+              // Check if we still need more space after revealing all content
+              const remainingSpace = arrangementLengthBeats - revealLength;
+              if (remainingSpace > 0 && !isAudioClip) {
+                // Create empty MIDI clip(s) for the overflow
+                const emptyStartTime = currentStartTime + revealLength;
+                console.error(
+                  `DEBUG creating empty MIDI clip: start=${emptyStartTime}, length=${remainingSpace}`,
+                );
+
+                const emptyClipResult = track.call(
+                  "create_midi_clip",
+                  emptyStartTime,
+                  remainingSpace,
+                );
+                const emptyClip = LiveAPI.from(emptyClipResult);
+                updatedClips.push({ id: emptyClip.id });
+              }
+              continue;
+            }
+
+            // Case: All content already visible (clipLength <= currentArrangementLength)
+            if (isAudioClip) {
+              // Audio: Cannot extend beyond clip length - do nothing
+              console.error(
+                `DEBUG unlooped audio: cannot extend beyond clip length (${clipLength} beats)`,
+              );
+              updatedClips.push({ id: clip.id });
+              continue;
+            }
+
+            // MIDI: Create empty clip(s) to fill the requested space
+            console.error(
+              `DEBUG creating empty MIDI clip: start=${currentEndTime}, length=${spaceNeeded}`,
+            );
+
+            const emptyClipResult = track.call(
+              "create_midi_clip",
+              currentEndTime,
+              spaceNeeded,
+            );
+            const emptyClip = LiveAPI.from(emptyClipResult);
+            updatedClips.push({ id: clip.id });
+            updatedClips.push({ id: emptyClip.id });
+            continue;
+          }
+
+          // Branch: expose hidden content vs tiling (looped clips only)
           if (arrangementLengthBeats < clipLength) {
             // Expose hidden content by tiling with start_marker offsets
             // This preserves automation envelopes while revealing the correct content

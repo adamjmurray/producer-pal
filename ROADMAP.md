@@ -77,6 +77,8 @@ API
 
 - Generate audio files on demand from a selection of synthesis algorithms and
   arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
+- Reverse audio clips - If this is still not directly possible in the API,
+  generate the reversed audio sample on demand
 
 ### 1.8 - Harmony
 
