@@ -24,6 +24,39 @@ import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**
+ * Get the actual content end position by examining all notes in a clip.
+ * This is needed for unlooped clips where end_marker is unreliable.
+ * @param {LiveAPI} clip - The clip to analyze
+ * @returns {number} The end position of the last note in beats, or 0 if no notes
+ */
+function getActualContentEnd(clip) {
+  try {
+    // For unlooped clips, we need to check ALL notes, not just up to current length
+    // Use MAX_CLIP_BEATS to ensure we get all possible notes
+    const notesDictionary = clip.call(
+      "get_notes_extended",
+      0,
+      128,
+      0,
+      MAX_CLIP_BEATS,
+    );
+    const notes = JSON.parse(notesDictionary).notes;
+
+    if (!notes || notes.length === 0) {
+      return 0; // No notes = no content
+    }
+
+    // Find the maximum end position (start_time + duration)
+    return Math.max(...notes.map((note) => note.start_time + note.duration));
+  } catch (error) {
+    console.error(
+      `Warning: Failed to get notes for clip ${clip.id}: ${error.message}`,
+    );
+    return 0; // Fall back to treating as no content
+  }
+}
+
+/**
  * Updates properties of existing clips
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
@@ -420,13 +453,115 @@ export function updateClip(
             const spaceNeeded =
               arrangementLengthBeats - currentArrangementLength;
 
+            // For MIDI clips, determine actual content extent by examining notes
+            // For audio clips, we can't examine content, so handle differently
+            if (!isAudioClip) {
+              // MIDI clip: Get actual content end from notes
+              const actualContentEnd = getActualContentEnd(clip);
+
+              // For unlooped clips, the visible content end in the clip is:
+              // start_marker + arrangementLength (not just arrangementLength)
+              const visibleContentEnd =
+                clipStartMarker + currentArrangementLength;
+
+              console.error(
+                `DEBUG unlooped MIDI: actualContentEnd=${actualContentEnd}, clipStartMarker=${clipStartMarker}, visibleContentEnd=${visibleContentEnd}`,
+              );
+
+              // Use threshold comparison to avoid floating point precision issues
+              const EPSILON = 0.001;
+              if (actualContentEnd - visibleContentEnd > EPSILON) {
+                // Case: Hidden content exists - reveal it via tiling
+                const revealLength = Math.min(
+                  actualContentEnd - clipStartMarker,
+                  arrangementLengthBeats,
+                );
+                const remainingToReveal =
+                  revealLength - currentArrangementLength;
+
+                console.error(
+                  `DEBUG unlooped reveal: revealing ${remainingToReveal} beats of hidden content`,
+                );
+
+                // For unlooped clips, we need to manually set start_marker and end_marker
+                // First, set the source clip's end_marker to the actual content end
+                // This allows the tiled clip to access all the content
+                clip.set("end_marker", actualContentEnd);
+
+                // Duplicate the clip to the position where hidden content starts
+                const duplicateResult = track.call(
+                  "duplicate_clip_to_arrangement",
+                  `id ${clip.id}`,
+                  currentEndTime,
+                );
+                const revealedClip = LiveAPI.from(duplicateResult);
+
+                // Calculate the markers for the revealed clip
+                const newStartMarker = visibleContentEnd; // Where hidden content starts
+                const newEndMarker = newStartMarker + remainingToReveal;
+
+                // Workaround for Live API bug: setting start_marker on unlooped clips doesn't work
+                // Solution: enable looping, set end_marker first, then start_marker, then disable looping
+                revealedClip.set("looping", 1);
+                revealedClip.set("end_marker", newEndMarker); // Set end_marker FIRST
+                revealedClip.set("start_marker", newStartMarker); // Then start_marker
+                revealedClip.set("looping", 0);
+
+                console.error(
+                  `DEBUG unlooped: set revealed clip markers: start_marker=${newStartMarker}, end_marker=${newEndMarker}`,
+                );
+
+                updatedClips.push({ id: clip.id });
+                updatedClips.push({ id: revealedClip.id });
+
+                // Check if we still need more space after revealing all content
+                const remainingSpace = arrangementLengthBeats - revealLength;
+                if (remainingSpace > 0) {
+                  // Create empty MIDI clip(s) for the overflow
+                  const emptyStartTime = currentStartTime + revealLength;
+                  console.error(
+                    `DEBUG creating empty MIDI clip after reveal: start=${emptyStartTime}, length=${remainingSpace}`,
+                  );
+
+                  const emptyClipResult = track.call(
+                    "create_midi_clip",
+                    emptyStartTime,
+                    remainingSpace,
+                  );
+                  const emptyClip = LiveAPI.from(emptyClipResult);
+                  updatedClips.push({ id: emptyClip.id });
+                }
+                continue;
+              }
+
+              // Case: No hidden content (all content already visible)
+              // MIDI: Create empty clip(s) to fill the requested space
+              console.error(
+                `DEBUG creating empty MIDI clip: start=${currentEndTime}, length=${spaceNeeded}`,
+              );
+
+              const emptyClipResult = track.call(
+                "create_midi_clip",
+                currentEndTime,
+                spaceNeeded,
+              );
+              const emptyClip = LiveAPI.from(emptyClipResult);
+              updatedClips.push({ id: clip.id });
+              updatedClips.push({ id: emptyClip.id });
+              continue;
+            }
+
+            // Audio clip: Cannot extend beyond clip boundaries
+            // Use end_marker as best guess (even though it may be unreliable)
+            const clipLength = clipEndMarker - clipStartMarker;
+
             if (currentArrangementLength < clipLength) {
-              // Case: Hidden content exists - reveal it via tiling
+              // Try to reveal hidden audio content via tiling
               const revealLength = Math.min(clipLength, arrangementLengthBeats);
               const remainingToReveal = revealLength - currentArrangementLength;
 
               console.error(
-                `DEBUG unlooped reveal: clipLength=${clipLength}, currentArrangementLength=${currentArrangementLength}, revealLength=${revealLength}, remainingToReveal=${remainingToReveal}`,
+                `DEBUG unlooped audio reveal: revealing ${remainingToReveal} beats`,
               );
 
               const tiledClips = tileClipToRange(
@@ -445,50 +580,14 @@ export function updateClip(
 
               updatedClips.push({ id: clip.id });
               updatedClips.push(...tiledClips);
-
-              // Check if we still need more space after revealing all content
-              const remainingSpace = arrangementLengthBeats - revealLength;
-              if (remainingSpace > 0 && !isAudioClip) {
-                // Create empty MIDI clip(s) for the overflow
-                const emptyStartTime = currentStartTime + revealLength;
-                console.error(
-                  `DEBUG creating empty MIDI clip: start=${emptyStartTime}, length=${remainingSpace}`,
-                );
-
-                const emptyClipResult = track.call(
-                  "create_midi_clip",
-                  emptyStartTime,
-                  remainingSpace,
-                );
-                const emptyClip = LiveAPI.from(emptyClipResult);
-                updatedClips.push({ id: emptyClip.id });
-              }
               continue;
             }
 
-            // Case: All content already visible (clipLength <= currentArrangementLength)
-            if (isAudioClip) {
-              // Audio: Cannot extend beyond clip length - do nothing
-              console.error(
-                `DEBUG unlooped audio: cannot extend beyond clip length (${clipLength} beats)`,
-              );
-              updatedClips.push({ id: clip.id });
-              continue;
-            }
-
-            // MIDI: Create empty clip(s) to fill the requested space
+            // Audio: All content visible, cannot extend further - do nothing
             console.error(
-              `DEBUG creating empty MIDI clip: start=${currentEndTime}, length=${spaceNeeded}`,
+              `DEBUG unlooped audio: cannot extend beyond clip length (${clipLength} beats)`,
             );
-
-            const emptyClipResult = track.call(
-              "create_midi_clip",
-              currentEndTime,
-              spaceNeeded,
-            );
-            const emptyClip = LiveAPI.from(emptyClipResult);
             updatedClips.push({ id: clip.id });
-            updatedClips.push({ id: emptyClip.id });
             continue;
           }
 
