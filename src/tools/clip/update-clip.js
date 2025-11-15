@@ -57,6 +57,42 @@ function getActualContentEnd(clip) {
 }
 
 /**
+ * Get the actual audio content end position by examining warp markers.
+ * This is needed for unlooped clips where end_marker is unreliable.
+ * Note: Live API adds an extra warp marker beyond the actual content end,
+ * so we use the second-to-last marker to get the true audio end.
+ * @param {LiveAPI} clip - The audio clip to analyze
+ * @returns {number} The end position of the audio in beats
+ */
+function getActualAudioEnd(clip) {
+  try {
+    const warpMarkersJson = clip.getProperty("warp_markers");
+    const warpData = JSON.parse(warpMarkersJson);
+
+    if (!warpData.warp_markers || warpData.warp_markers.length === 0) {
+      return 0; // No warp markers = no content info available
+    }
+
+    const markers = warpData.warp_markers;
+
+    // Use second-to-last warp marker (last one is often beyond actual content)
+    if (markers.length < 2) {
+      // If only one marker, use it
+      return markers[0].beat_time;
+    }
+
+    // Use second-to-last marker to get actual audio end
+    const secondToLast = markers[markers.length - 2];
+    return secondToLast.beat_time;
+  } catch (error) {
+    console.error(
+      `Warning: Failed to get warp markers for clip ${clip.id}: ${error.message}`,
+    );
+    return 0; // Fall back to treating as no content
+  }
+}
+
+/**
  * Updates properties of existing clips
  * @param {Object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
@@ -551,41 +587,75 @@ export function updateClip(
               continue;
             }
 
-            // Audio clip: Cannot extend beyond clip boundaries
-            // Use end_marker as best guess (even though it may be unreliable)
-            const clipLength = clipEndMarker - clipStartMarker;
+            // Audio clip: Get actual content end from warp markers
+            const actualAudioEnd = getActualAudioEnd(clip);
 
-            if (currentArrangementLength < clipLength) {
-              // Try to reveal hidden audio content via tiling
-              const revealLength = Math.min(clipLength, arrangementLengthBeats);
+            // For unlooped clips, the visible content end in the clip is:
+            // start_marker + arrangementLength (not just arrangementLength)
+            const visibleContentEnd =
+              clipStartMarker + currentArrangementLength;
+
+            console.error(
+              `DEBUG unlooped audio: actualAudioEnd=${actualAudioEnd}, clipStartMarker=${clipStartMarker}, visibleContentEnd=${visibleContentEnd}`,
+            );
+
+            // Use threshold to filter out imperceptible differences (e.g., warp marker rounding)
+            // 0.1 beats = roughly 1/40th of a bar at 4/4, filters out tiny rounding errors
+            const EPSILON = 0.1;
+            if (actualAudioEnd - visibleContentEnd > EPSILON) {
+              // Case: Hidden content exists - reveal it
+              const revealLength = Math.min(
+                actualAudioEnd - clipStartMarker,
+                arrangementLengthBeats,
+              );
               const remainingToReveal = revealLength - currentArrangementLength;
 
               console.error(
-                `DEBUG unlooped audio reveal: revealing ${remainingToReveal} beats`,
+                `DEBUG unlooped audio reveal: revealing ${remainingToReveal} beats of hidden content`,
               );
 
-              const tiledClips = tileClipToRange(
-                clip,
-                track,
+              // For unlooped clips, we need to manually set start_marker and end_marker
+              // First, set the source clip's end_marker to the actual audio end
+              // This allows the tiled clip to access all the content
+              clip.set("end_marker", actualAudioEnd);
+
+              // Duplicate the clip to the position where hidden content starts
+              const duplicateResult = track.call(
+                "duplicate_clip_to_arrangement",
+                `id ${clip.id}`,
                 currentEndTime,
-                remainingToReveal,
-                context.holdingAreaStartBeats,
-                context,
-                {
-                  adjustPreRoll: false,
-                  startOffset: currentArrangementLength,
-                  tileLength: currentArrangementLength,
-                },
+              );
+              const revealedClip = LiveAPI.from(duplicateResult);
+
+              // Calculate the markers for the revealed clip
+              const newStartMarker = visibleContentEnd; // Where hidden content starts
+              const newEndMarker = newStartMarker + remainingToReveal;
+
+              // Workaround for Live API bug: setting start_marker on unlooped clips doesn't work
+              // Solution: enable looping, set loop boundaries, set markers, then disable looping
+              revealedClip.set("looping", 1);
+              revealedClip.set("loop_end", newEndMarker); // Set loop_end FIRST
+              revealedClip.set("loop_start", newStartMarker); // Then loop_start
+              revealedClip.set("end_marker", newEndMarker);
+              revealedClip.set("start_marker", newStartMarker);
+              revealedClip.set("looping", 0);
+
+              console.error(
+                `DEBUG unlooped audio: set revealed clip markers: start_marker=${newStartMarker}, end_marker=${newEndMarker}`,
               );
 
               updatedClips.push({ id: clip.id });
-              updatedClips.push(...tiledClips);
+              updatedClips.push({ id: revealedClip.id });
+
+              // Note: Unlike MIDI clips, we do NOT create empty audio clips for remaining space
+              // Live doesn't support empty audio clips
               continue;
             }
 
-            // Audio: All content visible, cannot extend further - do nothing
+            // Case: No hidden content (all content already visible)
+            // Audio: Cannot extend further - just keep the original clip
             console.error(
-              `DEBUG unlooped audio: cannot extend beyond clip length (${clipLength} beats)`,
+              `DEBUG unlooped audio: no hidden content, cannot extend`,
             );
             updatedClips.push({ id: clip.id });
             continue;
