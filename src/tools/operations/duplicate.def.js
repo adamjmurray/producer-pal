@@ -42,5 +42,17 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .default(false)
       .describe("auto-switch view?"),
+    toTrackIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("destination track index (for session clips)"),
+    toSceneIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("destination scene index (for session clips)"),
   },
 });

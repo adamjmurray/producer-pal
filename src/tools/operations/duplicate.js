@@ -262,6 +262,8 @@ function copyClipPropertiesFromData(sourceClipData, destClip, name) {
  * @param {boolean} [args.withoutDevices] - Whether to exclude devices when duplicating tracks
  * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering by routing the new track to the source track
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
+ * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
+ * @param {number} [args.toSceneIndex] - Destination scene index (required for session clips)
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
 export function duplicate({
@@ -276,6 +278,8 @@ export function duplicate({
   withoutDevices,
   routeToSource,
   switchView,
+  toTrackIndex,
+  toSceneIndex,
 } = {}) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -336,6 +340,20 @@ export function duplicate({
       throw new Error(
         "duplicate failed: destination must be 'session' or 'arrangement'",
       );
+    }
+
+    // Validate session clip destination parameters
+    if (destination === "session") {
+      if (toTrackIndex == null) {
+        throw new Error(
+          "duplicate failed: toTrackIndex is required for session clips",
+        );
+      }
+      if (toSceneIndex == null) {
+        throw new Error(
+          "duplicate failed: toSceneIndex is required for session clips",
+        );
+      }
     }
   }
 
@@ -445,17 +463,20 @@ export function duplicate({
       const trackIndex = object.trackIndex;
       const sceneIndex = object.sceneIndex;
       if (trackIndex == null || sceneIndex == null) {
+        // We already validated object was a clip, so if we're here, this must be an arrangement
+        // clip
         throw new Error(
-          `duplicate failed: no track or clip slot index for clip id "${id}" (path="${object.path}")`,
+          `unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="${id}" path="${object.path}") `,
         );
       }
 
-      // For session clips, duplicate_clip_slot always creates at source+1,
-      // so we call it on the progressively increasing source index
-      const sourceSceneIndex = sceneIndex + i;
+      // For session clips with count > 1, place them sequentially at the destination track
+      const actualToSceneIndex = toSceneIndex + i;
       newObjectMetadata = duplicateClipSlot(
         trackIndex,
-        sourceSceneIndex,
+        sceneIndex,
+        toTrackIndex,
+        actualToSceneIndex,
         objectName,
       );
     }
@@ -896,21 +917,47 @@ function duplicateSceneToArrangement(
   };
 }
 
-function duplicateClipSlot(trackIndex, sourceSceneIndex, name) {
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+function duplicateClipSlot(
+  sourceTrackIndex,
+  sourceSceneIndex,
+  toTrackIndex,
+  toSceneIndex,
+  name,
+) {
+  // Get source clip slot
+  const sourceClipSlot = new LiveAPI(
+    `live_set tracks ${sourceTrackIndex} clip_slots ${sourceSceneIndex}`,
+  );
 
-  if (!track.exists()) {
+  if (!sourceClipSlot.exists()) {
     throw new Error(
-      `duplicate failed: track with index ${trackIndex} does not exist`,
+      `duplicate failed: source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex} does not exist`,
     );
   }
 
-  // duplicate_clip_slot creates a new clip at sourceSceneIndex + 1
-  track.call("duplicate_clip_slot", sourceSceneIndex);
+  if (!sourceClipSlot.getProperty("has_clip")) {
+    throw new Error(
+      `duplicate failed: no clip in source clip slot at track ${sourceTrackIndex}, scene ${sourceSceneIndex}`,
+    );
+  }
 
-  const newSceneIndex = sourceSceneIndex + 1;
+  // Get destination clip slot
+  const destClipSlot = new LiveAPI(
+    `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex}`,
+  );
+
+  if (!destClipSlot.exists()) {
+    throw new Error(
+      `duplicate failed: destination clip slot at track ${toTrackIndex}, scene ${toSceneIndex} does not exist`,
+    );
+  }
+
+  // Use duplicate_clip_to to copy the clip to the destination
+  sourceClipSlot.call("duplicate_clip_to", `id ${destClipSlot.id}`);
+
+  // Get the newly created clip
   const newClip = new LiveAPI(
-    `live_set tracks ${trackIndex} clip_slots ${newSceneIndex} clip`,
+    `live_set tracks ${toTrackIndex} clip_slots ${toSceneIndex} clip`,
   );
 
   if (name != null) {

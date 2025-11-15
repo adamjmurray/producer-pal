@@ -1282,12 +1282,16 @@ describe("duplicate", () => {
           type: "clip",
           id: "clip1",
           destination: "session",
+          toTrackIndex: 0,
+          toSceneIndex: 1,
         });
 
         expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ path: "live_set tracks 0" }),
-          "duplicate_clip_slot",
-          0,
+          expect.objectContaining({
+            path: "live_set tracks 0 clip_slots 0",
+          }),
+          "duplicate_clip_to",
+          "id live_set/tracks/0/clip_slots/1",
         );
 
         expect(result).toStrictEqual({
@@ -1311,6 +1315,8 @@ describe("duplicate", () => {
           destination: "session",
           count: 2,
           name: "Custom Clip",
+          toTrackIndex: 0,
+          toSceneIndex: 1,
         });
 
         expect(result).toStrictEqual([
@@ -1327,14 +1333,18 @@ describe("duplicate", () => {
         ]);
 
         expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ path: "live_set tracks 0" }),
-          "duplicate_clip_slot",
-          0,
+          expect.objectContaining({
+            path: "live_set tracks 0 clip_slots 0",
+          }),
+          "duplicate_clip_to",
+          "id live_set/tracks/0/clip_slots/1",
         );
         expect(liveApiCall).toHaveBeenCalledWithThis(
-          expect.objectContaining({ path: "live_set tracks 0" }),
-          "duplicate_clip_slot",
-          1,
+          expect.objectContaining({
+            path: "live_set tracks 0 clip_slots 0",
+          }),
+          "duplicate_clip_to",
+          "id live_set/tracks/0/clip_slots/2",
         );
 
         expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -1350,6 +1360,32 @@ describe("duplicate", () => {
           }),
           "name",
           "Custom Clip 2",
+        );
+      });
+
+      it("should throw an error when trying to duplicate an arrangement clip to session", () => {
+        // Mock an arrangement clip (has trackIndex but no sceneIndex)
+        liveApiPath.mockImplementation(function () {
+          if (this._id === "arrangementClip1") {
+            return "live_set tracks 0 arrangement_clips 0";
+          }
+          return this._path;
+        });
+
+        mockLiveApiGet({
+          arrangementClip1: { exists: () => true },
+        });
+
+        expect(() =>
+          duplicate({
+            type: "clip",
+            id: "arrangementClip1",
+            destination: "session",
+            toTrackIndex: 1,
+            toSceneIndex: 2,
+          }),
+        ).toThrow(
+          'unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="arrangementClip1" path="live_set tracks 0 arrangement_clips 0") ',
         );
       });
     });
@@ -2329,6 +2365,8 @@ describe("duplicate", () => {
         id: "clip1",
         destination: "session",
         switchView: true,
+        toTrackIndex: 0,
+        toSceneIndex: 1,
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
