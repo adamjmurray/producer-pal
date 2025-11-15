@@ -17,6 +17,8 @@
   - [x] looped MIDI clips
   - [ ] looped audio clips
   - [ ] unlooped clips
+- [x] Duplicate session clips to arbitrary clip slots (not just the slot
+      immediately below)
 - [ ] Improve the duplicate clip tool to be completely non-destructive (don't
       lose clip envelopes when "tiling" clips in the arrangement, don't
       overwrite any clips later in the timeline)
@@ -71,7 +73,12 @@ API
 
 - Sandboxed JavaScript for algorithmic composition and transformation
 
-### 1.7 - Harmony
+### 1.7 - Audio Synthesis
+
+- Generate audio files on demand from a selection of synthesis algorithms and
+  arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
+
+### 1.8 - Harmony
 
 - Chord notation
 - Pitches as scale/chord degrees (instead of absolute pitches)
