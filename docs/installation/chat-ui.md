@@ -66,8 +66,7 @@ _It should display "Producer Pal Running" or something isn't working._
 ### 2. Open the Chat UI
 
 Open the "Setup" tab in the device and click "Open Chat UI", which will open
-[http://localhost:3350/chat](http://localhost:3350/chat) (or whatever port
-Producer Pal is setup to use)
+`http://localhost:3350/chat` (or whatever port Producer Pal is setup to use)
 
 ![Producer Pal Setup tab with Open Chat UI button](/device-setup-tab.png)
 
