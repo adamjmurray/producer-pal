@@ -5,7 +5,7 @@ Natural language interface for Ableton Live.
 Works with Claude, Gemini, OpenAI GPT, Mistral, local models, and more.
 
 **[Documentation](https://producer-pal.org)** |
-**[Install Now](./INSTALLATION.md)** |
+**[Install Now](https://producer-pal.org/installation/)** |
 [Latest Releases](https://github.com/adamjmurray/producer-pal/releases/)
 
 ## Demo
@@ -43,12 +43,12 @@ Also see these other helpful videos:
 
 ## Installation
 
-Follow the [Installation Guide](./INSTALLATION.md) to connect Producer Pal to
-your AI:
+Follow the [Installation Guide](https://producer-pal.org/installation/) to
+connect Producer Pal to your AI:
 
-- [Claude Desktop](./INSTALLATION.md#claude-desktop)
-- [Built-in Chat UI with Gemini](./INSTALLATION.md#producer-pal-chat-ui)
-- [More options...](./INSTALLATION.md)
+- [Claude Desktop](https://producer-pal.org/installation/#claude-desktop)
+- [Built-in Chat UI with Gemini](https://producer-pal.org/installation/#producer-pal-chat-ui)
+- [More options...](https://producer-pal.org/installation/)
 
 Then, see the [Usage Guide](#usage) for help getting started.
 
@@ -81,7 +81,7 @@ sensitive work.
    to a MIDI track in your Ableton Live project
 2. Provide your AI with Producer Pal tools. Either:
    - Add Producer Pal tools to your AI application (see the
-     [Installation Guide](./INSTALLATION.md))
+     [Installation Guide](https://producer-pal.org/installation/))
 
      OR
 
@@ -152,8 +152,9 @@ directly in your browser.
 
 <img src="./dev-docs/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
 
-See the [Chat UI installation guide](./INSTALLATION.md#producer-pal-chat-ui) for
-setup instructions.
+See the
+[Chat UI installation guide](https://producer-pal.org/installation/#producer-pal-chat-ui)
+for setup instructions.
 
 ### Session and Arrangement views
 
