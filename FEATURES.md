@@ -90,7 +90,8 @@ create.
 - Check loop settings and time signatures
 - Works with Session and Arrangement clips
 - Audio clip properties: gain, pitch shift, sample info (rate, length, filename)
-- Audio warp settings: enabled/disabled, warp mode, warp markers
+- Audio warp settings: mode (beats, tones, texture, repitch, complex, pro),
+  enabled/disabled state, warp marker positions
 
 ### Update Clip (`ppal-update-clip`)
 
@@ -100,8 +101,15 @@ create.
 - Adjust loop settings
 - Update or merge note patterns
 - Bulk edit multiple clips
-- Audio clip modifications: gain, pitch shift, warping on/off, warp mode
-- Warp marker operations: add, move, or remove markers
+- Audio clip modifications: gain (0-1), pitch shift (-48 to +48 semitones,
+  supports decimals), warping on/off, warp mode
+- Warp marker operations: add markers at specific beat/sample positions, move
+  markers by beat distance, remove markers
+- Arrangement clip positioning: move clips to different bar|beat positions in
+  the timeline
+- Arrangement clip length: shorten clips, extend to reveal hidden content, or
+  tile/loop clips to fill longer durations
+- Slicing technique: reduce then extend clip length to create separate segments
 
 ### Custom Music Notation
 
@@ -126,7 +134,11 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 - Copy tracks, scenes, or clips
 - Duplicate to Session or Arrangement
-- Create multiple copies at once
+- Duplicate session clips to specific clip slots (any track, any scene)
+- Duplicate to Arrangement at specific bar|beat positions
+- Set arrangement length when duplicating: extend and tile/loop clips to fill
+  longer durations automatically
+- Create multiple copies at once (placed sequentially)
 - Track routing options allow layering multiple MIDI clips on a single
   instrument
 

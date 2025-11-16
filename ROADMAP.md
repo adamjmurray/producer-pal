@@ -19,9 +19,9 @@ Studio, Ollama, and more.
   - warp mode
   - warp markers
 - Change clips' arrangement start time and arrangement length
-- Duplicate clips to arbitrary arrangement lengths (e.g. looping clips loop to
-  fill up extra space)
-- Duplicate session clips to arbitrary clip slots'
+- Duplicate (session or arrangement) clips to arbitrary arrangement positions
+  and lengths (e.g. looping clips loop to fill up extra space)
+- Duplicate session clips to arbitrary clip slots
 - Slice clips in the arrangement (e.g. audio clips into separate one-beat-long
   clips)
 
