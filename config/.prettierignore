@@ -10,3 +10,5 @@
 ../npm/LICENSE
 ../npm/licenses
 ../release
+../docs/.vitepress/cache
+../docs/.vitepress/dist
