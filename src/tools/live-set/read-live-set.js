@@ -16,7 +16,7 @@ import { readTrack, readTrackGeneric } from "../track/read-track.js";
  * @param {Array<string>} [args.include] - Array of data to include in the response
  * @returns {Object} Live Set information including tracks, scenes, tempo, time signature, and scale
  */
-export function readLiveSet(args = {}) {
+export function readLiveSet(args = {}, _context = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
   const includeArray = includeArrayFromFlags(includeFlags);
   const liveSet = new LiveAPI("live_set");

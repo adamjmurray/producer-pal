@@ -119,36 +119,39 @@ function readViewState() {
  * @param {boolean} [args.showBrowser] - Show browser view
  * @returns {Object} Current view state with selection information
  */
-export function select({
-  // Main view
-  view,
+export function select(
+  {
+    // Main view
+    view,
 
-  // Track selection
-  trackId,
-  category,
-  trackIndex,
+    // Track selection
+    trackId,
+    category,
+    trackIndex,
 
-  // Scene selection
-  sceneId,
-  sceneIndex,
+    // Scene selection
+    sceneId,
+    sceneIndex,
 
-  // Clip selection
-  clipId,
+    // Clip selection
+    clipId,
 
-  // Device selection
-  deviceId,
-  instrument,
+    // Device selection
+    deviceId,
+    instrument,
 
-  // Highlighted clip slot
-  clipSlot,
+    // Highlighted clip slot
+    clipSlot,
 
-  // Detail view
-  detailView,
-  showLoop,
+    // Detail view
+    detailView,
+    showLoop,
 
-  // Browser
-  showBrowser,
-} = {}) {
+    // Browser
+    showBrowser,
+  } = {},
+  _context = {},
+) {
   // Validation - throw errors for conflicting parameters
   validateParameters({
     trackId,

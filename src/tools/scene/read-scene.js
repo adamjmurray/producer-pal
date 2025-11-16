@@ -13,7 +13,7 @@ import {
  * @param {string[]} [args.include=[]] - Array of data to include
  * @returns {Object} Result object with scene information
  */
-export function readScene(args = {}) {
+export function readScene(args = {}, _context = {}) {
   const { sceneIndex, sceneId } = args;
 
   // Validate parameters

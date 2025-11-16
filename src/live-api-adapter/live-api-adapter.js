@@ -41,31 +41,32 @@ const context = {
 };
 
 /*
-**IMPORTANT**: Always pass args to tool functions
-Use the `(args) => toolFunction(args)` pattern, never just `() => toolFunction()`
+**IMPORTANT**: Always pass args AND context to tool functions
+Use the `(args) => toolFunction(args, context)` pattern
+This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
 */
 const tools = {
   "ppal-connect": (args) => connect(args, context),
-  "ppal-read-live-set": (args) => readLiveSet(args),
-  "ppal-update-live-set": (args) => updateLiveSet(args),
-  "ppal-create-track": (args) => createTrack(args),
-  "ppal-read-track": (args) => readTrack(args),
-  "ppal-update-track": (args) => updateTrack(args),
-  "ppal-create-scene": (args) => createScene(args),
-  "ppal-read-scene": (args) => readScene(args),
-  "ppal-update-scene": (args) => updateScene(args),
-  "ppal-create-clip": (args) => createClip(args),
-  "ppal-read-clip": (args) => readClip(args),
+  "ppal-read-live-set": (args) => readLiveSet(args, context),
+  "ppal-update-live-set": (args) => updateLiveSet(args, context),
+  "ppal-create-track": (args) => createTrack(args, context),
+  "ppal-read-track": (args) => readTrack(args, context),
+  "ppal-update-track": (args) => updateTrack(args, context),
+  "ppal-create-scene": (args) => createScene(args, context),
+  "ppal-read-scene": (args) => readScene(args, context),
+  "ppal-update-scene": (args) => updateScene(args, context),
+  "ppal-create-clip": (args) => createClip(args, context),
+  "ppal-read-clip": (args) => readClip(args, context),
   "ppal-update-clip": (args) => updateClip(args, context),
-  "ppal-playback": (args) => playback(args),
-  "ppal-select": (args) => select(args),
-  "ppal-delete": (args) => deleteObject(args),
-  "ppal-duplicate": (args) => duplicate(args),
+  "ppal-playback": (args) => playback(args, context),
+  "ppal-select": (args) => select(args, context),
+  "ppal-delete": (args) => deleteObject(args, context),
+  "ppal-duplicate": (args) => duplicate(args, context),
   "ppal-memory": (args) => memory(args, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args);
+  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args, context);
 }
 
 function callTool(toolName, args) {

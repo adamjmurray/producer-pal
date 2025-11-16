@@ -4,8 +4,12 @@ import {
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time";
 import * as console from "../../shared/v8-max-console";
-import { MAX_CLIP_BEATS } from "../constants";
+import { updateClip } from "../clip/update-clip.js";
 import { select } from "../control/select.js";
+import {
+  createShortenedClipInHolding,
+  moveClipFromHolding,
+} from "../shared/arrangement-tiling.js";
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 import { validateIdType } from "../shared/id-validation.js";
 
@@ -56,6 +60,7 @@ function parseArrangementLength(
  * @param {number} arrangementLengthBeats - Total length to fill in beats (TODO: clarify if this is ableton beats or musical beats)
  * @param {string} [name] - Optional name for the clips
  * @param {Array<string>} [omitFields] - Optional fields to omit from clip info
+ * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
  * @returns {Array<Object>} Array of minimal clip info objects
  */
 function createClipsForLength(
@@ -65,96 +70,110 @@ function createClipsForLength(
   arrangementLengthBeats,
   name,
   omitFields = [],
+  context = {},
 ) {
-  const originalClipLength = sourceClip.getProperty("length");
-  const isLooping = sourceClip.getProperty("looping") > 0;
+  const sourceClipLength = sourceClip.getProperty("length");
+  const isMidiClip = sourceClip.getProperty("is_midi_clip") === 1;
   const duplicatedClips = [];
 
-  // IMPORTANT: Preserve source clip data BEFORE creating any new clips.
-  // Ableton's create_midi_clip deletes any existing clip at the exact same position and length,
-  // so we must read all data from sourceClip before it potentially gets deleted.
-  const sourceClipData = {
-    name: sourceClip.getProperty("name"),
-    color: sourceClip.getColor(),
-    signature_numerator: sourceClip.getProperty("signature_numerator"),
-    signature_denominator: sourceClip.getProperty("signature_denominator"),
-    looping: sourceClip.getProperty("looping"),
-    loop_start: sourceClip.getProperty("loop_start"),
-    loop_end: sourceClip.getProperty("loop_end"),
-    is_midi_clip: sourceClip.getProperty("is_midi_clip"),
-    notes: null,
-  };
+  if (arrangementLengthBeats < sourceClipLength) {
+    // Case 1: Shortening - use holding area approach
+    // This preserves all clip data including envelopes and supports both MIDI and audio clips
 
-  // Get notes if it's a MIDI clip
-  if (sourceClipData.is_midi_clip) {
-    const notesResult = sourceClip.call(
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      MAX_CLIP_BEATS,
-    );
-    if (notesResult != null) {
-      const { notes } = JSON.parse(notesResult);
-      if (notes && notes.length > 0) {
-        // Remove note IDs since we'll be creating new notes
-        for (const note of notes) {
-          delete note.note_id;
-        }
-        sourceClipData.notes = notes;
-      }
+    // Warn if silenceWavPath is missing for audio clips
+    if (!isMidiClip && !context.silenceWavPath) {
+      console.error(
+        "Warning: silenceWavPath missing in context - audio clip shortening may fail",
+      );
     }
-  }
 
-  if (arrangementLengthBeats <= originalClipLength) {
-    // Case 1: Shorter than or equal to clip length - create clip with exact length
-    const newClipResult = track.call(
-      "create_midi_clip",
-      arrangementStartBeats,
+    // Duplicate to holding area and shorten
+    const { holdingClipId } = createShortenedClipInHolding(
+      sourceClip,
+      track,
       arrangementLengthBeats,
+      context.holdingAreaStartBeats,
+      isMidiClip,
+      context,
     );
-    const newClip = LiveAPI.from(newClipResult);
 
-    // Copy all properties from the preserved clip data
-    copyClipPropertiesFromData(sourceClipData, newClip, name);
+    // Move shortened clip to target position
+    const newClip = moveClipFromHolding(
+      holdingClipId,
+      track,
+      arrangementStartBeats,
+    );
+
+    // Set name if provided
+    if (name != null) {
+      newClip.set("name", name);
+    }
 
     duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
-  } else if (isLooping) {
-    // Case 2: Longer than clip length and clip is looping - create multiple clips
-    let currentStartBeats = arrangementStartBeats;
-    let remainingLength = arrangementLengthBeats;
-
-    while (remainingLength > 0) {
-      const clipLength = Math.min(remainingLength, originalClipLength);
-      const newClipResult = track.call(
-        "create_midi_clip",
-        currentStartBeats,
-        clipLength,
-      );
-      const newClip = LiveAPI.from(newClipResult);
-
-      // Copy all properties from the preserved clip data
-      copyClipPropertiesFromData(sourceClipData, newClip, name);
-
-      duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
-
-      remainingLength -= clipLength;
-      currentStartBeats += clipLength;
-    }
   } else {
-    // Case 3: Longer than clip length but clip is not looping - use original length
+    // Case 2: Lengthening or exact length - delegate to update-clip
+    // This handles all complex scenarios: looped/unlooped, MIDI/audio, hidden content, tiling, etc.
+
+    // First, duplicate the clip to the target position
     const newClipResult = track.call(
       "duplicate_clip_to_arrangement",
       `id ${sourceClip.id}`,
       arrangementStartBeats,
     );
     const newClip = LiveAPI.from(newClipResult);
+    const newClipId = newClip.id;
 
-    newClip.setAll({
-      name: name,
-    });
+    // If lengthening is needed, use update-clip to handle it
+    if (arrangementLengthBeats > sourceClipLength) {
+      // Convert beats to bar:beat format using clip's time signature
+      const clipTimeSigNumerator = sourceClip.getProperty(
+        "signature_numerator",
+      );
+      const clipTimeSigDenominator = sourceClip.getProperty(
+        "signature_denominator",
+      );
 
-    duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
+      // Calculate bar:beat format for arrangementLength
+      const bars = Math.floor(
+        arrangementLengthBeats /
+          (4 * (clipTimeSigNumerator / clipTimeSigDenominator)),
+      );
+      const remainingBeats =
+        arrangementLengthBeats -
+        bars * 4 * (clipTimeSigNumerator / clipTimeSigDenominator);
+      const arrangementLengthBarBeat = `${bars}:${remainingBeats.toFixed(3)}`;
+
+      // Call update-clip to handle the lengthening
+      const updateResult = updateClip(
+        {
+          ids: newClipId,
+          arrangementLength: arrangementLengthBarBeat,
+          name: name,
+        },
+        context,
+      );
+
+      // updateClip returns array of clip objects with id property
+      // Get minimal info for all created clips (original + any tiles)
+      for (let i = 0; i < updateResult.length; i++) {
+        const clipObj = updateResult[i];
+        // Get fresh LiveAPI object for each clip by finding it in the track's arrangement clips
+        const arrangementClipIds = track.getChildIds("arrangement_clips");
+        const clipLiveAPI = arrangementClipIds
+          .map((id) => new LiveAPI(id))
+          .find((c) => c.id === clipObj.id);
+
+        if (clipLiveAPI) {
+          duplicatedClips.push(getMinimalClipInfo(clipLiveAPI, omitFields));
+        }
+      }
+    } else {
+      // Exact length match - just set name if provided
+      if (name != null) {
+        newClip.set("name", name);
+      }
+      duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
+    }
   }
 
   return duplicatedClips;
@@ -222,32 +241,6 @@ function findRoutingOptionForDuplicateNames(
 }
 
 /**
- * Copy clip properties from preserved data object to destination clip
- * @param {Object} sourceClipData - Preserved clip data
- * @param {LiveAPI} destClip - The clip to copy to
- * @param {string} [name] - Optional name override
- */
-function copyClipPropertiesFromData(sourceClipData, destClip, name) {
-  // Set all properties using setAll
-  const properties = {
-    name: (name ?? sourceClipData.name) || null, // empty names are not allowed
-    color: sourceClipData.color,
-    signature_numerator: sourceClipData.signature_numerator,
-    signature_denominator: sourceClipData.signature_denominator,
-    looping: sourceClipData.looping,
-    loop_start: sourceClipData.loop_start,
-    loop_end: sourceClipData.loop_end,
-  };
-
-  destClip.setAll(properties);
-
-  // Add notes if we have them
-  if (sourceClipData.notes && sourceClipData.notes.length > 0) {
-    destClip.call("add_new_notes", { notes: sourceClipData.notes });
-  }
-}
-
-/**
  * Duplicates an object based on its type.
  * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
  * @param {Object} args - The parameters
@@ -264,23 +257,29 @@ function copyClipPropertiesFromData(sourceClipData, destClip, name) {
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
  * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
  * @param {number} [args.toSceneIndex] - Destination scene index (required for session clips)
+ * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
  * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
  */
-export function duplicate({
-  type,
-  id,
-  count = 1,
-  destination,
-  arrangementStart,
-  arrangementLength,
-  name,
-  withoutClips,
-  withoutDevices,
-  routeToSource,
-  switchView,
-  toTrackIndex,
-  toSceneIndex,
-} = {}) {
+export function duplicate(
+  {
+    type,
+    id,
+    count = 1,
+    destination,
+    arrangementStart,
+    arrangementLength,
+    name,
+    withoutClips,
+    withoutDevices,
+    routeToSource,
+    switchView,
+    toTrackIndex,
+    toSceneIndex,
+  } = {},
+  context = {
+    holdingAreaStartBeats: 40000,
+  },
+) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
   }
@@ -413,6 +412,7 @@ export function duplicate({
           arrangementLength,
           songTimeSigNumerator,
           songTimeSigDenominator,
+          context,
         );
       } else if (type === "clip") {
         // For multiple clips, place them sequentially to avoid overlap
@@ -426,6 +426,7 @@ export function duplicate({
           arrangementLength,
           songTimeSigNumerator,
           songTimeSigDenominator,
+          context,
         );
       }
     } else if (type === "track") {
@@ -838,6 +839,7 @@ function duplicateSceneToArrangement(
   arrangementLength,
   songTimeSigNumerator,
   songTimeSigDenominator,
+  context = {},
 ) {
   const scene = LiveAPI.from(sceneId);
 
@@ -893,6 +895,7 @@ function duplicateSceneToArrangement(
           arrangementLengthBeats,
           name,
           ["arrangementStart"],
+          context,
         );
 
         // Add the scene name to each clip result if provided
@@ -975,6 +978,7 @@ function duplicateClipToArrangement(
   arrangementLength,
   _songTimeSigNumerator,
   _songTimeSigDenominator,
+  context = {},
 ) {
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clip = LiveAPI.from(clipId);
@@ -1010,6 +1014,7 @@ function duplicateClipToArrangement(
       arrangementLengthBeats,
       name,
       ["trackIndex"],
+      context,
     );
     duplicatedClips.push(...clipsCreated);
   } else {

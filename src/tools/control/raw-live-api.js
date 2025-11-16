@@ -12,7 +12,7 @@ const MAX_OPERATIONS = 50;
  * @param {*} [args.operations[].value] - Value for set_property operations
  * @returns {Object} Result object with path, id, and operation results
  */
-export function rawLiveApi({ path, operations } = {}) {
+export function rawLiveApi({ path, operations } = {}, _context = {}) {
   if (!Array.isArray(operations)) {
     throw new Error("operations must be an array");
   }

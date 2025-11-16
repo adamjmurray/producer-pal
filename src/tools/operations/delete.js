@@ -8,7 +8,7 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
  * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
  * @returns {Object|Array<Object>} Result object(s) with success information
  */
-export function deleteObject({ ids, type } = {}) {
+export function deleteObject({ ids, type } = {}, _context = {}) {
   if (!ids) {
     throw new Error("delete failed: ids is required");
   }

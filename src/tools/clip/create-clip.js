@@ -31,23 +31,26 @@ import { parseTimeSignature } from "../shared/utils.js";
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
  * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
  */
-export function createClip({
-  view,
-  trackIndex,
-  sceneIndex = null,
-  arrangementStart = null,
-  count = 1,
-  notes: notationString = null,
-  name = null,
-  color = null,
-  timeSignature = null,
-  start = null,
-  length = null,
-  firstStart = null,
-  looping = null,
-  auto = null,
-  switchView,
-}) {
+export function createClip(
+  {
+    view,
+    trackIndex,
+    sceneIndex = null,
+    arrangementStart = null,
+    count = 1,
+    notes: notationString = null,
+    name = null,
+    color = null,
+    timeSignature = null,
+    start = null,
+    length = null,
+    firstStart = null,
+    looping = null,
+    auto = null,
+    switchView,
+  } = {},
+  _context = {},
+) {
   // Validate parameters
   if (!view) {
     throw new Error("createClip failed: view parameter is required");

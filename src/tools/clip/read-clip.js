@@ -29,7 +29,7 @@ import {
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
  * @returns {Object} Result object with clip information
  */
-export function readClip(args = {}) {
+export function readClip(args = {}, _context = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
   const { includeClipNotes, includeColor, includeWarpMarkers } =
