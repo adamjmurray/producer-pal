@@ -334,7 +334,7 @@ export function duplicate(
       );
     }
 
-    // TODO? Default to session like scene duplication?
+    // TODO: if arrangementStart is set, default to arrangement, or if toTrack/SceneIndex is set, default to session
     if (!["session", "arrangement"].includes(destination)) {
       throw new Error(
         "duplicate failed: destination must be 'session' or 'arrangement'",

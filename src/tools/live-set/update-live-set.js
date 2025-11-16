@@ -119,7 +119,6 @@ export function updateLiveSet(
     );
   }
 
-  // TODO: Consider removing this feature entirely since playback tool handles this via autoFollow parameter
   if (arrangementFollower != null) {
     liveSet.set("back_to_arranger", arrangementFollower ? 0 : 1);
 

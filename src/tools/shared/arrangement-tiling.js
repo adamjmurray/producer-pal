@@ -4,8 +4,6 @@
  * arrangement clips using the holding area technique.
  */
 
-import * as console from "../../shared/v8-max-console.js";
-
 /**
  * Creates an audio clip in session view with controlled length.
  * Uses session view because create_audio_clip in arrangement doesn't support length control.
@@ -314,29 +312,15 @@ export function tileClipToRange(
   // (start_marker cannot exceed end_marker)
   const currentEndMarker = sourceClip.getProperty("end_marker");
   if (currentEndMarker !== clipLoopEnd) {
-    console.error(
-      `DEBUG: Correcting end_marker from ${currentEndMarker} to ${clipLoopEnd}`,
-    );
     sourceClip.set("end_marker", clipLoopEnd);
   }
 
   // Determine arrangement length per tile (defaults to clip content length)
   const arrangementTileLength = tileLength ?? clipLength;
 
-  console.error(
-    `DEBUG tileClipToRange: clipLength=${clipLength}, tileLength=${tileLength}, arrangementTileLength=${arrangementTileLength}`,
-  );
-  console.error(
-    `DEBUG tileClipToRange: totalLength=${totalLength}, startPosition=${startPosition}`,
-  );
-
   // Calculate tiling requirements based on arrangement tile length
   const fullTiles = Math.floor(totalLength / arrangementTileLength);
   const remainder = totalLength % arrangementTileLength;
-
-  console.error(
-    `DEBUG tileClipToRange: fullTiles=${fullTiles}, remainder=${remainder}`,
-  );
 
   // Track content offset for setting start_marker on each tile
   let currentContentOffset = startOffset;
@@ -353,19 +337,12 @@ export function tileClipToRange(
       `id ${sourceClipId}`,
       currentPosition,
     );
-    console.error(
-      `DEBUG tile ${i}: duplicate_clip_to_arrangement returned: ${JSON.stringify(result)}`,
-    );
 
     const tileClip = LiveAPI.from(result);
     const clipId = tileClip.id;
-    console.error(`DEBUG tile ${i}: Got clip ID: ${clipId}`);
 
     // Recreate LiveAPI object with fresh reference
     const freshClip = new LiveAPI(`id ${clipId}`);
-    console.error(
-      `DEBUG tile ${i}: Fresh clip exists=${freshClip.exists()}, type=${freshClip.type}`,
-    );
 
     // Set start_marker to show correct portion of clip content
     let tileStartMarker = clipLoopStart + (currentContentOffset % clipLength);
@@ -376,14 +353,7 @@ export function tileClipToRange(
     }
 
     // Try setting on fresh clip object
-    console.error(
-      `DEBUG tile ${i}: Trying to set start_marker to ${tileStartMarker}`,
-    );
-
     freshClip.set("start_marker", tileStartMarker);
-    console.error(
-      `DEBUG tile ${i}: After set: start_marker=${freshClip.getProperty("start_marker")}`,
-    );
 
     // Adjust pre-roll for subsequent tiles if requested
     if (adjustPreRoll) {

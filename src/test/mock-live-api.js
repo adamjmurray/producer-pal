@@ -129,16 +129,6 @@ export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
     const overridesByProp =
       overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
-    // console.log("[DEBUG] mockLiveApiGet", {
-    //   prop,
-    //   id: this.id,
-    //   _id: this._id,
-    //   path: this.path,
-    //   _path: this._path,
-    //   type: this.type,
-    //   overrides,
-    //   overridesByProp,
-    // });
     if (overridesByProp != null) {
       const override = overridesByProp[prop];
       if (override !== undefined) {

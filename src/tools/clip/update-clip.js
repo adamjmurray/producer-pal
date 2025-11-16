@@ -617,10 +617,6 @@ export function updateClip(
               const visibleContentEnd =
                 clipStartMarker + currentArrangementLength;
 
-              console.error(
-                `DEBUG unlooped MIDI: actualContentEnd=${actualContentEnd}, clipStartMarker=${clipStartMarker}, visibleContentEnd=${visibleContentEnd}`,
-              );
-
               // Use threshold comparison to avoid floating point precision issues
               const EPSILON = 0.001;
               if (actualContentEnd - visibleContentEnd > EPSILON) {
@@ -631,10 +627,6 @@ export function updateClip(
                 );
                 const remainingToReveal =
                   revealLength - currentArrangementLength;
-
-                console.error(
-                  `DEBUG unlooped reveal: revealing ${remainingToReveal} beats of hidden content`,
-                );
 
                 // For unlooped clips, we need to manually set start_marker and end_marker
                 // First, set the source clip's end_marker to the actual content end
@@ -660,10 +652,6 @@ export function updateClip(
                 revealedClip.set("start_marker", newStartMarker); // Then start_marker
                 revealedClip.set("looping", 0);
 
-                console.error(
-                  `DEBUG unlooped: set revealed clip markers: start_marker=${newStartMarker}, end_marker=${newEndMarker}`,
-                );
-
                 updatedClips.push({ id: clip.id });
                 updatedClips.push({ id: revealedClip.id });
 
@@ -672,9 +660,6 @@ export function updateClip(
                 if (remainingSpace > 0) {
                   // Create empty MIDI clip(s) for the overflow
                   const emptyStartTime = currentStartTime + revealLength;
-                  console.error(
-                    `DEBUG creating empty MIDI clip after reveal: start=${emptyStartTime}, length=${remainingSpace}`,
-                  );
 
                   const emptyClipResult = track.call(
                     "create_midi_clip",
@@ -689,10 +674,6 @@ export function updateClip(
 
               // Case: No hidden content (all content already visible)
               // MIDI: Create empty clip(s) to fill the requested space
-              console.error(
-                `DEBUG creating empty MIDI clip: start=${currentEndTime}, length=${spaceNeeded}`,
-              );
-
               const emptyClipResult = track.call(
                 "create_midi_clip",
                 currentEndTime,
@@ -789,9 +770,6 @@ export function updateClip(
 
             // Case: No hidden content (all content already visible)
             // Audio: Cannot extend further - just keep the original clip
-            console.error(
-              `DEBUG unlooped audio: no hidden content, cannot extend`,
-            );
             updatedClips.push({ id: clip.id });
             continue;
           }
@@ -806,9 +784,6 @@ export function updateClip(
             // Keep the source clip and tile AFTER it
             const remainingLength =
               arrangementLengthBeats - currentArrangementLength;
-            console.error(
-              `DEBUG update-clip scenario A: arrangementLengthBeats=${arrangementLengthBeats}, currentArrangementLength=${currentArrangementLength}, remainingLength=${remainingLength}`,
-            );
             const tiledClips = tileClipToRange(
               clip,
               track,
@@ -842,9 +817,6 @@ export function updateClip(
               // Keep the source clip and tile AFTER it
               const remainingLength =
                 arrangementLengthBeats - currentArrangementLength;
-              console.error(
-                `DEBUG update-clip scenario B: arrangementLengthBeats=${arrangementLengthBeats}, currentArrangementLength=${currentArrangementLength}, totalContentLength=${totalContentLength}, remainingLength=${remainingLength}`,
-              );
               const tiledClips = tileClipToRange(
                 clip,
                 track,
