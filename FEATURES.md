@@ -4,6 +4,29 @@ Producer Pal provides AI-powered tools for music production in Ableton Live.
 Simply ask the AI what you want to do, and it will use these tools to help you
 create.
 
+## Connection & Setup
+
+### Connect (`ppal-connect`)
+
+- Guides AI to call this when you say things like "connect to ableton"
+- Connects to Ableton Live and verifies everything is working
+- Shows Live Set name, tempo, and basic info
+- Provides project notes if enabled
+- Provides the AI a Producer Pal skill set suitable to the language model's size
+  (a "small model mode" exists with a simplified interface for local models)
+
+### Built-in Chat UI
+
+- Control Producer Pal with its built-in text-based interface
+- Compatible with Google Gemini and OpenAI-compatible online services (Mistral,
+  OpenRouter, etc)
+- Compatible with local SLMs (LM Studio, Ollama)
+
+### Network Control
+
+- Control Ableton Live on another computer on your network for collaborative
+  production and remote control workflows
+
 ## Transport & Playback
 
 ### Transport Control (`ppal-playback`)
@@ -168,19 +191,3 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - Help Producer Pal understand your project goals
 - AI can read and update notes (when enabled)
 - Notes are saved with your Live project and persist across AI conversations
-
-## Connection & Setup
-
-### Connect (`ppal-connect`)
-
-- Guides AI to call this when you say things like "connect to ableton"
-- Connects to Ableton Live and verifies everything is working
-- Shows Live Set name, tempo, and basic info
-- Provides project notes if enabled
-- Provides the AI a Producer Pal skill set suitable to the language model's size
-  (a "small model mode" exists with a simplified interface for local models)
-
-### Network Control
-
-- Control Ableton Live on another computer on your network for collaborative
-  production and remote control workflows
