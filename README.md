@@ -1,228 +1,49 @@
 # <sub><img src="./dev-docs/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
-Natural language interface for Ableton Live.
+**Natural language interface for Ableton Live**
 
-Works with Claude, Gemini, OpenAI GPT, Mistral, local models, and more.
+Control Ableton with Claude, Gemini, OpenAI, local models, and more.
 
-**[Documentation](https://producer-pal.org)** |
-**[Install Now](https://producer-pal.org/installation/)** |
-[Latest Releases](https://github.com/adamjmurray/producer-pal/releases/)
+<img src="./dev-docs/img/screenshot.png" alt="Producer Pal Screenshot" width="1000">
+
+## Quick Start
+
+1. **Install**: Download
+   [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
+2. **Setup**: Follow the
+   [installation guide](https://producerpal.org/installation/) for your AI
+3. **Create**: Say "connect to ableton" and start making music
+
+**→ [Full Documentation](https://producerpal.org)**
 
 ## Demo
 
-Watch the Producer Pal walk-through video with Claude Desktop:
+[Watch the walkthrough video](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s).
 
-- 0:00:
-  [Installation with Claude Desktop](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-- 2:29:
-  [Connecting the AI to Ableton](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=149s)
-- 3:23
-  [Generating a 4-part, 8-bar loop from scratch](https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s)
+## Resources
 
-<a href="https://www.youtube.com/watch?v=IB19LqTZQDU&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX&t=202s">
-<figure>
-    <img
-    src="https://img.youtube.com/vi/IB19LqTZQDU/0.jpg"
-    alt="Producer Pal demo video thumbnail" />
-  <br>
-  <figcaption>Watch Producer Pal create a 4-part, 8-bar loop from scratch.</figcaption>
-  <br>
-</figure>
-</a>
-<br>
+- [Documentation](https://producerpal.org)
+- [Video Tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
+- [Latest Releases](https://github.com/adamjmurray/producer-pal/releases)
+- [Discussions](https://github.com/adamjmurray/producer-pal/discussions)
+- [Issues](https://github.com/adamjmurray/producer-pal/issues)
 
-Also see these other helpful videos:
+## Contributing
 
-- ⭐️
-  [How to setup Producer Pal with Google Gemini and the built-in chat UI](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (along with Claude Desktop as shown in the walk-through above, this is the
-  recommended way to use Producer Pal)
-- Or
-  [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX),
-  for people comfortable with the command line.
+Star ⭐️ the repo to help others discover Producer Pal!
 
-## Installation
+For development setup, see [DEVELOPERS.md](./DEVELOPERS.md).
 
-Follow the [Installation Guide](https://producer-pal.org/installation/) to
-connect Producer Pal to your AI:
+## Open Source & Free Forever
 
-- [Claude Desktop](https://producer-pal.org/installation/#claude-desktop)
-- [Built-in Chat UI with Gemini](https://producer-pal.org/installation/#producer-pal-chat-ui)
-- [More options...](https://producer-pal.org/installation/)
+Producer Pal is **completely open source** under the [MIT license](./LICENSE).
+This means:
 
-Then, see the [Usage Guide](#usage) for help getting started.
+- **Free forever** - No subscriptions, no paywalls, no "premium" features.
+- **Developed in the open** - All development happens publicly on GitHub. Review
+  the entire codebase before installing.
+- **Do whatever you want** - Fork it, modify it, use it commercially - the
+  permissive [MIT license](./LICENSE) gives you full freedom.
 
-## Support
-
-- **Documentation**: [producer-pal.org](https://producer-pal.org) - Complete
-  guides, features, and API reference
-- **Feedback, Feature Ideas, General Discussion**:
-  [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
-- **Bugs & Problems**: Report in
-  [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
-  or [issues list](https://github.com/adamjmurray/producer-pal/issues)
-
-If you want to support Producer Pal development, ⭐️ star
-[the GitHub repository](https://github.com/adamjmurray/producer-pal) to help
-others discover the project.
-
-## Data Privacy
-
-When using online AI services, your musical data (MIDI notes, track names,
-tempo, etc.) is sent to that service for processing. Most services offer options
-to opt out of training on your data. Check your AI provider's privacy policy and
-account settings. Avoid online services for highly confidential or commercially
-sensitive work.
-
-## Usage
-
-1. Add the Producer Pal Max for Live device
-   ([download here](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd))
-   to a MIDI track in your Ableton Live project
-2. Provide your AI with Producer Pal tools. Either:
-   - Add Producer Pal tools to your AI application (see the
-     [Installation Guide](https://producer-pal.org/installation/))
-
-     OR
-
-   - Use the [built-in chat UI](#producer-pal-chat-ui)
-
-3. Start a conversation with "Connect to Ableton"
-
-### Basic Examples
-
-- Start a chat like:
-
-  > connect to ableton
-
-  If Ableton Live or the Producer Pal Max for Live device aren't running, the AI
-  will let you know. Once it's running, say "try again" or restart the
-  conversation.
-
-- Setup a drum rack in a track called "Drums" and ask:
-
-  > find the drums track and generate a 4-bar drum loop
-
-  then:
-
-  > I like that, make some variations
-
-  or:
-
-  > great! can you expand that to 16 bars?
-
-  or:
-
-  > it's pretty repetitive, can you add some drum fills on the last few beats?
-
-  or:
-
-  > that's not quite what I'm looking for, do something more like ...
-
-  the better you can describe exactly what you want, the better the results
-  should be.
-
-- Setup some pads or keys in a track called "Chords" and ask:
-
-  > in the chords track, generate a 4-chord progression of whole notes
-
-  Enable the global scale for your Live Set and Producer Pal should respect it
-  when generating chords, bass, and melodies. Or tell it what scale to use.
-
-- Then (with a "Bass" track):
-
-  > in the bass track, generate a bassline to go along with that chord
-  > progression
-
-- Let the AI tell you what else it can do:
-
-  > what are all the things you can do with your Ableton Live tools?
-
-### Producer Pal Chat UI
-
-Producer Pal includes its own standalone web interface, keeping you independent
-from any specific AI platform. The chat UI is a browser-based interface served
-from the Max for Live device at `http://localhost:3350/chat`.
-
-Currently supports Google's Gemini API with more LLMs planned. Access it by
-clicking the "Open Chat UI" button in the Max device or visiting the URL
-directly in your browser.
-
-<img src="./dev-docs/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
-
-<img src="./dev-docs/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
-
-See the
-[Chat UI installation guide](https://producer-pal.org/installation/#producer-pal-chat-ui)
-for setup instructions.
-
-### Session and Arrangement views
-
-Producer Pal works in both Session and Arrangement views. Use Session for
-jamming and ideas, then move to Arrangement for song structure—or start directly
-in Arrangement if you prefer.
-
-### Limitations
-
-Producer Pal is focused on generating and manipulating MIDI clips.
-
-It cannot (yet) manage devices (instruments or effects) in your tracks. You must
-add and adjust all devices yourself. Note that it can duplicate tracks,
-including all the track's devices.
-
-It cannot work with audio clips beyond some general features like deleting and
-duplicating clips (it cannot add new audio clips or create audio from scratch).
-
-Drum Racks work in nested structures, but tracks with multiple Drum Racks only
-use the first one's drum map. Use one Drum Rack per track for predictable
-results.
-
-### More Examples
-
-Above are some basic ideas to get you started. For best results, be very
-specific and detailed about what you want. Instead of "generate a melody", try:
-
-> Generate an 8-bar EDM-style synthesizer melody in the key of C major with a
-> mix of whole notes, half notes, quarter notes, and eighth notes. Use some
-> dotted rhythms and syncopation too. Keep the center of the melody around the C
-> above middle C.
-
-If you don't know enough music theory to ask specifically, describe what you
-want in your own words and iterate with the AI. Or ask it to teach you music
-theory concepts. It can also perform web searches to research genres and
-techniques.
-
-### Layer Multiple Patterns on One Instrument
-
-You can route multiple MIDI tracks to control the same instrument, enabling
-complex rhythms and polyrhythmic patterns.
-
-#### Layered drum parts
-
-- Create a basic kick pattern
-- Say "layer another track onto the drums"
-- Add snares to the new track
-- Create another layer for hats
-- Launch different clip combinations for dynamic arrangements
-
-#### Polyrhythmic patterns
-
-- Make a 3-bar melody pattern
-- Say "layer another track onto [track name]"
-- Ask for a 4 bar clip in the new track
-- The patterns phase every 12 bars, creating evolving variations
-
-### Tips
-
-For a full feature reference see
-[FEATURES.md](https://producer-pal.org/features/).
-
-**Always keep backups and save often!** Don't let AI loose on a serious song you
-care about unless you've saved a backup copy. Producer Pal can overwrite and
-delete things. If you make good progress, save it before you lose it.
-
-Keep your context window small for best results: start fresh conversations when
-needed (just say "connect to ableton" again), or use the project notes feature
-in the Max device to persist important context. For particularly complex tasks,
-"extended thinking" or "high reasoning effort" features can help, though it's
-typically overkill and will hit usage limits faster.
+**You own your tools.** Producer Pal will never lock features behind a paywall
+or change its licensing model.

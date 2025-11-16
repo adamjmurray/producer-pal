@@ -4,8 +4,7 @@ layout: home
 hero:
   name: "Producer Pal"
   text: "Natural language interface for Ableton Live"
-  tagline:
-    Works with Claude, Gemini, OpenAI GPT, Mistral, local models, and more.
+  tagline: Works with Claude, Gemini, OpenAI, Mistral, local models, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
@@ -33,6 +32,12 @@ features:
     details:
       Use cloud AI services (Claude, Gemini, GPT) or run completely offline with
       local models (Ollama, LM Studio). Includes built-in chat UI.
+
+  - title: Open Source & Free Forever
+    details:
+      MIT licensed and developed completely in the open. No subscriptions, no
+      paywalls, no premium features. Fork it, modify it, use it commercially—you
+      have complete freedom with the code.
 ---
 
 ## Demo

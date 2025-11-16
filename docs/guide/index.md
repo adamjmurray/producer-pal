@@ -5,15 +5,18 @@ music production in Ableton Live.
 
 ## What is Producer Pal?
 
-Producer Pal is an AI-powered music production assistant that integrates
-directly with Ableton Live through a Max for Live device. It uses the Model
-Context Protocol (MCP) to enable AI models to control Ableton Live, allowing you
-to:
+Producer Pal is a **natural language interface** for Ableton Live. It translates
+your ideas into actions, letting you work at the speed of thought instead of
+clicking through menus.
 
-- Generate musical ideas and compositions using natural language
-- Create and manipulate MIDI clips, tracks, and scenes
-- Explore creative variations and arrangements
-- Automate repetitive production tasks
+Instead of:
+
+- Manually placing 64 kick drum notes
+- Mousing through menus to duplicate and route tracks
+- Copying and pasting patterns bar by bar
+
+You describe what you want, and Producer Pal handles the tedious execution. You
+stay in creative flow.
 
 ## Installation
 
@@ -55,3 +58,16 @@ After installation:
 
 - [Report issues on GitHub](https://github.com/adamjmurray/producer-pal/issues)
 - [Ask questions in GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
+
+## Why Producer Pal?
+
+Producer Pal is **completely open source** (MIT license) and will remain **free
+forever**.
+
+- No subscriptions or paywalls
+- All development happens publicly on GitHub
+- You can review the entire codebase before installing
+- Fork it, modify it, use it commercially. The permissive license gives you
+  complete freedom
+
+You own your tools. Producer Pal will never lock features behind a paywall.
