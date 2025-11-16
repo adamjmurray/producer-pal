@@ -23,28 +23,33 @@ stay in the creative flow.
 For detailed installation instructions for your preferred AI platform, see the
 [Installation Guide](/installation/).
 
-The installation guide covers setup for:
+Quick options:
 
-- **[Claude Desktop](/installation/claude-desktop)** - Recommended for most
-  users
-- **[Built-in Chat UI](/installation/chat-ui)** - Great alternative with web
-  interface supporting Gemini, OpenAI, and more
-- **[Command Line Tools](/installation/gemini-cli)** - Gemini CLI, Codex CLI, or
-  Claude Code
-- **[Local Models](/installation/lm-studio)** - Use open-source models on your
-  own hardware
+- **[Built-in Chat UI](/installation/chat-ui.html)** - Works with Gemini,
+  Ollama, and more
+- **[Claude Desktop](/installation/claude-desktop.html)** - Recommended for
+  Anthropic users
+- **[Command Line Tools](/installation/#command-line-interfaces)** - Gemini CLI,
+  Codex CLI, Claude Code, and other MCP-compatible coding agents
+- **[Local Models](/installation/#local-offline-options)** - Run completely
+  offline with Ollama, LM Studio, and other MCP-compatible platforms
+
+Already have an MCP-compatible client? Connect with `npx producer-pal`
+([details](/installation/other-mcp.html))
 
 ## Quick Start
 
 After installation:
 
-1. **Open Ableton Live** with your project
-2. **Load the Producer Pal Max for Live device** onto any track
-3. **Click "Connect"** in your AI chat interface
-4. **Start creating!** Try asking the AI to:
-   - "Create a simple 4-bar drum pattern"
-   - "Add a bass line in C minor"
-   - "Generate a chord progression"
+1. Open Ableton Live with your project
+2. Load the Producer Pal Max for Live device onto a MIDI track
+   ([download latest version](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd))
+3. Connect to Producer Pal in your AI interface
+4. Say "connect to ableton"
+5. Try a simple command:
+   - "What's in my project?"
+   - "Create a new MIDI track called Bass"
+   - "Change the tempo to 108 BPM"
 
 ## Next Steps
 

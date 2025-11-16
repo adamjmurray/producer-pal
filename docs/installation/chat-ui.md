@@ -11,9 +11,9 @@ OpenAI-compatible providers.
 **Using the built-in chat UI with Google Gemini's free tier is one of the
 easiest (and recommended) ways to use Producer Pal.**
 
-::: warning
+::: warning Cost
 
-Cost Note Some options use pay-as-you-go pricing for API access, which can incur
+Note: Some options use pay-as-you-go pricing for API access, which can incur
 cost quickly when using advanced models and having long conversations. Always
 monitor your API key usage when using pay-as-you-go options.
 
@@ -90,13 +90,13 @@ Or type whatever you want into the text input.
 The chat UI connects directly to your chosen LLM provider's API and uses
 Producer Pal's MCP tools automatically.
 
-::: tip
+::: tip Privacy Note
 
-Privacy Note for Online APIs Your API key is stored in the browser's local
-storage for convenience. If that concerns you, use a private browser session,
-delete the key from settings after use, or delete browser local storage after
-use. You can delete and regenerate API keys with the AI provider if a key is
-accidentally shared.
+For Online APIs Your API key is stored in the browser's local storage for
+convenience. If that concerns you, use a private browser session, delete the key
+from settings after use, or delete browser local storage after use. You can
+delete and regenerate API keys with the AI provider if a key is accidentally
+shared.
 
 :::
 
@@ -139,12 +139,11 @@ You can use LM Studio with the built-in chat UI as explained here, or you can
    - Model: A model that supports tools, such as `qwen/qwen3-vl-8b`,
      `openai/gpt-oss-20b`, or `mistralai/magistral-small-2509`
 
-   ::: warning
+   ::: warning Model Tool Support
 
-   Model Tool Support If the model responds with garbled text like
-   `<|tool_call_start|>...` or says it has no way of connecting to Ableton, the
-   model likely doesn't support tools. Try a different model. Look for a hammer
-   icon next to the model:
+   If the model responds with garbled text like `<|tool_call_start|>...` or says
+   it has no way of connecting to Ableton, the model likely doesn't support
+   tools. Try a different model. Look for a hammer icon next to the model:
 
    ![LM Studio tool icon](/lm-studio-tool-icon.png)
 
@@ -163,7 +162,8 @@ models.
 1. Install [Ollama](https://ollama.com/)
 2. If you haven't already, run Ollama, select some of the downloadable
    (non-cloud) models, and start a chat with them to download them.
-3. With Ollama running, configure the Producer Pal Chat UI:
+3. With Ollama running, configure
+   [the Producer Pal Chat UI](#producer-pal-chat-ui):
    - Provider: Ollama (local)
    - Port: 11434 (This is the default. You generally don't need to change this)
    - Model: A [model that supports tools](https://ollama.com/search?c=tools),

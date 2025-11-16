@@ -52,8 +52,12 @@ export default defineConfig({
       {
         text: "Recommended",
         items: [
+          {
+            text: "Chat UI (Gemini, Ollama, etc)",
+            link: "/installation/chat-ui",
+          },
           { text: "Claude Desktop", link: "/installation/claude-desktop" },
-          { text: "Chat UI (Gemini, etc)", link: "/installation/chat-ui" },
+          { text: "npx producer-pal", link: "/installation/other-mcp" },
         ],
       },
       {
@@ -74,6 +78,7 @@ export default defineConfig({
       {
         text: "Local & Advanced",
         items: [
+          { text: "Ollama", link: "/installation/chat-ui#ollama" },
           { text: "LM Studio", link: "/installation/lm-studio" },
           { text: "Other MCP LLMs", link: "/installation/other-mcp" },
           { text: "Web Tunnels", link: "/installation/web-tunnels" },

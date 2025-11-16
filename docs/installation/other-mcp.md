@@ -2,6 +2,8 @@
 
 Producer Pal works with any LLM that supports the Model Context Protocol (MCP).
 
+Use `npx producer-pal` to connect to Producer Pal's MCP server.
+
 ## Requirements
 
 - [Ableton Live 12.2+](https://www.ableton.com/live/) with

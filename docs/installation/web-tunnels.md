@@ -3,11 +3,11 @@
 For remote access to Producer Pal from the Internet, you'll need a tunneling
 service.
 
-::: danger
+::: danger Security Warning
 
-Security Warning Producer Pal has no authentication. Anyone with your tunnel URL
-can control Ableton Live. Keep the URL secret and only share with trusted
-collaborators. If someone discovers it, restart your tunnel to get a new URL.
+Producer Pal has no authentication. Anyone with your tunnel URL can control
+Ableton Live. Keep the URL secret and only share with trusted collaborators. If
+someone discovers it, restart your tunnel to get a new URL.
 
 :::
 
@@ -38,11 +38,11 @@ the Producer Pal Max for Live device.
 
 ### ngrok
 
-::: warning
+::: warning Persistent Domain
 
-ngrok provides a single persistent domain to all free accounts on sign-up,
-which, if leaked, can't be changed. For this reason, it's only recommended for
-paying ngrok customers.
+ngrok gives a single persistent domain to all free accounts on sign-up, which,
+if leaked, can't be changed. For this reason, it's only recommended for paying
+ngrok customers.
 
 :::
 
