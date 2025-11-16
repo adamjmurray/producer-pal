@@ -1,0 +1,193 @@
+# Features
+
+Producer Pal provides AI-powered tools for music production in Ableton Live.
+Simply ask the AI what you want to do, and it will use these tools to help you
+create.
+
+## Connection & Setup
+
+### Connect (`ppal-connect`)
+
+- Guides AI to call this when you say things like "connect to ableton"
+- Connects to Ableton Live and verifies everything is working
+- Shows Live Set name, tempo, and basic info
+- Provides project notes if enabled
+- Provides the AI a Producer Pal skill set suitable to the language model's size
+  (a "small model mode" exists with a simplified interface for local models)
+
+### Built-in Chat UI
+
+- Control Producer Pal with its built-in text-based interface
+- Compatible with Google Gemini and OpenAI-compatible online services (Mistral,
+  OpenRouter, etc)
+- Compatible with local SLMs (LM Studio, Ollama)
+
+### Network Control
+
+- Control Ableton Live on another computer on your network for collaborative
+  production and remote control workflows
+
+## Transport & Playback
+
+### Transport Control (`ppal-playback`)
+
+- Start/stop playback in Session or Arrangement view
+- Play specific scenes or clips
+- Set loop points and playback position
+- Control which tracks follow the Arrangement
+- Stop all clips or specific track clips
+
+## Live Set Management
+
+### Read Live Set (`ppal-read-live-set`)
+
+- Get complete Live project overview
+- View all tracks, scenes, and clips at once
+- See tempo, time signature, and scale settings
+- Check what's playing and track states
+
+### Update Live Set (`ppal-update-live-set`)
+
+- Change tempo
+- Set time signature
+- Set scale
+
+## Scene Operations
+
+### Create Scene (`ppal-create-scene`)
+
+- Add new scenes at any position
+- Set scene name, color, tempo, and time signature
+- Scenes can follow song tempo or have their own
+- Ability to capture currently playing clips into a new scene
+
+### Read Scene (`ppal-read-scene`)
+
+- View scene details and all its clips
+- Check which clips are playing/triggered
+- See scene tempo and time signature
+
+### Update Scene (`ppal-update-scene`)
+
+- Rename scenes and change colors
+- Modify scene tempo and time signature
+- Bulk update multiple scenes at once
+- Enable/disable scene-specific tempo
+
+## Track Management
+
+### Create Track (`ppal-create-track`)
+
+- Add MIDI or audio tracks
+- Position tracks exactly where you want
+- Set initial mute/solo/arm states
+
+### Read Track (`ppal-read-track`)
+
+- Get detailed track information
+- View all clips in Session and Arrangement
+- See devices, routing options, and drum pad mappings
+- Check track states (muted, soloed, armed)
+
+### Update Track (`ppal-update-track`)
+
+- Rename tracks and change colors
+- Control mute/solo/arm states
+- Configure input/output routing
+- Set monitoring modes
+- Bulk update multiple tracks
+
+## Clip Creation & Editing
+
+### Create Clip (`ppal-create-clip`)
+
+- Generate MIDI clips with notes, velocities, and timing
+- Place clips in Session slots or Arrangement timeline
+- Support for probability, velocity ranges, and complex rhythms
+- Auto-create scenes as needed
+
+### Read Clip (`ppal-read-clip`)
+
+- View clip properties and MIDI notes
+- See notes in musical notation (C3, D#4, etc.)
+- Check loop settings and time signatures
+- Works with Session and Arrangement clips
+- Audio clip properties: gain, pitch shift, sample info (rate, length, filename)
+- Audio warp settings: mode (beats, tones, texture, repitch, complex, pro),
+  enabled/disabled state, warp marker positions
+
+### Update Clip (`ppal-update-clip`)
+
+- Edit MIDI notes and timing
+- Modify velocities and probability
+- Change clip names and colors
+- Adjust loop settings
+- Update or merge note patterns
+- Bulk edit multiple clips
+- Audio clip modifications: gain (0-1), pitch shift (-48 to +48 semitones,
+  supports decimals), warping on/off, warp mode
+- Warp marker operations: add markers at specific beat/sample positions, move
+  markers by beat distance, remove markers
+- Arrangement clip positioning: move clips to different bar|beat positions in
+  the timeline
+- Arrangement clip length: shorten clips, extend to reveal hidden content, or
+  tile/loop clips to fill longer durations
+- Slicing technique: reduce then extend clip length to create separate segments
+
+### Custom Music Notation
+
+Producer Pal uses a text-based music notation syntax called `bar|beat` to work
+with MIDI clips. It helps LLMs translate natural language expressions of time to
+the correct time positions in Ableton Live clips and the arrangement timeline.
+
+- **Pitches**: Standard notation (C3 = middle C, F#4, Bb2, etc.)
+- **Time positions**: bar|beat format (1|1 = first beat, 2|3 = bar 2, beat 3)
+- **Durations**: bar:beat format (4:0 = 4 bars, 1:2 = 1 bar + 2 beats)
+- **Velocity**: Values from 1-127 (or ranges like 80-100)
+- **Probability**: 0.0 to 1.0 (1.0 = always plays)
+- **Bar copying**: Copy bars with `@2=1` (bar 1→2), ranges with `@2-8=1` (bar
+  1→bars 2-8), or tile patterns with `@3-10=1-2` (repeat 2-bar pattern across
+  bars 3-10)
+- **Comments**: Include commentary using // for single lines, # for inline, or
+  /\* \*/ for blocks
+
+## Object Management
+
+### Duplicate (`ppal-duplicate`)
+
+- Copy tracks, scenes, or clips
+- Duplicate to Session or Arrangement
+- Duplicate session clips to specific clip slots (any track, any scene)
+- Duplicate to Arrangement at specific bar|beat positions
+- Set arrangement length when duplicating: extend and tile/loop clips to fill
+  longer durations automatically
+- Create multiple copies at once (placed sequentially)
+- Track routing options allow layering multiple MIDI clips on a single
+  instrument
+
+### Delete (`ppal-delete`)
+
+- Remove tracks, scenes, or clips
+- Bulk delete multiple objects
+
+## Selection State and View Control
+
+### Select (`ppal-select`)
+
+- Read current selection and view state (when no arguments)
+  - See selected track, scene, clip, and device
+  - Check what's currently visible in Live
+- Update selection and view state (when arguments provided)
+  - Select specific tracks, scenes, or clips
+  - Switch between Session and Arrangement views
+  - Show/hide browser and detail views
+  - Focus on devices or clip details
+
+## Project Notes
+
+### Memory (`ppal-memory`)
+
+- Store project-specific notes and context
+- Help Producer Pal understand your project goals
+- AI can read and update notes (when enabled)
+- Notes are saved with your Live project and persist across AI conversations

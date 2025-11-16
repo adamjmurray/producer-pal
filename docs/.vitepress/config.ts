@@ -17,6 +17,8 @@ export default defineConfig({
       { text: "Home", link: "/" },
       { text: "Installation", link: "/installation/" },
       { text: "Guide", link: "/guide/getting-started" },
+      { text: "Features", link: "/features" },
+      { text: "Roadmap", link: "/roadmap" },
       {
         text: "GitHub",
         link: "https://github.com/adamjmurray/producer-pal",
@@ -26,7 +28,17 @@ export default defineConfig({
     sidebar: [
       {
         text: "Guide",
-        items: [{ text: "Getting Started", link: "/guide/getting-started" }],
+        items: [
+          { text: "Getting Started", link: "/guide/getting-started" },
+          { text: "Usage Examples", link: "/guide/usage" },
+        ],
+      },
+      {
+        text: "Reference",
+        items: [
+          { text: "Features", link: "/features" },
+          { text: "Roadmap", link: "/roadmap" },
+        ],
       },
       {
         text: "Installation",

@@ -17,17 +17,19 @@ to:
 
 ## Installation
 
-For detailed installation instructions for your preferred AI platform, please
-see:
-
-- [Installation Guide](https://github.com/adamjmurray/producer-pal/blob/main/INSTALLATION.md)
+For detailed installation instructions for your preferred AI platform, see the
+[Installation Guide](/installation/).
 
 The installation guide covers setup for:
 
-- **Claude Desktop** - Recommended for most users
-- **Built-in Chat UI with Gemini** - Great alternative with web interface
-- **OpenAI GPT** - Compatible with GPT-4 and GPT-3.5
-- **Local Models** - Use open-source models on your own hardware
+- **[Claude Desktop](/installation/claude-desktop)** - Recommended for most
+  users
+- **[Built-in Chat UI](/installation/chat-ui)** - Great alternative with web
+  interface supporting Gemini, OpenAI, and more
+- **[Command Line Tools](/installation/gemini-cli)** - Gemini CLI, Codex CLI, or
+  Claude Code
+- **[Local Models](/installation/lm-studio)** - Use open-source models on your
+  own hardware
 
 ## Quick Start
 
@@ -43,14 +45,13 @@ After installation:
 
 ## Next Steps
 
-- Check out
-  [example prompts and demos](https://github.com/adamjmurray/producer-pal#demo)
-- Explore the
-  [feature list](https://github.com/adamjmurray/producer-pal/blob/main/FEATURES.md)
-- Watch the
+- Check out the [Usage Guide](/guide/usage) for detailed examples and tips
+- Explore the [feature list](/features) to see everything Producer Pal can do
+- Watch the [demo video](/#demo) and
   [video tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
+- See what's coming in the [roadmap](/roadmap)
 
 ## Need Help?
 
 - [Report issues on GitHub](https://github.com/adamjmurray/producer-pal/issues)
-- [View the project roadmap](https://github.com/adamjmurray/producer-pal/blob/main/ROADMAP.md)
+- [Ask questions in GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
