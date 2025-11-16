@@ -12,6 +12,8 @@ export default [
       "config/**",
       "coverage/**",
       "dist/**",
+      "docs/.vitepress/cache/**",
+      "docs/.vitepress/dist/**",
       "knowledge-base/**",
       "max-for-live-device/**",
       "node_modules/**",
