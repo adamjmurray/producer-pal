@@ -20,12 +20,12 @@ features:
   - title: Natural Language Control
     details:
       Control Ableton using conversational commands. Create tracks, clips, and
-      MIDI patterns without navigating complex menus or remembering shortcuts.
+      MIDI patterns without navigating menus or remembering shortcuts.
 
   - title: Complex Edits Made Simple
     details:
-      Apply transformations that would be tedious by hand - "shift every third
-      note down an octave" or "fade out velocities over 8 bars." Explore
+      Apply transformations that would be tedious by hand, like "shift every
+      third note down an octave" or "fade out velocities over 8 bars". Explore
       variations and experiment with patterns.
 
   - title: Works Online or Offline
