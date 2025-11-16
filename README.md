@@ -1,9 +1,8 @@
 # <sub><img src="./dev-docs/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
-AI music production assistant for Ableton Live.
+Natural language interface for Ableton Live.
 
-Works with most AI that support tools, including Claude, Gemini, OpenAI GPT, and
-local models.
+Works with Claude, Gemini, OpenAI GPT, Mistral, local models, and more.
 
 **[Documentation](https://producer-pal.org)** |
 **[Install Now](./INSTALLATION.md)** |

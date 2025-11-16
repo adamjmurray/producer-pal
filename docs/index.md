@@ -4,7 +4,8 @@ layout: home
 hero:
   name: "Producer Pal"
   text: "Natural language interface for Ableton Live"
-  tagline: Works with Claude, Gemini, GPT, and local models
+  tagline:
+    Works with Claude, Gemini, OpenAI GPT, Mistral, local models, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
