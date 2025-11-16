@@ -45,11 +45,11 @@ After installation:
 
 ## Next Steps
 
-- Check out the [Usage Guide](/guide/usage) for detailed examples and tips
-- Explore the [feature list](/features) to see everything Producer Pal can do
+- Check out the [Usage Guide](/guide/usage/) for detailed examples and tips
+- Explore the [feature list](/features/) to see everything Producer Pal can do
 - Watch the [demo video](/#demo) and
   [video tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-- See what's coming in the [roadmap](/roadmap)
+- See what's coming in the [roadmap](/roadmap/)
 
 ## Need Help?
 

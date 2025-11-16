@@ -116,7 +116,7 @@ techniques.
 
 ## Tips
 
-For a full feature reference see the [Features page](/features).
+For a full feature reference see the [Features page](/features/).
 
 **Always keep backups and save often!** Don't let AI loose on a serious song you
 care about unless you've saved a backup copy. Producer Pal can overwrite and
