@@ -57,39 +57,157 @@ function getActualContentEnd(clip) {
 }
 
 /**
- * Get the actual audio content end position by examining warp markers.
- * This is needed for unlooped clips where end_marker is unreliable.
- * Note: Live API adds an extra warp marker beyond the actual content end,
- * so we use the second-to-last marker to get the true audio end.
+ * Get the actual audio content end position for unlooped audio clips.
+ * For unwarped clips: calculates from sample_length, sample_rate, and tempo.
+ * For warped clips: uses warp markers (second-to-last marker).
  * @param {LiveAPI} clip - The audio clip to analyze
  * @returns {number} The end position of the audio in beats
  */
 function getActualAudioEnd(clip) {
   try {
-    const warpMarkersJson = clip.getProperty("warp_markers");
-    const warpData = JSON.parse(warpMarkersJson);
+    const isWarped = clip.getProperty("warping") === 1;
 
-    if (!warpData.warp_markers || warpData.warp_markers.length === 0) {
-      return 0; // No warp markers = no content info available
+    if (!isWarped) {
+      // Unwarped clip: calculate from sample properties and tempo
+      const sampleLength = clip.getProperty("sample_length");
+      const sampleRate = clip.getProperty("sample_rate");
+
+      if (!sampleLength || !sampleRate) {
+        console.error(
+          `Warning: Missing sample properties for unwarped clip ${clip.id}`,
+        );
+        return 0;
+      }
+
+      // Get tempo from live_set
+      const liveSet = new LiveAPI("live_set");
+      const tempo = liveSet.getProperty("tempo");
+
+      if (!tempo) {
+        console.error(`Warning: Could not get tempo from live_set`);
+        return 0;
+      }
+
+      // Calculate audio duration in beats
+      const durationSeconds = sampleLength / sampleRate;
+      const beatsPerSecond = tempo / 60;
+      const durationBeats = durationSeconds * beatsPerSecond;
+      return durationBeats;
+    } else {
+      // Warped clip: use warp markers
+      const warpMarkersJson = clip.getProperty("warp_markers");
+      const warpData = JSON.parse(warpMarkersJson);
+
+      if (!warpData.warp_markers || warpData.warp_markers.length === 0) {
+        return 0; // No warp markers = no content info available
+      }
+
+      const markers = warpData.warp_markers;
+
+      // Use second-to-last warp marker (last one is often beyond actual content)
+      if (markers.length < 2) {
+        // If only one marker, use it
+        return markers[0].beat_time;
+      }
+
+      // Use second-to-last marker to get actual audio end
+      const secondToLast = markers[markers.length - 2];
+      return secondToLast.beat_time;
     }
-
-    const markers = warpData.warp_markers;
-
-    // Use second-to-last warp marker (last one is often beyond actual content)
-    if (markers.length < 2) {
-      // If only one marker, use it
-      return markers[0].beat_time;
-    }
-
-    // Use second-to-last marker to get actual audio end
-    const secondToLast = markers[markers.length - 2];
-    return secondToLast.beat_time;
   } catch (error) {
     console.error(
-      `Warning: Failed to get warp markers for clip ${clip.id}: ${error.message}`,
+      `Warning: Failed to get actual audio end for clip ${clip.id}: ${error.message}`,
     );
     return 0; // Fall back to treating as no content
   }
+}
+
+/**
+ * Reveals hidden content in an unwarped audio clip using session holding area technique.
+ * Creates a temp warped/looped clip, sets markers, then restores unwarp/unloop state.
+ * ONLY used for unlooped + unwarped + audio clips with hidden content.
+ *
+ * @param {LiveAPI} sourceClip - The source clip to get audio file from
+ * @param {LiveAPI} track - The track to work with
+ * @param {number} newStartMarker - Start marker for revealed content
+ * @param {number} newEndMarker - End marker for revealed content
+ * @param {number} targetPosition - Where to place revealed clip in arrangement
+ * @param {Object} context - Context object with paths
+ * @returns {LiveAPI} The revealed clip in arrangement
+ */
+function revealUnwarpedAudioContent(
+  sourceClip,
+  track,
+  newStartMarker,
+  newEndMarker,
+  targetPosition,
+  _context,
+) {
+  // 1. Get audio file path
+  const filePath = sourceClip.getProperty("file_path");
+
+  console.error(
+    `WARNING: Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
+  );
+
+
+  // 2. Create temp clip in session holding area from that file
+  // IMPORTANT: Set length to newEndMarker (not targetLength) to include all content from start of file
+  const { clip: tempClip, slot: tempSlot } = createAudioClipInSession(
+    track,
+    newEndMarker, // Full length to include all content up to reveal end
+    filePath, // Use actual audio file instead of silence.wav
+  );
+
+  // 3. Set markers in BEATS while warped and looped
+  // (start_marker can only be set when looping AND warping are enabled)
+  // start_marker hides content before the revealed portion
+  tempClip.set("loop_end", newEndMarker);
+  tempClip.set("loop_start", newStartMarker);
+  tempClip.set("end_marker", newEndMarker);
+  tempClip.set("start_marker", newStartMarker);
+
+  // 4. Duplicate to arrangement WHILE STILL WARPED (this preserves markers!)
+  const result = track.call(
+    "duplicate_clip_to_arrangement",
+    `id ${tempClip.id}`,
+    targetPosition,
+  );
+  const revealedClip = LiveAPI.from(result);
+
+  // 5. NOW unwarp and unloop the ARRANGEMENT clip (markers auto-convert from beats to seconds)
+  revealedClip.set("warping", 0);
+  revealedClip.set("looping", 0);
+
+  // 6. Shorten the clip to only show the revealed portion
+  // The clip currently shows from start_marker to end of audio
+  // We want it to only show from newStartMarker to newEndMarker (in beats, now converted to seconds)
+  const revealedClipEndTime = revealedClip.getProperty("end_time");
+  const targetLengthBeats = newEndMarker - newStartMarker;
+
+  // Use the temp clip shortening technique to trim the clip to the correct length
+  const { clip: tempShortenerClip, slot: tempShortenerSlot } =
+    createAudioClipInSession(
+      track,
+      targetLengthBeats,
+      sourceClip.getProperty("file_path"),
+    );
+
+  const tempShortenerResult = track.call(
+    "duplicate_clip_to_arrangement",
+    `id ${tempShortenerClip.id}`,
+    revealedClipEndTime,
+  );
+  const tempShortener = LiveAPI.from(tempShortenerResult);
+
+  // Clean up temp shortener clips
+  tempShortenerSlot.call("delete_clip");
+  track.call("delete_clip", `id ${tempShortener.id}`);
+
+  // 7. Clean up temp clip from session
+  tempSlot.call("delete_clip");
+
+  return revealedClip;
 }
 
 /**
@@ -590,59 +708,77 @@ export function updateClip(
             // Audio clip: Get actual content end from warp markers
             const actualAudioEnd = getActualAudioEnd(clip);
 
+            // For unwarped clips, start_marker is in SECONDS (sample time)
+            // We need to convert to BEATS before doing arithmetic
+            const isWarped = clip.getProperty("warping") === 1;
+            let clipStartMarkerBeats;
+
+            if (isWarped) {
+              clipStartMarkerBeats = clipStartMarker; // Already in beats
+            } else {
+              // Convert from seconds to beats using project tempo
+              const liveSet = new LiveAPI("live_set");
+              const tempo = liveSet.getProperty("tempo");
+              clipStartMarkerBeats = clipStartMarker * (tempo / 60);
+            }
+
             // For unlooped clips, the visible content end in the clip is:
             // start_marker + arrangementLength (not just arrangementLength)
             const visibleContentEnd =
-              clipStartMarker + currentArrangementLength;
+              clipStartMarkerBeats + currentArrangementLength;
 
-            console.error(
-              `DEBUG unlooped audio: actualAudioEnd=${actualAudioEnd}, clipStartMarker=${clipStartMarker}, visibleContentEnd=${visibleContentEnd}`,
-            );
-
-            // Use threshold to filter out imperceptible differences (e.g., warp marker rounding)
-            // 0.1 beats = roughly 1/40th of a bar at 4/4, filters out tiny rounding errors
-            const EPSILON = 0.1;
+            // Use threshold to filter out imperceptible differences
+            // For sample-based calculations (unwarped clips), use 1.0 beat to handle rounding
+            // For warp marker calculations, 0.1 beats is sufficient
+            const EPSILON = isWarped ? 0.1 : 1.0;
             if (actualAudioEnd - visibleContentEnd > EPSILON) {
               // Case: Hidden content exists - reveal it
               const revealLength = Math.min(
-                actualAudioEnd - clipStartMarker,
+                actualAudioEnd - clipStartMarkerBeats,
                 arrangementLengthBeats,
               );
               const remainingToReveal = revealLength - currentArrangementLength;
-
-              console.error(
-                `DEBUG unlooped audio reveal: revealing ${remainingToReveal} beats of hidden content`,
-              );
-
-              // For unlooped clips, we need to manually set start_marker and end_marker
-              // First, set the source clip's end_marker to the actual audio end
-              // This allows the tiled clip to access all the content
-              clip.set("end_marker", actualAudioEnd);
-
-              // Duplicate the clip to the position where hidden content starts
-              const duplicateResult = track.call(
-                "duplicate_clip_to_arrangement",
-                `id ${clip.id}`,
-                currentEndTime,
-              );
-              const revealedClip = LiveAPI.from(duplicateResult);
 
               // Calculate the markers for the revealed clip
               const newStartMarker = visibleContentEnd; // Where hidden content starts
               const newEndMarker = newStartMarker + remainingToReveal;
 
-              // Workaround for Live API bug: setting start_marker on unlooped clips doesn't work
-              // Solution: enable looping, set loop boundaries, set markers, then disable looping
-              revealedClip.set("looping", 1);
-              revealedClip.set("loop_end", newEndMarker); // Set loop_end FIRST
-              revealedClip.set("loop_start", newStartMarker); // Then loop_start
-              revealedClip.set("end_marker", newEndMarker);
-              revealedClip.set("start_marker", newStartMarker);
-              revealedClip.set("looping", 0);
+              let revealedClip;
 
-              console.error(
-                `DEBUG unlooped audio: set revealed clip markers: start_marker=${newStartMarker}, end_marker=${newEndMarker}`,
-              );
+              if (isWarped) {
+                // Warped clips: use looping workaround to set markers
+                // First, set the source clip's end_marker to the actual audio end
+                // This allows the tiled clip to access all the content
+                clip.set("end_marker", actualAudioEnd);
+
+                // Duplicate the clip to the position where hidden content starts
+                const duplicateResult = track.call(
+                  "duplicate_clip_to_arrangement",
+                  `id ${clip.id}`,
+                  currentEndTime,
+                );
+                revealedClip = LiveAPI.from(duplicateResult);
+
+                // Workaround for Live API bug: setting start_marker on unlooped clips doesn't work
+                // Solution: enable looping, set loop boundaries, set markers, then disable looping
+                revealedClip.set("looping", 1);
+                revealedClip.set("loop_end", newEndMarker); // Set loop_end FIRST
+                revealedClip.set("loop_start", newStartMarker); // Then loop_start
+                revealedClip.set("end_marker", newEndMarker);
+                revealedClip.set("start_marker", newStartMarker);
+                revealedClip.set("looping", 0);
+              } else {
+                // Unwarped clips: use session holding area workaround
+                // This avoids the popup dialog that appears when setting looping on unwarped clips
+                revealedClip = revealUnwarpedAudioContent(
+                  clip,
+                  track,
+                  newStartMarker,
+                  newEndMarker,
+                  currentEndTime,
+                  context,
+                );
+              }
 
               updatedClips.push({ id: clip.id });
               updatedClips.push({ id: revealedClip.id });

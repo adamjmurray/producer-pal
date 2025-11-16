@@ -12,33 +12,45 @@ import * as console from "../../shared/v8-max-console.js";
  *
  * @param {Object} track - LiveAPI track instance
  * @param {number} targetLength - Desired clip length in beats
- * @param {string} silenceWavPath - Path to silent WAV file
+ * @param {string} audioFilePath - Path to audio WAV file (can be silence.wav or actual audio)
  * @returns {{clip: Object, slot: Object}} The created clip and slot in session view
  */
-export function createAudioClipInSession(track, targetLength, silenceWavPath) {
+export function createAudioClipInSession(track, targetLength, audioFilePath) {
   const liveSet = new LiveAPI("live_set");
-  const sceneIds = liveSet.getChildIds("scenes");
+  let sceneIds = liveSet.getChildIds("scenes");
   const lastSceneId = sceneIds.at(-1);
   const lastScene = LiveAPI.from(lastSceneId);
 
   // Check if last scene is empty, if not create a new one
   const isEmpty = lastScene.getProperty("is_empty") === 1;
   let workingSceneId = lastSceneId;
+
   if (!isEmpty) {
     const newSceneResult = liveSet.call("create_scene", sceneIds.length);
-    workingSceneId = LiveAPI.from(newSceneResult).id;
+    // LiveAPI.call returns an array like ["id", "833"], join it with space to match getChildIds format
+    workingSceneId = Array.isArray(newSceneResult)
+      ? newSceneResult.join(" ")
+      : newSceneResult;
+    // Refresh scene IDs after creating new scene
+    sceneIds = liveSet.getChildIds("scenes");
   }
 
   // Get track index to find corresponding clip slot
   const trackIndex = track.trackIndex;
-  const sceneIndex = liveSet.getChildIds("scenes").indexOf(workingSceneId);
+  const sceneIndex = sceneIds.indexOf(workingSceneId);
 
-  // Create clip in session slot
+  // Create clip in session slot with audio file
   const slot = new LiveAPI(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
-  const clipPath = slot.call("create_audio_clip", silenceWavPath);
-  const clip = LiveAPI.from(clipPath);
+
+  // create_audio_clip requires a file path
+  slot.call("create_audio_clip", audioFilePath);
+
+  // Get the created clip by reconstructing the path
+  const clip = new LiveAPI(
+    `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+  );
 
   // Enable warping and looping, then set length via loop_end
   clip.set("warping", 1);

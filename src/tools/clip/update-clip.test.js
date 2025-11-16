@@ -3272,6 +3272,7 @@ describe("updateClip", () => {
           is_midi_clip: 0,
           is_audio_clip: 1,
           looping: 0, // Unlooped clip
+          warping: 1, // Warped clip (has warp_markers)
           start_time: 0.0,
           end_time: 5.0, // 5 beats visible in arrangement
           start_marker: 0.0,
@@ -3454,6 +3455,7 @@ describe("updateClip", () => {
           is_midi_clip: 0,
           is_audio_clip: 1,
           looping: 0,
+          warping: 1,
           start_time: 0.0,
           end_time: 5.0,
           start_marker: 0.0,
@@ -3634,6 +3636,7 @@ describe("updateClip", () => {
           is_midi_clip: 0,
           is_audio_clip: 1,
           looping: 0,
+          warping: 1,
           start_time: 0.0,
           end_time: 4.0, // 4 beats visible
           start_marker: 1.0, // Offset by 1 beat
@@ -3718,6 +3721,171 @@ describe("updateClip", () => {
       );
 
       // Should return original + revealed clip (NO empty clip for audio)
+      expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    });
+
+    it("should reveal hidden content in unwarped audio clip using session holding area", () => {
+      const trackIndex = 0;
+      const clipId = "800";
+      const tempSessionClipId = "801";
+      const revealedClipId = "802";
+      const sceneIndex = 0;
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId || this._id === revealedClipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._id === tempSessionClipId) {
+          return `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        if (
+          this._path ===
+          `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`
+        ) {
+          return `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0, // Unlooped
+          warping: 0, // Unwarped - key difference from warped tests
+          start_time: 0.0,
+          end_time: 6.0, // 6 beats visible in arrangement
+          start_marker: 0.0,
+          end_marker: 6.0,
+          loop_start: 0.0,
+          loop_end: 6.0,
+          name: "Unwarped Audio Hidden",
+          trackIndex,
+          file_path: "/path/to/audio.wav",
+          sample_length: 211680,
+          sample_rate: 44100,
+        },
+        live_set: {
+          tempo: 120,
+          scenes: ["id", "scene1"],
+        },
+        scene1: {
+          is_empty: 1,
+        },
+        [tempSessionClipId]: {
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          warping: 1, // Temp clip starts warped
+          looping: 1, // Temp clip starts looped
+        },
+        [revealedClipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          warping: 0,
+          start_time: 6.0,
+          end_time: 9.6,
+          start_marker: 6.0,
+          end_marker: 9.6,
+          trackIndex,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "create_audio_clip") {
+          // Session clip creation
+          return ["id", tempSessionClipId];
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          // Duplicating temp clip to arrangement
+          return ["id", revealedClipId];
+        }
+        if (method === "delete_clip") {
+          // Deleting temp session clip
+          return 1;
+        }
+        return 1;
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      // Should create temp clip in session with audio file
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/audio.wav",
+      );
+
+      // Should warp temp clip (already done by createAudioClipInSession)
+      // Should loop temp clip (already done by createAudioClipInSession)
+
+      // Should set markers in BEATS while warped and looped
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: tempSessionClipId }),
+        "loop_end",
+        9.6,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: tempSessionClipId }),
+        "loop_start",
+        6.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: tempSessionClipId }),
+        "end_marker",
+        9.6,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: tempSessionClipId }),
+        "start_marker",
+        6.0,
+      );
+
+      // Should unwarp (Live will auto-convert beats to seconds)
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: tempSessionClipId }),
+        "warping",
+        0,
+      );
+
+      // Should unloop after unwarping
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: tempSessionClipId }),
+        "looping",
+        0,
+      );
+
+      // Should duplicate temp clip to arrangement
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        `id ${tempSessionClipId}`,
+        6.0,
+      );
+
+      // Should delete temp session clip
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({
+          path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+        }),
+        "delete_clip",
+      );
+
+      // Should return original + revealed clip
       expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
     });
   });
