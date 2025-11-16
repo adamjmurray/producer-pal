@@ -7,7 +7,7 @@ export default defineConfig({
     "AI music production assistant for Ableton Live. Works with Claude, Gemini, GPT, and local models.",
 
   // GitHub Pages base URL
-  base: "/producer-pal/",
+  base: "/",
 
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
