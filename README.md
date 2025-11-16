@@ -5,8 +5,9 @@ AI music production assistant for Ableton Live.
 Works with most AI that support tools, including Claude, Gemini, OpenAI GPT, and
 local models.
 
-**→ [Install it now](./INSTALLATION.md)** or see what's new in
-[the latest releases](https://github.com/adamjmurray/producer-pal/releases/).
+**[Documentation](https://producer-pal.org)** |
+**[Install Now](./INSTALLATION.md)** |
+[Latest Releases](https://github.com/adamjmurray/producer-pal/releases/)
 
 ## Demo
 
@@ -54,14 +55,13 @@ Then, see the [Usage Guide](#usage) for help getting started.
 
 ## Support
 
+- **Documentation**: [producer-pal.org](https://producer-pal.org) - Complete
+  guides, features, and API reference
 - **Feedback, Feature Ideas, General Discussion**:
   [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions)
 - **Bugs & Problems**: Report in
   [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
   or [issues list](https://github.com/adamjmurray/producer-pal/issues)
-- **Documentation**:
-  [GitHub Homepage (this page)](https://github.com/adamjmurray/producer-pal/#readme)
-  and [the dedicated area of my website](https://adammurray.link/producer-pal/)
 
 If you want to support Producer Pal development, ⭐️ star
 [the GitHub repository](https://github.com/adamjmurray/producer-pal) to help

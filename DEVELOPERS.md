@@ -140,6 +140,55 @@ in your browser.
 
 See `dev-docs/Chat-UI.md` for detailed information about:
 
+## Documentation Site
+
+The project documentation is built with VitePress and deployed to
+https://producer-pal.org. The source files are in the `docs/` directory.
+
+### Development Server
+
+```bash
+npm run docs:dev
+```
+
+Starts VitePress development server at http://localhost:5173 with hot reload.
+Changes to markdown files in `docs/` will update automatically in the browser.
+
+### Production Build
+
+```bash
+npm run docs:build
+```
+
+Builds the static site to `docs/.vitepress/dist/`. This creates optimized HTML,
+CSS, and JavaScript files ready for deployment.
+
+### Preview Production Build
+
+```bash
+npm run docs:preview
+```
+
+Serves the built site locally to test the production build before deploying.
+
+### Deployment
+
+The documentation site is automatically deployed to https://producer-pal.org
+when changes are pushed to the main branch. The deployment is handled by GitHub
+Pages (configured in repository settings).
+
+**Custom Domain Setup:**
+
+- Domain configured via `docs/public/CNAME` file
+- DNS CNAME record points to `adamjmurray.github.io`
+- GitHub Pages serves from `docs/.vitepress/dist/`
+
+### VitePress Configuration
+
+- Config file: `docs/.vitepress/config.mts`
+- Theme customizations: `docs/.vitepress/theme/`
+- Public assets (images, CNAME): `docs/public/`
+
 ## Testing and Debugging
 
 To test/debug, you can use:

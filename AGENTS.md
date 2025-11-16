@@ -22,6 +22,11 @@ npm run parser:build
 
 # Chat UI development
 npm run ui:build # Production build
+
+# Documentation site (VitePress at https://producer-pal.org)
+npm run docs:dev     # Development server with hot reload
+npm run docs:build   # Build static site
+npm run docs:preview # Preview production build
 ```
 
 ## Architecture
