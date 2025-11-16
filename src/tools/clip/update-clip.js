@@ -833,6 +833,7 @@ export function updateClip(
 
             // Calculate total content length (includes pre-roll if firstStart < start)
             const clipStartMarker = clip.getProperty("start_marker");
+            const currentOffset = clipStartMarker - clipLoopStart;
             const totalContentLength = clipLoopEnd - clipStartMarker;
 
             // If clip not showing full content, tile with start_marker offsets
@@ -853,7 +854,7 @@ export function updateClip(
                 context,
                 {
                   adjustPreRoll: true,
-                  startOffset: currentArrangementLength,
+                  startOffset: currentOffset + currentArrangementLength,
                   tileLength: currentArrangementLength,
                 },
               );

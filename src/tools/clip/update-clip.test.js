@@ -2263,6 +2263,115 @@ describe("updateClip", () => {
       expect(result).toEqual({ id: "789" });
     });
 
+    it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === "789" ||
+          this._id === "1000" ||
+          this._id === "1001" ||
+          this._id === "1002"
+        ) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          looping: 1,
+          start_time: 0.0,
+          end_time: 3.0, // 3 beats currently visible
+          loop_start: 1.0, // start at beat 2 (1|2)
+          loop_end: 4.0, // 3 beats of loop content
+          start_marker: 0.0, // firstStart at beat 1 (1|1) - creates 1 beat pre-roll
+          end_marker: 4.0,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Track created clips and their start_marker values
+      let nextId = 1000;
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          const id = nextId++;
+          return `id ${id}`;
+        }
+        return undefined;
+      });
+
+      // Track set() calls on created clips
+      const setCallsByClip = {};
+      liveApiSet.mockImplementation(function (prop, value) {
+        const clipId = this._id;
+        if (!setCallsByClip[clipId]) {
+          setCallsByClip[clipId] = {};
+        }
+        setCallsByClip[clipId][prop] = value;
+        return undefined;
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "3:0", // 12 beats total - needs 3 tiles after original
+      });
+
+      // Should create 3 tiles
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        3.0, // First tile at beat 3
+      );
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        6.0, // Second tile at beat 6
+      );
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        9.0, // Third tile at beat 9
+      );
+
+      // Verify start_marker offsets account for pre-roll
+      // currentOffset = start_marker - loop_start = 0 - 1 = -1
+      // Tile 0: startOffset = currentOffset + currentArrangementLength = -1 + 3 = 2
+      //         tileStartMarker = loop_start + (2 % clipLength) = 1 + (2 % 3) = 1 + 2 = 3
+      // Tile 1: startOffset = 2 + 3 = 5
+      //         tileStartMarker = loop_start + (5 % clipLength) = 1 + (5 % 3) = 1 + 2 = 3
+      // Tile 2: startOffset = 5 + 3 = 8
+      //         tileStartMarker = loop_start + (8 % clipLength) = 1 + (8 % 3) = 1 + 2 = 3
+      expect(setCallsByClip["1000"].start_marker).toBe(3.0);
+      expect(setCallsByClip["1001"].start_marker).toBe(3.0);
+      expect(setCallsByClip["1002"].start_marker).toBe(3.0);
+
+      expect(result).toEqual([
+        { id: "789" },
+        { id: "1000" },
+        { id: "1001" },
+        { id: "1002" },
+      ]);
+    });
+
     it("should preserve envelopes when tiling clip with hidden content", () => {
       const trackIndex = 0;
 
