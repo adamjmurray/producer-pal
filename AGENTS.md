@@ -37,8 +37,8 @@ Key entry points:
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
 - Tools: `src/tools/**/*.js`
 
-See `doc/Architecture.md` for detailed system design and `doc/Chat-UI.md` for
-web UI architecture.
+See `dev-docs/Architecture.md` for detailed system design and
+`dev-docs/Chat-UI.md` for web UI architecture.
 
 ## Critical Coding Rules
 
@@ -115,7 +115,8 @@ web UI architecture.
 
 ## Documentation
 
-- `doc/Architecture.md` - System design and components
-- `doc/Coding-Standards.md` - Code style, patterns, and rules
-- `doc/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
+- `dev-docs/Architecture.md` - System design and components
+- `dev-docs/Coding-Standards.md` - Code style, patterns, and rules
+- `dev-docs/Development-Tools.md` - CLI testing, raw API debugging, MCP
+  inspector
 - `DEVELOPERS.md` - Development setup and testing

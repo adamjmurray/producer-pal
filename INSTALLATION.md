@@ -1,4 +1,4 @@
-# <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal Installation Guide
+# <sub><img src="./dev-docs/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal Installation Guide
 
 Choose your AI for installation steps:
 
@@ -79,7 +79,7 @@ to use Producer Pal.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -91,7 +91,7 @@ to use Producer Pal.
    3a. If you already have extensions installed, drag and drop
    `Producer_Pal.mcpb` into the Extensions screen:
 
-   <img src="./doc/img/install-in-claude.png" alt="install in Claude Desktop" width="700">
+   <img src="./dev-docs/img/install-in-claude.png" alt="install in Claude Desktop" width="700">
 
    3b. Or, if you have never installed a Claude Desktop extension before, you
    need to click "Advanced settings" on the Extensions screen, then click
@@ -99,11 +99,11 @@ to use Producer Pal.
    [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
    file.
 
-    <img src="./doc/img/install-in-claude-first-extension.png" alt="install first extension in Claude Desktop" width="700">
+    <img src="./dev-docs/img/install-in-claude-first-extension.png" alt="install first extension in Claude Desktop" width="700">
 
 4. Don't forget to click "Install" and complete the Claude Desktop installation:
 
-   <img src="./doc/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">
+   <img src="./dev-docs/img/install-in-claude-2.png" alt="install in Claude Desktop, part 2" width="700">
 
    _**About the security warning:** Anthropic displays this warning for all
    extensions as a general security measure. Producer Pal is open source and you
@@ -114,15 +114,15 @@ to use Producer Pal.
 5. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
    sure it's enabled when starting a conversation):
 
-   <img src="./doc/img/tools-in-claude.png" alt="Producer Pal tools in Claude" width="700">
+   <img src="./dev-docs/img/tools-in-claude.png" alt="Producer Pal tools in Claude" width="700">
 
 6. Start a conversation with "connect to ableton"
 
 7. Allow Producer Pal tools to be used when Claude tries to use them:
 
-   <img alt="Producer Pal allow tools" src="./doc/img/producer-pal-permission.png" width="700"/>
+   <img alt="Producer Pal allow tools" src="./dev-docs/img/producer-pal-permission.png" width="700"/>
 
-   ![Producer Pal start a conversation](./doc/img/screenshot.png)
+   ![Producer Pal start a conversation](./dev-docs/img/screenshot.png)
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -182,7 +182,7 @@ Always monitor your API key usage when using pay-as-you-go options.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -190,7 +190,7 @@ Always monitor your API key usage when using pay-as-you-go options.
    [http://localhost:3350/chat](http://localhost:3350/chat) (or whatever port
    Producer Pal is setup to use)
 
-   <img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
+   <img src="./dev-docs/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
 
 3. If it's your first time, choose a provider, enter an API key (if using an
    online LLM), and choose a model. See below for examples and more info about
@@ -198,7 +198,7 @@ Always monitor your API key usage when using pay-as-you-go options.
 
 4. Click the "Quick Connect" button to start a chat:
 
-   <img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
+   <img src="./dev-docs/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
 
    Or type whatever you want into the text input.
 
@@ -239,7 +239,7 @@ You can use LM Studio with the built-in chat UI as explained here, or you can
 3.  Open Server Settings and Enable CORS. Producer Pal's chat UI runs in the
     browser and cannot directly connect to LM Studio without this option:
 
-    <img src="./doc/img/lm-studio-server-settings.png" width="600">
+    <img src="./dev-docs/img/lm-studio-server-settings.png" width="600">
 
 4.  Start LM Studio server. It should say: "Status: Running"
 5.  Configure the Producer Pal Chat UI:
@@ -254,7 +254,7 @@ You can use LM Studio with the built-in chat UI as explained here, or you can
       the model likely doesn't support tools. Try a different model. Look for a
       hammer icon next to the model:
 
-      <img src="./doc/img/lm-studio-tool-icon.png" width="400">
+      <img src="./dev-docs/img/lm-studio-tool-icon.png" width="400">
 
 6.  Save the Chat UI settings and use the Quick Connect button to start a
     conversation.
@@ -321,7 +321,7 @@ Producer Pal. Also consider using Gemini with Producer Pal's
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -381,15 +381,15 @@ Producer Pal. Also consider using Gemini with Producer Pal's
 4. Run `/mcp list` in the Gemini CLI to confirm the Producer Pal tools are
    available:
 
-   <img src="./doc/img/gemini-tool-list.png" alt="Producer Pal tools listed in Gemini CLI" width="700">
+   <img src="./dev-docs/img/gemini-tool-list.png" alt="Producer Pal tools listed in Gemini CLI" width="700">
 
 5. Start a conversation with "connect to ableton"
 
 6. Allow Producer Pal tools to be used when Gemini tries to use them:
 
-   <img src="./doc/img/gemini-tool-permissions.png" alt="Gemini CLI tool permission prompt" width="700">
+   <img src="./dev-docs/img/gemini-tool-permissions.png" alt="Gemini CLI tool permission prompt" width="700">
 
-   <img src="./doc/img/gemini-success.png" alt="Gemini CLI successfully connected to Producer Pal" width="700">
+   <img src="./dev-docs/img/gemini-success.png" alt="Gemini CLI successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -420,7 +420,7 @@ OpenAI's API.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -461,11 +461,11 @@ OpenAI's API.
 
 4. Run `/mcp` in the Codex CLI to confirm the Producer Pal tools are available:
 
-   <img src="./doc/img/codex-tool-list.png" alt="Producer Pal tools listed in Codex CLI" width="700">
+   <img src="./dev-docs/img/codex-tool-list.png" alt="Producer Pal tools listed in Codex CLI" width="700">
 
 5. Start a conversation with "connect to ableton"
 
-   <img src="./doc/img/codex-success.png" alt="Codex CLI successfully connected to Producer Pal" width="700">
+   <img src="./dev-docs/img/codex-success.png" alt="Codex CLI successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -490,7 +490,7 @@ Use Producer Pal with Anthropic's command line coding assistant.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -526,17 +526,17 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 4. Run `/mcp` in Claude Code to confirm the Producer Pal tools are available:
 
-   <img src="./doc/img/claude-code-tool-list.png" alt="Producer Pal tools listed in Claude Code" width="700">
+   <img src="./dev-docs/img/claude-code-tool-list.png" alt="Producer Pal tools listed in Claude Code" width="700">
 
-   <img src="./doc/img/claude-code-tool-list2.png" alt="Producer Pal tools listed in Claude Code (continued)" width="700">
+   <img src="./dev-docs/img/claude-code-tool-list2.png" alt="Producer Pal tools listed in Claude Code (continued)" width="700">
 
 5. Start a conversation with "connect to ableton"
 
 6. Allow Producer Pal tools to be used when Claude tries to use them:
 
-   <img src="./doc/img/claude-code-permissions.png" alt="Claude Code tool permission prompt" width="700">
+   <img src="./dev-docs/img/claude-code-permissions.png" alt="Claude Code tool permission prompt" width="700">
 
-   <img src="./doc/img/claude-code-success.png" alt="Claude Code successfully connected to Producer Pal" width="700">
+   <img src="./dev-docs/img/claude-code-success.png" alt="Claude Code successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -560,7 +560,7 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -574,7 +574,7 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 
    will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-   <img src="./doc/img/cloudflare-tunnel.png" alt="Cloudflare web tunnel" width="700">
+   <img src="./dev-docs/img/cloudflare-tunnel.png" alt="Cloudflare web tunnel" width="700">
 
 3. Go to
    [claude.ai settings → connectors](https://claude.ai/settings/connectors)
@@ -582,20 +582,20 @@ Use Producer Pal in your web browser with Anthropic's chat web app.
 
    (e.g. `https://abc-xyz.trycloudflare.com/mcp`):
 
-   <img src="./doc/img/claude-web-setup.png" alt="Claude web connector setup" width="700">
+   <img src="./dev-docs/img/claude-web-setup.png" alt="Claude web connector setup" width="700">
 
 5. You should see Producer Pal tools in Claude's "Search and Tools" menu (make
    sure it's enabled when starting a conversation):
 
-   <img src="./doc/img/claude-web-tool-list.png" alt="Producer Pal tools in Claude web app" width="700">
+   <img src="./dev-docs/img/claude-web-tool-list.png" alt="Producer Pal tools in Claude web app" width="700">
 
 6. Start a conversation with "connect to ableton"
 
 7. Allow Producer Pal tools to be used when Claude tries to use them:
 
-   <img src="./doc/img/claude-web-permissions.png" alt="Claude web tool permission prompt" width="700">
+   <img src="./dev-docs/img/claude-web-permissions.png" alt="Claude web tool permission prompt" width="700">
 
-   <img src="./doc/img/claude-web-success.png" alt="Claude web successfully connected to Producer Pal" width="700">
+   <img src="./dev-docs/img/claude-web-success.png" alt="Claude web successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -621,7 +621,7 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
@@ -635,13 +635,13 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
 
    will give you a public URL such as `https://abc-xyz.trycloudflare.com`:
 
-   <img src="./doc/img/cloudflare-tunnel.png" alt="Cloudflare web tunnel" width="700">
+   <img src="./dev-docs/img/cloudflare-tunnel.png" alt="Cloudflare web tunnel" width="700">
 
 3. Go to
    [ChatGPT → Settings → Apps & Connectors → Advanced](https://chatgpt.com/#settings/Connectors/Advanced)
    and enable Developer Mode (this option might not appear for free accounts):
 
-   <img src="./doc/img/chatgpt-setup.png" alt="ChatGPT developer mode settings" width="700">
+   <img src="./dev-docs/img/chatgpt-setup.png" alt="ChatGPT developer mode settings" width="700">
 
 4. In the [Apps & Connectors](https://chatgpt.com/#settings/Connectors)
    settings, create a custom connector:
@@ -652,17 +652,17 @@ Use Producer Pal in your web browser with OpenAI's chat web app.
    - No authentication
    - Trust the app
 
-   <img src="./doc/img/chatgpt-setup2.png" alt="ChatGPT custom connector setup" width="700">
+   <img src="./dev-docs/img/chatgpt-setup2.png" alt="ChatGPT custom connector setup" width="700">
 
 5. Explicitly enable the Producer Pal tools for each conversation where you want
    to use them:
 
-   <img src="./doc/img/chatgpt-enable-tools.png" alt="Enabling Producer Pal tools in ChatGPT" width="700">
+   <img src="./dev-docs/img/chatgpt-enable-tools.png" alt="Enabling Producer Pal tools in ChatGPT" width="700">
 
 6. Start a new chat "connect to ableton with your producer pal tools" (note that
    ChatGPT tends to need more nudging than "connect to ableton"):
 
-   <img src="./doc/img/chatgpt-success.png" alt="ChatGPT successfully connected to Producer Pal" width="700">
+   <img src="./dev-docs/img/chatgpt-success.png" alt="ChatGPT successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -691,14 +691,14 @@ However, completely offline and private usage is compelling.
    the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
    Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
    _It should display "Producer Pal Running" or something isn't working._
 
 2. Optional / Recommended: In Producer Pal's "Setup" tab, enable "Small Model
    Mode":
 
-   <img src="./doc/img/small-model-mode.png" alt="small model mode setting" width="300">
+   <img src="./dev-docs/img/small-model-mode.png" alt="small model mode setting" width="300">
 
    _This option is disabled by default and must be enabled each time you add
    Producer Pal to Live._
@@ -761,7 +761,7 @@ However, completely offline and private usage is compelling.
 
 5. Confirm the Producer Pal tools are listed under Settings → Program:
 
-   <img src="./doc/img/lm-studio-tool-list.png" alt="Producer Pal tools listed in LM Studio" width="250">
+   <img src="./dev-docs/img/lm-studio-tool-list.png" alt="Producer Pal tools listed in LM Studio" width="250">
 
    _See below for tips on a subset of tools to use._
 
@@ -771,9 +771,9 @@ However, completely offline and private usage is compelling.
 7. If you didn't enable "Allow all" under Settings → Program, then allow
    Producer Pal tools in the conversation:
 
-   <img src="./doc/img/lm-studio-permissions.png" alt="LM Studio tool permission prompt" width="700">
+   <img src="./dev-docs/img/lm-studio-permissions.png" alt="LM Studio tool permission prompt" width="700">
 
-   <img src="./doc/img/lm-studio-success.png" alt="LM Studio successfully connected to Producer Pal" width="700">
+   <img src="./dev-docs/img/lm-studio-success.png" alt="LM Studio successfully connected to Producer Pal" width="700">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 
@@ -859,7 +859,7 @@ Download
 the Producer Pal Max for Live device, and add it to a MIDI track in Ableton
 Live:
 
-   <img src="./doc/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
+   <img src="./dev-docs/img/device-main-tab.png" alt="Producer Pal device running in Ableton Live" width="400">
 
 _It should display "Producer Pal Running" or something isn't working._
 
@@ -945,7 +945,7 @@ Once Producer Pal is configured, start a new chat with Producer Pal tools
 enabled, say "connect to ableton" or "connect to ableton with your producer pal
 tools", and allow the tools to be used:
 
-<img src="./doc/img/cline-success.png" alt="using Producer Pal with Cline" width="450">
+<img src="./dev-docs/img/cline-success.png" alt="using Producer Pal with Cline" width="450">
 
 If it doesn't work, see the [Troubleshooting Guide](#troubleshooting).
 

@@ -24,6 +24,6 @@ release
 scratchpad
 .env
 
-# VitePress
+# VitePress Documentation Site
 docs/.vitepress/dist
 docs/.vitepress/cache

@@ -66,9 +66,9 @@ In project resources:
   OpenAI Codex CLI)
 - `CLAUDE.md` - Trigger Claude Code to use AGENTS.md
 - `GEMINI.md` - Trigger Gemini CLI to use AGENTS.md
-- `doc/Architecture.md` - System design details
-- `doc/Coding-Standards.md` - Code patterns and rules
-- `doc/Development-Tools.md` - CLI and debugging tools
+- `dev-docs/Architecture.md` - System design details
+- `dev-docs/Coding-Standards.md` - Code patterns and rules
+- `dev-docs/Development-Tools.md` - CLI and debugging tools
 - `DEVELOPERS.md` - Development setup
 - `FEATURES.md` - Feature list
 - `INSTALLATION.md` - Installation guide supporting various LLMs

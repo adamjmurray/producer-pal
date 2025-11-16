@@ -138,7 +138,7 @@ in your browser.
 
 ### Architecture
 
-See `doc/Chat-UI.md` for detailed information about:
+See `dev-docs/Chat-UI.md` for detailed information about:
 
 ## Testing and Debugging
 
@@ -194,9 +194,9 @@ command:
   unclear how well this works in practice - results seem less impressive than
   Claude Project with the kb or kb:small knowledge base)
 
-When using a chat project, copy `doc/AI-Chat-Project-Instructions.md` into the
-project instructions for the AI chat app of choice. This file provides useful
-information similar to `AGENTS.md` but adapted for standalone chat apps.
+When using a chat project, copy `dev-docs/AI-Chat-Project-Instructions.md` into
+the project instructions for the AI chat app of choice. This file provides
+useful information similar to `AGENTS.md` but adapted for standalone chat apps.
 
 ## Development Testing
 

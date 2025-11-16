@@ -1,4 +1,4 @@
-# <sub><img src="./doc/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
+# <sub><img src="./dev-docs/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
 AI music production assistant for Ableton Live.
 
@@ -149,9 +149,9 @@ Currently supports Google's Gemini API with more LLMs planned. Access it by
 clicking the "Open Chat UI" button in the Max device or visiting the URL
 directly in your browser.
 
-<img src="./doc/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
+<img src="./dev-docs/img/device-setup-tab.png" alt="Producer Pal Setup tab with Open Chat UI button" width="400">
 
-<img src="./doc/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
+<img src="./dev-docs/img/built-in-chat-ui.png" alt="Producer Pal Chat UI" width="700">
 
 See the [Chat UI installation guide](./INSTALLATION.md#producer-pal-chat-ui) for
 setup instructions.
