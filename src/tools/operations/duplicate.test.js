@@ -1665,9 +1665,7 @@ describe("duplicate", () => {
       // Just verify the result is correct - the holding area operations are tested in arrangement-tiling.test.js
     });
 
-    // SKIPPED: Mock setup for clip-to-arrangement with updateClip delegation is complex.
-    // E2E tests verify this functionality works correctly.
-    it.skip("should duplicate a looping clip with lengthening via updateClip", () => {
+    it("should duplicate a looping clip with lengthening via updateClip", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
@@ -1716,6 +1714,9 @@ describe("duplicate", () => {
           loop_end: 4,
           is_midi_clip: 1,
         },
+        "live_set tracks 0": {
+          arrangement_clips: children("live_set tracks 0 arrangement_clips 0"),
+        },
         "live_set tracks 0 arrangement_clips 0": {
           is_arrangement_clip: 1,
           start_time: 16,
@@ -1741,14 +1742,15 @@ describe("duplicate", () => {
       // Then delegates to updateClip for lengthening/tiling
       // The mocked updateClip handles the complexity - its behavior is tested in update-clip.test.js
       // Just verify the result structure is valid
+      // When updateClip returns a single clip, the result is the clip object directly
       expect(result).toHaveProperty("arrangementStart", "5|1");
-      expect(result).toHaveProperty("clips");
-      expect(Array.isArray(result.clips)).toBe(true);
+      expect(result).toHaveProperty(
+        "id",
+        "live_set tracks 0 arrangement_clips 0",
+      );
     });
 
-    // SKIPPED: Mock setup for clip-to-arrangement with updateClip delegation is complex.
-    // E2E tests verify this functionality works correctly.
-    it.skip("should duplicate a non-looping clip at original length when requested length is longer", () => {
+    it("should duplicate a non-looping clip at original length when requested length is longer", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
@@ -1765,10 +1767,20 @@ describe("duplicate", () => {
 
       const originalPath = liveApiPath.getMockImplementation();
       liveApiPath.mockImplementation(function () {
-        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
-          return "live_set tracks 0 arrangement_clips 0";
+        if (
+          this._path.startsWith("id live_set tracks") &&
+          this._path.includes("arrangement_clips")
+        ) {
+          return this._path.slice(3);
         }
         return originalPath ? originalPath.call(this) : this._path;
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set/tracks/0/clip_slots/0/clip";
+        }
+        return this._id;
       });
 
       mockLiveApiGet({
@@ -1776,6 +1788,12 @@ describe("duplicate", () => {
           exists: () => true,
           length: 4, // 4 beats original length
           looping: 0, // Not looping
+          signature_numerator: 4,
+          signature_denominator: 4,
+          is_midi_clip: 1,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: children("live_set tracks 0 arrangement_clips 0"),
         },
         "live_set tracks 0 arrangement_clips 0": {
           is_arrangement_clip: 1,
@@ -1797,13 +1815,16 @@ describe("duplicate", () => {
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "duplicate_clip_to_arrangement",
-        "id clip1",
+        "id live_set/tracks/0/clip_slots/0/clip",
         16,
       );
 
+      // When updateClip returns a single clip, the result is the clip object directly
       expect(result).toHaveProperty("arrangementStart", "5|1");
-      expect(result).toHaveProperty("clips");
-      expect(Array.isArray(result.clips)).toBe(true);
+      expect(result).toHaveProperty(
+        "id",
+        "live_set tracks 0 arrangement_clips 0",
+      );
     });
 
     it("should correctly handle 6/8 time signature duration conversion", () => {
