@@ -14,7 +14,7 @@ hero:
       link: /installation/
     - theme: alt
       text: Getting Started
-      link: /guide/getting-started
+      link: /guide/
 
 features:
   - title: Natural Language Control

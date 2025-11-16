@@ -124,7 +124,7 @@ docs/
 
 ### File Naming
 
-- Use kebab-case for all markdown files (e.g., `getting-started.md`)
+- Use kebab-case for all markdown files (e.g., `chat-ui.md`)
 - Group related content in subdirectories (e.g., `installation/`, `guide/`)
 
 ### Frontmatter
@@ -141,7 +141,7 @@ description: Brief description for SEO
 ### Linking
 
 - Use relative paths for internal links: `[Installation](./installation/)`
-- Include `.md` extension in links: `[Guide](./guide/getting-started.md)`
+- Include `.md` extension in links: `[Guide](./installation/chat-ui.md)`
 - VitePress will handle converting these to proper URLs in the build
 
 ### Code Blocks
