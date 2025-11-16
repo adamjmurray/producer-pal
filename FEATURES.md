@@ -177,10 +177,10 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - Connects to Ableton Live and verifies everything is working
 - Shows Live Set name, tempo, and basic info
 - Provides project notes if enabled
-- Provides AI instructions on how to use Producer Pal
+- Provides the AI a Producer Pal skill set suitable to the language model's size
+  (a "small model mode" exists with a simplified interface for local models)
 
 ### Network Control
 
-- Control Ableton Live on another computer on your network
-- Configure with full URL in Claude Desktop extension settings
-- Enables collaborative production and remote control workflows
+- Control Ableton Live on another computer on your network for collaborative
+  production and remote control workflows
