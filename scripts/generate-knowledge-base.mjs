@@ -145,11 +145,9 @@ const itemsToCopy = [
   { src: "CLAUDE.md", group: "config" },
   { src: "GEMINI.md", group: "config" },
   { src: "DEVELOPERS.md", group: "doc" },
-  { src: "FEATURES.md", group: "doc" },
   { src: "LICENSE", group: "licenses" },
   { src: "package.json", group: "config" },
   { src: "README.md", group: "doc" },
-  { src: "ROADMAP.md", group: "doc" },
   {
     src: "coverage/coverage-summary.txt",
     flatName: "test-coverage-summary.txt",

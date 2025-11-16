@@ -70,7 +70,8 @@ In project resources:
 - `dev-docs/Coding-Standards.md` - Code patterns and rules
 - `dev-docs/Development-Tools.md` - CLI and debugging tools
 - `DEVELOPERS.md` - Development setup
-- `FEATURES.md` - Feature list
+- `docs/features/index.md` - Feature list (hosted at
+  https://producer-pal.org/features/)
 - `docs/installation/**` - Installation guide supporting various LLMs (hosted at
   https://producer-pal.org/installation/)
 - `LICENSE` - The software license (MIT)

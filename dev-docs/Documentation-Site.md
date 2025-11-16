@@ -109,15 +109,15 @@ docs/
 │   ├── BingSiteAuth.xml    # Search engine verification
 │   └── *.png, *.svg        # Images and icons
 ├── guide/                  # Documentation content
-│   ├── getting-started.md
-│   └── usage.md
+│   ├── index.md            # Getting started guide
+│   └── usage.md            # Usage tips
 ├── installation/           # Installation guides
 │   ├── index.md
 │   ├── claude-desktop.md
 │   └── ...
 ├── index.md                # Homepage
-├── features.md             # Feature list
-└── roadmap.md              # Development roadmap
+├── features/index.md       # Feature list
+└── roadmap/index.md        # Development roadmap
 ```
 
 ## Content Guidelines
