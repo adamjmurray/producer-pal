@@ -9,6 +9,8 @@ export default defineConfig({
   // GitHub Pages base URL
   base: "/",
 
+  head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],
+
   themeConfig: {
     // https://vitepress.dev/reference/default-theme-config
     logo: "/producer-pal-logo.svg",
