@@ -2,42 +2,48 @@
 
 ## Released
 
-- **0.9** - Public Beta with Claude Desktop
-- **1.0** - Full feature set, multi-LLM support
-- **1.1** - Built-in chat UI with direct API integrations: Google Gemini,
-  OpenAI, Mistral, OpenRouter, LM Studio, Ollama, and more
+### 0.9 - Public Beta with Claude Desktop
+
+### 1.0 - Fleshed out feature set, multi-LLM support
+
+### 1.1 - Built-in chat UI
+
+Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
+Studio, Ollama, and more.
+
+### 1.2.0 - Audio Clips & Improved Clip Handling
+
+- Read and write audio-specific clip properties
+  - gain
+  - pitch
+  - warp mode
+  - warp markers
+- Change clips' arrangement start time and arrangement length
+- Duplicate clips to arbitrary arrangement lengths (e.g. looping clips loop to
+  fill up extra space)
+- Duplicate session clips to arbitrary clip slots'
+- Slice clips in the arrangement (e.g. audio clips into separate one-beat-long
+  clips)
 
 ## In Progress
 
-### 1.2 - Audio Clips & Improved Clip Handling
+### 1.2.x - More Audio Clips & Improved Clip Handling
 
-- [x] Read/write audio clip properties: gain, pitch
-- [x] Read/write warp mode and warp markers
-- [ ] Ability to change clip's arrangement start time and arrangement length
-  - [x] looped MIDI clips
-  - [ ] looped audio clips
-  - [ ] unlooped clips
-- [x] Duplicate session clips to arbitrary clip slots (not just the slot
-      immediately below)
-- [ ] Improve the duplicate clip tool to be completely non-destructive (don't
-      lose clip envelopes when "tiling" clips in the arrangement, don't
-      overwrite any clips later in the timeline)
-
-### 1.2.1
-
-- [ ] Ability to scan a folder for audio files and create audio clips from those
-      files
-- [ ] Slice audio clips in the arrangement
-- [ ] Improve handling of clip (and track and scene) colors by being explicit
-      about how Ableton maps arbitrary RGB to a limited color pallette
-- [ ] Maybe: "macro" operations to "mangle" audio clips via warp marker
-      modifications and audio clip slicing + audio clip property modifications
+- Ability to scan a folder for audio files and create audio clips from those
+  files
+- Improve handling of clip (and track and scene) colors by being explicit about
+  how Ableton maps arbitrary RGB to a limited color pallette
+- Operations to "mangle" audio clips via warp marker transforms, gain/pitch
+  transforms, slicing, and/or reordering
 
 ## Planned
 
 ### 1.3 - Voice Interaction
 
-- Speak to Producer Pal instead of typing
+- Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
+  - Google Gemini
+  - Maybe: OpenAI
+  - Local/other options?
 
 ### 1.4 - Modulation
 
@@ -64,7 +70,7 @@ API
 - Delete device
 - Read/write synth and effect parameters
 - A/B comparison of device parameters
-- ## Rack macro management
+- Rack macro management
   - Add/update macro variation
   - Delete macro variation
   - Randomize macros
@@ -85,10 +91,3 @@ API
 - Chord notation
 - Pitches as scale/chord degrees (instead of absolute pitches)
 - Microtonal support
-
-## Future Ideas
-
-- **Adaptive Learning**: AI learns preferences, specialized personas with
-  independent memory, import/export personas
-- **Extended Model Support**: HuggingFace, FireworksAI (requires CORS-bypassing
-  backend proxy)
