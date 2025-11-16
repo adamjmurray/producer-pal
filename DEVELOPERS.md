@@ -1,17 +1,19 @@
 # Producer Pal Development Info
 
 This is a personal project with a focused roadmap. While the code is open source
-for learning and forking, I'm not accepting contributions at this time to keep
-the project aligned with my specific needs.
+for learning and forking, I'm not generally not accepting code contributions at
+this time to keep the project aligned with my specific needs and development
+workflow. This may change in the future.
 
 Feel free to:
 
 - File bug reports in
-  [the issues](https://github.com/adamjmurray/producer-pal/issues)
-- Ask questions, give feedback, and share your experiences in
+  [the issues](https://github.com/adamjmurray/producer-pal/issues) (help me
+  reproduce it and I will do my best to fix it)
+- Ask questions, give feedback, request features, and share your experiences in
   [the discussions](https://github.com/adamjmurray/producer-pal/discussions)
 - Learn from the implementation
-- Fork and modify for your own needs
+- Fork and modify for your own needs. Please attribute me.
 
 ## Building from source
 
