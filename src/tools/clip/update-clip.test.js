@@ -3790,6 +3790,13 @@ describe("updateClip", () => {
           warping: 1, // Temp clip starts warped
           looping: 1, // Temp clip starts looped
         },
+        "live_set/tracks/0/clip_slots/0/clip": {
+          // Path-based session clip (same as tempSessionClipId but accessed via path)
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          warping: 1,
+          looping: 1,
+        },
         [revealedClipId]: {
           is_arrangement_clip: 1,
           is_midi_clip: 0,
@@ -3835,46 +3842,48 @@ describe("updateClip", () => {
       // Should loop temp clip (already done by createAudioClipInSession)
 
       // Should set markers in BEATS while warped and looped
+      // Note: Session clip is now created with path-based construction
+      const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: tempSessionClipId }),
+        expect.objectContaining({ id: sessionClipPath }),
         "loop_end",
         9.6,
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: tempSessionClipId }),
+        expect.objectContaining({ id: sessionClipPath }),
         "loop_start",
         6.0,
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: tempSessionClipId }),
+        expect.objectContaining({ id: sessionClipPath }),
         "end_marker",
         9.6,
       );
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: tempSessionClipId }),
+        expect.objectContaining({ id: sessionClipPath }),
         "start_marker",
         6.0,
       );
 
-      // Should unwarp (Live will auto-convert beats to seconds)
+      // Should duplicate temp clip to arrangement (while still warped)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        `id ${sessionClipPath}`, // Path-based ID
+        6.0,
+      );
+
+      // Should unwarp the REVEALED clip (Live will auto-convert beats to seconds)
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: tempSessionClipId }),
+        expect.objectContaining({ id: revealedClipId }),
         "warping",
         0,
       );
 
-      // Should unloop after unwarping
+      // Should unloop the REVEALED clip after unwarping
       expect(liveApiSet).toHaveBeenCalledWithThis(
-        expect.objectContaining({ id: tempSessionClipId }),
+        expect.objectContaining({ id: revealedClipId }),
         "looping",
         0,
-      );
-
-      // Should duplicate temp clip to arrangement
-      expect(liveApiCall).toHaveBeenCalledWith(
-        "duplicate_clip_to_arrangement",
-        `id ${tempSessionClipId}`,
-        6.0,
       );
 
       // Should delete temp session clip

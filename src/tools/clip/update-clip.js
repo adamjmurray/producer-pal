@@ -150,7 +150,6 @@ function revealUnwarpedAudioContent(
     `WARNING: Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
   );
 
-
   // 2. Create temp clip in session holding area from that file
   // IMPORTANT: Set length to newEndMarker (not targetLength) to include all content from start of file
   const { clip: tempClip, slot: tempSlot } = createAudioClipInSession(

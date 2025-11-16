@@ -103,32 +103,30 @@ describe("createShortenedClipInHolding", () => {
     // Mock duplicate_clip_to_arrangement (holding clip)
     liveApiCall.mockReturnValueOnce(["id", "200"]);
 
-    // Mock holding clip properties - last scene NOT empty to test full path
+    // Mock holding clip properties - last scene is EMPTY (simplified test)
     mockLiveApiGet({
       "id 200": {
         end_time: 1000 + 16, // holdingAreaStart (1000) + clip length (16)
       },
       live_set: {
-        "scenes.*.id": ["id 1", "id 2"],
+        scenes: ["id", "1", "id", "2"],
         signature_numerator: 4,
         signature_denominator: 4,
       },
+      "id 1": {},
       "id 2": {
-        is_empty: 0, // NOT empty, will create new scene
-      },
-      "id 3": {
-        // Newly created scene
+        is_empty: 1, // Empty - will use this scene
       },
       "id 400": {
         // Session clip properties after creation
+      },
+      "live_set/tracks/0/clip_slots/1/clip": {
+        // Session clip created via path (sceneIndex is 1 for last scene)
       },
       "id 500": {
         // Temp clip properties
       },
     });
-
-    // Mock create_scene since last scene is not empty
-    liveApiCall.mockReturnValueOnce(["id", "3"]);
 
     // Mock create_audio_clip in session
     liveApiCall.mockReturnValueOnce(["id", "400"]);
@@ -155,12 +153,6 @@ describe("createShortenedClipInHolding", () => {
 
     expect(liveApiCall).toHaveBeenNthCalledWith(
       2,
-      "create_scene", // New scene because last is not empty
-      2,
-    );
-
-    expect(liveApiCall).toHaveBeenNthCalledWith(
-      3,
       "create_audio_clip", // Session clip creation
       "/tmp/test-silence.wav",
     );
@@ -172,14 +164,14 @@ describe("createShortenedClipInHolding", () => {
     expect(sessionClip.set).toHaveBeenCalledWith("loop_end", 8);
 
     expect(liveApiCall).toHaveBeenNthCalledWith(
-      4,
+      3,
       "duplicate_clip_to_arrangement", // Session to arrangement temp clip
-      "id 400",
+      "id live_set/tracks/0/clip_slots/1/clip", // Path-based ID (sceneIndex 1)
       1008,
     );
 
-    expect(liveApiCall).toHaveBeenNthCalledWith(5, "delete_clip"); // Session slot
-    expect(liveApiCall).toHaveBeenNthCalledWith(6, "delete_clip", "id 500"); // Temp clip
+    expect(liveApiCall).toHaveBeenNthCalledWith(4, "delete_clip"); // Session slot
+    expect(liveApiCall).toHaveBeenNthCalledWith(5, "delete_clip", "id 500"); // Temp clip
 
     // Verify return value
     expect(result).toEqual({
