@@ -11,10 +11,10 @@ Control Ableton with Claude, Gemini, OpenAI, local models, and more.
 1. **Install**: Download
    [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 2. **Setup**: Follow the
-   [installation guide](https://producerpal.org/installation/) for your AI
+   [installation guide](https://producer-pal.org/installation/) for your AI
 3. **Create**: Say "connect to ableton" and start making music
 
-**→ [Full Documentation](https://producerpal.org)**
+**→ [Full Documentation](https://producer-pal.org)**
 
 ## Demo
 
@@ -22,7 +22,7 @@ Control Ableton with Claude, Gemini, OpenAI, local models, and more.
 
 ## Resources
 
-- [Documentation](https://producerpal.org)
+- [Documentation](https://producer-pal.org)
 - [Video Tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
 - [Latest Releases](https://github.com/adamjmurray/producer-pal/releases)
 - [Discussions](https://github.com/adamjmurray/producer-pal/discussions)
