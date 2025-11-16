@@ -80,8 +80,9 @@ Watch the Producer Pal walk-through video with Claude Desktop:
   or [issues list](https://github.com/adamjmurray/producer-pal/issues)
 
 If you want to support Producer Pal development, ⭐️ star
-[the GitHub repository](https://github.com/adamjmurray/producer-pal) to help
-others discover the project.
+[the GitHub repository](https://github.com/adamjmurray/producer-pal) and share
+the [npm package](https://www.npmjs.com/package/producer-pal) to help others
+discover the project.
 
 ## Data Privacy
 

@@ -48,6 +48,13 @@ export const VERSION = "${newVersion}";
 writeFileSync(versionPath, versionContent);
 console.log("✓ Updated src/shared/version.js");
 
+// Update npm/package.json
+const npmPkgPath = join(rootDir, "npm/package.json");
+const npmPkg = JSON.parse(readFileSync(npmPkgPath, "utf8"));
+npmPkg.version = newVersion;
+writeFileSync(npmPkgPath, JSON.stringify(npmPkg, null, 2) + "\n");
+console.log("✓ Updated npm/package.json");
+
 console.log(`\n✅ Version bumped to ${newVersion}\n`);
 console.log("⚠️  Manual step required:");
 console.log(`1. Open max-for-live-device/Producer_Pal.amxd in Max`);

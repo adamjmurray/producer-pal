@@ -23,7 +23,8 @@ These are the easiest and most reliable ways to use Producer Pal:
 - **[Claude Desktop](./claude-desktop)** - Anthropic's desktop GUI (easiest
   setup for Anthropic users)
 
-Already have an MCP-compatible client? Connect with `npx producer-pal` (see
+Already have an MCP-compatible client? Connect with
+[`npx producer-pal`](https://www.npmjs.com/package/producer-pal) (see
 [Other MCP LLMs](./other-mcp.html) and [CLI options](#command-line-interfaces))
 
 ## Command Line Interfaces

@@ -170,6 +170,10 @@ provides an easier setup alternative to `npx producer-pal`.
 
 For complete documentation, setup guides, and usage examples, visit:
 
+**https://producer-pal.org**
+
+Source code and development:
+
 **https://github.com/adamjmurray/producer-pal**
 
 ## Support
