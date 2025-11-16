@@ -146,7 +146,6 @@ const itemsToCopy = [
   { src: "GEMINI.md", group: "config" },
   { src: "DEVELOPERS.md", group: "doc" },
   { src: "FEATURES.md", group: "doc" },
-  { src: "INSTALLATION.md", group: "doc" },
   { src: "LICENSE", group: "licenses" },
   { src: "package.json", group: "config" },
   { src: "README.md", group: "doc" },

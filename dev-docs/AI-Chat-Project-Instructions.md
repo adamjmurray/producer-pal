@@ -71,7 +71,8 @@ In project resources:
 - `dev-docs/Development-Tools.md` - CLI and debugging tools
 - `DEVELOPERS.md` - Development setup
 - `FEATURES.md` - Feature list
-- `INSTALLATION.md` - Installation guide supporting various LLMs
+- `docs/installation/**` - Installation guide supporting various LLMs (hosted at
+  https://producer-pal.org/installation/)
 - `LICENSE` - The software license (MIT)
 
 ## Trusted Resources
