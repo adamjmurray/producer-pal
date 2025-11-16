@@ -20,13 +20,15 @@ import { toolDefUpdateTrack } from "../tools/track/update-track.def.js";
 import { toolDefConnect } from "../tools/workflow/connect.def.js";
 import { toolDefMemory } from "../tools/workflow/memory.def.js";
 
-export function createMcpServer(callLiveApi) {
+export function createMcpServer(callLiveApi, options = {}) {
+  const { smallModelMode = false } = options;
+
   const server = new McpServer({
     name: "Ableton Live Producer Pal: AI tools for producing music in Ableton Live",
     version: VERSION,
   });
 
-  const addTool = (toolDef) => toolDef(server, callLiveApi);
+  const addTool = (toolDef) => toolDef(server, callLiveApi, { smallModelMode });
 
   addTool(toolDefConnect);
 

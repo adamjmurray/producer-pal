@@ -104,4 +104,7 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
       .optional()
       .describe("beats to shift (+forward, -backward) for move operation"),
   },
+  smallModelModeConfig: {
+    excludeParams: ["warpOp", "warpBeatTime", "warpSampleTime", "warpDistance"],
+  },
 });
