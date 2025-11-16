@@ -36,8 +36,8 @@ features:
   - title: Open Source & Free Forever
     details:
       MIT licensed and developed completely in the open. No subscriptions, no
-      paywalls, no premium features. Fork it, modify it, use it commercially—you
-      have complete freedom with the code.
+      paywalls, no premium features. Fork it, modify it, use it however you
+      want.
 ---
 
 ## Demo

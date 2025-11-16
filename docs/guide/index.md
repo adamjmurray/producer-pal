@@ -16,7 +16,7 @@ Instead of:
 - Copying and pasting patterns bar by bar
 
 You describe what you want, and Producer Pal handles the tedious execution. You
-stay in creative flow.
+stay in the creative flow.
 
 ## Installation
 
