@@ -121,7 +121,10 @@ See `dev-docs/Architecture.md` for detailed system design and
 ## Documentation
 
 - `dev-docs/Architecture.md` - System design and components
+- `dev-docs/Chat-UI.md` - Web UI architecture and development
 - `dev-docs/Coding-Standards.md` - Code style, patterns, and rules
 - `dev-docs/Development-Tools.md` - CLI testing, raw API debugging, MCP
   inspector
+- `dev-docs/Documentation-Site.md` - VitePress documentation site setup and
+  deployment
 - `DEVELOPERS.md` - Development setup and testing

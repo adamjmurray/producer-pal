@@ -78,6 +78,9 @@ In project resources:
 
 If web search needed:
 
+- **Producer Pal Documentation**: https://producer-pal.org - User guides,
+  installation instructions, features, and usage examples. Built with VitePress,
+  source in `docs/` directory.
 - Max/Live API: https://docs.cycling74.com/apiref/
 - MCP: https://modelcontextprotocol.io/
 - Live Manual: https://www.ableton.com/en/live-manual/12/
