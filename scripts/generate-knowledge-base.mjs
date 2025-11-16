@@ -7,7 +7,18 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const projectRoot = path.join(__dirname, "..");
 const outputDir = path.join(projectRoot, "knowledge-base");
 
-const IGNORE_PATTERNS = [/^\.DS_Store$/, /\.bak$/, /\.svg$/];
+const IGNORE_PATTERNS = [
+  /^\.DS_Store$/,
+  /\.bak$/,
+  /\.svg$/,
+  /\.png$/,
+  /\.gif$/,
+  /\.jpg$/,
+  /\.af$/,
+  /\.afdesign$/,
+  /^BingSiteAuth\.xml$/,
+  /^CNAME$/,
+];
 
 const FLAT_SEP = "--";
 
@@ -71,7 +82,13 @@ const itemsToCopy = [
   // Directories (automatically get directory prefix)
   { src: ".github", isDir: true, targetDirName: "_github", group: "config" },
   { src: "config", isDir: true },
-  { src: "doc", isDir: true, exclude: ["img"] },
+  { src: "dev-docs", isDir: true, exclude: ["img"] },
+  {
+    src: "docs",
+    isDir: true,
+    exclude: [".vitepress/cache", ".vitepress/dist"],
+    group: "docs",
+  },
   { src: "licenses", isDir: true },
   { src: "scripts", isDir: true },
   {
