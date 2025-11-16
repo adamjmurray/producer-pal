@@ -53,7 +53,10 @@
     "ui:build": "vite build --config config/vite.config.mjs",
     "ui:dev": "ENABLE_RAW_LIVE_API=true vite --config config/vite.config.mjs",
     "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json",
-    "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs"
+    "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
     "@google/genai": "^1.29.1",
@@ -93,6 +96,7 @@
     "typescript": "^5.9.3",
     "vite": "^7.2.2",
     "vite-plugin-singlefile": "^2.3.0",
+    "vitepress": "^1.6.1",
     "vitest": "^4.0.9"
   }
 }

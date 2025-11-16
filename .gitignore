@@ -23,3 +23,7 @@ max-for-live-device/Ableton Folder Info/
 release
 scratchpad
 .env
+
+# VitePress
+docs/.vitepress/dist
+docs/.vitepress/cache
