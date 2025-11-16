@@ -186,6 +186,17 @@ C3 4|1                       // this C3 is NOT deleted (v80 still active)
 **Staying in Sync:**
 - Set clip lengths explicitly to keep clips in sync
 - After user rearranges anything in Live, call ppal-read-live-set to resync
+
+### Arrangement Clips
+
+\`arrangementStart\` moves clips in the timeline. \`arrangementLength\` expands or reduces visible playback region.
+
+**Lengthening clips:** Producer Pal duplicates and tiles the clip to fill the requested length
+(creates multiple clips in arrangement). This differs from Live's native behavior but achieves
+the same playback result.
+
+**Slicing technique:** Reduce \`arrangementLength\` to desired slice size, then expand back to original length. 
+Each slice becomes independently editable (gain, pitch, deletion). Especially useful for audio clips.
 `;
 
 /**
