@@ -3,7 +3,7 @@ layout: home
 
 hero:
   name: "Producer Pal"
-  text: "AI music production assistant for Ableton Live"
+  text: "Natural language interface for Ableton Live"
   tagline: Works with Claude, Gemini, GPT, and local models
   image:
     src: /producer-pal-logo.svg
@@ -17,22 +17,21 @@ hero:
       link: /guide/getting-started
 
 features:
-  - title: AI-Powered Composition
+  - title: Natural Language Control
     details:
-      Generate musical ideas, melodies, chord progressions, and complete
-      arrangements using natural language instructions.
-  - title: Multi-AI Support
+      Control Ableton using conversational commands. Create tracks, clips, and
+      MIDI patterns without navigating complex menus or remembering shortcuts.
+
+  - title: Complex Edits Made Simple
     details:
-      Compatible with Claude Desktop, Google Gemini, OpenAI GPT, and local
-      models through the Model Context Protocol (MCP).
-  - title: Deep Ableton Integration
+      Apply transformations that would be tedious by hand - "shift every third
+      note down an octave" or "fade out velocities over 8 bars." Explore
+      variations and experiment with patterns.
+
+  - title: Works Online or Offline
     details:
-      Direct control over Ableton Live through a Max for Live device - create
-      tracks, clips, scenes, and manipulate MIDI data.
-  - title: Built-in Chat UI
-    details:
-      Includes a web-based chat interface for easy interaction with your AI
-      assistant directly within Ableton.
+      Use cloud AI services (Claude, Gemini, GPT) or run completely offline with
+      local models (Ollama, LM Studio). Includes built-in chat UI.
 ---
 
 ## Demo
