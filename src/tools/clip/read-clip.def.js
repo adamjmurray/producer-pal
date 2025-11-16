@@ -3,7 +3,7 @@ import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefReadClip = defineTool("ppal-read-clip", {
   title: "Read Clip",
-  description: "Read clip settings and notes",
+  description: "Read clip settings, MIDI notes, and audio properties",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
@@ -26,8 +26,8 @@ export const toolDefReadClip = defineTool("ppal-read-clip", {
       .optional()
       .describe("0-based index for session clips"),
     include: z
-      .array(z.enum(["clip-notes", "color"]))
+      .array(z.enum(["clip-notes", "color", "warp-markers"]))
       .default(["clip-notes"])
-      .describe("omit MIDI notes with empty array"),
+      .describe("data: clip-notes, color, warp-markers"),
   },
 });

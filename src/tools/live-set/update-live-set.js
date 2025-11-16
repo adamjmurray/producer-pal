@@ -70,12 +70,10 @@ function parseScale(scaleString) {
  * @param {boolean} [args.arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
  * @returns {Object} Updated Live Set information
  */
-export function updateLiveSet({
-  tempo,
-  timeSignature,
-  scale,
-  arrangementFollower,
-} = {}) {
+export function updateLiveSet(
+  { tempo, timeSignature, scale, arrangementFollower } = {},
+  _context = {},
+) {
   const liveSet = new LiveAPI("live_set");
 
   // optimistic result object that only include properties that are actually set
@@ -121,7 +119,6 @@ export function updateLiveSet({
     );
   }
 
-  // TODO: Consider removing this feature entirely since playback tool handles this via autoFollow parameter
   if (arrangementFollower != null) {
     liveSet.set("back_to_arranger", arrangementFollower ? 0 : 1);
 

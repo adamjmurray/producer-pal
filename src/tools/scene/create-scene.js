@@ -16,16 +16,19 @@ import { captureScene } from "./capture-scene.js";
  * @param {boolean} [args.switchView=false] - Automatically switch to session view
  * @returns {Object|Array<Object>} Single scene object when count=1, array when count>1
  */
-export function createScene({
-  sceneIndex,
-  count = 1,
-  capture = false,
-  name,
-  color,
-  tempo,
-  timeSignature,
-  switchView,
-} = {}) {
+export function createScene(
+  {
+    sceneIndex,
+    count = 1,
+    capture = false,
+    name,
+    color,
+    tempo,
+    timeSignature,
+    switchView,
+  } = {},
+  _context = {},
+) {
   // Handle capture mode
   if (capture) {
     // For capture mode, delegate to captureScene

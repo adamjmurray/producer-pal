@@ -4,6 +4,29 @@ Producer Pal provides AI-powered tools for music production in Ableton Live.
 Simply ask the AI what you want to do, and it will use these tools to help you
 create.
 
+## Connection & Setup
+
+### Connect (`ppal-connect`)
+
+- Guides AI to call this when you say things like "connect to ableton"
+- Connects to Ableton Live and verifies everything is working
+- Shows Live Set name, tempo, and basic info
+- Provides project notes if enabled
+- Provides the AI a Producer Pal skill set suitable to the language model's size
+  (a "small model mode" exists with a simplified interface for local models)
+
+### Built-in Chat UI
+
+- Control Producer Pal with its built-in text-based interface
+- Compatible with Google Gemini and OpenAI-compatible online services (Mistral,
+  OpenRouter, etc)
+- Compatible with local SLMs (LM Studio, Ollama)
+
+### Network Control
+
+- Control Ableton Live on another computer on your network for collaborative
+  production and remote control workflows
+
 ## Transport & Playback
 
 ### Transport Control (`ppal-playback`)
@@ -89,6 +112,9 @@ create.
 - See notes in musical notation (C3, D#4, etc.)
 - Check loop settings and time signatures
 - Works with Session and Arrangement clips
+- Audio clip properties: gain, pitch shift, sample info (rate, length, filename)
+- Audio warp settings: mode (beats, tones, texture, repitch, complex, pro),
+  enabled/disabled state, warp marker positions
 
 ### Update Clip (`ppal-update-clip`)
 
@@ -98,6 +124,15 @@ create.
 - Adjust loop settings
 - Update or merge note patterns
 - Bulk edit multiple clips
+- Audio clip modifications: gain (0-1), pitch shift (-48 to +48 semitones,
+  supports decimals), warping on/off, warp mode
+- Warp marker operations: add markers at specific beat/sample positions, move
+  markers by beat distance, remove markers
+- Arrangement clip positioning: move clips to different bar|beat positions in
+  the timeline
+- Arrangement clip length: shorten clips, extend to reveal hidden content, or
+  tile/loop clips to fill longer durations
+- Slicing technique: reduce then extend clip length to create separate segments
 
 ### Custom Music Notation
 
@@ -122,7 +157,11 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 - Copy tracks, scenes, or clips
 - Duplicate to Session or Arrangement
-- Create multiple copies at once
+- Duplicate session clips to specific clip slots (any track, any scene)
+- Duplicate to Arrangement at specific bar|beat positions
+- Set arrangement length when duplicating: extend and tile/loop clips to fill
+  longer durations automatically
+- Create multiple copies at once (placed sequentially)
 - Track routing options allow layering multiple MIDI clips on a single
   instrument
 
@@ -152,19 +191,3 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - Help Producer Pal understand your project goals
 - AI can read and update notes (when enabled)
 - Notes are saved with your Live project and persist across AI conversations
-
-## Connection & Setup
-
-### Connect (`ppal-connect`)
-
-- Guides AI to call this when you say things like "connect to ableton"
-- Connects to Ableton Live and verifies everything is working
-- Shows Live Set name, tempo, and basic info
-- Provides project notes if enabled
-- Provides AI instructions on how to use Producer Pal
-
-### Network Control
-
-- Control Ableton Live on another computer on your network
-- Configure with full URL in Claude Desktop extension settings
-- Enables collaborative production and remote control workflows

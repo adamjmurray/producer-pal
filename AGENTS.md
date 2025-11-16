@@ -97,6 +97,11 @@ web UI architecture.
   node scripts/cli.mjs tools/list
   node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
   ```
+- **Debug logging for CLI testing**:
+  - `console` must be imported:
+    `import * as console from "../../shared/v8-max-console.js"`
+  - Use `console.error()` to see output in CLI tool results (appears as WARNING)
+  - `console.log()` does NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass). This
   saves time and tokens by pre-emptively fixing likely errors before validation.

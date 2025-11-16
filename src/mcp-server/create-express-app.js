@@ -15,6 +15,14 @@ Max.addHandler(
   (input) => (chatUIEnabled = input == 1 || input === "true"),
 );
 
+let smallModelMode = false; // default
+Max.addHandler(
+  "smallModelMode",
+  // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], 0, false, etc
+  // eslint-disable-next-line eqeqeq
+  (input) => (smallModelMode = input == 1 || input === "true"),
+);
+
 const methodNotAllowed = {
   jsonrpc: "2.0",
   error: {
@@ -54,7 +62,7 @@ export function createExpressApp() {
     try {
       console.info("New MCP connection: " + JSON.stringify(req.body));
 
-      const server = createMcpServer(callLiveApi);
+      const server = createMcpServer(callLiveApi, { smallModelMode });
       const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // Stateless mode
       });

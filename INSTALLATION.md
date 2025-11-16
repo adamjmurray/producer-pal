@@ -24,10 +24,9 @@ When installing a new version of Producer Pal:
 
 1. **Download all new files:** Get the latest
    [`Producer_Pal.amxd`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-   Max for Live device, and (if applicable) either
+   Max for Live device, and (if applicable)
    [`Producer_Pal.mcpb`](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-   (for Claude Desktop) or
-   [`producer-pal-portal.js`](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+   (for Claude Desktop)
 
 2. **Replace the Max device:** Replace `Producer_Pal.amxd` in the location where
    you originally saved it (e.g. in your Live User Library). Live projects
@@ -47,8 +46,13 @@ When installing a new version of Producer Pal:
    - Install the new `Producer_Pal.mcpb` file (see
      [Claude Desktop installation](#claude-desktop))
 
-4. **For other setups:** Replace the old `producer-pal-portal.js` with the new
-   one at the same file path (so your configuration doesn't need updating)
+4. **For other setups:**
+   - If using `npx producer-pal`: Updates are fetched automatically (no action
+     needed)
+   - If you downloaded `producer-pal-portal.js` (standalone npm package):
+     Replace it with the
+     [latest version](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+     at the same file path
 
 5. **Restart your AI app** to ensure it picks up the changes
 
@@ -323,7 +327,37 @@ Producer Pal. Also consider using Gemini with Producer Pal's
 
 2. Add Producer Pal to Gemini's settings in `~/.gemini/settings.json`:
 
-   **Option A: With producer-pal-portal.js (recommended)**:
+   **Option A: With npx (recommended)** - Allows flexible startup order and
+   auto-reconnection:
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "command": "npx",
+         "args": ["-y", "producer-pal"]
+       }
+     }
+   }
+   ```
+
+   **Option B: Direct HTTP** - Requires Ableton running first, no
+   auto-reconnection:
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "httpUrl": "http://localhost:3350/mcp"
+       }
+     }
+   }
+   ```
+
+   **Option C: Download portal script (standalone npm package)** - Same benefits
+   as npx:
 
    Download
    [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
@@ -340,22 +374,6 @@ Producer Pal. Also consider using Gemini with Producer Pal's
      }
    }
    ```
-
-   **Option B: Direct HTTP**
-
-   ```json
-   {
-     "mcpServers": {
-       // ... other MCP server configs ...
-       "producer-pal": {
-         "httpUrl": "http://localhost:3350/mcp"
-       }
-     }
-   }
-   ```
-
-   _When using direct HTTP, start Ableton Live with Producer Pal before Gemini
-   CLI._
 
 3. Run `gemini` to start the Gemini CLI in an empty folder (so it can focus on
    Producer Pal instead of coding)
@@ -408,7 +426,25 @@ OpenAI's API.
 
 2. Add Producer Pal to Codex's settings in `~/.codex/config.toml`:
 
-   **Option A: With producer-pal-portal.js (recommended)**:
+   **Option A: With npx (recommended)** - Allows flexible startup order and
+   auto-reconnection:
+
+   ```toml
+   [mcp_servers.producer-pal]
+   command = "npx"
+   args = ["-y", "producer-pal"]
+   ```
+
+   **Option B: Direct HTTP** - Requires Ableton running first, no
+   auto-reconnection:
+
+   ```toml
+   [mcp_servers.producer-pal]
+   url = "http://localhost:3350/mcp"
+   ```
+
+   **Option C: Download portal script (standalone npm package)** - Same benefits
+   as npx:
 
    Download
    [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
@@ -419,16 +455,6 @@ OpenAI's API.
    command = "node"
    args = ["/absolute/path/to/producer-pal-portal.js"]
    ```
-
-   **Option B: Direct HTTP**
-
-   ```toml
-   [mcp_servers.producer-pal]
-   url = "http://localhost:3350/mcp"
-   ```
-
-   _When using direct HTTP, start Ableton Live with Producer Pal before Codex
-   CLI._
 
 3. Run `codex` in an empty folder (so it can focus on Producer Pal instead of
    coding)
@@ -470,7 +496,22 @@ Use Producer Pal with Anthropic's command line coding assistant.
 
 2. Configure Claude Code to use Producer Pal:
 
-   **Option A: With producer-pal-portal.js (recommended)**:
+   **Option A: With npx (recommended)** - Allows flexible startup order and
+   auto-reconnection:
+
+   ```bash
+   claude mcp add producer-pal npx producer-pal
+   ```
+
+   **Option B: Direct HTTP** - Requires Ableton running first, no
+   auto-reconnection:
+
+   ```bash
+   claude mcp add --transport http producer-pal http://localhost:3350/mcp
+   ```
+
+   **Option C: Download portal script (standalone npm package)** - Same benefits
+   as npx:
 
    Download
    [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
@@ -479,15 +520,6 @@ Use Producer Pal with Anthropic's command line coding assistant.
    ```bash
    claude mcp add producer-pal -- node /absolute/path/to/producer-pal-portal.js
    ```
-
-   **Option B: Direct HTTP**
-
-   ```bash
-   claude mcp add --transport http producer-pal http://localhost:3350/mcp
-   ```
-
-   _When using direct HTTP, start Ableton Live with Producer Pal before Claude
-   Code._
 
 3. Start Claude Code by running `claude` in an empty folder (so it can focus on
    Producer Pal instead of coding)
@@ -679,7 +711,37 @@ However, completely offline and private usage is compelling.
 4. Setup Producer Pal in LM Studio Settings → Program → Integrations → edit
    mcp.json:
 
-   **Option A: With producer-pal-portal.js (recommended)**:
+   **Option A: With npx (recommended)** - Allows flexible startup order and
+   auto-reconnection:
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "command": "npx",
+         "args": ["-y", "producer-pal"]
+       }
+     }
+   }
+   ```
+
+   **Option B: Direct HTTP** - Requires Ableton running first, no
+   auto-reconnection:
+
+   ```json
+   {
+     "mcpServers": {
+       // ... other MCP server configs ...
+       "producer-pal": {
+         "url": "http://localhost:3350/mcp"
+       }
+     }
+   }
+   ```
+
+   **Option C: Download portal script (standalone npm package)** - Same benefits
+   as npx:
 
    Download
    [producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
@@ -696,22 +758,6 @@ However, completely offline and private usage is compelling.
      }
    }
    ```
-
-   **Option B: Direct HTTP**
-
-   ```json
-   {
-     "mcpServers": {
-       // ... other MCP server configs ...
-       "producer-pal": {
-         "url": "http://localhost:3350/mcp"
-       }
-     }
-   }
-   ```
-
-   _When using direct HTTP, start Ableton Live with the Producer Pal device
-   before enabling the Producer Pal MCP server inside LM Studio._
 
 5. Confirm the Producer Pal tools are listed under Settings → Program:
 
@@ -820,21 +866,20 @@ _It should display "Producer Pal Running" or something isn't working._
 Then, configure your AI to connect to Producer Pal using one of the following
 methods.
 
-#### Option A: Local MCP via stdio (recommended)
+#### Option A: Local MCP via stdio with npx (recommended)
 
-Download
-[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
-and configure your LLM MCP to use:
+Allows flexible startup order and auto-reconnection. Configure your LLM MCP to
+use:
 
 ```bash
-node /path/to/producer-pal-portal.js
+npx -y producer-pal
 ```
 
 This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 #### Option B: Local MCP via HTTP
 
-Use the URL:
+Requires Ableton running first, no auto-reconnection. Use the URL:
 
 ```
 http://localhost:3350/mcp
@@ -849,10 +894,25 @@ Ableton Live with Producer Pal Max first.
 
 #### Option C: Remote MCP via HTTP tunnel
 
-For cloud-hosted LLMs or remote access:
+Requires Ableton running first, no auto-reconnection. For cloud-hosted LLMs or
+remote access:
 
 1. Set up a [web tunnel](#web-tunnels) (e.g. Cloudflare or Pinggy)
 2. Configure your LLM with the public URL + `/mcp`
+
+#### Option D: Download portal script (standalone npm package)
+
+Same benefits as npx:
+
+Download
+[producer-pal-portal.js](https://github.com/adamjmurray/producer-pal/releases/latest/download/producer-pal-portal.js)
+and configure your LLM MCP to use:
+
+```bash
+node /path/to/producer-pal-portal.js
+```
+
+This option requires [Node.js 20+](https://nodejs.org/en/download).
 
 #### Example: Configuring Cline
 
@@ -864,13 +924,18 @@ use Producer Pal in its `cline_mcp_settings.json` config file:
   "mcpServers": {
     // ... other MCP server configs ...
     "producer-pal": {
-      "command": "node",
-      "args": ["/absolute/path/to/producer-pal-portal.js"]
+      "command": "npx",
+      "args": ["-y", "producer-pal"]
     },
-    // OR
+    // OR use HTTP:
     "producer-pal-http": {
       "type": "streamableHttp",
       "url": "http://localhost:3350/mcp"
+    },
+    // OR download the portal script and use:
+    "producer-pal-download": {
+      "command": "node",
+      "args": ["/absolute/path/to/producer-pal-portal.js"]
     }
   }
 }
@@ -964,8 +1029,12 @@ support tools.
 
 ### MCP Server Not Found
 
-- Verify the full path to `producer-pal-portal.js` is correct
-- Ensure Node.js is installed and accessible from your terminal
+- If using npx: Ensure Node.js 20+ is installed and accessible from your
+  terminal
+- If using downloaded portal script: Verify the full path to
+  `producer-pal-portal.js` is correct
+- Try running `npx -y producer-pal` manually to test if it works (it won't
+  output anything, but it shouldn't error or exit until you ctrl+c)
 
 ### Tools Not Appearing
 

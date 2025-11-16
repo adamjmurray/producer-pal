@@ -41,6 +41,10 @@ export default defineConfig({
         // ignore typedefs:
         "**/*.d.ts",
 
+        // ignore type definition files (pure TypeScript interfaces/types):
+        "**/tsconfig.json",
+        "webui/src/types/**",
+
         // ignore static assets:
         "**/*.html",
         "**/*.css",
@@ -63,6 +67,7 @@ export default defineConfig({
 
         // ignore other hard-to-test files:
         "src/test/mock-task.js",
+        "src/test/mock-chat-ui-html.js",
       ],
       reportOnFailure: true,
     },

@@ -180,8 +180,8 @@ C3 1|1 C3 1|2 v0 C3 1|1  // Result: C3 at 1|2 (only deletes C3 at 1|1)
 
 - **Refining copied patterns**: Copy a bar, then remove specific notes
 - **Creating variations**: Build on existing patterns by deleting and adding
-- **Merge mode editing**: In `update-clip` with `noteUpdateMode: "merge"`,
-  selectively delete notes from existing clips
+- **Merge mode editing**: In `update-clip` with `noteUpdateMode` (defaults to
+  `"merge"`), selectively delete notes from existing clips
 
 ### Technical Details
 

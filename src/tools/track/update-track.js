@@ -24,20 +24,23 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
  * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
  * @returns {Object|Array<Object>} Single track object or array of track objects
  */
-export function updateTrack({
-  ids,
-  name,
-  color,
-  mute,
-  solo,
-  arm,
-  inputRoutingTypeId,
-  inputRoutingChannelId,
-  outputRoutingTypeId,
-  outputRoutingChannelId,
-  monitoringState,
-  arrangementFollower,
-} = {}) {
+export function updateTrack(
+  {
+    ids,
+    name,
+    color,
+    mute,
+    solo,
+    arm,
+    inputRoutingTypeId,
+    inputRoutingChannelId,
+    outputRoutingTypeId,
+    outputRoutingChannelId,
+    monitoringState,
+    arrangementFollower,
+  } = {},
+  _context = {},
+) {
   if (!ids) {
     throw new Error("updateTrack failed: ids is required");
   }

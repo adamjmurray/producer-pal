@@ -2419,6 +2419,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "drum-chains",
+          "drum-maps",
           "clip-notes",
           "rack-chains",
           "midi-effects",
@@ -2431,6 +2432,7 @@ describe("readTrack", () => {
           "all-devices",
           "all-routings",
           "color",
+          "warp-markers",
         ],
       });
 

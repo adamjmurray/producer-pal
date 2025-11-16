@@ -4,7 +4,7 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 7,
+			"revision" : 8,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
@@ -21,7 +21,6 @@
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
 					"patching_rect" : [ 344.0, 254.0, 104.0, 22.0 ],
-					"presentation_linecount" : 2,
 					"text" : "chatUIEnabled $1"
 				}
 
@@ -1005,7 +1004,7 @@
 					"maxclass" : "newobj",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 457.0, 296.0, 42.0, 22.0 ],
+					"patching_rect" : [ 457.0, 318.0, 42.0, 22.0 ],
 					"text" : "s ---v8"
 				}
 
@@ -1331,6 +1330,15 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-12", 0 ],
+					"order" : 0,
+					"source" : [ "obj-25", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-9", 0 ],
+					"order" : 1,
 					"source" : [ "obj-25", 0 ]
 				}
 

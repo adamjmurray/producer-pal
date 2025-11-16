@@ -474,7 +474,7 @@ export function readTrackGeneric({
   return result;
 }
 
-export function readTrack(args = {}) {
+export function readTrack(args = {}, _context = {}) {
   const { trackIndex, trackId, category = "regular" } = args;
 
   // Validate parameters

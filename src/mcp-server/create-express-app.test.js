@@ -235,6 +235,7 @@ describe("MCP Express App", () => {
         expect.stringMatching(/^[a-f0-9-]{36}$/), // requestId (UUID format)
         "ppal-read-track", // tool name
         '{"category":"regular","trackIndex":1,"include":["session-clips","arrangement-clips","clip-notes","instruments","drum-maps"]}', // argsJSON
+        expect.stringContaining("silenceWavPath"), // contextJSON
       );
     });
 
