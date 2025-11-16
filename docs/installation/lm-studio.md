@@ -2,11 +2,15 @@
 
 Use Producer Pal completely offline without an Internet connection.
 
-::: warning Experimental This requires a relatively new machine with decent
-specs (Apple Silicon with lots of RAM or PCs with Nvidia 4080+ graphics cards).
-It requires more technical know-how to setup and debug. The online options work
+::: warning
+
+Experimental This requires a relatively new machine with decent specs (Apple
+Silicon with lots of RAM or PCs with Nvidia 4080+ graphics cards). It requires
+more technical know-how to setup and debug. The online options work
 significantly better and faster at the time of writing. However, completely
-offline and private usage is compelling. :::
+offline and private usage is compelling.
+
+:::
 
 ## Requirements
 
