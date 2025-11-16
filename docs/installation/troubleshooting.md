@@ -69,6 +69,3 @@ If Producer Pal stops working after installing a new version:
 - Report bugs in
   [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
   or [issues list](https://github.com/adamjmurray/producer-pal/issues)
-- Documentation: See
-  [the README](https://github.com/adamjmurray/producer-pal#readme) and
-  [developer documentation](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md).
