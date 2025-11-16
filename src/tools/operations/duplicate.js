@@ -56,8 +56,8 @@ function parseArrangementLength(
  * Create clips to fill the specified arrangement length
  * @param {LiveAPI} sourceClip - The source clip to duplicate
  * @param {LiveAPI} track - The track to create clips on
- * @param {number} arrangementStartBeats - Start time in beats  (TODO: clarify if this is ableton beats or musical beats)
- * @param {number} arrangementLengthBeats - Total length to fill in beats (TODO: clarify if this is ableton beats or musical beats)
+ * @param {number} arrangementStartBeats - Start time in Ableton beats (quarter notes, 0-based)
+ * @param {number} arrangementLengthBeats - Total length to fill in Ableton beats (quarter notes)
  * @param {string} [name] - Optional name for the clips
  * @param {Array<string>} [omitFields] - Optional fields to omit from clip info
  * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
