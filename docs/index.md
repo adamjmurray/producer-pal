@@ -18,9 +18,10 @@ hero:
 
 features:
   - title: Natural Language Control
-    details:
-      Control Ableton using conversational commands. Create tracks, clips, and
-      MIDI patterns without navigating menus or remembering shortcuts.
+    details: >
+      Control Ableton using conversational commands. Work faster: Manage tracks
+      and scenes, edit MIDI and audio clips, and build arrangements without
+      clicking.
 
   - title: Complex Edits Made Simple
     details:
@@ -31,7 +32,8 @@ features:
   - title: Works Online or Offline
     details:
       Use cloud AI services (Claude, Gemini, GPT) or run completely offline with
-      local models (Ollama, LM Studio). Includes built-in chat UI.
+      local models (Ollama, LM Studio). Includes a built-in chat UI to get
+      started quickly.
 
   - title: Open Source & Free Forever
     details:
