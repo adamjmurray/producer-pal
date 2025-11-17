@@ -34,6 +34,10 @@ vi.mock("./RandomnessSlider.jsx", () => ({
   ),
 }));
 
+vi.mock("./ToolToggles.jsx", () => ({
+  ToolToggles: () => <div data-testid="tool-toggles">Tool Toggles</div>,
+}));
+
 describe("SettingsScreen", () => {
   const defaultProps = {
     provider: "gemini" as const,
@@ -50,6 +54,11 @@ describe("SettingsScreen", () => {
     setShowThoughts: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),
+    enabledTools: {},
+    setEnabledTools: vi.fn(),
+    enableAllTools: vi.fn(),
+    disableAllTools: vi.fn(),
+    resetBehaviorToDefaults: vi.fn(),
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     settingsConfigured: false,
@@ -75,6 +84,11 @@ describe("SettingsScreen", () => {
       fireEvent.click(behaviorTab);
       expect(screen.getByTestId("thinking-settings")).toBeDefined();
       expect(screen.getByTestId("randomness-slider")).toBeDefined();
+
+      // Switch to Tools tab to check tool toggles
+      const toolsTab = screen.getByRole("button", { name: "Tools" });
+      fireEvent.click(toolsTab);
+      expect(screen.getByTestId("tool-toggles")).toBeDefined();
     });
 
     it("renders Save button", () => {

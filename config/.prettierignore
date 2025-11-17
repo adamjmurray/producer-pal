@@ -5,4 +5,10 @@
 ../src/**/barbeat-parser.js
 ../max-for-live-device
 ../claude-desktop-extension
+../npm/*.js
+../npm/*.svg
+../npm/LICENSE
+../npm/licenses
 ../release
+../docs/.vitepress/cache
+../docs/.vitepress/dist

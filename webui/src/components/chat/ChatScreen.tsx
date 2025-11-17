@@ -19,6 +19,7 @@ interface ChatScreenProps {
   checkMcpConnection: () => Promise<void>;
   onOpenSettings: () => void;
   onClearConversation: () => void;
+  onStop: () => void;
   apiKey?: string;
   model?: string;
   temperature?: number;
@@ -39,6 +40,7 @@ export function ChatScreen({
   checkMcpConnection,
   onOpenSettings,
   onClearConversation,
+  onStop,
   apiKey,
   model,
   temperature,
@@ -77,6 +79,7 @@ export function ChatScreen({
       <ChatInput
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
+        onStop={onStop}
         apiKey={apiKey}
         model={model}
         temperature={temperature}

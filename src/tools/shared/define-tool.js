@@ -1,19 +1,30 @@
 import { z } from "zod";
 import { formatErrorResponse } from "../../shared/mcp-response-utils.js";
+import { filterSchemaForSmallModel } from "./filter-schema.js";
 
 export function defineTool(name, options) {
-  return (server, callLiveApi) => {
-    const { inputSchema, ...toolConfig } = options;
+  return (server, callLiveApi, mcpOptions = {}) => {
+    const { smallModelMode = false } = mcpOptions;
+    const { inputSchema, smallModelModeConfig, ...toolConfig } = options;
+
+    // Apply schema filtering for small model mode if configured
+    const finalInputSchema =
+      smallModelMode && smallModelModeConfig?.excludeParams
+        ? filterSchemaForSmallModel(
+            inputSchema,
+            smallModelModeConfig.excludeParams,
+          )
+        : inputSchema;
 
     server.registerTool(
       name,
       {
         ...toolConfig,
-        inputSchema,
+        inputSchema: finalInputSchema,
       },
       async (args) => {
         // Create Zod object schema from the input schema object for validation
-        const validation = z.object(inputSchema).safeParse(args);
+        const validation = z.object(finalInputSchema).safeParse(args);
 
         if (!validation.success) {
           const errorMessages = validation.error.issues.map((issue) => {

@@ -61,6 +61,22 @@ export class LiveAPI {
     return match ? Number(match[1]) : null;
   }
 
+  getChildIds(name) {
+    const idArray = this.get(name);
+
+    if (!Array.isArray(idArray)) {
+      return [];
+    }
+
+    const children = [];
+    for (let i = 0; i < idArray.length; i += 2) {
+      if (idArray[i] === "id") {
+        children.push(`id ${idArray[i + 1]}`);
+      }
+    }
+    return children;
+  }
+
   get sceneIndex() {
     // Try scene path first
     let match = this.path.match(/live_set scenes (\d+)/);
@@ -113,16 +129,6 @@ export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
     const overridesByProp =
       overrides[this.id] ?? overrides[this.path] ?? overrides[this.type];
-    // console.log("[DEBUG] mockLiveApiGet", {
-    //   prop,
-    //   id: this.id,
-    //   _id: this._id,
-    //   path: this.path,
-    //   _path: this._path,
-    //   type: this.type,
-    //   overrides,
-    //   overridesByProp,
-    // });
     if (overridesByProp != null) {
       const override = overridesByProp[prop];
       if (override !== undefined) {
@@ -276,12 +282,12 @@ export const expectedClip = (overrides = {}) => ({
   sceneIndex: 1,
   name: "Test Clip",
   color: "#3DC300",
-  length: "1:0", // 1 bar duration
-  startMarker: "1|2", // bar|beat format (1 Ableton beat = bar 1 beat 2)
-  loop: false,
-  // loopStart omitted when it equals startMarker
-  // playing, triggered, recording, overdubbing, muted omitted when false
   timeSignature: "4/4",
+  looping: false,
+  start: "1|2", // bar|beat format (1 Ableton beat = bar 1 beat 2)
+  end: "2|2", // end_marker (5 beats = 2|2)
+  length: "1:0", // 1 bar duration
+  // playing, triggered, recording, overdubbing, muted omitted when false
   noteCount: 0,
   notes: "",
   ...overrides,

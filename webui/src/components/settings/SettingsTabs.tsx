@@ -1,7 +1,7 @@
 import { useState } from "preact/hooks";
 import type { VNode } from "preact";
 
-export type TabId = "connection" | "behavior" | "appearance";
+export type TabId = "connection" | "behavior" | "tools" | "appearance";
 
 interface Tab {
   id: TabId;
@@ -15,6 +15,7 @@ interface SettingsTabsProps {
 const tabs: Tab[] = [
   { id: "connection", label: "Connection" },
   { id: "behavior", label: "Behavior" },
+  { id: "tools", label: "Tools" },
   { id: "appearance", label: "Appearance" },
 ];
 

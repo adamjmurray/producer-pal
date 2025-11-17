@@ -226,7 +226,7 @@ describe("useSettings", () => {
     });
 
     expect(result.current.model).toBe("gpt-5-2025-08-07");
-    expect(result.current.thinking).toBe("Auto");
+    expect(result.current.thinking).toBe("Medium");
     expect(result.current.temperature).toBe(1.0);
     expect(result.current.showThoughts).toBe(true);
     expect(result.current.apiKey).toBe("");

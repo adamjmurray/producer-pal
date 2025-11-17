@@ -4,6 +4,7 @@ import { VoiceInput } from "./VoiceInput.jsx";
 interface ChatInputProps {
   handleSend: (message: string) => Promise<void>;
   isAssistantResponding: boolean;
+  onStop: () => void;
   apiKey?: string;
   model?: string;
   temperature?: number;
@@ -13,6 +14,7 @@ interface ChatInputProps {
 export function ChatInput({
   handleSend,
   isAssistantResponding,
+  onStop,
   apiKey = "",
   model = "models/gemini-2.0-flash-exp",
   temperature = 1.0,
@@ -41,7 +43,7 @@ export function ChatInput({
 
   return (
     <div className="border-t border-gray-300 dark:border-gray-700 p-4">
-      <div className="flex gap-2">
+      <div className="flex gap-3">
         <textarea
           value={input}
           onInput={(e) => setInput((e.target as HTMLTextAreaElement).value)}
@@ -60,6 +62,13 @@ export function ChatInput({
               disabled={isAssistantResponding}
             />
           )}
+          <button
+            onClick={onStop}
+            disabled={!isAssistantResponding}
+            className={`px-4 py-1 rounded text-sm ${isAssistantResponding ? "bg-orange-600 text-white hover:bg-orange-700" : "invisible"}`}
+          >
+            Stop
+          </button>
           <button
             onClick={handleSendClick}
             disabled={isAssistantResponding || !input.trim()}

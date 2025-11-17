@@ -1,9 +1,10 @@
 import type { Provider } from "../../types/settings.js";
 import { ModelSelector } from "./ModelSelector.jsx";
 import { ProviderSelector } from "./ProviderSelector.jsx";
-import { ThinkingSettings } from "./ThinkingSettings.jsx";
 import { RandomnessSlider } from "./RandomnessSlider.jsx";
 import { SettingsTabs } from "./SettingsTabs.jsx";
+import { ThinkingSettings } from "./ThinkingSettings.jsx";
+import { ToolToggles } from "./ToolToggles.jsx";
 
 interface SettingsScreenProps {
   provider: Provider;
@@ -24,6 +25,11 @@ interface SettingsScreenProps {
   setShowThoughts: (show: boolean) => void;
   theme: string;
   setTheme: (theme: string) => void;
+  enabledTools: Record<string, boolean>;
+  setEnabledTools: (tools: Record<string, boolean>) => void;
+  enableAllTools: () => void;
+  disableAllTools: () => void;
+  resetBehaviorToDefaults: () => void;
   saveSettings: () => void;
   cancelSettings: () => void;
   settingsConfigured: boolean;
@@ -48,6 +54,11 @@ export function SettingsScreen({
   setShowThoughts,
   theme,
   setTheme,
+  enabledTools,
+  setEnabledTools,
+  enableAllTools,
+  disableAllTools,
+  resetBehaviorToDefaults,
   saveSettings,
   cancelSettings,
   settingsConfigured,
@@ -201,20 +212,43 @@ export function SettingsScreen({
 
               {/* Behavior Tab */}
               {activeTab === "behavior" && (
-                <>
-                  <ThinkingSettings
-                    provider={provider}
-                    model={model}
-                    thinking={thinking}
-                    setThinking={setThinking}
-                    showThoughts={showThoughts}
-                    setShowThoughts={setShowThoughts}
-                  />
-                  <RandomnessSlider
-                    temperature={temperature}
-                    setTemperature={setTemperature}
-                  />
-                </>
+                <div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={resetBehaviorToDefaults}
+                      className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                    >
+                      Reset to defaults
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <ThinkingSettings
+                      provider={provider}
+                      model={model}
+                      thinking={thinking}
+                      setThinking={setThinking}
+                      showThoughts={showThoughts}
+                      setShowThoughts={setShowThoughts}
+                    />
+                    <div className="mt-8">
+                      <RandomnessSlider
+                        temperature={temperature}
+                        setTemperature={setTemperature}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tools Tab */}
+              {activeTab === "tools" && (
+                <ToolToggles
+                  enabledTools={enabledTools}
+                  setEnabledTools={setEnabledTools}
+                  enableAllTools={enableAllTools}
+                  disableAllTools={disableAllTools}
+                />
               )}
 
               {/* Appearance Tab */}

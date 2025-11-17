@@ -4,7 +4,7 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 7,
+			"revision" : 8,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
@@ -54,13 +54,13 @@
 , 			{
 				"box" : 				{
 					"id" : "obj-19",
-					"linecount" : 4,
+					"linecount" : 2,
 					"maxclass" : "message",
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 46.0, 239.0, 229.0, 62.0 ],
-					"text" : ";\rmax launchbrowser https://github.com/adamjmurray/producer-pal#readme"
+					"patching_rect" : [ 46.0, 239.0, 240.0, 35.0 ],
+					"text" : ";\rmax launchbrowser https://producer-pal.org"
 				}
 
 			}

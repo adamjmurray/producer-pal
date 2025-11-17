@@ -64,6 +64,7 @@ export interface OpenAIClientConfig {
   reasoningEffort?: "low" | "medium" | "high"; // For o1/o3 models
   chatHistory?: OpenAIMessage[];
   baseUrl?: string; // For OpenAI-compatible providers
+  enabledTools?: Record<string, boolean>;
 }
 
 /**
@@ -202,6 +203,7 @@ export class OpenAIClient {
    */
   async *sendMessage(
     message: string,
+    abortSignal?: AbortSignal,
   ): AsyncGenerator<OpenAIMessage[], void, unknown> {
     if (!this.mcpClient) {
       throw new Error("MCP client not initialized. Call initialize() first.");
@@ -214,7 +216,12 @@ export class OpenAIClient {
 
     // Get MCP tools
     const toolsResult = await this.mcpClient.listTools();
-    const tools: OpenAI.Chat.ChatCompletionTool[] = toolsResult.tools.map(
+    // Filter tools based on enabled settings
+    const enabledTools = this.config.enabledTools;
+    const filteredTools = enabledTools
+      ? toolsResult.tools.filter((tool) => enabledTools[tool.name] !== false)
+      : toolsResult.tools;
+    const tools: OpenAI.Chat.ChatCompletionTool[] = filteredTools.map(
       (tool) => ({
         type: "function",
         function: {
@@ -360,6 +367,10 @@ export class OpenAIClient {
           }
         }
         // Continue loop to get model's response to tool results
+        // Check for abort signal
+        if (abortSignal?.aborted) {
+          continueLoop = false;
+        }
       } else {
         continueLoop = false;
       }

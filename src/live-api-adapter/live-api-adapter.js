@@ -21,6 +21,7 @@ import { readLiveSet } from "../tools/live-set/read-live-set";
 import { updateLiveSet } from "../tools/live-set/update-live-set";
 import { deleteObject } from "../tools/operations/delete";
 import { duplicate } from "../tools/operations/duplicate";
+import { transformClips } from "../tools/operations/transform-clips.js";
 import { createScene } from "../tools/scene/create-scene";
 import { readScene } from "../tools/scene/read-scene";
 import { updateScene } from "../tools/scene/update-scene";
@@ -37,34 +38,37 @@ const context = {
     content: "",
   },
   smallModelMode: false,
+  holdingAreaStartBeats: 40000,
 };
 
 /*
-**IMPORTANT**: Always pass args to tool functions
-Use the `(args) => toolFunction(args)` pattern, never just `() => toolFunction()`
+**IMPORTANT**: Always pass args AND context to tool functions
+Use the `(args) => toolFunction(args, context)` pattern
+This ensures all tools have access to context (holdingAreaStartBeats, silenceWavPath, etc.)
 */
 const tools = {
   "ppal-connect": (args) => connect(args, context),
-  "ppal-read-live-set": (args) => readLiveSet(args),
-  "ppal-update-live-set": (args) => updateLiveSet(args),
-  "ppal-create-track": (args) => createTrack(args),
-  "ppal-read-track": (args) => readTrack(args),
-  "ppal-update-track": (args) => updateTrack(args),
-  "ppal-create-scene": (args) => createScene(args),
-  "ppal-read-scene": (args) => readScene(args),
-  "ppal-update-scene": (args) => updateScene(args),
-  "ppal-create-clip": (args) => createClip(args),
-  "ppal-read-clip": (args) => readClip(args),
-  "ppal-update-clip": (args) => updateClip(args),
-  "ppal-playback": (args) => playback(args),
-  "ppal-select": (args) => select(args),
-  "ppal-delete": (args) => deleteObject(args),
-  "ppal-duplicate": (args) => duplicate(args),
+  "ppal-read-live-set": (args) => readLiveSet(args, context),
+  "ppal-update-live-set": (args) => updateLiveSet(args, context),
+  "ppal-create-track": (args) => createTrack(args, context),
+  "ppal-read-track": (args) => readTrack(args, context),
+  "ppal-update-track": (args) => updateTrack(args, context),
+  "ppal-create-scene": (args) => createScene(args, context),
+  "ppal-read-scene": (args) => readScene(args, context),
+  "ppal-update-scene": (args) => updateScene(args, context),
+  "ppal-create-clip": (args) => createClip(args, context),
+  "ppal-read-clip": (args) => readClip(args, context),
+  "ppal-update-clip": (args) => updateClip(args, context),
+  "ppal-transform-clips": (args) => transformClips(args, context),
+  "ppal-playback": (args) => playback(args, context),
+  "ppal-select": (args) => select(args, context),
+  "ppal-delete": (args) => deleteObject(args, context),
+  "ppal-duplicate": (args) => duplicate(args, context),
   "ppal-memory": (args) => memory(args, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
-  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args);
+  tools["ppal-raw-live-api"] = (args) => rawLiveApi(args, context);
 }
 
 function callTool(toolName, args) {
@@ -94,6 +98,10 @@ export function projectNotesWritable(writable) {
 
 export function projectNotes(_text, content) {
   context.projectNotes.content = content ?? "";
+}
+
+export function holdingAreaStartBeats(beats) {
+  context.holdingAreaStartBeats = Number(beats) || 40000;
 }
 
 function sendResponse(requestId, result) {
@@ -128,10 +136,22 @@ function sendResponse(requestId, result) {
 }
 
 // Handle messages from Node for Max
-export async function mcp_request(requestId, tool, argsJSON) {
+export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
   let result;
   try {
     const args = JSON.parse(argsJSON);
+
+    // Merge incoming context (if provided) into existing context
+    if (contextJSON != null) {
+      try {
+        const incomingContext = JSON.parse(contextJSON);
+        Object.assign(context, incomingContext);
+      } catch (contextError) {
+        console.error(
+          `Warning: Failed to parse contextJSON: ${contextError.message}`,
+        );
+      }
+    }
 
     try {
       // NOTE: toCompactJSLiteral() basically formats things as JS literal syntax with unquoted keys

@@ -161,7 +161,7 @@ Four separate bundles built with rollup.js (MCP server, V8, Portal) and Vite
   - Real-time streaming chat interface
   - Settings persistence via localStorage
 
-See `doc/Chat-UI.md` for detailed architecture and development workflow.
+See `dev-docs/Chat-UI.md` for detailed architecture and development workflow.
 
 ## Message Protocol
 

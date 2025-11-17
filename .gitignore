@@ -9,6 +9,11 @@ claude-desktop-extension/*.js
 claude-desktop-extension/LICENSE
 claude-desktop-extension/licenses
 claude-desktop-extension/manifest.json
+npm/*.js
+npm/*.svg
+npm/*.tgz
+npm/LICENSE
+npm/licenses
 max-for-live-device/*.js
 max-for-live-device/*.mjs
 max-for-live-device/*.html
@@ -18,3 +23,7 @@ max-for-live-device/Ableton Folder Info/
 release
 scratchpad
 .env
+
+# VitePress Documentation Site
+docs/.vitepress/dist
+docs/.vitepress/cache

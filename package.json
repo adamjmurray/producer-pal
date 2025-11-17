@@ -1,8 +1,8 @@
 {
   "name": "producer-pal",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
-  "homepage": "https://github.com/adamjmurray/producer-pal#readme",
+  "homepage": "https://producer-pal.org",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/adamjmurray/producer-pal.git"
@@ -10,6 +10,9 @@
   "type": "module",
   "author": "Adam Murray",
   "license": "MIT License",
+  "engines": {
+    "node": "^24.0.0"
+  },
   "keywords": [
     "music",
     "ai",
@@ -21,9 +24,9 @@
     "build:all": "ENABLE_RAW_LIVE_API=true npm run build",
     "build:watch": "npm run build && rollup -c config/rollup.config.mjs -w",
     "dev": "ENABLE_RAW_LIVE_API=true rollup -c config/rollup.config.mjs -w",
-    "test": "npm run test:setup && vitest run -c config/vitest.config.mjs",
-    "test:watch": "npm run test:setup && vitest -c config/vitest.config.mjs",
-    "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.mjs",
+    "test": "npm run test:setup && vitest run -c config/vitest.config.mjs --reporter=dot --silent",
+    "test:watch": "npm run test:setup && vitest -c config/vitest.config.mjs --reporter=dot --silent",
+    "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.mjs --reporter=dot --silent",
     "test:setup": "npm run parser:build",
     "coverage": "npm run test:coverage",
     "check": "npm run lint && npm run typecheck && npm run format:check && npm test",
@@ -48,36 +51,39 @@
     "tc": "npm run typecheck",
     "typecheck": "npm run ui:typecheck",
     "ui:build": "vite build --config config/vite.config.mjs",
-    "ui:dev": "vite --config config/vite.config.mjs",
+    "ui:dev": "ENABLE_RAW_LIVE_API=true vite --config config/vite.config.mjs",
     "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json",
-    "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs"
+    "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
-    "@google/genai": "^1.28.0",
-    "@modelcontextprotocol/sdk": "^1.21.0",
+    "@google/genai": "^1.29.1",
+    "@modelcontextprotocol/sdk": "^1.22.0",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.1.0",
-    "marked": "^16.4.1",
-    "openai": "^6.8.1",
+    "marked": "^17.0.0",
+    "openai": "^6.9.0",
     "preact": "^10.19.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@anthropic-ai/mcpb": "^1.2.0",
+    "@anthropic-ai/mcpb": "^2.0.1",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@rollup/plugin-replace": "^6.0.3",
     "@rollup/plugin-terser": "^0.4.4",
-    "@tailwindcss/vite": "^4.1.16",
+    "@tailwindcss/vite": "^4.1.17",
     "@testing-library/preact": "^3.2.4",
     "@types/express": "^5.0.5",
     "@types/max-api": "^2.0.3",
-    "@types/node": "^24.10.0",
-    "@typescript-eslint/eslint-plugin": "^8.46.3",
-    "@typescript-eslint/parser": "^8.46.2",
-    "@vitest/coverage-v8": "^4.0.7",
+    "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
+    "@vitest/coverage-v8": "^4.0.9",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
     "eslint": "^9.39.1",
@@ -85,11 +91,12 @@
     "happy-dom": "^20.0.10",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
-    "rollup": "^4.52.5",
+    "rollup": "^4.53.2",
     "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.9.3",
-    "vite": "^7.1.12",
+    "vite": "^7.2.2",
     "vite-plugin-singlefile": "^2.3.0",
-    "vitest": "^4.0.7"
+    "vitepress": "^1.6.1",
+    "vitest": "^4.0.9"
   }
 }

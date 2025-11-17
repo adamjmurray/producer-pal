@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
 import type { Provider, UseSettingsReturn } from "../types/settings.js";
+import { DEFAULT_ENABLED_TOOLS, TOOLS } from "../constants/tools.js";
 
 interface ProviderSettings {
   apiKey: string;
@@ -22,7 +23,7 @@ const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   openai: {
     apiKey: "",
     model: "gpt-5-2025-08-07",
-    thinking: "Auto",
+    thinking: "Medium",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -74,7 +75,14 @@ function loadProviderSettings(provider: Provider): ProviderSettings {
   if (newFormatData) {
     try {
       const parsed = JSON.parse(newFormatData);
-      return { ...DEFAULT_SETTINGS[provider], ...parsed };
+      const settings = { ...DEFAULT_SETTINGS[provider], ...parsed };
+
+      // Normalize thinking value for OpenAI if it's invalid
+      if (provider === "openai") {
+        settings.thinking = normalizeThinkingForOpenAI(settings.thinking);
+      }
+
+      return settings;
     } catch {
       // Invalid JSON, fall through to defaults or migration
     }
@@ -122,11 +130,35 @@ function saveProviderSettings(provider: Provider, settings: ProviderSettings) {
   localStorage.setItem(key, JSON.stringify(settings));
 }
 
+function normalizeThinkingForOpenAI(thinking: string): string {
+  // OpenAI only supports "Low", "Medium", "High"
+  if (thinking === "Off" || thinking === "Auto") {
+    return "Low";
+  }
+  if (thinking === "Ultra") {
+    return "High";
+  }
+  return thinking;
+}
+
 export function useSettings(): UseSettingsReturn {
-  const [provider, setProvider] = useState<Provider>("gemini");
+  const [provider, setProviderState] = useState<Provider>("gemini");
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
+  const [enabledTools, setEnabledToolsState] = useState<
+    Record<string, boolean>
+  >(() => {
+    const saved = localStorage.getItem("producer_pal_enabled_tools");
+    if (saved) {
+      try {
+        return { ...DEFAULT_ENABLED_TOOLS, ...JSON.parse(saved) };
+      } catch {
+        return DEFAULT_ENABLED_TOOLS;
+      }
+    }
+    return DEFAULT_ENABLED_TOOLS;
+  });
   const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.gemini,
   );
@@ -173,7 +205,7 @@ export function useSettings(): UseSettingsReturn {
       ) as Provider | null) ??
       (localStorage.getItem("provider") as Provider | null);
     if (savedProvider != null) {
-      setProvider(savedProvider);
+      setProviderState(savedProvider);
     }
 
     // Load settings for each provider
@@ -190,6 +222,10 @@ export function useSettings(): UseSettingsReturn {
     localStorage.setItem("producer_pal_current_provider", provider);
     localStorage.setItem("producer_pal_settings_configured", "true");
     setSettingsConfigured(true);
+    localStorage.setItem(
+      "producer_pal_enabled_tools",
+      JSON.stringify(enabledTools),
+    );
     saveProviderSettings("gemini", geminiSettings);
     saveProviderSettings("openai", openaiSettings);
     saveProviderSettings("mistral", mistralSettings);
@@ -199,6 +235,7 @@ export function useSettings(): UseSettingsReturn {
     saveProviderSettings("custom", customSettings);
   }, [
     provider,
+    enabledTools,
     geminiSettings,
     openaiSettings,
     mistralSettings,
@@ -215,7 +252,22 @@ export function useSettings(): UseSettingsReturn {
         "producer_pal_current_provider",
       ) as Provider | null) ??
       (localStorage.getItem("provider") as Provider | null);
-    if (savedProvider != null) setProvider(savedProvider);
+    if (savedProvider != null) setProviderState(savedProvider);
+
+    // Reload enabled tools
+    const saved = localStorage.getItem("producer_pal_enabled_tools");
+    if (saved) {
+      try {
+        setEnabledToolsState({
+          ...DEFAULT_ENABLED_TOOLS,
+          ...JSON.parse(saved),
+        });
+      } catch {
+        setEnabledToolsState(DEFAULT_ENABLED_TOOLS);
+      }
+    } else {
+      setEnabledToolsState(DEFAULT_ENABLED_TOOLS);
+    }
 
     // Reload settings for each provider
     setGeminiSettings(loadProviderSettings("gemini"));
@@ -353,6 +405,22 @@ export function useSettings(): UseSettingsReturn {
     [provider],
   );
 
+  // Custom setProvider that normalizes thinking value when switching providers
+  const setProvider = useCallback(
+    (newProvider: Provider) => {
+      // If switching to OpenAI, normalize the thinking value
+      if (newProvider === "openai") {
+        const normalized = normalizeThinkingForOpenAI(currentSettings.thinking);
+        if (normalized !== currentSettings.thinking) {
+          // Update OpenAI settings with normalized thinking value
+          setOpenaiSettings((prev) => ({ ...prev, thinking: normalized }));
+        }
+      }
+      setProviderState(newProvider);
+    },
+    [currentSettings.thinking],
+  );
+
   // Check if current provider has an API key saved
   // Local providers (lmstudio, ollama) don't require API keys
   const hasApiKey =
@@ -373,6 +441,46 @@ export function useSettings(): UseSettingsReturn {
         : provider === "gemini"
           ? !!localStorage.getItem("gemini_api_key")
           : false;
+
+  // Tool toggle helper functions
+  const setEnabledTools = useCallback((tools: Record<string, boolean>) => {
+    setEnabledToolsState(tools);
+  }, []);
+
+  const enableAllTools = useCallback(() => {
+    const allEnabled = TOOLS.reduce(
+      (acc, tool) => {
+        acc[tool.id] = true;
+        return acc;
+      },
+      {} as Record<string, boolean>,
+    );
+    setEnabledToolsState(allEnabled);
+  }, []);
+
+  const disableAllTools = useCallback(() => {
+    const allDisabled = TOOLS.reduce(
+      (acc, tool) => {
+        acc[tool.id] = false;
+        return acc;
+      },
+      {} as Record<string, boolean>,
+    );
+    setEnabledToolsState(allDisabled);
+  }, []);
+
+  const resetBehaviorToDefaults = useCallback(() => {
+    setTemperature(1.0);
+    setThinking(DEFAULT_SETTINGS[provider].thinking);
+    setShowThoughts(true);
+  }, [provider, setTemperature, setThinking, setShowThoughts]);
+
+  const isToolEnabled = useCallback(
+    (toolId: string) => {
+      return enabledTools[toolId] ?? true;
+    },
+    [enabledTools],
+  );
 
   return {
     provider,
@@ -399,5 +507,11 @@ export function useSettings(): UseSettingsReturn {
     cancelSettings,
     hasApiKey,
     settingsConfigured,
+    enabledTools,
+    setEnabledTools,
+    enableAllTools,
+    disableAllTools,
+    resetBehaviorToDefaults,
+    isToolEnabled,
   };
 }

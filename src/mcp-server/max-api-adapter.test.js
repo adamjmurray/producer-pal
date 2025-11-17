@@ -28,6 +28,7 @@ describe("Max API Adapter", () => {
         expect.any(String), // requestId
         "test-tool", // tool
         '{"arg1":"value1"}', // argsJSON
+        expect.stringContaining("silenceWavPath"), // contextJSON
       );
 
       // Get the requestId from the outlet call
