@@ -1,12 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  children,
   liveApiCall,
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { connect } from "./connect.js";
 
 // Mock the getHostTrackIndex function

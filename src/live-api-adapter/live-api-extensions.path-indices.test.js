@@ -213,9 +213,7 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       expect(liveSet.timeSignature).toBe("4/4");
       expect(liveSet.getProperty).toHaveBeenCalledWith("signature_numerator");
-      expect(liveSet.getProperty).toHaveBeenCalledWith(
-        "signature_denominator",
-      );
+      expect(liveSet.getProperty).toHaveBeenCalledWith("signature_denominator");
     });
 
     it("should return correct time signature for Clip objects", () => {

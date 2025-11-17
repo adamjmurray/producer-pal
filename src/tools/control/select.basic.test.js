@@ -7,7 +7,6 @@ import {
   liveApiSet,
   liveApiType,
 } from "../../test/mock-live-api.js";
-import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { select } from "./select.js";
 
 // Mock the LiveAPI constructor

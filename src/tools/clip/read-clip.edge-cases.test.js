@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   children,
   liveApiCall,
-  liveApiId,
-  liveApiPath,
-  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api";
 import { readClip } from "./read-clip";
