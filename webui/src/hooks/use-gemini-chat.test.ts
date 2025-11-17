@@ -46,10 +46,10 @@ describe("useGeminiChat", () => {
     expect(result.current.activeTemperature).toBeNull();
   });
 
-  it("clears conversation when clearConversation is called", () => {
+  it("clears conversation when clearConversation is called", async () => {
     const { result } = renderHook(() => useGeminiChat(defaultProps));
 
-    act(() => {
+    await act(() => {
       result.current.clearConversation();
     });
 
@@ -59,10 +59,10 @@ describe("useGeminiChat", () => {
     expect(result.current.activeTemperature).toBeNull();
   });
 
-  it("stopResponse sets isAssistantResponding to false", () => {
+  it("stopResponse sets isAssistantResponding to false", async () => {
     const { result } = renderHook(() => useGeminiChat(defaultProps));
 
-    act(() => {
+    await act(() => {
       result.current.stopResponse();
     });
 
