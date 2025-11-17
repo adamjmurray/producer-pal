@@ -1,7 +1,7 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockRender = vi.fn();
 
@@ -19,6 +19,17 @@ vi.mock("./components/App.jsx", () => ({
 vi.mock("./main.css", () => ({}));
 
 describe("main", () => {
+  beforeEach(() => {
+    // Clear the module cache before each test
+    vi.resetModules();
+    mockRender.mockClear();
+    // Clear any existing #app element
+    const existingApp = document.getElementById("app");
+    if (existingApp) {
+      existingApp.remove();
+    }
+  });
+
   it("calls render with App component when #app element exists", async () => {
     // Create #app element before importing main
     const appElement = document.createElement("div");
@@ -34,5 +45,14 @@ describe("main", () => {
       expect.anything(),
       expect.any(HTMLElement),
     );
+  });
+
+  it("throws error when #app element does not exist", async () => {
+    // Ensure no #app element exists (already removed in beforeEach)
+
+    // Import should throw an error
+    await expect(async () => {
+      await import("./main.js");
+    }).rejects.toThrow("Could not find #app element");
   });
 });
