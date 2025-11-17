@@ -11,6 +11,7 @@ import { toolDefReadLiveSet } from "../tools/live-set/read-live-set.def.js";
 import { toolDefUpdateLiveSet } from "../tools/live-set/update-live-set.def.js";
 import { toolDefDelete } from "../tools/operations/delete.def.js";
 import { toolDefDuplicate } from "../tools/operations/duplicate.def.js";
+import { toolDefTransformClips } from "../tools/operations/transform-clips.def.js";
 import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
 import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
 import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
@@ -46,6 +47,7 @@ export function createMcpServer(callLiveApi, options = {}) {
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
   addTool(toolDefUpdateClip);
+  addTool(toolDefTransformClips);
 
   // Commented out Sept 2025 - never used, keeps context window smaller
   // See src/tools/read-device.js for historical context
