@@ -10,7 +10,28 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
     destructiveHint: false,
   },
   inputSchema: {
-    clipIds: z.string().describe("comma-separated clip IDs to transform"),
+    clipIds: z
+      .string()
+      .optional()
+      .describe("comma-separated clip IDs to transform"),
+    arrangementTrackId: z
+      .string()
+      .optional()
+      .describe(
+        "track ID to query arrangement clips from (ignored if clipIds provided)",
+      ),
+    arrangementStart: z
+      .string()
+      .optional()
+      .describe(
+        "bar|beat position (e.g., '1|1.0') for arrangement range start",
+      ),
+    arrangementLength: z
+      .string()
+      .optional()
+      .describe(
+        "bar:beat duration (e.g., '4:0.0') for arrangement range length",
+      ),
     shuffleOrder: z.boolean().optional().describe("randomize clip positions"),
     // Audio clip parameters
     gainMin: z

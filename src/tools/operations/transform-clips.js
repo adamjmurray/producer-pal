@@ -1,5 +1,9 @@
+import {
+  barBeatDurationToAbletonBeats,
+  barBeatToAbletonBeats,
+} from "../../notation/barbeat/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
-import { validateIdTypes } from "../shared/id-validation.js";
+import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 const HOLDING_AREA_START = 40000;
@@ -49,7 +53,10 @@ function shuffleArray(array, rng) {
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
  * @param {Object} args - The parameters
- * @param {string} args.clipIds - Comma-separated clip IDs
+ * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackId)
+ * @param {string} [args.arrangementTrackId] - Track ID to query arrangement clips from (ignored if clipIds provided)
+ * @param {string} [args.arrangementStart] - Bar|beat position (e.g., '1|1.0') for range start
+ * @param {string} [args.arrangementLength] - Bar:beat duration (e.g., '4:0.0') for range length
  * @param {boolean} [args.shuffleOrder] - Randomize clip positions
  * @param {number} [args.gainMin] - Min gain multiplier (audio clips)
  * @param {number} [args.gainMax] - Max gain multiplier (audio clips)
@@ -69,6 +76,9 @@ function shuffleArray(array, rng) {
 export function transformClips(
   {
     clipIds,
+    arrangementTrackId,
+    arrangementStart,
+    arrangementLength,
     shuffleOrder,
     gainMin,
     gainMax,
@@ -86,24 +96,83 @@ export function transformClips(
   } = {},
   _context = {},
 ) {
-  if (!clipIds) {
-    throw new Error("transformClips failed: clipIds is required");
+  // Generate seed if not provided (do this early so it's available for return)
+  const actualSeed = seed ?? Date.now();
+  const rng = createSeededRNG(actualSeed);
+
+  // Determine clip selection method
+  let clipIdArray;
+
+  if (clipIds) {
+    // Priority: clipIds takes precedence if provided
+    clipIdArray = parseCommaSeparatedIds(clipIds);
+  } else if (arrangementTrackId) {
+    // Alternative: Query clips from track by arrangement range
+    const track = validateIdType(arrangementTrackId, "track", "transformClips");
+
+    // Get song time signature for bar|beat conversion
+    const liveSet = new LiveAPI("live_set");
+    const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+    const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
+    // Convert arrangementStart and arrangementLength to Ableton beats
+    let arrangementStartBeats = 0;
+    let arrangementEndBeats = Infinity;
+
+    if (arrangementStart != null) {
+      arrangementStartBeats = barBeatToAbletonBeats(
+        arrangementStart,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+    }
+
+    if (arrangementLength != null) {
+      const arrangementLengthBeats = barBeatDurationToAbletonBeats(
+        arrangementLength,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+
+      if (arrangementLengthBeats <= 0) {
+        throw new Error("arrangementLength must be greater than 0");
+      }
+
+      arrangementEndBeats = arrangementStartBeats + arrangementLengthBeats;
+    }
+
+    // Query all arrangement clips from track
+    const allClipIds = track.getChildIds("arrangement_clips");
+
+    // Filter clips by start_time in range
+    clipIdArray = allClipIds.filter((clipId) => {
+      const clip = new LiveAPI(clipId);
+      const clipStartTime = clip.getProperty("start_time");
+      return (
+        clipStartTime >= arrangementStartBeats &&
+        clipStartTime < arrangementEndBeats
+      );
+    });
+
+    if (clipIdArray.length === 0) {
+      console.error("Warning: no clips found in arrangement range");
+      return { clipIds: [], seed: actualSeed };
+    }
+  } else {
+    throw new Error(
+      "transformClips failed: clipIds or arrangementTrackId is required",
+    );
   }
 
-  // Parse and validate clip IDs
-  const clipIdArray = parseCommaSeparatedIds(clipIds);
+  // Validate clip IDs
   const clips = validateIdTypes(clipIdArray, "clip", "transformClips", {
     skipInvalid: true,
   });
 
   if (clips.length === 0) {
     console.error("Warning: no valid clips found");
-    return { clipIds: [], seed: seed ?? Date.now() };
+    return { clipIds: [], seed: actualSeed };
   }
-
-  // Generate seed if not provided
-  const actualSeed = seed ?? Date.now();
-  const rng = createSeededRNG(actualSeed);
 
   // Track warnings to emit each type only once
   const warnings = new Set();
