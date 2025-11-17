@@ -2,7 +2,7 @@
  * @vitest-environment happy-dom
  */
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/preact";
+import { fireEvent, render } from "@testing-library/preact";
 import { App } from "./App.jsx";
 
 // Mock all the custom hooks
@@ -222,6 +222,109 @@ describe("App", () => {
       expect(geminiCalls.length).toBeGreaterThan(0);
       expect(geminiCalls[0]![0]).toHaveProperty("apiKey");
       expect(geminiCalls[0]![0]).toHaveProperty("model");
+    });
+  });
+
+  describe("settings interactions", () => {
+    it("calls saveSettings when save button is clicked in settings screen", () => {
+      const mockSaveSettings = vi.fn();
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: false,
+        saveSettings: mockSaveSettings,
+      });
+      const { container } = render(<App />);
+      const saveButton = Array.from(container.querySelectorAll("button")).find(
+        (btn) => btn.textContent === "Save",
+      );
+      expect(saveButton).toBeDefined();
+      if (saveButton) {
+        fireEvent.click(saveButton);
+      }
+      expect(mockSaveSettings).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("baseUrl determination", () => {
+    it("uses custom baseUrl for custom provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "custom",
+        baseUrl: "https://custom.api.com/v1",
+      });
+      render(<App />);
+      // Verify OpenAI chat hook was called with custom baseUrl
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://custom.api.com/v1");
+    });
+
+    it("uses localhost baseUrl for lmstudio provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "lmstudio",
+        port: 1234,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:1234/v1");
+    });
+
+    it("uses localhost baseUrl for ollama provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "ollama",
+        port: 11434,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
+    });
+
+    it("uses provider-specific baseUrl for openai provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openai",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://api.openai.com/v1");
+    });
+
+    it("uses provider-specific baseUrl for mistral provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "mistral",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://api.mistral.ai/v1");
+    });
+
+    it("uses provider-specific baseUrl for openrouter provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openrouter",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://openrouter.ai/api/v1");
+    });
+
+    it("uses undefined baseUrl for gemini provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "gemini",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBeUndefined();
     });
   });
 });
