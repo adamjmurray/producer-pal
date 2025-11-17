@@ -23,6 +23,8 @@ interface ChatScreenProps {
   apiKey?: string;
   model?: string;
   temperature?: number;
+  mcpUrl?: string;
+  enabledTools?: Record<string, boolean>;
   enableVoice?: boolean;
 }
 
@@ -44,6 +46,8 @@ export function ChatScreen({
   apiKey,
   model,
   temperature,
+  mcpUrl,
+  enabledTools,
   enableVoice = false,
 }: ChatScreenProps) {
   return (
@@ -83,6 +87,8 @@ export function ChatScreen({
         apiKey={apiKey}
         model={model}
         temperature={temperature}
+        mcpUrl={mcpUrl}
+        enabledTools={enabledTools}
         enableVoice={enableVoice}
       />
     </div>

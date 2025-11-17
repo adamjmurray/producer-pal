@@ -143,6 +143,8 @@ export function App() {
       apiKey={settings.apiKey}
       model={settings.model}
       temperature={settings.temperature}
+      mcpUrl="http://localhost:3350/mcp"
+      enabledTools={settings.enabledTools}
       enableVoice={settings.provider === "gemini"}
     />
   );

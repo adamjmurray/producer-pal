@@ -5,12 +5,16 @@ interface VoiceInputProps {
   apiKey: string;
   model?: string;
   temperature?: number;
+  mcpUrl?: string;
+  enabledTools?: Record<string, boolean>;
   onTranscriptUpdate: (transcript: string) => void;
   disabled?: boolean;
 }
 
 export function VoiceInput({
   apiKey,
+  mcpUrl,
+  enabledTools,
   onTranscriptUpdate,
   disabled = false,
 }: VoiceInputProps) {
@@ -22,7 +26,7 @@ export function VoiceInput({
     connect,
     startStreaming,
     stopStreaming,
-  } = useVoiceChat(apiKey);
+  } = useVoiceChat(apiKey, undefined, mcpUrl, enabledTools);
 
   // Update parent with transcription changes
   useEffect(() => {

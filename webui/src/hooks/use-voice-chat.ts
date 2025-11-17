@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from "preact/hooks";
 import { GoogleGenAI, Modality } from "@google/genai";
-import type { Session } from "@google/genai";
+import type { Session, LiveServerToolCall } from "@google/genai";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 export interface VoiceChatState {
   isConnected: boolean;
@@ -16,6 +18,8 @@ export interface VoiceChatState {
 export function useVoiceChat(
   apiKey: string,
   voiceName?: string,
+  mcpUrl = "http://localhost:3350/mcp",
+  enabledTools?: Record<string, boolean>,
 ): VoiceChatState {
   const [isConnected, setIsConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -23,6 +27,7 @@ export function useVoiceChat(
   const [transcription, setTranscription] = useState("");
 
   const sessionRef = useRef<Session | null>(null);
+  const mcpClientRef = useRef<Client | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
@@ -30,6 +35,72 @@ export function useVoiceChat(
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const isConnectedRef = useRef(false);
   const nextPlayTimeRef = useRef(0); // Track when next audio chunk should play
+
+  // Handle tool calls from Live API
+  const handleToolCall = useCallback(async (toolCall: LiveServerToolCall) => {
+    if (!toolCall.functionCalls || !mcpClientRef.current) {
+      console.log("No function calls or MCP client not initialized");
+      return;
+    }
+
+    const toolResponses = [];
+
+    for (const functionCall of toolCall.functionCalls) {
+      if (!functionCall.name || !functionCall.id) {
+        console.log("Invalid function call: missing name or id");
+        continue;
+      }
+
+      try {
+        console.log(
+          `Executing tool: ${functionCall.name} with args:`,
+          functionCall.args,
+        );
+        const result = await mcpClientRef.current.callTool({
+          name: functionCall.name,
+          arguments: functionCall.args ?? {},
+        });
+
+        console.log(`Tool result:`, result);
+
+        toolResponses.push({
+          functionResponses: [
+            {
+              name: functionCall.name,
+              response: result.isError ? { error: result } : result,
+              id: functionCall.id,
+            },
+          ],
+        });
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`Tool execution error: ${errMsg}`);
+
+        toolResponses.push({
+          functionResponses: [
+            {
+              name: functionCall.name,
+              response: {
+                error: errMsg,
+              },
+              id: functionCall.id,
+            },
+          ],
+        });
+      }
+    }
+
+    // Send tool responses back to the session
+    for (const response of toolResponses) {
+      try {
+        sessionRef.current?.sendToolResponse(response);
+        console.log(`Sent tool response:`, response);
+      } catch (err) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.error(`Error sending tool response: ${errMsg}`);
+      }
+    }
+  }, []);
 
   const playAudioChunk = useCallback(async (base64Audio: string) => {
     try {
@@ -110,13 +181,44 @@ export function useVoiceChat(
     }
 
     try {
-      console.log("Connecting to Live API...");
+      console.log("Connecting to Live API and MCP server...");
       const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-2.5-flash-native-audio-preview-09-2025";
+
+      // Connect to MCP server and fetch tools
+      const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
+      mcpClientRef.current = new Client({
+        name: "producer-pal-voice-chat",
+        version: "1.0.0",
+      });
+      await mcpClientRef.current.connect(transport);
+
+      // List and filter MCP tools
+      const toolsResult = await mcpClientRef.current.listTools();
+      const filteredTools = enabledTools
+        ? toolsResult.tools.filter((tool) => enabledTools[tool.name] !== false)
+        : toolsResult.tools;
+
+      console.log(`Loaded ${filteredTools.length} MCP tools for voice chat`);
+
+      // Convert MCP tools to Gemini Live API format
+      const tools =
+        filteredTools.length > 0
+          ? [
+              {
+                functionDeclarations: filteredTools.map((tool) => ({
+                  name: tool.name,
+                  description: tool.description,
+                  parametersJsonSchema: tool.inputSchema,
+                })),
+              },
+            ]
+          : [];
 
       const config: {
         responseModalities: Modality[];
         systemInstruction: string;
+        tools?: typeof tools;
         speechConfig?: {
           voiceConfig: {
             prebuiltVoiceConfig: {
@@ -128,6 +230,7 @@ export function useVoiceChat(
         responseModalities: [Modality.AUDIO],
         systemInstruction:
           "You are a helpful voice assistant for music production. Keep responses concise and natural.",
+        ...(tools.length > 0 ? { tools } : {}),
       };
 
       // Add voice configuration if specified
@@ -185,6 +288,14 @@ export function useVoiceChat(
                 });
               }
 
+              // Handle tool calls
+              const toolCall = message.toolCall;
+              if (toolCall) {
+                console.log(`Tool call received:`, toolCall);
+                void handleToolCall(toolCall);
+                return;
+              }
+
               // Handle incoming audio
               const modelTurn = message.serverContent?.modelTurn;
               if (modelTurn?.parts) {
@@ -220,8 +331,18 @@ export function useVoiceChat(
         err instanceof Error ? err.message : "Connection failed";
       console.error("Connection failed:", err);
       setError(errorMessage);
+
+      // Clean up MCP client on error
+      if (mcpClientRef.current) {
+        try {
+          await mcpClientRef.current.close();
+        } catch (closeErr) {
+          console.error("Error closing MCP client:", closeErr);
+        }
+        mcpClientRef.current = null;
+      }
     }
-  }, [apiKey, voiceName, playAudioChunk]);
+  }, [apiKey, voiceName, mcpUrl, enabledTools, playAudioChunk, handleToolCall]);
 
   const startStreaming = useCallback(async () => {
     try {
@@ -406,6 +527,17 @@ export function useVoiceChat(
       console.error("Error closing session:", err);
     }
     sessionRef.current = null;
+
+    // Close MCP client
+    if (mcpClientRef.current) {
+      try {
+        void mcpClientRef.current.close();
+      } catch (err) {
+        console.error("Error closing MCP client:", err);
+      }
+      mcpClientRef.current = null;
+    }
+
     setIsConnected(false);
   }, []);
 
@@ -414,7 +546,7 @@ export function useVoiceChat(
     if (isStreaming) {
       stopStreaming();
     } else {
-      // If not streaming, just disconnect the session
+      // If not streaming, just disconnect the session and MCP client
       isConnectedRef.current = false;
       try {
         sessionRef.current?.close();
@@ -422,6 +554,17 @@ export function useVoiceChat(
         console.error("Error closing session:", err);
       }
       sessionRef.current = null;
+
+      // Close MCP client
+      if (mcpClientRef.current) {
+        try {
+          void mcpClientRef.current.close();
+        } catch (err) {
+          console.error("Error closing MCP client:", err);
+        }
+        mcpClientRef.current = null;
+      }
+
       setIsConnected(false);
     }
   }, [isStreaming, stopStreaming]);
