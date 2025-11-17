@@ -9,85 +9,6 @@ import {
 } from "../constants.js";
 
 /**
- * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
- * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
- * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
- */
-function computeState(liveObject, category = "regular") {
-  // Master track doesn't have mute/solo/muted_via_solo properties
-  if (category === "master") {
-    return STATE.ACTIVE;
-  }
-
-  const isMuted = liveObject.getProperty("mute") > 0;
-  const isSoloed = liveObject.getProperty("solo") > 0;
-  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
-
-  if (isSoloed) {
-    return STATE.SOLOED;
-  }
-
-  if (isMuted && isMutedViaSolo) {
-    return STATE.MUTED_ALSO_VIA_SOLO;
-  }
-
-  if (isMutedViaSolo) {
-    return STATE.MUTED_VIA_SOLO;
-  }
-
-  if (isMuted) {
-    return STATE.MUTED;
-  }
-
-  return STATE.ACTIVE;
-}
-
-/**
- * Check if device is an instrument type (instrument, instrument rack, or drum rack)
- * @param {string} deviceType - Device type string (may include className like "instrument (Analog)")
- * @returns {boolean} True if device is an instrument type
- */
-function isInstrumentDevice(deviceType) {
-  return (
-    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
-    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
-    deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
-  );
-}
-
-/**
- * Recursively check if any device in the provided device list is an instrument
- * @param {Array} devices - Array of processed device objects
- * @returns {boolean} True if any instrument device is found (including nested in racks)
- */
-function hasInstrumentInDevices(devices) {
-  if (!devices || devices.length === 0) {
-    return false;
-  }
-
-  for (const device of devices) {
-    // Check if this device is an instrument
-    if (isInstrumentDevice(device.type)) {
-      return true;
-    }
-
-    // Recursively check chains for rack devices
-    if (device.chains) {
-      for (const chain of device.chains) {
-        if (chain.devices && hasInstrumentInDevices(chain.devices)) {
-          return true;
-        }
-      }
-    }
-
-    // For drum racks, we don't need to check drumPads here since we're checking
-    // individual drum pad chains, not the entire drum rack structure
-  }
-
-  return false;
-}
-
-/**
  * Determine device type from Live API properties
  * @param {Object} device - Live API device object
  * @returns {string} Combined device type string
@@ -454,4 +375,83 @@ export function readDevice(device, options = {}) {
   }
 
   return deviceInfo;
+}
+
+/**
+ * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
+ * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
+ */
+function computeState(liveObject, category = "regular") {
+  // Master track doesn't have mute/solo/muted_via_solo properties
+  if (category === "master") {
+    return STATE.ACTIVE;
+  }
+
+  const isMuted = liveObject.getProperty("mute") > 0;
+  const isSoloed = liveObject.getProperty("solo") > 0;
+  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
+
+  if (isSoloed) {
+    return STATE.SOLOED;
+  }
+
+  if (isMuted && isMutedViaSolo) {
+    return STATE.MUTED_ALSO_VIA_SOLO;
+  }
+
+  if (isMutedViaSolo) {
+    return STATE.MUTED_VIA_SOLO;
+  }
+
+  if (isMuted) {
+    return STATE.MUTED;
+  }
+
+  return STATE.ACTIVE;
+}
+
+/**
+ * Check if device is an instrument type (instrument, instrument rack, or drum rack)
+ * @param {string} deviceType - Device type string (may include className like "instrument (Analog)")
+ * @returns {boolean} True if device is an instrument type
+ */
+function isInstrumentDevice(deviceType) {
+  return (
+    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
+    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
+    deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
+  );
+}
+
+/**
+ * Recursively check if any device in the provided device list is an instrument
+ * @param {Array} devices - Array of processed device objects
+ * @returns {boolean} True if any instrument device is found (including nested in racks)
+ */
+function hasInstrumentInDevices(devices) {
+  if (!devices || devices.length === 0) {
+    return false;
+  }
+
+  for (const device of devices) {
+    // Check if this device is an instrument
+    if (isInstrumentDevice(device.type)) {
+      return true;
+    }
+
+    // Recursively check chains for rack devices
+    if (device.chains) {
+      for (const chain of device.chains) {
+        if (chain.devices && hasInstrumentInDevices(chain.devices)) {
+          return true;
+        }
+      }
+    }
+
+    // For drum racks, we don't need to check drumPads here since we're checking
+    // individual drum pad chains, not the entire drum rack structure
+  }
+
+  return false;
 }

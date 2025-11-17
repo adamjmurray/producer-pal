@@ -50,6 +50,13 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.js`)
 
+- **Function organization**: In files that export functions, the first exported
+  function should be the main function named after the file (e.g.,
+  `updateClip()` in `update-clip.js`, `readTrack()` in `read-track.js`). All
+  helper functions (both internal and exported) must be placed below the main
+  exported function(s). This improves code readability and makes it immediately
+  clear what the primary purpose of each file is.
+
 - **Import extensions**: Always include `.js` in imports
 
 - **Testing builds**: Always use `npm run build:all` for development (includes
@@ -83,9 +90,8 @@ See `dev-docs/Architecture.md` for detailed system design and
 
 - **File organization and size limits**:
   - Max 800 lines per file (enforced by ESLint for all source and test files)
-  - When a file approaches 800 lines, extract helpers to
-    `{feature}-helpers.js` in the same directory (e.g.,
-    `update-clip-helpers.js`)
+  - When a file approaches 800 lines, extract helpers to `{feature}-helpers.js`
+    in the same directory (e.g., `update-clip-helpers.js`)
   - Helper files group related utility functions by feature/domain (e.g., audio
     operations, content analysis, clip duplication)
   - If a helper file exceeds 800 lines, split by feature group:
