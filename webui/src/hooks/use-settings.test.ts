@@ -492,4 +492,87 @@ describe("useSettings", () => {
     expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(false);
     expect(result.current.isToolEnabled("ppal-create-clip")).toBe(false);
   });
+
+  it("setShowThoughts works for mistral provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("mistral");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for openrouter provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("openrouter");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for lmstudio provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("lmstudio");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for ollama provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("ollama");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for custom provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("custom");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setProvider normalizes thinking value when switching to OpenAI", async () => {
+    const { result } = renderHook(() => useSettings());
+    // Set thinking to "Auto" which needs normalization for OpenAI
+    await act(() => {
+      result.current.setProvider("gemini");
+      result.current.setThinking("Auto");
+    });
+    expect(result.current.thinking).toBe("Auto");
+    // Switch to OpenAI - "Auto" should normalize to "Low"
+    await act(() => {
+      result.current.setProvider("openai");
+    });
+    expect(result.current.thinking).toBe("Low");
+  });
+
+  it("hasApiKey returns false when localStorage has invalid JSON", async () => {
+    // Set invalid JSON for a provider
+    localStorage.setItem("producer_pal_provider_gemini", "invalid json{");
+    const { result } = renderHook(() => useSettings());
+    // Switch to gemini to trigger hasApiKey computation
+    await act(() => {
+      result.current.setProvider("gemini");
+    });
+    expect(result.current.hasApiKey).toBe(false);
+    // Cleanup
+    localStorage.removeItem("producer_pal_provider_gemini");
+  });
 });
