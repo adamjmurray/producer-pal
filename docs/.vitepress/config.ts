@@ -9,6 +9,8 @@ export default defineConfig({
   // GitHub Pages base URL
   base: "/",
 
+  sitemap: { hostname: "https://producer-pal.org" },
+
   head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],
 
   themeConfig: {
