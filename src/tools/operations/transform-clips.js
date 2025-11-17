@@ -18,7 +18,7 @@ const HOLDING_AREA_START = 40000;
  * @param {number} seed - The seed value
  * @returns {function(): number} A function that returns a random number between 0 and 1
  */
-function createSeededRNG(seed) {
+export function createSeededRNG(seed) {
   let state = seed;
   return function () {
     state |= 0;
@@ -36,7 +36,7 @@ function createSeededRNG(seed) {
  * @param {function(): number} rng - Random number generator function
  * @returns {number} Random number between min and max
  */
-function randomInRange(min, max, rng) {
+export function randomInRange(min, max, rng) {
   return min + rng() * (max - min);
 }
 
@@ -46,7 +46,7 @@ function randomInRange(min, max, rng) {
  * @param {function(): number} rng - Random number generator function
  * @returns {Array} Shuffled array
  */
-function shuffleArray(array, rng) {
+export function shuffleArray(array, rng) {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));

@@ -20,7 +20,7 @@ import { validateIdType } from "../shared/id-validation.js";
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} Length in Ableton beats
  */
-function parseArrangementLength(
+export function parseArrangementLength(
   arrangementLength,
   timeSigNumerator,
   timeSigDenominator,
@@ -810,7 +810,7 @@ function duplicateScene(sceneIndex, name, withoutClips) {
   return result;
 }
 
-function calculateSceneLength(sceneIndex) {
+export function calculateSceneLength(sceneIndex) {
   const liveSet = new LiveAPI("live_set");
   const trackIds = liveSet.getChildIds("tracks");
 

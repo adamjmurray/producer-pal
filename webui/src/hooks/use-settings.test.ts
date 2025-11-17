@@ -689,4 +689,57 @@ describe("useSettings", () => {
       expect(result.current.temperature).toBe(0.6);
     });
   });
+
+  describe("setBaseUrl", () => {
+    it("sets baseUrl for custom provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("custom");
+      });
+      await act(() => {
+        result.current.setBaseUrl!("https://my-api.com/v1");
+      });
+      expect(result.current.baseUrl).toBe("https://my-api.com/v1");
+    });
+
+    it("setBaseUrl is undefined for non-custom providers", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("openai");
+      });
+      expect(result.current.setBaseUrl).toBeUndefined();
+    });
+  });
+
+  describe("setPort", () => {
+    it("sets port for lmstudio provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("lmstudio");
+      });
+      await act(() => {
+        result.current.setPort!(5678);
+      });
+      expect(result.current.port).toBe(5678);
+    });
+
+    it("sets port for ollama provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("ollama");
+      });
+      await act(() => {
+        result.current.setPort!(9999);
+      });
+      expect(result.current.port).toBe(9999);
+    });
+
+    it("setPort is undefined for non-port-based providers", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("openai");
+      });
+      expect(result.current.setPort).toBeUndefined();
+    });
+  });
 });
