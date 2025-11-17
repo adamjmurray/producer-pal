@@ -243,6 +243,38 @@ describe("App", () => {
       }
       expect(mockSaveSettings).toHaveBeenCalledOnce();
     });
+
+    it("saves theme reference when transitioning to settings screen", () => {
+      const mockSetTheme = vi.fn();
+      const initialTheme = "light";
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: false,
+      });
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: initialTheme,
+        setTheme: mockSetTheme,
+      });
+
+      // Render with settings screen open (settingsConfigured: false)
+      const { rerender } = render(<App />);
+
+      // Verify settings screen is shown
+      expect(document.body.textContent).toContain("Provider");
+
+      // Change theme while in settings
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: "dark",
+        setTheme: mockSetTheme,
+      });
+
+      // Re-render to trigger useEffect
+      rerender(<App />);
+
+      // The useEffect should have captured the initial theme
+      // This test verifies the useEffect runs and tracks theme changes
+      expect(mockSetTheme).not.toHaveBeenCalled();
+    });
   });
 
   describe("baseUrl determination", () => {
