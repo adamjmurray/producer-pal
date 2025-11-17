@@ -425,6 +425,5 @@ describe("readTrack", () => {
       const result = readTrack({ trackIndex: 0 });
       expect(result.drumMap).toBeUndefined();
     });
-
   });
 });

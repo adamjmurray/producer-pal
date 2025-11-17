@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  liveApiCall,
   liveApiGet,
   liveApiId,
   liveApiPath,
-  liveApiSet,
   liveApiType,
 } from "../../test/mock-live-api.js";
 import { transformClips } from "./transform-clips.js";

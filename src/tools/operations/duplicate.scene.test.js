@@ -285,10 +285,7 @@ describe("duplicate - scene duplication", () => {
             const trackMatch = clipIdOrStartTime.match(/tracks\/(\d+)/);
             const trackIndex = trackMatch ? trackMatch[1] : "0";
             // Return a mock arrangement clip ID
-            return [
-              "id",
-              `live_set tracks ${trackIndex} arrangement_clips 0`,
-            ];
+            return ["id", `live_set tracks ${trackIndex} arrangement_clips 0`];
           }
           if (method === "get_notes_extended") {
             return JSON.stringify({ notes: [] }); // Empty notes for testing
@@ -321,10 +318,7 @@ describe("duplicate - scene duplication", () => {
           return [1];
         }
         // Check if this is an arrangement clip requesting start_time
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "start_time"
-        ) {
+        if (this._path.includes("arrangement_clips") && prop === "start_time") {
           return [16];
         }
         // Otherwise use the original mock implementation
@@ -430,10 +424,7 @@ describe("duplicate - scene duplication", () => {
           return [1];
         }
         // Check if this is an arrangement clip requesting start_time
-        if (
-          this._path.includes("arrangement_clips") &&
-          prop === "start_time"
-        ) {
+        if (this._path.includes("arrangement_clips") && prop === "start_time") {
           // Return different start times based on clip index
           const clipMatch = this._path.match(/arrangement_clips (\d+)/);
           if (clipMatch) {

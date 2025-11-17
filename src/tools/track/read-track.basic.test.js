@@ -5,7 +5,6 @@ import {
   expectedClip,
   liveApiId,
   liveApiPath,
-  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { readTrack } from "./read-track.js";
@@ -427,5 +426,4 @@ describe("readTrack", () => {
     // Verify consistency with track ID format
     expect(result.id).toBe("track2");
   });
-
 });

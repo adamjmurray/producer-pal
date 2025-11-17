@@ -67,10 +67,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     );
 
     // Should delete the temp clip
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "delete_clip",
-      expect.any(String),
-    );
+    expect(liveApiCall).toHaveBeenCalledWith("delete_clip", expect.any(String));
 
     expect(result).toEqual({ id: "789" });
   });

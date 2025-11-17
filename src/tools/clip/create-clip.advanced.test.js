@@ -1,13 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-  children,
   liveApiCall,
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-  MockSequence,
 } from "../../test/mock-live-api";
-import { MAX_AUTO_CREATED_SCENES } from "../constants";
 import { createClip } from "./create-clip";
 
 describe("createClip - advanced features", () => {

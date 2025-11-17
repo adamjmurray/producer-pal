@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   liveApiId,
-  liveApiPath,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { readTrack } from "./read-track.js";

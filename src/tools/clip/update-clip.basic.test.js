@@ -3,7 +3,6 @@ import {
   liveApiCall,
   liveApiId,
   liveApiSet,
-  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { updateClip } from "./update-clip.js";

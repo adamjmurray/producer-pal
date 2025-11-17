@@ -4,9 +4,7 @@ import {
   liveApiId,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
-import {
-  LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../constants.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { readTrack } from "./read-track.js";
 import { mockTrackProperties } from "./read-track.test-helpers.js";
 

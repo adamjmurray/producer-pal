@@ -1,17 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   children,
-  expectedClip,
-  expectedTrack,
-  liveApiCall,
   liveApiId,
-  liveApiPath,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
-import {
-  LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
-  LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../constants.js";
 import { readLiveSet } from "./read-live-set.js";
 
 describe("readLiveSet - routing", () => {

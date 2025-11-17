@@ -1,17 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiPath,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { updateClip } from "./update-clip.js";
-import { mockContext, setupMocks } from "./update-clip.test-helpers.js";
+import { mockContext } from "./update-clip.test-helpers.js";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
-  beforeEach(() => {
-    setupMocks();
-  });
-
   it("should preserve envelopes by tiling when exposing hidden content", () => {
     const trackIndex = 0;
     liveApiPath.mockImplementation(function () {
