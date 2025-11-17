@@ -9,6 +9,8 @@ export default defineConfig({
   // GitHub Pages base URL
   base: "/",
 
+  sitemap: { hostname: "https://producer-pal.org" },
+
   head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],
 
   themeConfig: {
@@ -93,6 +95,12 @@ export default defineConfig({
 
     search: {
       provider: "local",
+    },
+
+    footer: {
+      message: "Released under the MIT License.",
+      copyright:
+        'Copyright © 2025-present <a href="https://adammurray.link">Adam Murray</a>',
     },
   },
 });
