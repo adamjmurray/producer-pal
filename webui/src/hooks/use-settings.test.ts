@@ -452,4 +452,44 @@ describe("useSettings", () => {
     // Unknown tools default to enabled
     expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
   });
+
+  it("enableAllTools sets all tools to enabled", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // First disable some tools
+    await act(() => {
+      result.current.setEnabledTools({
+        "ppal-connect": false,
+        "ppal-read-live-set": false,
+      });
+    });
+
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+
+    // Enable all tools
+    await act(() => {
+      result.current.enableAllTools();
+    });
+
+    // All tools should now be enabled
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(true);
+  });
+
+  it("disableAllTools sets all tools to disabled", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Tools start enabled by default
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+
+    // Disable all tools
+    await act(() => {
+      result.current.disableAllTools();
+    });
+
+    // All tools should now be disabled
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+    expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(false);
+    expect(result.current.isToolEnabled("ppal-create-clip")).toBe(false);
+  });
 });
