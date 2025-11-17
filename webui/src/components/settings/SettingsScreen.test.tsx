@@ -383,6 +383,81 @@ describe("SettingsScreen", () => {
     });
   });
 
+  describe("input handlers", () => {
+    it("calls setApiKey when API key input changes", () => {
+      const setApiKey = vi.fn();
+      render(<SettingsScreen {...defaultProps} setApiKey={setApiKey} />);
+      const input = screen.getByPlaceholderText(/Enter your Gemini API key/i);
+      fireEvent.change(input, { target: { value: "new-api-key" } });
+      expect(setApiKey).toHaveBeenCalledWith("new-api-key");
+    });
+
+    it("calls setPort when port input changes for lmstudio", () => {
+      const setPort = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="lmstudio"
+          port={1234}
+          setPort={setPort}
+        />,
+      );
+      const input = screen.getByPlaceholderText("1234");
+      fireEvent.change(input, { target: { value: "5678" } });
+      expect(setPort).toHaveBeenCalledWith(5678);
+    });
+
+    it("calls setPort when port input changes for ollama", () => {
+      const setPort = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="ollama"
+          port={11434}
+          setPort={setPort}
+        />,
+      );
+      const input = screen.getByPlaceholderText("11434");
+      fireEvent.change(input, { target: { value: "8080" } });
+      expect(setPort).toHaveBeenCalledWith(8080);
+    });
+
+    it("calls setBaseUrl when base URL input changes for custom provider", () => {
+      const setBaseUrl = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="custom"
+          baseUrl=""
+          setBaseUrl={setBaseUrl}
+        />,
+      );
+      const input = screen.getByPlaceholderText("https://api.example.com/v1");
+      fireEvent.change(input, { target: { value: "https://custom.api/v1" } });
+      expect(setBaseUrl).toHaveBeenCalledWith("https://custom.api/v1");
+    });
+  });
+
+  describe("reset behavior button", () => {
+    it("calls resetBehaviorToDefaults when clicked", () => {
+      const resetBehaviorToDefaults = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          resetBehaviorToDefaults={resetBehaviorToDefaults}
+        />,
+      );
+      // Click on Behavior tab
+      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+      fireEvent.click(behaviorTab);
+      const resetButton = screen.getByRole("button", {
+        name: "Reset to defaults",
+      });
+      fireEvent.click(resetButton);
+      expect(resetBehaviorToDefaults).toHaveBeenCalledOnce();
+    });
+  });
+
   describe("Model documentation links", () => {
     it("shows Gemini models link with correct URL", () => {
       render(<SettingsScreen {...defaultProps} provider="gemini" />);
