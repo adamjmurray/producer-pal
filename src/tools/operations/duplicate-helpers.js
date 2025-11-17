@@ -1,11 +1,52 @@
-import { abletonBeatsToBarBeat } from "../../notation/barbeat/barbeat-time.js";
+import {
+  abletonBeatsToBarBeat,
+  barBeatDurationToAbletonBeats,
+} from "../../notation/barbeat/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
 import { updateClip } from "../clip/update-clip.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
 } from "../shared/arrangement-tiling.js";
-import { parseArrangementLength } from "./duplicate.js";
+
+/**
+ * Parse arrangementLength from bar:beat duration format to absolute beats
+ * @param {string} arrangementLength - Length in bar:beat duration format (e.g. "2:0" for exactly two bars)
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} Length in Ableton beats
+ */
+export function parseArrangementLength(
+  arrangementLength,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  try {
+    const arrangementLengthBeats = barBeatDurationToAbletonBeats(
+      arrangementLength,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+
+    if (arrangementLengthBeats <= 0) {
+      throw new Error(
+        `duplicate failed: arrangementLength must be positive, got "${arrangementLength}"`,
+      );
+    }
+
+    return arrangementLengthBeats;
+  } catch (error) {
+    if (error.message.includes("Invalid bar:beat duration format")) {
+      throw new Error(`duplicate failed: ${error.message}`);
+    }
+    if (error.message.includes("must be 0 or greater")) {
+      throw new Error(
+        `duplicate failed: arrangementLength ${error.message.replace("in duration ", "")}`,
+      );
+    }
+    throw error;
+  }
+}
 
 /**
  * Get minimal clip information for result objects
