@@ -85,6 +85,87 @@ describe("ThinkingSettings", () => {
     });
   });
 
+  describe("OpenAI provider", () => {
+    it("renders thinking options without Gemini-specific options", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      render(
+        <ThinkingSettings
+          provider="openai"
+          model="gpt-5-2025-08-07"
+          thinking="Low"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      // Should have common options
+      expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "High" })).toBeDefined();
+      // Should not have Gemini-specific options
+      expect(screen.queryByRole("option", { name: "Off" })).toBeNull();
+      expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
+      expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
+    });
+
+    it("does not show checkbox for OpenAI provider", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      render(
+        <ThinkingSettings
+          provider="openai"
+          model="gpt-5-2025-08-07"
+          thinking="Low"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      expect(screen.queryByRole("checkbox")).toBeNull();
+      expect(screen.queryByText("Show thinking process")).toBeNull();
+    });
+  });
+
+  describe("non-supported providers", () => {
+    it("renders nothing for mistral provider", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      const { container } = render(
+        <ThinkingSettings
+          provider="mistral"
+          model="mistral-large-latest"
+          thinking="Low"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      expect(container.textContent).toBe("");
+      expect(screen.queryByRole("combobox")).toBeNull();
+    });
+
+    it("renders nothing for openrouter provider", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      const { container } = render(
+        <ThinkingSettings
+          provider="openrouter"
+          model="minimax/minimax-m2:free"
+          thinking="Low"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      expect(container.textContent).toBe("");
+    });
+  });
+
   describe("common behavior", () => {
     it("triggers setThinking callback on select change", () => {
       const setThinking = vi.fn();

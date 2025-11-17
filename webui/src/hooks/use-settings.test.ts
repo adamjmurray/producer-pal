@@ -400,4 +400,293 @@ describe("useSettings", () => {
       "true",
     );
   });
+
+  it("resetBehaviorToDefaults resets temperature, thinking, and showThoughts", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Set some non-default values
+    await act(() => {
+      result.current.setTemperature(0.5);
+      result.current.setThinking("Low");
+      result.current.setShowThoughts(false);
+    });
+
+    expect(result.current.temperature).toBe(0.5);
+    expect(result.current.thinking).toBe("Low");
+    expect(result.current.showThoughts).toBe(false);
+
+    // Reset to defaults
+    await act(() => {
+      result.current.resetBehaviorToDefaults();
+    });
+
+    expect(result.current.temperature).toBe(1.0);
+    expect(result.current.thinking).toBe("Auto"); // Default for gemini
+    expect(result.current.showThoughts).toBe(true);
+  });
+
+  it("isToolEnabled returns true for enabled tools", () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Tools are enabled by default
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+  });
+
+  it("isToolEnabled returns false for disabled tools", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Disable a tool
+    await act(() => {
+      result.current.setEnabledTools({
+        ...result.current.enabledTools,
+        "ppal-connect": false,
+      });
+    });
+
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+  });
+
+  it("isToolEnabled returns true for unknown tools (default)", () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Unknown tools default to enabled
+    expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
+  });
+
+  it("enableAllTools sets all tools to enabled", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // First disable some tools
+    await act(() => {
+      result.current.setEnabledTools({
+        "ppal-connect": false,
+        "ppal-read-live-set": false,
+      });
+    });
+
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+
+    // Enable all tools
+    await act(() => {
+      result.current.enableAllTools();
+    });
+
+    // All tools should now be enabled
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+    expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(true);
+  });
+
+  it("disableAllTools sets all tools to disabled", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Tools start enabled by default
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+
+    // Disable all tools
+    await act(() => {
+      result.current.disableAllTools();
+    });
+
+    // All tools should now be disabled
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+    expect(result.current.isToolEnabled("ppal-read-live-set")).toBe(false);
+    expect(result.current.isToolEnabled("ppal-create-clip")).toBe(false);
+  });
+
+  it("setShowThoughts works for mistral provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("mistral");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for openrouter provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("openrouter");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for lmstudio provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("lmstudio");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for ollama provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("ollama");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setShowThoughts works for custom provider", async () => {
+    const { result } = renderHook(() => useSettings());
+    await act(() => {
+      result.current.setProvider("custom");
+    });
+    await act(() => {
+      result.current.setShowThoughts(false);
+    });
+    expect(result.current.showThoughts).toBe(false);
+  });
+
+  it("setProvider normalizes thinking value when switching to OpenAI", async () => {
+    const { result } = renderHook(() => useSettings());
+    // Set thinking to "Auto" which needs normalization for OpenAI
+    await act(() => {
+      result.current.setProvider("gemini");
+      result.current.setThinking("Auto");
+    });
+    expect(result.current.thinking).toBe("Auto");
+    // Switch to OpenAI - "Auto" should normalize to "Low"
+    await act(() => {
+      result.current.setProvider("openai");
+    });
+    expect(result.current.thinking).toBe("Low");
+  });
+
+  it("hasApiKey returns false when localStorage has invalid JSON", async () => {
+    // Set invalid JSON for a provider
+    localStorage.setItem("producer_pal_provider_gemini", "invalid json{");
+    const { result } = renderHook(() => useSettings());
+    // Switch to gemini to trigger hasApiKey computation
+    await act(() => {
+      result.current.setProvider("gemini");
+    });
+    expect(result.current.hasApiKey).toBe(false);
+    // Cleanup
+    localStorage.removeItem("producer_pal_provider_gemini");
+  });
+
+  describe("setThinking for all providers", () => {
+    it("sets thinking for mistral provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("mistral");
+      });
+      await act(() => {
+        result.current.setThinking("High");
+      });
+      expect(result.current.thinking).toBe("High");
+    });
+
+    it("sets thinking for openrouter provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("openrouter");
+      });
+      await act(() => {
+        result.current.setThinking("Medium");
+      });
+      expect(result.current.thinking).toBe("Medium");
+    });
+
+    it("sets thinking for lmstudio provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("lmstudio");
+      });
+      await act(() => {
+        result.current.setThinking("Low");
+      });
+      expect(result.current.thinking).toBe("Low");
+    });
+
+    it("sets thinking for ollama provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("ollama");
+      });
+      await act(() => {
+        result.current.setThinking("High");
+      });
+      expect(result.current.thinking).toBe("High");
+    });
+
+    it("sets thinking for custom provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("custom");
+      });
+      await act(() => {
+        result.current.setThinking("Medium");
+      });
+      expect(result.current.thinking).toBe("Medium");
+    });
+  });
+
+  describe("setTemperature for all providers", () => {
+    it("sets temperature for mistral provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("mistral");
+      });
+      await act(() => {
+        result.current.setTemperature(0.8);
+      });
+      expect(result.current.temperature).toBe(0.8);
+    });
+
+    it("sets temperature for openrouter provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("openrouter");
+      });
+      await act(() => {
+        result.current.setTemperature(0.5);
+      });
+      expect(result.current.temperature).toBe(0.5);
+    });
+
+    it("sets temperature for lmstudio provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("lmstudio");
+      });
+      await act(() => {
+        result.current.setTemperature(0.9);
+      });
+      expect(result.current.temperature).toBe(0.9);
+    });
+
+    it("sets temperature for ollama provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("ollama");
+      });
+      await act(() => {
+        result.current.setTemperature(0.7);
+      });
+      expect(result.current.temperature).toBe(0.7);
+    });
+
+    it("sets temperature for custom provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("custom");
+      });
+      await act(() => {
+        result.current.setTemperature(0.6);
+      });
+      expect(result.current.temperature).toBe(0.6);
+    });
+  });
 });
