@@ -161,8 +161,12 @@ describe("ModelSelector", () => {
           setModel={vi.fn()}
         />,
       );
-      expect(screen.getByRole("option", { name: /\[Free\] MiniMax M2/ })).toBeDefined();
-      expect(screen.getByRole("option", { name: /\[Free\] Qwen3 235B/ })).toBeDefined();
+      expect(
+        screen.getByRole("option", { name: /\[Free\] MiniMax M2/ }),
+      ).toBeDefined();
+      expect(
+        screen.getByRole("option", { name: /\[Free\] Qwen3 235B/ }),
+      ).toBeDefined();
     });
 
     it("calls setModel when OpenRouter model changes", () => {
