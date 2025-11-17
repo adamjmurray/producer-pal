@@ -153,8 +153,7 @@ export default [
     },
   },
   {
-    // Test files - enforce max-lines limit
-    files: ["**/*_test.js", "**/*.test.js"],
+    files: ["**/*.test.js", "**/*.test.ts", "**/*.test.tsx"],
     rules: {
       "max-lines": [
         "error",
