@@ -153,7 +153,36 @@ export default [
     },
   },
   {
-    files: ["**/*.test.js", "**/*.test.ts", "**/*.test.tsx"],
+    files: [
+      "src/**/*.js",
+      "scripts/**/*.js",
+      "scripts/**/*.mjs",
+      "webui/**/*.ts",
+    ],
+    ignores: [
+      "**/*.test.js",
+      "**/*.test-helpers.js",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
+    rules: {
+      "max-lines": [
+        "error",
+        {
+          max: 800,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "**/*.test.js",
+      "**/*.test-helpers.js",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
     rules: {
       "max-lines": [
         "error",
