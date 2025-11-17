@@ -4,9 +4,7 @@ import {
   liveApiId,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
-import {
-  LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../constants.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { readLiveSet } from "./read-live-set.js";
 
 describe("readLiveSet - track types", () => {
