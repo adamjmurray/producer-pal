@@ -400,4 +400,56 @@ describe("useSettings", () => {
       "true",
     );
   });
+
+  it("resetBehaviorToDefaults resets temperature, thinking, and showThoughts", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Set some non-default values
+    await act(() => {
+      result.current.setTemperature(0.5);
+      result.current.setThinking("Low");
+      result.current.setShowThoughts(false);
+    });
+
+    expect(result.current.temperature).toBe(0.5);
+    expect(result.current.thinking).toBe("Low");
+    expect(result.current.showThoughts).toBe(false);
+
+    // Reset to defaults
+    await act(() => {
+      result.current.resetBehaviorToDefaults();
+    });
+
+    expect(result.current.temperature).toBe(1.0);
+    expect(result.current.thinking).toBe("Auto"); // Default for gemini
+    expect(result.current.showThoughts).toBe(true);
+  });
+
+  it("isToolEnabled returns true for enabled tools", () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Tools are enabled by default
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(true);
+  });
+
+  it("isToolEnabled returns false for disabled tools", async () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Disable a tool
+    await act(() => {
+      result.current.setEnabledTools({
+        ...result.current.enabledTools,
+        "ppal-connect": false,
+      });
+    });
+
+    expect(result.current.isToolEnabled("ppal-connect")).toBe(false);
+  });
+
+  it("isToolEnabled returns true for unknown tools (default)", () => {
+    const { result } = renderHook(() => useSettings());
+
+    // Unknown tools default to enabled
+    expect(result.current.isToolEnabled("unknown-tool")).toBe(true);
+  });
 });
