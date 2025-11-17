@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseArrangementLength } from "./duplicate.js";
+import { parseArrangementLength } from "./duplicate-helpers.js";
 
 describe("duplicate - helper functions", () => {
   describe("parseArrangementLength", () => {
