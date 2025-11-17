@@ -1,4 +1,4 @@
-import { formatNotation } from "../../notation//barbeat/barbeat-format-notation.js";
+import { formatNotation } from "../../notation/barbeat/barbeat-format-notation.js";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,

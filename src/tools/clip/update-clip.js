@@ -1,5 +1,5 @@
-import { formatNotation } from "../../notation//barbeat/barbeat-format-notation.js";
-import { interpretNotation } from "../../notation//barbeat/barbeat-interpreter.js";
+import { formatNotation } from "../../notation/barbeat/barbeat-format-notation.js";
+import { interpretNotation } from "../../notation/barbeat/barbeat-interpreter.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,

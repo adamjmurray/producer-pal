@@ -1,4 +1,4 @@
-import { interpretNotation } from "../../notation//barbeat/barbeat-interpreter.js";
+import { interpretNotation } from "../../notation/barbeat/barbeat-interpreter.js";
 import {
   abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
