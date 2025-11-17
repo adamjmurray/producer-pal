@@ -152,4 +152,18 @@ export default [
       "@typescript-eslint/no-non-null-assertion": "off",
     },
   },
+  {
+    // Test files - enforce max-lines limit
+    files: ["**/*_test.js", "**/*.test.js"],
+    rules: {
+      "max-lines": [
+        "error",
+        {
+          max: 800,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+    },
+  },
 ];
