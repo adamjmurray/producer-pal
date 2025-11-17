@@ -983,11 +983,15 @@ function duplicateClipToArrangement(
   // Support "id {id}" (such as returned by childIds()) and id values directly
   const clip = LiveAPI.from(clipId);
 
+  // Defensive check - validateIdType ensures clip exists before this function is called
+  /* istanbul ignore next */
   if (!clip.exists()) {
     throw new Error(`duplicate failed: no clip exists for clipId "${clipId}"`);
   }
 
   const trackIndex = clip.trackIndex;
+  // Defensive check - validateIdType ensures clip is valid before this function is called
+  /* istanbul ignore next */
   if (trackIndex == null) {
     throw new Error(
       `duplicate failed: no track index for clipId "${clipId}" (path=${clip.path})`,

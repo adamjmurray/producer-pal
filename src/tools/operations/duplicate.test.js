@@ -2418,4 +2418,91 @@ describe("duplicate", () => {
       expect(result).toHaveLength(2);
     });
   });
+
+  describe("multiple clips return format in duplicateClipToArrangement", () => {
+    it("should return trackIndex with clips array when lengthening creates multiple tiled clips", async () => {
+      const { updateClip } = await import("../clip/update-clip.js");
+
+      // Override the mock to return multiple clips (simulating tiling)
+      updateClip.mockReturnValueOnce([
+        { id: "live_set tracks 0 arrangement_clips 0" },
+        { id: "live_set tracks 0 arrangement_clips 1" },
+        { id: "live_set tracks 0 arrangement_clips 2" },
+      ]);
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set tracks 0 clip_slots 0 clip";
+        }
+        if (this._path === "id live_set tracks 0 arrangement_clips 0") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "id live_set tracks 0 arrangement_clips 1") {
+          return "live_set tracks 0 arrangement_clips 1";
+        }
+        if (this._path === "id live_set tracks 0 arrangement_clips 2") {
+          return "live_set tracks 0 arrangement_clips 2";
+        }
+        return this._path;
+      });
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", "live_set tracks 0 arrangement_clips 0"];
+        }
+        return null;
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (this._id === "clip1") {
+          return "live_set/tracks/0/clip_slots/0/clip";
+        }
+        return this._id;
+      });
+
+      mockLiveApiGet({
+        clip1: {
+          exists: () => true,
+          length: 4,
+          looping: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          is_midi_clip: 1,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: children(
+            "live_set tracks 0 arrangement_clips 0",
+            "live_set tracks 0 arrangement_clips 1",
+            "live_set tracks 0 arrangement_clips 2",
+          ),
+        },
+        "live_set tracks 0 arrangement_clips 0": {
+          is_arrangement_clip: 1,
+          start_time: 0,
+        },
+        "live_set tracks 0 arrangement_clips 1": {
+          is_arrangement_clip: 1,
+          start_time: 4,
+        },
+        "live_set tracks 0 arrangement_clips 2": {
+          is_arrangement_clip: 1,
+          start_time: 8,
+        },
+      });
+
+      const result = duplicate({
+        type: "clip",
+        id: "clip1",
+        destination: "arrangement",
+        arrangementStart: "1|1",
+        arrangementLength: "3:0", // Long enough to create multiple tiles
+      });
+
+      // Should return object with trackIndex and clips array
+      expect(result).toHaveProperty("trackIndex", 0);
+      expect(result).toHaveProperty("clips");
+      expect(result.clips).toBeInstanceOf(Array);
+      expect(result.clips.length).toBeGreaterThan(1);
+    });
+  });
 });
