@@ -81,6 +81,20 @@ See `dev-docs/Architecture.md` for detailed system design and
   colocated with source files (e.g., `ChatHeader.tsx` has `ChatHeader.test.tsx`
   in the same directory).
 
+- **File organization and size limits**:
+  - Max 800 lines per file (enforced by ESLint for all source and test files)
+  - When a file approaches 800 lines, extract helpers to
+    `{feature}-helpers.js` in the same directory (e.g.,
+    `update-clip-helpers.js`)
+  - Helper files group related utility functions by feature/domain (e.g., audio
+    operations, content analysis, clip duplication)
+  - If a helper file exceeds 800 lines, split by feature group:
+    `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
+    `update-clip-midi-helpers.js`)
+  - Test files split using dot notation: `{feature}.{area}.test.js` (e.g.,
+    `update-clip.audio-arrangement.test.js`, `duplicate.validation.test.js`)
+  - Test helpers use `{feature}.test-helpers.js` for shared test utilities
+
 ## TypeScript (WebUI Only)
 
 **Scope:** TypeScript is ONLY used in `webui/` directory.
