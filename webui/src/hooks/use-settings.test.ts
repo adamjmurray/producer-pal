@@ -575,4 +575,118 @@ describe("useSettings", () => {
     // Cleanup
     localStorage.removeItem("producer_pal_provider_gemini");
   });
+
+  describe("setThinking for all providers", () => {
+    it("sets thinking for mistral provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("mistral");
+      });
+      await act(() => {
+        result.current.setThinking("High");
+      });
+      expect(result.current.thinking).toBe("High");
+    });
+
+    it("sets thinking for openrouter provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("openrouter");
+      });
+      await act(() => {
+        result.current.setThinking("Medium");
+      });
+      expect(result.current.thinking).toBe("Medium");
+    });
+
+    it("sets thinking for lmstudio provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("lmstudio");
+      });
+      await act(() => {
+        result.current.setThinking("Low");
+      });
+      expect(result.current.thinking).toBe("Low");
+    });
+
+    it("sets thinking for ollama provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("ollama");
+      });
+      await act(() => {
+        result.current.setThinking("High");
+      });
+      expect(result.current.thinking).toBe("High");
+    });
+
+    it("sets thinking for custom provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("custom");
+      });
+      await act(() => {
+        result.current.setThinking("Medium");
+      });
+      expect(result.current.thinking).toBe("Medium");
+    });
+  });
+
+  describe("setTemperature for all providers", () => {
+    it("sets temperature for mistral provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("mistral");
+      });
+      await act(() => {
+        result.current.setTemperature(0.8);
+      });
+      expect(result.current.temperature).toBe(0.8);
+    });
+
+    it("sets temperature for openrouter provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("openrouter");
+      });
+      await act(() => {
+        result.current.setTemperature(0.5);
+      });
+      expect(result.current.temperature).toBe(0.5);
+    });
+
+    it("sets temperature for lmstudio provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("lmstudio");
+      });
+      await act(() => {
+        result.current.setTemperature(0.9);
+      });
+      expect(result.current.temperature).toBe(0.9);
+    });
+
+    it("sets temperature for ollama provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("ollama");
+      });
+      await act(() => {
+        result.current.setTemperature(0.7);
+      });
+      expect(result.current.temperature).toBe(0.7);
+    });
+
+    it("sets temperature for custom provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("custom");
+      });
+      await act(() => {
+        result.current.setTemperature(0.6);
+      });
+      expect(result.current.temperature).toBe(0.6);
+    });
+  });
 });
