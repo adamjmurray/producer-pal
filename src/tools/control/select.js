@@ -3,94 +3,6 @@ import { validateIdType } from "../shared/id-validation.js";
 import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
 
 /**
- * Reads or updates the view state in Ableton Live.
- *
- * When called with no arguments (or empty object), returns the current view state.
- * When called with arguments, updates the view and returns the full view state
- * with updates optimistically applied.
- *
- * Use update functionality judiciously to avoid interrupting user workflow.
- * Generally only change views when: 1) User explicitly asks to see something,
- * 2) After creating/modifying objects the user specifically asked to work on,
- * 3) Context strongly suggests the user would benefit from seeing the result.
- * When in doubt, don't change views.
- */
-function readViewState() {
-  const appView = new LiveAPI("live_app view");
-  const selectedTrack = new LiveAPI("live_set view selected_track");
-  const selectedScene = new LiveAPI("live_set view selected_scene");
-  const detailClip = new LiveAPI("live_set view detail_clip");
-  const highlightedClipSlotAPI = new LiveAPI(
-    "live_set view highlighted_clip_slot",
-  );
-
-  // Extract track info using Live API extensions
-  const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
-  const category = selectedTrack.exists() ? selectedTrack.category : null;
-  const selectedSceneIndex = selectedScene.exists()
-    ? selectedScene.sceneIndex
-    : null;
-  const selectedSceneId = selectedScene.exists() ? selectedScene.id : null;
-  const selectedClipId = detailClip.exists() ? detailClip.id : null;
-
-  // Get selected device from the selected track's view
-  let selectedDeviceId = null;
-  if (selectedTrack.exists()) {
-    const trackView = new LiveAPI(`${selectedTrack.path} view`);
-    if (trackView.exists()) {
-      selectedDeviceId =
-        trackView.get("selected_device")?.[1]?.toString() || null;
-    }
-  }
-
-  const highlightedSlot = highlightedClipSlotAPI.exists()
-    ? {
-        trackIndex: highlightedClipSlotAPI.trackIndex,
-        sceneIndex: highlightedClipSlotAPI.sceneIndex,
-      }
-    : null;
-
-  let detailView = null;
-  if (appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_CLIP)) {
-    detailView = "clip";
-  } else if (
-    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN)
-  ) {
-    detailView = "device";
-  }
-
-  const showBrowser = Boolean(
-    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
-  );
-
-  const selectedTrackObject = {
-    trackId: selectedTrackId,
-    category: category,
-  };
-
-  if (category === "regular" && selectedTrack.exists()) {
-    selectedTrackObject.trackIndex = selectedTrack.trackIndex;
-  } else if (category === "return" && selectedTrack.exists()) {
-    selectedTrackObject.returnTrackIndex = selectedTrack.returnTrackIndex;
-  }
-  // master track gets no index property
-
-  return {
-    view: fromLiveApiView(appView.getProperty("focused_document_view")),
-    detailView,
-    showBrowser,
-    selectedTrack: selectedTrackObject,
-    selectedClipId,
-    selectedDeviceId,
-    selectedScene: {
-      sceneId: selectedSceneId,
-      sceneIndex: selectedSceneIndex,
-    },
-    selectedClipSlot: highlightedSlot,
-  };
-}
-
-/**
  * Reads or updates the view state and selection in Ableton Live.
  *
  * When called with no arguments (or empty object), returns the current view state.
@@ -426,4 +338,92 @@ function updateHighlightedClipSlot({ songView, clipSlot }) {
       songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
     }
   }
+}
+
+/**
+ * Reads or updates the view state in Ableton Live.
+ *
+ * When called with no arguments (or empty object), returns the current view state.
+ * When called with arguments, updates the view and returns the full view state
+ * with updates optimistically applied.
+ *
+ * Use update functionality judiciously to avoid interrupting user workflow.
+ * Generally only change views when: 1) User explicitly asks to see something,
+ * 2) After creating/modifying objects the user specifically asked to work on,
+ * 3) Context strongly suggests the user would benefit from seeing the result.
+ * When in doubt, don't change views.
+ */
+function readViewState() {
+  const appView = new LiveAPI("live_app view");
+  const selectedTrack = new LiveAPI("live_set view selected_track");
+  const selectedScene = new LiveAPI("live_set view selected_scene");
+  const detailClip = new LiveAPI("live_set view detail_clip");
+  const highlightedClipSlotAPI = new LiveAPI(
+    "live_set view highlighted_clip_slot",
+  );
+
+  // Extract track info using Live API extensions
+  const selectedTrackId = selectedTrack.exists() ? selectedTrack.id : null;
+  const category = selectedTrack.exists() ? selectedTrack.category : null;
+  const selectedSceneIndex = selectedScene.exists()
+    ? selectedScene.sceneIndex
+    : null;
+  const selectedSceneId = selectedScene.exists() ? selectedScene.id : null;
+  const selectedClipId = detailClip.exists() ? detailClip.id : null;
+
+  // Get selected device from the selected track's view
+  let selectedDeviceId = null;
+  if (selectedTrack.exists()) {
+    const trackView = new LiveAPI(`${selectedTrack.path} view`);
+    if (trackView.exists()) {
+      selectedDeviceId =
+        trackView.get("selected_device")?.[1]?.toString() || null;
+    }
+  }
+
+  const highlightedSlot = highlightedClipSlotAPI.exists()
+    ? {
+        trackIndex: highlightedClipSlotAPI.trackIndex,
+        sceneIndex: highlightedClipSlotAPI.sceneIndex,
+      }
+    : null;
+
+  let detailView = null;
+  if (appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_CLIP)) {
+    detailView = "clip";
+  } else if (
+    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_DEVICE_CHAIN)
+  ) {
+    detailView = "device";
+  }
+
+  const showBrowser = Boolean(
+    appView.call("is_view_visible", LIVE_API_VIEW_NAMES.BROWSER),
+  );
+
+  const selectedTrackObject = {
+    trackId: selectedTrackId,
+    category: category,
+  };
+
+  if (category === "regular" && selectedTrack.exists()) {
+    selectedTrackObject.trackIndex = selectedTrack.trackIndex;
+  } else if (category === "return" && selectedTrack.exists()) {
+    selectedTrackObject.returnTrackIndex = selectedTrack.returnTrackIndex;
+  }
+  // master track gets no index property
+
+  return {
+    view: fromLiveApiView(appView.getProperty("focused_document_view")),
+    detailView,
+    showBrowser,
+    selectedTrack: selectedTrackObject,
+    selectedClipId,
+    selectedDeviceId,
+    selectedScene: {
+      sceneId: selectedSceneId,
+      sceneIndex: selectedSceneIndex,
+    },
+    selectedClipSlot: highlightedSlot,
+  };
 }

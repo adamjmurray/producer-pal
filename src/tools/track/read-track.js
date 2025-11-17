@@ -21,105 +21,49 @@ import {
   READ_TRACK_DEFAULTS,
 } from "../shared/include-params.js";
 
-/**
- * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
- * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
- * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
- */
-function computeState(liveObject, category = "regular") {
-  // Master track doesn't have mute/solo/muted_via_solo properties
-  if (category === "master") {
-    return STATE.ACTIVE;
+export function readTrack(args = {}, _context = {}) {
+  const { trackIndex, trackId, category = "regular" } = args;
+
+  // Validate parameters
+  if (trackId == null && trackIndex == null && category !== "master") {
+    throw new Error("Either trackId or trackIndex must be provided");
   }
 
-  const isMuted = liveObject.getProperty("mute") > 0;
-  const isSoloed = liveObject.getProperty("solo") > 0;
-  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
+  let track;
+  let resolvedTrackIndex = trackIndex;
+  let resolvedCategory = category;
 
-  if (isSoloed) {
-    return STATE.SOLOED;
-  }
+  if (trackId != null) {
+    // Use trackId to access track directly and validate it's a track
+    track = validateIdType(trackId, "track", "readTrack");
 
-  if (isMuted && isMutedViaSolo) {
-    return STATE.MUTED_ALSO_VIA_SOLO;
-  }
-
-  if (isMutedViaSolo) {
-    return STATE.MUTED_VIA_SOLO;
-  }
-
-  if (isMuted) {
-    return STATE.MUTED;
-  }
-
-  return STATE.ACTIVE;
-}
-
-/**
- * Categorize devices into MIDI effects, instruments, and audio effects
- * @param {Array} devices - Array of Live API device objects
- * @param {boolean} includeDrumChains - Whether to include drum pad chains and return chains
- * @param {boolean} includeRackChains - Whether to include chains in rack devices
- * @returns {Object} Object with midiEffects, instrument, and audioEffects arrays
- */
-function categorizeDevices(
-  devices,
-  includeDrumChains = false,
-  includeRackChains = true,
-) {
-  const midiEffects = [];
-  const instruments = [];
-  const audioEffects = [];
-
-  for (const device of devices) {
-    const processedDevice = readDevice(device, {
-      includeChains: includeRackChains,
-      includeDrumChains,
-    });
-
-    // Use processed device type for proper rack categorization
-    const deviceType = processedDevice.type;
-
-    if (
-      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||
-      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT_RACK)
-    ) {
-      midiEffects.push(processedDevice);
-    } else if (
-      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
-      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
-      deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
-    ) {
-      instruments.push(processedDevice);
-    } else if (
-      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT) ||
-      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT_RACK)
-    ) {
-      audioEffects.push(processedDevice);
+    // Determine track category and index from the track's path
+    resolvedCategory = track.category;
+    resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
+  } else {
+    // Construct the appropriate Live API path based on track category
+    let trackPath;
+    if (category === "regular") {
+      trackPath = `live_set tracks ${trackIndex}`;
+    } else if (category === "return") {
+      trackPath = `live_set return_tracks ${trackIndex}`;
+    } else if (category === "master") {
+      trackPath = "live_set master_track";
+    } else {
+      throw new Error(
+        `Invalid category: ${category}. Must be "regular", "return", or "master".`,
+      );
     }
+
+    track = new LiveAPI(trackPath);
   }
 
-  // Validate instrument count
-  if (instruments.length > 1) {
-    console.error(
-      `Track has ${instruments.length} instruments, which is unusual. Expected 0 or 1.`,
-    );
-  }
-
-  return {
-    midiEffects,
-    instrument: instruments.length > 0 ? instruments[0] : null,
-    audioEffects,
-  };
-}
-
-// Helper function to strip chains from device objects
-function stripChains(device) {
-  if (!device || typeof device !== "object") {
-    return device;
-  }
-  const { chains: _chains, ...rest } = device;
-  return rest;
+  return readTrackGeneric({
+    track,
+    trackIndex: resolvedCategory === "master" ? null : resolvedTrackIndex,
+    category: resolvedCategory,
+    include: args.include,
+  });
 }
 
 /**
@@ -474,47 +418,103 @@ export function readTrackGeneric({
   return result;
 }
 
-export function readTrack(args = {}, _context = {}) {
-  const { trackIndex, trackId, category = "regular" } = args;
-
-  // Validate parameters
-  if (trackId == null && trackIndex == null && category !== "master") {
-    throw new Error("Either trackId or trackIndex must be provided");
+/**
+ * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
+ * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
+ */
+function computeState(liveObject, category = "regular") {
+  // Master track doesn't have mute/solo/muted_via_solo properties
+  if (category === "master") {
+    return STATE.ACTIVE;
   }
 
-  let track;
-  let resolvedTrackIndex = trackIndex;
-  let resolvedCategory = category;
+  const isMuted = liveObject.getProperty("mute") > 0;
+  const isSoloed = liveObject.getProperty("solo") > 0;
+  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
 
-  if (trackId != null) {
-    // Use trackId to access track directly and validate it's a track
-    track = validateIdType(trackId, "track", "readTrack");
+  if (isSoloed) {
+    return STATE.SOLOED;
+  }
 
-    // Determine track category and index from the track's path
-    resolvedCategory = track.category;
-    resolvedTrackIndex = track.trackIndex ?? track.returnTrackIndex ?? null;
-  } else {
-    // Construct the appropriate Live API path based on track category
-    let trackPath;
-    if (category === "regular") {
-      trackPath = `live_set tracks ${trackIndex}`;
-    } else if (category === "return") {
-      trackPath = `live_set return_tracks ${trackIndex}`;
-    } else if (category === "master") {
-      trackPath = "live_set master_track";
-    } else {
-      throw new Error(
-        `Invalid category: ${category}. Must be "regular", "return", or "master".`,
-      );
+  if (isMuted && isMutedViaSolo) {
+    return STATE.MUTED_ALSO_VIA_SOLO;
+  }
+
+  if (isMutedViaSolo) {
+    return STATE.MUTED_VIA_SOLO;
+  }
+
+  if (isMuted) {
+    return STATE.MUTED;
+  }
+
+  return STATE.ACTIVE;
+}
+
+/**
+ * Categorize devices into MIDI effects, instruments, and audio effects
+ * @param {Array} devices - Array of Live API device objects
+ * @param {boolean} includeDrumChains - Whether to include drum pad chains and return chains
+ * @param {boolean} includeRackChains - Whether to include chains in rack devices
+ * @returns {Object} Object with midiEffects, instrument, and audioEffects arrays
+ */
+function categorizeDevices(
+  devices,
+  includeDrumChains = false,
+  includeRackChains = true,
+) {
+  const midiEffects = [];
+  const instruments = [];
+  const audioEffects = [];
+
+  for (const device of devices) {
+    const processedDevice = readDevice(device, {
+      includeChains: includeRackChains,
+      includeDrumChains,
+    });
+
+    // Use processed device type for proper rack categorization
+    const deviceType = processedDevice.type;
+
+    if (
+      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||
+      deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT_RACK)
+    ) {
+      midiEffects.push(processedDevice);
+    } else if (
+      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
+      deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
+      deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
+    ) {
+      instruments.push(processedDevice);
+    } else if (
+      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT) ||
+      deviceType.startsWith(DEVICE_TYPE.AUDIO_EFFECT_RACK)
+    ) {
+      audioEffects.push(processedDevice);
     }
-
-    track = new LiveAPI(trackPath);
   }
 
-  return readTrackGeneric({
-    track,
-    trackIndex: resolvedCategory === "master" ? null : resolvedTrackIndex,
-    category: resolvedCategory,
-    include: args.include,
-  });
+  // Validate instrument count
+  if (instruments.length > 1) {
+    console.error(
+      `Track has ${instruments.length} instruments, which is unusual. Expected 0 or 1.`,
+    );
+  }
+
+  return {
+    midiEffects,
+    instrument: instruments.length > 0 ? instruments[0] : null,
+    audioEffects,
+  };
+}
+
+// Helper function to strip chains from device objects
+function stripChains(device) {
+  if (!device || typeof device !== "object") {
+    return device;
+  }
+  const { chains: _chains, ...rest } = device;
+  return rest;
 }

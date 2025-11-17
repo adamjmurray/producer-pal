@@ -15,53 +15,6 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
 );
 
 /**
- * Parses a combined scale string like "C Major" into root note and scale name
- * @param {string} scaleString - Scale in format "Root ScaleName"
- * @returns {{scaleRoot: string, scaleName: string}} Parsed components
- */
-function parseScale(scaleString) {
-  const trimmed = scaleString.trim();
-
-  // Split on one or more whitespace characters
-  const parts = trimmed.split(/\s+/);
-
-  if (parts.length < 2) {
-    throw new Error(
-      `Scale must be in format 'Root ScaleName' (e.g., 'C Major'), got: ${scaleString}`,
-    );
-  }
-
-  // Extract root and reconstruct scale name from remaining parts
-  const [scaleRoot, ...scaleNameParts] = parts;
-  const scaleName = scaleNameParts.join(" ");
-
-  // Find the correct casing by comparing lowercase versions
-  const scaleRootLower = scaleRoot.toLowerCase();
-  const scaleNameLower = scaleName.toLowerCase();
-
-  const scaleRootIndex =
-    VALID_PITCH_CLASS_NAMES_LOWERCASE.indexOf(scaleRootLower);
-  if (scaleRootIndex === -1) {
-    throw new Error(
-      `Invalid scale root '${scaleRoot}'. Valid roots: ${VALID_PITCH_CLASS_NAMES.join(", ")}`,
-    );
-  }
-
-  const scaleNameIndex = VALID_SCALE_NAMES_LOWERCASE.indexOf(scaleNameLower);
-  if (scaleNameIndex === -1) {
-    throw new Error(
-      `Invalid scale name '${scaleName}'. Valid scales: ${VALID_SCALE_NAMES.join(", ")}`,
-    );
-  }
-
-  // Return the canonical casing from the original arrays
-  return {
-    scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex],
-    scaleName: VALID_SCALE_NAMES[scaleNameIndex],
-  };
-}
-
-/**
  * Updates Live Set parameters like tempo, time signature, and scale.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.
  * @param {Object} args - The parameters
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
@@ -135,4 +88,51 @@ export function updateLiveSet(
   }
 
   return result;
+}
+
+/**
+ * Parses a combined scale string like "C Major" into root note and scale name
+ * @param {string} scaleString - Scale in format "Root ScaleName"
+ * @returns {{scaleRoot: string, scaleName: string}} Parsed components
+ */
+function parseScale(scaleString) {
+  const trimmed = scaleString.trim();
+
+  // Split on one or more whitespace characters
+  const parts = trimmed.split(/\s+/);
+
+  if (parts.length < 2) {
+    throw new Error(
+      `Scale must be in format 'Root ScaleName' (e.g., 'C Major'), got: ${scaleString}`,
+    );
+  }
+
+  // Extract root and reconstruct scale name from remaining parts
+  const [scaleRoot, ...scaleNameParts] = parts;
+  const scaleName = scaleNameParts.join(" ");
+
+  // Find the correct casing by comparing lowercase versions
+  const scaleRootLower = scaleRoot.toLowerCase();
+  const scaleNameLower = scaleName.toLowerCase();
+
+  const scaleRootIndex =
+    VALID_PITCH_CLASS_NAMES_LOWERCASE.indexOf(scaleRootLower);
+  if (scaleRootIndex === -1) {
+    throw new Error(
+      `Invalid scale root '${scaleRoot}'. Valid roots: ${VALID_PITCH_CLASS_NAMES.join(", ")}`,
+    );
+  }
+
+  const scaleNameIndex = VALID_SCALE_NAMES_LOWERCASE.indexOf(scaleNameLower);
+  if (scaleNameIndex === -1) {
+    throw new Error(
+      `Invalid scale name '${scaleName}'. Valid scales: ${VALID_SCALE_NAMES.join(", ")}`,
+    );
+  }
+
+  // Return the canonical casing from the original arrays
+  return {
+    scaleRoot: VALID_PITCH_CLASS_NAMES[scaleRootIndex],
+    scaleName: VALID_SCALE_NAMES[scaleNameIndex],
+  };
 }
