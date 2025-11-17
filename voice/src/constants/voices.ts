@@ -1,0 +1,36 @@
+export const GEMINI_VOICES = [
+  'Achernar',
+  'Achird',
+  'Algenib',
+  'Algieba',
+  'Alnilam',
+  'Aoede',
+  'Autonoe',
+  'Callirrhoe',
+  'Charon',
+  'Despina',
+  'Enceladus',
+  'Erinome',
+  'Fenrir',
+  'Gacrux',
+  'Iapetus',
+  'Kore',
+  'Laomedeia',
+  'Leda',
+  'Orus',
+  'Puck',
+  'Pulcherrima',
+  'Rasalgethi',
+  'Sadachbia',
+  'Sadaltager',
+  'Schedar',
+  'Sulafat',
+  'Umbriel',
+  'Vindemiatrix',
+  'Zephyr',
+  'Zubenelgenubi',
+] as const;
+
+export type GeminiVoice = (typeof GEMINI_VOICES)[number];
+
+export const DEFAULT_VOICE: GeminiVoice = 'Puck';
