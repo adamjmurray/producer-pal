@@ -159,8 +159,6 @@ export default [
         "error",
         {
           max: 800,
-          skipBlankLines: true,
-          skipComments: true,
         },
       ],
     },
