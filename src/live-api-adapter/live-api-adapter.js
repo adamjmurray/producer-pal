@@ -21,6 +21,7 @@ import { readLiveSet } from "../tools/live-set/read-live-set";
 import { updateLiveSet } from "../tools/live-set/update-live-set";
 import { deleteObject } from "../tools/operations/delete";
 import { duplicate } from "../tools/operations/duplicate";
+import { transformClips } from "../tools/operations/transform-clips.js";
 import { createScene } from "../tools/scene/create-scene";
 import { readScene } from "../tools/scene/read-scene";
 import { updateScene } from "../tools/scene/update-scene";
@@ -58,6 +59,7 @@ const tools = {
   "ppal-create-clip": (args) => createClip(args, context),
   "ppal-read-clip": (args) => readClip(args, context),
   "ppal-update-clip": (args) => updateClip(args, context),
+  "ppal-transform-clips": (args) => transformClips(args, context),
   "ppal-playback": (args) => playback(args, context),
   "ppal-select": (args) => select(args, context),
   "ppal-delete": (args) => deleteObject(args, context),
