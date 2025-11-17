@@ -1,128 +1,55 @@
-import { useCallback, useEffect, useRef, useState } from "preact/hooks";
-import { AudioRecorder } from "../../utils/audio-utils.js";
-import {
-  GeminiLiveClient,
-  type GeminiLiveClientConfig,
-} from "../../chat/gemini-live-client.js";
+import { useEffect } from "preact/hooks";
+import { useVoiceChat } from "../../hooks/use-voice-chat.js";
 
 interface VoiceInputProps {
   apiKey: string;
-  model: string;
-  temperature: number;
+  model?: string;
+  temperature?: number;
   onTranscriptUpdate: (transcript: string) => void;
   disabled?: boolean;
 }
 
 export function VoiceInput({
   apiKey,
-  model,
-  temperature,
   onTranscriptUpdate,
   disabled = false,
 }: VoiceInputProps) {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const {
+    isConnected,
+    isStreaming,
+    error,
+    transcription,
+    connect,
+    startStreaming,
+    stopStreaming,
+  } = useVoiceChat(apiKey);
 
-  const recorderRef = useRef<AudioRecorder | null>(null);
-  const liveClientRef = useRef<GeminiLiveClient | null>(null);
-
-  const stopRecording = useCallback((): void => {
-    if (recorderRef.current) {
-      recorderRef.current.stop();
-      recorderRef.current = null;
-    }
-
-    if (liveClientRef.current) {
-      // Signal end of turn to get final response
-      liveClientRef.current.endTurn();
-      // Disconnect after a short delay to allow final response
-      setTimeout(() => {
-        liveClientRef.current?.disconnect();
-        liveClientRef.current = null;
-      }, 500);
-    }
-
-    setIsRecording(false);
-    setIsConnecting(false);
-  }, []);
-
-  // Clean up on unmount
+  // Update parent with transcription changes
   useEffect(() => {
-    return () => {
-      stopRecording();
-    };
-  }, [stopRecording]);
-
-  const startRecording = async (): Promise<void> => {
-    try {
-      setError(null);
-      setIsConnecting(true);
-      setTranscript("");
-
-      // Initialize Live API client
-      const config: GeminiLiveClientConfig = {
-        model,
-        temperature,
-        onTextResponse: (text: string) => {
-          setTranscript((prev) => {
-            const updated = prev + text;
-            onTranscriptUpdate(updated);
-            return updated;
-          });
-        },
-        onError: (err: string) => {
-          setError(err);
-          stopRecording();
-        },
-        onConnected: () => {
-          setIsConnecting(false);
-        },
-        onDisconnected: () => {
-          stopRecording();
-        },
-      };
-
-      liveClientRef.current = new GeminiLiveClient(apiKey, config);
-      await liveClientRef.current.connect();
-
-      // Start audio recording
-      recorderRef.current = new AudioRecorder();
-      await recorderRef.current.start((audioData: Int16Array) => {
-        // Send audio chunks to Live API
-        liveClientRef.current?.sendAudio(audioData);
-      });
-
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Failed to start recording:", err);
-      setError(
-        err instanceof Error ? err.message : "Failed to start recording",
-      );
-      setIsConnecting(false);
-      stopRecording();
+    if (transcription) {
+      onTranscriptUpdate(transcription);
     }
-  };
+  }, [transcription, onTranscriptUpdate]);
 
-  const toggleRecording = (): void => {
-    if (isRecording) {
-      stopRecording();
+  const handleToggle = async (): Promise<void> => {
+    if (isStreaming) {
+      stopStreaming();
+    } else if (isConnected) {
+      await startStreaming();
     } else {
-      void startRecording();
+      // Connect and then start streaming
+      await connect();
+      // Note: We'll need to click again to start streaming after connecting
+      // This is intentional to give user control
     }
   };
 
-  const buttonText = isConnecting
-    ? "Connecting..."
-    : isRecording
-      ? "Stop"
-      : "Voice";
+  const buttonText = !isConnected ? "Connect" : isStreaming ? "Stop" : "Voice";
 
-  const buttonClass = `px-4 py-2 rounded ${
+  const buttonClass = `px-4 py-2 rounded text-sm ${
     disabled
       ? "bg-gray-400 dark:bg-gray-700 cursor-not-allowed"
-      : isRecording
+      : isStreaming
         ? "bg-red-600 hover:bg-red-700 text-white"
         : "bg-green-600 hover:bg-green-700 text-white"
   }`;
@@ -130,30 +57,26 @@ export function VoiceInput({
   return (
     <div className="flex flex-col gap-2">
       <button
-        onClick={toggleRecording}
-        disabled={disabled || isConnecting}
+        onClick={() => void handleToggle()}
+        disabled={disabled}
         className={buttonClass}
         title={
-          isRecording
-            ? "Stop recording"
-            : "Start voice input (requires microphone access)"
+          !isConnected
+            ? "Connect to voice chat"
+            : isStreaming
+              ? "Stop voice input"
+              : "Start voice input"
         }
       >
-        {isRecording && (
+        {isStreaming && (
           <span className="inline-block w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
         )}
         {buttonText}
       </button>
 
-      {transcript && (
-        <div className="text-sm text-gray-600 dark:text-gray-400 p-2 bg-gray-100 dark:bg-gray-800 rounded">
-          <strong>Transcript:</strong> {transcript}
-        </div>
-      )}
-
       {error && (
-        <div className="text-sm text-red-600 dark:text-red-400 p-2 bg-red-100 dark:bg-red-900/20 rounded">
-          <strong>Error:</strong> {error}
+        <div className="text-xs text-red-600 dark:text-red-400 p-2 bg-red-100 dark:bg-red-900/20 rounded">
+          {error}
         </div>
       )}
     </div>

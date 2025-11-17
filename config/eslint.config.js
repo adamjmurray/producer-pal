@@ -19,6 +19,7 @@ export default [
       "node_modules/**",
       "release/**",
       "src/notation/barbeat/barbeat-parser.js", // Generated parser
+      "voice/**", // Reference implementation
       "**/*.d.ts", // TypeScript declaration files
     ],
   },
