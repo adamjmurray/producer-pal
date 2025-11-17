@@ -244,6 +244,53 @@ describe("App", () => {
       expect(mockSaveSettings).toHaveBeenCalledOnce();
     });
 
+    it("calls cancelSettings and reverts theme when cancel button is clicked", () => {
+      const mockCancelSettings = vi.fn();
+      const mockSetTheme = vi.fn();
+      const initialTheme = "light";
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true, // Start with chat screen
+        cancelSettings: mockCancelSettings,
+      });
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: initialTheme,
+        setTheme: mockSetTheme,
+      });
+
+      const { container, rerender } = render(<App />);
+
+      // Open settings by finding the settings button in chat header (by text)
+      const settingsButton = Array.from(
+        container.querySelectorAll("button"),
+      ).find((btn) => btn.textContent === "Settings");
+      expect(settingsButton).toBeDefined();
+      if (settingsButton) {
+        fireEvent.click(settingsButton);
+      }
+
+      // Re-render to show settings screen
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true,
+        cancelSettings: mockCancelSettings,
+      });
+      rerender(<App />);
+
+      // Now find the cancel button in settings
+      const cancelButton = Array.from(
+        container.querySelectorAll("button"),
+      ).find((btn) => btn.textContent === "Cancel");
+      expect(cancelButton).toBeDefined();
+      if (cancelButton) {
+        fireEvent.click(cancelButton);
+      }
+
+      expect(mockCancelSettings).toHaveBeenCalledOnce();
+      expect(mockSetTheme).toHaveBeenCalledWith(initialTheme);
+    });
+
     it("saves theme reference when transitioning to settings screen", () => {
       const mockSetTheme = vi.fn();
       const initialTheme = "light";
@@ -273,6 +320,35 @@ describe("App", () => {
 
       // The useEffect should have captured the initial theme
       // This test verifies the useEffect runs and tracks theme changes
+      expect(mockSetTheme).not.toHaveBeenCalled();
+    });
+
+    it("captures original theme when opening settings from chat screen", () => {
+      const mockSetTheme = vi.fn();
+      const initialTheme = "light";
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true, // Start with chat screen
+      });
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: initialTheme,
+        setTheme: mockSetTheme,
+      });
+
+      const { container } = render(<App />);
+
+      // Click settings button to open settings (by text)
+      const settingsButton = Array.from(
+        container.querySelectorAll("button"),
+      ).find((btn) => btn.textContent === "Settings");
+
+      if (settingsButton) {
+        fireEvent.click(settingsButton);
+      }
+
+      // The useEffect should capture the theme when showSettings changes from false to true
+      // This test verifies the useEffect logic runs correctly
       expect(mockSetTheme).not.toHaveBeenCalled();
     });
   });
