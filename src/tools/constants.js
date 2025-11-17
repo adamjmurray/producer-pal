@@ -42,6 +42,26 @@ export const LIVE_API_MONITORING_STATE_IN = 0;
 export const LIVE_API_MONITORING_STATE_AUTO = 1;
 export const LIVE_API_MONITORING_STATE_OFF = 2;
 
+// Warp modes for user-facing API
+export const WARP_MODE = {
+  BEATS: "beats",
+  TONES: "tones",
+  TEXTURE: "texture",
+  REPITCH: "repitch",
+  COMPLEX: "complex",
+  REX: "rex",
+  PRO: "pro",
+};
+
+// Live API numeric values for warp modes
+export const LIVE_API_WARP_MODE_BEATS = 0;
+export const LIVE_API_WARP_MODE_TONES = 1;
+export const LIVE_API_WARP_MODE_TEXTURE = 2;
+export const LIVE_API_WARP_MODE_REPITCH = 3;
+export const LIVE_API_WARP_MODE_COMPLEX = 4;
+export const LIVE_API_WARP_MODE_REX = 5;
+export const LIVE_API_WARP_MODE_PRO = 6;
+
 // Live API numeric values for focused_document_view
 export const LIVE_API_VIEW_SESSION = 1;
 export const LIVE_API_VIEW_ARRANGEMENT = 2;

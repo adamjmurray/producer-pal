@@ -1,0 +1,37 @@
+{
+  "name": "producer-pal",
+  "version": "1.2.1",
+  "description": "Stdio-to-HTTP bridge for Producer Pal MCP server",
+  "homepage": "https://producer-pal.org",
+  "type": "module",
+  "bin": {
+    "producer-pal": "./producer-pal-portal.js"
+  },
+  "files": [
+    "producer-pal-portal.js",
+    "licenses/",
+    "LICENSE",
+    "README.md",
+    "producer-pal-logo.svg"
+  ],
+  "scripts": {
+    "prepublishOnly": "cd .. && npm run build"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamjmurray/producer-pal"
+  },
+  "keywords": [
+    "music",
+    "ableton",
+    "ableton live",
+    "mcp",
+    "ai",
+    "composition",
+    "production"
+  ]
+}

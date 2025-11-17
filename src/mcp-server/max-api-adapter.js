@@ -7,6 +7,10 @@ import {
   MAX_ERROR_DELIMITER,
 } from "../shared/mcp-response-utils.js";
 import * as console from "./node-for-max-logger.js";
+import { ensureSilenceWav } from "../shared/silent-wav-generator.js";
+
+// Generate silent WAV on module load
+const silenceWavPath = ensureSilenceWav();
 
 export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
 
@@ -26,6 +30,7 @@ Max.addHandler("timeoutMs", (input) => {
 // Function to send a tool call to the Max v8 environment
 function callLiveApi(tool, args) {
   const argsJSON = JSON.stringify(args);
+  const contextJSON = JSON.stringify({ silenceWavPath });
   const requestId = crypto.randomUUID();
 
   console.info(
@@ -35,8 +40,8 @@ function callLiveApi(tool, args) {
   // Return a promise that will be resolved when Max responds or timeout
   return new Promise((resolve) => {
     try {
-      // Send the request to Max as JSON
-      Max.outlet("mcp_request", requestId, tool, argsJSON);
+      // Send the request to Max as JSON (with context)
+      Max.outlet("mcp_request", requestId, tool, argsJSON, contextJSON);
     } catch (error) {
       // Always resolve (not reject) with the standard error format
       return resolve(

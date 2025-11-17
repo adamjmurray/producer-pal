@@ -11,7 +11,10 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string|null} [args.timeSignature] - Optional time signature in format "4/4". Pass "disabled" to disable.
  * @returns {Object|Array<Object>} Single scene object or array of scene objects
  */
-export function updateScene({ ids, name, color, tempo, timeSignature } = {}) {
+export function updateScene(
+  { ids, name, color, tempo, timeSignature } = {},
+  _context = {},
+) {
   if (!ids) {
     throw new Error("updateScene failed: ids is required");
   }

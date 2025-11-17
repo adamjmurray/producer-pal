@@ -13,16 +13,10 @@ import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
  * @param {boolean} [args.arm] - Arm state for the tracks
  * @returns {Object|Array<Object>} Single track object when count=1, array when count>1
  */
-export function createTrack({
-  trackIndex,
-  count = 1,
-  name,
-  color,
-  type = "midi",
-  mute,
-  solo,
-  arm,
-} = {}) {
+export function createTrack(
+  { trackIndex, count = 1, name, color, type = "midi", mute, solo, arm } = {},
+  _context = {},
+) {
   if (trackIndex == null) {
     throw new Error("createTrack failed: trackIndex is required");
   }

@@ -53,7 +53,9 @@ export const toolDefRawLiveApi = defineTool("ppal-raw-live-api", {
             .optional()
             .describe("Method name for call_method/call operations"),
           args: z
-            .array(z.union([z.string(), z.number(), z.boolean()]))
+            .array(
+              z.union([z.string(), z.number(), z.boolean(), z.record(z.any())]),
+            )
             .optional()
             .describe("Arguments for call_method/call operations"),
           value: z

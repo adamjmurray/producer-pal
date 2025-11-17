@@ -18,7 +18,7 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .enum(["session", "arrangement"])
       .optional()
       .describe("scenes and clips can be copied to the session or arrangement"),
-    arrangementStartTime: z
+    arrangementStart: z
       .string()
       .optional()
       .describe("starting bar|beat position in arrangement"),
@@ -42,5 +42,17 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .default(false)
       .describe("auto-switch view?"),
+    toTrackIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("destination track index (for session clips)"),
+    toSceneIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("destination scene index (for session clips)"),
   },
 });

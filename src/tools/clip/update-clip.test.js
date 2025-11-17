@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
   liveApiId,
@@ -10,6 +10,9 @@ import {
 import { updateClip } from "./update-clip";
 
 describe("updateClip", () => {
+  const mockContext = {
+    holdingAreaStartBeats: 40000,
+  };
   beforeEach(() => {
     // Track added notes per clip ID for get_notes_extended mocking
     const addedNotesByClipId = {};
@@ -65,21 +68,60 @@ describe("updateClip", () => {
     );
   });
 
-  it("should require noteUpdateMode parameter when notes are provided", () => {
+  it("should default to merge mode when noteUpdateMode not provided", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
+        length: 4,
       },
     });
 
-    // Should work without noteUpdateMode when no notes provided
-    expect(() => updateClip({ ids: "123", name: "Test" })).not.toThrow();
+    // Mock existing notes, then return added notes on subsequent calls
+    let addedNotes = [];
+    const existingNotes = [
+      {
+        pitch: 60,
+        start_time: 0,
+        duration: 1,
+        velocity: 100,
+        probability: 1,
+        velocity_deviation: 0,
+      },
+    ];
 
-    // Should fail validation at MCP level when notes provided without noteUpdateMode
-    // This will be caught by the zod schema validation in the MCP server
+    liveApiCall.mockImplementation(function (method, ...args) {
+      if (method === "add_new_notes") {
+        addedNotes = args[0]?.notes || [];
+      } else if (method === "get_notes_extended") {
+        // First call returns existing notes, subsequent calls return added notes
+        if (addedNotes.length === 0) {
+          return JSON.stringify({ notes: existingNotes });
+        }
+        return JSON.stringify({ notes: addedNotes });
+      }
+      return {};
+    });
+
+    // Should default to merge mode when noteUpdateMode not specified
+    const result = updateClip({
+      ids: "123",
+      notes: "D3 1|2",
+    });
+
+    // Should call get_notes_extended (merge mode behavior)
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "get_notes_extended",
+      0,
+      128,
+      0,
+      1000000,
+    );
+
+    expect(result).toEqual({ id: "123", noteCount: 2 }); // Existing C3 + new D3
   });
 
   it("should log warning when clip ID doesn't exist", () => {
@@ -110,7 +152,7 @@ describe("updateClip", () => {
       ids: "123",
       name: "Updated Clip",
       color: "#FF0000",
-      loop: true,
+      looping: true,
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -146,7 +188,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "789",
       name: "Arrangement Clip",
-      startMarker: "1|3", // 2 beats = bar 1 beat 3 in 4/4
+      start: "1|3", // 2 beats = bar 1 beat 3 in 4/4
       length: "1:0", // 4 beats = 1 bar
     });
 
@@ -164,7 +206,7 @@ describe("updateClip", () => {
       expect.objectContaining({ id: "789" }),
       "end_marker",
       6,
-    ); // startMarker (2) + length (4) = 6 Ableton beats
+    ); // start (2) + length (4) = 6 Ableton beats
 
     expect(result).toEqual({ id: "789" });
   });
@@ -201,7 +243,7 @@ describe("updateClip", () => {
     const result = updateClip({
       ids: "123, 456",
       color: "#00FF00",
-      loop: false,
+      looping: false,
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -563,7 +605,7 @@ describe("updateClip", () => {
 
     const result = updateClip({
       ids: "123",
-      loop: false,
+      looping: false,
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -902,19 +944,20 @@ describe("updateClip", () => {
     );
   });
 
-  it("should set loop start when provided", () => {
+  it("should set loop start when start is provided", () => {
     mockLiveApiGet({
       123: {
         is_arrangement_clip: 0,
         is_midi_clip: 1,
         signature_numerator: 4,
         signature_denominator: 4,
+        looping: 1,
       },
     });
 
     updateClip({
       ids: "123",
-      loopStart: "1|3",
+      start: "1|3",
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -1379,5 +1422,2477 @@ describe("updateClip", () => {
     );
 
     expect(result).toEqual({ id: "123", noteCount: 2 }); // E3 in bar 1 + E3 in bar 2, C3 deleted
+  });
+
+  it("should update warp mode for audio clips", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "123",
+      warpMode: "complex",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warp_mode",
+      4, // Complex mode = 4
+    );
+
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should update warping on/off for audio clips", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "123",
+      warping: true,
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warping",
+      1, // true = 1
+    );
+
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should update both warp mode and warping together", () => {
+    mockLiveApiGet({
+      123: {
+        is_arrangement_clip: 0,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+      },
+    });
+
+    const result = updateClip({
+      ids: "123",
+      warpMode: "beats",
+      warping: false,
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warp_mode",
+      0, // Beats mode = 0
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "123" }),
+      "warping",
+      0, // false = 0
+    );
+
+    expect(result).toEqual({ id: "123" });
+  });
+
+  describe("Clip boundaries (shortening)", () => {
+    it("should set length without explicit start using current loop_start", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 1,
+          loop_start: 4.0, // bar 2 beat 1 in 4/4
+        },
+      });
+
+      const result = updateClip({
+        ids: "123",
+        length: "2:0", // 8 beats = 2 bars
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "loop_end",
+        12, // loop_start (4) + length (8) = 12
+      );
+
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should set firstStart for looping clips", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 1,
+        },
+      });
+
+      const result = updateClip({
+        ids: "123",
+        start: "1|1",
+        length: "4:0",
+        firstStart: "3|1",
+        looping: true,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "start_marker",
+        8, // 3|1 in 4/4 = 8 Ableton beats
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "loop_start",
+        0, // 1|1 in 4/4 = 0 Ableton beats
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "loop_end",
+        16, // start (0) + length (16) = 16
+      );
+
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should warn when firstStart provided for non-looping clips", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 0,
+        },
+      });
+
+      const result = updateClip({
+        ids: "123",
+        start: "1|1",
+        length: "4:0",
+        firstStart: "2|1",
+        looping: false,
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Warning: firstStart parameter ignored for non-looping clips",
+      );
+
+      consoleErrorSpy.mockRestore();
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should set end_marker for non-looping clips", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 0,
+        },
+      });
+
+      const result = updateClip({
+        ids: "123",
+        start: "1|1",
+        length: "4:0",
+        looping: false,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "start_marker",
+        0, // 1|1 in 4/4 = 0 Ableton beats
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "end_marker",
+        16, // start (0) + length (16) = 16
+      );
+
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should set loop_start and loop_end for looping clips", () => {
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 1,
+        },
+      });
+
+      const result = updateClip({
+        ids: "123",
+        start: "2|1",
+        length: "2:0",
+        looping: true,
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "start_marker",
+        4, // start (2|1 = 4 beats) also sets start_marker
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "loop_start",
+        4, // 2|1 in 4/4 = 4 Ableton beats
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "123" }),
+        "loop_end",
+        12, // start (4) + length (8) = 12
+      );
+
+      expect(result).toEqual({ id: "123" });
+    });
+  });
+
+  describe("arrangementLength (shortening only)", () => {
+    it("should shorten arrangement clip to 50% of original length", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 0.0, // 4 bars starting at beat 0
+          end_time: 16.0, // 4 bars ending at beat 16
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+      });
+
+      // Mock live_set for song time signature
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "2:0", // 2 bars = 8 beats (50% of 4 bars)
+      });
+
+      // Should create temp clip at beat 8 with length 8
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "create_midi_clip",
+        8.0, // newEndTime
+        8.0, // tempClipLength
+      );
+
+      // Should delete the temp clip
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "delete_clip",
+        expect.any(String),
+      );
+
+      expect(result).toEqual({ id: "789" });
+    });
+
+    it("should shorten arrangement clip to single beat", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 0.0,
+          end_time: 16.0, // 4 bars
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "0:1", // 1 beat
+      });
+
+      // Should create temp clip at beat 1 with length 15
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "create_midi_clip",
+        1.0, // newEndTime
+        15.0, // tempClipLength
+      );
+
+      expect(result).toEqual({ id: "789" });
+    });
+
+    it("should emit warning and ignore for session clips", () => {
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0, // Session clip
+          is_midi_clip: 1,
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      const result = updateClip({
+        ids: "123",
+        arrangementLength: "2:0",
+      });
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Warning: arrangementLength parameter ignored for session clip (id 123)",
+      );
+
+      // Should not call create_midi_clip or delete_clip
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "create_midi_clip",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      consoleErrorSpy.mockRestore();
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should handle zero length with clear error", () => {
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 0.0,
+          end_time: 16.0,
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+      });
+
+      expect(() =>
+        updateClip({
+          ids: "789",
+          arrangementLength: "0:0",
+        }),
+      ).toThrow("arrangementLength must be greater than 0");
+    });
+
+    it("should handle same length as no-op", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 0.0,
+          end_time: 16.0, // 4 bars
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+      });
+
+      liveApiCall.mockClear(); // Clear previous calls
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "4:0", // Same as current length
+      });
+
+      // Should not create temp clip (no-op)
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "create_midi_clip",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      expect(result).toEqual({ id: "789" });
+    });
+
+    it("should allow both arrangementLength and arrangementStart (resize then move)", () => {
+      const trackIndex = 0;
+      const newClipId = "999";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._id === newClipId) {
+          return "live_set tracks 0 arrangement_clips 1";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id 789") {
+          return "789";
+        }
+        if (this._path === "id 999") {
+          return newClipId;
+        }
+        return this._id;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 0.0,
+          end_time: 16.0, // 4 bars
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+        999: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 32.0, // New position at bar 9
+          end_time: 40.0,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+      });
+
+      // Mock duplicate_clip_to_arrangement to return new clip
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return `id ${newClipId}`;
+        }
+        return undefined;
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "2:0", // Shorten to 2 bars first
+        arrangementStart: "9|1", // Then move to bar 9
+      });
+
+      // Should first create temp clip to shorten
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "create_midi_clip",
+        8.0, // newEndTime (2 bars)
+        8.0, // tempClipLength
+      );
+
+      // Should then duplicate to new position
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        32.0, // bar 9 in 4/4 = 32 beats
+      );
+
+      // Should delete original
+      expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
+
+      expect(result).toEqual({ id: newClipId });
+    });
+  });
+
+  describe("arrangementLength (clean tiling)", () => {
+    it("should tile clip with exact multiples (no remainder) - extends existing", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789" || this._id === 1000) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          start_time: 0.0,
+          end_time: 4.0, // 1 bar currently visible
+          loop_start: 0.0,
+          loop_end: 12.0, // clip.length = 12 beats (3 bars of content)
+          start_marker: 0.0,
+          end_marker: 12.0,
+          name: "Test",
+          color: 0,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          looping: 1,
+          trackIndex,
+        },
+        1000: { end_time: 12.0, start_marker: 0.0, loop_start: 0.0 },
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Mock tiling flow (non-destructive duplication)
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return `id 1000`;
+        }
+        return undefined;
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "3:0", // 3 bars = 12 beats, matches clip.length exactly
+      });
+
+      // Should tile using non-destructive duplication (preserves envelopes)
+      // currentArrangementLength (4) < clipLength (12) triggers tiling
+      // Keeps original clip and tiles after it at positions 4 and 8
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        4.0,
+      );
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        8.0,
+      );
+
+      expect(result).toEqual([{ id: "789" }, { id: "1000" }, { id: "1000" }]); // Original + tiled clips
+    });
+
+    it("should handle insufficient content by tiling what exists", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789" || this._id === 1000) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          looping: 1, // This is a looped clip
+          start_time: 0.0,
+          end_time: 4.0,
+          loop_start: 0.0,
+          loop_end: 4.0, // clip.length = 4 beats
+          start_marker: 0.0,
+          end_marker: 4.0,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+        LiveSet: {
+          tracks: ["id", 0],
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Mock duplicate_clip_to_arrangement
+      let nextId = 1000;
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "duplicate_clip_to_arrangement") {
+          const id = nextId++;
+          mockLiveApiGet({
+            [id]: {
+              end_time: (args[1] || 0) + 4.0,
+            },
+          });
+          return `id ${id}`;
+        }
+        return undefined;
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "2:0", // 8 beats > 4 beats (clip.length), tiles existing content twice
+      });
+
+      // Should duplicate once (2 tiles total: existing clip + 1 duplicate)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        4.0,
+      );
+
+      expect(result).toEqual([{ id: "789" }, { id: "1000" }]);
+    });
+
+    it("should work with no remainder (single tile)", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "789") {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          start_time: 0.0,
+          end_time: 4.0,
+          loop_start: 0.0,
+          loop_end: 4.0,
+          start_marker: 0.0,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+        LiveSet: {
+          tracks: ["id", 0],
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "1:0", // Same as clip.length (no tiling needed)
+      });
+
+      // Should not call duplicate_clip_to_arrangement
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      expect(result).toEqual({ id: "789" });
+    });
+
+    it("should tile clip with pre-roll (start_marker < loop_start) with correct offsets", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === "789" ||
+          this._id === "1000" ||
+          this._id === "1001" ||
+          this._id === "1002"
+        ) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          looping: 1,
+          start_time: 0.0,
+          end_time: 3.0, // 3 beats currently visible
+          loop_start: 1.0, // start at beat 2 (1|2)
+          loop_end: 4.0, // 3 beats of loop content
+          start_marker: 0.0, // firstStart at beat 1 (1|1) - creates 1 beat pre-roll
+          end_marker: 4.0,
+          signature_numerator: 4,
+          signature_denominator: 4,
+          trackIndex,
+        },
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Track created clips and their start_marker values
+      let nextId = 1000;
+
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          const id = nextId++;
+          return `id ${id}`;
+        }
+        return undefined;
+      });
+
+      // Track set() calls on created clips
+      const setCallsByClip = {};
+      liveApiSet.mockImplementation(function (prop, value) {
+        const clipId = this._id;
+        if (!setCallsByClip[clipId]) {
+          setCallsByClip[clipId] = {};
+        }
+        setCallsByClip[clipId][prop] = value;
+        return undefined;
+      });
+
+      const result = updateClip({
+        ids: "789",
+        arrangementLength: "3:0", // 12 beats total - needs 3 tiles after original
+      });
+
+      // Should create 3 tiles
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        3.0, // First tile at beat 3
+      );
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        6.0, // Second tile at beat 6
+      );
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        9.0, // Third tile at beat 9
+      );
+
+      // Verify start_marker offsets account for pre-roll
+      // currentOffset = start_marker - loop_start = 0 - 1 = -1
+      // Tile 0: startOffset = currentOffset + currentArrangementLength = -1 + 3 = 2
+      //         tileStartMarker = loop_start + (2 % clipLength) = 1 + (2 % 3) = 1 + 2 = 3
+      // Tile 1: startOffset = 2 + 3 = 5
+      //         tileStartMarker = loop_start + (5 % clipLength) = 1 + (5 % 3) = 1 + 2 = 3
+      // Tile 2: startOffset = 5 + 3 = 8
+      //         tileStartMarker = loop_start + (8 % clipLength) = 1 + (8 % 3) = 1 + 2 = 3
+      expect(setCallsByClip["1000"].start_marker).toBe(3.0);
+      expect(setCallsByClip["1001"].start_marker).toBe(3.0);
+      expect(setCallsByClip["1002"].start_marker).toBe(3.0);
+
+      expect(result).toEqual([
+        { id: "789" },
+        { id: "1000" },
+        { id: "1001" },
+        { id: "1002" },
+      ]);
+    });
+
+    it("should preserve envelopes when tiling clip with hidden content", () => {
+      const trackIndex = 0;
+
+      // Override liveApiId for this test to handle new clip IDs
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id 1000" || this._id === "1000") {
+          return "1000";
+        }
+        if (this._path === "id 1001" || this._id === "1001") {
+          return "1001";
+        }
+        return this._id;
+      });
+
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === "789" ||
+          this._id === "1000" ||
+          this._id === 1000 ||
+          this._id === "1001" ||
+          this._id === 1001
+        ) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          looping: 1, // This is a looped clip
+          start_time: 0.0,
+          end_time: 4.0, // Currently showing 4 beats
+          loop_start: 0.0,
+          loop_end: 8.0, // clip.length = 8 beats (has hidden content)
+          start_marker: 2.0, // Pre-roll: starts at beat 2 but playback from beat 0
+          end_marker: 8.0,
+          name: "Test Clip",
+          trackIndex,
+        },
+        1000: { end_time: 8.0, start_marker: 2.0, loop_start: 0.0 }, // First full tile (4 beats)
+        1001: { end_time: 12.0, start_marker: 2.0, loop_start: 0.0 }, // Second full tile (4 beats)
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Mock duplicate_clip_to_arrangement calls for tiling
+      let callCount = 0;
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          callCount++;
+          if (callCount === 1) {
+            return `id 1000`; // First full tile (4 beats)
+          } else if (callCount === 2) {
+            return `id 1001`; // Second full tile (4 beats)
+          }
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: "789",
+          arrangementLength: "3:0", // 12 beats
+        },
+        mockContext,
+      );
+
+      // Should tile using arrangement length (4 beats) for spacing
+      // Keeps original clip and tiles after it
+      // Creates 2 full tiles at positions 4 and 8 (8 beats total, tiled at 4-beat intervals)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        4.0,
+      );
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        8.0,
+      );
+
+      // Should NOT emit envelope warning (preserves envelopes via non-destructive tiling)
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Automation envelopes were lost"),
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Should return original + 2 full tiles (4 beats each)
+      expect(result).toEqual([{ id: "789" }, { id: "1000" }, { id: "1001" }]);
+    });
+  });
+
+  describe("arrangementLength (expose hidden content)", () => {
+    it("should preserve envelopes by tiling when exposing hidden content", () => {
+      const trackIndex = 0;
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === "789" ||
+          this._id === 1000 ||
+          this._id === 2000 ||
+          this._id === 3000
+        ) {
+          return "live_set tracks 0 arrangement_clips 0";
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === "live_set tracks 0") {
+          return "live_set tracks 0";
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        789: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          looping: 1, // This is a looped clip
+          start_time: 0.0,
+          end_time: 4.0, // Currently showing 4 beats
+          loop_start: 0.0,
+          loop_end: 8.0, // clip.length = 8 beats - has hidden content
+          start_marker: 0.0,
+          end_marker: 8.0,
+          name: "Test Clip",
+          trackIndex,
+        },
+        1000: { end_time: 40004.0 }, // Holding clip at holding area (4 beats long, matches source arrangement length)
+        1500: {}, // Temp clip for shortening
+        2000: { end_time: 6.0, start_marker: 0.0, loop_start: 0.0 }, // Final partial tile at position 4
+        LiveSet: {
+          tracks: ["id", 0],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        "live_set tracks 0": {
+          arrangement_clips: ["id", 789],
+        },
+      });
+
+      // Mock duplicate_clip_to_arrangement calls for tiling
+      let callCount = 0;
+      liveApiCall.mockImplementation(function (method) {
+        if (method === "duplicate_clip_to_arrangement") {
+          callCount++;
+          if (callCount === 1) {
+            return `id 1000`; // Holding clip for partial
+          } else if (callCount === 2) {
+            return `id 2000`; // Final partial tile
+          }
+        }
+        if (method === "create_midi_clip") {
+          return `id 1500`; // Temp clip for shortening in holding area
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: "789",
+          arrangementLength: "1:2", // 6 beats
+        },
+        mockContext,
+      );
+
+      // Scenario B: Keep original clip and tile remaining 2 beats after it
+      // Should duplicate original clip to holding area (no full tiles since 2 < 4)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 789",
+        40000,
+      );
+
+      // Should create temp clip to shorten holding clip from 4 to 2 beats
+      expect(liveApiCall).toHaveBeenCalledWith("create_midi_clip", 40002, 2);
+
+      // Should duplicate from holding to target position (after original clip at 4.0)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        "id 1000",
+        4.0,
+      );
+
+      // Should NOT emit envelope warning (non-destructive tiling preserves envelopes)
+      expect(consoleErrorSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining("Automation envelopes were lost"),
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Should return original + partial tile
+      expect(result).toEqual([{ id: "789" }, { id: "2000" }]);
+    });
+  });
+
+  describe("arrangementLength (unlooped clips with hidden content)", () => {
+    it("should reveal 1 beat of hidden content (track 2 scenario)", () => {
+      const trackIndex = 0;
+      const clipId = "800";
+      const revealedClipId = "801";
+      const emptyClipId = "802";
+
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === clipId ||
+          this._id === revealedClipId ||
+          this._id === emptyClipId
+        ) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          looping: 0, // Unlooped clip
+          start_time: 0.0,
+          end_time: 3.0, // 3 beats visible in arrangement
+          start_marker: 0.0,
+          end_marker: 3.0,
+          loop_start: 0.0,
+          loop_end: 4.0, // Not used for unlooped clips
+          name: "Track 2 Test Clip",
+          trackIndex,
+        },
+        [revealedClipId]: {
+          start_time: 3.0,
+          end_time: 4.0,
+          start_marker: 0.0, // Will be set to 3.0 by the code
+          end_marker: 3.0, // Will be set to 4.0 by the code
+        },
+        [emptyClipId]: {
+          start_time: 4.0,
+          end_time: 14.0,
+        },
+        LiveSet: {
+          tracks: ["id", trackIndex],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        [`live_set tracks ${trackIndex}`]: {
+          arrangement_clips: ["id", clipId],
+        },
+      });
+
+      // Mock get_notes_extended to return notes extending to beat 4
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          // Return notes from 0-4 beats (1 beat hidden)
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 0.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 62,
+                start_time: 1.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 64,
+                start_time: 2.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 65,
+                start_time: 3.0,
+                duration: 1.0, // Ends at beat 4 (hidden)
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          // Return revealed clip when duplicating to position 3.0
+          if (args[1] === 3.0) {
+            return `id ${revealedClipId}`;
+          }
+        }
+        if (method === "create_midi_clip") {
+          // Return empty clip
+          return `id ${emptyClipId}`;
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: clipId,
+          arrangementLength: "3:2", // 14 beats (3.5 bars)
+        },
+        mockContext,
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Verify revealed clip markers are set correctly
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "start_marker",
+        3.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "end_marker",
+        4.0,
+      );
+
+      // Should return original + revealed + empty clips
+      expect(result).toEqual([
+        { id: clipId },
+        { id: revealedClipId },
+        { id: emptyClipId },
+      ]);
+    });
+
+    it("should reveal 2 beats of hidden content (track 4 scenario)", () => {
+      const trackIndex = 0;
+      const clipId = "810";
+      const revealedClipId = "811";
+      const emptyClipId = "812";
+
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === clipId ||
+          this._id === revealedClipId ||
+          this._id === emptyClipId
+        ) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          looping: 0, // Unlooped clip
+          start_time: 0.0,
+          end_time: 2.0, // 2 beats visible in arrangement
+          start_marker: 0.0,
+          end_marker: 2.0,
+          loop_start: 0.0,
+          loop_end: 4.0, // Not used for unlooped clips
+          name: "Track 4 Test Clip",
+          trackIndex,
+        },
+        [revealedClipId]: {
+          start_time: 2.0,
+          end_time: 4.0,
+          start_marker: 0.0, // Will be set to 2.0 by the code
+          end_marker: 2.0, // Will be set to 4.0 by the code
+        },
+        [emptyClipId]: {
+          start_time: 4.0,
+          end_time: 14.0,
+        },
+        LiveSet: {
+          tracks: ["id", trackIndex],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        [`live_set tracks ${trackIndex}`]: {
+          arrangement_clips: ["id", clipId],
+        },
+      });
+
+      // Mock get_notes_extended to return notes extending to beat 4
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          // Return notes from 0-4 beats (2 beats hidden)
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 0.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 62,
+                start_time: 1.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 64,
+                start_time: 2.0,
+                duration: 1.0, // Hidden
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 65,
+                start_time: 3.0,
+                duration: 1.0, // Hidden, ends at beat 4
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          // Return revealed clip when duplicating to position 2.0
+          if (args[1] === 2.0) {
+            return `id ${revealedClipId}`;
+          }
+        }
+        if (method === "create_midi_clip") {
+          // Return empty clip
+          return `id ${emptyClipId}`;
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: clipId,
+          arrangementLength: "3:2", // 14 beats (3.5 bars)
+        },
+        mockContext,
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Verify revealed clip markers are set correctly
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "start_marker",
+        2.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "end_marker",
+        4.0,
+      );
+
+      // Should return original + revealed + empty clips
+      expect(result).toEqual([
+        { id: clipId },
+        { id: revealedClipId },
+        { id: emptyClipId },
+      ]);
+    });
+
+    it("should verify start_marker offset for track 6 scenario", () => {
+      const trackIndex = 0;
+      const clipId = "820";
+      const revealedClipId = "821";
+      const emptyClipId = "822";
+
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === clipId ||
+          this._id === revealedClipId ||
+          this._id === emptyClipId
+        ) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          looping: 0, // Unlooped clip
+          start_time: 0.0,
+          end_time: 3.0, // 3 beats visible
+          start_marker: 0.0,
+          end_marker: 3.0,
+          loop_start: 0.0,
+          loop_end: 4.0, // Not used for unlooped clips
+          name: "Track 6 Test Clip",
+          trackIndex,
+        },
+        [revealedClipId]: {
+          start_time: 3.0,
+          end_time: 4.0,
+          start_marker: 0.0, // Will be set to 3.0 by the code
+          end_marker: 3.0, // Will be set to 4.0 by the code
+        },
+        [emptyClipId]: {
+          start_time: 4.0,
+          end_time: 14.0,
+        },
+        LiveSet: {
+          tracks: ["id", trackIndex],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        [`live_set tracks ${trackIndex}`]: {
+          arrangement_clips: ["id", clipId],
+        },
+      });
+
+      // Mock get_notes_extended to return notes at different pitches to verify offset
+      liveApiCall.mockImplementation(function (method, ...args) {
+        if (method === "get_notes_extended") {
+          // Return notes from 0-4 beats with distinct pitches to verify offset
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60, // C
+                start_time: 0.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 64, // E
+                start_time: 1.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 67, // G
+                start_time: 2.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 72, // C (octave) - THIS SHOULD BE REVEALED
+                start_time: 3.0,
+                duration: 1.0, // Ends at beat 4 (hidden)
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          // Return revealed clip when duplicating to position 3.0
+          if (args[1] === 3.0) {
+            return `id ${revealedClipId}`;
+          }
+        }
+        if (method === "create_midi_clip") {
+          // Return empty clip
+          return `id ${emptyClipId}`;
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: clipId,
+          arrangementLength: "3:2", // 14 beats (3.5 bars)
+        },
+        mockContext,
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Critical assertion: verify start_marker is set to 3.0
+      // This ensures the revealed clip shows beats 3-4 (pitch 72), not beats 0-1 (pitch 60/64)
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "start_marker",
+        3.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "end_marker",
+        4.0,
+      );
+
+      // Should return original + revealed + empty clips
+      expect(result).toEqual([
+        { id: clipId },
+        { id: revealedClipId },
+        { id: emptyClipId },
+      ]);
+    });
+
+    it("should NOT reveal when start_marker offset means no hidden content (track 3 scenario)", () => {
+      const trackIndex = 0;
+      const clipId = "830";
+      const emptyClipId = "831";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId || this._id === emptyClipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          looping: 0, // Unlooped clip
+          start_time: 0.0,
+          end_time: 3.0, // 3 beats visible in arrangement
+          start_marker: 1.0, // Offset by 1 beat
+          end_marker: 4.0,
+          loop_start: 0.0,
+          loop_end: 4.0,
+          name: "Track 3 Test Clip",
+          trackIndex,
+        },
+        [emptyClipId]: {
+          start_time: 3.0,
+          end_time: 14.0,
+        },
+        LiveSet: {
+          tracks: ["id", trackIndex],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        [`live_set tracks ${trackIndex}`]: {
+          arrangement_clips: ["id", clipId],
+        },
+      });
+
+      // Mock get_notes_extended - notes from 1-4 beats, all visible
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 1.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 62,
+                start_time: 2.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 64,
+                start_time: 3.0,
+                duration: 1.0, // Ends at beat 4, all visible
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        if (method === "create_midi_clip") {
+          return `id ${emptyClipId}`;
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: clipId,
+          arrangementLength: "3:2", // 14 beats (3.5 bars)
+        },
+        mockContext,
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Should NOT call duplicate_clip_to_arrangement (no hidden content to reveal)
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      // Should only return original + empty clip (no revealed clip)
+      expect(result).toEqual([{ id: clipId }, { id: emptyClipId }]);
+    });
+
+    it("should calculate correct markers with start_marker offset (track 4 scenario)", () => {
+      const trackIndex = 0;
+      const clipId = "840";
+      const revealedClipId = "841";
+      const emptyClipId = "842";
+
+      liveApiPath.mockImplementation(function () {
+        if (
+          this._id === clipId ||
+          this._id === revealedClipId ||
+          this._id === emptyClipId
+        ) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 1,
+          is_audio_clip: 0,
+          looping: 0, // Unlooped clip
+          start_time: 0.0,
+          end_time: 2.0, // 2 beats visible in arrangement
+          start_marker: 1.0, // Offset by 1 beat
+          end_marker: 3.0,
+          loop_start: 0.0,
+          loop_end: 4.0,
+          name: "Track 4 Test Clip",
+          trackIndex,
+        },
+        [revealedClipId]: {
+          start_time: 2.0,
+          end_time: 3.0,
+          start_marker: 1.0,
+          end_marker: 3.0,
+        },
+        [emptyClipId]: {
+          start_time: 3.0,
+          end_time: 14.0,
+        },
+        LiveSet: {
+          tracks: ["id", trackIndex],
+          signature_numerator: 4,
+          signature_denominator: 4,
+        },
+        [`live_set tracks ${trackIndex}`]: {
+          arrangement_clips: ["id", clipId],
+        },
+      });
+
+      // Mock get_notes_extended - notes from 1-4 beats
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "get_notes_extended") {
+          return JSON.stringify({
+            notes: [
+              {
+                pitch: 60,
+                start_time: 1.0,
+                duration: 1.0,
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 62,
+                start_time: 2.0,
+                duration: 1.0, // Visible
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+              {
+                pitch: 64,
+                start_time: 3.0,
+                duration: 1.0, // Hidden (ends at beat 4)
+                velocity: 100,
+                probability: 1,
+                velocity_deviation: 0,
+              },
+            ],
+          });
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          return `id ${revealedClipId}`;
+        }
+        if (method === "create_midi_clip") {
+          return `id ${emptyClipId}`;
+        }
+        return undefined;
+      });
+
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateClip(
+        {
+          ids: clipId,
+          arrangementLength: "3:2", // 14 beats (3.5 bars)
+        },
+        mockContext,
+      );
+
+      consoleErrorSpy.mockRestore();
+
+      // Critical: verify markers account for start_marker offset
+      // visibleContentEnd = 1.0 (start_marker) + 2.0 (currentArrangementLength) = 3.0
+      // newStartMarker should be 3.0, newEndMarker should be 4.0
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        1,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "end_marker",
+        4.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "start_marker",
+        3.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        0,
+      );
+
+      // Should return original + revealed + empty clips
+      expect(result).toEqual([
+        { id: clipId },
+        { id: revealedClipId },
+        { id: emptyClipId },
+      ]);
+    });
+  });
+
+  describe("Unlooped audio clips - arrangementLength extension", () => {
+    it("should NOT reveal when audio fully visible (clip 661 scenario: start_marker=0, no hidden)", () => {
+      const trackIndex = 0;
+      const clipId = "661";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0, // Unlooped clip
+          start_time: 0.0,
+          end_time: 8.0, // 8 beats visible in arrangement
+          start_marker: 0.0,
+          end_marker: 8.0,
+          loop_start: 0.0,
+          loop_end: 8.0,
+          name: "Audio No Hidden start==firstStart",
+          trackIndex,
+          warp_markers: JSON.stringify({
+            warp_markers: [
+              { sample_time: 0.0, beat_time: 0.0 },
+              { sample_time: 4.8, beat_time: 8.0 },
+              { sample_time: 4.81875, beat_time: 8.03125 },
+            ],
+          }),
+        },
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      // Should NOT call duplicate_clip_to_arrangement (no hidden content to reveal)
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      // Should only return original clip (no empty clips for audio)
+      // When only 1 clip, updateClip returns a single object not an array
+      expect(result).toEqual({ id: clipId });
+    });
+
+    it("should reveal hidden audio content (clip 672 scenario: start_marker=0, hidden content)", () => {
+      const trackIndex = 0;
+      const clipId = "672";
+      const revealedClipId = "673";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId || this._id === revealedClipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0, // Unlooped clip
+          warping: 1, // Warped clip (has warp_markers)
+          start_time: 0.0,
+          end_time: 5.0, // 5 beats visible in arrangement
+          start_marker: 0.0,
+          end_marker: 5.0,
+          loop_start: 0.0,
+          loop_end: 5.0,
+          name: "Audio Hidden start==firstStart",
+          trackIndex,
+          warp_markers: JSON.stringify({
+            warp_markers: [
+              { sample_time: 0.0, beat_time: 0.0 },
+              { sample_time: 4.8, beat_time: 8.0 },
+              { sample_time: 4.81875, beat_time: 8.03125 },
+            ],
+          }),
+        },
+        [revealedClipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          start_time: 5.0,
+          end_time: 8.0,
+          start_marker: 5.0,
+          end_marker: 8.0,
+          name: "Audio Hidden start==firstStart",
+          trackIndex,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", revealedClipId];
+        }
+        return 1;
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      // Should set source clip end_marker to actual audio end
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: clipId }),
+        "end_marker",
+        8.0,
+      );
+
+      // Should duplicate clip to reveal hidden content
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        `id ${clipId}`,
+        5.0,
+      );
+
+      // Should set markers on revealed clip with workaround
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        1,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "loop_end",
+        8.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "loop_start",
+        5.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "end_marker",
+        8.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "start_marker",
+        5.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        0,
+      );
+
+      // Should return original + revealed clip (NO empty clip for audio)
+      expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    });
+
+    it("should NOT reveal when audio fully visible (clip 683 scenario: start_marker=0, no hidden)", () => {
+      const trackIndex = 0;
+      const clipId = "683";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          start_time: 0.0,
+          end_time: 8.0,
+          start_marker: 0.0,
+          end_marker: 8.0,
+          loop_start: 0.0,
+          loop_end: 8.0,
+          name: "Audio No Hidden start<firstStart",
+          trackIndex,
+          warp_markers: JSON.stringify({
+            warp_markers: [
+              { sample_time: 0.0, beat_time: 0.0 },
+              { sample_time: 4.8, beat_time: 8.0 },
+              { sample_time: 4.81875, beat_time: 8.03125 },
+            ],
+          }),
+        },
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      // When only 1 clip, updateClip returns a single object not an array
+      expect(result).toEqual({ id: clipId });
+    });
+
+    it("should reveal hidden audio content (clip 694 scenario: start_marker=0, hidden content)", () => {
+      const trackIndex = 0;
+      const clipId = "694";
+      const revealedClipId = "695";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId || this._id === revealedClipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          warping: 1,
+          start_time: 0.0,
+          end_time: 5.0,
+          start_marker: 0.0,
+          end_marker: 5.0,
+          loop_start: 0.0,
+          loop_end: 5.0,
+          name: "Audio Hidden start<firstStart",
+          trackIndex,
+          warp_markers: JSON.stringify({
+            warp_markers: [
+              { sample_time: 0.0, beat_time: 0.0 },
+              { sample_time: 4.8, beat_time: 8.0 },
+              { sample_time: 4.81875, beat_time: 8.03125 },
+            ],
+          }),
+        },
+        [revealedClipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          start_time: 5.0,
+          end_time: 8.0,
+          start_marker: 5.0,
+          end_marker: 8.0,
+          name: "Audio Hidden start<firstStart",
+          trackIndex,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", revealedClipId];
+        }
+        return 1;
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: clipId }),
+        "end_marker",
+        8.0,
+      );
+
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        `id ${clipId}`,
+        5.0,
+      );
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        1,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "loop_end",
+        8.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "loop_start",
+        5.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "end_marker",
+        8.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "start_marker",
+        5.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        0,
+      );
+
+      expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    });
+
+    it("should NOT reveal when start_marker offset means no hidden content (clip 705 scenario)", () => {
+      const trackIndex = 0;
+      const clipId = "705";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          start_time: 0.0,
+          end_time: 7.0, // 7 beats visible
+          start_marker: 1.0, // Offset by 1 beat
+          end_marker: 8.0,
+          loop_start: 1.0,
+          loop_end: 8.0,
+          name: "Audio No Hidden start>firstStart",
+          trackIndex,
+          warp_markers: JSON.stringify({
+            warp_markers: [
+              { sample_time: 0.0, beat_time: 0.0 },
+              { sample_time: 4.8, beat_time: 8.0 },
+              { sample_time: 4.81875, beat_time: 8.03125 },
+            ],
+          }),
+        },
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      // Should NOT call duplicate_clip_to_arrangement (no hidden content to reveal)
+      expect(liveApiCall).not.toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        expect.anything(),
+        expect.anything(),
+      );
+
+      // Should only return original clip
+      // When only 1 clip, updateClip returns a single object not an array
+      expect(result).toEqual({ id: clipId });
+    });
+
+    it("should calculate correct markers with start_marker offset (clip 716 scenario)", () => {
+      const trackIndex = 0;
+      const clipId = "716";
+      const revealedClipId = "717";
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId || this._id === revealedClipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          warping: 1,
+          start_time: 0.0,
+          end_time: 4.0, // 4 beats visible
+          start_marker: 1.0, // Offset by 1 beat
+          end_marker: 5.0,
+          loop_start: 1.0,
+          loop_end: 5.0,
+          name: "Audio Hidden start>firstStart",
+          trackIndex,
+          warp_markers: JSON.stringify({
+            warp_markers: [
+              { sample_time: 0.0, beat_time: 0.0 },
+              { sample_time: 4.8, beat_time: 8.0 },
+              { sample_time: 4.81875, beat_time: 8.03125 },
+            ],
+          }),
+        },
+        [revealedClipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          start_time: 4.0,
+          end_time: 8.0,
+          start_marker: 5.0,
+          end_marker: 8.0,
+          name: "Audio Hidden start>firstStart",
+          trackIndex,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, _args) {
+        if (method === "duplicate_clip_to_arrangement") {
+          return ["id", revealedClipId];
+        }
+        return 1;
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      // Should set source clip end_marker to actual audio end (8.0 from warp markers)
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: clipId }),
+        "end_marker",
+        8.0,
+      );
+
+      // Critical: verify markers account for start_marker offset
+      // visibleContentEnd = 1.0 (start_marker) + 4.0 (currentArrangementLength) = 5.0
+      // newStartMarker should be 5.0, newEndMarker should be 8.0
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        1,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "loop_end",
+        8.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "loop_start",
+        5.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "end_marker",
+        8.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "start_marker",
+        5.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        0,
+      );
+
+      // Should return original + revealed clip (NO empty clip for audio)
+      expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    });
+
+    it("should reveal hidden content in unwarped audio clip using session holding area", () => {
+      const trackIndex = 0;
+      const clipId = "800";
+      const tempSessionClipId = "801";
+      const revealedClipId = "802";
+      const sceneIndex = 0;
+
+      liveApiPath.mockImplementation(function () {
+        if (this._id === clipId || this._id === revealedClipId) {
+          return `live_set tracks ${trackIndex} arrangement_clips 0`;
+        }
+        if (this._id === tempSessionClipId) {
+          return `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`;
+        }
+        if (this._path === "live_set") {
+          return "live_set";
+        }
+        if (this._path === `live_set tracks ${trackIndex}`) {
+          return `live_set tracks ${trackIndex}`;
+        }
+        if (
+          this._path ===
+          `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`
+        ) {
+          return `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`;
+        }
+        return this._path;
+      });
+
+      const mockContext = {
+        holdingAreaStartBeats: 1000,
+        silenceWavPath: "/path/to/silence.wav",
+      };
+
+      mockLiveApiGet({
+        [clipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0, // Unlooped
+          warping: 0, // Unwarped - key difference from warped tests
+          start_time: 0.0,
+          end_time: 6.0, // 6 beats visible in arrangement
+          start_marker: 0.0,
+          end_marker: 6.0,
+          loop_start: 0.0,
+          loop_end: 6.0,
+          name: "Unwarped Audio Hidden",
+          trackIndex,
+          file_path: "/path/to/audio.wav",
+          sample_length: 211680,
+          sample_rate: 44100,
+        },
+        live_set: {
+          tempo: 120,
+          scenes: ["id", "scene1"],
+        },
+        scene1: {
+          is_empty: 1,
+        },
+        [tempSessionClipId]: {
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          warping: 1, // Temp clip starts warped
+          looping: 1, // Temp clip starts looped
+        },
+        "live_set/tracks/0/clip_slots/0/clip": {
+          // Path-based session clip (same as tempSessionClipId but accessed via path)
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          warping: 1,
+          looping: 1,
+        },
+        [revealedClipId]: {
+          is_arrangement_clip: 1,
+          is_midi_clip: 0,
+          is_audio_clip: 1,
+          looping: 0,
+          warping: 0,
+          start_time: 6.0,
+          end_time: 9.6,
+          start_marker: 6.0,
+          end_marker: 9.6,
+          trackIndex,
+        },
+      });
+
+      liveApiCall.mockImplementation(function (method, ..._args) {
+        if (method === "create_audio_clip") {
+          // Session clip creation
+          return ["id", tempSessionClipId];
+        }
+        if (method === "duplicate_clip_to_arrangement") {
+          // Duplicating temp clip to arrangement
+          return ["id", revealedClipId];
+        }
+        if (method === "delete_clip") {
+          // Deleting temp session clip
+          return 1;
+        }
+        return 1;
+      });
+
+      const result = updateClip(
+        { ids: clipId, arrangementLength: "3:2" },
+        mockContext,
+      );
+
+      // Should create temp clip in session with audio file
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "create_audio_clip",
+        "/path/to/audio.wav",
+      );
+
+      // Should warp temp clip (already done by createAudioClipInSession)
+      // Should loop temp clip (already done by createAudioClipInSession)
+
+      // Should set markers in BEATS while warped and looped
+      // Note: Session clip is now created with path-based construction
+      const sessionClipPath = "live_set/tracks/0/clip_slots/0/clip";
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: sessionClipPath }),
+        "loop_end",
+        9.6,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: sessionClipPath }),
+        "loop_start",
+        6.0,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: sessionClipPath }),
+        "end_marker",
+        9.6,
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: sessionClipPath }),
+        "start_marker",
+        6.0,
+      );
+
+      // Should duplicate temp clip to arrangement (while still warped)
+      expect(liveApiCall).toHaveBeenCalledWith(
+        "duplicate_clip_to_arrangement",
+        `id ${sessionClipPath}`, // Path-based ID
+        6.0,
+      );
+
+      // Should unwarp the REVEALED clip (Live will auto-convert beats to seconds)
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "warping",
+        0,
+      );
+
+      // Should unloop the REVEALED clip after unwarping
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: revealedClipId }),
+        "looping",
+        0,
+      );
+
+      // Should delete temp session clip
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({
+          path: `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
+        }),
+        "delete_clip",
+      );
+
+      // Should return original + revealed clip
+      expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
+    });
   });
 });

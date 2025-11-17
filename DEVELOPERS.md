@@ -1,17 +1,19 @@
 # Producer Pal Development Info
 
 This is a personal project with a focused roadmap. While the code is open source
-for learning and forking, I'm not accepting contributions at this time to keep
-the project aligned with my specific needs.
+for learning and forking, I'm not generally not accepting code contributions at
+this time to keep the project aligned with my specific needs and development
+workflow. This may change in the future.
 
 Feel free to:
 
 - File bug reports in
-  [the issues](https://github.com/adamjmurray/producer-pal/issues)
-- Ask questions, give feedback, and share your experiences in
+  [the issues](https://github.com/adamjmurray/producer-pal/issues) (help me
+  reproduce it and I will do my best to fix it)
+- Ask questions, give feedback, request features, and share your experiences in
   [the discussions](https://github.com/adamjmurray/producer-pal/discussions)
 - Learn from the implementation
-- Fork and modify for your own needs
+- Fork and modify for your own needs. Please attribute me.
 
 ## Building from source
 
@@ -138,7 +140,26 @@ in your browser.
 
 ### Architecture
 
-See `doc/Chat-UI.md` for detailed information about:
+See `dev-docs/Chat-UI.md` for detailed information about:
+
+## Documentation Site
+
+The project documentation is built with VitePress and deployed to
+https://producer-pal.org. The source files are in the `docs/` directory.
+
+Development commands:
+
+```bash
+npm run docs:dev     # Development server with hot reload
+npm run docs:build   # Build static site
+npm run docs:preview # Preview production build
+```
+
+The site automatically deploys to https://producer-pal.org when changes are
+pushed to the main branch.
+
+See `dev-docs/Documentation-Site.md` for deployment details, configuration, and
+content guidelines.
 
 ## Testing and Debugging
 
@@ -194,9 +215,9 @@ command:
   unclear how well this works in practice - results seem less impressive than
   Claude Project with the kb or kb:small knowledge base)
 
-When using a chat project, copy `doc/AI-Chat-Project-Instructions.md` into the
-project instructions for the AI chat app of choice. This file provides useful
-information similar to `AGENTS.md` but adapted for standalone chat apps.
+When using a chat project, copy `dev-docs/AI-Chat-Project-Instructions.md` into
+the project instructions for the AI chat app of choice. This file provides
+useful information similar to `AGENTS.md` but adapted for standalone chat apps.
 
 ## Development Testing
 
@@ -234,7 +255,7 @@ node scripts/cli.mjs tools/list
 
 # Call a tool with JSON arguments
 node scripts/cli.mjs tools/call ppal-read-live-set '{}'
-node scripts/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStartTime": "5|1"}'
+node scripts/cli.mjs tools/call ppal-duplicate '{"type": "scene", "id": "7", "destination": "arrangement", "arrangementStart": "5|1"}'
 
 # Use a different server URL
 node scripts/cli.mjs http://localhost:6274/mcp tools/list
@@ -439,6 +460,63 @@ If problems are found during pre-release testing:
 
 This is acceptable for pre-releases since they're explicitly marked as not
 production-ready.
+
+### Publishing to npm
+
+The npm package provides the portal script (`producer-pal-portal.js`) for users
+who want to run `npx producer-pal` instead of downloading the portal script and
+configuring the path to that file. This is an alternative distribution channel
+alongside GitHub releases.
+
+**Prerequisites:**
+
+- npm account with publish access to `producer-pal` package
+- Version numbers must already be updated in `package.json` (root) and
+  `npm/package.json`
+
+**Publishing Process:**
+
+```sh
+# Build everything (including npm/ folder)
+npm run build
+
+# Change to npm directory
+cd npm
+
+# Test packaging
+npm pack
+tar -tzf producer-pal-X.Y.Z.tgz  # Inspect contents
+
+# Test local installation
+npm install -g ./producer-pal-X.Y.Z.tgz
+npx producer-pal # actually use this with an MCP Client, running it on the command line does nothing visible
+npm uninstall -g producer-pal
+
+# When ready to publish
+npm publish
+
+# Return to root directory
+cd ..
+```
+
+**Notes:**
+
+- The `prepublishOnly` hook in `npm/package.json` automatically runs
+  `npm run build` before publishing to ensure fresh build artifacts
+- Published files (defined in `npm/package.json` `files` array):
+  - `producer-pal-portal.js` (bundled portal script with shebang)
+  - `LICENSE` (MIT license)
+  - `licenses/` (only portal dependencies: MCP SDK, zod, zod-to-json-schema)
+  - `README.md` (npm-specific documentation)
+  - `producer-pal-logo.svg` (logo for npm page)
+- Build artifacts in `npm/` are gitignored (never committed)
+- Version numbers in root `package.json` and `npm/package.json` should match
+
+**Version Management:**
+
+When bumping versions with `npm run version:bump`, you must manually update
+`npm/package.json` to match the root `package.json` version. The version bump
+script does not automatically update `npm/package.json`.
 
 ### Stable Download URLs
 

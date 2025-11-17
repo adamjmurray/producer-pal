@@ -31,7 +31,8 @@ const terserOptions = {
 const addLicenseHeader = (options = {}) => ({
   name: "add-license-header",
   renderChunk(code) {
-    return `/*\n${licenseText}${
+    const shebang = options.shebang ? `${options.shebang}\n` : "";
+    return `${shebang}/*\n${licenseText}${
       options.includeThirdPartyLicenses
         ? "\nThis file includes bundled dependencies.\nSee https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-party licenses."
         : ""
@@ -99,6 +100,10 @@ export default [
         file: join(rootDir, "release/producer-pal-portal.js"),
         format: "es",
       },
+      {
+        file: join(rootDir, "npm/producer-pal-portal.js"),
+        format: "es",
+      },
     ],
     plugins: [
       resolve({
@@ -108,7 +113,10 @@ export default [
       commonjs(),
       json(),
       terser(terserOptions),
-      addLicenseHeader({ includeThirdPartyLicenses: true }),
+      addLicenseHeader({
+        includeThirdPartyLicenses: true,
+        shebang: "#!/usr/bin/env node",
+      }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
           process.env.ENABLE_RAW_LIVE_API,
@@ -124,6 +132,20 @@ export default [
           {
             src: thirdPartyLicensesFolder,
             dest: "claude-desktop-extension",
+          },
+          { src: licensePath, dest: "npm" },
+          {
+            src: [
+              join(thirdPartyLicensesFolder, "mcp-typescript-sdk-license"),
+              join(thirdPartyLicensesFolder, "zod-license"),
+              join(thirdPartyLicensesFolder, "zod-to-json-schema-license"),
+              join(thirdPartyLicensesFolder, "README.md"),
+            ],
+            dest: "npm/licenses",
+          },
+          {
+            src: join(rootDir, "assets/image/producer-pal-logo.svg"),
+            dest: "npm",
           },
         ],
       }),

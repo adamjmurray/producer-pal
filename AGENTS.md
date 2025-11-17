@@ -22,6 +22,11 @@ npm run parser:build
 
 # Chat UI development
 npm run ui:build # Production build
+
+# Documentation site (VitePress at https://producer-pal.org)
+npm run docs:dev     # Development server with hot reload
+npm run docs:build   # Build static site
+npm run docs:preview # Preview production build
 ```
 
 ## Architecture
@@ -37,8 +42,8 @@ Key entry points:
 - Claude Desktop extension: `claude-desktop-extension/manifest.template.json`
 - Tools: `src/tools/**/*.js`
 
-See `doc/Architecture.md` for detailed system design and `doc/Chat-UI.md` for
-web UI architecture.
+See `dev-docs/Architecture.md` for detailed system design and
+`dev-docs/Chat-UI.md` for web UI architecture.
 
 ## Critical Coding Rules
 
@@ -97,6 +102,11 @@ web UI architecture.
   node scripts/cli.mjs tools/list
   node scripts/cli.mjs tools/call tool-name '{"arg": "value"}'
   ```
+- **Debug logging for CLI testing**:
+  - `console` must be imported:
+    `import * as console from "../../shared/v8-max-console.js"`
+  - Use `console.error()` to see output in CLI tool results (appears as WARNING)
+  - `console.log()` does NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
   and linting issues), then `npm run check` (validates all checks pass). This
   saves time and tokens by pre-emptively fixing likely errors before validation.
@@ -110,7 +120,11 @@ web UI architecture.
 
 ## Documentation
 
-- `doc/Architecture.md` - System design and components
-- `doc/Coding-Standards.md` - Code style, patterns, and rules
-- `doc/Development-Tools.md` - CLI testing, raw API debugging, MCP inspector
+- `dev-docs/Architecture.md` - System design and components
+- `dev-docs/Chat-UI.md` - Web UI architecture and development
+- `dev-docs/Coding-Standards.md` - Code style, patterns, and rules
+- `dev-docs/Development-Tools.md` - CLI testing, raw API debugging, MCP
+  inspector
+- `dev-docs/Documentation-Site.md` - VitePress documentation site setup and
+  deployment
 - `DEVELOPERS.md` - Development setup and testing

@@ -66,18 +66,23 @@ In project resources:
   OpenAI Codex CLI)
 - `CLAUDE.md` - Trigger Claude Code to use AGENTS.md
 - `GEMINI.md` - Trigger Gemini CLI to use AGENTS.md
-- `doc/Architecture.md` - System design details
-- `doc/Coding-Standards.md` - Code patterns and rules
-- `doc/Development-Tools.md` - CLI and debugging tools
+- `dev-docs/Architecture.md` - System design details
+- `dev-docs/Coding-Standards.md` - Code patterns and rules
+- `dev-docs/Development-Tools.md` - CLI and debugging tools
 - `DEVELOPERS.md` - Development setup
-- `FEATURES.md` - Feature list
-- `INSTALLATION.md` - Installation guide supporting various LLMs
+- `docs/features/index.md` - Feature list (hosted at
+  https://producer-pal.org/features/)
+- `docs/installation/**` - Installation guide supporting various LLMs (hosted at
+  https://producer-pal.org/installation/)
 - `LICENSE` - The software license (MIT)
 
 ## Trusted Resources
 
 If web search needed:
 
+- **Producer Pal Documentation**: https://producer-pal.org - User guides,
+  installation instructions, features, and usage examples. Built with VitePress,
+  source in `docs/` directory.
 - Max/Live API: https://docs.cycling74.com/apiref/
 - MCP: https://modelcontextprotocol.io/
 - Live Manual: https://www.ableton.com/en/live-manual/12/

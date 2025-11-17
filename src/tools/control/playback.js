@@ -22,17 +22,20 @@ import { select } from "./select.js";
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
  * @returns {Object} Result with transport state
  */
-export function playback({
-  action,
-  startTime,
-  loop,
-  loopStart,
-  loopEnd,
-  autoFollow = true,
-  sceneId,
-  clipIds,
-  switchView,
-} = {}) {
+export function playback(
+  {
+    action,
+    startTime,
+    loop,
+    loopStart,
+    loopEnd,
+    autoFollow = true,
+    sceneId,
+    clipIds,
+    switchView,
+  } = {},
+  _context = {},
+) {
   if (!action) {
     throw new Error("playback failed: action is required");
   }
