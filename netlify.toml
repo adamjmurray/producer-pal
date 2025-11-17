@@ -2,7 +2,6 @@
   base = "docs"
   command = "npm run docs:build"
   publish = "docs/.vitepress/dist"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- docs/"
 
 [build.environment]
   NODE_VERSION = "24"
