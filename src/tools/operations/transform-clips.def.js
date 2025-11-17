@@ -4,7 +4,7 @@ import { defineTool } from "../shared/define-tool.js";
 export const toolDefTransformClips = defineTool("ppal-transform-clips", {
   title: "Transform Clips",
   description:
-    "Shuffle arrangement positions and/or randomize parameters for multiple clips efficiently",
+    "Slice clips into repeating segments, shuffle arrangement positions, and/or randomize parameters for multiple clips efficiently",
   annotations: {
     readOnlyHint: false,
     destructiveHint: false,
@@ -31,6 +31,12 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .optional()
       .describe(
         "bar:beat duration (e.g., '4:0.0') for arrangement range length",
+      ),
+    slice: z
+      .string()
+      .optional()
+      .describe(
+        "bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments (clips smaller than slice size kept as-is)",
       ),
     shuffleOrder: z.boolean().optional().describe("randomize clip positions"),
     // Audio clip parameters

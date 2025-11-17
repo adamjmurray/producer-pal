@@ -3,6 +3,11 @@ import {
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
+import {
+  createShortenedClipInHolding,
+  moveClipFromHolding,
+  tileClipToRange,
+} from "../shared/arrangement-tiling.js";
 import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 
@@ -57,6 +62,7 @@ function shuffleArray(array, rng) {
  * @param {string} [args.arrangementTrackId] - Track ID to query arrangement clips from (ignored if clipIds provided)
  * @param {string} [args.arrangementStart] - Bar|beat position (e.g., '1|1.0') for range start
  * @param {string} [args.arrangementLength] - Bar:beat duration (e.g., '4:0.0') for range length
+ * @param {string} [args.slice] - Bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments
  * @param {boolean} [args.shuffleOrder] - Randomize clip positions
  * @param {number} [args.gainMin] - Min gain multiplier (audio clips)
  * @param {number} [args.gainMax] - Max gain multiplier (audio clips)
@@ -79,6 +85,7 @@ export function transformClips(
     arrangementTrackId,
     arrangementStart,
     arrangementLength,
+    slice,
     shuffleOrder,
     gainMin,
     gainMax,
@@ -177,10 +184,113 @@ export function transformClips(
   // Track warnings to emit each type only once
   const warnings = new Set();
 
-  // Filter arrangement clips only for position shuffling
+  // Filter arrangement clips only for position shuffling and slicing
   const arrangementClips = clips.filter(
     (clip) => clip.getProperty("is_arrangement_clip") > 0,
   );
+
+  // Prepare slice parameters if needed
+  let sliceBeats = null;
+  if (slice != null) {
+    if (arrangementClips.length === 0) {
+      if (!warnings.has("slice-no-arrangement")) {
+        console.error("Warning: slice requires arrangement clips");
+        warnings.add("slice-no-arrangement");
+      }
+    } else {
+      // Get song time signature for bar:beat conversion
+      const liveSet = new LiveAPI("live_set");
+      const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+      const songTimeSigDenominator = liveSet.getProperty(
+        "signature_denominator",
+      );
+
+      // Convert slice from bar:beat to Ableton beats
+      sliceBeats = barBeatDurationToAbletonBeats(
+        slice,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+
+      if (sliceBeats <= 0) {
+        throw new Error("slice must be greater than 0");
+      }
+    }
+  }
+
+  // Slice clips if requested
+  if (slice != null && sliceBeats != null && arrangementClips.length > 0) {
+    const holdingAreaStart =
+      _context.holdingAreaStartBeats ?? HOLDING_AREA_START;
+
+    for (const clip of arrangementClips) {
+      const isMidiClip = clip.getProperty("is_midi_clip") === 1;
+      const isLooping = clip.getProperty("looping") > 0;
+
+      // Only slice looped clips (tiling requires looping)
+      if (!isLooping) {
+        if (!warnings.has("slice-unlooped")) {
+          console.error("Warning: slice only applies to looped clips");
+          warnings.add("slice-unlooped");
+        }
+        continue;
+      }
+
+      // Get current clip arrangement length
+      const currentStartTime = clip.getProperty("start_time");
+      const currentEndTime = clip.getProperty("end_time");
+      const currentArrangementLength = currentEndTime - currentStartTime;
+
+      // Only slice if clip is longer than or equal to slice size
+      if (currentArrangementLength < sliceBeats) {
+        continue; // Skip clips smaller than slice size
+      }
+
+      // Get track for this clip
+      const trackIndex = clip.trackIndex;
+      if (trackIndex == null) {
+        throw new Error(
+          `transformClips failed: could not determine trackIndex for clip ${clip.id}`,
+        );
+      }
+      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
+      // Shorten clip at original position using holding area technique
+      const { holdingClipId } = createShortenedClipInHolding(
+        clip,
+        track,
+        sliceBeats,
+        holdingAreaStart,
+        isMidiClip,
+        _context,
+      );
+
+      // Delete original clip before moving from holding
+      const originalClipId = clip.id;
+      track.call("delete_clip", `id ${originalClipId}`);
+
+      // Move shortened clip from holding back to original position
+      const movedClip = moveClipFromHolding(
+        holdingClipId,
+        track,
+        currentStartTime,
+      );
+
+      // Tile to fill original length
+      const remainingLength = currentArrangementLength - sliceBeats;
+      if (remainingLength > 0) {
+        tileClipToRange(
+          movedClip,
+          track,
+          currentStartTime + sliceBeats,
+          remainingLength,
+          holdingAreaStart,
+          _context,
+          { adjustPreRoll: true, tileLength: sliceBeats },
+        );
+      }
+    }
+  }
 
   // Shuffle clip positions if requested
   if (shuffleOrder) {
