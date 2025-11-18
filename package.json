@@ -59,7 +59,7 @@
     "docs:preview": "vitepress preview docs"
   },
   "dependencies": {
-    "@google/genai": "^1.29.1",
+    "@google/genai": "^1.30.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.1.0",
