@@ -742,4 +742,28 @@ describe("useSettings", () => {
       expect(result.current.setPort).toBeUndefined();
     });
   });
+
+  describe("setApiKey and setModel for additional providers", () => {
+    it.each([
+      ["ollama", "ollama-key", "llama2"],
+      ["mistral", "mistral-key", "mistral-large"],
+      ["openrouter", "openrouter-key", "anthropic/claude-3"],
+      ["lmstudio", "lmstudio-key", "local-model"],
+      ["custom", "custom-key", "custom-model"],
+    ] as const)(
+      "sets apiKey and model for %s",
+      async (provider, apiKey, model) => {
+        const { result } = renderHook(() => useSettings());
+        await act(() => {
+          result.current.setProvider(provider);
+        });
+        await act(() => {
+          result.current.setApiKey(apiKey);
+          result.current.setModel(model);
+        });
+        expect(result.current.apiKey).toBe(apiKey);
+        expect(result.current.model).toBe(model);
+      },
+    );
+  });
 });
