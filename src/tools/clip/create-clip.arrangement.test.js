@@ -145,4 +145,30 @@ describe("createClip - arrangement view", () => {
       }),
     ).toThrow("createClip failed: track with index 99 does not exist");
   });
+
+  it("should throw error when arrangement clip creation fails", () => {
+    liveApiId.mockReturnValue("id 1");
+    liveApiCall.mockReturnValue("id 999");
+
+    // Mock the clip to not exist after creation
+    const originalExists = global.LiveAPI.prototype.exists;
+    global.LiveAPI.prototype.exists = vi.fn(function () {
+      // Track exists, but clip doesn't
+      if (this._path === "live_set tracks 0") {
+        return true;
+      }
+      return false;
+    });
+
+    expect(() =>
+      createClip({
+        view: "arrangement",
+        trackIndex: 0,
+        arrangementStart: "1|1",
+        notes: "C4 1|1",
+      }),
+    ).toThrow("createClip failed: failed to create Arrangement clip");
+
+    global.LiveAPI.prototype.exists = originalExists;
+  });
 });

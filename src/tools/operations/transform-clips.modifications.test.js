@@ -145,6 +145,142 @@ describe("transformClips - modifications", () => {
     );
   });
 
+  it("should apply velocityRange modifications to MIDI clip notes", () => {
+    const clipId = "clip_1";
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id clip_1") {
+        return clipId;
+      }
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "Clip";
+      }
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._id === clipId) {
+        if (prop === "is_midi_clip") {
+          return [1];
+        }
+        if (prop === "is_audio_clip") {
+          return [0];
+        }
+        if (prop === "is_arrangement_clip") {
+          return [0];
+        }
+        if (prop === "length") {
+          return [4.0];
+        }
+      }
+      return [0];
+    });
+
+    let capturedNotes;
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (this._id === clipId && method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              id: "0",
+              pitch: 60,
+              start_time: 0.0,
+              duration: 1.0,
+              velocity: 100,
+              velocity_deviation: 10,
+              probability: 1.0,
+            },
+          ],
+        });
+      }
+      if (this._id === clipId && method === "apply_note_modifications") {
+        capturedNotes = JSON.parse(_args[0]).notes;
+      }
+    });
+
+    transformClips({
+      clipIds: clipId,
+      velocityRange: 5,
+      seed: 12345,
+    });
+
+    expect(capturedNotes[0].velocity_deviation).toBe(15);
+  });
+
+  it("should apply probability modifications to MIDI clip notes", () => {
+    const clipId = "clip_1";
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id clip_1") {
+        return clipId;
+      }
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "Clip";
+      }
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._id === clipId) {
+        if (prop === "is_midi_clip") {
+          return [1];
+        }
+        if (prop === "is_audio_clip") {
+          return [0];
+        }
+        if (prop === "is_arrangement_clip") {
+          return [0];
+        }
+        if (prop === "length") {
+          return [4.0];
+        }
+      }
+      return [0];
+    });
+
+    let capturedNotes;
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (this._id === clipId && method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              id: "0",
+              pitch: 60,
+              start_time: 0.0,
+              duration: 1.0,
+              velocity: 100,
+              velocity_deviation: 0,
+              probability: 0.8,
+            },
+          ],
+        });
+      }
+      if (this._id === clipId && method === "apply_note_modifications") {
+        capturedNotes = JSON.parse(_args[0]).notes;
+      }
+    });
+
+    transformClips({
+      clipIds: clipId,
+      probability: 0.1,
+      seed: 12345,
+    });
+
+    expect(capturedNotes[0].probability).toBe(0.9);
+  });
+
   it("should produce consistent results with same seed", () => {
     const clipId = "clip_1";
     liveApiId.mockImplementation(function () {

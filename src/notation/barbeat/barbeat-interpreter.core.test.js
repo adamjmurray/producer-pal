@@ -774,4 +774,15 @@ describe("bar|beat interpretNotation() - core functionality", () => {
     const result = interpretNotation("v0 C3 D3 E3 1|1");
     expect(result).toEqual([]);
   });
+
+  it("warns when time position has no pitches", () => {
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    // Time position with no pitches
+    interpretNotation("1|1");
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Warning: Time position 1|1 has no pitches"),
+    );
+  });
 });

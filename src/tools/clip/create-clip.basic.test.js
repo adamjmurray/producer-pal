@@ -390,4 +390,29 @@ describe("createClip - basic validation and time signatures", () => {
       8, // Rounds up to 2 bars = 8 Ableton beats
     );
   });
+
+  it("warns when firstStart is used with non-looping clips", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      Clip: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: 0,
+      notes: "C4 1|1",
+      firstStart: "1|2",
+      looping: false,
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "firstStart parameter ignored for non-looping clips",
+      ),
+    );
+  });
 });
