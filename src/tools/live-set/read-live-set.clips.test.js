@@ -3,6 +3,7 @@ import {
   children,
   liveApiCall,
   liveApiId,
+  liveApiType,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { readLiveSet } from "./read-live-set.js";
@@ -103,5 +104,268 @@ describe("readLiveSet - clips", () => {
 
     // Verify expensive Live API calls were not made due to default minimal behavior
     expect(liveApiCall).not.toHaveBeenCalledWith("get_notes_extended");
+  });
+
+  it("auto-includes minimal track info when session-clips requested without regular-tracks", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 0 clip_slots 0 clip":
+          return "clip1";
+        case "id clip1":
+          return "clip1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Minimal Track Test",
+        tracks: children("track1"),
+        scenes: children("scene1"),
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        back_to_arranger: 0,
+        clip_slots: children("slot1"),
+        arrangement_clips: children("arr_clip1"),
+        devices: [],
+        is_foldable: 0,
+      },
+      "live_set tracks 0 clip_slots 0": {
+        clip: ["id", "clip1"],
+      },
+      "id clip1": {
+        name: "Test Clip",
+        length: 4.0,
+        is_midi_clip: 1,
+      },
+    });
+
+    const result = readLiveSet({ include: ["session-clips"] });
+
+    // Should include tracks array with minimal info
+    expect(result.tracks).toBeDefined();
+    expect(result.tracks).toHaveLength(1);
+
+    const track = result.tracks[0];
+    // Minimal track info: id, type, trackIndex
+    expect(track.id).toBe("track1");
+    expect(track.type).toBe("midi");
+    expect(track.trackIndex).toBe(0);
+
+    // Should NOT include full track properties
+    expect(track.name).toBeUndefined();
+    expect(track.arrangementFollower).toBeUndefined();
+
+    // Should include session clips array when session-clips requested
+    expect(track.sessionClips).toBeDefined();
+    expect(track.sessionClips).toHaveLength(1);
+    expect(track.sessionClips[0].id).toBe("clip1");
+
+    // Should include arrangement clip count (not array)
+    expect(track.arrangementClipCount).toBe(1);
+    expect(track.arrangementClips).toBeUndefined();
+  });
+
+  it("auto-includes minimal track info when arrangement-clips requested without regular-tracks", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "arr_clip1":
+          return "arr_clip1";
+        case "id arr_clip1":
+          return "arr_clip1";
+        default:
+          return "id 0";
+      }
+    });
+
+    liveApiType.mockImplementation(function () {
+      if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
+        return "Clip";
+      }
+      return undefined;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Minimal Track Test 2",
+        tracks: children("track1"),
+        scenes: [],
+      },
+      "live_set tracks 0": {
+        has_midi_input: 0,
+        clip_slots: [],
+        arrangement_clips: children("arr_clip1"),
+        devices: [],
+        is_foldable: 0,
+      },
+      arr_clip1: {
+        name: "Arrangement Clip",
+        length: 8.0,
+        is_midi_clip: 0,
+      },
+      "id arr_clip1": {
+        name: "Arrangement Clip",
+        length: 8.0,
+        is_midi_clip: 0,
+      },
+    });
+
+    const result = readLiveSet({ include: ["arrangement-clips"] });
+
+    const track = result.tracks[0];
+    expect(track.id).toBe("track1");
+    expect(track.type).toBe("audio");
+    expect(track.trackIndex).toBe(0);
+
+    // Should NOT include full track properties
+    expect(track.name).toBeUndefined();
+
+    // Should include arrangement clips array when arrangement-clips requested
+    expect(track.arrangementClips).toBeDefined();
+    expect(track.arrangementClips).toHaveLength(1);
+    expect(track.arrangementClips[0].id).toBe("arr_clip1");
+
+    // Should include session clip count (not array)
+    expect(track.sessionClipCount).toBe(0);
+    expect(track.sessionClips).toBeUndefined();
+  });
+
+  it("auto-includes minimal track info when all-clips requested without regular-tracks", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 0 clip_slots 0 clip":
+          return "clip1";
+        case "id clip1":
+          return "clip1";
+        case "arr_clip1":
+          return "arr_clip1";
+        case "id arr_clip1":
+          return "arr_clip1";
+        default:
+          return "id 0";
+      }
+    });
+
+    liveApiType.mockImplementation(function () {
+      if (this.path === "id arr_clip1" || this.id === "arr_clip1") {
+        return "Clip";
+      }
+      return undefined;
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "All Clips Test",
+        tracks: children("track1"),
+        scenes: children("scene1"),
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        clip_slots: children("slot1"),
+        arrangement_clips: children("arr_clip1"),
+        devices: [],
+        is_foldable: 0,
+      },
+      "live_set tracks 0 clip_slots 0": {
+        clip: ["id", "clip1"],
+      },
+      "id clip1": {
+        name: "Session Clip",
+        length: 4.0,
+        is_midi_clip: 1,
+      },
+      arr_clip1: {
+        name: "Arrangement Clip",
+        length: 8.0,
+        is_midi_clip: 1,
+      },
+      "id arr_clip1": {
+        name: "Arrangement Clip",
+        length: 8.0,
+        is_midi_clip: 1,
+      },
+    });
+
+    const result = readLiveSet({ include: ["all-clips"] });
+
+    const track = result.tracks[0];
+    expect(track.id).toBe("track1");
+    expect(track.type).toBe("midi");
+    expect(track.trackIndex).toBe(0);
+
+    // Should include both clip arrays when all-clips requested
+    expect(track.sessionClips).toBeDefined();
+    expect(track.sessionClips).toHaveLength(1);
+    expect(track.arrangementClips).toBeDefined();
+    expect(track.arrangementClips).toHaveLength(1);
+  });
+
+  it("uses full track info when regular-tracks explicitly included with clips", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set":
+          return "live_set_id";
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 0 clip_slots 0 clip":
+          return "clip1";
+        case "id clip1":
+          return "clip1";
+        default:
+          return "id 0";
+      }
+    });
+
+    mockLiveApiGet({
+      LiveSet: {
+        name: "Full Track Test",
+        tracks: children("track1"),
+        scenes: children("scene1"),
+      },
+      "live_set tracks 0": {
+        has_midi_input: 1,
+        name: "Test Track",
+        back_to_arranger: 0,
+        clip_slots: children("slot1"),
+        arrangement_clips: [],
+        devices: [],
+        is_foldable: 0,
+      },
+      "live_set tracks 0 clip_slots 0": {
+        clip: ["id", "clip1"],
+      },
+      "id clip1": {
+        name: "Test Clip",
+        length: 4.0,
+        is_midi_clip: 1,
+      },
+    });
+
+    const result = readLiveSet({
+      include: ["regular-tracks", "session-clips"],
+    });
+
+    const track = result.tracks[0];
+    // Should include full track properties
+    expect(track.id).toBe("track1");
+    expect(track.type).toBe("midi");
+    expect(track.trackIndex).toBe(0);
+    expect(track.name).toBe("Test Track");
+    expect(track.arrangementFollower).toBe(true);
   });
 });
