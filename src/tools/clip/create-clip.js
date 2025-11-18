@@ -6,7 +6,8 @@ import {
   barBeatToBeats,
   beatsToBarBeat,
   timeSigToAbletonBeatsPerBar,
-} from "../../notation/barbeat/barbeat-time";
+} from "../../notation/barbeat/barbeat-time.js";
+import { applyModulations } from "../../notation/modulation/modulation-evaluator.js";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { select } from "../control/select.js";
 import { parseTimeSignature } from "../shared/utils.js";
@@ -20,6 +21,7 @@ import { parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
+ * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -39,6 +41,7 @@ export function createClip(
     arrangementStart = null,
     count = 1,
     notes: notationString = null,
+    modulations: modulationString = null,
     name = null,
     color = null,
     timeSignature = null,
@@ -136,6 +139,14 @@ export function createClip(
           timeSigDenominator,
         })
       : [];
+
+  // Apply modulations to notes if provided
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   let clipLength;

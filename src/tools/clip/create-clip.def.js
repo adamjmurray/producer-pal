@@ -62,6 +62,10 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .describe(
         "MIDI in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s)",
       ),
+    modulations: z
+      .string()
+      .optional()
+      .describe("modulation expressions (parameter: expression per line)"),
     auto: z
       .enum(["play-scene", "play-clip"])
       .optional()
