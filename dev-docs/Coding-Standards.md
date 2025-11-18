@@ -10,6 +10,35 @@
 This applies throughout the codebase including hooks, utilities, configuration,
 tests, and modules.
 
+### File Suffixes
+
+Use hyphens within base names, NOT dots. Dots are only for recognized suffixes
+and file extensions:
+
+**Allowed:**
+
+- `arrangement-tiling.js` - descriptive kebab-case name
+- `create-clip.test.js` - unit test (`.test` suffix)
+- `create-clip.def.js` - tool definition (`.def` suffix, tools only)
+- `index.d.ts` - TypeScript declaration (`.d` suffix)
+
+**Avoid:**
+
+- `arrangement.tiling.js` - uses dot instead of hyphen
+- `clip.helper.js` - uses dot instead of hyphen
+- `utils.config.js` - uses dot instead of hyphen
+
+### Naming Utilities and Helpers
+
+Prefer specific, descriptive names over generic terms:
+
+- `string-formatters.js` instead of `string-helper.js`
+- `clip-operations.js` instead of `clip-utils.js`
+- `message-transforms.js` instead of `message-helper.js`
+
+Exception: `utils.js` is acceptable for general utilities within a specific
+domain (e.g., `src/tools/shared/utils.js`).
+
 ## Imports
 
 Always include `.js` extensions (Node.js requirement):
