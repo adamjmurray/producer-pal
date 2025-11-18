@@ -32,13 +32,14 @@ and file extensions:
 
 Test files should follow this pattern:
 
-1. **Core tests**: `{filename}.test.[js|ts|tsx]` - Tests for the main functionality
-   of the source file
+1. **Core tests**: `{filename}.test.[js|ts|tsx]` - Tests for the main
+   functionality of the source file
    - Example: `create-clip.test.js` tests `create-clip.js`
    - Example: `ChatHeader.test.tsx` tests `ChatHeader.tsx`
 
-2. **Split tests**: `{filename}-{feature-group}.test.[js|ts|tsx]` - When test files
-   exceed size limits (600 lines for source, 800 for tests), split by feature area
+2. **Split tests**: `{filename}-{feature-group}.test.[js|ts|tsx]` - When test
+   files exceed size limits (600 lines for source, 800 for tests), split by
+   feature area
    - Example: `update-clip-audio-arrangement.test.js`
    - Example: `read-track-drums-advanced.test.js`
    - Example: `duplicate-arrangement-length.test.js`
