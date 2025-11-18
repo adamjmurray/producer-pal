@@ -742,4 +742,39 @@ describe("useSettings", () => {
       expect(result.current.setPort).toBeUndefined();
     });
   });
+
+  describe("setApiKey and setModel for additional providers", () => {
+    it("sets apiKey for lmstudio provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("lmstudio");
+      });
+      await act(() => {
+        result.current.setApiKey("lmstudio-key");
+      });
+      expect(result.current.apiKey).toBe("lmstudio-key");
+    });
+
+    it("sets apiKey for custom provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("custom");
+      });
+      await act(() => {
+        result.current.setApiKey("custom-key");
+      });
+      expect(result.current.apiKey).toBe("custom-key");
+    });
+
+    it("sets model for ollama provider", async () => {
+      const { result } = renderHook(() => useSettings());
+      await act(() => {
+        result.current.setProvider("ollama");
+      });
+      await act(() => {
+        result.current.setModel("llama2");
+      });
+      expect(result.current.model).toBe("llama2");
+    });
+  });
 });
