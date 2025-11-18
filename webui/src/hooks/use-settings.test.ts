@@ -744,43 +744,26 @@ describe("useSettings", () => {
   });
 
   describe("setApiKey and setModel for additional providers", () => {
-    it("sets apiKey and model for ollama", async () => {
-      const { result } = renderHook(() => useSettings());
-      await act(() => {
-        result.current.setProvider("ollama");
-      });
-      await act(() => {
-        result.current.setApiKey("ollama-key");
-        result.current.setModel("llama2");
-      });
-      expect(result.current.apiKey).toBe("ollama-key");
-      expect(result.current.model).toBe("llama2");
-    });
-
-    it("sets apiKey and model for mistral", async () => {
-      const { result } = renderHook(() => useSettings());
-      await act(() => {
-        result.current.setProvider("mistral");
-      });
-      await act(() => {
-        result.current.setApiKey("mistral-key");
-        result.current.setModel("mistral-large");
-      });
-      expect(result.current.apiKey).toBe("mistral-key");
-      expect(result.current.model).toBe("mistral-large");
-    });
-
-    it("sets apiKey and model for openrouter", async () => {
-      const { result } = renderHook(() => useSettings());
-      await act(() => {
-        result.current.setProvider("openrouter");
-      });
-      await act(() => {
-        result.current.setApiKey("openrouter-key");
-        result.current.setModel("anthropic/claude-3");
-      });
-      expect(result.current.apiKey).toBe("openrouter-key");
-      expect(result.current.model).toBe("anthropic/claude-3");
-    });
+    it.each([
+      ["ollama", "ollama-key", "llama2"],
+      ["mistral", "mistral-key", "mistral-large"],
+      ["openrouter", "openrouter-key", "anthropic/claude-3"],
+      ["lmstudio", "lmstudio-key", "local-model"],
+      ["custom", "custom-key", "custom-model"],
+    ] as const)(
+      "sets apiKey and model for %s",
+      async (provider, apiKey, model) => {
+        const { result } = renderHook(() => useSettings());
+        await act(() => {
+          result.current.setProvider(provider);
+        });
+        await act(() => {
+          result.current.setApiKey(apiKey);
+          result.current.setModel(model);
+        });
+        expect(result.current.apiKey).toBe(apiKey);
+        expect(result.current.model).toBe(model);
+      },
+    );
   });
 });
