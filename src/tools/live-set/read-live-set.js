@@ -9,6 +9,7 @@ import {
   READ_SONG_DEFAULTS,
 } from "../shared/include-params.js";
 import { readTrack, readTrackGeneric } from "../track/read-track.js";
+import { readTrackMinimal } from "../track/read-track-helpers.js";
 
 /**
  * Read comprehensive information about the Live Set
@@ -53,6 +54,18 @@ export function readLiveSet(args = {}, _context = {}) {
       readTrack({
         trackIndex,
         include: includeArray,
+      }),
+    );
+  } else if (
+    includeFlags.includeSessionClips ||
+    includeFlags.includeArrangementClips ||
+    includeFlags.includeAllClips
+  ) {
+    // Auto-include minimal track info when clips are requested without explicit track inclusion
+    result.tracks = trackIds.map((_trackId, trackIndex) =>
+      readTrackMinimal({
+        trackIndex,
+        includeFlags,
       }),
     );
   }

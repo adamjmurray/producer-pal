@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_SLICES } from "../constants.js";
 import { defineTool } from "../shared/define-tool.js";
 
 export const toolDefTransformClips = defineTool("ppal-transform-clips", {
@@ -36,7 +37,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .string()
       .optional()
       .describe(
-        "bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments (clips smaller than slice size kept as-is)",
+        `bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments (max ${MAX_SLICES} slices total)`,
       ),
     shuffleOrder: z.boolean().optional().describe("randomize clip positions"),
     // Audio clip parameters

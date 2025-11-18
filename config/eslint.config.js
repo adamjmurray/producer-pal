@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
+import importPlugin from "eslint-plugin-import";
 import globals from "globals";
 
 export default [
@@ -41,6 +42,14 @@ export default [
     plugins: {
       "@typescript-eslint": tsPlugin,
       "react-hooks": reactHooksPlugin,
+      import: importPlugin,
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./webui/tsconfig.json",
+        },
+      },
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -66,6 +75,11 @@ export default [
       eqeqeq: ["error", "always", { null: "ignore" }],
       "no-var": "error",
       "prefer-const": "error",
+      // Import static analysis rules
+      "import/no-cycle": "error",
+      "import/no-self-import": "error",
+      "import/no-useless-path-segments": "error",
+      "import/no-relative-packages": "error",
     },
   },
   {
@@ -83,6 +97,12 @@ export default [
     },
     plugins: {
       "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+    },
+    settings: {
+      "import/resolver": {
+        node: true,
+      },
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -101,6 +121,11 @@ export default [
       eqeqeq: ["error", "always", { null: "ignore" }],
       "no-var": "error",
       "prefer-const": "error",
+      // Import static analysis rules
+      "import/no-cycle": "error",
+      "import/no-self-import": "error",
+      "import/no-useless-path-segments": "error",
+      "import/no-relative-packages": "error",
     },
   },
   {
@@ -125,6 +150,14 @@ export default [
         vi: "readonly",
       },
     },
+    plugins: {
+      import: importPlugin,
+    },
+    settings: {
+      "import/resolver": {
+        node: true,
+      },
+    },
     rules: {
       ...js.configs.recommended.rules,
       "no-unused-vars": [
@@ -144,6 +177,11 @@ export default [
       "no-implicit-coercion": "error",
       "default-param-last": "error",
       "no-lonely-if": "error",
+      // Import static analysis rules
+      "import/no-cycle": "error",
+      "import/no-self-import": "error",
+      "import/no-useless-path-segments": "error",
+      "import/no-relative-packages": "error",
     },
   },
   {
@@ -151,6 +189,44 @@ export default [
     files: ["**/*.test.{js,ts,tsx}"],
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
+    },
+  },
+  {
+    files: [
+      "src/**/*.js",
+      "scripts/**/*.js",
+      "scripts/**/*.mjs",
+      "webui/**/*.ts",
+    ],
+    ignores: [
+      "**/*.test.js",
+      "**/*.test-helpers.js",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
+    rules: {
+      "max-lines": [
+        "error",
+        {
+          max: 600,
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      "**/*.test.js",
+      "**/*.test-helpers.js",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
+    rules: {
+      "max-lines": [
+        "error",
+        {
+          max: 800,
+        },
+      ],
     },
   },
 ];

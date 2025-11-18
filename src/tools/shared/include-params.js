@@ -56,52 +56,6 @@ const SHORTCUT_MAPPINGS = {
 };
 
 /**
- * Expand shortcuts and '*' in include array to concrete options
- * @param {string[]} includeArray - Array of include options that may contain '*' or shortcuts
- * @param {Object} defaults - Default values to determine tool type from structure
- * @returns {string[]} Expanded array with shortcuts and '*' replaced by concrete options
- */
-function expandWildcardIncludes(includeArray, defaults) {
-  // First expand shortcuts
-  const expandedArray = [];
-  for (const option of includeArray) {
-    if (SHORTCUT_MAPPINGS[option]) {
-      expandedArray.push(...SHORTCUT_MAPPINGS[option]);
-    } else {
-      expandedArray.push(option);
-    }
-  }
-
-  // Then handle '*' expansion
-  if (!expandedArray.includes("*")) {
-    return expandedArray;
-  }
-
-  // Determine tool type from defaults structure to get appropriate options
-  let toolType = "song"; // default fallback
-  if (defaults.includeRegularTracks !== undefined) {
-    toolType = "song";
-  } else if (defaults.includeSessionClips !== undefined) {
-    toolType = "track";
-  } else if (defaults.includeClips !== undefined) {
-    toolType = "scene";
-  } else if (
-    Object.keys(defaults).length === 1 &&
-    defaults.includeClipNotes !== undefined
-  ) {
-    toolType = "clip";
-  }
-
-  const allOptions = ALL_INCLUDE_OPTIONS[toolType] || [];
-
-  // Create set with all non-'*' options plus all available options
-  const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
-  allOptions.forEach((option) => expandedSet.add(option));
-
-  return Array.from(expandedSet);
-}
-
-/**
  * Parse include array format and return boolean flags for each option
  * @param {string[]} includeArray - Array of kebab-case include options
  * @param {Object} defaults - Default values for each parameter
@@ -310,3 +264,49 @@ export const READ_CLIP_DEFAULTS = {
   includeColor: false,
   includeWarpMarkers: false,
 };
+
+/**
+ * Expand shortcuts and '*' in include array to concrete options
+ * @param {string[]} includeArray - Array of include options that may contain '*' or shortcuts
+ * @param {Object} defaults - Default values to determine tool type from structure
+ * @returns {string[]} Expanded array with shortcuts and '*' replaced by concrete options
+ */
+function expandWildcardIncludes(includeArray, defaults) {
+  // First expand shortcuts
+  const expandedArray = [];
+  for (const option of includeArray) {
+    if (SHORTCUT_MAPPINGS[option]) {
+      expandedArray.push(...SHORTCUT_MAPPINGS[option]);
+    } else {
+      expandedArray.push(option);
+    }
+  }
+
+  // Then handle '*' expansion
+  if (!expandedArray.includes("*")) {
+    return expandedArray;
+  }
+
+  // Determine tool type from defaults structure to get appropriate options
+  let toolType = "song"; // default fallback
+  if (defaults.includeRegularTracks !== undefined) {
+    toolType = "song";
+  } else if (defaults.includeSessionClips !== undefined) {
+    toolType = "track";
+  } else if (defaults.includeClips !== undefined) {
+    toolType = "scene";
+  } else if (
+    Object.keys(defaults).length === 1 &&
+    defaults.includeClipNotes !== undefined
+  ) {
+    toolType = "clip";
+  }
+
+  const allOptions = ALL_INCLUDE_OPTIONS[toolType] || [];
+
+  // Create set with all non-'*' options plus all available options
+  const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
+  allOptions.forEach((option) => expandedSet.add(option));
+
+  return Array.from(expandedSet);
+}

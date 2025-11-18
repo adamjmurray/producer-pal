@@ -141,6 +141,18 @@ describe("parseIncludeArray", () => {
       }),
     );
   });
+
+  it("expands wildcard for clip tool type", () => {
+    // Test that wildcard expansion works when tool type is detected as "clip"
+    // This happens when defaults has only includeClipNotes
+    const result = parseIncludeArray(["*"], {
+      includeClipNotes: false,
+    });
+
+    expect(result.includeClipNotes).toBe(true);
+    expect(result.includeColor).toBe(true);
+    expect(result.includeWarpMarkers).toBe(true);
+  });
 });
 
 describe("includeArrayFromFlags", () => {
@@ -196,6 +208,26 @@ describe("includeArrayFromFlags", () => {
     const result = includeArrayFromFlags(flags);
 
     expect(result).toEqual([]);
+  });
+
+  it("includes available-routings when flag is true", () => {
+    const flags = {
+      includeAvailableRoutings: true,
+    };
+
+    const result = includeArrayFromFlags(flags);
+
+    expect(result).toContain("available-routings");
+  });
+
+  it("includes clips when flag is true", () => {
+    const flags = {
+      includeClips: true,
+    };
+
+    const result = includeArrayFromFlags(flags);
+
+    expect(result).toContain("clips");
   });
 
   describe("drum-maps option", () => {
