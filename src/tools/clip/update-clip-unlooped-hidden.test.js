@@ -6,7 +6,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { updateClip } from "./update-clip.js";
-import { mockContext } from "./update-clip.test-helpers.js";
+import { mockContext } from "./update-clip-test-helpers.js";
 
 describe("arrangementLength (unlooped clips with hidden content)", () => {
   it("should reveal 1 beat of hidden content (track 2 scenario)", () => {

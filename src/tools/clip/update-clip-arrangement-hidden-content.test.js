@@ -5,7 +5,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { updateClip } from "./update-clip.js";
-import { mockContext } from "./update-clip.test-helpers.js";
+import { mockContext } from "./update-clip-test-helpers.js";
 
 describe("updateClip - arrangementLength (expose hidden content)", () => {
   it("should preserve envelopes by tiling when exposing hidden content", () => {

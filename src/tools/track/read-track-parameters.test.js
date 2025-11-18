@@ -12,7 +12,7 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "../constants.js";
 import { readTrack } from "./read-track.js";
-import { mockTrackProperties } from "./read-track.test-helpers.js";
+import { mockTrackProperties } from "./read-track-test-helpers.js";
 
 describe("readTrack", () => {
   describe("trackId parameter", () => {

@@ -28,6 +28,32 @@ and file extensions:
 - `clip.helper.js` - uses dot instead of hyphen
 - `utils.config.js` - uses dot instead of hyphen
 
+### Test File Naming
+
+Test files should follow this pattern:
+
+1. **Core tests**: `{filename}.test.[js|ts|tsx]` - Tests for the main functionality
+   of the source file
+   - Example: `create-clip.test.js` tests `create-clip.js`
+   - Example: `ChatHeader.test.tsx` tests `ChatHeader.tsx`
+
+2. **Split tests**: `{filename}-{feature-group}.test.[js|ts|tsx]` - When test files
+   exceed size limits (600 lines for source, 800 for tests), split by feature area
+   - Example: `update-clip-audio-arrangement.test.js`
+   - Example: `read-track-drums-advanced.test.js`
+   - Example: `duplicate-arrangement-length.test.js`
+
+3. **Helper files**: `{filename}-helpers.js` - Source helper functions
+   - Example: `duplicate-helpers.js`
+
+4. **Helper tests**: `{filename}-helpers.test.js` - Tests for helper functions
+   - Example: `duplicate-helpers.test.js`
+
+5. **Test utilities**: `{filename}-test-helpers.js` - Mock utilities and shared
+   test setup (NOT a test file itself)
+   - Example: `duplicate-test-helpers.js`
+   - Example: `update-clip-test-helpers.js`
+
 ### Naming Utilities and Helpers
 
 Prefer specific, descriptive names over generic terms:

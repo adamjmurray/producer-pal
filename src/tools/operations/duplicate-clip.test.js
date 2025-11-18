@@ -4,7 +4,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "./duplicate.test-helpers.js";
+} from "./duplicate-test-helpers.js";
 import { duplicate } from "./duplicate";
 
 // Mock updateClip to avoid complex internal logic

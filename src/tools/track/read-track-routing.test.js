@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { liveApiId, mockLiveApiGet } from "../../test/mock-live-api.js";
 import { readTrack } from "./read-track.js";
-import { mockTrackProperties } from "./read-track.test-helpers.js";
+import { mockTrackProperties } from "./read-track-test-helpers.js";
 
 describe("readTrack", () => {
   describe("includeRoutings", () => {

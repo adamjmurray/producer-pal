@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { liveApiId, liveApiPath } from "./duplicate.test-helpers.js";
+import { liveApiId, liveApiPath } from "./duplicate-test-helpers.js";
 import { duplicate } from "./duplicate";
 
 // Mock updateClip to avoid complex internal logic

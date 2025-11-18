@@ -7,7 +7,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { updateClip } from "./update-clip.js";
-import { mockContext, setupMocks } from "./update-clip.test-helpers.js";
+import { mockContext, setupMocks } from "./update-clip-test-helpers.js";
 
 describe("updateClip - arrangementLength (clean tiling)", () => {
   beforeEach(() => {

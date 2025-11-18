@@ -8,7 +8,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { readTrack } from "./read-track.js";
-import { mockTrackProperties } from "./read-track.test-helpers.js";
+import { mockTrackProperties } from "./read-track-test-helpers.js";
 
 describe("readTrack", () => {
   it("returns null values when the track does not exist", () => {

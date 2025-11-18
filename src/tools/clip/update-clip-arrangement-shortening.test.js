@@ -6,7 +6,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { updateClip } from "./update-clip.js";
-import { setupMocks } from "./update-clip.test-helpers.js";
+import { setupMocks } from "./update-clip-test-helpers.js";
 import * as arrangementTiling from "../shared/arrangement-tiling.js";
 
 describe("updateClip - arrangementLength (shortening only)", () => {
