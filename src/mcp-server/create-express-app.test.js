@@ -390,4 +390,42 @@ describe("MCP Express App", () => {
       // The app should be created successfully without any configuration
     });
   });
+
+  describe("CORS", () => {
+    it("should handle OPTIONS preflight requests", async () => {
+      const response = await fetch(serverUrl, {
+        method: "OPTIONS",
+        headers: {
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "content-type",
+        },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("access-control-allow-origin")).toBe("*");
+      expect(response.headers.get("access-control-allow-methods")).toContain(
+        "POST",
+      );
+      expect(response.headers.get("access-control-allow-headers")).toBe("*");
+    });
+  });
+
+  describe("Chat UI", () => {
+    let chatUrl;
+
+    beforeAll(() => {
+      chatUrl = serverUrl.replace("/mcp", "/chat");
+    });
+
+    it("should serve chat UI when enabled", async () => {
+      // Chat UI is enabled by default
+      const response = await fetch(chatUrl);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("html");
+      const html = await response.text();
+      expect(html).toBeDefined();
+      expect(html.length).toBeGreaterThan(0);
+    });
+  });
 });

@@ -313,4 +313,18 @@ describe("readDevice", () => {
       type: "midi-effect: Arpeggiator",
     });
   });
+
+  // NOTE: Tests for drum rack with soloed/muted pads and return chains
+  // are too complex to mock reliably with the current test infrastructure.
+  // These code paths in device-reader.js (lines 358, 422-450) would require
+  // extensive LiveAPI mocking including drum pads, chains, and their properties.
+  // Skipping these for now to focus on easier wins for test coverage.
+
+  /* it("should handle drum rack with soloed and muted pads", () => {
+    // ...
+  });
+
+  it("should handle drum rack with return chains", () => {
+    // ...
+  }); */
 });

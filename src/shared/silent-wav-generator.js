@@ -8,6 +8,31 @@ const SILENCE_WAV = path.join(os.tmpdir(), "ppal-silence.wav");
 let silenceWavGenerated = false;
 
 /**
+ * Returns path to silent WAV, generating it if needed
+ * Uses two-level caching:
+ * 1. In-memory flag (fastest, survives in same process)
+ * 2. Filesystem check (handles hot reload where file already exists)
+ * @returns {string} Absolute path to silent WAV file
+ */
+export function ensureSilenceWav() {
+  // In-memory check first (zero I/O)
+  if (silenceWavGenerated) {
+    return SILENCE_WAV;
+  }
+
+  // Filesystem check (handles hot reload case)
+  if (!fs.existsSync(SILENCE_WAV)) {
+    createSilentWav(SILENCE_WAV);
+  }
+
+  // Cache for subsequent calls in this process
+  silenceWavGenerated = true;
+  return SILENCE_WAV;
+}
+
+export { SILENCE_WAV };
+
+/**
  * Creates a silent WAV file (0.1 second, 44.1kHz, 16-bit mono)
  * File size: ~8.8KB
  */
@@ -43,28 +68,3 @@ function createSilentWav(filePath) {
 
   fs.writeFileSync(filePath, buffer);
 }
-
-/**
- * Returns path to silent WAV, generating it if needed
- * Uses two-level caching:
- * 1. In-memory flag (fastest, survives in same process)
- * 2. Filesystem check (handles hot reload where file already exists)
- * @returns {string} Absolute path to silent WAV file
- */
-export function ensureSilenceWav() {
-  // In-memory check first (zero I/O)
-  if (silenceWavGenerated) {
-    return SILENCE_WAV;
-  }
-
-  // Filesystem check (handles hot reload case)
-  if (!fs.existsSync(SILENCE_WAV)) {
-    createSilentWav(SILENCE_WAV);
-  }
-
-  // Cache for subsequent calls in this process
-  silenceWavGenerated = true;
-  return SILENCE_WAV;
-}
-
-export { SILENCE_WAV };

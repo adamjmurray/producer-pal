@@ -82,6 +82,14 @@ describe("rawLiveApi", () => {
       expect(result.results[0].result).toBe("test-id");
     });
 
+    it("should throw error for get_property without property", () => {
+      expect(() =>
+        rawLiveApi({
+          operations: [{ type: "get_property" }],
+        }),
+      ).toThrow("get_property operation requires property");
+    });
+
     it("should handle set_property operation", () => {
       const result = rawLiveApi({
         operations: [{ type: "set_property", property: "tempo", value: 140 }],

@@ -64,8 +64,8 @@
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.1.0",
     "marked": "^17.0.0",
-    "openai": "^6.9.0",
-    "preact": "^10.19.0",
+    "openai": "^6.9.1",
+    "preact": "^10.27.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -81,12 +81,15 @@
     "@types/express": "^5.0.5",
     "@types/max-api": "^2.0.3",
     "@types/node": "^24.10.1",
-    "@typescript-eslint/eslint-plugin": "^8.46.4",
-    "@typescript-eslint/parser": "^8.46.4",
-    "@vitest/coverage-v8": "^4.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "@vitest/coverage-v8": "^4.0.10",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
     "eslint": "^9.39.1",
+    "eslint-import-resolver-node": "^0.3.9",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "happy-dom": "^20.0.10",
     "peggy": "^5.0.6",
@@ -96,7 +99,7 @@
     "typescript": "^5.9.3",
     "vite": "^7.2.2",
     "vite-plugin-singlefile": "^2.3.0",
-    "vitepress": "^1.6.1",
-    "vitest": "^4.0.9"
+    "vitepress": "^1.6.4",
+    "vitest": "^4.0.10"
   }
 }

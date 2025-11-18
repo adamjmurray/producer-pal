@@ -50,20 +50,21 @@ Create MIDI clips using the bar|beat notation syntax:
 Audio clips support gain and pitch adjustment:
 
 **Reading Audio Clips:**
-- By default, \`ppal-read-clip\` returns audio properties: \`filename\`, \`gain\`, \`gainDisplay\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`
+- By default, \`ppal-read-clip\` returns audio properties: \`filename\`, \`gainDb\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`
 - Use \`include: []\` to omit audio properties
+- \`gainDb\` is in decibels (e.g., 0 dB = unity, -6 dB = half volume, +12 dB = 4x volume)
 - \`pitchShift\` is in semitones (e.g., -2.5 = down 2.5 semitones)
 
 **Updating Audio Clips:**
-- \`gain\`: 0-1 range (0.5 ≈ -6dB, 0.7 ≈ +12dB)
+- \`gainDb\`: -70 to 24 dB range (0 dB = unity gain)
 - \`pitchShift\`: -48 to +48 semitones, supports decimals
 - These parameters are ignored for MIDI clips (no error)
 
 **Example:**
 
-Audio clip with audio-info (default): \`{ id: "id 456", type: "audio", name: "Kick", gain: 0.7, gainDisplay: "12.0 dB", filename: "kick.wav", pitchShift: -2.5, sampleLength: 44100, sampleRate: 44100 }\`
+Audio clip with audio-info (default): \`{ id: "id 456", type: "audio", name: "Kick", gainDb: 12.0, filename: "kick.wav", pitchShift: -2.5, sampleLength: 44100, sampleRate: 44100 }\`
 
-Update audio clip: \`ppal-update-clip ids="id 456" gain=0.5 pitchShift=-3\`
+Update audio clip: \`ppal-update-clip ids="id 456" gainDb=-6 pitchShift=-3\`
 
 ## Examples
 

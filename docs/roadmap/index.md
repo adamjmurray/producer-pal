@@ -36,7 +36,7 @@ Studio, Ollama, and more.
 - Ability to scan a folder for audio files and create audio clips from those
   files
 - Improve handling of clip (and track and scene) colors by being explicit about
-  how Ableton maps arbitrary RGB to a limited color pallette
+  how Ableton maps arbitrary RGB to a limited color palette
 - Operations to "mangle" audio clips via warp marker transforms, gain/pitch
   transforms, slicing, and/or reordering
 
