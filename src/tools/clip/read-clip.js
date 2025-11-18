@@ -13,6 +13,7 @@ import {
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
 } from "../constants.js";
+import { liveGainToDb } from "../shared/gain-utils.js";
 import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
@@ -211,8 +212,10 @@ export function readClip(args = {}, _context = {}) {
   }
 
   if (result.type === "audio") {
-    result.gain = clip.getProperty("gain");
-    result.gainDisplay = clip.getProperty("gain_display_string");
+    const liveGain = clip.getProperty("gain");
+    result.gainDb = liveGainToDb(liveGain);
+    // Uncomment for validating our gainDb conversion against Live's display:
+    // result.gainDisplay = clip.getProperty("gain_display_string");
 
     const filePath = clip.getProperty("file_path");
     if (filePath) {

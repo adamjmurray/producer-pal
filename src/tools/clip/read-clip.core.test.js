@@ -332,8 +332,7 @@ describe("readClip", () => {
       end: "2|2", // loop_end (5 beats = 2|2)
       length: "1:0", // 1 bar
       playing: true,
-      gain: 0,
-      gainDisplay: 0,
+      gainDb: -Infinity, // gain=0 maps to -Infinity dB
       pitchShift: 0,
       sampleLength: 0,
       sampleRate: 0,

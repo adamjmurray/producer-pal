@@ -31,7 +31,7 @@ import {
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.arrangementStart] - Bar|beat position to move arrangement clip (arrangement clips only)
  * @param {string} [args.arrangementLength] - Bar:beat duration for arrangement span (supports shortening, hidden content exposure, and tiling)
- * @param {number} [args.gain] - Audio clip gain (0-1)
+ * @param {number} [args.gainDb] - Audio clip gain in decibels (-70 to 24)
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
  * @param {boolean} [args.warping] - Audio clip warping on/off
@@ -51,7 +51,7 @@ export function updateClip(
     looping,
     arrangementStart,
     arrangementLength,
-    gain,
+    gainDb,
     pitchShift,
     warpMode,
     warping,
@@ -170,7 +170,7 @@ export function updateClip(
     // Audio-specific parameters (only for audio clips)
     const isAudioClip = clip.getProperty("is_audio_clip") > 0;
     if (isAudioClip) {
-      setAudioParameters(clip, { gain, pitchShift, warpMode, warping });
+      setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
     }
 
     // Handle note updates using helper

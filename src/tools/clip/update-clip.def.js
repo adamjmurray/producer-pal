@@ -46,12 +46,12 @@ export const toolDefUpdateClip = defineTool("ppal-update-clip", {
           "Lengthening via tiling requires arrangementLength >= clip.length. " +
           "Arrangement clips only.",
       ),
-    gain: z
+    gainDb: z
       .number()
-      .min(0)
-      .max(1)
+      .min(-70)
+      .max(24)
       .optional()
-      .describe("audio clip gain 0-1 (ignored for MIDI)"),
+      .describe("audio clip gain in decibels (ignored for MIDI)"),
     pitchShift: z
       .number()
       .min(-48)

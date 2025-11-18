@@ -17,6 +17,7 @@ import {
 } from "../../notation/barbeat/barbeat-time.js";
 import { formatNotation } from "../../notation/barbeat/barbeat-format-notation.js";
 import { interpretNotation } from "../../notation/barbeat/barbeat-interpreter.js";
+import { dbToLiveGain } from "../shared/gain-utils.js";
 
 /**
  * Get the actual content end position by examining all notes in a clip.
@@ -207,17 +208,18 @@ export function revealUnwarpedAudioContent(
 /**
  * Sets audio-specific parameters on a clip
  * @param {LiveAPI} clip - The audio clip
- * @param {number} [gain] - Audio clip gain (0-1)
+ * @param {number} [gainDb] - Audio clip gain in decibels (-70 to 24)
  * @param {number} [pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [warpMode] - Audio clip warp mode
  * @param {boolean} [warping] - Audio clip warping on/off
  */
 export function setAudioParameters(
   clip,
-  { gain, pitchShift, warpMode, warping },
+  { gainDb, pitchShift, warpMode, warping },
 ) {
-  if (gain !== undefined) {
-    clip.set("gain", gain);
+  if (gainDb !== undefined) {
+    const liveGain = dbToLiveGain(gainDb);
+    clip.set("gain", liveGain);
   }
 
   if (pitchShift !== undefined) {
