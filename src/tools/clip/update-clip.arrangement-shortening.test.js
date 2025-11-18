@@ -7,6 +7,7 @@ import {
 } from "../../test/mock-live-api.js";
 import { updateClip } from "./update-clip.js";
 import { setupMocks } from "./update-clip.test-helpers.js";
+import * as arrangementTiling from "../shared/arrangement-tiling.js";
 
 describe("updateClip - arrangementLength (shortening only)", () => {
   beforeEach(() => {
@@ -292,5 +293,93 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
 
     expect(result).toEqual({ id: newClipId });
+  });
+
+  it("should call createAudioClipInSession with correct arguments when shortening audio clip", () => {
+    const trackIndex = 0;
+    const silenceWavPath = "/path/to/silence.wav";
+    const tempClipId = "temp-session-clip";
+    const tempArrangementClipId = "temp-arrangement-clip";
+
+    liveApiPath.mockImplementation(function () {
+      if (this._id === "789") {
+        return "live_set tracks 0 arrangement_clips 0";
+      }
+      if (this._id === tempClipId) {
+        return `live_set tracks ${trackIndex} clip_slots 0 clip`;
+      }
+      if (this._id === tempArrangementClipId) {
+        return `live_set tracks ${trackIndex} arrangement_clips 1`;
+      }
+      if (this._path === "live_set") {
+        return "live_set";
+      }
+      if (this._path === `live_set tracks ${trackIndex}`) {
+        return `live_set tracks ${trackIndex}`;
+      }
+      return this._path;
+    });
+
+    mockLiveApiGet({
+      789: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0, // Audio clip
+        is_audio_clip: 1,
+        start_time: 0.0,
+        end_time: 16.0, // 4 bars
+        signature_numerator: 4,
+        signature_denominator: 4,
+        trackIndex,
+      },
+      [tempClipId]: {
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+      },
+      [tempArrangementClipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+      },
+    });
+
+    // Mock liveApiCall for duplicate_clip_to_arrangement
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (method === "duplicate_clip_to_arrangement") {
+        return `id ${tempArrangementClipId}`;
+      }
+      return undefined;
+    });
+
+    // Mock createAudioClipInSession to verify it's called with correct arguments
+    const mockCreateAudioClip = vi
+      .spyOn(arrangementTiling, "createAudioClipInSession")
+      .mockReturnValue({
+        clip: {
+          id: tempClipId,
+        },
+        slot: {
+          call: vi.fn(),
+        },
+      });
+
+    updateClip(
+      {
+        ids: "789",
+        arrangementLength: "2:0", // Shorten to 2 bars (8 beats)
+      },
+      { silenceWavPath },
+    );
+
+    // Verify createAudioClipInSession was called with correct 3 arguments:
+    // 1. track object
+    // 2. tempClipLength (8.0 beats)
+    // 3. silenceWavPath from context
+    expect(mockCreateAudioClip).toHaveBeenCalledWith(
+      expect.objectContaining({ _path: `live_set tracks ${trackIndex}` }),
+      8.0, // tempClipLength = originalEnd (16) - newEnd (8)
+      silenceWavPath,
+    );
+
+    mockCreateAudioClip.mockRestore();
   });
 });
