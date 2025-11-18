@@ -102,9 +102,15 @@ describe("duplicate-helpers", () => {
 
         getProperty(prop) {
           // Mock track names based on path
-          if (this.path === "id1" && prop === "name") return "Drums";
-          if (this.path === "id2" && prop === "name") return "Drums";
-          if (this.path === "id3" && prop === "name") return "Bass";
+          if (this.path === "id1" && prop === "name") {
+            return "Drums";
+          }
+          if (this.path === "id2" && prop === "name") {
+            return "Drums";
+          }
+          if (this.path === "id3" && prop === "name") {
+            return "Bass";
+          }
           return null;
         }
 
@@ -151,9 +157,15 @@ describe("duplicate-helpers", () => {
         }
 
         getProperty(prop) {
-          if (this.path === "id1" && prop === "name") return "Drums";
-          if (this.path === "id2" && prop === "name") return "Drums";
-          if (this.path === "id3" && prop === "name") return "Bass";
+          if (this.path === "id1" && prop === "name") {
+            return "Drums";
+          }
+          if (this.path === "id2" && prop === "name") {
+            return "Drums";
+          }
+          if (this.path === "id3" && prop === "name") {
+            return "Bass";
+          }
           return null;
         }
 
@@ -199,8 +211,12 @@ describe("duplicate-helpers", () => {
         }
 
         getProperty(prop) {
-          if (this.path === "id1" && prop === "name") return "Drums";
-          if (this.path === "id2" && prop === "name") return "Drums";
+          if (this.path === "id1" && prop === "name") {
+            return "Drums";
+          }
+          if (this.path === "id2" && prop === "name") {
+            return "Drums";
+          }
           return null;
         }
 
