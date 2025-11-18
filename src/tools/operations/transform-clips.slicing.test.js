@@ -386,4 +386,128 @@ describe("transformClips - slicing", () => {
       }),
     ).toThrow("slice must be greater than 0");
   });
+
+  it("should stop slicing when MAX_SLICES limit is reached", () => {
+    const clip1Id = "clip_1";
+    const clip2Id = "clip_2";
+    let sliceOperationCount = 0;
+
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id clip_1") {
+        return clip1Id;
+      }
+      if (this._path === "id clip_2") {
+        return clip2Id;
+      }
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === clip1Id) {
+        return "live_set tracks 0 arrangement_clips 0";
+      }
+      if (this._id === clip2Id) {
+        return "live_set tracks 0 arrangement_clips 1";
+      }
+      if (
+        this._id?.startsWith("holding_") ||
+        this._id?.startsWith("moved_") ||
+        this._id?.startsWith("tile_")
+      ) {
+        return "live_set tracks 0 arrangement_clips 2";
+      }
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === clip1Id || this._id === clip2Id) {
+        return "Clip";
+      }
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._path === "live_set") {
+        if (prop === "signature_numerator") {
+          return [4];
+        }
+        if (prop === "signature_denominator") {
+          return [4];
+        }
+      }
+      if (this._id === clip1Id || this._id === clip2Id) {
+        if (prop === "is_midi_clip") {
+          return [1];
+        }
+        if (prop === "is_audio_clip") {
+          return [0];
+        }
+        if (prop === "is_arrangement_clip") {
+          return [1];
+        }
+        if (prop === "looping") {
+          return [1];
+        }
+        if (prop === "start_time") {
+          return [0];
+        }
+        if (prop === "end_time") {
+          // 8 beats = 2 bars, which creates 64 slices at 0.125 beats (32nd notes)
+          return [8];
+        }
+        if (prop === "loop_start") {
+          return [0.0];
+        }
+        if (prop === "loop_end") {
+          return [1.0];
+        }
+        if (prop === "end_marker") {
+          return [1.0];
+        }
+      }
+      if (this._id?.startsWith("holding_")) {
+        if (prop === "end_time") {
+          return [40000 + 0.125];
+        }
+        if (prop === "loop_start") {
+          return [0.0];
+        }
+        if (prop === "start_marker") {
+          return [0.0];
+        }
+      }
+      if (this._id?.startsWith("moved_") || this._id?.startsWith("tile_")) {
+        if (prop === "loop_start") {
+          return [0.0];
+        }
+        if (prop === "start_marker") {
+          return [0.0];
+        }
+      }
+      if (this._path === "live_set tracks 0") {
+        if (prop === "track_index") {
+          return [0];
+        }
+      }
+      return [0];
+    });
+    liveApiCall.mockImplementation(function (method) {
+      // Track when we duplicate/move clips (which happens during slicing)
+      if (method === "duplicate_clip_to_arrangement") {
+        sliceOperationCount++;
+        return ["id", `dup_${sliceOperationCount}`];
+      }
+      if (method === "create_midi_clip") {
+        return ["id", "temp_1"];
+      }
+      return undefined;
+    });
+
+    // First clip would create 64 slices (at the limit)
+    // Second clip would also create 64 slices (exceeding limit)
+    // Should throw an error when processing second clip
+    expect(() =>
+      transformClips({
+        clipIds: `${clip1Id},${clip2Id}`,
+        slice: "0:0.125", // 32nd notes: creates exactly 64 slices for 2-bar clip
+        seed: 12345,
+      }),
+    ).toThrow(/would create 64 slices.*Maximum 64 slices total/);
+  });
 });

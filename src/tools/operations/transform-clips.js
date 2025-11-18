@@ -8,6 +8,7 @@ import {
   moveClipFromHolding,
   tileClipToRange,
 } from "../shared/arrangement-tiling.js";
+import { MAX_SLICES } from "../constants.js";
 import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 
@@ -180,6 +181,7 @@ export function transformClips(
   if (slice != null && sliceBeats != null && arrangementClips.length > 0) {
     const holdingAreaStart =
       _context.holdingAreaStartBeats ?? HOLDING_AREA_START;
+    let totalSlicesCreated = 0;
 
     for (const clip of arrangementClips) {
       const isMidiClip = clip.getProperty("is_midi_clip") === 1;
@@ -202,6 +204,15 @@ export function transformClips(
       // Only slice if clip is longer than or equal to slice size
       if (currentArrangementLength < sliceBeats) {
         continue; // Skip clips smaller than slice size
+      }
+
+      // Check if adding this clip's slices would exceed the limit
+      const sliceCount = Math.ceil(currentArrangementLength / sliceBeats);
+      if (totalSlicesCreated + sliceCount > MAX_SLICES) {
+        throw new Error(
+          `Slicing at ${slice} would create ${sliceCount} slices for a ${currentArrangementLength}-beat clip. ` +
+            `Maximum ${MAX_SLICES} slices total. Use a longer slice duration.`,
+        );
       }
 
       // Get track for this clip
@@ -247,6 +258,9 @@ export function transformClips(
           { adjustPreRoll: true, tileLength: sliceBeats },
         );
       }
+
+      // Track total slices created
+      totalSlicesCreated += sliceCount;
     }
   }
 
