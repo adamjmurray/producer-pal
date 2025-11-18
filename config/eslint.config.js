@@ -207,7 +207,7 @@ export default [
       "max-lines": [
         "error",
         {
-          max: 800,
+          max: 600,
         },
       ],
     },

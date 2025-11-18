@@ -89,12 +89,13 @@ See `dev-docs/Architecture.md` for detailed system design and
   in the same directory).
 
 - **File organization and size limits**:
-  - Max 800 lines per file (enforced by ESLint for all source and test files)
-  - When a file approaches 800 lines, extract helpers to `{feature}-helpers.js`
+  - Max 600 lines per file for source files (enforced by ESLint)
+  - Max 800 lines per file for test files (enforced by ESLint)
+  - When a file approaches the limit, extract helpers to `{feature}-helpers.js`
     in the same directory (e.g., `update-clip-helpers.js`)
   - Helper files group related utility functions by feature/domain (e.g., audio
     operations, content analysis, clip duplication)
-  - If a helper file exceeds 800 lines, split by feature group:
+  - If a helper file exceeds 600 lines, split by feature group:
     `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
     `update-clip-midi-helpers.js`)
   - Test files split using dot notation: `{feature}.{area}.test.js` (e.g.,
