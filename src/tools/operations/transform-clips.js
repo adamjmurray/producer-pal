@@ -183,6 +183,9 @@ export function transformClips(
       _context.holdingAreaStartBeats ?? HOLDING_AREA_START;
     let totalSlicesCreated = 0;
 
+    // Track position ranges for sliced clips to re-scan after deletion
+    const slicedClipRanges = new Map();
+
     for (const clip of arrangementClips) {
       const isMidiClip = clip.getProperty("is_midi_clip") === 1;
       const isLooping = clip.getProperty("looping") > 0;
@@ -224,6 +227,14 @@ export function transformClips(
       }
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
+      // Store position info before slicing (for re-scanning after deletion)
+      const originalClipId = clip.id;
+      slicedClipRanges.set(originalClipId, {
+        trackIndex,
+        startTime: currentStartTime,
+        endTime: currentEndTime,
+      });
+
       // Shorten clip at original position using holding area technique
       const { holdingClipId } = createShortenedClipInHolding(
         clip,
@@ -235,7 +246,6 @@ export function transformClips(
       );
 
       // Delete original clip before moving from holding
-      const originalClipId = clip.id;
       track.call("delete_clip", `id ${originalClipId}`);
 
       // Move shortened clip from holding back to original position
@@ -261,6 +271,30 @@ export function transformClips(
 
       // Track total slices created
       totalSlicesCreated += sliceCount;
+    }
+
+    // Re-scan tracks to replace stale clip objects with fresh ones
+    for (const [oldClipId, range] of slicedClipRanges) {
+      const track = new LiveAPI(`live_set tracks ${range.trackIndex}`);
+      const trackClipIds = track.getChildIds("arrangement_clips");
+
+      // Find all clips in the original clip's position range (with small epsilon for floating-point)
+      const EPSILON = 0.001;
+      const freshClips = trackClipIds
+        .map((id) => new LiveAPI(id))
+        .filter((c) => {
+          const clipStart = c.getProperty("start_time");
+          return (
+            clipStart >= range.startTime - EPSILON &&
+            clipStart < range.endTime + EPSILON
+          );
+        });
+
+      // Replace stale clip in clips array with fresh clips
+      const staleIndex = clips.findIndex((c) => c.id === oldClipId);
+      if (staleIndex !== -1) {
+        clips.splice(staleIndex, 1, ...freshClips);
+      }
     }
   }
 

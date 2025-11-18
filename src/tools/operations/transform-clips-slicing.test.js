@@ -79,7 +79,7 @@ describe("transformClips - slicing", () => {
       // Mocks for holding/moved clips
       if (this._id?.startsWith("holding_")) {
         if (prop === "end_time") {
-          return [40000 + 4]; // Holding area position + shortened length
+          return [40000 + 16]; // Holding area position + original clip length (needs temp clip to shorten)
         }
         if (prop === "loop_start") {
           return [0.0];
