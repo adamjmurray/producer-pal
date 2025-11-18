@@ -56,6 +56,7 @@ export function handleArrangementLengthOperation({
       arrangementLengthBeats,
       currentStartTime,
       currentEndTime,
+      context,
     });
   }
 
@@ -434,6 +435,7 @@ function handleArrangementShortening({
   arrangementLengthBeats,
   currentStartTime,
   currentEndTime,
+  context,
 }) {
   const newEndTime = currentStartTime + arrangementLengthBeats;
   const tempClipLength = currentEndTime - newEndTime;
@@ -460,6 +462,7 @@ function handleArrangementShortening({
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,
       tempClipLength,
+      context.silenceWavPath,
     );
 
     const tempResult = track.call(
