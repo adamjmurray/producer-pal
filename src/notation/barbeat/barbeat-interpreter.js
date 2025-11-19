@@ -13,12 +13,10 @@ import {
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
   handleClearBuffer,
-  calculatePositions,
-  handlePitchEmission,
 } from "./barbeat-interpreter-helpers.js";
 import {
-  expandRepeatPattern,
-  emitPitchesAtPositions,
+  calculatePositions,
+  handlePitchEmission,
 } from "./barbeat-interpreter-pitch-helpers.js";
 import * as parser from "./barbeat-parser.js";
 import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
@@ -153,6 +151,7 @@ function resetPitchBufferState(state) {
   state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
 }
+
 /**
  * Process a time position element
  */
@@ -164,12 +163,7 @@ function processTimePosition(
   events,
   notesByBar,
 ) {
-  const positions = calculatePositions(
-    element,
-    state,
-    beatsPerBar,
-    expandRepeatPattern,
-  );
+  const positions = calculatePositions(element, state, beatsPerBar);
 
   handlePitchEmission(
     positions,
@@ -179,7 +173,6 @@ function processTimePosition(
     timeSigDenominator,
     events,
     notesByBar,
-    emitPitchesAtPositions,
   );
 
   state.pitchGroupStarted = false;
