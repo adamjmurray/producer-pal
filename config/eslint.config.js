@@ -24,6 +24,7 @@ const baseRules = {
   "import/no-self-import": "error", // File can't import itself
   "import/no-useless-path-segments": "error", // No unnecessary .. in imports
   "import/no-relative-packages": "error", // Don't use relative paths to node_modules
+  "import/no-extraneous-dependencies": "error", // Catch dependencies used but not declared
 
   // Debug & Development
   "no-debugger": "error", // No debugger statements in production
@@ -89,7 +90,7 @@ const jsdocRules = {
         FunctionExpression: false,
         MethodDefinition: false,
       },
-      publicOnly: false,
+      publicOnly: { esm: true }, // Only require JSDoc on exported functions
     },
   ],
   "jsdoc/require-param": "error",
@@ -157,6 +158,9 @@ const tsOnlyRules = {
   "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
   "sonarjs/no-identical-functions": "error", // Duplicate function bodies
   "sonarjs/cognitive-complexity": ["error", 20], // Similar to complexity but different metric
+  // JSDoc overrides for TypeScript - TS types are source of truth
+  "jsdoc/require-param-type": "off", // TypeScript types are authoritative
+  "jsdoc/check-types": "off", // Don't validate redundant JSDoc types
 };
 
 export default [
@@ -181,8 +185,6 @@ export default [
   // All JavaScript files (any directory)
   {
     files: ["{src,scripts,webui}/**/*.{js,mjs}"],
-    ...js.configs.recommended,
-    ...sonarjs.configs.recommended,
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -197,6 +199,8 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
+      // TODO: enable a subset of this:
+      // ...sonarjs.configs.recommended.rules,
       ...baseRules,
       ...jsOnlyRules,
       ...jsdocRules,
@@ -213,6 +217,7 @@ export default [
         ecmaVersion: 2022,
         sourceType: "module",
         ecmaFeatures: { jsx: true },
+        project: "./webui/tsconfig.json", // Explicit path for type-aware rules
       },
     },
     settings: {
@@ -230,9 +235,11 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
+      // TODO: enable a subset of this:
+      // ...sonarjs.configs.recommended.rules,
       ...baseRules,
-      ...tsOnlyRules,
-      ...jsdocRules,
+      ...jsdocRules, // JSDoc required for TS (but not type annotations)
+      ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
     },
   },
 
@@ -305,7 +312,7 @@ export default [
     },
   },
   {
-    files: ["**/*.test.js"],
+    files: ["**/*.test.{js,ts,tsx}"],
     rules: {
       "sonarjs/cognitive-complexity": ["error", 40],
     },
@@ -318,6 +325,7 @@ export default [
       "scripts/**/*.js",
       "scripts/**/*.mjs",
       "webui/**/*.ts",
+      "webui/**/*.tsx",
     ],
     ignores: [
       "**/*.test.js",
