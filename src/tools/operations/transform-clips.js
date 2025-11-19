@@ -9,6 +9,7 @@ import {
   tileClipToRange,
 } from "../shared/arrangement-tiling.js";
 import { MAX_SLICES } from "../constants.js";
+import { dbToLiveGain, liveGainToDb } from "../shared/gain-utils.js";
 import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 
@@ -23,18 +24,18 @@ const HOLDING_AREA_START = 40000;
  * @param {string} [args.arrangementLength] - Bar:beat duration (e.g., '4:0.0') for range length
  * @param {string} [args.slice] - Bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments
  * @param {boolean} [args.shuffleOrder] - Randomize clip positions
- * @param {number} [args.gainMin] - Min gain multiplier (audio clips)
- * @param {number} [args.gainMax] - Max gain multiplier (audio clips)
- * @param {number} [args.pitchMin] - Min pitch shift in semitones (audio clips)
- * @param {number} [args.pitchMax] - Max pitch shift in semitones (audio clips)
- * @param {number} [args.velocityMin] - Min velocity offset (MIDI clips)
- * @param {number} [args.velocityMax] - Max velocity offset (MIDI clips)
- * @param {number} [args.transposeMin] - Min transpose in semitones (MIDI clips)
- * @param {number} [args.transposeMax] - Max transpose in semitones (MIDI clips)
- * @param {number} [args.durationMin] - Min duration multiplier (MIDI clips)
- * @param {number} [args.durationMax] - Max duration multiplier (MIDI clips)
- * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips)
- * @param {number} [args.probability] - Probability offset (MIDI clips)
+ * @param {number} [args.gainDbMin] - Min gain offset in dB to add (audio clips, -24 to 24)
+ * @param {number} [args.gainDbMax] - Max gain offset in dB to add (audio clips, -24 to 24)
+ * @param {number} [args.pitchMin] - Min pitch shift in semitones (audio clips, -48 to 48)
+ * @param {number} [args.pitchMax] - Max pitch shift in semitones (audio clips, -48 to 48)
+ * @param {number} [args.velocityMin] - Min velocity offset (MIDI clips, -127 to 127)
+ * @param {number} [args.velocityMax] - Max velocity offset (MIDI clips, -127 to 127)
+ * @param {number} [args.transposeMin] - Min transpose in semitones (MIDI clips, -128 to 127)
+ * @param {number} [args.transposeMax] - Max transpose in semitones (MIDI clips, -128 to 127)
+ * @param {number} [args.durationMin] - Min duration multiplier (MIDI clips, 0.01 to 100)
+ * @param {number} [args.durationMax] - Max duration multiplier (MIDI clips, 0.01 to 100)
+ * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips, -127 to 127)
+ * @param {number} [args.probability] - Probability offset (MIDI clips, -1.0 to 1.0)
  * @param {number} [args.seed] - RNG seed for reproducibility
  * @returns {Object} Result with clipIds and seed
  */
@@ -46,8 +47,8 @@ export function transformClips(
     arrangementLength,
     slice,
     shuffleOrder,
-    gainMin,
-    gainMax,
+    gainDbMin,
+    gainDbMax,
     pitchMin,
     pitchMax,
     velocityMin,
@@ -370,7 +371,10 @@ export function transformClips(
 
   // Apply randomization to each clip
   const hasAudioParams =
-    gainMin != null || gainMax != null || pitchMin != null || pitchMax != null;
+    gainDbMin != null ||
+    gainDbMax != null ||
+    pitchMin != null ||
+    pitchMax != null;
   const hasMidiParams =
     velocityMin != null ||
     velocityMax != null ||
@@ -391,11 +395,17 @@ export function transformClips(
         console.error("Warning: audio parameters ignored for MIDI clips");
         warnings.add("audio-params-midi-clip");
       } else if (isAudioClip) {
-        // Apply gain
-        if (gainMin != null && gainMax != null) {
-          const currentGain = clip.getProperty("gain");
-          const multiplier = randomInRange(gainMin, gainMax, rng);
-          clip.set("gain", currentGain * multiplier);
+        // Apply gain (additive in dB space)
+        if (gainDbMin != null && gainDbMax != null) {
+          const currentLiveGain = clip.getProperty("gain");
+          const currentGainDb = liveGainToDb(currentLiveGain);
+          const gainDbOffset = randomInRange(gainDbMin, gainDbMax, rng);
+          const newGainDb = Math.max(
+            -70,
+            Math.min(24, currentGainDb + gainDbOffset),
+          );
+          const newLiveGain = dbToLiveGain(newGainDb);
+          clip.set("gain", newLiveGain);
         }
 
         // Apply pitch shift

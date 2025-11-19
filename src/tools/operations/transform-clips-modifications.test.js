@@ -123,8 +123,8 @@ describe("transformClips - modifications", () => {
 
     transformClips({
       clipIds: clipId,
-      gainMin: 0.9,
-      gainMax: 1.1,
+      gainDbMin: -2,
+      gainDbMax: 2,
       seed: 12345,
     });
 
