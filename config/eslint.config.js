@@ -100,7 +100,7 @@ const jsOnlyRules = {
   "no-implied-eval": "error", // Prevents setTimeout/setInterval with strings
 
   // Variable Shadowing (TS has type-aware version)
-  // "no-shadow": "error",  // TODO: enable and fix - prevents var x shadowing outer x
+  "no-shadow": "error", // Prevents var x shadowing outer x
 };
 
 const tsOnlyRules = {
@@ -125,7 +125,7 @@ const tsOnlyRules = {
   "@typescript-eslint/only-throw-error": "error", // Only throw Error objects (type-aware)
   "@typescript-eslint/dot-notation": "error", // Use obj.key not obj['key'] (type-aware)
   "@typescript-eslint/no-implied-eval": "error", // Prevents eval-like patterns (type-aware)
-  // "@typescript-eslint/no-shadow": "error", // TODO: enable and fix - prevents shadowing (type-aware)
+  "@typescript-eslint/no-shadow": "error", // Prevents shadowing (type-aware)
 };
 
 export default [

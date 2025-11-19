@@ -108,7 +108,7 @@ async function chat(
       model,
       config: { ...config, tools: config.tools ? "[...]" : undefined },
     });
-  const chat = ai.chats.create({ model, config });
+  const chatSession = ai.chats.create({ model, config });
 
   console.log(`Model: ${model}`);
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
@@ -134,13 +134,13 @@ async function chat(
       if (stream) {
         const message = { message: currentInput };
         if (debug || verbose) debugCall("chat.sendMessageStream", message);
-        const stream = await chat.sendMessageStream(message);
+        const responseStream = await chatSession.sendMessageStream(message);
         console.log(`\n[Turn ${turnCount}] Assistant:`);
-        await printStream(stream, { debug, verbose });
+        await printStream(responseStream, { debug, verbose });
       } else {
         const message = { message: currentInput };
         if (debug || verbose) debugCall("chat.sendMessage", message);
-        const response = await chat.sendMessage(message);
+        const response = await chatSession.sendMessage(message);
 
         console.log(`\n[Turn ${turnCount}] Assistant:`);
         if (debug || verbose) {

@@ -44,8 +44,8 @@ import type {
  */
 export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
   const messages = history.reduce<UIMessage[]>(
-    (messages, { role, parts = [] }, rawIndex) => {
-      const lastMessage = messages.at(-1);
+    (acc, { role, parts = [] }, rawIndex) => {
+      const lastMessage = acc.at(-1);
       let currentMessage: UIMessage;
 
       // Handle error-role messages
@@ -61,7 +61,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
             parts: [],
             rawHistoryIndex: rawIndex,
           };
-          messages.push(currentMessage);
+          acc.push(currentMessage);
         }
 
         // Add error parts
@@ -75,7 +75,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
           }
         }
 
-        return messages;
+        return acc;
       }
 
       if (
@@ -89,7 +89,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
           parts: [],
           rawHistoryIndex: rawIndex,
         };
-        messages.push(currentMessage);
+        acc.push(currentMessage);
       }
       const currentParts: UIPart[] = currentMessage.parts;
 
@@ -107,10 +107,10 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
         } else if (functionResponse) {
           // Find the first tool call with matching name that doesn't have a result yet
           const toolPart = currentParts.find(
-            (part): part is UIToolPart =>
-              part.type === "tool" &&
-              part.name === functionResponse.name &&
-              part.result === null,
+            (p): p is UIToolPart =>
+              p.type === "tool" &&
+              p.name === functionResponse.name &&
+              p.result === null,
           );
 
           if (toolPart) {
@@ -139,7 +139,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
         }
       }
 
-      return messages;
+      return acc;
     },
     [],
   );

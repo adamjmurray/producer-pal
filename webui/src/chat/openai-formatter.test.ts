@@ -21,7 +21,7 @@ describe("formatOpenAIMessages", () => {
   });
 
   it("handles reasoning_details in assistant message", () => {
-    const history = [
+    const testHistory = [
       {
         role: "assistant" as const,
         content: "Hello",
@@ -32,7 +32,7 @@ describe("formatOpenAIMessages", () => {
       },
     ];
 
-    const result = formatOpenAIMessages(history);
+    const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
     expect(result[0]!.role).toBe("model");
@@ -43,12 +43,12 @@ describe("formatOpenAIMessages", () => {
   });
 
   it("merges consecutive text content from multiple messages", () => {
-    const history = [
+    const testHistory = [
       { role: "assistant" as const, content: "Hello " },
       { role: "assistant" as const, content: "world" },
     ];
 
-    const result = formatOpenAIMessages(history);
+    const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parts).toEqual([
@@ -57,7 +57,7 @@ describe("formatOpenAIMessages", () => {
   });
 
   it("sets last thought part as open when it's the final part", () => {
-    const history = [
+    const testHistory = [
       {
         role: "assistant" as const,
         content: "",
@@ -67,7 +67,7 @@ describe("formatOpenAIMessages", () => {
       },
     ];
 
-    const result = formatOpenAIMessages(history);
+    const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
     const lastPart = result[0]!.parts.at(-1);
@@ -79,7 +79,7 @@ describe("formatOpenAIMessages", () => {
   });
 
   it("filters out non-text reasoning details", () => {
-    const history = [
+    const testHistory = [
       {
         role: "assistant" as const,
         content: "Response",
@@ -90,7 +90,7 @@ describe("formatOpenAIMessages", () => {
       },
     ];
 
-    const result = formatOpenAIMessages(history);
+    const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parts).toEqual([
@@ -100,7 +100,7 @@ describe("formatOpenAIMessages", () => {
   });
 
   it("merges reasoning into existing thought part", () => {
-    const history = [
+    const testHistory = [
       {
         role: "assistant" as const,
         content: "",
@@ -117,7 +117,7 @@ describe("formatOpenAIMessages", () => {
       },
     ];
 
-    const result = formatOpenAIMessages(history);
+    const result = formatOpenAIMessages(testHistory);
 
     expect(result).toHaveLength(1);
     expect(result[0]!.parts).toEqual([
