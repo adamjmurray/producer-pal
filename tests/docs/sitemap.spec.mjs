@@ -1,18 +1,31 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { readFileSync } from "fs";
 import { join } from "path";
 
 // Known external domains that are allowed
 const ALLOWED_EXTERNAL_DOMAINS = [
-  "github.com",
   "adammurray.link",
-  "npmjs.com",
+  "ai.google.dev",
   "anthropic.com",
-  "openai.com",
-  "google.com",
+  "chatgpt.com",
+  "claude.ai",
+  "cline.bot",
   "cloudflare.com",
-  "pinggy.io",
+  "console.mistral.ai",
+  "github.com",
+  "google.com",
+  "lmstudio.ai",
+  "mistral.ai",
+  "modelcontextprotocol.io",
   "ngrok.com",
+  "nodejs.org",
+  "npmjs.com",
+  "ollama.com",
+  "openai.com",
+  "openrouter.ai",
+  "pinggy.io",
+  "www.ableton.com",
+  "www.youtube.com",
 ];
 
 /**
