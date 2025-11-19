@@ -284,7 +284,9 @@ export default [
       "max-lines": [
         "error",
         {
-          max: 500,
+          max: 400, // Much lower now that comments don't count
+          skipBlankLines: true,
+          skipComments: true,
         },
       ],
     },
