@@ -47,6 +47,7 @@ export class GeminiClient {
   mcpClient: Client | null;
   chatHistory: GeminiMessage[];
   chatConfig: Record<string, unknown> | null;
+  hadFunctionCallsInLastTurn: boolean;
 
   /**
    * @param apiKey - Gemini API key
@@ -60,6 +61,7 @@ export class GeminiClient {
     this.mcpClient = null;
     this.chatHistory = config.chatHistory ?? [];
     this.chatConfig = null;
+    this.hadFunctionCallsInLastTurn = false;
   }
 
   /**
@@ -279,7 +281,10 @@ export class GeminiClient {
   > {
     const lastMessage = this.chatHistory.at(-1);
 
-    if (!this.hasUnexecutedFunctionCalls(lastMessage)) {
+    const hasFunctionCalls = this.hasUnexecutedFunctionCalls(lastMessage);
+    this.hadFunctionCallsInLastTurn = hasFunctionCalls;
+
+    if (!hasFunctionCalls) {
       return;
     }
 
@@ -307,9 +312,9 @@ export class GeminiClient {
     if (abortSignal?.aborted) {
       return false;
     }
-
-    const lastMessage = this.chatHistory.at(-1);
-    return this.hasUnexecutedFunctionCalls(lastMessage);
+    // Continue the loop if the last turn had tool calls
+    // (chat has been recreated with tool responses included)
+    return this.hadFunctionCallsInLastTurn;
   }
 
   /**
