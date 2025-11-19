@@ -56,7 +56,10 @@
     "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "docs:test": "npm run docs:build && playwright test -c config/playwright.config.mjs",
+    "docs:test:ui": "npm run docs:build && playwright test -c config/playwright.config.mjs --ui",
+    "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.config.mjs --headed"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
@@ -70,6 +73,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.0.1",
+    "@playwright/test": "^1.56.1",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
