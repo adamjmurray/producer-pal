@@ -286,7 +286,7 @@ export function transformClips(
           const clipStart = c.getProperty("start_time");
           return (
             clipStart >= range.startTime - EPSILON &&
-            clipStart < range.endTime + EPSILON
+            clipStart < range.endTime - EPSILON
           );
         });
 
