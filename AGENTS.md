@@ -158,6 +158,15 @@ Key ESLint limits to respect:
 
 When ESLint reports violations, consult the refactoring skill for strategies.
 
+### DRY (Don't Repeat Yourself)
+
+Rules:
+
+- No duplicate function bodies (caught by ESLint)
+- Extract repeated logic with too many identical lines
+- Shared constants in one place
+- Similar patterns suggest missing abstraction
+
 ## Documentation
 
 - `dev-docs/Architecture.md` - System design and components

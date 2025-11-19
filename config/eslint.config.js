@@ -3,6 +3,7 @@ import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import importPlugin from "eslint-plugin-import";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
+import sonarjs from "eslint-plugin-sonarjs";
 import globals from "globals";
 
 // See .claude/skills/refactoring/SKILL.md for refactoring guidelines
@@ -68,7 +69,7 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 150, // TODO: lower this (final target: 100)
+      max: 150,
       skipBlankLines: true,
       skipComments: true,
     },
@@ -99,6 +100,13 @@ const jsOnlyRules = {
 
   // Variable Shadowing (TS has type-aware version)
   "no-shadow": "error", // Prevents var x shadowing outer x
+
+  // TODO: enable this
+  // "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
+  // TODO: enable this:
+  // "sonarjs/no-identical-functions": "error", // Duplicate function bodies
+  // TODO: reduce to 20
+  "sonarjs/cognitive-complexity": ["error", 30], // Similar to complexity but different metric
 };
 
 const tsOnlyRules = {
@@ -149,12 +157,14 @@ export default [
   {
     files: ["{src,scripts,webui}/**/*.{js,mjs}"],
     ...js.configs.recommended,
+    ...sonarjs.configs.recommended,
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
     },
     plugins: {
       import: importPlugin,
+      sonarjs,
     },
     settings: {
       "import/resolver": { node: true },
@@ -260,6 +270,13 @@ export default [
       "@typescript-eslint/no-non-null-assertion": "off",
       "max-lines-per-function": "off",
       complexity: ["error", 60],
+      "sonarjs/no-duplicate-string": "off",
+    },
+  },
+  {
+    files: ["**/*.test.js"],
+    rules: {
+      "sonarjs/cognitive-complexity": ["error", 40],
     },
   },
 
