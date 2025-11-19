@@ -39,11 +39,11 @@ Studio, Ollama, and more.
 
 ### 1.2.x - More Audio Clips & Improved Clip Handling + Track Mixer Support
 
+- Support for reading and writing track gain and panning
 - Ability to scan a folder for audio files and create audio clips from those
   files
 - Improve handling of clip (and track and scene) colors by being explicit about
   how Ableton maps arbitrary RGB to a limited color palette
-- Support for reading and writing
 
 ## Planned
 
