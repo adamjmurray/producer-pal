@@ -1,9 +1,129 @@
 import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
-import reactHooksPlugin from "eslint-plugin-react-hooks";
 import importPlugin from "eslint-plugin-import";
+import reactHooksPlugin from "eslint-plugin-react-hooks";
 import globals from "globals";
+
+const baseRules = {
+  // Comparison & Equality
+  eqeqeq: ["error", "always", { null: "ignore" }], // Force === and !== (except for null checks)
+  yoda: ["error", "never"], // Disallow `if (5 === x)`, require `if (x === 5)`
+
+  // Variable Declarations
+  "no-var": "error", // Force let/const instead of var
+  "prefer-const": "error", // Use const when variable isn't reassigned
+
+  // Import Quality
+  "import/no-cycle": "error", // Prevent circular dependencies
+  "import/no-self-import": "error", // File can't import itself
+  "import/no-useless-path-segments": "error", // No unnecessary .. in imports
+  "import/no-relative-packages": "error", // Don't use relative paths to node_modules
+
+  // Debug & Development
+  "no-debugger": "error", // No debugger statements in production
+
+  // Type Coercion
+  "no-implicit-coercion": "error", // Force explicit conversions like Number() not !!x
+
+  // Function Parameters
+  "default-param-last": "error", // Default params must come after required params
+
+  // Conditionals & Logic
+  "no-lonely-if": "error", // if inside else block should use else if
+  "no-constant-binary-expression": "error", // Catches `if (x || true)` logic bugs
+  "no-self-compare": "error", // x === x is always a mistake
+  "no-else-return": "error", // If return in if block, else is unnecessary (forces early returns)
+  "no-unneeded-ternary": "error", // `x ? true : false` should be `!!x`
+
+  // Loop Quality
+  "no-unmodified-loop-condition": "error", // Detects infinite loops from unchanging conditions
+  "no-unreachable-loop": "error", // Catches loops that only execute once
+  "no-loop-func": "error", // Functions in loops capture wrong variable values
+
+  // Constructor Issues
+  "no-constructor-return": "error", // Constructors shouldn't return values
+
+  // Operators
+  "no-sequences": "error", // Comma operator is usually a mistake
+
+  // Async/Race Conditions
+  "require-atomic-updates": "error", // Detects race conditions in async code
+
+  // Dead Code
+  "no-useless-return": "error", // Remove unnecessary return statements
+
+  // Object Access
+  "no-extra-bind": "error", // Remove unnecessary .bind() calls
+  "no-useless-concat": "error", // "a" + "b" should be "ab"
+
+  // Security - eval family
+  "no-eval": "error", // Never use eval()
+  "no-new-func": "error", // Never use new Function()
+
+  // Complexity rules
+  "max-lines-per-function": [
+    "error",
+    {
+      max: 350, // TODO: lower this (final target: 100)
+      skipBlankLines: true,
+      skipComments: true,
+    },
+  ],
+  // TODO: lower this (final target: 4):
+  "max-depth": ["error", 7], // limits nesting depth (if/for/while blocks)
+  // TODO: lower this (final target: 15):
+  complexity: ["error", 80], // cyclomatic complexity (number of independent code paths)
+};
+
+const jsOnlyRules = {
+  "no-unused-vars": [
+    // Unused variables (allow _prefixed to signal intentional)
+    "error",
+    {
+      argsIgnorePattern: "^_",
+      varsIgnorePattern: "^_",
+      caughtErrorsIgnorePattern: "^_",
+    },
+  ],
+
+  // Error Handling (TS has better type-aware version)
+  "no-throw-literal": "error", // Only throw Error objects, not strings/numbers
+
+  // Object Access (TS has type-aware version)
+  "dot-notation": "error", // Use obj.key not obj['key'] when possible
+
+  // Security (TS has type-aware version)
+  "no-implied-eval": "error", // Prevents setTimeout/setInterval with strings
+
+  // Variable Shadowing (TS has type-aware version)
+  // "no-shadow": "error",  // TODO: enable and fix - prevents var x shadowing outer x
+};
+
+const tsOnlyRules = {
+  "@typescript-eslint/no-unused-vars": [
+    // Unused variables (allow _prefixed to signal intentional)
+    "error",
+    {
+      argsIgnorePattern: "^_",
+      varsIgnorePattern: "^_",
+      caughtErrorsIgnorePattern: "^_",
+    },
+  ],
+  "@typescript-eslint/no-explicit-any": "error", // Force proper typing instead of any
+  "@typescript-eslint/no-non-null-assertion": "error", // No ! operator - use proper null checks
+  "@typescript-eslint/consistent-type-imports": "error", // Use `import type` for types
+  "@typescript-eslint/prefer-nullish-coalescing": "error", // Use ?? instead of || for null/undefined
+  "@typescript-eslint/prefer-optional-chain": "error", // Use a?.b instead of a && a.b
+  "@typescript-eslint/no-unnecessary-condition": "error", // Remove conditions that are always true/false
+  "@typescript-eslint/no-floating-promises": "error", // Must await or .catch() promises
+  "@typescript-eslint/await-thenable": "error", // Only await actual promises
+  "@typescript-eslint/no-misused-promises": "error", // Don't use promises in conditionals/spreads
+  "@typescript-eslint/only-throw-error": "error", // Only throw Error objects (type-aware)
+  "@typescript-eslint/dot-notation": "error", // Use obj.key not obj['key'] (type-aware)
+  "@typescript-eslint/no-implied-eval": "error", // Prevents eval-like patterns (type-aware)
+  // "@typescript-eslint/no-shadow": "error", // TODO: enable and fix - prevents shadowing (type-aware)
+};
 
 export default [
   {
@@ -23,25 +143,77 @@ export default [
       "**/*.d.ts", // TypeScript declaration files
     ],
   },
+
+  // All JavaScript files (any directory)
   {
-    files: ["webui/**/*.{ts,tsx}"],
+    files: ["{src,scripts,webui}/**/*.{js,mjs}"],
     ...js.configs.recommended,
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+    },
+    plugins: {
+      import: importPlugin,
+    },
+    settings: {
+      "import/resolver": { node: true },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...baseRules,
+      ...jsOnlyRules,
+    },
+  },
+
+  // All TypeScript files (any directory)
+  {
+    files: ["{src,scripts,webui}/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: "module",
         ecmaFeatures: { jsx: true },
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: true,
+        node: true,
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...tsOnlyRules,
+    },
+  },
+
+  // Node.js code
+  {
+    files: ["{src,scripts}/**/*.{js,mjs,ts}"],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
+
+  // webui/react-specific rules
+  {
+    files: ["webui/**/*.{ts,tsx}"],
+    languageOptions: {
+      parserOptions: {
         project: "./webui/tsconfig.json",
       },
       globals: {
         ...globals.browser,
       },
-    },
-    plugins: {
-      "@typescript-eslint": tsPlugin,
-      "react-hooks": reactHooksPlugin,
-      import: importPlugin,
     },
     settings: {
       "import/resolver": {
@@ -50,89 +222,18 @@ export default [
         },
       },
     },
-    rules: {
-      ...js.configs.recommended.rules,
-      ...tsPlugin.configs.recommended.rules,
-      ...reactHooksPlugin.configs.recommended.rules,
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
-        },
-      ],
-      "@typescript-eslint/no-non-null-assertion": "error",
-      "@typescript-eslint/consistent-type-imports": "error",
-      "@typescript-eslint/prefer-nullish-coalescing": "error",
-      "@typescript-eslint/prefer-optional-chain": "error",
-      "@typescript-eslint/no-unnecessary-condition": "error",
-      "@typescript-eslint/no-floating-promises": "error",
-      "@typescript-eslint/await-thenable": "error",
-      "@typescript-eslint/no-misused-promises": "error",
-      eqeqeq: ["error", "always", { null: "ignore" }],
-      "no-var": "error",
-      "prefer-const": "error",
-      // Import static analysis rules
-      "import/no-cycle": "error",
-      "import/no-self-import": "error",
-      "import/no-useless-path-segments": "error",
-      "import/no-relative-packages": "error",
-    },
-  },
-  {
-    files: ["scripts/**/*.{js,ts,mjs,cjs}"],
-    ...js.configs.recommended,
-    languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: "module",
-      },
-      globals: {
-        ...globals.node,
-      },
-    },
     plugins: {
-      "@typescript-eslint": tsPlugin,
-      import: importPlugin,
-    },
-    settings: {
-      "import/resolver": {
-        node: true,
-      },
+      "react-hooks": reactHooksPlugin,
     },
     rules: {
-      ...js.configs.recommended.rules,
-      ...tsPlugin.configs.recommended.rules,
-      "@typescript-eslint/no-explicit-any": "error",
-      "@typescript-eslint/no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
-        },
-      ],
-      "@typescript-eslint/no-non-null-assertion": "error",
-      "@typescript-eslint/consistent-type-imports": "error",
-      eqeqeq: ["error", "always", { null: "ignore" }],
-      "no-var": "error",
-      "prefer-const": "error",
-      // Import static analysis rules
-      "import/no-cycle": "error",
-      "import/no-self-import": "error",
-      "import/no-useless-path-segments": "error",
-      "import/no-relative-packages": "error",
+      ...reactHooksPlugin.configs.recommended.rules,
     },
   },
+
+  // Max for Live / Live API rules
   {
-    files: ["src/**/*.{js,ts,mjs,cjs}"],
-    ...js.configs.recommended,
+    files: ["src/**/*.js"],
     languageOptions: {
-      ecmaVersion: 2022,
-      sourceType: "module",
       globals: {
         ...globals.node,
         // Max/MSP V8 globals
@@ -149,47 +250,18 @@ export default [
         vi: "readonly",
       },
     },
-    plugins: {
-      import: importPlugin,
-    },
-    settings: {
-      "import/resolver": {
-        node: true,
-      },
-    },
-    rules: {
-      ...js.configs.recommended.rules,
-      "no-unused-vars": [
-        "error",
-        {
-          argsIgnorePattern: "^_",
-          varsIgnorePattern: "^_",
-          caughtErrorsIgnorePattern: "^_",
-        },
-      ],
-      eqeqeq: ["error", "always", { null: "ignore" }],
-      "no-var": "error",
-      "prefer-const": "error",
-      "no-debugger": "error",
-      curly: ["error", "all"],
-      "no-throw-literal": "error",
-      "no-implicit-coercion": "error",
-      "default-param-last": "error",
-      "no-lonely-if": "error",
-      // Import static analysis rules
-      "import/no-cycle": "error",
-      "import/no-self-import": "error",
-      "import/no-useless-path-segments": "error",
-      "import/no-relative-packages": "error",
-    },
   },
+
+  // Test files - relax some rules
   {
-    // Test files - relax no-non-null-assertion rule
     files: ["**/*.test.{js,ts,tsx}"],
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
+      "max-lines-per-function": "off",
     },
   },
+
+  // Max file size rules
   {
     files: [
       "src/**/*.js",

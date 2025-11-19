@@ -191,71 +191,66 @@ export function barBeatDurationToMusicalBeats(
 
     const musicalBeatsPerBar = timeSigNumerator;
     return bars * musicalBeatsPerBar + beats; // RETURN EARLY (musical beats)
-  } else {
-    // NEW: Beat-only format (decimal, fraction, or integer+fraction)
+  }
+  // NEW: Beat-only format (decimal, fraction, or integer+fraction)
 
-    // Validate format: must be valid number or fraction, not containing invalid characters
-    if (barBeatDuration.includes("|")) {
+  // Validate format: must be valid number or fraction, not containing invalid characters
+  if (barBeatDuration.includes("|")) {
+    throw new Error(
+      `Invalid duration format: "${barBeatDuration}". Use ":" for bar:beat format, not "|"`,
+    );
+  }
+
+  let beats;
+  if (barBeatDuration.includes("+")) {
+    const [intPart, fracPart] = barBeatDuration.split("+");
+    const num = Number.parseInt(intPart);
+
+    if (isNaN(num)) {
+      throw new Error(`Invalid integer+fraction format: "${barBeatDuration}"`);
+    }
+
+    const [numerator, denominator] = fracPart.split("/");
+    const fracNum = Number.parseInt(numerator);
+    const fracDen = Number.parseInt(denominator);
+
+    if (fracDen === 0) {
       throw new Error(
-        `Invalid duration format: "${barBeatDuration}". Use ":" for bar:beat format, not "|"`,
+        `Invalid fraction: division by zero in "${barBeatDuration}"`,
       );
     }
-
-    let beats;
-    if (barBeatDuration.includes("+")) {
-      const [intPart, fracPart] = barBeatDuration.split("+");
-      const num = Number.parseInt(intPart);
-
-      if (isNaN(num)) {
-        throw new Error(
-          `Invalid integer+fraction format: "${barBeatDuration}"`,
-        );
-      }
-
-      const [numerator, denominator] = fracPart.split("/");
-      const fracNum = Number.parseInt(numerator);
-      const fracDen = Number.parseInt(denominator);
-
-      if (fracDen === 0) {
-        throw new Error(
-          `Invalid fraction: division by zero in "${barBeatDuration}"`,
-        );
-      }
-      if (isNaN(fracNum) || isNaN(fracDen)) {
-        throw new Error(
-          `Invalid integer+fraction format: "${barBeatDuration}"`,
-        );
-      }
-
-      beats = num + fracNum / fracDen;
-    } else if (barBeatDuration.includes("/")) {
-      const [numerator, denominator] = barBeatDuration.split("/");
-      const num = Number.parseInt(numerator);
-      const den = Number.parseInt(denominator);
-
-      if (den === 0) {
-        throw new Error(
-          `Invalid fraction: division by zero in "${barBeatDuration}"`,
-        );
-      }
-      if (isNaN(num) || isNaN(den)) {
-        throw new Error(`Invalid fraction format: "${barBeatDuration}"`);
-      }
-
-      beats = num / den;
-    } else {
-      beats = Number.parseFloat(barBeatDuration);
-      if (isNaN(beats)) {
-        throw new Error(`Invalid duration format: "${barBeatDuration}"`);
-      }
+    if (isNaN(fracNum) || isNaN(fracDen)) {
+      throw new Error(`Invalid integer+fraction format: "${barBeatDuration}"`);
     }
 
-    if (beats < 0) {
-      throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
+    beats = num + fracNum / fracDen;
+  } else if (barBeatDuration.includes("/")) {
+    const [numerator, denominator] = barBeatDuration.split("/");
+    const num = Number.parseInt(numerator);
+    const den = Number.parseInt(denominator);
+
+    if (den === 0) {
+      throw new Error(
+        `Invalid fraction: division by zero in "${barBeatDuration}"`,
+      );
+    }
+    if (isNaN(num) || isNaN(den)) {
+      throw new Error(`Invalid fraction format: "${barBeatDuration}"`);
     }
 
-    return beats; // Musical beats directly
+    beats = num / den;
+  } else {
+    beats = Number.parseFloat(barBeatDuration);
+    if (isNaN(beats)) {
+      throw new Error(`Invalid duration format: "${barBeatDuration}"`);
+    }
   }
+
+  if (beats < 0) {
+    throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
+  }
+
+  return beats; // Musical beats directly
 }
 
 /**

@@ -89,29 +89,28 @@ export function getMinimalClipInfo(clip, omitFields = []) {
     }
 
     return result;
-  } else {
-    const trackIndex = clip.trackIndex;
-    const sceneIndex = clip.sceneIndex;
-
-    if (trackIndex == null || sceneIndex == null) {
-      throw new Error(
-        `getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip (path="${clip.path}")`,
-      );
-    }
-
-    const result = {
-      id: clip.id,
-    };
-
-    if (!omitFields.includes("trackIndex")) {
-      result.trackIndex = trackIndex;
-    }
-    if (!omitFields.includes("sceneIndex")) {
-      result.sceneIndex = sceneIndex;
-    }
-
-    return result;
   }
+  const trackIndex = clip.trackIndex;
+  const sceneIndex = clip.sceneIndex;
+
+  if (trackIndex == null || sceneIndex == null) {
+    throw new Error(
+      `getMinimalClipInfo failed: could not determine trackIndex/sceneIndex for clip (path="${clip.path}")`,
+    );
+  }
+
+  const result = {
+    id: clip.id,
+  };
+
+  if (!omitFields.includes("trackIndex")) {
+    result.trackIndex = trackIndex;
+  }
+  if (!omitFields.includes("sceneIndex")) {
+    result.sceneIndex = sceneIndex;
+  }
+
+  return result;
 }
 
 /**
@@ -438,10 +437,9 @@ export function duplicateClipToArrangement(
   // Return single clip info directly, or clips array with trackIndex for multiple
   if (duplicatedClips.length === 1) {
     return duplicatedClips[0];
-  } else {
-    return {
-      trackIndex,
-      clips: duplicatedClips,
-    };
   }
+  return {
+    trackIndex,
+    clips: duplicatedClips,
+  };
 }

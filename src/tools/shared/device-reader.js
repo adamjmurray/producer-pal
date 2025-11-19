@@ -273,7 +273,6 @@ export function readDevice(device, options = {}) {
         processedDrumChains.forEach((drumChainInfo) => {
           if (drumChainInfo.state === STATE.SOLOED) {
             // Keep soloed state as-is
-            return;
           } else if (drumChainInfo.state === STATE.MUTED) {
             // Muted chain in solo context becomes muted-also-via-solo
             drumChainInfo.state = STATE.MUTED_ALSO_VIA_SOLO;

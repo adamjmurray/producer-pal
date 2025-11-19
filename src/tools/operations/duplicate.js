@@ -278,7 +278,6 @@ export function duplicate(
   // Return appropriate format based on count
   if (count === 1) {
     return createdObjects[0];
-  } else {
-    return createdObjects;
   }
+  return createdObjects;
 }

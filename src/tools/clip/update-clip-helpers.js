@@ -89,27 +89,26 @@ export function getActualAudioEnd(clip) {
       const beatsPerSecond = tempo / 60;
       const durationBeats = durationSeconds * beatsPerSecond;
       return durationBeats;
-    } else {
-      // Warped clip: use warp markers
-      const warpMarkersJson = clip.getProperty("warp_markers");
-      const warpData = JSON.parse(warpMarkersJson);
-
-      if (!warpData.warp_markers || warpData.warp_markers.length === 0) {
-        return 0; // No warp markers = no content info available
-      }
-
-      const markers = warpData.warp_markers;
-
-      // Use second-to-last warp marker (last one is often beyond actual content)
-      if (markers.length < 2) {
-        // If only one marker, use it
-        return markers[0].beat_time;
-      }
-
-      // Use second-to-last marker to get actual audio end
-      const secondToLast = markers[markers.length - 2];
-      return secondToLast.beat_time;
     }
+    // Warped clip: use warp markers
+    const warpMarkersJson = clip.getProperty("warp_markers");
+    const warpData = JSON.parse(warpMarkersJson);
+
+    if (!warpData.warp_markers || warpData.warp_markers.length === 0) {
+      return 0; // No warp markers = no content info available
+    }
+
+    const markers = warpData.warp_markers;
+
+    // Use second-to-last warp marker (last one is often beyond actual content)
+    if (markers.length < 2) {
+      // If only one marker, use it
+      return markers[0].beat_time;
+    }
+
+    // Use second-to-last marker to get actual audio end
+    const secondToLast = markers[markers.length - 2];
+    return secondToLast.beat_time;
   } catch (error) {
     console.error(
       `Warning: Failed to get actual audio end for clip ${clip.id}: ${error.message}`,

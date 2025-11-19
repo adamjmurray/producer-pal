@@ -225,7 +225,7 @@ export class GeminiClient {
             part.text &&
             lastPart?.text &&
             // if we switch between thoughts and normal text, don't concatenate:
-            !!part.thought === !!lastPart.thought &&
+            Boolean(part.thought) === Boolean(lastPart.thought) &&
             // if anything has a thoughtSignature, don't concatenate (https://ai.google.dev/gemini-api/docs/thinking#signatures):
             !lastPart.thoughtSignature &&
             !part.thoughtSignature

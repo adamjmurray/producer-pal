@@ -209,15 +209,14 @@ describe("transformClips - slice + shuffle combination", () => {
           const shuffleId = `shuffled_${idCounter}`;
           shuffledClips.push(shuffleId);
           return ["id", shuffleId];
-        } else {
-          // Slicing operation
-          const sliceId =
-            slicedClips.length === 0
-              ? `moved_${slicedClips.length + 1}`
-              : `tile_${slicedClips.length + 1}`;
-          slicedClips.push(sliceId);
-          return ["id", sliceId];
         }
+        // Slicing operation
+        const sliceId =
+          slicedClips.length === 0
+            ? `moved_${slicedClips.length + 1}`
+            : `tile_${slicedClips.length + 1}`;
+        slicedClips.push(sliceId);
+        return ["id", sliceId];
       }
       if (method === "delete_clip") {
         // Track deletions but don't need to do anything
