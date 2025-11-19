@@ -68,7 +68,7 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 350, // TODO: lower this (final target: 100)
+      max: 200, // TODO: lower this (final target: 100)
       skipBlankLines: true,
       skipComments: true,
     },

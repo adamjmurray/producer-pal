@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import { DEFAULT_ENABLED_TOOLS, TOOLS } from "../constants/tools.js";
 import type { Provider, UseSettingsReturn } from "../types/settings.js";
 
@@ -141,24 +141,125 @@ function normalizeThinkingForOpenAI(thinking: string): string {
   return thinking;
 }
 
+function checkHasApiKey(provider: Provider): boolean {
+  if (provider === "lmstudio" || provider === "ollama") {
+    return Boolean(localStorage.getItem(`producer_pal_provider_${provider}`));
+  }
+
+  const savedData = localStorage.getItem(`producer_pal_provider_${provider}`);
+  if (savedData) {
+    try {
+      const data = JSON.parse(savedData);
+      return Boolean(data.apiKey);
+    } catch {
+      return false;
+    }
+  }
+
+  // Legacy Gemini API key check
+  if (provider === "gemini") {
+    return Boolean(localStorage.getItem("gemini_api_key"));
+  }
+
+  return false;
+}
+
+type ProviderStateSetters = Record<
+  Provider,
+  (update: (prev: ProviderSettings) => ProviderSettings) => void
+>;
+
+function createProviderSetter<K extends keyof ProviderSettings>(
+  provider: Provider,
+  setters: ProviderStateSetters,
+  key: K,
+) {
+  return (value: ProviderSettings[K]) => {
+    setters[provider]((prev) => ({ ...prev, [key]: value }));
+  };
+}
+
+interface AllProviderSettings {
+  gemini: ProviderSettings;
+  openai: ProviderSettings;
+  mistral: ProviderSettings;
+  openrouter: ProviderSettings;
+  lmstudio: ProviderSettings;
+  ollama: ProviderSettings;
+  custom: ProviderSettings;
+}
+
+function loadAllProviderSettings(): AllProviderSettings {
+  return {
+    gemini: loadProviderSettings("gemini"),
+    openai: loadProviderSettings("openai"),
+    mistral: loadProviderSettings("mistral"),
+    openrouter: loadProviderSettings("openrouter"),
+    lmstudio: loadProviderSettings("lmstudio"),
+    ollama: loadProviderSettings("ollama"),
+    custom: loadProviderSettings("custom"),
+  };
+}
+
+function saveAllProviderSettings(settings: AllProviderSettings) {
+  saveProviderSettings("gemini", settings.gemini);
+  saveProviderSettings("openai", settings.openai);
+  saveProviderSettings("mistral", settings.mistral);
+  saveProviderSettings("openrouter", settings.openrouter);
+  saveProviderSettings("lmstudio", settings.lmstudio);
+  saveProviderSettings("ollama", settings.ollama);
+  saveProviderSettings("custom", settings.custom);
+}
+
+function loadCurrentProvider(): Provider {
+  return (
+    (localStorage.getItem(
+      "producer_pal_current_provider",
+    ) as Provider | null) ??
+    (localStorage.getItem("provider") as Provider | null) ??
+    "gemini"
+  );
+}
+
+function loadEnabledTools(): Record<string, boolean> {
+  const saved = localStorage.getItem("producer_pal_enabled_tools");
+  if (saved) {
+    try {
+      return { ...DEFAULT_ENABLED_TOOLS, ...JSON.parse(saved) };
+    } catch {
+      return DEFAULT_ENABLED_TOOLS;
+    }
+  }
+  return DEFAULT_ENABLED_TOOLS;
+}
+
+function createAllToolsEnabled(): Record<string, boolean> {
+  return TOOLS.reduce(
+    (acc, tool) => {
+      acc[tool.id] = true;
+      return acc;
+    },
+    {} as Record<string, boolean>,
+  );
+}
+
+function createAllToolsDisabled(): Record<string, boolean> {
+  return TOOLS.reduce(
+    (acc, tool) => {
+      acc[tool.id] = false;
+      return acc;
+    },
+    {} as Record<string, boolean>,
+  );
+}
+
 export function useSettings(): UseSettingsReturn {
-  const [provider, setProviderState] = useState<Provider>("gemini");
+  const [provider, setProviderState] = useState<Provider>(loadCurrentProvider);
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
     () => localStorage.getItem("producer_pal_settings_configured") === "true",
   );
-  const [enabledTools, setEnabledToolsState] = useState<
-    Record<string, boolean>
-  >(() => {
-    const saved = localStorage.getItem("producer_pal_enabled_tools");
-    if (saved) {
-      try {
-        return { ...DEFAULT_ENABLED_TOOLS, ...JSON.parse(saved) };
-      } catch {
-        return DEFAULT_ENABLED_TOOLS;
-      }
-    }
-    return DEFAULT_ENABLED_TOOLS;
-  });
+  const [enabledTools, setEnabledToolsState] =
+    useState<Record<string, boolean>>(loadEnabledTools);
   const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.gemini,
   );
@@ -180,42 +281,39 @@ export function useSettings(): UseSettingsReturn {
     DEFAULT_SETTINGS.custom,
   );
 
-  // Get the current provider's settings
-  const currentSettings =
-    provider === "gemini"
-      ? geminiSettings
-      : provider === "openai"
-        ? openaiSettings
-        : provider === "mistral"
-          ? mistralSettings
-          : provider === "openrouter"
-            ? openrouterSettings
-            : provider === "lmstudio"
-              ? lmstudioSettings
-              : provider === "ollama"
-                ? ollamaSettings
-                : customSettings;
+  // Mapping of providers to their state setters
+  const providerStateSetters: ProviderStateSetters = useMemo(
+    () => ({
+      gemini: setGeminiSettings,
+      openai: setOpenaiSettings,
+      mistral: setMistralSettings,
+      openrouter: setOpenrouterSettings,
+      lmstudio: setLmstudioSettings,
+      ollama: setOllamaSettings,
+      custom: setCustomSettings,
+    }),
+    [],
+  );
 
-  // Load settings from localStorage on mount
+  const currentSettings = {
+    gemini: geminiSettings,
+    openai: openaiSettings,
+    mistral: mistralSettings,
+    openrouter: openrouterSettings,
+    lmstudio: lmstudioSettings,
+    ollama: ollamaSettings,
+    custom: customSettings,
+  }[provider];
+
   useEffect(() => {
-    // Load current provider
-    const savedProvider =
-      (localStorage.getItem(
-        "producer_pal_current_provider",
-      ) as Provider | null) ??
-      (localStorage.getItem("provider") as Provider | null);
-    if (savedProvider != null) {
-      setProviderState(savedProvider);
-    }
-
-    // Load settings for each provider
-    setGeminiSettings(loadProviderSettings("gemini"));
-    setOpenaiSettings(loadProviderSettings("openai"));
-    setMistralSettings(loadProviderSettings("mistral"));
-    setOpenrouterSettings(loadProviderSettings("openrouter"));
-    setLmstudioSettings(loadProviderSettings("lmstudio"));
-    setOllamaSettings(loadProviderSettings("ollama"));
-    setCustomSettings(loadProviderSettings("custom"));
+    const allSettings = loadAllProviderSettings();
+    setGeminiSettings(allSettings.gemini);
+    setOpenaiSettings(allSettings.openai);
+    setMistralSettings(allSettings.mistral);
+    setOpenrouterSettings(allSettings.openrouter);
+    setLmstudioSettings(allSettings.lmstudio);
+    setOllamaSettings(allSettings.ollama);
+    setCustomSettings(allSettings.custom);
   }, []);
 
   const saveSettings = useCallback(() => {
@@ -226,13 +324,15 @@ export function useSettings(): UseSettingsReturn {
       "producer_pal_enabled_tools",
       JSON.stringify(enabledTools),
     );
-    saveProviderSettings("gemini", geminiSettings);
-    saveProviderSettings("openai", openaiSettings);
-    saveProviderSettings("mistral", mistralSettings);
-    saveProviderSettings("openrouter", openrouterSettings);
-    saveProviderSettings("lmstudio", lmstudioSettings);
-    saveProviderSettings("ollama", ollamaSettings);
-    saveProviderSettings("custom", customSettings);
+    saveAllProviderSettings({
+      gemini: geminiSettings,
+      openai: openaiSettings,
+      mistral: mistralSettings,
+      openrouter: openrouterSettings,
+      lmstudio: lmstudioSettings,
+      ollama: ollamaSettings,
+      custom: customSettings,
+    });
   }, [
     provider,
     enabledTools,
@@ -246,163 +346,67 @@ export function useSettings(): UseSettingsReturn {
   ]);
 
   const cancelSettings = useCallback(() => {
-    // Reload current provider
-    const savedProvider =
-      (localStorage.getItem(
-        "producer_pal_current_provider",
-      ) as Provider | null) ??
-      (localStorage.getItem("provider") as Provider | null);
-    if (savedProvider != null) setProviderState(savedProvider);
-
-    // Reload enabled tools
-    const saved = localStorage.getItem("producer_pal_enabled_tools");
-    if (saved) {
-      try {
-        setEnabledToolsState({
-          ...DEFAULT_ENABLED_TOOLS,
-          ...JSON.parse(saved),
-        });
-      } catch {
-        setEnabledToolsState(DEFAULT_ENABLED_TOOLS);
-      }
-    } else {
-      setEnabledToolsState(DEFAULT_ENABLED_TOOLS);
-    }
-
-    // Reload settings for each provider
-    setGeminiSettings(loadProviderSettings("gemini"));
-    setOpenaiSettings(loadProviderSettings("openai"));
-    setMistralSettings(loadProviderSettings("mistral"));
-    setOpenrouterSettings(loadProviderSettings("openrouter"));
-    setLmstudioSettings(loadProviderSettings("lmstudio"));
-    setOllamaSettings(loadProviderSettings("ollama"));
-    setCustomSettings(loadProviderSettings("custom"));
+    setProviderState(loadCurrentProvider());
+    setEnabledToolsState(loadEnabledTools());
+    const allSettings = loadAllProviderSettings();
+    setGeminiSettings(allSettings.gemini);
+    setOpenaiSettings(allSettings.openai);
+    setMistralSettings(allSettings.mistral);
+    setOpenrouterSettings(allSettings.openrouter);
+    setLmstudioSettings(allSettings.lmstudio);
+    setOllamaSettings(allSettings.ollama);
+    setCustomSettings(allSettings.custom);
   }, []);
 
   // Individual setters that update the current provider's settings
   const setApiKey = useCallback(
-    (key: string) => {
-      if (provider === "gemini") {
-        setGeminiSettings((prev) => ({ ...prev, apiKey: key }));
-      } else if (provider === "openai") {
-        setOpenaiSettings((prev) => ({ ...prev, apiKey: key }));
-      } else if (provider === "mistral") {
-        setMistralSettings((prev) => ({ ...prev, apiKey: key }));
-      } else if (provider === "openrouter") {
-        setOpenrouterSettings((prev) => ({ ...prev, apiKey: key }));
-      } else if (provider === "lmstudio") {
-        setLmstudioSettings((prev) => ({ ...prev, apiKey: key }));
-      } else if (provider === "ollama") {
-        setOllamaSettings((prev) => ({ ...prev, apiKey: key }));
-      } else {
-        setCustomSettings((prev) => ({ ...prev, apiKey: key }));
-      }
-    },
-    [provider],
+    (key: string) =>
+      createProviderSetter(provider, providerStateSetters, "apiKey")(key),
+    [provider, providerStateSetters],
   );
 
   const setModel = useCallback(
-    (m: string) => {
-      if (provider === "gemini") {
-        setGeminiSettings((prev) => ({ ...prev, model: m }));
-      } else if (provider === "openai") {
-        setOpenaiSettings((prev) => ({ ...prev, model: m }));
-      } else if (provider === "mistral") {
-        setMistralSettings((prev) => ({ ...prev, model: m }));
-      } else if (provider === "openrouter") {
-        setOpenrouterSettings((prev) => ({ ...prev, model: m }));
-      } else if (provider === "lmstudio") {
-        setLmstudioSettings((prev) => ({ ...prev, model: m }));
-      } else if (provider === "ollama") {
-        setOllamaSettings((prev) => ({ ...prev, model: m }));
-      } else {
-        setCustomSettings((prev) => ({ ...prev, model: m }));
-      }
-    },
-    [provider],
+    (m: string) =>
+      createProviderSetter(provider, providerStateSetters, "model")(m),
+    [provider, providerStateSetters],
   );
 
   const setBaseUrl = useCallback(
-    (url: string) => {
-      if (provider === "custom") {
-        setCustomSettings((prev) => ({ ...prev, baseUrl: url }));
-      }
-    },
-    [provider],
+    (url: string) =>
+      provider === "custom"
+        ? createProviderSetter(provider, providerStateSetters, "baseUrl")(url)
+        : undefined,
+    [provider, providerStateSetters],
   );
 
   const setPort = useCallback(
-    (port: number) => {
-      if (provider === "lmstudio") {
-        setLmstudioSettings((prev) => ({ ...prev, port }));
-      } else if (provider === "ollama") {
-        setOllamaSettings((prev) => ({ ...prev, port }));
-      }
-    },
-    [provider],
+    (port: number) =>
+      provider === "lmstudio" || provider === "ollama"
+        ? createProviderSetter(provider, providerStateSetters, "port")(port)
+        : undefined,
+    [provider, providerStateSetters],
   );
 
   const setThinking = useCallback(
-    (t: string) => {
-      if (provider === "gemini") {
-        setGeminiSettings((prev) => ({ ...prev, thinking: t }));
-      } else if (provider === "openai") {
-        setOpenaiSettings((prev) => ({ ...prev, thinking: t }));
-      } else if (provider === "mistral") {
-        setMistralSettings((prev) => ({ ...prev, thinking: t }));
-      } else if (provider === "openrouter") {
-        setOpenrouterSettings((prev) => ({ ...prev, thinking: t }));
-      } else if (provider === "lmstudio") {
-        setLmstudioSettings((prev) => ({ ...prev, thinking: t }));
-      } else if (provider === "ollama") {
-        setOllamaSettings((prev) => ({ ...prev, thinking: t }));
-      } else {
-        setCustomSettings((prev) => ({ ...prev, thinking: t }));
-      }
-    },
-    [provider],
+    (t: string) =>
+      createProviderSetter(provider, providerStateSetters, "thinking")(t),
+    [provider, providerStateSetters],
   );
 
   const setTemperature = useCallback(
-    (temp: number) => {
-      if (provider === "gemini") {
-        setGeminiSettings((prev) => ({ ...prev, temperature: temp }));
-      } else if (provider === "openai") {
-        setOpenaiSettings((prev) => ({ ...prev, temperature: temp }));
-      } else if (provider === "mistral") {
-        setMistralSettings((prev) => ({ ...prev, temperature: temp }));
-      } else if (provider === "openrouter") {
-        setOpenrouterSettings((prev) => ({ ...prev, temperature: temp }));
-      } else if (provider === "lmstudio") {
-        setLmstudioSettings((prev) => ({ ...prev, temperature: temp }));
-      } else if (provider === "ollama") {
-        setOllamaSettings((prev) => ({ ...prev, temperature: temp }));
-      } else {
-        setCustomSettings((prev) => ({ ...prev, temperature: temp }));
-      }
-    },
-    [provider],
+    (temp: number) =>
+      createProviderSetter(provider, providerStateSetters, "temperature")(temp),
+    [provider, providerStateSetters],
   );
 
   const setShowThoughts = useCallback(
-    (show: boolean) => {
-      if (provider === "gemini") {
-        setGeminiSettings((prev) => ({ ...prev, showThoughts: show }));
-      } else if (provider === "openai") {
-        setOpenaiSettings((prev) => ({ ...prev, showThoughts: show }));
-      } else if (provider === "mistral") {
-        setMistralSettings((prev) => ({ ...prev, showThoughts: show }));
-      } else if (provider === "openrouter") {
-        setOpenrouterSettings((prev) => ({ ...prev, showThoughts: show }));
-      } else if (provider === "lmstudio") {
-        setLmstudioSettings((prev) => ({ ...prev, showThoughts: show }));
-      } else if (provider === "ollama") {
-        setOllamaSettings((prev) => ({ ...prev, showThoughts: show }));
-      } else {
-        setCustomSettings((prev) => ({ ...prev, showThoughts: show }));
-      }
-    },
-    [provider],
+    (show: boolean) =>
+      createProviderSetter(
+        provider,
+        providerStateSetters,
+        "showThoughts",
+      )(show),
+    [provider, providerStateSetters],
   );
 
   // Custom setProvider that normalizes thinking value when switching providers
@@ -422,51 +426,14 @@ export function useSettings(): UseSettingsReturn {
   );
 
   // Check if current provider has an API key saved
-  // Local providers (lmstudio, ollama) don't require API keys
-  const hasApiKey =
-    provider === "lmstudio" || provider === "ollama"
-      ? Boolean(localStorage.getItem(`producer_pal_provider_${provider}`))
-      : localStorage.getItem(`producer_pal_provider_${provider}`)
-        ? (() => {
-            try {
-              const data = JSON.parse(
-                localStorage.getItem(`producer_pal_provider_${provider}`) ??
-                  "{}",
-              );
-              return Boolean(data.apiKey);
-            } catch {
-              return false;
-            }
-          })()
-        : provider === "gemini"
-          ? Boolean(localStorage.getItem("gemini_api_key"))
-          : false;
-
-  // Tool toggle helper functions
-  const setEnabledTools = useCallback((tools: Record<string, boolean>) => {
-    setEnabledToolsState(tools);
-  }, []);
+  const hasApiKey = checkHasApiKey(provider);
 
   const enableAllTools = useCallback(() => {
-    const allEnabled = TOOLS.reduce(
-      (acc, tool) => {
-        acc[tool.id] = true;
-        return acc;
-      },
-      {} as Record<string, boolean>,
-    );
-    setEnabledToolsState(allEnabled);
+    setEnabledToolsState(createAllToolsEnabled());
   }, []);
 
   const disableAllTools = useCallback(() => {
-    const allDisabled = TOOLS.reduce(
-      (acc, tool) => {
-        acc[tool.id] = false;
-        return acc;
-      },
-      {} as Record<string, boolean>,
-    );
-    setEnabledToolsState(allDisabled);
+    setEnabledToolsState(createAllToolsDisabled());
   }, []);
 
   const resetBehaviorToDefaults = useCallback(() => {
@@ -476,25 +443,22 @@ export function useSettings(): UseSettingsReturn {
   }, [provider, setTemperature, setThinking, setShowThoughts]);
 
   const isToolEnabled = useCallback(
-    (toolId: string) => {
-      return enabledTools[toolId] ?? true;
-    },
+    (toolId: string) => enabledTools[toolId] ?? true,
     [enabledTools],
   );
+
+  const isCustom = provider === "custom";
+  const isLocal = provider === "lmstudio" || provider === "ollama";
 
   return {
     provider,
     setProvider,
     apiKey: currentSettings.apiKey,
     setApiKey,
-    baseUrl: provider === "custom" ? currentSettings.baseUrl : undefined,
-    setBaseUrl: provider === "custom" ? setBaseUrl : undefined,
-    port:
-      provider === "lmstudio" || provider === "ollama"
-        ? currentSettings.port
-        : undefined,
-    setPort:
-      provider === "lmstudio" || provider === "ollama" ? setPort : undefined,
+    baseUrl: isCustom ? currentSettings.baseUrl : undefined,
+    setBaseUrl: isCustom ? setBaseUrl : undefined,
+    port: isLocal ? currentSettings.port : undefined,
+    setPort: isLocal ? setPort : undefined,
     model: currentSettings.model,
     setModel,
     thinking: currentSettings.thinking,
@@ -508,7 +472,7 @@ export function useSettings(): UseSettingsReturn {
     hasApiKey,
     settingsConfigured,
     enabledTools,
-    setEnabledTools,
+    setEnabledTools: setEnabledToolsState,
     enableAllTools,
     disableAllTools,
     resetBehaviorToDefaults,

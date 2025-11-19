@@ -30,6 +30,44 @@ import {
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
  * @returns {Object} Result object with clip information
  */
+/**
+ * Process warp markers for an audio clip
+ */
+function processWarpMarkers(clip) {
+  try {
+    const warpMarkersJson = clip.getProperty("warp_markers");
+    if (!warpMarkersJson || warpMarkersJson === "") {
+      return undefined;
+    }
+
+    const warpMarkersData = JSON.parse(warpMarkersJson);
+    const mapMarker = (marker) => ({
+      sampleTime: marker.sample_time,
+      beatTime: marker.beat_time,
+    });
+
+    // Handle both possible structures: direct array or nested in warp_markers property
+    if (Array.isArray(warpMarkersData)) {
+      return warpMarkersData.map(mapMarker);
+    }
+
+    if (
+      warpMarkersData.warp_markers &&
+      Array.isArray(warpMarkersData.warp_markers)
+    ) {
+      return warpMarkersData.warp_markers.map(mapMarker);
+    }
+
+    return undefined;
+  } catch (error) {
+    // Fail gracefully - clip might not support warp markers or format might be unexpected
+    console.error(
+      `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
+    );
+    return undefined;
+  }
+}
+
 export function readClip(args = {}, _context = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 
@@ -247,32 +285,9 @@ export function readClip(args = {}, _context = {}) {
 
   // Add warp markers array for audio clips when requested
   if (result.type === "audio" && includeWarpMarkers) {
-    try {
-      const warpMarkersJson = clip.getProperty("warp_markers");
-      if (warpMarkersJson && warpMarkersJson !== "") {
-        const warpMarkersData = JSON.parse(warpMarkersJson);
-        // Handle both possible structures: direct array or nested in warp_markers property
-        // Transform snake_case properties to camelCase for consistency with update-clip
-        if (Array.isArray(warpMarkersData)) {
-          result.warpMarkers = warpMarkersData.map((marker) => ({
-            sampleTime: marker.sample_time,
-            beatTime: marker.beat_time,
-          }));
-        } else if (
-          warpMarkersData.warp_markers &&
-          Array.isArray(warpMarkersData.warp_markers)
-        ) {
-          result.warpMarkers = warpMarkersData.warp_markers.map((marker) => ({
-            sampleTime: marker.sample_time,
-            beatTime: marker.beat_time,
-          }));
-        }
-      }
-    } catch (error) {
-      // Fail gracefully - clip might not support warp markers or format might be unexpected
-      console.error(
-        `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
-      );
+    const warpMarkers = processWarpMarkers(clip);
+    if (warpMarkers !== undefined) {
+      result.warpMarkers = warpMarkers;
     }
   }
 
