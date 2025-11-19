@@ -239,3 +239,48 @@ export function createAllToolsDisabled(): Record<string, boolean> {
     {} as Record<string, boolean>,
   );
 }
+
+/**
+ * Saves the current provider, enabled tools, and all provider settings to localStorage
+ */
+export function saveCurrentSettings(
+  provider: Provider,
+  enabledTools: Record<string, boolean>,
+  allSettings: AllProviderSettings,
+): void {
+  localStorage.setItem("producer_pal_current_provider", provider);
+  localStorage.setItem("producer_pal_settings_configured", "true");
+  localStorage.setItem(
+    "producer_pal_enabled_tools",
+    JSON.stringify(enabledTools),
+  );
+  saveAllProviderSettings(allSettings);
+}
+
+/**
+ * Gets the current settings for all providers from state
+ */
+export function buildAllProviderSettings(
+  gemini: ProviderSettings,
+  openai: ProviderSettings,
+  mistral: ProviderSettings,
+  openrouter: ProviderSettings,
+  lmstudio: ProviderSettings,
+  ollama: ProviderSettings,
+  custom: ProviderSettings,
+): AllProviderSettings {
+  return {
+    gemini,
+    openai,
+    mistral,
+    openrouter,
+    lmstudio,
+    ollama,
+    custom,
+  };
+}
+
+/**
+ * Type for setters that apply loaded settings to state
+ */
+export type ProviderSettingsApplier = (settings: AllProviderSettings) => void;

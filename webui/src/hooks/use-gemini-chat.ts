@@ -1,29 +1,13 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import {
-  GeminiClient,
-  type GeminiClientConfig,
-} from "../chat/gemini-client.js";
+import { GeminiClient } from "../chat/gemini-client.js";
 import { formatGeminiMessages } from "../chat/gemini-formatter.js";
-import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 import type { GeminiMessage, UIMessage } from "../types/messages.js";
-
-function createErrorMessage(
-  error: unknown,
-  chatHistory: GeminiMessage[],
-): UIMessage[] {
-  console.error(error);
-  let errorMessage = `${error}`;
-  if (!errorMessage.startsWith("Error")) {
-    errorMessage = `Error: ${errorMessage}`;
-  }
-
-  const errorEntry = {
-    role: "error",
-    parts: [{ text: errorMessage }],
-  };
-
-  return formatGeminiMessages([...chatHistory, errorEntry]);
-}
+import {
+  createGeminiErrorMessage,
+  handleMessageStream,
+  validateMcpConnection,
+} from "./streaming-helpers.js";
+import { buildGeminiConfig } from "./config-builders.js";
 
 interface UseGeminiChatProps {
   apiKey: string;
@@ -85,34 +69,15 @@ export function useGeminiChat({
 
   const initializeChat = useCallback(
     async (chatHistory?: GeminiMessage[]) => {
-      // Auto-retry MCP connection if it failed
-      if (mcpStatus === "error") {
-        await checkMcpConnection();
-        // Note: mcpStatus is a prop and won't update within this function
-        // The parent needs to re-render for status changes to be reflected
-        throw new Error(`MCP connection failed: ${mcpError}`);
-      }
-
-      const thinkingBudget = getThinkingBudget(thinking);
-      const config: GeminiClientConfig = {
+      await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
+      const config = buildGeminiConfig(
         model,
         temperature,
-        systemInstruction: SYSTEM_INSTRUCTION,
+        thinking,
+        showThoughts,
         enabledTools,
-      };
-
-      if (chatHistory) {
-        config.chatHistory = chatHistory;
-      }
-
-      // Only set thinkingConfig if thinking is not disabled (0)
-      // For Auto mode (-1) or specific budgets (>0), include thoughts based on user setting
-      if (thinkingBudget !== 0) {
-        config.thinkingConfig = {
-          thinkingBudget,
-          includeThoughts: showThoughts,
-        };
-      }
+        chatHistory,
+      );
 
       geminiRef.current = new GeminiClient(apiKey, config);
       await geminiRef.current.initialize();
@@ -122,11 +87,11 @@ export function useGeminiChat({
     },
     [
       mcpStatus,
-      checkMcpConnection,
       mcpError,
-      thinking,
+      checkMcpConnection,
       model,
       temperature,
+      thinking,
       showThoughts,
       enabledTools,
       apiKey,
@@ -135,9 +100,8 @@ export function useGeminiChat({
 
   const handleSend = useCallback(
     async (message: string) => {
-      if (!message.trim()) return;
-
       const userMessage = message.trim();
+      if (!userMessage) return;
 
       if (!apiKey) {
         const userMessageEntry: GeminiMessage = {
@@ -145,7 +109,7 @@ export function useGeminiChat({
           parts: [{ text: userMessage }],
         };
         setMessages(
-          createErrorMessage(
+          createGeminiErrorMessage(
             "No API key configured. Please add your Gemini API key in Settings.",
             [userMessageEntry],
           ),
@@ -153,7 +117,6 @@ export function useGeminiChat({
         return;
       }
       setIsAssistantResponding(true);
-
       try {
         if (!geminiRef.current) {
           await initializeChat();
@@ -171,20 +134,10 @@ export function useGeminiChat({
           controller.signal,
         );
 
-        for await (const chatHistory of stream) {
-          // console.log(
-          //   "useGeminiChat received chunk, now history is",
-          //   JSON.stringify(chatHistory, null, 2),
-          // );
-          setMessages(formatGeminiMessages(chatHistory));
-        }
+        await handleMessageStream(stream, formatGeminiMessages, setMessages);
       } catch (error) {
-        // Ignore abort errors (expected when user cancels)
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
         setMessages(
-          createErrorMessage(error, geminiRef.current?.chatHistory ?? []),
+          createGeminiErrorMessage(error, geminiRef.current?.chatHistory ?? []),
         );
       } finally {
         abortControllerRef.current = null;
@@ -230,15 +183,11 @@ export function useGeminiChat({
           controller.signal,
         );
 
-        for await (const chatHistory of stream) {
-          setMessages(formatGeminiMessages(chatHistory));
-        }
+        await handleMessageStream(stream, formatGeminiMessages, setMessages);
       } catch (error) {
-        // Ignore abort errors (expected when user cancels)
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
-        setMessages(createErrorMessage(error, geminiRef.current.chatHistory));
+        setMessages(
+          createGeminiErrorMessage(error, geminiRef.current.chatHistory),
+        );
       } finally {
         abortControllerRef.current = null;
         setIsAssistantResponding(false);

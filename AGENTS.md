@@ -148,9 +148,13 @@ guidelines.
 
 Key ESLint limits to respect:
 
-- `max-lines-per-function`: 350 (target: 100)
-- `max-depth`: 7 (target: 4)
-- `complexity`: 80 (target: 15)
+- `max-lines-per-function`: 150 (ignoring blank/comment lines)
+  - allowed exceptions: the main useHook() function in webui hooks can be
+    excluded from this rule via
+    `eslint-disable-next-line max-lines-per-function` comments (do not disable
+    for the whole file)
+- `max-depth`: 4
+- `complexity`: 20
 
 When ESLint reports violations, consult the refactoring skill for strategies.
 

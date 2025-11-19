@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
 import type { Provider, UseSettingsReturn } from "../types/settings.js";
 import {
+  buildAllProviderSettings,
   checkHasApiKey,
   createAllToolsDisabled,
   createAllToolsEnabled,
@@ -10,7 +11,7 @@ import {
   loadEnabledTools,
   normalizeThinkingForOpenAI,
   type ProviderSettings,
-  saveAllProviderSettings,
+  saveCurrentSettings,
 } from "./settings-helpers.js";
 
 type ProviderStateSetters = Record<
@@ -28,6 +29,8 @@ function createProviderSetter<K extends keyof ProviderSettings>(
   };
 }
 
+// Hook manages state for 7 providers with individual setters and orchestration logic
+// eslint-disable-next-line max-lines-per-function
 export function useSettings(): UseSettingsReturn {
   const [provider, setProviderState] = useState<Provider>(loadCurrentProvider);
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
@@ -80,34 +83,35 @@ export function useSettings(): UseSettingsReturn {
     custom: customSettings,
   }[provider];
 
+  const applyLoadedSettings = useCallback(
+    (allSettings: typeof DEFAULT_SETTINGS) => {
+      setGeminiSettings(allSettings.gemini);
+      setOpenaiSettings(allSettings.openai);
+      setMistralSettings(allSettings.mistral);
+      setOpenrouterSettings(allSettings.openrouter);
+      setLmstudioSettings(allSettings.lmstudio);
+      setOllamaSettings(allSettings.ollama);
+      setCustomSettings(allSettings.custom);
+    },
+    [],
+  );
+
   useEffect(() => {
-    const allSettings = loadAllProviderSettings();
-    setGeminiSettings(allSettings.gemini);
-    setOpenaiSettings(allSettings.openai);
-    setMistralSettings(allSettings.mistral);
-    setOpenrouterSettings(allSettings.openrouter);
-    setLmstudioSettings(allSettings.lmstudio);
-    setOllamaSettings(allSettings.ollama);
-    setCustomSettings(allSettings.custom);
-  }, []);
+    applyLoadedSettings(loadAllProviderSettings());
+  }, [applyLoadedSettings]);
 
   const saveSettings = useCallback(() => {
-    localStorage.setItem("producer_pal_current_provider", provider);
-    localStorage.setItem("producer_pal_settings_configured", "true");
-    setSettingsConfigured(true);
-    localStorage.setItem(
-      "producer_pal_enabled_tools",
-      JSON.stringify(enabledTools),
+    const allSettings = buildAllProviderSettings(
+      geminiSettings,
+      openaiSettings,
+      mistralSettings,
+      openrouterSettings,
+      lmstudioSettings,
+      ollamaSettings,
+      customSettings,
     );
-    saveAllProviderSettings({
-      gemini: geminiSettings,
-      openai: openaiSettings,
-      mistral: mistralSettings,
-      openrouter: openrouterSettings,
-      lmstudio: lmstudioSettings,
-      ollama: ollamaSettings,
-      custom: customSettings,
-    });
+    saveCurrentSettings(provider, enabledTools, allSettings);
+    setSettingsConfigured(true);
   }, [
     provider,
     enabledTools,
@@ -123,67 +127,41 @@ export function useSettings(): UseSettingsReturn {
   const cancelSettings = useCallback(() => {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
-    const allSettings = loadAllProviderSettings();
-    setGeminiSettings(allSettings.gemini);
-    setOpenaiSettings(allSettings.openai);
-    setMistralSettings(allSettings.mistral);
-    setOpenrouterSettings(allSettings.openrouter);
-    setLmstudioSettings(allSettings.lmstudio);
-    setOllamaSettings(allSettings.ollama);
-    setCustomSettings(allSettings.custom);
-  }, []);
+    applyLoadedSettings(loadAllProviderSettings());
+  }, [applyLoadedSettings]);
 
   // Individual setters that update the current provider's settings
-  const setApiKey = useCallback(
-    (key: string) =>
-      createProviderSetter(provider, providerStateSetters, "apiKey")(key),
-    [provider, providerStateSetters],
-  );
+  const setters = useMemo(() => {
+    const createSetter =
+      <K extends keyof ProviderSettings>(key: K) =>
+      (value: ProviderSettings[K]) =>
+        createProviderSetter(provider, providerStateSetters, key)(value);
 
-  const setModel = useCallback(
-    (m: string) =>
-      createProviderSetter(provider, providerStateSetters, "model")(m),
-    [provider, providerStateSetters],
-  );
-
-  const setBaseUrl = useCallback(
-    (url: string) =>
-      provider === "custom"
-        ? createProviderSetter(provider, providerStateSetters, "baseUrl")(url)
-        : undefined,
-    [provider, providerStateSetters],
-  );
-
-  const setPort = useCallback(
-    (port: number) =>
-      provider === "lmstudio" || provider === "ollama"
-        ? createProviderSetter(provider, providerStateSetters, "port")(port)
-        : undefined,
-    [provider, providerStateSetters],
-  );
-
-  const setThinking = useCallback(
-    (t: string) =>
-      createProviderSetter(provider, providerStateSetters, "thinking")(t),
-    [provider, providerStateSetters],
-  );
-
-  const setTemperature = useCallback(
-    (temp: number) =>
-      createProviderSetter(provider, providerStateSetters, "temperature")(temp),
-    [provider, providerStateSetters],
-  );
-
-  const setShowThoughts = useCallback(
-    (show: boolean) =>
-      createProviderSetter(
-        provider,
-        providerStateSetters,
-        "showThoughts",
-      )(show),
-    [provider, providerStateSetters],
-  );
-
+    return {
+      setApiKey: createSetter("apiKey"),
+      setModel: createSetter("model"),
+      setBaseUrl:
+        provider === "custom"
+          ? createSetter("baseUrl")
+          : (_url: string) => undefined,
+      setPort:
+        provider === "lmstudio" || provider === "ollama"
+          ? createSetter("port")
+          : (_port: number) => undefined,
+      setThinking: createSetter("thinking"),
+      setTemperature: createSetter("temperature"),
+      setShowThoughts: createSetter("showThoughts"),
+    };
+  }, [provider, providerStateSetters]);
+  const {
+    setApiKey,
+    setModel,
+    setBaseUrl,
+    setPort,
+    setThinking,
+    setTemperature,
+    setShowThoughts,
+  } = setters;
   // Custom setProvider that normalizes thinking value when switching providers
   const setProvider = useCallback(
     (newProvider: Provider) => {
@@ -199,29 +177,20 @@ export function useSettings(): UseSettingsReturn {
     },
     [currentSettings.thinking],
   );
-
-  // Check if current provider has an API key saved
   const hasApiKey = checkHasApiKey(provider);
-
-  const enableAllTools = useCallback(() => {
-    setEnabledToolsState(createAllToolsEnabled());
-  }, []);
-
-  const disableAllTools = useCallback(() => {
-    setEnabledToolsState(createAllToolsDisabled());
-  }, []);
-
+  const toolsUtils = useMemo(
+    () => ({
+      enableAll: () => setEnabledToolsState(createAllToolsEnabled()),
+      disableAll: () => setEnabledToolsState(createAllToolsDisabled()),
+      isEnabled: (toolId: string) => enabledTools[toolId] ?? true,
+    }),
+    [enabledTools],
+  );
   const resetBehaviorToDefaults = useCallback(() => {
     setTemperature(1.0);
     setThinking(DEFAULT_SETTINGS[provider].thinking);
     setShowThoughts(true);
   }, [provider, setTemperature, setThinking, setShowThoughts]);
-
-  const isToolEnabled = useCallback(
-    (toolId: string) => enabledTools[toolId] ?? true,
-    [enabledTools],
-  );
-
   const isCustom = provider === "custom";
   const isLocal = provider === "lmstudio" || provider === "ollama";
 
@@ -248,9 +217,9 @@ export function useSettings(): UseSettingsReturn {
     settingsConfigured,
     enabledTools,
     setEnabledTools: setEnabledToolsState,
-    enableAllTools,
-    disableAllTools,
+    enableAllTools: toolsUtils.enableAll,
+    disableAllTools: toolsUtils.disableAll,
     resetBehaviorToDefaults,
-    isToolEnabled,
+    isToolEnabled: toolsUtils.isEnabled,
   };
 }

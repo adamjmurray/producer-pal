@@ -68,13 +68,12 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 200, // TODO: lower this (final target: 100)
+      max: 150, // TODO: lower this (final target: 100)
       skipBlankLines: true,
       skipComments: true,
     },
   ],
   "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
-  // TODO: lower this (final target: 15):
   complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
 };
 
