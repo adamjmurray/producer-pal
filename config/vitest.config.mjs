@@ -70,6 +70,14 @@ export default defineConfig({
         "src/test/mock-chat-ui-html.js",
       ],
       reportOnFailure: true,
+
+      // do not let test coverage drop:
+      thresholds: {
+        statements: 87.5,
+        branches: 82,
+        functions: 88.1,
+        lines: 88.3,
+      },
     },
   },
 });
