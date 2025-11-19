@@ -486,7 +486,13 @@ describe("view", () => {
             get: vi.fn().mockReturnValue(null), // No selected device
           };
         }
-        return {};
+        // Default fallback for any other LiveAPI object
+        return {
+          exists: vi.fn().mockReturnValue(true),
+          call: liveApiCall,
+          get: vi.fn(),
+          set: liveApiSet,
+        };
       });
 
       const result = select({ instrument: true });

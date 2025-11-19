@@ -101,12 +101,9 @@ const jsOnlyRules = {
   // Variable Shadowing (TS has type-aware version)
   "no-shadow": "error", // Prevents var x shadowing outer x
 
-  // TODO: enable this
-  // "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
-  // TODO: enable this:
-  // "sonarjs/no-identical-functions": "error", // Duplicate function bodies
-  // TODO: reduce to 20
-  "sonarjs/cognitive-complexity": ["error", 30], // Similar to complexity but different metric
+  "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
+  "sonarjs/no-identical-functions": "error", // Duplicate function bodies
+  "sonarjs/cognitive-complexity": ["error", 20], // Similar to complexity but different metric
 };
 
 const tsOnlyRules = {

@@ -3,6 +3,8 @@
 import { spawn } from "child_process";
 
 const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
+const JSON_RPC_VERSION = "2.0";
+const TOOLS_LIST_METHOD = "tools/list";
 
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
@@ -75,7 +77,7 @@ const bridge = spawn(
 
 // MCP protocol messages
 const initMessage = {
-  jsonrpc: "2.0",
+  jsonrpc: JSON_RPC_VERSION,
   method: "initialize",
   params: {
     protocolVersion: "2024-11-05",
@@ -89,13 +91,13 @@ const initMessage = {
 };
 
 const listToolsMessage = {
-  jsonrpc: "2.0",
-  method: "tools/list",
+  jsonrpc: JSON_RPC_VERSION,
+  method: TOOLS_LIST_METHOD,
   params: {},
   id: 2,
 };
 
-const testSequence = ["initialize", "tools/list"];
+const testSequence = ["initialize", TOOLS_LIST_METHOD];
 
 // Add specific tool call if provided
 if (toolName) {
@@ -144,32 +146,25 @@ function parseResponse(data) {
   }
 }
 
-// Listen for responses
-bridge.stdout.on("data", (data) => {
-  const response = parseResponse(data);
-
-  // If response is null, we're still accumulating data
-  if (response === null) {
-    return;
-  }
-
-  responseCount++;
-  const elapsed = Date.now() - startTime;
-
-  console.log(`[${elapsed}ms] Bridge response ${responseCount}:`);
-
+/**
+ * Log response based on response count and content
+ */
+function logResponse(response, count, tool) {
   if (response.error) {
     console.log("❌ Error:", response.error);
     if (response.raw) console.log("Raw data:", response.raw);
-  } else if (response.result) {
-    if (responseCount === 1) {
+    return;
+  }
+
+  if (response.result) {
+    if (count === 1) {
       // Initialize response
       console.log("✅ Initialize successful");
       console.log(
         `   Server: ${response.result.serverInfo?.name || "Unknown"}`,
       );
       console.log(`   Protocol: ${response.result.protocolVersion}`);
-    } else if (responseCount === 2) {
+    } else if (count === 2) {
       // Tools list response
       const toolCount = response.result.tools?.length || 0;
       console.log(`✅ Tools list successful - ${toolCount} tools available`);
@@ -179,28 +174,31 @@ bridge.stdout.on("data", (data) => {
           `   Tools: ${toolNames.substring(0, 100)}${toolNames.length > 100 ? "..." : ""}`,
         );
       }
-    } else if (responseCount === 3) {
+    } else if (count === 3) {
       // Tool call response
-      console.log(`✅ Tool call '${toolName}' successful`);
+      console.log(`✅ Tool call '${tool}' successful`);
       if (response.result.content) {
         console.log(`   Content items: ${response.result.content.length}`);
       }
     }
-  } else {
-    console.log(
-      "⚠️  Unexpected response format:",
-      JSON.stringify(response, null, 2),
-    );
+    return;
   }
 
-  console.log("");
+  console.log(
+    "⚠️  Unexpected response format:",
+    JSON.stringify(response, null, 2),
+  );
+}
 
-  // Continue test sequence
-  if (responseCount === 1) {
-    sendMessage(listToolsMessage, "tools/list");
-  } else if (responseCount === 2 && toolName) {
+/**
+ * Continue test sequence based on response count
+ */
+function continueTestSequence(count, elapsed) {
+  if (count === 1) {
+    sendMessage(listToolsMessage, TOOLS_LIST_METHOD);
+  } else if (count === 2 && toolName) {
     const toolCallMessage = {
-      jsonrpc: "2.0",
+      jsonrpc: JSON_RPC_VERSION,
       method: "tools/call",
       params: {
         name: toolName,
@@ -214,6 +212,24 @@ bridge.stdout.on("data", (data) => {
     console.log(`✅ Test completed successfully in ${elapsed}ms`);
     bridge.kill();
   }
+}
+
+// Listen for responses
+bridge.stdout.on("data", (data) => {
+  const response = parseResponse(data);
+
+  // If response is null, we're still accumulating data
+  if (response === null) {
+    return;
+  }
+
+  responseCount++;
+  const elapsed = Date.now() - startTime;
+
+  console.log(`[${elapsed}ms] Bridge response ${responseCount}:`);
+  logResponse(response, responseCount, toolName);
+  console.log("");
+  continueTestSequence(responseCount, elapsed);
 });
 
 // Filter stderr to reduce noise from bridge debugging

@@ -71,6 +71,67 @@ export function applyAudioParams(
 }
 
 /**
+ * Apply velocity offset to a note
+ */
+function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
+  if (velocityMin == null || velocityMax == null) {
+    return;
+  }
+  const velocityOffset = Math.round(randomInRange(velocityMin, velocityMax, rng));
+  note.velocity = Math.max(1, Math.min(127, note.velocity + velocityOffset));
+}
+
+/**
+ * Apply transpose to a note
+ */
+function applyTranspose(note, transposeParams, rng) {
+  const { transposeValuesArray, transposeMin, transposeMax } = transposeParams;
+  if (transposeValuesArray != null) {
+    // Pick from discrete values
+    const transposeOffset =
+      transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)];
+    note.pitch = Math.max(0, Math.min(127, note.pitch + Math.round(transposeOffset)));
+  } else if (transposeMin != null && transposeMax != null) {
+    // Random range
+    const transposeOffset = Math.round(randomInRange(transposeMin, transposeMax, rng));
+    note.pitch = Math.max(0, Math.min(127, note.pitch + transposeOffset));
+  }
+}
+
+/**
+ * Apply duration multiplier to a note
+ */
+function applyDurationMultiplier(note, durationMin, durationMax, rng) {
+  if (durationMin == null || durationMax == null) {
+    return;
+  }
+  const durationMultiplier = randomInRange(durationMin, durationMax, rng);
+  note.duration = note.duration * durationMultiplier;
+}
+
+/**
+ * Apply velocity deviation offset to a note
+ */
+function applyVelocityDeviation(note, velocityRange) {
+  if (velocityRange == null) {
+    return;
+  }
+  const currentDeviation = note.velocity_deviation ?? 0;
+  note.velocity_deviation = Math.max(-127, Math.min(127, currentDeviation + velocityRange));
+}
+
+/**
+ * Apply probability offset to a note
+ */
+function applyProbabilityOffset(note, probability) {
+  if (probability == null) {
+    return;
+  }
+  const currentProbability = note.probability ?? 1.0;
+  note.probability = Math.max(0.0, Math.min(1.0, currentProbability + probability));
+}
+
+/**
  * Apply MIDI parameters to a clip's notes
  * @param {Object} clip - The MIDI clip to modify
  * @param {Object} params - MIDI parameters
@@ -116,57 +177,15 @@ export function applyMidiParams(
   if (notes.length > 0) {
     // Modify notes in place
     for (const note of notes) {
-      // Apply velocity offset
-      if (velocityMin != null && velocityMax != null) {
-        const velocityOffset = Math.round(
-          randomInRange(velocityMin, velocityMax, rng),
-        );
-        note.velocity = Math.max(
-          1,
-          Math.min(127, note.velocity + velocityOffset),
-        );
-      }
-
-      // Apply transpose
-      if (transposeValuesArray != null) {
-        // Pick from discrete values
-        const transposeOffset =
-          transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)];
-        note.pitch = Math.max(
-          0,
-          Math.min(127, note.pitch + Math.round(transposeOffset)),
-        );
-      } else if (transposeMin != null && transposeMax != null) {
-        // Random range
-        const transposeOffset = Math.round(
-          randomInRange(transposeMin, transposeMax, rng),
-        );
-        note.pitch = Math.max(0, Math.min(127, note.pitch + transposeOffset));
-      }
-
-      // Apply duration multiplier
-      if (durationMin != null && durationMax != null) {
-        const durationMultiplier = randomInRange(durationMin, durationMax, rng);
-        note.duration = note.duration * durationMultiplier;
-      }
-
-      // Apply velocity range (velocity_deviation) - non-random offset
-      if (velocityRange != null) {
-        const currentDeviation = note.velocity_deviation ?? 0;
-        note.velocity_deviation = Math.max(
-          -127,
-          Math.min(127, currentDeviation + velocityRange),
-        );
-      }
-
-      // Apply probability - non-random offset
-      if (probability != null) {
-        const currentProbability = note.probability ?? 1.0;
-        note.probability = Math.max(
-          0.0,
-          Math.min(1.0, currentProbability + probability),
-        );
-      }
+      applyVelocityOffset(note, velocityMin, velocityMax, rng);
+      applyTranspose(
+        note,
+        { transposeValuesArray, transposeMin, transposeMax },
+        rng,
+      );
+      applyDurationMultiplier(note, durationMin, durationMax, rng);
+      applyVelocityDeviation(note, velocityRange);
+      applyProbabilityOffset(note, probability);
     }
 
     // Apply note modifications
