@@ -103,9 +103,7 @@ const jsOnlyRules = {
 
   "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
   "sonarjs/no-identical-functions": "error", // Duplicate function bodies
-
-  // TODO: reduce to 20
-  "sonarjs/cognitive-complexity": ["error", 30], // Similar to complexity but different metric
+  "sonarjs/cognitive-complexity": ["error", 20], // Similar to complexity but different metric
 };
 
 const tsOnlyRules = {
