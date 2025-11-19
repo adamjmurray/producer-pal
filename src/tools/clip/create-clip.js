@@ -486,18 +486,14 @@ export function createClip(
       timeSigNumerator,
       timeSigDenominator,
     );
-
     createdClips.push(clipResult);
   }
-
   // Handle automatic playback for Session clips
   handleAutoPlayback(auto, view, sceneIndex, count, trackIndex);
-
   // Handle view switching if requested
   if (switchView) {
     select({ view });
   }
-
   // Return single object if count=1, array if count>1
   return count === 1 ? createdClips[0] : createdClips;
 }

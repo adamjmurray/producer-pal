@@ -278,12 +278,13 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
+      "src/tools/shared/gain-lookup-table.js", // Auto-generated data
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 600,
+          max: 500,
         },
       ],
     },
