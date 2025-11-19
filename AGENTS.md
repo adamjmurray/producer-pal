@@ -27,6 +27,8 @@ npm run ui:build # Production build
 npm run docs:dev     # Development server with hot reload
 npm run docs:build   # Build static site
 npm run docs:preview # Preview production build
+# When editing docs, use clean URLs: /chat-ui not /chat-ui.html (no trailing slash)
+# Page files named after folder: docs/guide.md not docs/guide/index.md (except top-level docs/index.md)
 ```
 
 ## Architecture
