@@ -219,12 +219,14 @@ export function transformClips(
       }
 
       // Get track for this clip
+      // Store trackIndex BEFORE any operations to prevent staleness
       const trackIndex = clip.trackIndex;
       if (trackIndex == null) {
         throw new Error(
           `transformClips failed: could not determine trackIndex for clip ${clip.id}`,
         );
       }
+
       const track = new LiveAPI(`live_set tracks ${trackIndex}`);
 
       // Store position info before slicing (for re-scanning after deletion)
@@ -281,7 +283,7 @@ export function transformClips(
       // Find all clips in the original clip's position range (with small epsilon for floating-point)
       const EPSILON = 0.001;
       const freshClips = trackClipIds
-        .map((id) => new LiveAPI(id))
+        .map((id) => LiveAPI.from(id))
         .filter((c) => {
           const clipStart = c.getProperty("start_time");
           return (
@@ -296,6 +298,15 @@ export function transformClips(
         clips.splice(staleIndex, 1, ...freshClips);
       }
     }
+
+    // After slicing, re-filter arrangement clips to get fresh objects
+    // (the clips array was modified by splice operations during re-scanning)
+    const freshArrangementClips = clips.filter(
+      (clip) => clip.getProperty("is_arrangement_clip") > 0,
+    );
+    // Update arrangementClips reference for subsequent operations
+    arrangementClips.length = 0;
+    arrangementClips.push(...freshArrangementClips);
   }
 
   // Shuffle clip positions if requested
@@ -315,6 +326,8 @@ export function transformClips(
       const shuffledPositions = shuffleArray(positions, rng);
 
       // Move all clips to holding area first
+      // Store trackIndex before entering loop (all arrangement clips are on same track)
+      const trackIndexForShuffle = arrangementClips[0].trackIndex;
       const holdingPositions = arrangementClips.map((clip, index) => {
         const trackIndex = clip.trackIndex;
         const track = new LiveAPI(`live_set tracks ${trackIndex}`);
@@ -342,6 +355,16 @@ export function transformClips(
         );
         track.call("delete_clip", `id ${tempClip.id}`);
       }
+
+      // After shuffling, the clips in the array are stale (they were deleted and recreated)
+      // Re-scan to get fresh clip objects
+      const track = new LiveAPI(`live_set tracks ${trackIndexForShuffle}`);
+      const freshClipIds = track.getChildIds("arrangement_clips");
+      const freshClips = freshClipIds.map((id) => LiveAPI.from(id));
+
+      // Replace all stale clips with fresh ones
+      clips.length = 0;
+      clips.push(...freshClips);
     }
   }
 
