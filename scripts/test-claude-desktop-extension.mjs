@@ -126,6 +126,7 @@ let responseBuffer = "";
 /**
  * Parse response data from the bridge, handling partial/incomplete JSON
  * @param {Buffer} data - Raw data buffer from bridge stdout
+ * @returns {object|null} - Parsed JSON response or null if incomplete
  */
 function parseResponse(data) {
   responseBuffer += data.toString();

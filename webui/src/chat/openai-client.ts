@@ -31,7 +31,7 @@ export interface OpenAIAssistantMessageWithReasoning {
  * Handles both OpenAI's reasoning_content field and OpenRouter's reasoning_details array.
  *
  * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - The delta object from a streaming chunk
- * @returns The reasoning text from this delta, or empty string if none
+ * @returns {string} - The reasoning text from this delta, or empty string if none
  */
 export function extractReasoningFromDelta(
   delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -254,6 +254,7 @@ export class OpenAIClient {
 
   /**
    * Retrieves and filters MCP tools based on enabled settings.
+   * @returns {Promise<OpenAI.Chat.ChatCompletionTool[]>} - Filtered tools
    */
   private async getFilteredTools(): Promise<OpenAI.Chat.ChatCompletionTool[]> {
     const toolsResult = await this.mcpClient?.listTools();
@@ -278,7 +279,7 @@ export class OpenAIClient {
   /**
    * Processes the OpenAI stream and updates chat history with each chunk.
    * @param {OpenAI.Chat.ChatCompletionTool[]} tools - Array of available tools
-   * @returns Generator yielding chat history updates
+   * @returns {AsyncGenerator} - Generator yielding chat history updates
    */
   private async *processStreamAndUpdateHistory(
     tools: OpenAI.Chat.ChatCompletionTool[],
@@ -342,7 +343,7 @@ export class OpenAIClient {
    * Processes reasoning delta from a stream chunk and returns updated reasoning text.
    * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - Delta object from stream chunk
    * @param {string} reasoningText - Accumulated reasoning text so far
-   * @returns Updated reasoning text
+   * @returns {string} - Updated reasoning text
    */
   private processReasoningDelta(
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -399,7 +400,7 @@ export class OpenAIClient {
    * @param {OpenAIAssistantMessageWithReasoning} currentMessage - Current message being built
    * @param {Map<number, OpenAIToolCall>} toolCallsMap - Map of accumulated tool calls
    * @param {string} reasoningText - Accumulated reasoning text
-   * @returns Complete assistant message with all parts
+   * @returns {object} - Complete assistant message with all parts
    */
   private buildStreamMessage(
     currentMessage: OpenAIAssistantMessageWithReasoning,
@@ -443,6 +444,7 @@ export class OpenAIClient {
 
   /**
    * Extracts tool calls from the last message in chat history.
+   * @returns {OpenAIToolCall[] | null} - Tool calls or null
    */
   private getToolCallsFromLastMessage(): OpenAIToolCall[] | null {
     const finalMessage = this.chatHistory.at(-1);
@@ -454,7 +456,7 @@ export class OpenAIClient {
   /**
    * Executes all provided tool calls via MCP.
    * @param {OpenAIToolCall[]} toolCalls - Array of tool calls to execute
-   * @returns Generator yielding chat history updates
+   * @returns {AsyncGenerator} - Generator yielding chat history updates
    */
   private async *executeToolCalls(
     toolCalls: OpenAIToolCall[],
@@ -481,7 +483,7 @@ export class OpenAIClient {
   /**
    * Executes a single tool call and returns the result.
    * @param {OpenAIToolCall} toolCall - Tool call to execute
-   * @returns Tool call result
+   * @returns {object} - Tool call result
    */
   private async executeSingleToolCall(
     toolCall: OpenAIToolCall,

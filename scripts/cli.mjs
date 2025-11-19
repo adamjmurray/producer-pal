@@ -21,7 +21,8 @@ const DEFAULT_URL = "http://localhost:3350/mcp";
 
 // Parse command line arguments
 /**
- *
+ * Parse command line arguments
+ * @returns {{url: string, command: string|null, toolName: string|null, toolArgs: object|null}} - Parsed arguments
  */
 function parseArgs() {
   const args = process.argv.slice(2);

@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 
 /**
  *
+ * @returns {any} - Hook return value
  */
 export function useTheme() {
   const [theme, setTheme] = useState("system");

@@ -16,6 +16,7 @@ interface ChatHeaderProps {
 /**
  * Gets display name for provider
  * @param {Provider} provider - Provider identifier
+ * @returns {JSX.Element} - React component
  */
 function getProviderName(provider: Provider): string {
   switch (provider) {
@@ -47,6 +48,7 @@ function getProviderName(provider: Provider): string {
  * @param {boolean} root0.hasMessages - Whether conversation has messages
  * @param {() => void} root0.onOpenSettings - Callback to open settings
  * @param {() => void} root0.onClearConversation - Callback to clear conversation
+ * @returns {JSX.Element} - React component
  */
 export function ChatHeader({
   mcpStatus,

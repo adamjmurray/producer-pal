@@ -128,6 +128,7 @@ export class LiveAPI {
 /**
  * Get mock property value for LiveSet objects
  * @param {string} prop - Property name to retrieve
+ * @returns {*} - Mock property value
  */
 function getLiveSetProperty(prop) {
   switch (prop) {
@@ -147,6 +148,7 @@ function getLiveSetProperty(prop) {
 /**
  * Get mock property value for AppView objects
  * @param {string} prop - Property name to retrieve
+ * @returns {*} - Mock property value
  */
 function getAppViewProperty(prop) {
   switch (prop) {
@@ -160,6 +162,7 @@ function getAppViewProperty(prop) {
 /**
  * Get mock property value for Track objects
  * @param {string} prop - Property name to retrieve
+ * @returns {*} - Mock property value
  */
 function getTrackProperty(prop) {
   switch (prop) {
@@ -197,6 +200,7 @@ function getTrackProperty(prop) {
 /**
  * Get mock property value for Scene objects
  * @param {string} prop - Property name to retrieve
+ * @returns {*} - Mock property value
  */
 function getSceneProperty(prop) {
   switch (prop) {
@@ -212,6 +216,7 @@ function getSceneProperty(prop) {
 /**
  * Get mock property value for ClipSlot objects
  * @param {string} prop - Property name to retrieve
+ * @returns {*} - Mock property value
  */
 function getClipSlotProperty(prop) {
   switch (prop) {
@@ -225,6 +230,7 @@ function getClipSlotProperty(prop) {
 /**
  * Get mock property value for Clip objects
  * @param {string} prop - Property name to retrieve
+ * @returns {*} - Mock property value
  */
 function getClipProperty(prop) {
   switch (prop) {
@@ -267,6 +273,7 @@ function getClipProperty(prop) {
  * Get mock property value based on Live API object type
  * @param {string} type - Live API object type (LiveSet, Track, Scene, etc.)
  * @param {string} prop - Property name to retrieve
+ * @returns {*} - Mock property value
  */
 function getPropertyByType(type, prop) {
   switch (type) {
@@ -365,6 +372,7 @@ export const expectedClip = (overrides = {}) => ({
 /**
  * Create Live API children array format from child IDs
  * @param {...any} childIds - Child object IDs to format as Live API array
+ * @returns {Array} - Formatted Live API children array
  */
 export function children(...childIds) {
   return childIds.flatMap((id) => ["id", id]);

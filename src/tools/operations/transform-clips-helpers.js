@@ -39,6 +39,7 @@ export {
  * @param {string} transposeValues - Comma-separated transpose values
  * @param {number} transposeMin - Minimum transpose value (warning if used with transposeValues)
  * @param {number} transposeMax - Maximum transpose value (warning if used with transposeValues)
+ * @returns {Array<number>|null} - Array of transpose values or null
  */
 export function parseTransposeValues(
   transposeValues,
@@ -68,6 +69,7 @@ export function parseTransposeValues(
  * @param {string} arrangementTrackId - Track ID to query for arrangement clips
  * @param {string} arrangementStart - Start position in bar|beat format
  * @param {string} arrangementLength - Length in bar:beat format
+ * @returns {Array<string>} - Array of clip IDs
  */
 export function getClipIds(
   clipIds,

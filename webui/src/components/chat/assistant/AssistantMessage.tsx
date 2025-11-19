@@ -14,6 +14,7 @@ interface AssistantMessageProps {
  * @param {AssistantMessageProps} root0 - Component props
  * @param {UIPart[]} root0.parts - Message parts to render
  * @param {boolean} [root0.isResponding] - Whether assistant is currently responding
+ * @returns {JSX.Element} - React component
  */
 export function AssistantMessage({
   parts,

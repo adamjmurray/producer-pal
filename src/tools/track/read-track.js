@@ -71,6 +71,7 @@ export function readTrack(args = {}, _context = {}) {
  * @param {number} trackIndex - Track index
  * @param {boolean} includeSessionClips - Whether to include full session clip details
  * @param {Array<string>} include - Include array for nested reads
+ * @returns {object} - Object with session clips data
  */
 function processSessionClips(
   track,

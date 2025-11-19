@@ -304,7 +304,7 @@ function processElementInLoop(
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
  * @param {number} [options.timeSigDenominator] - Time signature denominator
- * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>}
+ * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>} - Array of note events
  */
 export function interpretNotation(barBeatExpression, options = {}) {
   if (!barBeatExpression) {

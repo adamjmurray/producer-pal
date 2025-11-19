@@ -12,6 +12,7 @@ interface AssistantThoughtProps {
  * @param {string} root0.content - Thought content
  * @param {boolean} [root0.isOpen] - Whether thought is expanded
  * @param {boolean} [root0.isResponding] - Whether assistant is currently responding
+ * @returns {JSX.Element} - React component
  */
 export function AssistantThought({
   content,

@@ -40,6 +40,7 @@ function addReasoningDetails(
  * @param {OpenAIMessage[]} history - Chat history to search
  * @param {string} toolCallId - Tool call ID to find result for
  * @param {number} startIndex - Index to start searching from
+ * @returns {{ result: string | null; isError: boolean }} - Tool result and error flag
  */
 function findToolResult(
   history: OpenAIMessage[],

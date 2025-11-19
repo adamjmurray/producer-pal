@@ -16,6 +16,7 @@ const PROVIDER_BASE_URLS = {
 
 /**
  *
+ * @returns {JSX.Element} - React component
  */
 export function App() {
   const settings = useSettings();

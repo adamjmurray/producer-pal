@@ -54,6 +54,7 @@ function validateCreateClipParams(
  * @param {Array} notes - Array of MIDI notes
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} - Calculated clip length in beats
  */
 function calculateClipLength(
   endBeats,

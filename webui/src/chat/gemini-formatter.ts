@@ -22,7 +22,7 @@ import type {
  * 5. Tracks `rawHistoryIndex` to map merged messages back to original indices (for retry functionality)
  *
  * @param {GeminiMessage[]} history - Raw chat history from GeminiClient
- * @returns Formatted messages ready for UI rendering
+ * @returns {Array} - Formatted messages ready for UI rendering
  *
  * @example
  * // Raw history:

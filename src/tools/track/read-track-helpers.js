@@ -96,6 +96,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
  * Handle track that doesn't exist
  * @param {string} category - Track category (regular, return, or master)
  * @param {number} trackIndex - Track index
+ * @returns {object} - Result object for non-existent track
  */
 export function handleNonExistentTrack(category, trackIndex) {
   const result = {

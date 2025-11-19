@@ -25,6 +25,7 @@ const FLAT_SEP = "--";
 /**
  * Converts filesystem path separators to flat separator for file naming
  * @param {string} pathStr - The path string to flatten
+ * @returns {string} - Flattened path string
  */
 function flattenPath(pathStr) {
   return pathStr.replace(/[/\\]/g, FLAT_SEP);
@@ -47,6 +48,7 @@ function addToGroup(groups, groupName, ...item) {
  * Computes the group name for a file based on item configuration
  * @param {object} item - Configuration item from itemsToCopy
  * @param {string} filePath - Absolute path to the file
+ * @returns {string} - Computed group name
  */
 function computeGroupName(item, filePath) {
   const itemGroup =
@@ -263,6 +265,7 @@ async function copyDirectoriesAndFiles(excludeGroups) {
  * @param {string} dir - Directory to search
  * @param {string[]} excludePaths - Array of relative paths to exclude
  * @param {string} baseDir - Base directory for computing relative paths
+ * @returns {Promise<string[]>} - Array of file paths
  */
 async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   const files = [];

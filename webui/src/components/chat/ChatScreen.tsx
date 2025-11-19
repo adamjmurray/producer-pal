@@ -39,6 +39,7 @@ interface ChatScreenProps {
  * @param {() => void} root0.onOpenSettings - Open settings callback
  * @param {() => void} root0.onClearConversation - Clear conversation callback
  * @param {() => void} root0.onStop - Stop response callback
+ * @returns {JSX.Element} - React component
  */
 export function ChatScreen({
   messages,

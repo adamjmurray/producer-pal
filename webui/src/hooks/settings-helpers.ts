@@ -69,6 +69,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
 /**
  * Loads provider settings from localStorage with backward compatibility
  * @param {Provider} provider - Provider to load settings for
+ * @returns {any} - Hook return value
  */
 export function loadProviderSettings(provider: Provider): ProviderSettings {
   const newFormatKey = `producer_pal_provider_${provider}`;
@@ -132,6 +133,7 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
  * Saves provider settings to localStorage
  * @param {Provider} provider - Provider to save settings for
  * @param {ProviderSettings} settings - Settings to save
+ * @returns {any} - Hook return value
  */
 export function saveProviderSettings(
   provider: Provider,
@@ -144,6 +146,7 @@ export function saveProviderSettings(
 /**
  * Normalizes thinking value for OpenAI's limited options
  * @param {string} thinking - Thinking mode to normalize
+ * @returns {any} - Hook return value
  */
 export function normalizeThinkingForOpenAI(thinking: string): string {
   // OpenAI only supports "Low", "Medium", "High"
@@ -159,6 +162,7 @@ export function normalizeThinkingForOpenAI(thinking: string): string {
 /**
  * Checks if provider has an API key configured
  * @param {Provider} provider - Provider to check
+ * @returns {any} - Hook return value
  */
 export function checkHasApiKey(provider: Provider): boolean {
   if (provider === "lmstudio" || provider === "ollama") {
@@ -195,6 +199,7 @@ export interface AllProviderSettings {
 
 /**
  * Loads settings for all providers
+ * @returns {any} - Hook return value
  */
 export function loadAllProviderSettings(): AllProviderSettings {
   return {
@@ -211,6 +216,7 @@ export function loadAllProviderSettings(): AllProviderSettings {
 /**
  * Saves settings for all providers
  * @param {AllProviderSettings} settings - All provider settings to save
+ * @returns {any} - Hook return value
  */
 export function saveAllProviderSettings(settings: AllProviderSettings) {
   saveProviderSettings("gemini", settings.gemini);
@@ -224,6 +230,7 @@ export function saveAllProviderSettings(settings: AllProviderSettings) {
 
 /**
  * Loads the current provider from localStorage
+ * @returns {any} - Hook return value
  */
 export function loadCurrentProvider(): Provider {
   return (
@@ -237,6 +244,7 @@ export function loadCurrentProvider(): Provider {
 
 /**
  * Loads enabled tools from localStorage
+ * @returns {any} - Hook return value
  */
 export function loadEnabledTools(): Record<string, boolean> {
   const saved = localStorage.getItem("producer_pal_enabled_tools");
@@ -252,6 +260,7 @@ export function loadEnabledTools(): Record<string, boolean> {
 
 /**
  * Creates record with all tools enabled
+ * @returns {any} - Hook return value
  */
 export function createAllToolsEnabled(): Record<string, boolean> {
   return TOOLS.reduce(
@@ -265,6 +274,7 @@ export function createAllToolsEnabled(): Record<string, boolean> {
 
 /**
  * Creates record with all tools disabled
+ * @returns {any} - Hook return value
  */
 export function createAllToolsDisabled(): Record<string, boolean> {
   return TOOLS.reduce(
@@ -281,6 +291,7 @@ export function createAllToolsDisabled(): Record<string, boolean> {
  * @param {Provider} provider - Current provider
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {AllProviderSettings} allSettings - All provider settings
+ * @returns {any} - Hook return value
  */
 export function saveCurrentSettings(
   provider: Provider,
@@ -305,6 +316,7 @@ export function saveCurrentSettings(
  * @param {ProviderSettings} lmstudio - LM Studio settings
  * @param {ProviderSettings} ollama - Ollama settings
  * @param {ProviderSettings} custom - Custom provider settings
+ * @returns {any} - Hook return value
  */
 export function buildAllProviderSettings(
   gemini: ProviderSettings,
@@ -328,5 +340,6 @@ export function buildAllProviderSettings(
 
 /**
  * Type for setters that apply loaded settings to state
+ * @returns {any} - Hook return value
  */
 export type ProviderSettingsApplier = (settings: AllProviderSettings) => void;

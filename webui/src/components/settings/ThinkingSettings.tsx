@@ -18,6 +18,7 @@ interface ThinkingSettingsProps {
  * @param {(thinking: string) => void} root0.setThinking - Thinking setter callback
  * @param {boolean} root0.showThoughts - Whether to show thoughts
  * @param {(show: boolean) => void} root0.setShowThoughts - Show thoughts setter callback
+ * @returns {JSX.Element} - React component
  */
 export function ThinkingSettings({
   provider,

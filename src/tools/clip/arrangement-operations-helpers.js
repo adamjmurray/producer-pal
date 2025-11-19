@@ -18,6 +18,7 @@ import {
  * @param {number} root0.currentStartTime - Current start time in beats
  * @param {number} root0.currentEndTime - Current end time in beats
  * @param {object} root0.context - Tool execution context with holding area info
+ * @returns {Array<object>} - Array of updated clip info
  */
 export function handleArrangementLengthening({
   clip,
@@ -117,6 +118,7 @@ export function handleArrangementLengthening({
  * @param {number} root0.clipStartMarker - Clip start marker position
  * @param {object} root0.track - The LiveAPI track object
  * @param {object} root0.context - Tool execution context
+ * @returns {Array<object>} - Array of updated clip info
  */
 function handleUnloopedLengthening({
   clip,
@@ -259,6 +261,7 @@ function handleUnloopedLengthening({
  * @param {number} root0.currentOffset - Current offset from loop start
  * @param {object} root0.track - The LiveAPI track object
  * @param {object} root0.context - Tool execution context
+ * @returns {Array<object>} - Array of tiled clip info
  */
 function createLoopeClipTiles({
   clip,

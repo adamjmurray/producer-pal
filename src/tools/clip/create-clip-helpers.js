@@ -12,6 +12,7 @@ import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
  * @param {string} name - Base clip name
  * @param {number} count - Total number of clips being created
  * @param {number} i - Current iteration index (0-based)
+ * @returns {string|undefined} - Generated clip name
  */
 export function buildClipName(name, count, i) {
   if (name == null) {
@@ -40,6 +41,7 @@ export function buildClipName(name, count, i) {
  * @param {number} timeSigDenominator - Clip time signature denominator
  * @param {number} songTimeSigNumerator - Song time signature numerator
  * @param {number} songTimeSigDenominator - Song time signature denominator
+ * @returns {object} - Converted timing parameters in beats
  */
 export function convertTimingParameters(
   arrangementStart,
@@ -99,6 +101,7 @@ export function convertTimingParameters(
  * @param {object} liveSet - LiveAPI live_set object
  * @param {number} i - Current iteration index
  * @param {number} maxAutoCreatedScenes - Maximum scenes allowed
+ * @returns {object} - Object with clip and sceneIndex
  */
 function createSessionClip(
   trackIndex,
@@ -149,6 +152,7 @@ function createSessionClip(
  * @param {number} arrangementStartBeats - Starting position in beats
  * @param {number} clipLength - Clip length in beats
  * @param {number} i - Current iteration index
+ * @returns {object} - Object with clip and arrangementStartBeats
  */
 function createArrangementClip(
   trackIndex,
@@ -188,6 +192,7 @@ function createArrangementClip(
  * @param {string} color - Clip color in hex format
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {object} - Clip properties to set
  */
 function buildClipProperties(
   startBeats,
@@ -255,6 +260,7 @@ function buildClipProperties(
  * @param {string} length - Original length parameter
  * @param {number} timeSigNumerator - Clip time signature numerator
  * @param {number} timeSigDenominator - Clip time signature denominator
+ * @returns {object} - Clip result object
  */
 function buildClipResult(
   clip,
@@ -338,6 +344,7 @@ function buildClipResult(
  * @param {number} songTimeSigDenominator - Song time signature denominator
  * @param {string} arrangementStart - Arrangement start in bar|beat format
  * @param {string} length - Original length parameter
+ * @returns {object} - Clip result for this iteration
  */
 export function processClipIteration(
   i,

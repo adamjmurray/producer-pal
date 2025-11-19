@@ -33,6 +33,7 @@ import {
 /**
  * Process warp markers for an audio clip
  * @param {object} clip - LiveAPI clip object
+ * @returns {Array|undefined} - Array of warp markers or undefined
  */
 function processWarpMarkers(clip) {
   try {
@@ -129,6 +130,7 @@ function processMidiClip(
 
 /**
  * Get warp mode mapping for audio clips
+ * @returns {object} - Mapping of Live API warp modes to friendly names
  */
 function getWarpModeMapping() {
   return {
@@ -218,6 +220,7 @@ function addClipLocationProperties(result, clip, isArrangementClip) {
  * @param {number} endMarkerBeats - End marker position in beats
  * @param {number} loopEndBeats - Loop end position in beats
  * @param {number} lengthBeats - Clip length in beats
+ * @returns {object} - Object with startBeats and endBeats
  */
 function getActiveClipBounds(
   isLooping,
@@ -247,6 +250,7 @@ function getActiveClipBounds(
  * Read a MIDI or audio clip from Ableton Live
  * @param {object} args - Arguments object
  * @param {object} _context - Context object (unused)
+ * @returns {object} - Clip information object
  */
 export function readClip(args = {}, _context = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;

@@ -14,6 +14,7 @@ const HOLDING_AREA_START = 40000;
  * @param {string} slice - Slice duration in bar:beat format
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips
  * @param {Set} warnings - Set to track warnings already issued
+ * @returns {number|null} - Slice duration in beats or null
  */
 export function prepareSliceParams(slice, arrangementClips, warnings) {
   if (slice == null) {

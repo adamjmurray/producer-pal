@@ -14,6 +14,7 @@ interface ToolTogglesProps {
  * @param {(tools: Record<string, boolean>) => void} root0.setEnabledTools - Setter for tool states
  * @param {() => void} root0.enableAllTools - Enable all tools callback
  * @param {() => void} root0.disableAllTools - Disable all tools callback
+ * @returns {JSX.Element} - React component
  */
 export function ToolToggles({
   enabledTools,

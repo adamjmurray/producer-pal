@@ -10,6 +10,7 @@ interface ProviderSelectorProps {
  * @param {ProviderSelectorProps} root0 - Component props
  * @param {Provider} root0.provider - Current provider
  * @param {(provider: Provider) => void} root0.setProvider - Provider setter callback
+ * @returns {JSX.Element} - React component
  */
 export function ProviderSelector({
   provider,

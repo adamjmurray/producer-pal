@@ -46,6 +46,7 @@ interface ConnectionTabProps {
  * @param {string} root0.model - Current model
  * @param {(model: string) => void} root0.setModel - Model setter callback
  * @param {string} root0.providerLabel - Display name for provider
+ * @returns {JSX.Element} - React component
  */
 export function ConnectionTab({
   provider,
