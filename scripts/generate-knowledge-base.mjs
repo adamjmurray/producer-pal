@@ -140,6 +140,11 @@ const itemsToCopy = [
   },
 
   // Individual files
+  {
+    src: ".claude/skills/refactoring/SKILL.md",
+    flatName: "claude-refactoring-SKILL.md",
+    group: "config",
+  },
   { src: ".gitignore", flatName: "gitignore", group: "config" },
   { src: "AGENTS.md", group: "config" },
   { src: "CLAUDE.md", group: "config" },

@@ -5,6 +5,9 @@ import importPlugin from "eslint-plugin-import";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import globals from "globals";
 
+// See .claude/skills/refactoring/SKILL.md for refactoring guidelines
+// to address max function/file length violations, complexity violations, etc
+
 const baseRules = {
   // Comparison & Equality
   eqeqeq: ["error", "always", { null: "ignore" }], // Force === and !== (except for null checks)

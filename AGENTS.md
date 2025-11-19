@@ -141,6 +141,19 @@ See `dev-docs/Architecture.md` for detailed system design and
   stdio-to-http "portal"
 - Dependencies bundled for distribution
 
+## Refactoring & Code Quality
+
+See `.claude/skills/refactoring/SKILL.md` for comprehensive refactoring
+guidelines.
+
+Key ESLint limits to respect:
+
+- `max-lines-per-function`: 350 (target: 100)
+- `max-depth`: 7 (target: 4)
+- `complexity`: 80 (target: 15)
+
+When ESLint reports violations, consult the refactoring skill for strategies.
+
 ## Documentation
 
 - `dev-docs/Architecture.md` - System design and components
