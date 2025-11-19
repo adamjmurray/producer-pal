@@ -67,6 +67,247 @@ export function readTrack(args = {}, _context = {}) {
 }
 
 /**
+ * Process session clips for a track
+ */
+function processSessionClips(
+  track,
+  category,
+  trackIndex,
+  includeSessionClips,
+  include,
+) {
+  if (category !== "regular") {
+    return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
+  }
+
+  if (includeSessionClips) {
+    const sessionClips = track
+      .getChildIds("clip_slots")
+      .map((_clipSlotId, sceneIndex) =>
+        readClip({
+          trackIndex,
+          sceneIndex,
+          include: include,
+        }),
+      )
+      .filter((clip) => clip.id != null);
+    return { sessionClips };
+  }
+
+  const sessionClipCount = track
+    .getChildIds("clip_slots")
+    .map((_clipSlotId, sceneIndex) => {
+      const clip = new LiveAPI(
+        `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
+      );
+      return clip.exists() ? clip : null;
+    })
+    .filter(Boolean).length;
+  return { sessionClipCount };
+}
+
+/**
+ * Process arrangement clips for a track
+ */
+function processArrangementClips(
+  track,
+  isGroup,
+  category,
+  includeArrangementClips,
+  include,
+) {
+  if (isGroup || category === "return" || category === "master") {
+    return includeArrangementClips
+      ? { arrangementClips: [] }
+      : { arrangementClipCount: 0 };
+  }
+
+  if (includeArrangementClips) {
+    const arrangementClips = track
+      .getChildIds("arrangement_clips")
+      .map((clipId) =>
+        readClip({
+          clipId,
+          include: include,
+        }),
+      )
+      .filter((clip) => clip.id != null);
+    return { arrangementClips };
+  }
+
+  const clipIds = track.getChildIds("arrangement_clips");
+  return { arrangementClipCount: clipIds.length };
+}
+
+/**
+ * Process and categorize track devices
+ */
+function processDevices(categorizedDevices, config) {
+  const {
+    includeMidiEffects,
+    includeInstruments,
+    includeAudioEffects,
+    includeDrumMaps,
+    includeRackChains,
+    isProducerPalHost,
+  } = config;
+
+  const result = {};
+  const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
+
+  if (includeMidiEffects) {
+    result.midiEffects = shouldFetchChainsForDrumMaps
+      ? categorizedDevices.midiEffects.map(stripChains)
+      : categorizedDevices.midiEffects;
+  }
+
+  if (includeInstruments) {
+    if (!(isProducerPalHost && categorizedDevices.instrument === null)) {
+      result.instrument =
+        shouldFetchChainsForDrumMaps && categorizedDevices.instrument
+          ? stripChains(categorizedDevices.instrument)
+          : categorizedDevices.instrument;
+    }
+  }
+
+  if (includeAudioEffects) {
+    result.audioEffects = shouldFetchChainsForDrumMaps
+      ? categorizedDevices.audioEffects.map(stripChains)
+      : categorizedDevices.audioEffects;
+  }
+
+  if (includeDrumMaps) {
+    const allDevices = [
+      ...categorizedDevices.midiEffects,
+      ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
+      ...categorizedDevices.audioEffects,
+    ];
+    const drumMap = getDrumMap(allDevices);
+    if (drumMap != null) {
+      result.drumMap = drumMap;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Process current routing settings for a track
+ */
+function processCurrentRouting(track, category, isGroup, canBeArmed) {
+  if (category === "master") {
+    return {
+      inputRoutingType: null,
+      inputRoutingChannel: null,
+      outputRoutingType: null,
+      outputRoutingChannel: null,
+    };
+  }
+
+  const result = {};
+
+  if (!isGroup && category === "regular") {
+    const inputType = track.getProperty("input_routing_type");
+    result.inputRoutingType = inputType
+      ? {
+          name: inputType.display_name,
+          inputId: String(inputType.identifier),
+        }
+      : null;
+
+    const inputChannel = track.getProperty("input_routing_channel");
+    result.inputRoutingChannel = inputChannel
+      ? {
+          name: inputChannel.display_name,
+          inputId: String(inputChannel.identifier),
+        }
+      : null;
+  } else if (category === "return") {
+    result.inputRoutingType = null;
+    result.inputRoutingChannel = null;
+  }
+
+  const outputType = track.getProperty("output_routing_type");
+  result.outputRoutingType = outputType
+    ? {
+        name: outputType.display_name,
+        outputId: String(outputType.identifier),
+      }
+    : null;
+
+  const outputChannel = track.getProperty("output_routing_channel");
+  result.outputRoutingChannel = outputChannel
+    ? {
+        name: outputChannel.display_name,
+        outputId: String(outputChannel.identifier),
+      }
+    : null;
+
+  if (canBeArmed) {
+    const monitoringStateValue = track.getProperty("current_monitoring_state");
+    result.monitoringState =
+      {
+        [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
+        [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
+        [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
+      }[monitoringStateValue] ?? "unknown";
+  }
+
+  return result;
+}
+
+/**
+ * Process available routing options for a track
+ */
+function processAvailableRouting(track, category, isGroup) {
+  if (category === "master") {
+    return {
+      availableInputRoutingTypes: [],
+      availableInputRoutingChannels: [],
+      availableOutputRoutingTypes: [],
+      availableOutputRoutingChannels: [],
+    };
+  }
+
+  const result = {};
+
+  if (!isGroup && category === "regular") {
+    const availableInputTypes =
+      track.getProperty("available_input_routing_types") || [];
+    result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
+      name: type.display_name,
+      inputId: String(type.identifier),
+    }));
+
+    const availableInputChannels =
+      track.getProperty("available_input_routing_channels") || [];
+    result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
+      name: ch.display_name,
+      inputId: String(ch.identifier),
+    }));
+  } else if (category === "return") {
+    result.availableInputRoutingTypes = [];
+    result.availableInputRoutingChannels = [];
+  }
+
+  const availableOutputTypes =
+    track.getProperty("available_output_routing_types") || [];
+  result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
+    name: type.display_name,
+    outputId: String(type.identifier),
+  }));
+
+  const availableOutputChannels =
+    track.getProperty("available_output_routing_channels") || [];
+  result.availableOutputRoutingChannels = availableOutputChannels.map((ch) => ({
+    name: ch.display_name,
+    outputId: String(ch.identifier),
+  }));
+
+  return result;
+}
+
+/**
  * Generic track reader that works with any track type. This is an internal helper function
  * used by readTrack to read comprehensive information about tracks.
  * @param {Object} args - The parameters
@@ -160,67 +401,32 @@ export function readTrackGeneric({
   } else if (category === "return") {
     result.returnTrackIndex = trackIndex;
   }
-  // Master track gets no index property
 
-  // Session clips - only for regular tracks (return and master tracks don't have clip slots)
-  if (category === "regular") {
-    if (includeSessionClips) {
-      result.sessionClips = track
-        .getChildIds("clip_slots")
-        .map((_clipSlotId, sceneIndex) =>
-          readClip({
-            trackIndex,
-            sceneIndex,
-            include: include,
-          }),
-        )
-        .filter((clip) => clip.id != null);
-    } else {
-      // When not including full clip details, just return the count
-      result.sessionClipCount = track
-        .getChildIds("clip_slots")
-        .map((_clipSlotId, sceneIndex) => {
-          const clip = new LiveAPI(
-            `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
-          );
-          return clip.exists() ? clip : null;
-        })
-        .filter(Boolean).length;
-    }
-  } else if (includeSessionClips) {
-    // Return and master tracks don't have session clips
-    result.sessionClips = [];
-  } else {
-    result.sessionClipCount = 0;
-  }
+  // Session clips
+  Object.assign(
+    result,
+    processSessionClips(
+      track,
+      category,
+      trackIndex,
+      includeSessionClips,
+      include,
+    ),
+  );
 
-  // Arrangement clips - group tracks, return tracks, and master track have no arrangement clips
-  if (isGroup || category === "return" || category === "master") {
-    // These track categories have no arrangement clips
-    if (includeArrangementClips) {
-      result.arrangementClips = [];
-    } else {
-      result.arrangementClipCount = 0;
-    }
-  } else if (includeArrangementClips) {
-    result.arrangementClips = track
-      .getChildIds("arrangement_clips")
-      .map((clipId) =>
-        readClip({
-          clipId,
-          include: include,
-        }),
-      )
-      .filter((clip) => clip.id != null);
-  } else {
-    // When not including full clip details, just return the count
-    const clipIds = track.getChildIds("arrangement_clips");
-    result.arrangementClipCount = clipIds.length;
-  }
+  // Arrangement clips
+  Object.assign(
+    result,
+    processArrangementClips(
+      track,
+      isGroup,
+      category,
+      includeArrangementClips,
+      include,
+    ),
+  );
 
-  // Categorize devices into separate arrays
-  // When includeDrumMaps is true but includeRackChains is false, we need to get chains
-  // to extract drum maps but then strip them from the final result
+  // Process devices
   const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
   const categorizedDevices = categorizeDevices(
     trackDevices,
@@ -228,41 +434,16 @@ export function readTrackGeneric({
     shouldFetchChainsForDrumMaps ? true : includeRackChains,
   );
 
-  // Add device categories based on inclusion flags
-  if (includeMidiEffects) {
-    result.midiEffects = shouldFetchChainsForDrumMaps
-      ? categorizedDevices.midiEffects.map(stripChains)
-      : categorizedDevices.midiEffects;
-  }
-  if (includeInstruments) {
-    // For Producer Pal host track, omit instrument property when it's null
-    if (isProducerPalHost && categorizedDevices.instrument === null) {
-      // Don't include instrument property at all
-    } else {
-      result.instrument =
-        shouldFetchChainsForDrumMaps && categorizedDevices.instrument
-          ? stripChains(categorizedDevices.instrument)
-          : categorizedDevices.instrument;
-    }
-  }
-  if (includeAudioEffects) {
-    result.audioEffects = shouldFetchChainsForDrumMaps
-      ? categorizedDevices.audioEffects.map(stripChains)
-      : categorizedDevices.audioEffects;
-  }
+  const deviceResults = processDevices(categorizedDevices, {
+    includeMidiEffects,
+    includeInstruments,
+    includeAudioEffects,
+    includeDrumMaps,
+    includeRackChains,
+    isProducerPalHost,
+  });
 
-  // Extract drum map from all categorized devices when requested
-  if (includeDrumMaps) {
-    const allDevices = [
-      ...categorizedDevices.midiEffects,
-      ...(categorizedDevices.instrument ? [categorizedDevices.instrument] : []),
-      ...categorizedDevices.audioEffects,
-    ];
-    const drumMap = getDrumMap(allDevices);
-    if (drumMap != null) {
-      result.drumMap = drumMap;
-    }
-  }
+  Object.assign(result, deviceResults);
 
   // Clean up internal _processedDrumChains property after drumMap extraction
   if (result.midiEffects) {
@@ -282,7 +463,6 @@ export function readTrackGeneric({
       result.playingSlotIndex = playingSlotIndex;
     }
 
-    // Only include firedSlotIndex when >= 0 (only for regular tracks)
     const firedSlotIndex = track.getProperty("fired_slot_index");
     if (firedSlotIndex >= 0) {
       result.firedSlotIndex = firedSlotIndex;
@@ -297,117 +477,15 @@ export function readTrackGeneric({
 
   // Handle current routing settings
   if (includeRoutings) {
-    // Master track has no routing properties
-    if (category === "master") {
-      result.inputRoutingType = null;
-      result.inputRoutingChannel = null;
-      result.outputRoutingType = null;
-      result.outputRoutingChannel = null;
-    } else {
-      // Transform current input routing settings - only for regular tracks (not return or group tracks)
-      if (!isGroup && category === "regular") {
-        const inputType = track.getProperty("input_routing_type");
-        result.inputRoutingType = inputType
-          ? {
-              name: inputType.display_name,
-              inputId: String(inputType.identifier),
-            }
-          : null;
-
-        const inputChannel = track.getProperty("input_routing_channel");
-        result.inputRoutingChannel = inputChannel
-          ? {
-              name: inputChannel.display_name,
-              inputId: String(inputChannel.identifier),
-            }
-          : null;
-      } else if (category === "return") {
-        // Return tracks don't have input routing - set null
-        result.inputRoutingType = null;
-        result.inputRoutingChannel = null;
-      }
-      // Group tracks don't set these properties at all (remain undefined)
-
-      const outputType = track.getProperty("output_routing_type");
-      result.outputRoutingType = outputType
-        ? {
-            name: outputType.display_name,
-            outputId: String(outputType.identifier),
-          }
-        : null;
-
-      const outputChannel = track.getProperty("output_routing_channel");
-      result.outputRoutingChannel = outputChannel
-        ? {
-            name: outputChannel.display_name,
-            outputId: String(outputChannel.identifier),
-          }
-        : null;
-
-      // Add monitoring state - only for tracks that can be armed (excludes group/master/return tracks)
-      if (canBeArmed) {
-        const monitoringStateValue = track.getProperty(
-          "current_monitoring_state",
-        );
-        result.monitoringState =
-          {
-            [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
-            [LIVE_API_MONITORING_STATE_AUTO]: MONITORING_STATE.AUTO,
-            [LIVE_API_MONITORING_STATE_OFF]: MONITORING_STATE.OFF,
-          }[monitoringStateValue] ?? "unknown";
-      }
-    }
+    Object.assign(
+      result,
+      processCurrentRouting(track, category, isGroup, canBeArmed),
+    );
   }
 
   // Handle available routing options
   if (includeAvailableRoutings) {
-    // Master track has no routing properties
-    if (category === "master") {
-      result.availableInputRoutingTypes = [];
-      result.availableInputRoutingChannels = [];
-      result.availableOutputRoutingTypes = [];
-      result.availableOutputRoutingChannels = [];
-    } else {
-      // Transform available input routing types - only for regular tracks (not return or group tracks)
-      if (!isGroup && category === "regular") {
-        const availableInputTypes =
-          track.getProperty("available_input_routing_types") || [];
-        result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
-          name: type.display_name,
-          inputId: String(type.identifier),
-        }));
-
-        const availableInputChannels =
-          track.getProperty("available_input_routing_channels") || [];
-        result.availableInputRoutingChannels = availableInputChannels.map(
-          (ch) => ({
-            name: ch.display_name,
-            inputId: String(ch.identifier),
-          }),
-        );
-      } else if (category === "return") {
-        // Return tracks don't have input routing - set empty arrays
-        result.availableInputRoutingTypes = [];
-        result.availableInputRoutingChannels = [];
-      }
-      // Group tracks don't set these properties at all (remain undefined)
-
-      const availableOutputTypes =
-        track.getProperty("available_output_routing_types") || [];
-      result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
-        name: type.display_name,
-        outputId: String(type.identifier),
-      }));
-
-      const availableOutputChannels =
-        track.getProperty("available_output_routing_channels") || [];
-      result.availableOutputRoutingChannels = availableOutputChannels.map(
-        (ch) => ({
-          name: ch.display_name,
-          outputId: String(ch.identifier),
-        }),
-      );
-    }
+    Object.assign(result, processAvailableRouting(track, category, isGroup));
   }
 
   if (isProducerPalHost) {

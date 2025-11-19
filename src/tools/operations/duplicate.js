@@ -12,6 +12,177 @@ import {
   duplicateSceneToArrangement,
 } from "./duplicate-track-scene-helpers.js";
 
+function duplicateToArrangement(
+  type,
+  object,
+  id,
+  i,
+  objectName,
+  arrangementStart,
+  arrangementLength,
+  withoutClips,
+  context,
+) {
+  // All arrangement operations need song time signature for bar|beat conversion
+  const liveSet = new LiveAPI("live_set");
+  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
+  // Convert arrangementStart from bar|beat to Ableton beats once
+  const baseArrangementStartBeats = barBeatToAbletonBeats(
+    arrangementStart,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
+
+  if (type === "scene") {
+    const sceneIndex = object.sceneIndex;
+    if (sceneIndex == null) {
+      throw new Error(
+        `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
+      );
+    }
+
+    // For multiple scenes, place them sequentially to avoid overlap
+    const sceneLength = calculateSceneLength(sceneIndex);
+    const actualArrangementStartBeats =
+      baseArrangementStartBeats + i * sceneLength;
+    return duplicateSceneToArrangement(
+      id,
+      actualArrangementStartBeats,
+      objectName,
+      withoutClips,
+      arrangementLength,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      context,
+    );
+  } else if (type === "clip") {
+    // For multiple clips, place them sequentially to avoid overlap
+    const clipLength = object.getProperty("length");
+    const actualArrangementStartBeats =
+      baseArrangementStartBeats + i * clipLength;
+    return duplicateClipToArrangement(
+      id,
+      actualArrangementStartBeats,
+      objectName,
+      arrangementLength,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      context,
+    );
+  }
+}
+
+function duplicateToSession(
+  type,
+  object,
+  id,
+  i,
+  objectName,
+  withoutClips,
+  withoutDevices,
+  routeToSource,
+  toTrackIndex,
+  toSceneIndex,
+) {
+  if (type === "track") {
+    // Session view operations (no bar|beat conversion needed)
+    const trackIndex = object.trackIndex;
+    if (trackIndex == null) {
+      throw new Error(
+        `duplicate failed: no track index for id "${id}" (path="${object.path}")`,
+      );
+    }
+    // For multiple tracks, we need to account for previously created tracks
+    const actualTrackIndex = trackIndex + i;
+    return duplicateTrack(
+      actualTrackIndex,
+      objectName,
+      withoutClips,
+      withoutDevices,
+      routeToSource,
+      trackIndex, // Pass original source track index for routing
+    );
+  } else if (type === "scene") {
+    const sceneIndex = object.sceneIndex;
+    if (sceneIndex == null) {
+      throw new Error(
+        `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
+      );
+    }
+    const actualSceneIndex = sceneIndex + i;
+    return duplicateScene(actualSceneIndex, objectName, withoutClips);
+  } else if (type === "clip") {
+    const trackIndex = object.trackIndex;
+    const sceneIndex = object.sceneIndex;
+    if (trackIndex == null || sceneIndex == null) {
+      // We already validated object was a clip, so if we're here, this must be an arrangement
+      // clip
+      throw new Error(
+        `unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="${id}" path="${object.path}") `,
+      );
+    }
+
+    // For session clips with count > 1, place them sequentially at the destination track
+    const actualToSceneIndex = toSceneIndex + i;
+    return duplicateClipSlot(
+      trackIndex,
+      sceneIndex,
+      toTrackIndex,
+      actualToSceneIndex,
+      objectName,
+    );
+  }
+}
+
+function performDuplication(
+  type,
+  destination,
+  object,
+  id,
+  i,
+  objectName,
+  params,
+  context,
+) {
+  const {
+    arrangementStart,
+    arrangementLength,
+    withoutClips,
+    withoutDevices,
+    routeToSource,
+    toTrackIndex,
+    toSceneIndex,
+  } = params;
+
+  if (destination === "arrangement") {
+    return duplicateToArrangement(
+      type,
+      object,
+      id,
+      i,
+      objectName,
+      arrangementStart,
+      arrangementLength,
+      withoutClips,
+      context,
+    );
+  }
+  return duplicateToSession(
+    type,
+    object,
+    id,
+    i,
+    objectName,
+    withoutClips,
+    withoutDevices,
+    routeToSource,
+    toTrackIndex,
+    toSceneIndex,
+  );
+}
+
 /**
  * Duplicates an object based on its type.
  * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
@@ -147,112 +318,24 @@ export function duplicate(
             : `${name} ${i + 1}`
         : undefined;
 
-    let newObjectMetadata;
-
-    if (destination === "arrangement") {
-      // All arrangement operations need song time signature for bar|beat conversion
-      const liveSet = new LiveAPI("live_set");
-      const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-      const songTimeSigDenominator = liveSet.getProperty(
-        "signature_denominator",
-      );
-
-      // Convert arrangementStart from bar|beat to Ableton beats once
-      const baseArrangementStartBeats = barBeatToAbletonBeats(
+    const newObjectMetadata = performDuplication(
+      type,
+      destination,
+      object,
+      id,
+      i,
+      objectName,
+      {
         arrangementStart,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      );
-
-      if (type === "scene") {
-        const sceneIndex = object.sceneIndex;
-        if (sceneIndex == null) {
-          throw new Error(
-            `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-          );
-        }
-
-        // For multiple scenes, place them sequentially to avoid overlap
-        const sceneLength = calculateSceneLength(sceneIndex);
-        const actualArrangementStartBeats =
-          baseArrangementStartBeats + i * sceneLength;
-        newObjectMetadata = duplicateSceneToArrangement(
-          id,
-          actualArrangementStartBeats,
-          objectName,
-          withoutClips,
-          arrangementLength,
-          songTimeSigNumerator,
-          songTimeSigDenominator,
-          context,
-        );
-      } else if (type === "clip") {
-        // For multiple clips, place them sequentially to avoid overlap
-        const clipLength = object.getProperty("length");
-        const actualArrangementStartBeats =
-          baseArrangementStartBeats + i * clipLength;
-        newObjectMetadata = duplicateClipToArrangement(
-          id,
-          actualArrangementStartBeats,
-          objectName,
-          arrangementLength,
-          songTimeSigNumerator,
-          songTimeSigDenominator,
-          context,
-        );
-      }
-    } else if (type === "track") {
-      // Session view operations (no bar|beat conversion needed)
-      const trackIndex = object.trackIndex;
-      if (trackIndex == null) {
-        throw new Error(
-          `duplicate failed: no track index for id "${id}" (path="${object.path}")`,
-        );
-      }
-      // For multiple tracks, we need to account for previously created tracks
-      const actualTrackIndex = trackIndex + i;
-      newObjectMetadata = duplicateTrack(
-        actualTrackIndex,
-        objectName,
+        arrangementLength,
         withoutClips,
         withoutDevices,
         routeToSource,
-        trackIndex, // Pass original source track index for routing
-      );
-    } else if (type === "scene") {
-      const sceneIndex = object.sceneIndex;
-      if (sceneIndex == null) {
-        throw new Error(
-          `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-        );
-      }
-      const actualSceneIndex = sceneIndex + i;
-      newObjectMetadata = duplicateScene(
-        actualSceneIndex,
-        objectName,
-        withoutClips,
-      );
-    } else if (type === "clip") {
-      const trackIndex = object.trackIndex;
-      const sceneIndex = object.sceneIndex;
-      if (trackIndex == null || sceneIndex == null) {
-        // We already validated object was a clip, so if we're here, this must be an arrangement
-        // clip
-        throw new Error(
-          `unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="${id}" path="${object.path}") `,
-        );
-      }
-
-      // For session clips with count > 1, place them sequentially at the destination track
-      const actualToSceneIndex = toSceneIndex + i;
-      newObjectMetadata = duplicateClipSlot(
-        trackIndex,
-        sceneIndex,
         toTrackIndex,
-        actualToSceneIndex,
-        objectName,
-      );
-    }
+        toSceneIndex,
+      },
+      context,
+    );
 
     createdObjects.push(newObjectMetadata);
   }

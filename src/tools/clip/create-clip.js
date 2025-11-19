@@ -11,6 +11,290 @@ import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 import { select } from "../control/select.js";
 import { parseTimeSignature } from "../shared/utils.js";
 
+function validateCreateClipParams(
+  view,
+  trackIndex,
+  sceneIndex,
+  arrangementStart,
+  count,
+) {
+  if (!view) {
+    throw new Error("createClip failed: view parameter is required");
+  }
+
+  if (trackIndex == null) {
+    throw new Error("createClip failed: trackIndex is required");
+  }
+
+  if (view === "session" && sceneIndex == null) {
+    throw new Error(
+      "createClip failed: sceneIndex is required when view is 'Session'",
+    );
+  }
+
+  if (view === "arrangement" && arrangementStart == null) {
+    throw new Error(
+      "createClip failed: arrangementStart is required when view is 'Arrangement'",
+    );
+  }
+
+  if (count < 1) {
+    throw new Error("createClip failed: count must be at least 1");
+  }
+}
+
+function calculateClipLength(
+  endBeats,
+  notes,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  if (endBeats != null) {
+    // Use calculated end position
+    return endBeats;
+  } else if (notes.length > 0) {
+    // Find the latest note start time (not end time)
+    const lastNoteStartTimeAbletonBeats = Math.max(
+      ...notes.map((note) => note.start_time),
+    );
+
+    // Calculate Ableton beats per bar for this time signature
+    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+
+    // Round up to the next full bar, ensuring at least 1 bar
+    // Add a small epsilon to handle the case where note starts exactly at bar boundary
+    return (
+      Math.ceil((lastNoteStartTimeAbletonBeats + 0.0001) / abletonBeatsPerBar) *
+      abletonBeatsPerBar
+    );
+  }
+  // Empty clip, use 1 bar minimum
+  const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  return abletonBeatsPerBar;
+}
+
+function createSessionClip(
+  trackIndex,
+  sceneIndex,
+  clipLength,
+  liveSet,
+  i,
+  maxAutoCreatedScenes,
+) {
+  const currentSceneIndex = sceneIndex + i;
+
+  // Auto-create scenes if needed
+  if (currentSceneIndex >= maxAutoCreatedScenes) {
+    throw new Error(
+      `createClip failed: sceneIndex ${currentSceneIndex} exceeds the maximum allowed value of ${
+        MAX_AUTO_CREATED_SCENES - 1
+      }`,
+    );
+  }
+
+  const currentSceneCount = liveSet.getChildIds("scenes").length;
+
+  if (currentSceneIndex >= currentSceneCount) {
+    const scenesToCreate = currentSceneIndex - currentSceneCount + 1;
+    for (let j = 0; j < scenesToCreate; j++) {
+      liveSet.call("create_scene", -1); // -1 means append at the end
+    }
+  }
+
+  const clipSlot = new LiveAPI(
+    `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
+  );
+  if (clipSlot.getProperty("has_clip")) {
+    throw new Error(
+      `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentSceneIndex}`,
+    );
+  }
+  clipSlot.call("create_clip", clipLength);
+  return {
+    clip: new LiveAPI(`${clipSlot.path} clip`),
+    sceneIndex: currentSceneIndex,
+  };
+}
+
+function createArrangementClip(
+  trackIndex,
+  arrangementStartBeats,
+  clipLength,
+  i,
+) {
+  const currentArrangementStartBeats = arrangementStartBeats + i * clipLength;
+
+  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  if (!track.exists()) {
+    throw new Error(
+      `createClip failed: track with index ${trackIndex} does not exist`,
+    );
+  }
+
+  const newClipResult = track.call(
+    "create_midi_clip",
+    currentArrangementStartBeats,
+    clipLength,
+  );
+  const clip = LiveAPI.from(newClipResult);
+  if (!clip.exists()) {
+    throw new Error("createClip failed: failed to create Arrangement clip");
+  }
+
+  return { clip, arrangementStartBeats: currentArrangementStartBeats };
+}
+
+function buildClipProperties(
+  startBeats,
+  endBeats,
+  firstStartBeats,
+  looping,
+  clipName,
+  color,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  // Determine start_marker value
+  let startMarkerBeats = null;
+  if (firstStartBeats != null && looping !== false) {
+    // firstStart takes precedence for looping clips
+    startMarkerBeats = firstStartBeats;
+  } else if (startBeats != null) {
+    // Use start as start_marker
+    startMarkerBeats = startBeats;
+  }
+
+  // Set properties based on looping state
+  const propsToSet = {
+    name: clipName,
+    color: color,
+    signature_numerator: timeSigNumerator,
+    signature_denominator: timeSigDenominator,
+    start_marker: startMarkerBeats,
+    looping: looping,
+  };
+
+  // Set loop properties for looping clips
+  if (looping === true || looping == null) {
+    if (startBeats != null) {
+      propsToSet.loop_start = startBeats;
+    }
+    if (endBeats != null) {
+      propsToSet.loop_end = endBeats;
+    }
+  }
+
+  // Set end_marker for non-looping clips
+  if (looping === false) {
+    if (endBeats != null) {
+      propsToSet.end_marker = endBeats;
+    }
+  }
+
+  return propsToSet;
+}
+
+function buildClipResult(
+  clip,
+  trackIndex,
+  view,
+  sceneIndex,
+  i,
+  arrangementStart,
+  songTimeSigNumerator,
+  songTimeSigDenominator,
+  clipLength,
+  notationString,
+  notes,
+  length,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  const clipResult = {
+    id: clip.id,
+    trackIndex,
+  };
+
+  // Add view-specific properties
+  if (view === "session") {
+    clipResult.sceneIndex = sceneIndex;
+  } else if (i === 0) {
+    // Calculate bar|beat position for this clip
+    clipResult.arrangementStart = arrangementStart;
+  } else {
+    // Convert clipLength back to bar|beat format and add to original position
+    const clipLengthInMusicalBeats = clipLength * (songTimeSigDenominator / 4);
+    const totalOffsetBeats = i * clipLengthInMusicalBeats;
+    const originalBeats = barBeatToBeats(
+      arrangementStart,
+      songTimeSigNumerator,
+    );
+    const newPositionBeats = originalBeats + totalOffsetBeats;
+    clipResult.arrangementStart = beatsToBarBeat(
+      newPositionBeats,
+      songTimeSigNumerator,
+    );
+  }
+
+  // Only include noteCount if notes were provided
+  if (notationString != null) {
+    clipResult.noteCount = notes.length;
+
+    // Include calculated length if it wasn't provided as input parameter
+    if (length == null) {
+      clipResult.length = abletonBeatsToBarBeatDuration(
+        clipLength,
+        timeSigNumerator,
+        timeSigDenominator,
+      );
+    }
+  }
+
+  return clipResult;
+}
+
+function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
+  if (!auto || view !== "session") {
+    return;
+  }
+
+  switch (auto) {
+    case "play-scene": {
+      // Launch the entire scene for synchronization
+      const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+      if (!scene.exists()) {
+        throw new Error(
+          `createClip auto="play-scene" failed: scene at sceneIndex=${sceneIndex} does not exist`,
+        );
+      }
+      scene.call("fire");
+      break;
+    }
+
+    case "play-clip":
+      // Fire individual clips (original autoplay behavior)
+      for (let i = 0; i < count; i++) {
+        const currentSceneIndex = sceneIndex + i;
+        const clipSlot = new LiveAPI(
+          `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
+        );
+        clipSlot.call("fire");
+      }
+      break;
+
+    default:
+      throw new Error(
+        `createClip failed: unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
+      );
+  }
+}
+
 /**
  * Creates MIDI clips in Session or Arrangement view
  * @param {Object} args - The clip parameters
@@ -52,29 +336,13 @@ export function createClip(
   _context = {},
 ) {
   // Validate parameters
-  if (!view) {
-    throw new Error("createClip failed: view parameter is required");
-  }
-
-  if (trackIndex == null) {
-    throw new Error("createClip failed: trackIndex is required");
-  }
-
-  if (view === "session" && sceneIndex == null) {
-    throw new Error(
-      "createClip failed: sceneIndex is required when view is 'Session'",
-    );
-  }
-
-  if (view === "arrangement" && arrangementStart == null) {
-    throw new Error(
-      "createClip failed: arrangementStart is required when view is 'Arrangement'",
-    );
-  }
-
-  if (count < 1) {
-    throw new Error("createClip failed: count must be at least 1");
-  }
+  validateCreateClipParams(
+    view,
+    trackIndex,
+    sceneIndex,
+    arrangementStart,
+    count,
+  );
 
   const liveSet = new LiveAPI("live_set");
   let timeSigNumerator, timeSigDenominator;
@@ -138,35 +406,12 @@ export function createClip(
       : [];
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
-  let clipLength;
-  if (endBeats != null) {
-    // Use calculated end position
-    clipLength = endBeats;
-  } else if (notes.length > 0) {
-    // Find the latest note start time (not end time)
-    const lastNoteStartTimeAbletonBeats = Math.max(
-      ...notes.map((note) => note.start_time),
-    );
-
-    // Calculate Ableton beats per bar for this time signature
-    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-
-    // Round up to the next full bar, ensuring at least 1 bar
-    // Add a small epsilon to handle the case where note starts exactly at bar boundary
-    clipLength =
-      Math.ceil((lastNoteStartTimeAbletonBeats + 0.0001) / abletonBeatsPerBar) *
-      abletonBeatsPerBar;
-  } else {
-    // Empty clip, use 1 bar minimum
-    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-    clipLength = abletonBeatsPerBar;
-  }
+  const clipLength = calculateClipLength(
+    endBeats,
+    notes,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
   const createdClips = [];
 
@@ -182,97 +427,41 @@ export function createClip(
         : undefined;
 
     let clip;
-    let currentSceneIndex, currentArrangementStartBeats;
+    let currentSceneIndex;
 
     if (view === "session") {
-      currentSceneIndex = sceneIndex + i;
-
-      // Auto-create scenes if needed
-      if (currentSceneIndex >= MAX_AUTO_CREATED_SCENES) {
-        throw new Error(
-          `createClip failed: sceneIndex ${currentSceneIndex} exceeds the maximum allowed value of ${
-            MAX_AUTO_CREATED_SCENES - 1
-          }`,
-        );
-      }
-
-      const currentSceneCount = liveSet.getChildIds("scenes").length;
-
-      if (currentSceneIndex >= currentSceneCount) {
-        const scenesToCreate = currentSceneIndex - currentSceneCount + 1;
-        for (let j = 0; j < scenesToCreate; j++) {
-          liveSet.call("create_scene", -1); // -1 means append at the end
-        }
-      }
-
-      const clipSlot = new LiveAPI(
-        `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
+      const result = createSessionClip(
+        trackIndex,
+        sceneIndex,
+        clipLength,
+        liveSet,
+        i,
+        MAX_AUTO_CREATED_SCENES,
       );
-      if (clipSlot.getProperty("has_clip")) {
-        throw new Error(
-          `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentSceneIndex}`,
-        );
-      }
-      clipSlot.call("create_clip", clipLength);
-      clip = new LiveAPI(`${clipSlot.path} clip`);
+      clip = result.clip;
+      currentSceneIndex = result.sceneIndex;
     } else {
       // Arrangement view
-      currentArrangementStartBeats = arrangementStartBeats + i * clipLength;
-
-      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-      if (!track.exists()) {
-        throw new Error(
-          `createClip failed: track with index ${trackIndex} does not exist`,
-        );
-      }
-
-      const newClipResult = track.call(
-        "create_midi_clip",
-        currentArrangementStartBeats,
+      const result = createArrangementClip(
+        trackIndex,
+        arrangementStartBeats,
         clipLength,
+        i,
       );
-      clip = LiveAPI.from(newClipResult);
-      if (!clip.exists()) {
-        throw new Error("createClip failed: failed to create Arrangement clip");
-      }
+      clip = result.clip;
+      const _currentArrangementStartBeats = result.arrangementStartBeats;
     }
 
-    // Determine start_marker value
-    let startMarkerBeats = null;
-    if (firstStartBeats != null && looping !== false) {
-      // firstStart takes precedence for looping clips
-      startMarkerBeats = firstStartBeats;
-    } else if (startBeats != null) {
-      // Use start as start_marker
-      startMarkerBeats = startBeats;
-    }
-
-    // Set properties based on looping state
-    const propsToSet = {
-      name: clipName,
-      color: color,
-      signature_numerator: timeSigNumerator,
-      signature_denominator: timeSigDenominator,
-      start_marker: startMarkerBeats,
-      looping: looping,
-    };
-
-    // Set loop properties for looping clips
-    if (looping === true || looping == null) {
-      if (startBeats != null) {
-        propsToSet.loop_start = startBeats;
-      }
-      if (endBeats != null) {
-        propsToSet.loop_end = endBeats;
-      }
-    }
-
-    // Set end_marker for non-looping clips
-    if (looping === false) {
-      if (endBeats != null) {
-        propsToSet.end_marker = endBeats;
-      }
-    }
+    const propsToSet = buildClipProperties(
+      startBeats,
+      endBeats,
+      firstStartBeats,
+      looping,
+      clipName,
+      color,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
 
     clip.setAll(propsToSet);
 
@@ -281,83 +470,28 @@ export function createClip(
       clip.call("add_new_notes", { notes });
     }
 
-    // Build optimistic result object
-    const clipResult = {
-      id: clip.id,
+    const clipResult = buildClipResult(
+      clip,
       trackIndex,
-    };
-
-    // Add view-specific properties
-    if (view === "session") {
-      clipResult.sceneIndex = currentSceneIndex;
-    } else if (i === 0) {
-      // Calculate bar|beat position for this clip
-      clipResult.arrangementStart = arrangementStart;
-    } else {
-      // Convert clipLength back to bar|beat format and add to original position
-      const clipLengthInMusicalBeats =
-        clipLength * (songTimeSigDenominator / 4);
-      const totalOffsetBeats = i * clipLengthInMusicalBeats;
-      const originalBeats = barBeatToBeats(
-        arrangementStart,
-        songTimeSigNumerator,
-      );
-      const newPositionBeats = originalBeats + totalOffsetBeats;
-      clipResult.arrangementStart = beatsToBarBeat(
-        newPositionBeats,
-        songTimeSigNumerator,
-      );
-    }
-
-    // Only include noteCount if notes were provided
-    if (notationString != null) {
-      clipResult.noteCount = notes.length;
-
-      // Include calculated length if it wasn't provided as input parameter
-      if (length == null) {
-        clipResult.length = abletonBeatsToBarBeatDuration(
-          clipLength,
-          timeSigNumerator,
-          timeSigDenominator,
-        );
-      }
-    }
+      view,
+      currentSceneIndex,
+      i,
+      arrangementStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      clipLength,
+      notationString,
+      notes,
+      length,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
 
     createdClips.push(clipResult);
   }
 
   // Handle automatic playback for Session clips
-  if (auto && view === "session") {
-    switch (auto) {
-      case "play-scene": {
-        // Launch the entire scene for synchronization
-        const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
-        if (!scene.exists()) {
-          throw new Error(
-            `createClip auto="play-scene" failed: scene at sceneIndex=${sceneIndex} does not exist`,
-          );
-        }
-        scene.call("fire");
-        break;
-      }
-
-      case "play-clip":
-        // Fire individual clips (original autoplay behavior)
-        for (let i = 0; i < count; i++) {
-          const currentSceneIndex = sceneIndex + i;
-          const clipSlot = new LiveAPI(
-            `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
-          );
-          clipSlot.call("fire");
-        }
-        break;
-
-      default:
-        throw new Error(
-          `createClip failed: unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
-        );
-    }
-  }
+  handleAutoPlayback(auto, view, sceneIndex, count, trackIndex);
 
   // Handle view switching if requested
   if (switchView) {
