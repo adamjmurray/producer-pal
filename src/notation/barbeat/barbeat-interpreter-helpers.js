@@ -480,3 +480,99 @@ export function handleBarCopySingleDestination(
 export function handleClearBuffer(notesByBar) {
   notesByBar.clear();
 }
+
+/**
+ * Calculate positions from time element
+ * @param {Object} element - Time position element with bar and beat
+ * @param {Object} state - Current interpreter state
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {Function} expandRepeatPattern - Function to expand repeat patterns
+ * @returns {Array} Array of position objects with bar and beat
+ */
+export function calculatePositions(
+  element,
+  state,
+  beatsPerBar,
+  expandRepeatPattern,
+) {
+  if (typeof element.beat === "object" && element.beat.start !== undefined) {
+    const currentBar =
+      element.bar === null
+        ? state.hasExplicitBarNumber
+          ? state.currentTime.bar
+          : 1
+        : element.bar;
+    return expandRepeatPattern(
+      element.beat,
+      currentBar,
+      beatsPerBar,
+      state.currentDuration,
+    );
+  }
+
+  const bar =
+    element.bar === null
+      ? state.hasExplicitBarNumber
+        ? state.currentTime.bar
+        : 1
+      : element.bar;
+  const beat = element.beat;
+  return [{ bar, beat }];
+}
+
+/**
+ * Handle pitch emission or warn if no pitches
+ * @param {Array} positions - Array of positions to emit pitches at
+ * @param {Object} state - Current interpreter state
+ * @param {Object} element - Time position element
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number|null} timeSigDenominator - Time signature denominator
+ * @param {Array} events - Events array
+ * @param {Map} notesByBar - Notes by bar map
+ * @param {Function} emitPitchesAtPositions - Function to emit pitches
+ */
+export function handlePitchEmission(
+  positions,
+  state,
+  element,
+  beatsPerBar,
+  timeSigDenominator,
+  events,
+  notesByBar,
+  emitPitchesAtPositions,
+) {
+  if (state.currentPitches.length === 0) {
+    if (positions.length === 1) {
+      console.error(
+        `Warning: Time position ${positions[0].bar}|${positions[0].beat} has no pitches`,
+      );
+    } else {
+      console.error(
+        `Warning: Time position has no pitches (first position: ${positions[0].bar}|${positions[0].beat})`,
+      );
+    }
+    return;
+  }
+
+  if (state.stateChangedSinceLastPitch) {
+    console.error(
+      "Warning: state change after pitch(es) but before time position won't affect this group",
+    );
+  }
+
+  const emitResult = emitPitchesAtPositions(
+    positions,
+    state.currentPitches,
+    element,
+    beatsPerBar,
+    timeSigDenominator,
+    events,
+    notesByBar,
+  );
+
+  state.currentTime = emitResult.currentTime;
+  if (emitResult.hasExplicitBarNumber) {
+    state.hasExplicitBarNumber = true;
+  }
+  state.pitchesEmitted = true;
+}

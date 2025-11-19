@@ -13,6 +13,8 @@ import {
   handleBarCopyRangeDestination,
   handleBarCopySingleDestination,
   handleClearBuffer,
+  calculatePositions,
+  handlePitchEmission,
 } from "./barbeat-interpreter-helpers.js";
 import {
   expandRepeatPattern,
@@ -162,61 +164,24 @@ function processTimePosition(
   events,
   notesByBar,
 ) {
-  let positions;
-  if (typeof element.beat === "object" && element.beat.start !== undefined) {
-    const currentBar =
-      element.bar === null
-        ? state.hasExplicitBarNumber
-          ? state.currentTime.bar
-          : 1
-        : element.bar;
-    positions = expandRepeatPattern(
-      element.beat,
-      currentBar,
-      beatsPerBar,
-      state.currentDuration,
-    );
-  } else {
-    const bar =
-      element.bar === null
-        ? state.hasExplicitBarNumber
-          ? state.currentTime.bar
-          : 1
-        : element.bar;
-    const beat = element.beat;
-    positions = [{ bar, beat }];
-  }
-  if (state.currentPitches.length === 0) {
-    if (positions.length === 1) {
-      console.error(
-        `Warning: Time position ${positions[0].bar}|${positions[0].beat} has no pitches`,
-      );
-    } else {
-      console.error(
-        `Warning: Time position has no pitches (first position: ${positions[0].bar}|${positions[0].beat})`,
-      );
-    }
-  } else {
-    if (state.stateChangedSinceLastPitch) {
-      console.error(
-        "Warning: state change after pitch(es) but before time position won't affect this group",
-      );
-    }
-    const emitResult = emitPitchesAtPositions(
-      positions,
-      state.currentPitches,
-      element,
-      beatsPerBar,
-      timeSigDenominator,
-      events,
-      notesByBar,
-    );
-    state.currentTime = emitResult.currentTime;
-    if (emitResult.hasExplicitBarNumber) {
-      state.hasExplicitBarNumber = true;
-    }
-    state.pitchesEmitted = true;
-  }
+  const positions = calculatePositions(
+    element,
+    state,
+    beatsPerBar,
+    expandRepeatPattern,
+  );
+
+  handlePitchEmission(
+    positions,
+    state,
+    element,
+    beatsPerBar,
+    timeSigDenominator,
+    events,
+    notesByBar,
+    emitPitchesAtPositions,
+  );
+
   state.pitchGroupStarted = false;
   state.stateChangedSinceLastPitch = false;
   state.stateChangedAfterEmission = false;
