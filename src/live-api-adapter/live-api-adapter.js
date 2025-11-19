@@ -71,6 +71,11 @@ if (process.env.ENABLE_RAW_LIVE_API === "true") {
   tools["ppal-raw-live-api"] = (args) => rawLiveApi(args, context);
 }
 
+/**
+ *
+ * @param toolName
+ * @param args
+ */
 function callTool(toolName, args) {
   const tool = tools[toolName];
   if (!tool) {
@@ -80,30 +85,60 @@ function callTool(toolName, args) {
 }
 
 let isCompactOutputEnabled = true;
+/**
+ *
+ * @param enabled
+ */
 export function compactOutput(enabled) {
   isCompactOutputEnabled = Boolean(enabled);
 }
 
+/**
+ *
+ * @param enabled
+ */
 export function smallModelMode(enabled) {
   context.smallModelMode = Boolean(enabled);
 }
 
+/**
+ *
+ * @param enabled
+ */
 export function projectNotesEnabled(enabled) {
   context.projectNotes.enabled = Boolean(enabled);
 }
 
+/**
+ *
+ * @param writable
+ */
 export function projectNotesWritable(writable) {
   context.projectNotes.writable = Boolean(writable);
 }
 
+/**
+ *
+ * @param _text
+ * @param content
+ */
 export function projectNotes(_text, content) {
   context.projectNotes.content = content ?? "";
 }
 
+/**
+ *
+ * @param beats
+ */
 export function holdingAreaStartBeats(beats) {
   context.holdingAreaStartBeats = Number(beats) || 40000;
 }
 
+/**
+ *
+ * @param requestId
+ * @param result
+ */
 function sendResponse(requestId, result) {
   const jsonString = JSON.stringify(result);
 
@@ -136,6 +171,13 @@ function sendResponse(requestId, result) {
 }
 
 // Handle messages from Node for Max
+/**
+ *
+ * @param requestId
+ * @param tool
+ * @param argsJSON
+ * @param contextJSON
+ */
 export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
   let result;
   try {

@@ -5,8 +5,8 @@ import { captureScene } from "./capture-scene.js";
 
 /**
  * Applies scene properties (color, tempo, timeSignature) to a scene
- * @param {Object} scene - The LiveAPI scene object
- * @param {Object} props - Properties to apply
+ * @param {object} scene - The LiveAPI scene object
+ * @param {object} props - Properties to apply
  * @param {string} [props.color] - Color for the scene (CSS format: hex)
  * @param {number|null} [props.tempo] - Tempo in BPM
  * @param {string|null} [props.timeSignature] - Time signature in format "4/4"
@@ -22,7 +22,7 @@ function applySceneProperties(scene, { color, tempo, timeSignature }) {
 
 /**
  * Applies tempo property to a scene
- * @param {Object} scene - The LiveAPI scene object
+ * @param {object} scene - The LiveAPI scene object
  * @param {number|null} tempo - Tempo in BPM. -1 disables, other values enable
  */
 function applyTempoProperty(scene, tempo) {
@@ -36,7 +36,7 @@ function applyTempoProperty(scene, tempo) {
 
 /**
  * Applies time signature property to a scene
- * @param {Object} scene - The LiveAPI scene object
+ * @param {object} scene - The LiveAPI scene object
  * @param {string|null} timeSignature - Time signature. "disabled" disables, other values enable
  */
 function applyTimeSignatureProperty(scene, timeSignature) {
@@ -90,7 +90,7 @@ function validateCreateSceneArgs(sceneIndex, count) {
 
 /**
  * Ensures enough scenes exist to insert at the specified index
- * @param {Object} liveSet - The LiveAPI live_set object
+ * @param {object} liveSet - The LiveAPI live_set object
  * @param {number} sceneIndex - The target scene index
  */
 function ensureSceneCountForIndex(liveSet, sceneIndex) {
@@ -105,8 +105,8 @@ function ensureSceneCountForIndex(liveSet, sceneIndex) {
 
 /**
  * Applies scene properties in capture mode
- * @param {Object} result - The capture result object
- * @param {Object} props - Properties to apply
+ * @param {object} result - The capture result object
+ * @param {object} props - Properties to apply
  */
 function applyCaptureProperties(result, props) {
   const { color, tempo, timeSignature } = props;
@@ -118,7 +118,7 @@ function applyCaptureProperties(result, props) {
 
 /**
  * Creates a single scene with the specified properties
- * @param {Object} liveSet - The LiveAPI live_set object
+ * @param {object} liveSet - The LiveAPI live_set object
  * @param {number} sceneIndex - The scene index
  * @param {number} creationIndex - 0-based index in the creation sequence
  * @param {number} count - Total count of scenes being created
@@ -126,7 +126,7 @@ function applyCaptureProperties(result, props) {
  * @param {string|null} color - Color for the scene
  * @param {number|null} tempo - Tempo for the scene
  * @param {string|null} timeSignature - Time signature for the scene
- * @returns {Object} The created scene object
+ * @returns {object} The created scene object
  */
 function createSingleScene(
   liveSet,
@@ -156,7 +156,7 @@ function createSingleScene(
 
 /**
  * Creates new scenes at the specified index or captures currently playing clips
- * @param {Object} args - The scene parameters
+ * @param {object} args - The scene parameters
  * @param {number} [args.sceneIndex] - Scene index (0-based) where to insert new scenes. Required when capture=false, optional when capture=true
  * @param {number} [args.count=1] - Number of scenes to create (ignored when capture=true)
  * @param {boolean} [args.capture=false] - Capture currently playing Session clips instead of creating empty scenes
@@ -165,7 +165,8 @@ function createSingleScene(
  * @param {number|null} [args.tempo] - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
  * @param {boolean} [args.switchView=false] - Automatically switch to session view
- * @returns {Object|Array<Object>} Single scene object when count=1, array when count>1
+ * @param _context
+ * @returns {object | Array<object>} Single scene object when count=1, array when count>1
  */
 export function createScene(
   {

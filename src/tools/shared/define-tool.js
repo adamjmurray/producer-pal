@@ -2,6 +2,11 @@ import { z } from "zod";
 import { formatErrorResponse } from "../../shared/mcp-response-utils.js";
 import { filterSchemaForSmallModel } from "./filter-schema.js";
 
+/**
+ *
+ * @param name
+ * @param options
+ */
 export function defineTool(name, options) {
   return (server, callLiveApi, mcpOptions = {}) => {
     const { smallModelMode = false } = mcpOptions;

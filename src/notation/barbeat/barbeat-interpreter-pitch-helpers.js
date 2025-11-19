@@ -2,7 +2,7 @@ import * as console from "../../shared/v8-max-console";
 
 /**
  * Expand a repeat pattern into multiple beat positions
- * @param {Object} pattern - Repeat pattern { start, times, step }
+ * @param {object} pattern - Repeat pattern { start, times, step }
  * @param {number} currentBar - Current bar number (1-indexed)
  * @param {number} beatsPerBar - Musical beats per bar
  * @param {number} currentDuration - Current note duration (used when step is null)
@@ -35,8 +35,8 @@ export function expandRepeatPattern(
 
 /**
  * Emit a single pitch at a position, creating note event and tracking for bar copy
- * @param {Object} pitchState - Pitch state with velocity, duration, etc.
- * @param {Object} position - Position with bar and beat
+ * @param {object} pitchState - Pitch state with velocity, duration, etc.
+ * @param {object} position - Position with bar and beat
  * @param {number} beatsPerBar - Musical beats per bar
  * @param {number} timeSigDenominator - Time signature denominator (or null)
  * @param {Array} events - Events array to append to
@@ -94,12 +94,12 @@ export function emitPitchAtPosition(
  * Emit all pitches at multiple positions
  * @param {Array} positions - Array of positions {bar, beat}
  * @param {Array} currentPitches - Array of pitch states to emit
- * @param {Object} element - AST element (to check if bar is explicit)
+ * @param {object} element - AST element (to check if bar is explicit)
  * @param {number} beatsPerBar - Musical beats per bar
  * @param {number} timeSigDenominator - Time signature denominator (or null)
  * @param {Array} events - Events array to append to
  * @param {Map} notesByBar - Bar copy tracking map
- * @returns {Object} Updated currentTime and hasExplicitBarNumber flag
+ * @returns {object} Updated currentTime and hasExplicitBarNumber flag
  */
 export function emitPitchesAtPositions(
   positions,

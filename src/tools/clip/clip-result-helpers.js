@@ -20,7 +20,7 @@ function parseSongTimeSignature() {
  * Validate and parse arrangement parameters
  * @param {string} arrangementStart - Bar|beat position for arrangement clip start
  * @param {string} arrangementLength - Bar:beat duration for arrangement span
- * @returns {Object} Parsed parameters: songTimeSigNumerator, songTimeSigDenominator, arrangementStartBeats, arrangementLengthBeats
+ * @returns {object} Parsed parameters: songTimeSigNumerator, songTimeSigDenominator, arrangementStartBeats, arrangementLengthBeats
  */
 export function validateAndParseArrangementParams(
   arrangementStart,
@@ -68,7 +68,7 @@ export function validateAndParseArrangementParams(
  * Build clip result object with optional noteCount
  * @param {string} clipId - The clip ID
  * @param {number|null} noteCount - Optional final note count
- * @returns {Object} Result object with id and optionally noteCount
+ * @returns {object} Result object with id and optionally noteCount
  */
 export function buildClipResultObject(clipId, noteCount) {
   const result = { id: clipId };

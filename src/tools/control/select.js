@@ -15,7 +15,7 @@ import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
  * 3) Context strongly suggests the user would benefit from seeing the result.
  * When in doubt, don't change views.
  *
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} [args.view] - Main view to switch to ('session' or 'arrangement')
  * @param {string} [args.trackId] - Track ID to select
  * @param {string} [args.category] - Track category ('regular', 'return', or 'master')
@@ -25,11 +25,12 @@ import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
  * @param {string|null} [args.clipId] - Clip ID to select (null to deselect all clips)
  * @param {string} [args.deviceId] - Device ID to select
  * @param {boolean} [args.instrument] - Select the track's instrument
- * @param {Object} [args.clipSlot] - Clip slot to highlight {trackIndex, sceneIndex}
+ * @param {object} [args.clipSlot] - Clip slot to highlight {trackIndex, sceneIndex}
  * @param {string} [args.detailView] - Detail view to show ('clip', 'device', or 'none')
  * @param {boolean} [args.showLoop] - Show loop view for selected clip
  * @param {boolean} [args.showBrowser] - Show browser view
- * @returns {Object} Current view state with selection information
+ * @param _context
+ * @returns {object} Current view state with selection information
  */
 export function select(
   {
@@ -157,6 +158,18 @@ export function select(
   return readViewState();
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.trackId
+ * @param root0.category
+ * @param root0.trackIndex
+ * @param root0.sceneId
+ * @param root0.sceneIndex
+ * @param root0.deviceId
+ * @param root0.instrument
+ * @param root0.clipSlot
+ */
 function validateParameters({
   trackId,
   category,
@@ -208,6 +221,14 @@ function validateParameters({
   }
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.songView
+ * @param root0.trackId
+ * @param root0.category
+ * @param root0.trackIndex
+ */
 function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   const result = {};
 
@@ -256,6 +277,13 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   return result;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.songView
+ * @param root0.sceneId
+ * @param root0.sceneIndex
+ */
 function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   const result = {};
 
@@ -281,6 +309,13 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   return result;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.deviceId
+ * @param root0.instrument
+ * @param root0.trackSelectionResult
+ */
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
     // Select specific device by ID and validate it's a device
@@ -327,6 +362,12 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   }
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.songView
+ * @param root0.clipSlot
+ */
 function updateHighlightedClipSlot({ songView, clipSlot }) {
   if (clipSlot != null) {
     // Set by indices

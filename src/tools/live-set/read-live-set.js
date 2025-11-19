@@ -13,9 +13,10 @@ import { readTrackMinimal } from "../track/read-track-helpers.js";
 
 /**
  * Read comprehensive information about the Live Set
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {Array<string>} [args.include] - Array of data to include in the response
- * @returns {Object} Live Set information including tracks, scenes, tempo, time signature, and scale
+ * @param _context
+ * @returns {object} Live Set information including tracks, scenes, tempo, time signature, and scale
  */
 export function readLiveSet(args = {}, _context = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);

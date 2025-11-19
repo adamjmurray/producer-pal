@@ -36,6 +36,11 @@ const LOG_FILE = join(
   `bridge-${new Date().toISOString().split("T")[0]}.log`,
 );
 
+/**
+ *
+ * @param level
+ * @param message
+ */
 function writeLog(level, message) {
   // Skip file operations when running under Vitest or when logging disabled
   if (isRunningInVitest || !enableLogging) {

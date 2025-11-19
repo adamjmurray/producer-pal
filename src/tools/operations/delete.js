@@ -5,7 +5,7 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
 /**
  * Deletes a track by its index
  * @param {string} id - The object ID
- * @param {Object} object - The object to delete
+ * @param {object} object - The object to delete
  */
 function deleteTrackObject(id, object) {
   const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
@@ -29,7 +29,7 @@ function deleteTrackObject(id, object) {
 /**
  * Deletes a scene by its index
  * @param {string} id - The object ID
- * @param {Object} object - The object to delete
+ * @param {object} object - The object to delete
  */
 function deleteSceneObject(id, object) {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
@@ -45,7 +45,7 @@ function deleteSceneObject(id, object) {
 /**
  * Deletes a clip by its track and clip ID
  * @param {string} id - The object ID
- * @param {Object} object - The object to delete
+ * @param {object} object - The object to delete
  */
 function deleteClipObject(id, object) {
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
@@ -62,7 +62,7 @@ function deleteClipObject(id, object) {
  * Deletes an object based on its type
  * @param {string} type - The type of object ("track", "scene", or "clip")
  * @param {string} id - The object ID
- * @param {Object} object - The object to delete
+ * @param {object} object - The object to delete
  */
 function deleteObjectByType(type, id, object) {
   if (type === "track") {
@@ -76,10 +76,11 @@ function deleteObjectByType(type, id, object) {
 
 /**
  * Deletes objects by ids
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.ids - ID or comma-separated list of IDs to delete
  * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
- * @returns {Object|Array<Object>} Result object(s) with success information
+ * @param _context
+ * @returns {object | Array<object>} Result object(s) with success information
  */
 export function deleteObject({ ids, type } = {}, _context = {}) {
   if (!ids) {

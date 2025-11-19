@@ -109,6 +109,11 @@ console.log("");
 let responseCount = 0;
 const startTime = Date.now();
 
+/**
+ *
+ * @param message
+ * @param description
+ */
 function sendMessage(message, description) {
   console.log(`[${Date.now() - startTime}ms] Sending ${description}...`);
   bridge.stdin.write(JSON.stringify(message) + "\n");
@@ -116,6 +121,10 @@ function sendMessage(message, description) {
 
 let responseBuffer = "";
 
+/**
+ *
+ * @param data
+ */
 function parseResponse(data) {
   responseBuffer += data.toString();
 

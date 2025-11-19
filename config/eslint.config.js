@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import importPlugin from "eslint-plugin-import";
+import jsdoc from "eslint-plugin-jsdoc";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
 import globals from "globals";
@@ -76,6 +77,24 @@ const baseRules = {
   ],
   "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
   complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
+};
+
+const jsdocRules = {
+  // Inline documentation requirements:
+  "jsdoc/require-jsdoc": [
+    "error",
+    {
+      require: {
+        FunctionDeclaration: true,
+        FunctionExpression: false,
+        MethodDefinition: false,
+      },
+      publicOnly: false,
+    },
+  ],
+  "jsdoc/require-param": "error",
+  "jsdoc/require-returns": "error",
+  "jsdoc/check-types": "error",
 };
 
 const jsOnlyRules = {
@@ -165,6 +184,7 @@ export default [
     plugins: {
       import: importPlugin,
       sonarjs,
+      jsdoc,
     },
     settings: {
       "import/resolver": { node: true },
@@ -173,6 +193,7 @@ export default [
       ...js.configs.recommended.rules,
       ...baseRules,
       ...jsOnlyRules,
+      ...jsdocRules,
     },
   },
 

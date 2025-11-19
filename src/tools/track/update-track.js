@@ -9,7 +9,7 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
  * Updates properties of existing tracks
- * @param {Object} args - The track parameters
+ * @param {object} args - The track parameters
  * @param {string} args.ids - Track ID or comma-separated list of track IDs to update
  * @param {string} [args.name] - Optional track name
  * @param {string} [args.color] - Optional track color (CSS format: hex)
@@ -22,7 +22,8 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
  * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
  * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
  * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
- * @returns {Object|Array<Object>} Single track object or array of track objects
+ * @param _context
+ * @returns {object | Array<object>} Single track object or array of track objects
  */
 export function updateTrack(
   {

@@ -8,6 +8,14 @@ import {
   processClipIteration,
 } from "./create-clip-helpers.js";
 
+/**
+ *
+ * @param view
+ * @param trackIndex
+ * @param sceneIndex
+ * @param arrangementStart
+ * @param count
+ */
 function validateCreateClipParams(
   view,
   trackIndex,
@@ -40,6 +48,13 @@ function validateCreateClipParams(
   }
 }
 
+/**
+ *
+ * @param endBeats
+ * @param notes
+ * @param timeSigNumerator
+ * @param timeSigDenominator
+ */
 function calculateClipLength(
   endBeats,
   notes,
@@ -76,6 +91,14 @@ function calculateClipLength(
   return abletonBeatsPerBar;
 }
 
+/**
+ *
+ * @param auto
+ * @param view
+ * @param sceneIndex
+ * @param count
+ * @param trackIndex
+ */
 function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
   if (!auto || view !== "session") {
     return;
@@ -114,7 +137,7 @@ function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
 
 /**
  * Creates MIDI clips in Session or Arrangement view
- * @param {Object} args - The clip parameters
+ * @param {object} args - The clip parameters
  * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {number} [args.sceneIndex] - The scene/clip slot index (0-based), required for Session view
@@ -130,7 +153,8 @@ function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only. Puts tracks into non-following state.
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
- * @returns {Object|Array<Object>} Single clip object when count=1, array when count>1
+ * @param _context
+ * @returns {object | Array<object>} Single clip object when count=1, array when count>1
  */
 export function createClip(
   {

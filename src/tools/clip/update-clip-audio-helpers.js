@@ -67,7 +67,8 @@ export function getActualAudioEnd(clip) {
  * @param {number} newStartMarker - Start marker for revealed content
  * @param {number} newEndMarker - End marker for revealed content
  * @param {number} targetPosition - Where to place revealed clip in arrangement
- * @param {Object} context - Context object with paths
+ * @param {object} context - Context object with paths
+ * @param _context
  * @returns {LiveAPI} The revealed clip in arrangement
  */
 export function revealUnwarpedAudioContent(

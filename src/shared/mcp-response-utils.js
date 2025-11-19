@@ -5,6 +5,10 @@ export const MAX_CHUNKS = 100; // Allows for ~3MB responses
 
 // Format a successful response with the standard MCP content structure
 // non-string results will be JSON-stringified
+/**
+ *
+ * @param result
+ */
 export function formatSuccessResponse(result) {
   return {
     content: [
@@ -17,6 +21,10 @@ export function formatSuccessResponse(result) {
 }
 
 // Format an error response with the standard MCP error structure
+/**
+ *
+ * @param errorMessage
+ */
 export function formatErrorResponse(errorMessage) {
   return {
     content: [{ type: "text", text: errorMessage }],

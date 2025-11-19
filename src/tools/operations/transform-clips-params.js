@@ -13,8 +13,8 @@ function randomInRange(min, max, rng) {
 
 /**
  * Apply audio parameters to a clip
- * @param {Object} clip - The clip to modify
- * @param {Object} params - Audio parameters
+ * @param {object} clip - The clip to modify
+ * @param {object} params - Audio parameters
  * @param {number} [params.gainDbMin] - Min gain offset in dB
  * @param {number} [params.gainDbMax] - Max gain offset in dB
  * @param {number} [params.transposeMin] - Min transpose offset
@@ -72,8 +72,8 @@ export function applyAudioParams(
 
 /**
  * Apply MIDI parameters to a clip's notes
- * @param {Object} clip - The MIDI clip to modify
- * @param {Object} params - MIDI parameters
+ * @param {object} clip - The MIDI clip to modify
+ * @param {object} params - MIDI parameters
  * @param {number} [params.velocityMin] - Min velocity offset
  * @param {number} [params.velocityMax] - Max velocity offset
  * @param {number} [params.transposeMin] - Min transpose offset

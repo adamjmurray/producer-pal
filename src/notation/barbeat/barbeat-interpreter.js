@@ -23,6 +23,8 @@ import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
 
 /**
  * Process a velocity update (single value)
+ * @param element
+ * @param state
  */
 function processVelocityUpdate(element, state) {
   state.currentVelocity = element.velocity;
@@ -45,6 +47,8 @@ function processVelocityUpdate(element, state) {
 
 /**
  * Process a velocity range update
+ * @param element
+ * @param state
  */
 function processVelocityRangeUpdate(element, state) {
   state.currentVelocityMin = element.velocityMin;
@@ -67,6 +71,10 @@ function processVelocityRangeUpdate(element, state) {
 
 /**
  * Process a duration update
+ * @param element
+ * @param state
+ * @param timeSigNumerator
+ * @param timeSigDenominator
  */
 function processDurationUpdate(
   element,
@@ -98,6 +106,8 @@ function processDurationUpdate(
 }
 /**
  * Process a probability update
+ * @param element
+ * @param state
  */
 function processProbabilityUpdate(element, state) {
   state.currentProbability = element.probability;
@@ -116,6 +126,8 @@ function processProbabilityUpdate(element, state) {
 }
 /**
  * Process a pitch element
+ * @param element
+ * @param state
  */
 function processPitchElement(element, state) {
   if (!state.pitchGroupStarted) {
@@ -143,6 +155,7 @@ function processPitchElement(element, state) {
 }
 /**
  * Reset pitch buffer state
+ * @param state
  */
 function resetPitchBufferState(state) {
   state.currentPitches = [];
@@ -153,6 +166,12 @@ function resetPitchBufferState(state) {
 }
 /**
  * Process a time position element
+ * @param element
+ * @param state
+ * @param beatsPerBar
+ * @param timeSigDenominator
+ * @param events
+ * @param notesByBar
  */
 function processTimePosition(
   element,
@@ -225,6 +244,13 @@ function processTimePosition(
 /**
  * Process a single element in the main AST loop
  * Dispatches to appropriate handler based on element type
+ * @param element
+ * @param state
+ * @param beatsPerBar
+ * @param timeSigNumerator
+ * @param timeSigDenominator
+ * @param notesByBar
+ * @param events
  */
 function processElementInLoop(
   element,
@@ -316,7 +342,7 @@ function processElementInLoop(
 /**
  * Convert bar|beat notation into note events
  * @param {string} barBeatExpression - bar|beat notation string
- * @param {Object} options - Options
+ * @param {object} options - Options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
  * @param {number} [options.timeSigDenominator] - Time signature denominator

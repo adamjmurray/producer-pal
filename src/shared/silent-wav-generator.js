@@ -35,6 +35,7 @@ export { SILENCE_WAV };
 /**
  * Creates a silent WAV file (0.1 second, 44.1kHz, 16-bit mono)
  * File size: ~8.8KB
+ * @param filePath
  */
 function createSilentWav(filePath) {
   const sampleRate = 44100;

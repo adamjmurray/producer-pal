@@ -16,6 +16,7 @@ export const PITCH_CLASS_NAMES = [
 /**
  * Convert MIDI pitch number to note name (e.g., 60 -> "C3")
  * @param {number} pitch - MIDI pitch number
+ * @param midiPitch
  * @returns {string} Pitch name in the notation format like "C3", "F#4", etc, or empty string for invalid inputs.
  */
 export function midiPitchToName(midiPitch) {

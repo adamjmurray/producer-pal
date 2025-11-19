@@ -4,8 +4,8 @@
 
 /**
  * Creates a mock track object with default properties
- * @param {Object} overrides - Properties to override the defaults
- * @returns {Object} Mock track properties
+ * @param {object} overrides - Properties to override the defaults
+ * @returns {object} Mock track properties
  */
 export const mockTrackProperties = (overrides = {}) => ({
   name: "Test Track",

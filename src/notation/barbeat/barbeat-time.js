@@ -147,6 +147,7 @@ export function abletonBeatsToBarBeatDuration(
  * @param {string} barBeatDuration - "2:1.5" or "2.5" or "5/2" or "1:2+1/3" or "2+3/4"
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
+ * @param _timeSigDenominator
  * @returns {number} Musical beats (duration)
  */
 export function barBeatDurationToMusicalBeats(

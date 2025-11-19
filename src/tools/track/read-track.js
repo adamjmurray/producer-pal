@@ -19,6 +19,11 @@ import {
   addProducerPalHostInfo,
 } from "./read-track-helpers.js";
 
+/**
+ *
+ * @param args
+ * @param _context
+ */
 export function readTrack(args = {}, _context = {}) {
   const { trackIndex, trackId, category = "regular" } = args;
   // Validate parameters
@@ -60,6 +65,11 @@ export function readTrack(args = {}, _context = {}) {
 
 /**
  * Process session clips for a track
+ * @param track
+ * @param category
+ * @param trackIndex
+ * @param includeSessionClips
+ * @param include
  */
 function processSessionClips(
   track,
@@ -98,6 +108,11 @@ function processSessionClips(
 
 /**
  * Process arrangement clips for a track
+ * @param track
+ * @param isGroup
+ * @param category
+ * @param includeArrangementClips
+ * @param include
  */
 function processArrangementClips(
   track,
@@ -129,6 +144,8 @@ function processArrangementClips(
 
 /**
  * Process and categorize track devices
+ * @param categorizedDevices
+ * @param config
  */
 function processDevices(categorizedDevices, config) {
   const {
@@ -176,12 +193,12 @@ function processDevices(categorizedDevices, config) {
 /**
  * Generic track reader that works with any track type. This is an internal helper function
  * used by readTrack to read comprehensive information about tracks.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {LiveAPI} args.track - LiveAPI track object
  * @param {number|null} args.trackIndex - Track index (null for master track)
  * @param {string} [args.category="regular"] - Track category: "regular", "return", or "master"
  * @param {Array<string>} [args.include] - Array of data to include in the response
- * @returns {Object} Track information including clips, devices, routing, and state
+ * @returns {object} Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
   track,
@@ -284,7 +301,7 @@ export function readTrackGeneric({
  * @param {Array} devices - Array of Live API device objects
  * @param {boolean} includeDrumChains - Whether to include drum pad chains and return chains
  * @param {boolean} includeRackChains - Whether to include chains in rack devices
- * @returns {Object} Object with midiEffects, instrument, and audioEffects arrays
+ * @returns {object} Object with midiEffects, instrument, and audioEffects arrays
  */
 function categorizeDevices(
   devices,
@@ -333,6 +350,10 @@ function categorizeDevices(
 }
 
 // Helper function to strip chains from device objects
+/**
+ *
+ * @param device
+ */
 function stripChains(device) {
   if (!device || typeof device !== "object") {
     return device;

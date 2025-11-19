@@ -14,7 +14,7 @@ import {
 
 /**
  * Determine device type from Live API properties
- * @param {Object} device - Live API device object
+ * @param {object} device - Live API device object
  * @returns {string} Combined device type string
  */
 export function getDeviceType(device) {
@@ -45,8 +45,8 @@ export function getDeviceType(device) {
 
 /**
  * Clean up internal _processedDrumChains property from device objects
- * @param {Object|Array} obj - Device object or array of devices to clean
- * @returns {Object|Array} Cleaned object/array
+ * @param {object | Array} obj - Device object or array of devices to clean
+ * @returns {object | Array} Cleaned object/array
  */
 export function cleanupInternalDrumChains(obj) {
   if (!obj || typeof obj !== "object") {
@@ -73,9 +73,13 @@ export function cleanupInternalDrumChains(obj) {
 /**
  * Extract track-level drum map from the processed device structure
  * @param {Array} devices - Array of processed device objects
- * @returns {Object|null} Object mapping pitch names to drum chain names, or null if none found
+ * @returns {object | null} Object mapping pitch names to drum chain names, or null if none found
  */
 export function getDrumMap(devices) {
+  /**
+   *
+   * @param deviceList
+   */
   function findDrumRacksInDevices(deviceList) {
     const drumRacks = [];
     for (const device of deviceList) {
@@ -111,13 +115,13 @@ export function getDrumMap(devices) {
 
 /**
  * Read device information including nested chains for rack devices
- * @param {Object} device - Live API device object
- * @param {Object} options - Options for reading device
+ * @param {object} device - Live API device object
+ * @param {object} options - Options for reading device
  * @param {boolean} options.includeChains - Include chains in rack devices
  * @param {boolean} options.includeDrumChains - Include drum pad chains and return chains
  * @param {number} options.depth - Current recursion depth
  * @param {number} options.maxDepth - Maximum recursion depth
- * @returns {Object} Device object with nested structure
+ * @returns {object} Device object with nested structure
  */
 export function readDevice(device, options = {}) {
   const {

@@ -25,7 +25,7 @@ export function isRedundantDeviceClassName(deviceType, className) {
 
 /**
  * Compute the state of a Live object based on mute/solo properties
- * @param {Object} liveObject - Live API object
+ * @param {object} liveObject - Live API object
  * @param {string} category - Category type (default "regular")
  * @returns {string} State value
  */
@@ -90,15 +90,15 @@ export function hasInstrumentInDevices(devices) {
 
 /**
  * Process a single drum pad to extract drum chain info
- * @param {Object} pad - Drum pad object
- * @param {Object} chain - Chain object
+ * @param {object} pad - Drum pad object
+ * @param {object} chain - Chain object
  * @param {Array} chainDevices - Devices in the chain
  * @param {boolean} includeDrumChains - Include drum chains
  * @param {boolean} includeChains - Include chains
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function (to avoid circular dependency)
- * @returns {Object} Processed drum chain info
+ * @returns {object} Processed drum chain info
  */
 export function processDrumPad(
   pad,
@@ -188,8 +188,8 @@ export function updateDrumChainSoloStates(processedDrumChains) {
 
 /**
  * Process drum chains for drum rack devices
- * @param {Object} device - Device object
- * @param {Object} deviceInfo - Device info to update
+ * @param {object} device - Device object
+ * @param {object} deviceInfo - Device info to update
  * @param {boolean} includeChains - Include chains
  * @param {boolean} includeDrumChains - Include drum chains
  * @param {number} depth - Current depth
@@ -234,8 +234,8 @@ export function processDrumChains(
 
 /**
  * Process regular (non-drum) rack chains
- * @param {Object} device - Device object
- * @param {Object} deviceInfo - Device info to update
+ * @param {object} device - Device object
+ * @param {object} deviceInfo - Device info to update
  * @param {boolean} includeChains - Include chains
  * @param {boolean} includeDrumChains - Include drum chains
  * @param {number} depth - Current depth
@@ -281,8 +281,8 @@ export function processRegularChains(
 
 /**
  * Process return chains for rack devices
- * @param {Object} device - Device object
- * @param {Object} deviceInfo - Device info to update
+ * @param {object} device - Device object
+ * @param {object} deviceInfo - Device info to update
  * @param {string} deviceType - Device type
  * @param {boolean} includeChains - Include chains
  * @param {boolean} includeDrumChains - Include drum chains

@@ -22,10 +22,20 @@ const IGNORE_PATTERNS = [
 
 const FLAT_SEP = "--";
 
+/**
+ *
+ * @param pathStr
+ */
 function flattenPath(pathStr) {
   return pathStr.replace(/[/\\]/g, FLAT_SEP);
 }
 
+/**
+ *
+ * @param groups
+ * @param groupName
+ * @param {...any} item
+ */
 function addToGroup(groups, groupName, ...item) {
   if (!groups.has(groupName)) {
     groups.set(groupName, []);
@@ -33,6 +43,11 @@ function addToGroup(groups, groupName, ...item) {
   groups.get(groupName).push(...item);
 }
 
+/**
+ *
+ * @param item
+ * @param filePath
+ */
 function computeGroupName(item, filePath) {
   const itemGroup =
     typeof item.group === "function"
@@ -46,6 +61,9 @@ function computeGroupName(item, filePath) {
   return itemGroup || item.targetDirName || path.basename(item.src) || "misc";
 }
 
+/**
+ *
+ */
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
@@ -58,6 +76,11 @@ async function cleanAndCreateOutputDir() {
 
 const codeExts = [".js", ".mjs", ".ts", ".jsx", ".tsx"];
 
+/**
+ *
+ * @param sourcePath
+ * @param targetPath
+ */
 async function copyFile(sourcePath, targetPath) {
   const ext = path.extname(sourcePath);
 
@@ -163,6 +186,12 @@ const itemsToCopy = [
   { src: "claude-desktop-extension/package.json", group: "config" },
 ];
 
+/**
+ *
+ * @param item
+ * @param sourcePath
+ * @param excludeGroups
+ */
 async function processCopyDirectory(item, sourcePath, excludeGroups) {
   const files = await findAllFiles(sourcePath, item.exclude || []);
   const dirName = item.targetDirName || path.basename(item.src);
@@ -184,6 +213,12 @@ async function processCopyDirectory(item, sourcePath, excludeGroups) {
   }
 }
 
+/**
+ *
+ * @param item
+ * @param sourcePath
+ * @param excludeGroups
+ */
 async function processCopyFile(item, sourcePath, excludeGroups) {
   // Check if this file's group should be excluded
   const groupName = computeGroupName(item, sourcePath);
@@ -198,6 +233,10 @@ async function processCopyFile(item, sourcePath, excludeGroups) {
   console.log(`  ${item.src} → ${targetName}`);
 }
 
+/**
+ *
+ * @param excludeGroups
+ */
 async function copyDirectoriesAndFiles(excludeGroups) {
   console.log("Copying files...");
 
@@ -219,6 +258,12 @@ async function copyDirectoriesAndFiles(excludeGroups) {
   }
 }
 
+/**
+ *
+ * @param dir
+ * @param excludePaths
+ * @param baseDir
+ */
 async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   const files = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -253,6 +298,12 @@ async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   return files;
 }
 
+/**
+ *
+ * @param item
+ * @param sourcePath
+ * @param fileGroups
+ */
 async function processConcatenateDirectory(item, sourcePath, fileGroups) {
   const files = await findAllFiles(sourcePath, item.exclude || []);
   const dirName = item.targetDirName || path.basename(item.src);
@@ -276,6 +327,12 @@ async function processConcatenateDirectory(item, sourcePath, fileGroups) {
   }
 }
 
+/**
+ *
+ * @param item
+ * @param sourcePath
+ * @param fileGroups
+ */
 async function processConcatenateFile(item, sourcePath, fileGroups) {
   const relativePath = path.relative(projectRoot, sourcePath);
   const groupName =
@@ -289,6 +346,11 @@ async function processConcatenateFile(item, sourcePath, fileGroups) {
   addToGroup(fileGroups, groupName, sourcePath);
 }
 
+/**
+ *
+ * @param fileGroups
+ * @param excludeGroups
+ */
 async function writeGroupFiles(fileGroups, excludeGroups) {
   // Write the concatenated files
   for (const [groupName, sourceFiles] of fileGroups) {
@@ -337,6 +399,10 @@ async function writeGroupFiles(fileGroups, excludeGroups) {
   }
 }
 
+/**
+ *
+ * @param excludeGroups
+ */
 async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
   console.log("Concatenating files into groups...");
 
@@ -362,6 +428,9 @@ async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
   await writeGroupFiles(fileGroups, excludeGroups);
 }
 
+/**
+ *
+ */
 async function main() {
   try {
     // Parse command line arguments

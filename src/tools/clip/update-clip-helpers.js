@@ -64,7 +64,7 @@ export function parseSongTimeSignature() {
 
 /**
  * Calculate beat positions from bar|beat notation
- * @param {Object} args - Calculation arguments
+ * @param {object} args - Calculation arguments
  * @param {string} [args.start] - Start position in bar|beat notation
  * @param {string} [args.length] - Length in bar|beat notation
  * @param {string} [args.firstStart] - First start position in bar|beat notation
@@ -148,8 +148,19 @@ export function calculateBeatPositions({
 
 /**
  * Build properties map for setAll
- * @param {Object} args - Property building arguments
- * @returns {Object} Properties object ready for clip.setAll()
+ * @param {object} args - Property building arguments
+ * @param args.name
+ * @param args.color
+ * @param args.timeSignature
+ * @param args.timeSigNumerator
+ * @param args.timeSigDenominator
+ * @param args.startMarkerBeats
+ * @param args.looping
+ * @param args.isLooping
+ * @param args.startBeats
+ * @param args.endBeats
+ * @param args.currentLoopEnd
+ * @returns {object} Properties object ready for clip.setAll()
  */
 export function buildClipPropertiesToSet({
   name,
@@ -252,7 +263,7 @@ export function handleNoteUpdates(
 
 /**
  * Handle moving arrangement clips to a new position
- * @param {Object} args - Operation arguments
+ * @param {object} args - Operation arguments
  * @param {LiveAPI} args.clip - The clip to move
  * @param {number} args.arrangementStartBeats - New position in beats
  * @param {Map} args.tracksWithMovedClips - Track of clips moved per track
