@@ -112,9 +112,9 @@ let responseCount = 0;
 const startTime = Date.now();
 
 /**
- *
- * @param message
- * @param description
+ * Send a JSON-RPC message to the bridge process
+ * @param {object} message - JSON-RPC message to send
+ * @param {string} description - Human-readable description for logging
  */
 function sendMessage(message, description) {
   console.log(`[${Date.now() - startTime}ms] Sending ${description}...`);
@@ -124,8 +124,9 @@ function sendMessage(message, description) {
 let responseBuffer = "";
 
 /**
- *
- * @param data
+ * Parse response data from the bridge, handling partial/incomplete JSON
+ * @param {Buffer} data - Raw data buffer from bridge stdout
+ * @returns {object|null} - Parsed JSON response or null if incomplete
  */
 function parseResponse(data) {
   responseBuffer += data.toString();
@@ -157,9 +158,9 @@ function parseResponse(data) {
 
 /**
  * Log response based on response count and content
- * @param response
- * @param count
- * @param tool
+ * @param {object} response - Parsed JSON-RPC response
+ * @param {number} count - Sequential response number
+ * @param {string} tool - Tool name being tested (if applicable)
  */
 function logResponse(response, count, tool) {
   if (response.error) {
@@ -204,8 +205,8 @@ function logResponse(response, count, tool) {
 
 /**
  * Continue test sequence based on response count
- * @param count
- * @param elapsed
+ * @param {number} count - Number of responses received so far
+ * @param {number} elapsed - Time elapsed since test start in milliseconds
  */
 function continueTestSequence(count, elapsed) {
   if (count === 1) {

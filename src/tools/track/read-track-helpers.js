@@ -94,8 +94,9 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 
 /**
  * Handle track that doesn't exist
- * @param category
- * @param trackIndex
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {number} trackIndex - Track index
+ * @returns {object} - Result object for non-existent track
  */
 export function handleNonExistentTrack(category, trackIndex) {
   const result = {
@@ -115,9 +116,9 @@ export function handleNonExistentTrack(category, trackIndex) {
 
 /**
  * Add optional boolean properties to track result
- * @param result
- * @param track
- * @param canBeArmed
+ * @param {object} result - Result object to modify
+ * @param {LiveAPI} track - Track object
+ * @param {boolean} canBeArmed - Whether the track can be armed
  */
 export function addOptionalBooleanProperties(result, track, canBeArmed) {
   const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
@@ -136,9 +137,9 @@ export function addOptionalBooleanProperties(result, track, canBeArmed) {
 
 /**
  * Add track index property based on category
- * @param result
- * @param category
- * @param trackIndex
+ * @param {object} result - Result object to modify
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {number} trackIndex - Track index
  */
 export function addCategoryIndex(result, category, trackIndex) {
   if (category === "regular") {
@@ -150,7 +151,7 @@ export function addCategoryIndex(result, category, trackIndex) {
 
 /**
  * Clean up device chains from result
- * @param result
+ * @param {object} result - Result object containing device chains
  */
 export function cleanupDeviceChains(result) {
   if (result.midiEffects) {
@@ -166,9 +167,9 @@ export function cleanupDeviceChains(result) {
 
 /**
  * Add slot index properties for regular tracks
- * @param result
- * @param track
- * @param category
+ * @param {object} result - Result object to modify
+ * @param {LiveAPI} track - Track object
+ * @param {string} category - Track category (regular, return, or master)
  */
 export function addSlotIndices(result, track, category) {
   if (category !== "regular") {
@@ -186,9 +187,9 @@ export function addSlotIndices(result, track, category) {
 
 /**
  * Add state property if not default active state
- * @param result
- * @param track
- * @param category
+ * @param {object} result - Result object to modify
+ * @param {LiveAPI} track - Track object
+ * @param {string} category - Track category (regular, return, or master)
  */
 export function addStateIfNotDefault(result, track, category) {
   const trackState = computeState(track, category);
@@ -200,7 +201,7 @@ export function addStateIfNotDefault(result, track, category) {
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
  * @param {object} liveObject - Live API object with mute, solo, and muted_via_solo properties
- * @param category
+ * @param {string} category - Track category (regular, return, or master)
  * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
 function computeState(liveObject, category = "regular") {
@@ -228,13 +229,13 @@ function computeState(liveObject, category = "regular") {
 
 /**
  * Add routing information if requested
- * @param result
- * @param track
- * @param category
- * @param isGroup
- * @param canBeArmed
- * @param includeRoutings
- * @param includeAvailableRoutings
+ * @param {object} result - Result object to modify
+ * @param {LiveAPI} track - Track object
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {boolean} isGroup - Whether the track is a group
+ * @param {boolean} canBeArmed - Whether the track can be armed
+ * @param {boolean} includeRoutings - Whether to include current routing info
+ * @param {boolean} includeAvailableRoutings - Whether to include available routing options
  */
 export function addRoutingInfo(
   result,
@@ -258,8 +259,8 @@ export function addRoutingInfo(
 
 /**
  * Add producer pal host information if applicable
- * @param result
- * @param isProducerPalHost
+ * @param {object} result - Result object to modify
+ * @param {boolean} isProducerPalHost - Whether this is the Producer Pal host track
  */
 export function addProducerPalHostInfo(result, isProducerPalHost) {
   if (isProducerPalHost) {

@@ -11,7 +11,7 @@ import {
  * @param {number} [args.sceneIndex] - Scene index (0-based)
  * @param {string} [args.sceneId] - Scene ID to directly access any scene
  * @param {string[]} [args.include=[]] - Array of data to include
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object} Result object with scene information
  */
 export function readScene(args = {}, _context = {}) {

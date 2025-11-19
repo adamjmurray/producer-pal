@@ -6,12 +6,16 @@
  * - No whitespace
  * - Skips undefined values in objects/arrays
  * - Top-level undefined returns empty string
- * @param obj
+ *
+ * @param {any} obj - Object to convert
+ * @returns {string} Compact JS literal string
  */
 export function toCompactJSLiteral(obj) {
   /**
+   * Convert a value to compact JS literal syntax
    *
-   * @param val
+   * @param {any} val - Value to convert
+   * @returns {string|undefined} Converted value
    */
   function convert(val) {
     // Primitives that need special treatment other than JSON.stringify() below

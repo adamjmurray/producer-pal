@@ -10,14 +10,15 @@ import {
 
 /**
  * Handle lengthening of arrangement clips via tiling or content exposure
- * @param root0
- * @param root0.clip
- * @param root0.isAudioClip
- * @param root0.arrangementLengthBeats
- * @param root0.currentArrangementLength
- * @param root0.currentStartTime
- * @param root0.currentEndTime
- * @param root0.context
+ * @param {object} root0 - Parameters object
+ * @param {object} root0.clip - The LiveAPI clip object to lengthen
+ * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
+ * @param {number} root0.arrangementLengthBeats - Target length in beats
+ * @param {number} root0.currentArrangementLength - Current length in beats
+ * @param {number} root0.currentStartTime - Current start time in beats
+ * @param {number} root0.currentEndTime - Current end time in beats
+ * @param {object} root0.context - Tool execution context with holding area info
+ * @returns {Array<object>} - Array of updated clip info
  */
 export function handleArrangementLengthening({
   clip,
@@ -107,16 +108,17 @@ export function handleArrangementLengthening({
 }
 /**
  * Handle unlooped clip lengthening
- * @param root0
- * @param root0.clip
- * @param root0.isAudioClip
- * @param root0.arrangementLengthBeats
- * @param root0.currentArrangementLength
- * @param root0.currentStartTime
- * @param root0.currentEndTime
- * @param root0.clipStartMarker
- * @param root0.track
- * @param root0.context
+ * @param {object} root0 - Parameters object
+ * @param {object} root0.clip - The LiveAPI clip object
+ * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
+ * @param {number} root0.arrangementLengthBeats - Target length in beats
+ * @param {number} root0.currentArrangementLength - Current length in beats
+ * @param {number} root0.currentStartTime - Current start time in beats
+ * @param {number} root0.currentEndTime - Current end time in beats
+ * @param {number} root0.clipStartMarker - Clip start marker position
+ * @param {object} root0.track - The LiveAPI track object
+ * @param {object} root0.context - Tool execution context
+ * @returns {Array<object>} - Array of updated clip info
  */
 function handleUnloopedLengthening({
   clip,
@@ -245,20 +247,21 @@ function handleUnloopedLengthening({
 }
 /**
  * Create tiles for looped clips
- * @param root0
- * @param root0.clip
- * @param root0.isAudioClip
- * @param root0.arrangementLengthBeats
- * @param root0.currentArrangementLength
- * @param root0.currentStartTime
- * @param root0.currentEndTime
- * @param root0._clipLoopStart
- * @param root0._clipLoopEnd
- * @param root0._clipStartMarker
- * @param root0.totalContentLength
- * @param root0.currentOffset
- * @param root0.track
- * @param root0.context
+ * @param {object} root0 - Parameters object
+ * @param {object} root0.clip - The LiveAPI clip object
+ * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
+ * @param {number} root0.arrangementLengthBeats - Target length in beats
+ * @param {number} root0.currentArrangementLength - Current length in beats
+ * @param {number} root0.currentStartTime - Current start time in beats
+ * @param {number} root0.currentEndTime - Current end time in beats
+ * @param {number} root0._clipLoopStart - Clip loop start position (unused)
+ * @param {number} root0._clipLoopEnd - Clip loop end position (unused)
+ * @param {number} root0._clipStartMarker - Clip start marker (unused)
+ * @param {number} root0.totalContentLength - Total content length in beats
+ * @param {number} root0.currentOffset - Current offset from loop start
+ * @param {object} root0.track - The LiveAPI track object
+ * @param {object} root0.context - Tool execution context
+ * @returns {Array<object>} - Array of tiled clip info
  */
 function createLoopeClipTiles({
   clip,
@@ -361,13 +364,13 @@ function createLoopeClipTiles({
 }
 /**
  * Handle arrangement clip shortening
- * @param root0
- * @param root0.clip
- * @param root0.isAudioClip
- * @param root0.arrangementLengthBeats
- * @param root0.currentStartTime
- * @param root0.currentEndTime
- * @param root0.context
+ * @param {object} root0 - Parameters object
+ * @param {object} root0.clip - The LiveAPI clip object to shorten
+ * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
+ * @param {number} root0.arrangementLengthBeats - Target length in beats
+ * @param {number} root0.currentStartTime - Current start time in beats
+ * @param {number} root0.currentEndTime - Current end time in beats
+ * @param {object} root0.context - Tool execution context
  */
 export function handleArrangementShortening({
   clip,

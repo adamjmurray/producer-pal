@@ -138,7 +138,7 @@ function executeOperation(api, operation) {
  * @param {string} [args.operations[].method] - Method name for call_method operations
  * @param {Array} [args.operations[].args] - Arguments for call_method operations or convenience operations
  * @param {*} [args.operations[].value] - Value for set_property operations
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object} Result object with path, id, and operation results
  */
 export function rawLiveApi({ path, operations } = {}, _context = {}) {

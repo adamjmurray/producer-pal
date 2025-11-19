@@ -79,7 +79,7 @@ function deleteObjectByType(type, id, object) {
  * @param {object} args - The parameters
  * @param {string} args.ids - ID or comma-separated list of IDs to delete
  * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Result object(s) with success information
  */
 export function deleteObject({ ids, type } = {}, _context = {}) {

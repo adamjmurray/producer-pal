@@ -50,8 +50,8 @@ export class GeminiClient {
   hadFunctionCallsInLastTurn: boolean;
 
   /**
-   * @param apiKey - Gemini API key
-   * @param config - Configuration options
+   * @param {string} apiKey - Gemini API key
+   * @param {GeminiClientConfig} config - Configuration options
    */
   constructor(apiKey: string, config: GeminiClientConfig = {}) {
     this.ai = new GoogleGenAI({ apiKey });
@@ -66,7 +66,7 @@ export class GeminiClient {
 
   /**
    * Tests connection to the MCP server without creating a client instance.
-   * @param mcpUrl - MCP server URL to test
+   * @param {string} mcpUrl - MCP server URL to test
    * @throws If connection fails
    */
   static async testConnection(
@@ -155,8 +155,8 @@ export class GeminiClient {
    * With manual tool execution, the method will automatically execute tool calls
    * and continue the conversation until the model stops requesting tools.
    *
-   * @param message - User message to send
-   * @param abortSignal
+   * @param {string} message - User message to send
+   * @param {AbortSignal} [abortSignal] - Optional abort signal
    * @yields Complete chat history in Gemini's raw format after each update
    * @throws If chat is not initialized or if message sending fails
    *
@@ -215,8 +215,9 @@ export class GeminiClient {
   /**
    * Processes a single turn: sends message, processes response, and executes tools
    * Yields history updates as they occur
-   * @param message
-   * @param isFirstMessage
+   * @param {string} message - User message to send
+   * @param {boolean} isFirstMessage - Whether this is the first message in the turn
+   * @returns {AsyncGenerator} - Generator yielding chat history updates
    */
   private async *processMessageTurn(
     message: string,
@@ -238,7 +239,8 @@ export class GeminiClient {
 
   /**
    * Processes incoming stream chunks from the model response
-   * @param stream
+   * @param {AsyncIterable<unknown>} stream - Stream of response chunks from the model
+   * @returns {AsyncGenerator} - Generator yielding chat history updates
    */
   private async *processStreamChunks(
     stream: AsyncIterable<unknown>,
@@ -309,7 +311,8 @@ export class GeminiClient {
 
   /**
    * Determines if the loop should continue
-   * @param abortSignal
+   * @param {AbortSignal} [abortSignal] - Optional abort signal to check
+   * @returns {boolean} - Whether the loop should continue
    */
   private async shouldContinueLoop(
     abortSignal?: AbortSignal,
@@ -324,8 +327,8 @@ export class GeminiClient {
 
   /**
    * Warns if max iterations reached
-   * @param iteration
-   * @param maxIterations
+   * @param {number} iteration - Current iteration count
+   * @param {number} maxIterations - Maximum allowed iterations
    */
   private warnIfMaxIterationsReached(
     iteration: number,
@@ -341,8 +344,8 @@ export class GeminiClient {
 
   /**
    * Adds a part to the current turn, merging text if possible
-   * @param currentTurn
-   * @param part
+   * @param {GeminiMessage} currentTurn - Current message turn being built
+   * @param {Part} part - Part to add to the turn
    */
   private addOrMergePartToTurn(currentTurn: GeminiMessage, part: Part): void {
     const lastPart = currentTurn.parts?.at(-1);
@@ -364,11 +367,12 @@ export class GeminiClient {
 
   /**
    * Determines if a text part should be merged with the last part
-   * @param part
-   * @param part.text
-   * @param part.thought
-   * @param part.thoughtSignature
-   * @param lastPart
+   * @param {object} part - Part being evaluated for merging
+   * @param {string} [part.text] - Text content of the part
+   * @param {boolean} [part.thought] - Whether this is a thought part
+   * @param {unknown} [part.thoughtSignature] - Thought signature if present
+   * @param {unknown} lastPart - Last part in the current turn
+   * @returns {boolean} - Whether the part should be merged with the last part
    */
   private shouldMergeWithLastPart(
     part: { text?: string; thought?: boolean; thoughtSignature?: unknown },
@@ -396,7 +400,8 @@ export class GeminiClient {
 
   /**
    * Checks if the last message contains unexecuted function calls
-   * @param lastMessage
+   * @param {GeminiMessage} [lastMessage] - Last message in chat history
+   * @returns {boolean} - Whether the message contains unexecuted function calls
    */
   private hasUnexecutedFunctionCalls(
     lastMessage: GeminiMessage | undefined,
@@ -409,7 +414,8 @@ export class GeminiClient {
 
   /**
    * Checks if a part is a tool call
-   * @param part
+   * @param {unknown} part - Part to check
+   * @returns {boolean} - Whether the part is a tool call
    */
   private isToolCall(part: unknown): boolean {
     const partAny = part as { functionCall?: unknown };
@@ -418,7 +424,8 @@ export class GeminiClient {
 
   /**
    * Executes all tool calls in the message
-   * @param lastMessage
+   * @param {GeminiMessage} [lastMessage] - Last message containing tool calls
+   * @returns {Array} - Array of function response parts
    */
   private async executeToolCalls(
     lastMessage: GeminiMessage | undefined,
@@ -441,10 +448,11 @@ export class GeminiClient {
 
   /**
    * Executes a single tool call and returns the response part
-   * @param part
-   * @param part.functionCall
-   * @param part.functionCall.name
-   * @param part.functionCall.args
+   * @param {object} part - Part containing the function call
+   * @param {object} [part.functionCall] - Function call details
+   * @param {string} [part.functionCall.name] - Name of the function to call
+   * @param {unknown} [part.functionCall.args] - Arguments for the function call
+   * @returns {object} - Function response part
    */
   private async executeSingleTool(part: {
     functionCall?: { name?: string; args?: unknown };
@@ -477,7 +485,8 @@ export class GeminiClient {
 
   /**
    * Checks if a tool result is an error
-   * @param result
+   * @param {unknown} result - Tool result to check
+   * @returns {boolean} - Whether the result is an error
    */
   private isErrorResult(result: unknown): boolean {
     const resultAny = result as { isError?: boolean };
@@ -486,8 +495,9 @@ export class GeminiClient {
 
   /**
    * Builds an error response part from a caught error
-   * @param error
-   * @param toolName
+   * @param {unknown} error - Error that was caught
+   * @param {string} [toolName] - Name of the tool that failed
+   * @returns {object} - Error response part
    */
   private buildErrorResponse(
     error: unknown,

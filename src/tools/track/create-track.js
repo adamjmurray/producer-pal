@@ -11,7 +11,7 @@ import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
  * @param {boolean} [args.mute] - Mute state for the tracks
  * @param {boolean} [args.solo] - Solo state for the tracks
  * @param {boolean} [args.arm] - Arm state for the tracks
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single track object when count=1, array when count>1
  */
 export function createTrack(

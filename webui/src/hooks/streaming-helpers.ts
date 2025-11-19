@@ -9,9 +9,10 @@ import { formatOpenAIMessages } from "../chat/openai-formatter.js";
 /**
  * Generic streaming handler for chat messages.
  * Returns true if completed successfully, false if aborted.
- * @param stream
- * @param formatter
- * @param onUpdate
+ * @param {AsyncIterable<TMessage[]>} stream - Stream of message arrays
+ * @param {(history: TMessage[]) => UIMessage[]} formatter - Function to format messages
+ * @param {(messages: UIMessage[]) => void} onUpdate - Callback for message updates
+ * @returns {any} - Hook return value
  */
 export async function handleMessageStream<TMessage>(
   stream: AsyncIterable<TMessage[]>,
@@ -34,8 +35,9 @@ export async function handleMessageStream<TMessage>(
 
 /**
  * Creates a Gemini error message from an exception and chat history
- * @param error
- * @param chatHistory
+ * @param {unknown} error - Error object or message
+ * @param {GeminiMessage[]} chatHistory - Current chat history
+ * @returns {any} - Hook return value
  */
 export function createGeminiErrorMessage(
   error: unknown,
@@ -57,8 +59,9 @@ export function createGeminiErrorMessage(
 
 /**
  * Creates an OpenAI error message from an exception and chat history
- * @param chatHistory
- * @param error
+ * @param {OpenAIMessage[]} chatHistory - Current chat history
+ * @param {unknown} error - Error object or message
+ * @returns {any} - Hook return value
  */
 export function createOpenAIErrorMessage(
   chatHistory: OpenAIMessage[],
@@ -90,9 +93,10 @@ export function createOpenAIErrorMessage(
 /**
  * Validates MCP connection status and throws if there's an error.
  * Auto-retries connection if it failed.
- * @param mcpStatus
- * @param mcpError
- * @param checkMcpConnection
+ * @param {"connected" | "connecting" | "error"} mcpStatus - MCP connection status
+ * @param {string | null} mcpError - MCP error message if any
+ * @param {() => Promise<void>} checkMcpConnection - Callback to retry connection
+ * @returns {any} - Hook return value
  */
 export async function validateMcpConnection(
   mcpStatus: "connected" | "connecting" | "error",

@@ -9,12 +9,13 @@ interface AssistantToolCallProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.name
- * @param root0.args
- * @param root0.result
- * @param root0.isError
+ * Displays tool call with args and result
+ * @param {AssistantToolCallProps} root0 - Component props
+ * @param {string} root0.name - Tool name
+ * @param {Record<string, unknown>} root0.args - Tool arguments
+ * @param {string | null} root0.result - Tool result or null if pending
+ * @param {boolean} [root0.isError] - Whether tool call failed
+ * @returns {JSX.Element} - React component
  */
 export function AssistantToolCall({
   name,
@@ -53,9 +54,10 @@ export function AssistantToolCall({
 }
 
 /**
- *
- * @param root0
- * @param root0.result
+ * Formats and displays full tool result with JSON formatting
+ * @param {object} root0 - Component props
+ * @param {string} root0.result - Tool result to format
+ * @returns {JSX.Element} - React component
  */
 function FullResultDetails({ result }: { result: string }) {
   const s = `${result}`;

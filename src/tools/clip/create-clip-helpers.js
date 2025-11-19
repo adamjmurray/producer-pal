@@ -8,10 +8,11 @@ import {
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 
 /**
- *
- * @param name
- * @param count
- * @param i
+ * Builds a clip name based on count and iteration index
+ * @param {string} name - Base clip name
+ * @param {number} count - Total number of clips being created
+ * @param {number} i - Current iteration index (0-based)
+ * @returns {string|undefined} - Generated clip name
  */
 export function buildClipName(name, count, i) {
   if (name == null) {
@@ -30,16 +31,17 @@ export function buildClipName(name, count, i) {
 }
 
 /**
- *
- * @param arrangementStart
- * @param start
- * @param firstStart
- * @param length
- * @param looping
- * @param timeSigNumerator
- * @param timeSigDenominator
- * @param songTimeSigNumerator
- * @param songTimeSigDenominator
+ * Converts bar|beat timing parameters to Ableton beats
+ * @param {string} arrangementStart - Arrangement start position in bar|beat format
+ * @param {string} start - Loop start position in bar|beat format
+ * @param {string} firstStart - First playback start position in bar|beat format
+ * @param {string} length - Clip length in bar|beat duration format
+ * @param {boolean} looping - Whether the clip is looping
+ * @param {number} timeSigNumerator - Clip time signature numerator
+ * @param {number} timeSigDenominator - Clip time signature denominator
+ * @param {number} songTimeSigNumerator - Song time signature numerator
+ * @param {number} songTimeSigDenominator - Song time signature denominator
+ * @returns {object} - Converted timing parameters in beats
  */
 export function convertTimingParameters(
   arrangementStart,
@@ -92,13 +94,14 @@ export function convertTimingParameters(
 }
 
 /**
- *
- * @param trackIndex
- * @param sceneIndex
- * @param clipLength
- * @param liveSet
- * @param i
- * @param maxAutoCreatedScenes
+ * Creates a session clip in a clip slot, auto-creating scenes if needed
+ * @param {number} trackIndex - Track index (0-based)
+ * @param {number} sceneIndex - Base scene index
+ * @param {number} clipLength - Clip length in beats
+ * @param {object} liveSet - LiveAPI live_set object
+ * @param {number} i - Current iteration index
+ * @param {number} maxAutoCreatedScenes - Maximum scenes allowed
+ * @returns {object} - Object with clip and sceneIndex
  */
 function createSessionClip(
   trackIndex,
@@ -144,11 +147,12 @@ function createSessionClip(
 }
 
 /**
- *
- * @param trackIndex
- * @param arrangementStartBeats
- * @param clipLength
- * @param i
+ * Creates an arrangement clip on a track
+ * @param {number} trackIndex - Track index (0-based)
+ * @param {number} arrangementStartBeats - Starting position in beats
+ * @param {number} clipLength - Clip length in beats
+ * @param {number} i - Current iteration index
+ * @returns {object} - Object with clip and arrangementStartBeats
  */
 function createArrangementClip(
   trackIndex,
@@ -179,15 +183,16 @@ function createArrangementClip(
 }
 
 /**
- *
- * @param startBeats
- * @param endBeats
- * @param firstStartBeats
- * @param looping
- * @param clipName
- * @param color
- * @param timeSigNumerator
- * @param timeSigDenominator
+ * Builds the properties object to set on a clip
+ * @param {number} startBeats - Loop start position in beats
+ * @param {number} endBeats - Loop end position in beats
+ * @param {number} firstStartBeats - First playback start position in beats
+ * @param {boolean} looping - Whether the clip is looping
+ * @param {string} clipName - Clip name
+ * @param {string} color - Clip color in hex format
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {object} - Clip properties to set
  */
 function buildClipProperties(
   startBeats,
@@ -240,21 +245,22 @@ function buildClipProperties(
 }
 
 /**
- *
- * @param clip
- * @param trackIndex
- * @param view
- * @param sceneIndex
- * @param i
- * @param arrangementStart
- * @param songTimeSigNumerator
- * @param songTimeSigDenominator
- * @param clipLength
- * @param notationString
- * @param notes
- * @param length
- * @param timeSigNumerator
- * @param timeSigDenominator
+ * Builds the result object for a created clip
+ * @param {object} clip - LiveAPI clip object
+ * @param {number} trackIndex - Track index
+ * @param {string} view - View type (session or arrangement)
+ * @param {number} sceneIndex - Scene index for session clips
+ * @param {number} i - Current iteration index
+ * @param {string} arrangementStart - Arrangement start in bar|beat format
+ * @param {number} songTimeSigNumerator - Song time signature numerator
+ * @param {number} songTimeSigDenominator - Song time signature denominator
+ * @param {number} clipLength - Clip length in beats
+ * @param {string} notationString - Original notation string
+ * @param {Array} notes - Array of MIDI notes
+ * @param {string} length - Original length parameter
+ * @param {number} timeSigNumerator - Clip time signature numerator
+ * @param {number} timeSigDenominator - Clip time signature denominator
+ * @returns {object} - Clip result object
  */
 function buildClipResult(
   clip,
@@ -316,28 +322,29 @@ function buildClipResult(
 }
 
 /**
- *
- * @param i
- * @param view
- * @param trackIndex
- * @param sceneIndex
- * @param arrangementStartBeats
- * @param clipLength
- * @param liveSet
- * @param startBeats
- * @param endBeats
- * @param firstStartBeats
- * @param looping
- * @param clipName
- * @param color
- * @param timeSigNumerator
- * @param timeSigDenominator
- * @param notationString
- * @param notes
- * @param songTimeSigNumerator
- * @param songTimeSigDenominator
- * @param arrangementStart
- * @param length
+ * Processes one iteration of clip creation
+ * @param {number} i - Current iteration index
+ * @param {string} view - View type (session or arrangement)
+ * @param {number} trackIndex - Track index
+ * @param {number} sceneIndex - Scene index for session clips
+ * @param {number} arrangementStartBeats - Arrangement start in beats
+ * @param {number} clipLength - Clip length in beats
+ * @param {object} liveSet - LiveAPI live_set object
+ * @param {number} startBeats - Loop start in beats
+ * @param {number} endBeats - Loop end in beats
+ * @param {number} firstStartBeats - First playback start in beats
+ * @param {boolean} looping - Whether the clip is looping
+ * @param {string} clipName - Clip name
+ * @param {string} color - Clip color
+ * @param {number} timeSigNumerator - Clip time signature numerator
+ * @param {number} timeSigDenominator - Clip time signature denominator
+ * @param {string} notationString - Original notation string
+ * @param {Array} notes - Array of MIDI notes
+ * @param {number} songTimeSigNumerator - Song time signature numerator
+ * @param {number} songTimeSigDenominator - Song time signature denominator
+ * @param {string} arrangementStart - Arrangement start in bar|beat format
+ * @param {string} length - Original length parameter
+ * @returns {object} - Clip result for this iteration
  */
 export function processClipIteration(
   i,

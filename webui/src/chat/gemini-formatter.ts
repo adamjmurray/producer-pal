@@ -21,8 +21,8 @@ import type {
  * 4. Marks the last thought part with `isOpen: true` for activity indicators
  * 5. Tracks `rawHistoryIndex` to map merged messages back to original indices (for retry functionality)
  *
- * @param history - Raw chat history from GeminiClient
- * @returns Formatted messages ready for UI rendering
+ * @param {GeminiMessage[]} history - Raw chat history from GeminiClient
+ * @returns {Array} - Formatted messages ready for UI rendering
  *
  * @example
  * // Raw history:
@@ -78,11 +78,11 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
 }
 
 /**
- *
- * @param acc
- * @param lastMessage
- * @param parts
- * @param rawIndex
+ * Handles error messages in the chat history
+ * @param {UIMessage[]} acc - Accumulated messages array
+ * @param {UIMessage | undefined} lastMessage - Last message in the array
+ * @param {Part[]} parts - Message parts to process
+ * @param {number} rawIndex - Index in the raw history
  */
 function handleErrorMessage(
   acc: UIMessage[],
@@ -107,8 +107,9 @@ function handleErrorMessage(
 }
 
 /**
- *
- * @param lastMessage
+ * Determines if error should be merged into the last message
+ * @param {UIMessage | undefined} lastMessage - Last message in the array
+ * @returns {boolean} True if error should be merged
  */
 function shouldMergeErrorIntoLastMessage(
   lastMessage: UIMessage | undefined,
@@ -117,9 +118,10 @@ function shouldMergeErrorIntoLastMessage(
 }
 
 /**
- *
- * @param acc
- * @param rawIndex
+ * Creates a new error message
+ * @param {UIMessage[]} acc - Accumulated messages array
+ * @param {number} rawIndex - Index in the raw history
+ * @returns {UIMessage} New error message
  */
 function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
   const message: UIMessage = {
@@ -132,12 +134,13 @@ function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
 }
 
 /**
- *
- * @param acc
- * @param lastMessage
- * @param role
- * @param rawIndex
- * @param parts
+ * Gets existing message or creates a new one
+ * @param {UIMessage[]} acc - Accumulated messages array
+ * @param {UIMessage | undefined} lastMessage - Last message in the array
+ * @param {string | undefined} role - Message role
+ * @param {number} rawIndex - Index in the raw history
+ * @param {Part[]} parts - Message parts to process
+ * @returns {UIMessage} Existing or new message
  */
 function getOrCreateMessage(
   acc: UIMessage[],
@@ -165,9 +168,9 @@ function getOrCreateMessage(
 }
 
 /**
- *
- * @param part
- * @param currentParts
+ * Processes a single message part
+ * @param {Part} part - Part to process
+ * @param {UIPart[]} currentParts - Array of UI parts to add to
  */
 function processSinglePart(part: Part, currentParts: UIPart[]): void {
   const lastPart = currentParts.at(-1);
@@ -183,9 +186,9 @@ function processSinglePart(part: Part, currentParts: UIPart[]): void {
 }
 
 /**
- *
- * @param functionCall
- * @param currentParts
+ * Handles a function call part
+ * @param {Part["functionCall"]} functionCall - Function call to handle
+ * @param {UIPart[]} currentParts - Array of UI parts to add to
  */
 function handleFunctionCall(
   functionCall: Part["functionCall"],
@@ -202,9 +205,9 @@ function handleFunctionCall(
 }
 
 /**
- *
- * @param functionResponse
- * @param currentParts
+ * Handles a function response part
+ * @param {FunctionResponse} functionResponse - Function response to handle
+ * @param {UIPart[]} currentParts - Array of UI parts to update
  */
 function handleFunctionResponse(
   functionResponse: FunctionResponse,
@@ -232,10 +235,10 @@ function handleFunctionResponse(
 }
 
 /**
- *
- * @param part
- * @param lastPart
- * @param currentParts
+ * Handles a text part
+ * @param {Part} part - Part containing text
+ * @param {UIPart | undefined} lastPart - Last part in the array
+ * @param {UIPart[]} currentParts - Array of UI parts to add to
  */
 function handleTextPart(
   part: Part,
@@ -262,9 +265,10 @@ function handleTextPart(
 }
 
 /**
- *
- * @param lastPart
- * @param isThought
+ * Determines if text can be merged with the last part
+ * @param {UIPart | undefined} lastPart - Last part in the array
+ * @param {boolean} isThought - Whether the current text is a thought
+ * @returns {boolean} True if text can be merged
  */
 function canMergeWithLastPart(
   lastPart: UIPart | undefined,
@@ -278,8 +282,8 @@ function canMergeWithLastPart(
 }
 
 /**
- *
- * @param messages
+ * Marks the last thought part as open for activity indicator
+ * @param {UIMessage[]} messages - Array of UI messages
  */
 function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastPart = messages.at(-1)?.parts.at(-1);
@@ -289,16 +293,18 @@ function markLastThoughtAsOpen(messages: UIMessage[]): void {
 }
 
 /**
- *
- * @param parts
+ * Checks if parts contain a function response
+ * @param {Part[]} parts - Array of parts to check
+ * @returns {boolean} True if parts contain a function response
  */
 function isFunctionResponse(parts: Part[]): boolean {
   return Boolean(parts[0]?.functionResponse);
 }
 
 /**
- *
- * @param functionResponse
+ * Extracts the result text from a function response
+ * @param {FunctionResponse} functionResponse - Function response to extract from
+ * @returns {string} Result text
  */
 function getToolCallResult(functionResponse: FunctionResponse): string {
   // Warnings can be returned in the additional content entries,
@@ -315,8 +321,9 @@ function getToolCallResult(functionResponse: FunctionResponse): string {
 }
 
 /**
- *
- * @param functionResponse
+ * Checks if a function response contains an error
+ * @param {FunctionResponse} functionResponse - Function response to check
+ * @returns {boolean} True if response contains an error
  */
 function isToolCallError(functionResponse: FunctionResponse): boolean {
   return functionResponse.response?.error != null;

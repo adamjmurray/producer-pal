@@ -53,9 +53,10 @@ describe("transformClips - slice + shuffle combination", () => {
     const shuffledClips = [];
 
     /**
-     *
-     * @param prop
-     * @param clipId
+     * Mock clip properties for test clips
+     * @param {string} prop - Property name to retrieve
+     * @param {string} clipId - Clip ID
+     * @returns {*} - Mock property value
      */
     function mockClipProperties(prop, clipId) {
       if (clipId === clip1Id || clipId === clip2Id) {
@@ -75,9 +76,10 @@ describe("transformClips - slice + shuffle combination", () => {
     }
 
     /**
-     *
-     * @param prop
-     * @param clipId
+     * Mock properties for sliced clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} clipId - Clip ID
+     * @returns {*} - Mock property value
      */
     function mockSlicedClipProperties(prop, clipId) {
       if (clipId?.startsWith("moved_") || clipId?.startsWith("tile_")) {
@@ -99,9 +101,10 @@ describe("transformClips - slice + shuffle combination", () => {
     }
 
     /**
-     *
-     * @param prop
-     * @param clipId
+     * Mock properties for shuffled clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} clipId - Clip ID
+     * @returns {*} - Mock property value
      */
     function mockShuffledClipProperties(prop, clipId) {
       if (clipId?.startsWith("shuffled_")) {

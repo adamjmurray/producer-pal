@@ -32,7 +32,8 @@ import {
  */
 /**
  * Process warp markers for an audio clip
- * @param clip
+ * @param {object} clip - LiveAPI clip object
+ * @returns {Array|undefined} - Array of warp markers or undefined
  */
 function processWarpMarkers(clip) {
   try {
@@ -72,8 +73,8 @@ function processWarpMarkers(clip) {
 /**
  * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
  * Only includes properties that are true
- * @param result
- * @param clip
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
  */
 function addBooleanStateProperties(result, clip) {
   if (clip.getProperty("is_playing") > 0) {
@@ -95,12 +96,12 @@ function addBooleanStateProperties(result, clip) {
 
 /**
  * Process MIDI clip specific properties
- * @param result
- * @param clip
- * @param includeClipNotes
- * @param lengthBeats
- * @param timeSigNumerator
- * @param timeSigDenominator
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
+ * @param {boolean} includeClipNotes - Whether to include formatted notes
+ * @param {number} lengthBeats - Clip length in beats
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
  */
 function processMidiClip(
   result,
@@ -129,6 +130,7 @@ function processMidiClip(
 
 /**
  * Get warp mode mapping for audio clips
+ * @returns {object} - Mapping of Live API warp modes to friendly names
  */
 function getWarpModeMapping() {
   return {
@@ -144,9 +146,9 @@ function getWarpModeMapping() {
 
 /**
  * Process audio clip specific properties
- * @param result
- * @param clip
- * @param includeWarpMarkers
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
+ * @param {boolean} includeWarpMarkers - Whether to include warp markers
  */
 function processAudioClip(result, clip, includeWarpMarkers) {
   const liveGain = clip.getProperty("gain");
@@ -182,9 +184,9 @@ function processAudioClip(result, clip, includeWarpMarkers) {
 
 /**
  * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
- * @param result
- * @param clip
- * @param isArrangementClip
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
+ * @param {boolean} isArrangementClip - Whether clip is in arrangement view
  */
 function addClipLocationProperties(result, clip, isArrangementClip) {
   if (isArrangementClip) {
@@ -212,12 +214,13 @@ function addClipLocationProperties(result, clip, isArrangementClip) {
 
 /**
  * Get the active start and end beats based on looping state
- * @param isLooping
- * @param startMarkerBeats
- * @param loopStartBeats
- * @param endMarkerBeats
- * @param loopEndBeats
- * @param lengthBeats
+ * @param {boolean} isLooping - Whether the clip is looping
+ * @param {number} startMarkerBeats - Start marker position in beats
+ * @param {number} loopStartBeats - Loop start position in beats
+ * @param {number} endMarkerBeats - End marker position in beats
+ * @param {number} loopEndBeats - Loop end position in beats
+ * @param {number} lengthBeats - Clip length in beats
+ * @returns {object} - Object with startBeats and endBeats
  */
 function getActiveClipBounds(
   isLooping,
@@ -244,9 +247,10 @@ function getActiveClipBounds(
 }
 
 /**
- *
- * @param args
- * @param _context
+ * Read a MIDI or audio clip from Ableton Live
+ * @param {object} args - Arguments object
+ * @param {object} _context - Context object (unused)
+ * @returns {object} - Clip information object
  */
 export function readClip(args = {}, _context = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;

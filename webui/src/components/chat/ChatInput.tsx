@@ -7,11 +7,12 @@ interface ChatInputProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.handleSend
- * @param root0.isAssistantResponding
- * @param root0.onStop
+ * Input component for chat messages
+ * @param {ChatInputProps} root0 - Component props
+ * @param {(message: string) => Promise<void>} root0.handleSend - Callback to send message
+ * @param {boolean} root0.isAssistantResponding - Whether assistant is currently responding
+ * @param {() => void} root0.onStop - Callback to stop assistant response
+ * @returns {JSX.Element} - React component
  */
 export function ChatInput({
   handleSend,

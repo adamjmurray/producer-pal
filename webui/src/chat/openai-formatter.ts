@@ -9,8 +9,8 @@ import type { ReasoningDetail } from "./openai-client.js";
 
 /**
  * Add reasoning details to parts array
- * @param reasoningDetails
- * @param parts
+ * @param {ReasoningDetail[] | undefined} reasoningDetails - Array of reasoning details from the API response
+ * @param {UIPart[]} parts - Parts array to add reasoning thoughts to
  */
 function addReasoningDetails(
   reasoningDetails: ReasoningDetail[] | undefined,
@@ -37,9 +37,10 @@ function addReasoningDetails(
 
 /**
  * Find matching tool result in history
- * @param history
- * @param toolCallId
- * @param startIndex
+ * @param {OpenAIMessage[]} history - Chat history to search
+ * @param {string} toolCallId - Tool call ID to find result for
+ * @param {number} startIndex - Index to start searching from
+ * @returns {{ result: string | null; isError: boolean }} - Tool result and error flag
  */
 function findToolResult(
   history: OpenAIMessage[],
@@ -72,8 +73,8 @@ function findToolResult(
 
 /**
  * Process text content and add to parts, merging with previous text part if needed
- * @param parts
- * @param content
+ * @param {UIPart[]} parts - Parts array to add text to
+ * @param {string} content - Text content to add
  */
 function addTextContent(parts: UIPart[], content: string): void {
   const lastPart = parts.at(-1);
@@ -86,10 +87,10 @@ function addTextContent(parts: UIPart[], content: string): void {
 
 /**
  * Process a single tool call and add it to parts
- * @param toolCall
- * @param parts
- * @param history
- * @param rawIndex
+ * @param {OpenAIToolCall} toolCall - Tool call to process
+ * @param {UIPart[]} parts - Parts array to add tool call to
+ * @param {OpenAIMessage[]} history - Chat history to search for tool results
+ * @param {number} rawIndex - Index in history to start searching from
  */
 function addToolCall(
   toolCall: OpenAIToolCall,
@@ -120,10 +121,10 @@ function addToolCall(
 
 /**
  * Process all tool calls for a message
- * @param msg
- * @param parts
- * @param history
- * @param rawIndex
+ * @param {OpenAIMessage} msg - Message to process tool calls from
+ * @param {UIPart[]} parts - Parts array to add tool calls to
+ * @param {OpenAIMessage[]} history - Chat history for tool result lookup
+ * @param {number} rawIndex - Index in history for tool result lookup
  */
 function processToolCalls(
   msg: OpenAIMessage,
@@ -142,10 +143,10 @@ function processToolCalls(
 
 /**
  * Process user or assistant message content (text and tool calls)
- * @param msg
- * @param parts
- * @param history
- * @param rawIndex
+ * @param {OpenAIMessage} msg - Message to process
+ * @param {UIPart[]} parts - Parts array to add content to
+ * @param {OpenAIMessage[]} history - Chat history for tool result lookup
+ * @param {number} rawIndex - Index in history for tool result lookup
  */
 function processMessageContent(
   msg: OpenAIMessage,
@@ -177,7 +178,7 @@ function processMessageContent(
 
 /**
  * Mark the last thought part as open if it exists
- * @param messages
+ * @param {UIMessage[]} messages - Array of UI messages
  */
 function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastMessage = messages.at(-1);
@@ -204,8 +205,8 @@ function markLastThoughtAsOpen(messages: UIMessage[]): void {
  * 6. Marks the last thought part with `isOpen: true` for activity indicators
  * 7. Tracks `rawHistoryIndex` to map merged messages back to original indices (for retry functionality)
  *
- * @param history - Raw chat history from OpenAIClient
- * @returns Formatted messages ready for UI rendering
+ * @param {OpenAIMessage[]} history - Raw chat history from OpenAIClient
+ * @returns {UIMessage[]} Formatted messages ready for UI rendering
  *
  * @example
  * // Raw history:

@@ -11,6 +11,7 @@ interface UseMcpConnectionReturn {
 
 /**
  *
+ * @returns {any} - Hook return value
  */
 export function useMcpConnection(): UseMcpConnectionReturn {
   const [mcpStatus, setMcpStatus] = useState<McpStatus>("connecting");

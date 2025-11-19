@@ -35,8 +35,9 @@ interface SettingsScreenProps {
 }
 
 /**
- *
- * @param provider
+ * Gets a display label for the provider
+ * @param {string} provider - The provider identifier
+ * @returns {string} Display label for the provider
  */
 function getProviderLabel(provider: string): string {
   switch (provider) {
@@ -58,34 +59,35 @@ function getProviderLabel(provider: string): string {
 }
 
 /**
- *
- * @param root0
- * @param root0.provider
- * @param root0.setProvider
- * @param root0.apiKey
- * @param root0.setApiKey
- * @param root0.baseUrl
- * @param root0.setBaseUrl
- * @param root0.port
- * @param root0.setPort
- * @param root0.model
- * @param root0.setModel
- * @param root0.thinking
- * @param root0.setThinking
- * @param root0.temperature
- * @param root0.setTemperature
- * @param root0.showThoughts
- * @param root0.setShowThoughts
- * @param root0.theme
- * @param root0.setTheme
- * @param root0.enabledTools
- * @param root0.setEnabledTools
- * @param root0.enableAllTools
- * @param root0.disableAllTools
- * @param root0.resetBehaviorToDefaults
- * @param root0.saveSettings
- * @param root0.cancelSettings
- * @param root0.settingsConfigured
+ * Settings screen component
+ * @param {object} root0 - Component props
+ * @param {Provider} root0.provider - Selected provider
+ * @param {Function} root0.setProvider - Function to update provider
+ * @param {string} root0.apiKey - API key for the provider
+ * @param {Function} root0.setApiKey - Function to update API key
+ * @param {string} root0.baseUrl - Base URL for custom provider
+ * @param {Function} root0.setBaseUrl - Function to update base URL
+ * @param {number} root0.port - Port for local provider
+ * @param {Function} root0.setPort - Function to update port
+ * @param {string} root0.model - Selected model
+ * @param {Function} root0.setModel - Function to update model
+ * @param {string} root0.thinking - Thinking mode setting
+ * @param {Function} root0.setThinking - Function to update thinking mode
+ * @param {number} root0.temperature - Temperature/randomness setting
+ * @param {Function} root0.setTemperature - Function to update temperature
+ * @param {boolean} root0.showThoughts - Whether to show thought blocks
+ * @param {Function} root0.setShowThoughts - Function to toggle thought display
+ * @param {string} root0.theme - UI theme setting
+ * @param {Function} root0.setTheme - Function to update theme
+ * @param {object} root0.enabledTools - Map of enabled/disabled tools
+ * @param {Function} root0.setEnabledTools - Function to update enabled tools
+ * @param {Function} root0.enableAllTools - Function to enable all tools
+ * @param {Function} root0.disableAllTools - Function to disable all tools
+ * @param {Function} root0.resetBehaviorToDefaults - Function to reset behavior settings
+ * @param {Function} root0.saveSettings - Function to save settings
+ * @param {Function} root0.cancelSettings - Function to cancel settings changes
+ * @param {boolean} root0.settingsConfigured - Whether settings have been configured
+ * @returns {JSX.Element} Settings screen component
  */
 export function SettingsScreen({
   provider,

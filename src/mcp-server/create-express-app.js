@@ -42,7 +42,8 @@ const internalError = (message) => ({
 });
 
 /**
- *
+ * Creates and configures an Express application for the MCP server
+ * @returns {object} - Configured Express app
  */
 export function createExpressApp() {
   const app = express();

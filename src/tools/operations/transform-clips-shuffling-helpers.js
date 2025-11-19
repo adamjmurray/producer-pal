@@ -3,11 +3,11 @@ import * as console from "../../shared/v8-max-console.js";
 const HOLDING_AREA_START = 40000;
 
 /**
- *
- * @param arrangementClips
- * @param clips
- * @param warnings
- * @param rng
+ * Perform shuffling of arrangement clips
+ * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clip objects
+ * @param {Array<LiveAPI>} clips - Array to update with fresh clips after shuffling
+ * @param {Set} warnings - Set to track warnings already issued
+ * @param {function(): number} rng - Random number generator function
  */
 export function performShuffling(arrangementClips, clips, warnings, rng) {
   if (arrangementClips.length === 0) {

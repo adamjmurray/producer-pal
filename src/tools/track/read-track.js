@@ -20,9 +20,10 @@ import {
 } from "./read-track-helpers.js";
 
 /**
- *
- * @param args
- * @param _context
+ * Read comprehensive information about a track
+ * @param {object} args - The parameters
+ * @param {object} _context - Internal context object (unused)
+ * @returns {object} Track information
  */
 export function readTrack(args = {}, _context = {}) {
   const { trackIndex, trackId, category = "regular" } = args;
@@ -65,11 +66,12 @@ export function readTrack(args = {}, _context = {}) {
 
 /**
  * Process session clips for a track
- * @param track
- * @param category
- * @param trackIndex
- * @param includeSessionClips
- * @param include
+ * @param {LiveAPI} track - Track object
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {number} trackIndex - Track index
+ * @param {boolean} includeSessionClips - Whether to include full session clip details
+ * @param {Array<string>} include - Include array for nested reads
+ * @returns {object} - Object with session clips data
  */
 function processSessionClips(
   track,
@@ -108,11 +110,12 @@ function processSessionClips(
 
 /**
  * Process arrangement clips for a track
- * @param track
- * @param isGroup
- * @param category
- * @param includeArrangementClips
- * @param include
+ * @param {LiveAPI} track - Track object
+ * @param {boolean} isGroup - Whether the track is a group
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {boolean} includeArrangementClips - Whether to include full arrangement clip details
+ * @param {Array<string>} include - Include array for nested reads
+ * @returns {object} Object with arrangementClips array or arrangementClipCount
  */
 function processArrangementClips(
   track,
@@ -144,8 +147,9 @@ function processArrangementClips(
 
 /**
  * Process and categorize track devices
- * @param categorizedDevices
- * @param config
+ * @param {object} categorizedDevices - Object containing categorized device arrays
+ * @param {object} config - Configuration object with device processing flags
+ * @returns {object} Object with processed device arrays and optional drum map
  */
 function processDevices(categorizedDevices, config) {
   const {
@@ -351,8 +355,9 @@ function categorizeDevices(
 
 // Helper function to strip chains from device objects
 /**
- *
- * @param device
+ * Removes chains property from a device object
+ * @param {object} device - Device object to strip chains from
+ * @returns {object} Device object without chains property
  */
 function stripChains(device) {
   if (!device || typeof device !== "object") {

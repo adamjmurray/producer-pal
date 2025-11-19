@@ -6,10 +6,11 @@ interface ProviderSelectorProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.provider
- * @param root0.setProvider
+ * Dropdown selector for AI provider
+ * @param {ProviderSelectorProps} root0 - Component props
+ * @param {Provider} root0.provider - Current provider
+ * @param {(provider: Provider) => void} root0.setProvider - Provider setter callback
+ * @returns {JSX.Element} - React component
  */
 export function ProviderSelector({
   provider,

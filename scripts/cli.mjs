@@ -4,9 +4,10 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 // Helper function to print large text without truncation
 /**
+ * Print text line by line to avoid truncation
  *
- * @param text
- * @param prefix
+ * @param {string} text - Text to print
+ * @param {string} prefix - Prefix to add to each line
  */
 function printLargeText(text, prefix = "") {
   const lines = text.split("\n");
@@ -20,7 +21,8 @@ const DEFAULT_URL = "http://localhost:3350/mcp";
 
 // Parse command line arguments
 /**
- *
+ * Parse command line arguments
+ * @returns {{url: string, command: string|null, toolName: string|null, toolArgs: object|null}} - Parsed arguments
  */
 function parseArgs() {
   const args = process.argv.slice(2);

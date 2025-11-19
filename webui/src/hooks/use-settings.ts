@@ -20,10 +20,12 @@ type ProviderStateSetters = Record<
 >;
 
 /**
+ * Create a setter function for a specific provider setting
  *
- * @param provider
- * @param setters
- * @param key
+ * @param {Provider} provider - The provider to update
+ * @param {ProviderStateSetters} setters - Map of provider state setters
+ * @param {K} key - The setting key to update
+ * @returns {(value: ProviderSettings[K]) => void} Setter function
  */
 function createProviderSetter<K extends keyof ProviderSettings>(
   provider: Provider,
@@ -38,7 +40,9 @@ function createProviderSetter<K extends keyof ProviderSettings>(
 // Hook manages state for 7 providers with individual setters and orchestration logic
 
 /**
+ * Hook for managing chat provider settings and tool enablement
  *
+ * @returns {UseSettingsReturn} Settings state and management functions
  */
 // eslint-disable-next-line max-lines-per-function
 export function useSettings(): UseSettingsReturn {

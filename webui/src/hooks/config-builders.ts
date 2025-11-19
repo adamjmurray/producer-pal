@@ -5,12 +5,13 @@ import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 
 /**
  * Builds Gemini client configuration from settings
- * @param model
- * @param temperature
- * @param thinking
- * @param showThoughts
- * @param enabledTools
- * @param chatHistory
+ * @param {string} model - Model identifier
+ * @param {number} temperature - Temperature value (0-2)
+ * @param {string} thinking - Thinking mode setting
+ * @param {boolean} showThoughts - Whether to include thoughts in response
+ * @param {Record<string, boolean>} enabledTools - Tool enabled states
+ * @param {GeminiMessage[]} [chatHistory] - Optional chat history
+ * @returns {any} - Hook return value
  */
 export function buildGeminiConfig(
   model: string,
@@ -47,7 +48,8 @@ export function buildGeminiConfig(
 /**
  * Check if we're using the actual OpenAI API (not OpenAI-compatible providers like Groq/Mistral).
  * reasoning_effort is only supported by OpenAI's API.
- * @param baseUrl
+ * @param {string} [baseUrl] - Base URL to check
+ * @returns {any} - Hook return value
  */
 function isOpenAIProvider(baseUrl?: string): boolean {
   // If no baseUrl, OpenAIClient defaults to OpenAI
@@ -59,7 +61,8 @@ function isOpenAIProvider(baseUrl?: string): boolean {
 /**
  * Maps Gemini thinking setting to OpenAI reasoning_effort parameter.
  * Note: Most OpenAI models don't support reasoning_effort (only o1/o3 series).
- * @param thinking
+ * @param {string} thinking - Thinking mode setting
+ * @returns {any} - Hook return value
  */
 function mapThinkingToReasoningEffort(
   thinking: string,
@@ -81,12 +84,13 @@ function mapThinkingToReasoningEffort(
 
 /**
  * Builds OpenAI client configuration from settings
- * @param model
- * @param temperature
- * @param thinking
- * @param baseUrl
- * @param enabledTools
- * @param chatHistory
+ * @param {string} model - Model identifier
+ * @param {number} temperature - Temperature value (0-2)
+ * @param {string} thinking - Thinking mode setting
+ * @param {string} [baseUrl] - Base URL for custom provider
+ * @param {Record<string, boolean>} enabledTools - Tool enabled states
+ * @param {OpenAIMessage[]} [chatHistory] - Optional chat history
+ * @returns {any} - Hook return value
  */
 export function buildOpenAIConfig(
   model: string,

@@ -37,9 +37,10 @@ const LOG_FILE = join(
 );
 
 /**
+ * Write a log message to the log file
  *
- * @param level
- * @param message
+ * @param {string} level - Log level (INFO, ERROR, DEBUG)
+ * @param {string} message - Message to log
  */
 function writeLog(level, message) {
   // Skip file operations when running under Vitest or when logging disabled

@@ -165,7 +165,7 @@ function createSingleScene(
  * @param {number|null} [args.tempo] - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
  * @param {boolean} [args.switchView=false] - Automatically switch to session view
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single scene object when count=1, array when count>1
  */
 export function createScene(

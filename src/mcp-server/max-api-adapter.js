@@ -29,9 +29,11 @@ Max.addHandler("timeoutMs", (input) => {
 
 // Function to send a tool call to the Max v8 environment
 /**
+ * Send a tool call to the Max v8 environment
  *
- * @param tool
- * @param args
+ * @param {string} tool - Tool name to call
+ * @param {object} args - Arguments for the tool
+ * @returns {Promise<object>} Tool execution result
  */
 function callLiveApi(tool, args) {
   const argsJSON = JSON.stringify(args);
@@ -73,9 +75,10 @@ function callLiveApi(tool, args) {
 }
 
 /**
+ * Handle Live API result from Max
  *
- * @param requestId
- * @param {...any} params
+ * @param {string} requestId - Request identifier
+ * @param {...any} params - Response parameters (chunks and errors)
  */
 function handleLiveApiResult(requestId, ...params) {
   console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
@@ -146,8 +149,9 @@ Max.addHandler("mcp_response", handleLiveApiResult);
 
 // Test helper function to control timeout in tests
 /**
+ * Set the timeout for testing purposes
  *
- * @param ms
+ * @param {number} ms - Timeout in milliseconds
  */
 export function setTimeoutForTesting(ms) {
   timeoutMs = ms;

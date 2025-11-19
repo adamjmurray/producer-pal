@@ -546,9 +546,10 @@ describe("transformClips - slicing", () => {
       }
     });
     /**
-     *
-     * @param prop
-     * @param id
+     * Mock properties for primary clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
      */
     function mockPrimaryClipProperties(prop, id) {
       if (id === clipId) {
@@ -566,9 +567,10 @@ describe("transformClips - slicing", () => {
     }
 
     /**
-     *
-     * @param prop
-     * @param id
+     * Mock properties for following clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
      */
     function mockFollowingClipProperties(prop, id) {
       if (id === followingClipId) {
@@ -582,9 +584,10 @@ describe("transformClips - slicing", () => {
     }
 
     /**
-     *
-     * @param prop
-     * @param id
+     * Mock properties for holding clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
      */
     function mockHoldingClipProperties(prop, id) {
       if (id?.startsWith("holding_")) {
@@ -596,9 +599,10 @@ describe("transformClips - slicing", () => {
     }
 
     /**
-     *
-     * @param prop
-     * @param id
+     * Mock properties for sliced clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
      */
     function mockSlicedClipProperties(prop, id) {
       if (id?.startsWith("moved_") || id?.startsWith("tile_")) {

@@ -9,12 +9,12 @@ import {
 } from "./create-clip-helpers.js";
 
 /**
- *
- * @param view
- * @param trackIndex
- * @param sceneIndex
- * @param arrangementStart
- * @param count
+ * Validates createClip parameters
+ * @param {string} view - View type (session or arrangement)
+ * @param {number} trackIndex - Track index
+ * @param {number} sceneIndex - Scene index for session view
+ * @param {string} arrangementStart - Arrangement start for arrangement view
+ * @param {number} count - Number of clips to create
  */
 function validateCreateClipParams(
   view,
@@ -49,11 +49,12 @@ function validateCreateClipParams(
 }
 
 /**
- *
- * @param endBeats
- * @param notes
- * @param timeSigNumerator
- * @param timeSigDenominator
+ * Calculates the clip length based on notes and parameters
+ * @param {number} endBeats - End position in beats
+ * @param {Array} notes - Array of MIDI notes
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} - Calculated clip length in beats
  */
 function calculateClipLength(
   endBeats,
@@ -92,12 +93,12 @@ function calculateClipLength(
 }
 
 /**
- *
- * @param auto
- * @param view
- * @param sceneIndex
- * @param count
- * @param trackIndex
+ * Handles automatic playback for session clips
+ * @param {string} auto - Auto playback mode (play-scene or play-clip)
+ * @param {string} view - View type
+ * @param {number} sceneIndex - Scene index
+ * @param {number} count - Number of clips
+ * @param {number} trackIndex - Track index
  */
 function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
   if (!auto || view !== "session") {
@@ -153,7 +154,7 @@ function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only. Puts tracks into non-following state.
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single clip object when count=1, array when count>1
  */
 export function createClip(

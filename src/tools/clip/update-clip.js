@@ -27,11 +27,11 @@ import { handleArrangementLengthOperation } from "./arrangement-operations.js";
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
  * @param {boolean} [args.warping] - Audio clip warping on/off
- * @param args.warpOp
- * @param args.warpBeatTime
- * @param args.warpSampleTime
- * @param args.warpDistance
- * @param context
+ * @param {string} [args.warpOp] - Warp marker operation: add, move, remove
+ * @param {number} [args.warpBeatTime] - Beat time for warp marker operation
+ * @param {number} [args.warpSampleTime] - Sample time for warp marker operation
+ * @param {number} [args.warpDistance] - Distance parameter for move operations
+ * @param {object} context - Tool execution context with holding area settings
  * @returns {object | Array<object>} Single clip object or array of clip objects
  */
 export function updateClip(
