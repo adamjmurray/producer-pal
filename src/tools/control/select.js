@@ -2,6 +2,8 @@ import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { validateIdType } from "../shared/id-validation.js";
 import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
 
+const MASTER_TRACK_PATH = "live_set master_track";
+
 /**
  * Reads or updates the view state and selection in Ableton Live.
  *
@@ -188,7 +190,7 @@ function validateParameters({
     } else if (finalCategory === "return") {
       trackPath = `live_set return_tracks ${trackIndex}`;
     } else if (finalCategory === "master") {
-      trackPath = "live_set master_track";
+      trackPath = MASTER_TRACK_PATH;
     }
 
     if (trackPath) {
@@ -236,7 +238,7 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
     } else if (finalCategory === "return") {
       trackPath = `live_set return_tracks ${trackIndex}`;
     } else if (finalCategory === "master") {
-      trackPath = "live_set master_track";
+      trackPath = MASTER_TRACK_PATH;
     }
 
     if (trackPath) {
@@ -301,7 +303,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
     } else if (trackSelectionResult.selectedCategory === "return") {
       trackPath = `live_set return_tracks ${trackSelectionResult.selectedTrackIndex}`;
     } else if (trackSelectionResult.selectedCategory === "master") {
-      trackPath = "live_set master_track";
+      trackPath = MASTER_TRACK_PATH;
     } else {
       // Use currently selected track
       const selectedTrackAPI = new LiveAPI("live_set view selected_track");
@@ -312,7 +314,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
         } else if (category === "return") {
           trackPath = `live_set return_tracks ${selectedTrackAPI.returnTrackIndex}`;
         } else if (category === "master") {
-          trackPath = "live_set master_track";
+          trackPath = MASTER_TRACK_PATH;
         }
       }
     }

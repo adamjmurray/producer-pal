@@ -3,6 +3,8 @@
 import { spawn } from "child_process";
 
 const DEFAULT_HTTP_URL = "http://localhost:3350/mcp";
+const JSON_RPC_VERSION = "2.0";
+const TOOLS_LIST_METHOD = "tools/list";
 
 // Show usage if --help is provided
 if (process.argv.includes("--help") || process.argv.includes("-h")) {
@@ -75,7 +77,7 @@ const bridge = spawn(
 
 // MCP protocol messages
 const initMessage = {
-  jsonrpc: "2.0",
+  jsonrpc: JSON_RPC_VERSION,
   method: "initialize",
   params: {
     protocolVersion: "2024-11-05",
@@ -89,13 +91,13 @@ const initMessage = {
 };
 
 const listToolsMessage = {
-  jsonrpc: "2.0",
-  method: "tools/list",
+  jsonrpc: JSON_RPC_VERSION,
+  method: TOOLS_LIST_METHOD,
   params: {},
   id: 2,
 };
 
-const testSequence = ["initialize", "tools/list"];
+const testSequence = ["initialize", TOOLS_LIST_METHOD];
 
 // Add specific tool call if provided
 if (toolName) {
@@ -197,10 +199,10 @@ bridge.stdout.on("data", (data) => {
 
   // Continue test sequence
   if (responseCount === 1) {
-    sendMessage(listToolsMessage, "tools/list");
+    sendMessage(listToolsMessage, TOOLS_LIST_METHOD);
   } else if (responseCount === 2 && toolName) {
     const toolCallMessage = {
-      jsonrpc: "2.0",
+      jsonrpc: JSON_RPC_VERSION,
       method: "tools/call",
       params: {
         name: toolName,
