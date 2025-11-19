@@ -7,6 +7,64 @@ import type {
 import type { ReasoningDetail } from "./openai-client.js";
 
 /**
+ * Add reasoning details to parts array
+ */
+function addReasoningDetails(
+  reasoningDetails: ReasoningDetail[] | undefined,
+  parts: UIPart[],
+): void {
+  if (!reasoningDetails || reasoningDetails.length === 0) return;
+
+  // Extract all reasoning text
+  const reasoningText = reasoningDetails
+    .filter((detail) => detail.type === "reasoning.text" && detail.text)
+    .map((detail) => detail.text)
+    .join("");
+
+  if (!reasoningText) return;
+
+  const lastPart = parts.at(-1);
+  if (lastPart?.type === "thought") {
+    // Merge with previous thought part
+    lastPart.content += reasoningText;
+  } else {
+    parts.push({ type: "thought", content: reasoningText });
+  }
+}
+
+/**
+ * Find matching tool result in history
+ */
+function findToolResult(
+  history: OpenAIMessage[],
+  toolCallId: string,
+  startIndex: number,
+): { result: string | null; isError: boolean } {
+  for (let i = startIndex; i < history.length; i++) {
+    const nextMsg = history[i];
+    if (!nextMsg) continue;
+
+    if (
+      nextMsg.role === "tool" &&
+      "tool_call_id" in nextMsg &&
+      nextMsg.tool_call_id === toolCallId
+    ) {
+      const toolContent =
+        typeof nextMsg.content === "string" ? nextMsg.content : undefined;
+      const result = toolContent ?? "";
+
+      // Basic heuristic: check if content contains error indicators
+      const isError =
+        result.includes('"error"') || result.includes('"isError":true');
+
+      return { result, isError };
+    }
+  }
+
+  return { result: null, isError: false };
+}
+
+/**
  * Formats OpenAI's raw chat history into a UI-friendly structure.
  *
  * Transformations applied:
@@ -80,23 +138,7 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
         const reasoningDetails = msg.reasoning_details as
           | ReasoningDetail[]
           | undefined;
-        if (reasoningDetails && reasoningDetails.length > 0) {
-          // Extract all reasoning text
-          const reasoningText = reasoningDetails
-            .filter((detail) => detail.type === "reasoning.text" && detail.text)
-            .map((detail) => detail.text)
-            .join("");
-
-          if (reasoningText) {
-            const lastPart = parts.at(-1);
-            if (lastPart?.type === "thought") {
-              // Merge with previous thought part
-              lastPart.content += reasoningText;
-            } else {
-              parts.push({ type: "thought", content: reasoningText });
-            }
-          }
-        }
+        addReasoningDetails(reasoningDetails, parts);
       }
 
       // Add text content (handle both string and array content types)
@@ -122,31 +164,11 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
             : {};
 
           // Look ahead for matching tool result
-          let result: string | null = null;
-          let isError = false;
-
-          for (let i = rawIndex + 1; i < history.length; i++) {
-            const nextMsg = history[i];
-            if (!nextMsg) continue;
-            if (
-              nextMsg.role === "tool" &&
-              "tool_call_id" in nextMsg &&
-              nextMsg.tool_call_id === toolCall.id
-            ) {
-              const toolContent =
-                typeof nextMsg.content === "string"
-                  ? nextMsg.content
-                  : undefined;
-              result = toolContent ?? "";
-              // Basic heuristic: check if content contains error indicators
-              if (result) {
-                isError =
-                  result.includes('"error"') ||
-                  result.includes('"isError":true');
-              }
-              break;
-            }
-          }
+          const { result, isError } = findToolResult(
+            history,
+            toolCall.id,
+            rawIndex + 1,
+          );
 
           parts.push({
             type: "tool",
