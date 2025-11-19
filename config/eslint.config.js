@@ -70,7 +70,7 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 150,
+      max: 141,
       skipBlankLines: true,
       skipComments: true,
     },
@@ -300,7 +300,7 @@ export default [
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
       "max-lines-per-function": "off",
-      complexity: ["error", 60],
+      complexity: ["error", 30],
       "sonarjs/no-duplicate-string": "off",
     },
   },
@@ -330,7 +330,7 @@ export default [
       "max-lines": [
         "error",
         {
-          max: 350,
+          max: 345,
           skipBlankLines: true,
           skipComments: true,
         },

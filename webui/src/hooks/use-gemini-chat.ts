@@ -46,6 +46,7 @@ interface UseGeminiChatReturn {
  * @param root0.mcpError
  * @param root0.checkMcpConnection
  */
+// eslint-disable-next-line max-lines-per-function
 export function useGeminiChat({
   apiKey,
   model,
