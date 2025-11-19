@@ -44,6 +44,7 @@ export default defineConfig({
         items: [
           { text: "Features", link: "/features" },
           { text: "Roadmap", link: "/roadmap" },
+          { text: "Known Issues", link: "/known-issues" },
         ],
       },
       {
