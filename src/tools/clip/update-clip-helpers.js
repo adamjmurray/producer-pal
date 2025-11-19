@@ -342,8 +342,7 @@ export function processSingleClipUpdate(params) {
   let finalNoteCount = null;
 
   // Determine looping state
-  const isLooping =
-    looping != null ? looping : clip.getProperty("looping") > 0;
+  const isLooping = looping != null ? looping : clip.getProperty("looping") > 0;
 
   // Handle firstStart warning for non-looping clips
   if (firstStart != null && !isLooping) {

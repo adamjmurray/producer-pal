@@ -77,7 +77,9 @@ function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
   if (velocityMin == null || velocityMax == null) {
     return;
   }
-  const velocityOffset = Math.round(randomInRange(velocityMin, velocityMax, rng));
+  const velocityOffset = Math.round(
+    randomInRange(velocityMin, velocityMax, rng),
+  );
   note.velocity = Math.max(1, Math.min(127, note.velocity + velocityOffset));
 }
 
@@ -90,10 +92,15 @@ function applyTranspose(note, transposeParams, rng) {
     // Pick from discrete values
     const transposeOffset =
       transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)];
-    note.pitch = Math.max(0, Math.min(127, note.pitch + Math.round(transposeOffset)));
+    note.pitch = Math.max(
+      0,
+      Math.min(127, note.pitch + Math.round(transposeOffset)),
+    );
   } else if (transposeMin != null && transposeMax != null) {
     // Random range
-    const transposeOffset = Math.round(randomInRange(transposeMin, transposeMax, rng));
+    const transposeOffset = Math.round(
+      randomInRange(transposeMin, transposeMax, rng),
+    );
     note.pitch = Math.max(0, Math.min(127, note.pitch + transposeOffset));
   }
 }
@@ -117,7 +124,10 @@ function applyVelocityDeviation(note, velocityRange) {
     return;
   }
   const currentDeviation = note.velocity_deviation ?? 0;
-  note.velocity_deviation = Math.max(-127, Math.min(127, currentDeviation + velocityRange));
+  note.velocity_deviation = Math.max(
+    -127,
+    Math.min(127, currentDeviation + velocityRange),
+  );
 }
 
 /**
@@ -128,7 +138,10 @@ function applyProbabilityOffset(note, probability) {
     return;
   }
   const currentProbability = note.probability ?? 1.0;
-  note.probability = Math.max(0.0, Math.min(1.0, currentProbability + probability));
+  note.probability = Math.max(
+    0.0,
+    Math.min(1.0, currentProbability + probability),
+  );
 }
 
 /**
