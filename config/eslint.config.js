@@ -76,7 +76,7 @@ const baseRules = {
   // TODO: lower this (final target: 4):
   "max-depth": ["error", 5], // limits nesting depth (if/for/while blocks)
   // TODO: lower this (final target: 15):
-  complexity: ["error", 40], // cyclomatic complexity (number of independent code paths)
+  complexity: ["error", 25], // cyclomatic complexity (number of independent code paths)
 };
 
 const jsOnlyRules = {

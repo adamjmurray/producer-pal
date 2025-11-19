@@ -107,6 +107,104 @@ export function updateBufferedPitches(state, updateFn) {
 }
 
 /**
+ * Handle multi-bar source range tiling to multiple destination bars
+ * @param {Object} element - AST element with source.range
+ * @param {number} destStart - Destination range start
+ * @param {number} destEnd - Destination range end
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number|null} timeSigDenominator - Time signature denominator
+ * @param {Map} notesByBar - Notes by bar map
+ * @param {Array} events - Events array to append to
+ * @param {Object} bufferState - Current buffer state for validation
+ * @returns {Object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
+ */
+function handleMultiBarSourceRangeCopy(
+  element,
+  destStart,
+  destEnd,
+  beatsPerBar,
+  timeSigDenominator,
+  notesByBar,
+  events,
+  bufferState,
+) {
+  const [sourceStart, sourceEnd] = element.source.range;
+
+  // Validate source range
+  if (sourceStart <= 0 || sourceEnd <= 0) {
+    console.error(
+      `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (invalid bar numbers)`,
+    );
+    return { currentTime: null, hasExplicitBarNumber: false };
+  }
+  if (sourceStart > sourceEnd) {
+    console.error(
+      `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (start > end)`,
+    );
+    return { currentTime: null, hasExplicitBarNumber: false };
+  }
+
+  validateBufferedState(bufferState, "bar copy");
+
+  // Tile source range across destination
+  const sourceCount = sourceEnd - sourceStart + 1;
+  const barDuration =
+    timeSigDenominator != null
+      ? beatsPerBar * (4 / timeSigDenominator)
+      : beatsPerBar;
+
+  let destBar = destStart;
+  let sourceOffset = 0;
+  let copiedAny = false;
+
+  while (destBar <= destEnd) {
+    const sourceBar = sourceStart + (sourceOffset % sourceCount);
+
+    // Skip copying a bar to itself
+    if (sourceBar === destBar) {
+      console.error(`Warning: Skipping copy of bar ${sourceBar} to itself`);
+      destBar++;
+      sourceOffset++;
+      continue;
+    }
+
+    // Get source notes
+    const sourceNotes = notesByBar.get(sourceBar);
+    if (sourceNotes == null || sourceNotes.length === 0) {
+      console.error(`Warning: Bar ${sourceBar} is empty, nothing to copy`);
+      destBar++;
+      sourceOffset++;
+      continue;
+    }
+
+    // Copy and shift notes
+    const destinationBarStart = (destBar - 1) * barDuration;
+
+    for (const sourceNote of sourceNotes) {
+      copyNoteToDestination(
+        sourceNote,
+        destBar,
+        destinationBarStart,
+        events,
+        notesByBar,
+      );
+    }
+
+    copiedAny = true;
+    destBar++;
+    sourceOffset++;
+  }
+
+  if (copiedAny) {
+    return {
+      currentTime: { bar: destStart, beat: 1 },
+      hasExplicitBarNumber: true,
+    };
+  }
+  return { currentTime: null, hasExplicitBarNumber: false };
+}
+
+/**
  * Handle bar copy with range destination (multiple destination bars from source bar(s))
  * @param {Object} element - AST element
  * @param {number} beatsPerBar - Beats per bar
@@ -142,80 +240,16 @@ export function handleBarCopyRangeDestination(
 
   // Handle multi-bar source range tiling
   if (element.source.range !== undefined) {
-    const [sourceStart, sourceEnd] = element.source.range;
-
-    // Validate source range
-    if (sourceStart <= 0 || sourceEnd <= 0) {
-      console.error(
-        `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (invalid bar numbers)`,
-      );
-      return { currentTime: null, hasExplicitBarNumber: false };
-    }
-    if (sourceStart > sourceEnd) {
-      console.error(
-        `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (start > end)`,
-      );
-      return { currentTime: null, hasExplicitBarNumber: false };
-    }
-
-    validateBufferedState(bufferState, "bar copy");
-
-    // Tile source range across destination
-    const sourceCount = sourceEnd - sourceStart + 1;
-    const barDuration =
-      timeSigDenominator != null
-        ? beatsPerBar * (4 / timeSigDenominator)
-        : beatsPerBar;
-
-    let destBar = destStart;
-    let sourceOffset = 0;
-    let copiedAny = false;
-
-    while (destBar <= destEnd) {
-      const sourceBar = sourceStart + (sourceOffset % sourceCount);
-
-      // Skip copying a bar to itself
-      if (sourceBar === destBar) {
-        console.error(`Warning: Skipping copy of bar ${sourceBar} to itself`);
-        destBar++;
-        sourceOffset++;
-        continue;
-      }
-
-      // Get source notes
-      const sourceNotes = notesByBar.get(sourceBar);
-      if (sourceNotes == null || sourceNotes.length === 0) {
-        console.error(`Warning: Bar ${sourceBar} is empty, nothing to copy`);
-        destBar++;
-        sourceOffset++;
-        continue;
-      }
-
-      // Copy and shift notes
-      const destinationBarStart = (destBar - 1) * barDuration;
-
-      for (const sourceNote of sourceNotes) {
-        copyNoteToDestination(
-          sourceNote,
-          destBar,
-          destinationBarStart,
-          events,
-          notesByBar,
-        );
-      }
-
-      copiedAny = true;
-      destBar++;
-      sourceOffset++;
-    }
-
-    if (copiedAny) {
-      return {
-        currentTime: { bar: destStart, beat: 1 },
-        hasExplicitBarNumber: true,
-      };
-    }
-    return { currentTime: null, hasExplicitBarNumber: false };
+    return handleMultiBarSourceRangeCopy(
+      element,
+      destStart,
+      destEnd,
+      beatsPerBar,
+      timeSigDenominator,
+      notesByBar,
+      events,
+      bufferState,
+    );
   }
 
   // Determine single source bar

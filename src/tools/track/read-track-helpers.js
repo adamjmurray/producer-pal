@@ -1,4 +1,11 @@
 import { readClip } from "../clip/read-clip.js";
+import { STATE } from "../constants.js";
+import { cleanupInternalDrumChains } from "../shared/device-reader.js";
+import {
+  processCurrentRouting,
+  processAvailableRouting,
+} from "./track-routing-helpers.js";
+import { VERSION } from "../../shared/version.js";
 
 /**
  * Read minimal track information for auto-inclusion when clips are requested.
@@ -83,4 +90,155 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
   }
 
   return result;
+}
+
+/**
+ * Handle track that doesn't exist
+ */
+export function handleNonExistentTrack(category, trackIndex) {
+  const result = {
+    id: null,
+    type: null,
+    name: null,
+  };
+  if (category === "regular") {
+    result.trackIndex = trackIndex;
+  } else if (category === "return") {
+    result.returnTrackIndex = trackIndex;
+  } else if (category === "master") {
+    result.trackIndex = null;
+  }
+  return result;
+}
+
+/**
+ * Add optional boolean properties to track result
+ */
+export function addOptionalBooleanProperties(result, track, canBeArmed) {
+  const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
+  if (isArmed) {
+    result.isArmed = isArmed;
+  }
+  const isGroup = track.getProperty("is_foldable") > 0;
+  if (isGroup) {
+    result.isGroup = isGroup;
+  }
+  const isGroupMember = track.getProperty("is_grouped") > 0;
+  if (isGroupMember) {
+    result.isGroupMember = isGroupMember;
+  }
+}
+
+/**
+ * Add track index property based on category
+ */
+export function addCategoryIndex(result, category, trackIndex) {
+  if (category === "regular") {
+    result.trackIndex = trackIndex;
+  } else if (category === "return") {
+    result.returnTrackIndex = trackIndex;
+  }
+}
+
+/**
+ * Clean up device chains from result
+ */
+export function cleanupDeviceChains(result) {
+  if (result.midiEffects) {
+    result.midiEffects = cleanupInternalDrumChains(result.midiEffects);
+  }
+  if (result.instrument) {
+    result.instrument = cleanupInternalDrumChains(result.instrument);
+  }
+  if (result.audioEffects) {
+    result.audioEffects = cleanupInternalDrumChains(result.audioEffects);
+  }
+}
+
+/**
+ * Add slot index properties for regular tracks
+ */
+export function addSlotIndices(result, track, category) {
+  if (category !== "regular") {
+    return;
+  }
+  const playingSlotIndex = track.getProperty("playing_slot_index");
+  if (playingSlotIndex >= 0) {
+    result.playingSlotIndex = playingSlotIndex;
+  }
+  const firedSlotIndex = track.getProperty("fired_slot_index");
+  if (firedSlotIndex >= 0) {
+    result.firedSlotIndex = firedSlotIndex;
+  }
+}
+
+/**
+ * Add state property if not default active state
+ */
+export function addStateIfNotDefault(result, track, category) {
+  const trackState = computeState(track, category);
+  if (trackState !== STATE.ACTIVE) {
+    result.state = trackState;
+  }
+}
+
+/**
+ * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
+ * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
+ */
+function computeState(liveObject, category = "regular") {
+  // Master track doesn't have mute/solo/muted_via_solo properties
+  if (category === "master") {
+    return STATE.ACTIVE;
+  }
+  const isMuted = liveObject.getProperty("mute") > 0;
+  const isSoloed = liveObject.getProperty("solo") > 0;
+  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
+  if (isSoloed) {
+    return STATE.SOLOED;
+  }
+  if (isMuted && isMutedViaSolo) {
+    return STATE.MUTED_ALSO_VIA_SOLO;
+  }
+  if (isMutedViaSolo) {
+    return STATE.MUTED_VIA_SOLO;
+  }
+  if (isMuted) {
+    return STATE.MUTED;
+  }
+  return STATE.ACTIVE;
+}
+
+/**
+ * Add routing information if requested
+ */
+export function addRoutingInfo(
+  result,
+  track,
+  category,
+  isGroup,
+  canBeArmed,
+  includeRoutings,
+  includeAvailableRoutings,
+) {
+  if (includeRoutings) {
+    Object.assign(
+      result,
+      processCurrentRouting(track, category, isGroup, canBeArmed),
+    );
+  }
+  if (includeAvailableRoutings) {
+    Object.assign(result, processAvailableRouting(track, category, isGroup));
+  }
+}
+
+/**
+ * Add producer pal host information if applicable
+ */
+export function addProducerPalHostInfo(result, isProducerPalHost) {
+  if (isProducerPalHost) {
+    result.hasProducerPalDevice = true;
+    result.producerPalVersion = VERSION;
+  }
 }

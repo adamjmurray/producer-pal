@@ -223,6 +223,97 @@ function processTimePosition(
 }
 
 /**
+ * Process a single element in the main AST loop
+ * Dispatches to appropriate handler based on element type
+ */
+function processElementInLoop(
+  element,
+  state,
+  beatsPerBar,
+  timeSigNumerator,
+  timeSigDenominator,
+  notesByBar,
+  events,
+) {
+  if (element.destination?.range !== undefined) {
+    const result = handleBarCopyRangeDestination(
+      element,
+      beatsPerBar,
+      timeSigDenominator,
+      notesByBar,
+      events,
+      {
+        currentPitches: state.currentPitches,
+        pitchesEmitted: state.pitchesEmitted,
+        stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
+        pitchGroupStarted: state.pitchGroupStarted,
+        stateChangedAfterEmission: state.stateChangedAfterEmission,
+      },
+    );
+    if (result.currentTime) {
+      state.currentTime = result.currentTime;
+      state.hasExplicitBarNumber = result.hasExplicitBarNumber;
+    }
+    resetPitchBufferState(state);
+  } else if (element.destination?.bar !== undefined) {
+    const result = handleBarCopySingleDestination(
+      element,
+      beatsPerBar,
+      timeSigDenominator,
+      notesByBar,
+      events,
+      {
+        currentPitches: state.currentPitches,
+        pitchesEmitted: state.pitchesEmitted,
+        stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
+        pitchGroupStarted: state.pitchGroupStarted,
+        stateChangedAfterEmission: state.stateChangedAfterEmission,
+      },
+    );
+    if (result.currentTime) {
+      state.currentTime = result.currentTime;
+      state.hasExplicitBarNumber = result.hasExplicitBarNumber;
+    }
+    resetPitchBufferState(state);
+  } else if (element.clearBuffer) {
+    validateBufferedState(
+      {
+        currentPitches: state.currentPitches,
+        pitchesEmitted: state.pitchesEmitted,
+        stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
+        pitchGroupStarted: state.pitchGroupStarted,
+        stateChangedAfterEmission: state.stateChangedAfterEmission,
+      },
+      "@clear",
+    );
+    handleClearBuffer(notesByBar);
+    resetPitchBufferState(state);
+  } else if (element.bar !== undefined && element.beat !== undefined) {
+    processTimePosition(
+      element,
+      state,
+      beatsPerBar,
+      timeSigDenominator,
+      events,
+      notesByBar,
+    );
+  } else if (element.pitch !== undefined) {
+    processPitchElement(element, state);
+  } else if (element.velocity !== undefined) {
+    processVelocityUpdate(element, state);
+  } else if (
+    element.velocityMin !== undefined &&
+    element.velocityMax !== undefined
+  ) {
+    processVelocityRangeUpdate(element, state);
+  } else if (element.duration !== undefined) {
+    processDurationUpdate(element, state, timeSigNumerator, timeSigDenominator);
+  } else if (element.probability !== undefined) {
+    processProbabilityUpdate(element, state);
+  }
+}
+
+/**
  * Convert bar|beat notation into note events
  * @param {string} barBeatExpression - bar|beat notation string
  * @param {Object} options - Options
@@ -271,87 +362,15 @@ export function interpretNotation(barBeatExpression, options = {}) {
       stateChangedAfterEmission: false,
     };
     for (const element of ast) {
-      if (element.destination?.range !== undefined) {
-        const result = handleBarCopyRangeDestination(
-          element,
-          beatsPerBar,
-          timeSigDenominator,
-          notesByBar,
-          events,
-          {
-            currentPitches: state.currentPitches,
-            pitchesEmitted: state.pitchesEmitted,
-            stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
-            pitchGroupStarted: state.pitchGroupStarted,
-            stateChangedAfterEmission: state.stateChangedAfterEmission,
-          },
-        );
-        if (result.currentTime) {
-          state.currentTime = result.currentTime;
-          state.hasExplicitBarNumber = result.hasExplicitBarNumber;
-        }
-        resetPitchBufferState(state);
-      } else if (element.destination?.bar !== undefined) {
-        const result = handleBarCopySingleDestination(
-          element,
-          beatsPerBar,
-          timeSigDenominator,
-          notesByBar,
-          events,
-          {
-            currentPitches: state.currentPitches,
-            pitchesEmitted: state.pitchesEmitted,
-            stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
-            pitchGroupStarted: state.pitchGroupStarted,
-            stateChangedAfterEmission: state.stateChangedAfterEmission,
-          },
-        );
-        if (result.currentTime) {
-          state.currentTime = result.currentTime;
-          state.hasExplicitBarNumber = result.hasExplicitBarNumber;
-        }
-        resetPitchBufferState(state);
-      } else if (element.clearBuffer) {
-        validateBufferedState(
-          {
-            currentPitches: state.currentPitches,
-            pitchesEmitted: state.pitchesEmitted,
-            stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
-            pitchGroupStarted: state.pitchGroupStarted,
-            stateChangedAfterEmission: state.stateChangedAfterEmission,
-          },
-          "@clear",
-        );
-        handleClearBuffer(notesByBar);
-        resetPitchBufferState(state);
-      } else if (element.bar !== undefined && element.beat !== undefined) {
-        processTimePosition(
-          element,
-          state,
-          beatsPerBar,
-          timeSigDenominator,
-          events,
-          notesByBar,
-        );
-      } else if (element.pitch !== undefined) {
-        processPitchElement(element, state);
-      } else if (element.velocity !== undefined) {
-        processVelocityUpdate(element, state);
-      } else if (
-        element.velocityMin !== undefined &&
-        element.velocityMax !== undefined
-      ) {
-        processVelocityRangeUpdate(element, state);
-      } else if (element.duration !== undefined) {
-        processDurationUpdate(
-          element,
-          state,
-          timeSigNumerator,
-          timeSigDenominator,
-        );
-      } else if (element.probability !== undefined) {
-        processProbabilityUpdate(element, state);
-      }
+      processElementInLoop(
+        element,
+        state,
+        beatsPerBar,
+        timeSigNumerator,
+        timeSigDenominator,
+        notesByBar,
+        events,
+      );
     }
     // Warn if pitches buffered but never emitted
     if (state.currentPitches.length > 0 && !state.pitchesEmitted) {

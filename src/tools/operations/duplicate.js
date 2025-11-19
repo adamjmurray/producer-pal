@@ -12,6 +12,132 @@ import {
   duplicateSceneToArrangement,
 } from "./duplicate-track-scene-helpers.js";
 
+function validateBasicInputs(type, id, count) {
+  if (!type) {
+    throw new Error("duplicate failed: type is required");
+  }
+
+  const validTypes = ["track", "scene", "clip"];
+  if (!validTypes.includes(type)) {
+    throw new Error(
+      `duplicate failed: type must be one of ${validTypes.join(", ")}`,
+    );
+  }
+
+  if (!id) {
+    throw new Error("duplicate failed: id is required");
+  }
+
+  if (count < 1) {
+    throw new Error("duplicate failed: count must be at least 1");
+  }
+}
+
+function validateAndConfigureRouteToSource(
+  type,
+  routeToSource,
+  withoutClips,
+  withoutDevices,
+) {
+  if (!routeToSource) {
+    return { withoutClips, withoutDevices };
+  }
+
+  if (type !== "track") {
+    throw new Error(
+      "duplicate failed: routeToSource is only supported for type 'track'",
+    );
+  }
+
+  // Emit warnings if user provided conflicting parameters
+  if (withoutClips === false) {
+    console.error(
+      "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
+    );
+  }
+  if (withoutDevices === false) {
+    console.error(
+      "Warning: routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
+    );
+  }
+
+  return { withoutClips: true, withoutDevices: true };
+}
+
+function validateClipParameters(type, destination, toTrackIndex, toSceneIndex) {
+  if (type !== "clip") {
+    return;
+  }
+
+  if (!destination) {
+    throw new Error(
+      "duplicate failed: destination is required for type 'clip'",
+    );
+  }
+
+  if (!["session", "arrangement"].includes(destination)) {
+    throw new Error(
+      "duplicate failed: destination must be 'session' or 'arrangement'",
+    );
+  }
+
+  // Validate session clip destination parameters
+  if (destination === "session") {
+    if (toTrackIndex == null) {
+      throw new Error(
+        "duplicate failed: toTrackIndex is required for session clips",
+      );
+    }
+    if (toSceneIndex == null) {
+      throw new Error(
+        "duplicate failed: toSceneIndex is required for session clips",
+      );
+    }
+  }
+}
+
+function validateArrangementParameters(destination, arrangementStart) {
+  if (destination === "arrangement" && arrangementStart == null) {
+    throw new Error(
+      "duplicate failed: arrangementStart is required when destination is 'arrangement'",
+    );
+  }
+}
+
+function generateObjectName(baseName, count, index) {
+  if (baseName == null) {
+    return undefined;
+  }
+  if (count === 1) {
+    return baseName;
+  }
+  if (index === 0) {
+    return baseName;
+  }
+  return `${baseName} ${index + 1}`;
+}
+
+function determineTargetView(destination, type) {
+  if (destination === "arrangement") {
+    return "arrangement";
+  }
+  if (destination === "session" || type === "track" || type === "scene") {
+    return "session";
+  }
+  return null;
+}
+
+function switchViewIfRequested(switchView, destination, type) {
+  if (!switchView) {
+    return;
+  }
+
+  const targetView = determineTargetView(destination, type);
+  if (targetView) {
+    select({ view: targetView });
+  }
+}
+
 function duplicateToArrangement(
   type,
   object,
@@ -223,100 +349,33 @@ export function duplicate(
     holdingAreaStartBeats: 40000,
   },
 ) {
-  if (!type) {
-    throw new Error("duplicate failed: type is required");
-  }
-
-  const validTypes = ["track", "scene", "clip"];
-  if (!validTypes.includes(type)) {
-    throw new Error(
-      `duplicate failed: type must be one of ${validTypes.join(", ")}`,
-    );
-  }
-
-  if (!id) {
-    throw new Error("duplicate failed: id is required");
-  }
-
-  if (count < 1) {
-    throw new Error("duplicate failed: count must be at least 1");
-  }
+  // Validate basic inputs
+  validateBasicInputs(type, id, count);
 
   // Auto-configure for routing back to source
-  if (routeToSource) {
-    if (type !== "track") {
-      throw new Error(
-        "duplicate failed: routeToSource is only supported for type 'track'",
-      );
-    }
-
-    // Emit warnings if user provided conflicting parameters
-    if (withoutClips === false) {
-      console.error(
-        "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
-      );
-    }
-    if (withoutDevices === false) {
-      console.error(
-        "Warning: routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
-      );
-    }
-
-    withoutClips = true;
-    withoutDevices = true;
-  }
+  const routeToSourceConfig = validateAndConfigureRouteToSource(
+    type,
+    routeToSource,
+    withoutClips,
+    withoutDevices,
+  );
+  withoutClips = routeToSourceConfig.withoutClips;
+  withoutDevices = routeToSourceConfig.withoutDevices;
 
   // Validate the ID exists and matches the expected type
   const object = validateIdType(id, type, "duplicate");
 
-  // Validate clip-specific and scene+arrangement parameters once
-  if (type === "clip") {
-    if (!destination) {
-      throw new Error(
-        "duplicate failed: destination is required for type 'clip'",
-      );
-    }
+  // Validate clip-specific parameters
+  validateClipParameters(type, destination, toTrackIndex, toSceneIndex);
 
-    // TODO: if arrangementStart is set, default to arrangement, or if toTrack/SceneIndex is set, default to session
-    if (!["session", "arrangement"].includes(destination)) {
-      throw new Error(
-        "duplicate failed: destination must be 'session' or 'arrangement'",
-      );
-    }
-
-    // Validate session clip destination parameters
-    if (destination === "session") {
-      if (toTrackIndex == null) {
-        throw new Error(
-          "duplicate failed: toTrackIndex is required for session clips",
-        );
-      }
-      if (toSceneIndex == null) {
-        throw new Error(
-          "duplicate failed: toSceneIndex is required for session clips",
-        );
-      }
-    }
-  }
-
-  if (destination === "arrangement" && arrangementStart == null) {
-    throw new Error(
-      "duplicate failed: arrangementStart is required when destination is 'arrangement'",
-    );
-  }
+  // Validate arrangement parameters
+  validateArrangementParameters(destination, arrangementStart);
 
   const createdObjects = [];
 
   for (let i = 0; i < count; i++) {
     // Build the object name for this duplicate
-    const objectName =
-      name != null
-        ? count === 1
-          ? name
-          : i === 0
-            ? name
-            : `${name} ${i + 1}`
-        : undefined;
+    const objectName = generateObjectName(name, count, i);
 
     const newObjectMetadata = performDuplication(
       type,
@@ -341,22 +400,7 @@ export function duplicate(
   }
 
   // Handle view switching if requested
-  if (switchView) {
-    let targetView = null;
-    if (destination === "arrangement") {
-      targetView = "arrangement";
-    } else if (
-      destination === "session" ||
-      type === "track" ||
-      type === "scene"
-    ) {
-      targetView = "session";
-    }
-
-    if (targetView) {
-      select({ view: targetView });
-    }
-  }
+  switchViewIfRequested(switchView, destination, type);
 
   // Return appropriate format based on count
   if (count === 1) {
