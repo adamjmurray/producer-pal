@@ -68,13 +68,13 @@ export class LiveAPI {
       return [];
     }
 
-    const children = [];
+    const ids = [];
     for (let i = 0; i < idArray.length; i += 2) {
       if (idArray[i] === "id") {
-        children.push(`id ${idArray[i + 1]}`);
+        ids.push(`id ${idArray[i + 1]}`);
       }
     }
-    return children;
+    return ids;
   }
 
   get sceneIndex() {
