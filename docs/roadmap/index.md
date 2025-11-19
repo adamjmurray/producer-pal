@@ -15,30 +15,35 @@ Expanded features and support for multiple AI platforms.
 Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
 Studio, Ollama, and more.
 
-### 1.2.0 - Audio Clips & Improved Clip Handling
+### 1.2 - Audio Clips & Improved Clip Handling
 
-- Read and write audio-specific clip properties
-  - gain
-  - pitch
-  - warp mode
-  - warp markers
+#### 1.2.0
+
+- Read and write audio-specific clip properties: gain, pitch, warp mode, warp
+  markers
 - Change clips' arrangement start time and arrangement length
 - Duplicate (session or arrangement) clips to arbitrary arrangement positions
   and lengths (e.g. looping clips loop to fill up extra space)
 - Duplicate session clips to arbitrary clip slots
-- Slice clips in the arrangement (e.g. audio clips into separate one-beat-long
-  clips)
+
+#### 1.2.1
+
+- Added an experimental tool `ppal-transform-clips` that can:
+  - slice up arrangement clips
+  - randomly reorder arrangement clips
+  - randomize various clip parameters
+- Use dB units when reading and writing audio clip gain (instead of the
+  normalized 0-1 range that has no relation to meaningful dB values)
 
 ## In Progress
 
-### 1.2.x - More Audio Clips & Improved Clip Handling
+### 1.2.x - More Audio Clips & Improved Clip Handling + Track Mixer Support
 
 - Ability to scan a folder for audio files and create audio clips from those
   files
 - Improve handling of clip (and track and scene) colors by being explicit about
   how Ableton maps arbitrary RGB to a limited color palette
-- Operations to "mangle" audio clips via warp marker transforms, gain/pitch
-  transforms, slicing, and/or reordering
+- Support for reading and writing
 
 ## Planned
 
