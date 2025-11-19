@@ -306,7 +306,7 @@ export function handleArrangementStartOperation({
 
 /**
  * Process a single clip update
- * @param {Object} params - Parameters object containing all update parameters
+ * @param {object} params - Parameters object containing all update parameters
  */
 export function processSingleClipUpdate(params) {
   const {

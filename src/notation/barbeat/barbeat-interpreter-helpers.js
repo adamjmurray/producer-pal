@@ -321,7 +321,7 @@ export function handleBarCopyRangeDestination(
 
 /**
  * Determine source bars for bar copy operation
- * @param {Object} element - AST element with source specification
+ * @param {object} element - AST element with source specification
  * @returns {number[]|null} Array of source bar numbers, or null on error
  */
 function determineSourceBarsForCopy(element) {

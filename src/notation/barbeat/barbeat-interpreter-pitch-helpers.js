@@ -133,8 +133,8 @@ export function emitPitchesAtPositions(
 
 /**
  * Calculate positions from time element
- * @param {Object} element - Time position element with bar and beat
- * @param {Object} state - Current interpreter state
+ * @param {object} element - Time position element with bar and beat
+ * @param {object} state - Current interpreter state
  * @param {number} beatsPerBar - Beats per bar
  * @returns {Array} Array of position objects with bar and beat
  */
@@ -167,8 +167,8 @@ export function calculatePositions(element, state, beatsPerBar) {
 /**
  * Handle pitch emission or warn if no pitches
  * @param {Array} positions - Array of positions to emit pitches at
- * @param {Object} state - Current interpreter state
- * @param {Object} element - Time position element
+ * @param {object} state - Current interpreter state
+ * @param {object} element - Time position element
  * @param {number} beatsPerBar - Beats per bar
  * @param {number|null} timeSigDenominator - Time signature denominator
  * @param {Array} events - Events array

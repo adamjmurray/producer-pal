@@ -6,6 +6,8 @@ const MASTER_TRACK_PATH = "live_set master_track";
 
 /**
  * Build track path string based on category and index
+ * @param category
+ * @param trackIndex
  */
 function buildTrackPath(category, trackIndex) {
   const finalCategory = category || "regular";

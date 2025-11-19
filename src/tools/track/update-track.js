@@ -9,6 +9,12 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
  * Apply routing properties to a track
+ * @param track
+ * @param root0
+ * @param root0.inputRoutingTypeId
+ * @param root0.inputRoutingChannelId
+ * @param root0.outputRoutingTypeId
+ * @param root0.outputRoutingChannelId
  */
 function applyRoutingProperties(
   track,
@@ -46,6 +52,8 @@ function applyRoutingProperties(
 
 /**
  * Apply monitoring state to a track
+ * @param track
+ * @param monitoringState
  */
 function applyMonitoringState(track, monitoringState) {
   if (monitoringState == null) {

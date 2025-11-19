@@ -72,6 +72,10 @@ export function applyAudioParams(
 
 /**
  * Apply velocity offset to a note
+ * @param note
+ * @param velocityMin
+ * @param velocityMax
+ * @param rng
  */
 function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
   if (velocityMin == null || velocityMax == null) {
@@ -85,6 +89,9 @@ function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
 
 /**
  * Apply transpose to a note
+ * @param note
+ * @param transposeParams
+ * @param rng
  */
 function applyTranspose(note, transposeParams, rng) {
   const { transposeValuesArray, transposeMin, transposeMax } = transposeParams;
@@ -107,6 +114,10 @@ function applyTranspose(note, transposeParams, rng) {
 
 /**
  * Apply duration multiplier to a note
+ * @param note
+ * @param durationMin
+ * @param durationMax
+ * @param rng
  */
 function applyDurationMultiplier(note, durationMin, durationMax, rng) {
   if (durationMin == null || durationMax == null) {
@@ -118,6 +129,8 @@ function applyDurationMultiplier(note, durationMin, durationMax, rng) {
 
 /**
  * Apply velocity deviation offset to a note
+ * @param note
+ * @param velocityRange
  */
 function applyVelocityDeviation(note, velocityRange) {
   if (velocityRange == null) {
@@ -132,6 +145,8 @@ function applyVelocityDeviation(note, velocityRange) {
 
 /**
  * Apply probability offset to a note
+ * @param note
+ * @param probability
  */
 function applyProbabilityOffset(note, probability) {
   if (probability == null) {
