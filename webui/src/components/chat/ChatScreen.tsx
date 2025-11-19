@@ -23,22 +23,22 @@ interface ChatScreenProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.messages
- * @param root0.isAssistantResponding
- * @param root0.handleSend
- * @param root0.handleRetry
- * @param root0.activeModel
- * @param root0.activeThinking
- * @param root0.activeTemperature
- * @param root0.activeProvider
- * @param root0.mcpStatus
- * @param root0.mcpError
- * @param root0.checkMcpConnection
- * @param root0.onOpenSettings
- * @param root0.onClearConversation
- * @param root0.onStop
+ * Main chat screen component
+ * @param {ChatScreenProps} root0 - Component props
+ * @param {UIMessage[]} root0.messages - Chat messages
+ * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
+ * @param {(message: string) => Promise<void>} root0.handleSend - Send message callback
+ * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
+ * @param {string | null} root0.activeModel - Active model identifier
+ * @param {string | null} root0.activeThinking - Active thinking mode
+ * @param {number | null} root0.activeTemperature - Active temperature setting
+ * @param {Provider | null} root0.activeProvider - Active provider
+ * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
+ * @param {string | null} root0.mcpError - MCP error message
+ * @param {() => Promise<void>} root0.checkMcpConnection - Check MCP connection callback
+ * @param {() => void} root0.onOpenSettings - Open settings callback
+ * @param {() => void} root0.onClearConversation - Clear conversation callback
+ * @param {() => void} root0.onStop - Stop response callback
  */
 export function ChatScreen({
   messages,

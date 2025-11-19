@@ -35,7 +35,7 @@ export { createSeededRNG, randomInRange, shuffleArray };
  * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips, -127 to 127)
  * @param {number} [args.probability] - Probability offset (MIDI clips, -1.0 to 1.0)
  * @param {number} [args.seed] - RNG seed for reproducibility
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object} Result with clipIds and seed
  */
 export function transformClips(

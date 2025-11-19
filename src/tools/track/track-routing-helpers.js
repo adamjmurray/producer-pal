@@ -7,10 +7,10 @@ import {
 
 /**
  * Process current routing settings for a track
- * @param track
- * @param category
- * @param isGroup
- * @param canBeArmed
+ * @param {LiveAPI} track - Track object
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {boolean} isGroup - Whether the track is a group track
+ * @param {boolean} canBeArmed - Whether the track can be armed
  */
 export function processCurrentRouting(track, category, isGroup, canBeArmed) {
   if (category === "master") {
@@ -69,9 +69,9 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
 
 /**
  * Process available routing options for a track
- * @param track
- * @param category
- * @param isGroup
+ * @param {LiveAPI} track - Track object
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {boolean} isGroup - Whether the track is a group track
  */
 export function processAvailableRouting(track, category, isGroup) {
   if (category === "master") {

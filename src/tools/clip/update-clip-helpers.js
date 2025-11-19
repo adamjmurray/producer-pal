@@ -149,17 +149,17 @@ export function calculateBeatPositions({
 /**
  * Build properties map for setAll
  * @param {object} args - Property building arguments
- * @param args.name
- * @param args.color
- * @param args.timeSignature
- * @param args.timeSigNumerator
- * @param args.timeSigDenominator
- * @param args.startMarkerBeats
- * @param args.looping
- * @param args.isLooping
- * @param args.startBeats
- * @param args.endBeats
- * @param args.currentLoopEnd
+ * @param {string} args.name - Clip name
+ * @param {string} args.color - Clip color
+ * @param {string} args.timeSignature - Time signature string
+ * @param {number} args.timeSigNumerator - Time signature numerator
+ * @param {number} args.timeSigDenominator - Time signature denominator
+ * @param {number} args.startMarkerBeats - Start marker position in beats
+ * @param {boolean} args.looping - Whether looping is enabled
+ * @param {boolean} args.isLooping - Current looping state
+ * @param {number} args.startBeats - Start position in beats
+ * @param {number} args.endBeats - End position in beats
+ * @param {number} args.currentLoopEnd - Current loop end position in beats
  * @returns {object} Properties object ready for clip.setAll()
  */
 export function buildClipPropertiesToSet({
@@ -307,6 +307,32 @@ export function handleArrangementStartOperation({
 /**
  * Process a single clip update
  * @param {object} params - Parameters object containing all update parameters
+ * @param {LiveAPI} params.clip - The clip to update
+ * @param {string} params.notationString - Musical notation string
+ * @param {string} params.noteUpdateMode - Note update mode (merge or replace)
+ * @param {string} params.name - Clip name
+ * @param {string} params.color - Clip color
+ * @param {string} params.timeSignature - Time signature
+ * @param {string} params.start - Start position
+ * @param {string} params.length - Clip length
+ * @param {string} params.firstStart - First start position
+ * @param {boolean} params.looping - Looping enabled
+ * @param {number} params.gainDb - Gain in decibels
+ * @param {number} params.pitchShift - Pitch shift amount
+ * @param {string} params.warpMode - Warp mode
+ * @param {boolean} params.warping - Warping enabled
+ * @param {string} params.warpOp - Warp operation type
+ * @param {number} params.warpBeatTime - Warp beat time
+ * @param {number} params.warpSampleTime - Warp sample time
+ * @param {number} params.warpDistance - Warp distance
+ * @param {number} params.arrangementLengthBeats - Arrangement length in beats
+ * @param {number} params.arrangementStartBeats - Arrangement start in beats
+ * @param {object} params.context - Context object
+ * @param {Array} params.updatedClips - Array to collect updated clips
+ * @param {Map} params.tracksWithMovedClips - Map of tracks with moved clips
+ * @param {Function} params.parseTimeSignature - Function to parse time signature
+ * @param {Function} params.handleArrangementLengthOperation - Function to handle arrangement length
+ * @param {Function} params.buildClipResultObject - Function to build result object
  */
 export function processSingleClipUpdate(params) {
   const {

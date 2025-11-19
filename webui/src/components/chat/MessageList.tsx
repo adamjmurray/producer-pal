@@ -11,11 +11,11 @@ interface MessageListProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.messages
- * @param root0.isAssistantResponding
- * @param root0.handleRetry
+ * List of chat messages with auto-scroll
+ * @param {MessageListProps} root0 - Component props
+ * @param {UIMessage[]} root0.messages - Chat messages to display
+ * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
+ * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
  */
 export function MessageList({
   messages,
@@ -89,16 +89,16 @@ export function MessageList({
 }
 
 /**
- *
- * @param message
+ * Checks if message has content to display
+ * @param {UIMessage} message - Message to check
  */
 function hasContent(message: UIMessage): boolean {
   return message.parts.length > 0;
 }
 
 /**
- *
- * @param message
+ * Formats user message content as string
+ * @param {UIMessage} message - User message to format
  */
 function formatUserContent(message: UIMessage): string {
   return message.parts

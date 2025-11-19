@@ -10,14 +10,14 @@ interface ThinkingSettingsProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.provider
- * @param root0.model
- * @param root0.thinking
- * @param root0.setThinking
- * @param root0.showThoughts
- * @param root0.setShowThoughts
+ * Settings for thinking/reasoning modes
+ * @param {ThinkingSettingsProps} root0 - Component props
+ * @param {Provider} root0.provider - Current provider
+ * @param {string} root0.model - Current model
+ * @param {string} root0.thinking - Thinking level
+ * @param {(thinking: string) => void} root0.setThinking - Thinking setter callback
+ * @param {boolean} root0.showThoughts - Whether to show thoughts
+ * @param {(show: boolean) => void} root0.setShowThoughts - Show thoughts setter callback
  */
 export function ThinkingSettings({
   provider,

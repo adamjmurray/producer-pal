@@ -72,10 +72,10 @@ export function applyAudioParams(
 
 /**
  * Apply velocity offset to a note
- * @param note
- * @param velocityMin
- * @param velocityMax
- * @param rng
+ * @param {object} note - The note object to modify
+ * @param {number} velocityMin - Minimum velocity offset
+ * @param {number} velocityMax - Maximum velocity offset
+ * @param {function(): number} rng - Random number generator function
  */
 function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
   if (velocityMin == null || velocityMax == null) {
@@ -89,9 +89,9 @@ function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
 
 /**
  * Apply transpose to a note
- * @param note
- * @param transposeParams
- * @param rng
+ * @param {object} note - The note object to modify
+ * @param {object} transposeParams - Transpose parameters
+ * @param {function(): number} rng - Random number generator function
  */
 function applyTranspose(note, transposeParams, rng) {
   const { transposeValuesArray, transposeMin, transposeMax } = transposeParams;

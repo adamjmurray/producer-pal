@@ -36,9 +36,9 @@ export {
 
 /**
  * Parse transpose values from comma-separated string
- * @param transposeValues
- * @param transposeMin
- * @param transposeMax
+ * @param {string} transposeValues - Comma-separated transpose values
+ * @param {number} transposeMin - Minimum transpose value (warning if used with transposeValues)
+ * @param {number} transposeMax - Maximum transpose value (warning if used with transposeValues)
  */
 export function parseTransposeValues(
   transposeValues,
@@ -64,10 +64,10 @@ export function parseTransposeValues(
 
 /**
  * Get clip IDs from direct list or arrangement track query
- * @param clipIds
- * @param arrangementTrackId
- * @param arrangementStart
- * @param arrangementLength
+ * @param {string} clipIds - Comma-separated list of clip IDs
+ * @param {string} arrangementTrackId - Track ID to query for arrangement clips
+ * @param {string} arrangementStart - Start position in bar|beat format
+ * @param {string} arrangementLength - Length in bar:beat format
  */
 export function getClipIds(
   clipIds,

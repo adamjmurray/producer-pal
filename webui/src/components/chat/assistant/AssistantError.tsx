@@ -3,9 +3,9 @@ interface AssistantErrorProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.content
+ * Displays error message in red box
+ * @param {AssistantErrorProps} root0 - Component props
+ * @param {string} root0.content - Error message content
  */
 export function AssistantError({ content }: AssistantErrorProps) {
   return (

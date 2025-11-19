@@ -23,8 +23,8 @@ import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
 
 /**
  * Process a velocity update (single value)
- * @param element
- * @param state
+ * @param {object} element - AST element with velocity property
+ * @param {object} state - Interpreter state object
  */
 function processVelocityUpdate(element, state) {
   state.currentVelocity = element.velocity;
@@ -47,8 +47,8 @@ function processVelocityUpdate(element, state) {
 
 /**
  * Process a velocity range update
- * @param element
- * @param state
+ * @param {object} element - AST element with velocityMin/Max properties
+ * @param {object} state - Interpreter state object
  */
 function processVelocityRangeUpdate(element, state) {
   state.currentVelocityMin = element.velocityMin;
@@ -71,10 +71,10 @@ function processVelocityRangeUpdate(element, state) {
 
 /**
  * Process a duration update
- * @param element
- * @param state
- * @param timeSigNumerator
- * @param timeSigDenominator
+ * @param {object} element - AST element with duration property
+ * @param {object} state - Interpreter state object
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
  */
 function processDurationUpdate(
   element,
@@ -106,8 +106,8 @@ function processDurationUpdate(
 }
 /**
  * Process a probability update
- * @param element
- * @param state
+ * @param {object} element - AST element with probability property
+ * @param {object} state - Interpreter state object
  */
 function processProbabilityUpdate(element, state) {
   state.currentProbability = element.probability;
@@ -126,8 +126,8 @@ function processProbabilityUpdate(element, state) {
 }
 /**
  * Process a pitch element
- * @param element
- * @param state
+ * @param {object} element - AST element with pitch property
+ * @param {object} state - Interpreter state object
  */
 function processPitchElement(element, state) {
   if (!state.pitchGroupStarted) {
@@ -155,7 +155,7 @@ function processPitchElement(element, state) {
 }
 /**
  * Reset pitch buffer state
- * @param state
+ * @param {object} state - Interpreter state object
  */
 function resetPitchBufferState(state) {
   state.currentPitches = [];
@@ -167,12 +167,12 @@ function resetPitchBufferState(state) {
 
 /**
  * Process a time position element
- * @param element
- * @param state
- * @param beatsPerBar
- * @param timeSigDenominator
- * @param events
- * @param notesByBar
+ * @param {object} element - AST element with bar/beat properties
+ * @param {object} state - Interpreter state object
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @param {Array} events - Array of note events
+ * @param {Map} notesByBar - Map of bar numbers to note metadata
  */
 function processTimePosition(
   element,
@@ -202,13 +202,13 @@ function processTimePosition(
 /**
  * Process a single element in the main AST loop
  * Dispatches to appropriate handler based on element type
- * @param element
- * @param state
- * @param beatsPerBar
- * @param timeSigNumerator
- * @param timeSigDenominator
- * @param notesByBar
- * @param events
+ * @param {object} element - AST element to process
+ * @param {object} state - Interpreter state object
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @param {Map} notesByBar - Map of bar numbers to note metadata
+ * @param {Array} events - Array of note events
  */
 function processElementInLoop(
   element,

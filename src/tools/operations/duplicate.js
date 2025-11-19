@@ -13,10 +13,10 @@ import {
 } from "./duplicate-track-scene-helpers.js";
 
 /**
- *
- * @param type
- * @param id
- * @param count
+ * Validates basic input parameters for duplication
+ * @param {string} type - Type of object to duplicate
+ * @param {string} id - ID of the object to duplicate
+ * @param {number} count - Number of duplicates to create
  */
 function validateBasicInputs(type, id, count) {
   if (!type) {
@@ -40,11 +40,12 @@ function validateBasicInputs(type, id, count) {
 }
 
 /**
- *
- * @param type
- * @param routeToSource
- * @param withoutClips
- * @param withoutDevices
+ * Validates and configures route to source parameters
+ * @param {string} type - Type of object being duplicated
+ * @param {boolean} routeToSource - Whether to route to source track
+ * @param {boolean} withoutClips - Whether to exclude clips
+ * @param {boolean} withoutDevices - Whether to exclude devices
+ * @returns {object} Configured withoutClips and withoutDevices values
  */
 function validateAndConfigureRouteToSource(
   type,
@@ -78,11 +79,11 @@ function validateAndConfigureRouteToSource(
 }
 
 /**
- *
- * @param type
- * @param destination
- * @param toTrackIndex
- * @param toSceneIndex
+ * Validates clip-specific parameters
+ * @param {string} type - Type of object being duplicated
+ * @param {string} destination - Destination for clip duplication
+ * @param {number} toTrackIndex - Destination track index
+ * @param {number} toSceneIndex - Destination scene index
  */
 function validateClipParameters(type, destination, toTrackIndex, toSceneIndex) {
   if (type !== "clip") {
@@ -117,9 +118,9 @@ function validateClipParameters(type, destination, toTrackIndex, toSceneIndex) {
 }
 
 /**
- *
- * @param destination
- * @param arrangementStart
+ * Validates arrangement-specific parameters
+ * @param {string} destination - Destination for duplication
+ * @param {string} arrangementStart - Start time in bar|beat format
  */
 function validateArrangementParameters(destination, arrangementStart) {
   if (destination === "arrangement" && arrangementStart == null) {
@@ -130,10 +131,11 @@ function validateArrangementParameters(destination, arrangementStart) {
 }
 
 /**
- *
- * @param baseName
- * @param count
- * @param index
+ * Generates a name for a duplicated object
+ * @param {string} baseName - Base name for the object
+ * @param {number} count - Total number of duplicates
+ * @param {number} index - Current duplicate index
+ * @returns {string | undefined} Generated name or undefined
  */
 function generateObjectName(baseName, count, index) {
   if (baseName == null) {
@@ -149,9 +151,10 @@ function generateObjectName(baseName, count, index) {
 }
 
 /**
- *
- * @param destination
- * @param type
+ * Determines the target view based on destination and type
+ * @param {string} destination - Destination for duplication
+ * @param {string} type - Type of object being duplicated
+ * @returns {string | null} Target view or null
  */
 function determineTargetView(destination, type) {
   if (destination === "arrangement") {
@@ -164,10 +167,10 @@ function determineTargetView(destination, type) {
 }
 
 /**
- *
- * @param switchView
- * @param destination
- * @param type
+ * Switches to the appropriate view if requested
+ * @param {boolean} switchView - Whether to switch view
+ * @param {string} destination - Destination for duplication
+ * @param {string} type - Type of object being duplicated
  */
 function switchViewIfRequested(switchView, destination, type) {
   if (!switchView) {
@@ -181,16 +184,17 @@ function switchViewIfRequested(switchView, destination, type) {
 }
 
 /**
- *
- * @param type
- * @param object
- * @param id
- * @param i
- * @param objectName
- * @param arrangementStart
- * @param arrangementLength
- * @param withoutClips
- * @param context
+ * Duplicates an object to the arrangement view
+ * @param {string} type - Type of object being duplicated
+ * @param {object} object - Live API object to duplicate
+ * @param {string} id - ID of the object
+ * @param {number} i - Current duplicate index
+ * @param {string} objectName - Name for the duplicated object
+ * @param {string} arrangementStart - Start time in bar|beat format
+ * @param {string} arrangementLength - Duration in bar|beat format
+ * @param {boolean} withoutClips - Whether to exclude clips
+ * @param {object} context - Context object with holdingAreaStartBeats
+ * @returns {object} Metadata about the duplicated object
  */
 function duplicateToArrangement(
   type,
@@ -255,17 +259,18 @@ function duplicateToArrangement(
 }
 
 /**
- *
- * @param type
- * @param object
- * @param id
- * @param i
- * @param objectName
- * @param withoutClips
- * @param withoutDevices
- * @param routeToSource
- * @param toTrackIndex
- * @param toSceneIndex
+ * Duplicates an object to the session view
+ * @param {string} type - Type of object being duplicated
+ * @param {object} object - Live API object to duplicate
+ * @param {string} id - ID of the object
+ * @param {number} i - Current duplicate index
+ * @param {string} objectName - Name for the duplicated object
+ * @param {boolean} withoutClips - Whether to exclude clips
+ * @param {boolean} withoutDevices - Whether to exclude devices
+ * @param {boolean} routeToSource - Whether to route to source track
+ * @param {number} toTrackIndex - Destination track index
+ * @param {number} toSceneIndex - Destination scene index
+ * @returns {object} Metadata about the duplicated object
  */
 function duplicateToSession(
   type,
@@ -330,15 +335,16 @@ function duplicateToSession(
 }
 
 /**
- *
- * @param type
- * @param destination
- * @param object
- * @param id
- * @param i
- * @param objectName
- * @param params
- * @param context
+ * Performs the duplication operation
+ * @param {string} type - Type of object being duplicated
+ * @param {string} destination - Destination for duplication
+ * @param {object} object - Live API object to duplicate
+ * @param {string} id - ID of the object
+ * @param {number} i - Current duplicate index
+ * @param {string} objectName - Name for the duplicated object
+ * @param {object} params - Additional parameters for duplication
+ * @param {object} context - Context object with holdingAreaStartBeats
+ * @returns {object} Metadata about the duplicated object
  */
 function performDuplication(
   type,

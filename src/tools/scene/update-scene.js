@@ -9,7 +9,7 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
  * @param {string} [args.color] - Optional scene color (CSS format: hex)
  * @param {number|null} [args.tempo] - Optional scene tempo BPM. Pass -1 to disable.
  * @param {string|null} [args.timeSignature] - Optional time signature in format "4/4". Pass "disabled" to disable.
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single scene object or array of scene objects
  */
 export function updateScene(

@@ -50,8 +50,8 @@ export class GeminiClient {
   hadFunctionCallsInLastTurn: boolean;
 
   /**
-   * @param apiKey - Gemini API key
-   * @param config - Configuration options
+   * @param {string} apiKey - Gemini API key
+   * @param {GeminiClientConfig} config - Configuration options
    */
   constructor(apiKey: string, config: GeminiClientConfig = {}) {
     this.ai = new GoogleGenAI({ apiKey });
@@ -66,7 +66,7 @@ export class GeminiClient {
 
   /**
    * Tests connection to the MCP server without creating a client instance.
-   * @param mcpUrl - MCP server URL to test
+   * @param {string} mcpUrl - MCP server URL to test
    * @throws If connection fails
    */
   static async testConnection(
@@ -155,8 +155,8 @@ export class GeminiClient {
    * With manual tool execution, the method will automatically execute tool calls
    * and continue the conversation until the model stops requesting tools.
    *
-   * @param message - User message to send
-   * @param abortSignal
+   * @param {string} message - User message to send
+   * @param {AbortSignal} [abortSignal] - Optional abort signal
    * @yields Complete chat history in Gemini's raw format after each update
    * @throws If chat is not initialized or if message sending fails
    *

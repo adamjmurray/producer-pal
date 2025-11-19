@@ -94,8 +94,8 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 
 /**
  * Handle track that doesn't exist
- * @param category
- * @param trackIndex
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {number} trackIndex - Track index
  */
 export function handleNonExistentTrack(category, trackIndex) {
   const result = {
@@ -115,9 +115,9 @@ export function handleNonExistentTrack(category, trackIndex) {
 
 /**
  * Add optional boolean properties to track result
- * @param result
- * @param track
- * @param canBeArmed
+ * @param {object} result - Result object to modify
+ * @param {LiveAPI} track - Track object
+ * @param {boolean} canBeArmed - Whether the track can be armed
  */
 export function addOptionalBooleanProperties(result, track, canBeArmed) {
   const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
@@ -136,9 +136,9 @@ export function addOptionalBooleanProperties(result, track, canBeArmed) {
 
 /**
  * Add track index property based on category
- * @param result
- * @param category
- * @param trackIndex
+ * @param {object} result - Result object to modify
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {number} trackIndex - Track index
  */
 export function addCategoryIndex(result, category, trackIndex) {
   if (category === "regular") {

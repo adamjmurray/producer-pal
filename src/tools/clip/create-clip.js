@@ -153,7 +153,7 @@ function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
  * @param {boolean} [args.looping] - Enable looping for the clip
  * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only. Puts tracks into non-following state.
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single clip object when count=1, array when count>1
  */
 export function createClip(

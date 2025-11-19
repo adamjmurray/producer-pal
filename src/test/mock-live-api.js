@@ -126,8 +126,8 @@ export class LiveAPI {
 }
 
 /**
- *
- * @param prop
+ * Get mock property value for LiveSet objects
+ * @param {string} prop - Property name to retrieve
  */
 function getLiveSetProperty(prop) {
   switch (prop) {
@@ -145,8 +145,8 @@ function getLiveSetProperty(prop) {
 }
 
 /**
- *
- * @param prop
+ * Get mock property value for AppView objects
+ * @param {string} prop - Property name to retrieve
  */
 function getAppViewProperty(prop) {
   switch (prop) {
@@ -158,8 +158,8 @@ function getAppViewProperty(prop) {
 }
 
 /**
- *
- * @param prop
+ * Get mock property value for Track objects
+ * @param {string} prop - Property name to retrieve
  */
 function getTrackProperty(prop) {
   switch (prop) {
@@ -195,8 +195,8 @@ function getTrackProperty(prop) {
 }
 
 /**
- *
- * @param prop
+ * Get mock property value for Scene objects
+ * @param {string} prop - Property name to retrieve
  */
 function getSceneProperty(prop) {
   switch (prop) {
@@ -210,8 +210,8 @@ function getSceneProperty(prop) {
 }
 
 /**
- *
- * @param prop
+ * Get mock property value for ClipSlot objects
+ * @param {string} prop - Property name to retrieve
  */
 function getClipSlotProperty(prop) {
   switch (prop) {
@@ -223,8 +223,8 @@ function getClipSlotProperty(prop) {
 }
 
 /**
- *
- * @param prop
+ * Get mock property value for Clip objects
+ * @param {string} prop - Property name to retrieve
  */
 function getClipProperty(prop) {
   switch (prop) {
@@ -264,9 +264,9 @@ function getClipProperty(prop) {
 }
 
 /**
- *
- * @param type
- * @param prop
+ * Get mock property value based on Live API object type
+ * @param {string} type - Live API object type (LiveSet, Track, Scene, etc.)
+ * @param {string} prop - Property name to retrieve
  */
 function getPropertyByType(type, prop) {
   switch (type) {
@@ -288,8 +288,8 @@ function getPropertyByType(type, prop) {
 }
 
 /**
- *
- * @param overrides
+ * Mock the LiveAPI.get() method with optional custom overrides
+ * @param {object} overrides - Property overrides by object id/path/type
  */
 export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
@@ -363,8 +363,8 @@ export const expectedClip = (overrides = {}) => ({
 });
 
 /**
- *
- * @param {...any} childIds
+ * Create Live API children array format from child IDs
+ * @param {...any} childIds - Child object IDs to format as Live API array
  */
 export function children(...childIds) {
   return childIds.flatMap((id) => ["id", id]);

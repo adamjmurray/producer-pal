@@ -10,10 +10,10 @@ interface AssistantMessageProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.parts
- * @param root0.isResponding
+ * Renders assistant message with multiple part types
+ * @param {AssistantMessageProps} root0 - Component props
+ * @param {UIPart[]} root0.parts - Message parts to render
+ * @param {boolean} [root0.isResponding] - Whether assistant is currently responding
  */
 export function AssistantMessage({
   parts,

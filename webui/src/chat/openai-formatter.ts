@@ -9,8 +9,8 @@ import type { ReasoningDetail } from "./openai-client.js";
 
 /**
  * Add reasoning details to parts array
- * @param reasoningDetails
- * @param parts
+ * @param {ReasoningDetail[] | undefined} reasoningDetails - Array of reasoning details from the API response
+ * @param {UIPart[]} parts - Parts array to add reasoning thoughts to
  */
 function addReasoningDetails(
   reasoningDetails: ReasoningDetail[] | undefined,
@@ -37,9 +37,9 @@ function addReasoningDetails(
 
 /**
  * Find matching tool result in history
- * @param history
- * @param toolCallId
- * @param startIndex
+ * @param {OpenAIMessage[]} history - Chat history to search
+ * @param {string} toolCallId - Tool call ID to find result for
+ * @param {number} startIndex - Index to start searching from
  */
 function findToolResult(
   history: OpenAIMessage[],

@@ -9,12 +9,12 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
  * Apply routing properties to a track
- * @param track
- * @param root0
- * @param root0.inputRoutingTypeId
- * @param root0.inputRoutingChannelId
- * @param root0.outputRoutingTypeId
- * @param root0.outputRoutingChannelId
+ * @param {LiveAPI} track - Track object
+ * @param {object} root0 - Routing properties
+ * @param {string} root0.inputRoutingTypeId - Input routing type ID
+ * @param {string} root0.inputRoutingChannelId - Input routing channel ID
+ * @param {string} root0.outputRoutingTypeId - Output routing type ID
+ * @param {string} root0.outputRoutingChannelId - Output routing channel ID
  */
 function applyRoutingProperties(
   track,
@@ -52,8 +52,8 @@ function applyRoutingProperties(
 
 /**
  * Apply monitoring state to a track
- * @param track
- * @param monitoringState
+ * @param {LiveAPI} track - Track object
+ * @param {string} monitoringState - Monitoring state value (in, auto, off)
  */
 function applyMonitoringState(track, monitoringState) {
   if (monitoringState == null) {
@@ -90,7 +90,7 @@ function applyMonitoringState(track, monitoringState) {
  * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
  * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
  * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single track object or array of track objects
  */
 export function updateTrack(

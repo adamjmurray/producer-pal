@@ -4,10 +4,10 @@ interface RandomnessSliderProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.temperature
- * @param root0.setTemperature
+ * Slider for adjusting temperature/randomness
+ * @param {RandomnessSliderProps} root0 - Component props
+ * @param {number} root0.temperature - Current temperature value (0-2)
+ * @param {(temp: number) => void} root0.setTemperature - Temperature setter callback
  */
 export function RandomnessSlider({
   temperature,

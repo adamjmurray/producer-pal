@@ -97,11 +97,11 @@ function SineWave() {
 }
 
 /**
- *
- * @param width
- * @param amplitude
- * @param frequency
- * @param points
+ * Generates an SVG path data string for a sine wave
+ * @param {number} width - Width of the wave in pixels
+ * @param {number} amplitude - Height of wave peaks
+ * @param {number} frequency - Number of wave cycles
+ * @param {number} points - Number of points to sample
  */
 function generateSineWavePath(
   width: number,

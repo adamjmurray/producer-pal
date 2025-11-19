@@ -11,9 +11,9 @@ const HOLDING_AREA_START = 40000;
 
 /**
  * Prepare slice parameters by converting to Ableton beats
- * @param slice
- * @param arrangementClips
- * @param warnings
+ * @param {string} slice - Slice duration in bar:beat format
+ * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips
+ * @param {Set} warnings - Set to track warnings already issued
  */
 export function prepareSliceParams(slice, arrangementClips, warnings) {
   if (slice == null) {
@@ -41,13 +41,13 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
 }
 
 /**
- *
- * @param arrangementClips
- * @param sliceBeats
- * @param clips
- * @param warnings
- * @param slice
- * @param _context
+ * Perform slicing of arrangement clips
+ * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clips to slice
+ * @param {number} sliceBeats - Slice duration in Ableton beats
+ * @param {Array<LiveAPI>} clips - Array to update with fresh clips after slicing
+ * @param {Set} warnings - Set to track warnings already issued
+ * @param {string} slice - Original slice parameter for error messages
+ * @param {object} _context - Internal context object
  */
 export function performSlicing(
   arrangementClips,

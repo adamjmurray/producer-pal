@@ -77,8 +77,8 @@ export function cleanupInternalDrumChains(obj) {
  */
 export function getDrumMap(devices) {
   /**
-   *
-   * @param deviceList
+   * Recursively find drum rack devices in a device list
+   * @param {Array} deviceList - Array of device objects to search
    */
   function findDrumRacksInDevices(deviceList) {
     const drumRacks = [];

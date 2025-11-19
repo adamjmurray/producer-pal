@@ -20,9 +20,9 @@ const tabs: Tab[] = [
 ];
 
 /**
- *
- * @param root0
- * @param root0.children
+ * Tabbed navigation for settings sections
+ * @param {SettingsTabsProps} root0 - Component props
+ * @param {(activeTab: TabId) => VNode} root0.children - Render function for tab content
  */
 export function SettingsTabs({ children }: SettingsTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>("connection");

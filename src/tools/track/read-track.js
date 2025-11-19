@@ -20,9 +20,9 @@ import {
 } from "./read-track-helpers.js";
 
 /**
- *
- * @param args
- * @param _context
+ * Read comprehensive information about a track
+ * @param {object} args - The parameters
+ * @param {object} _context - Internal context object (unused)
  */
 export function readTrack(args = {}, _context = {}) {
   const { trackIndex, trackId, category = "regular" } = args;
@@ -65,11 +65,11 @@ export function readTrack(args = {}, _context = {}) {
 
 /**
  * Process session clips for a track
- * @param track
- * @param category
- * @param trackIndex
- * @param includeSessionClips
- * @param include
+ * @param {LiveAPI} track - Track object
+ * @param {string} category - Track category (regular, return, or master)
+ * @param {number} trackIndex - Track index
+ * @param {boolean} includeSessionClips - Whether to include full session clip details
+ * @param {Array<string>} include - Include array for nested reads
  */
 function processSessionClips(
   track,

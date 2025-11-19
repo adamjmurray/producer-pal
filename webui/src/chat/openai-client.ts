@@ -30,7 +30,7 @@ export interface OpenAIAssistantMessageWithReasoning {
  * Processes a streaming delta chunk to extract reasoning content.
  * Handles both OpenAI's reasoning_content field and OpenRouter's reasoning_details array.
  *
- * @param delta - The delta object from a streaming chunk
+ * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - The delta object from a streaming chunk
  * @returns The reasoning text from this delta, or empty string if none
  */
 export function extractReasoningFromDelta(
@@ -105,8 +105,8 @@ export class OpenAIClient {
   chatHistory: OpenAIMessage[];
 
   /**
-   * @param apiKey - OpenAI API key (or compatible provider key)
-   * @param config - Configuration options
+   * @param {string} apiKey - OpenAI API key (or compatible provider key)
+   * @param {OpenAIClientConfig} config - Configuration options
    */
   constructor(apiKey: string, config: OpenAIClientConfig) {
     // Suppress x-stainless headers for non-OpenAI providers (e.g., Mistral)

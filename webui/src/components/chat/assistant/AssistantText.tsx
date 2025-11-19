@@ -5,9 +5,9 @@ interface AssistantTextProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.content
+ * Renders assistant text content with markdown
+ * @param {AssistantTextProps} root0 - Component props
+ * @param {string} root0.content - Markdown content to render
  */
 export function AssistantText({ content }: AssistantTextProps) {
   return (
