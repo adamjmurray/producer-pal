@@ -36,18 +36,19 @@ program
 program.parse();
 
 /**
+ * Start an interactive chat session with Google Gemini API
  *
- * @param textArray
- * @param root0
- * @param root0.model
- * @param root0.debug
- * @param root0.verbose
- * @param root0.thinking
- * @param root0.randomness
- * @param root0.outputTokens
- * @param root0.thinkingBudget
- * @param root0.stream
- * @param root0.systemPrompt
+ * @param {string[]} textArray - Initial text to start the conversation with
+ * @param {object} root0 - Configuration options
+ * @param {string} root0.model - Gemini model to use
+ * @param {boolean} root0.debug - Enable debug mode
+ * @param {boolean} root0.verbose - Enable verbose debug mode
+ * @param {boolean} root0.thinking - Enable includeThoughts
+ * @param {number} root0.randomness - Temperature setting (0.0-1.0)
+ * @param {number} root0.outputTokens - Maximum output tokens
+ * @param {number} root0.thinkingBudget - Thinking budget (0=disabled, -1=automatic)
+ * @param {boolean} root0.stream - Enable streaming mode
+ * @param {string} root0.systemPrompt - System instructions
  */
 async function chat(
   textArray,
@@ -151,13 +152,15 @@ async function chat(
 }
 
 /**
+ * Build Gemini API configuration object
  *
- * @param root0
- * @param root0.outputTokens
- * @param root0.randomness
- * @param root0.thinking
- * @param root0.thinkingBudget
- * @param root0.systemPrompt
+ * @param {object} root0 - Configuration parameters
+ * @param {number} root0.outputTokens - Maximum output tokens
+ * @param {number} root0.randomness - Temperature setting (0.0-1.0)
+ * @param {boolean} root0.thinking - Enable includeThoughts
+ * @param {number} root0.thinkingBudget - Thinking budget (0=disabled, -1=automatic)
+ * @param {string} root0.systemPrompt - System instructions
+ * @returns {object} Gemini API configuration
  */
 function buildConfig({
   outputTokens,
@@ -194,13 +197,14 @@ function buildConfig({
 }
 
 /**
+ * Send a message to the chat session and display the response
  *
- * @param chatSession
- * @param currentInput
- * @param turnCount
- * @param stream
- * @param debug
- * @param verbose
+ * @param {object} chatSession - Active chat session
+ * @param {string} currentInput - User input message
+ * @param {number} turnCount - Current turn number
+ * @param {boolean} stream - Enable streaming mode
+ * @param {boolean} debug - Enable debug mode
+ * @param {boolean} verbose - Enable verbose debug mode
  */
 async function sendMessage(
   chatSession,
@@ -230,11 +234,12 @@ async function sendMessage(
 }
 
 /**
+ * Print streaming response chunks as they arrive
  *
- * @param stream
- * @param root0
- * @param root0.debug
- * @param root0.verbose
+ * @param {AsyncIterable} stream - Response stream
+ * @param {object} root0 - Debug options
+ * @param {boolean} root0.debug - Enable debug mode
+ * @param {boolean} root0.verbose - Enable verbose debug mode
  */
 async function printStream(stream, { debug, verbose }) {
   let inThought = false;
@@ -252,9 +257,11 @@ async function printStream(stream, { debug, verbose }) {
 }
 
 /**
+ * Process a single part of a response and print it
  *
- * @param part
- * @param inThought
+ * @param {object} part - Response part to process
+ * @param {boolean} inThought - Whether currently in a thought block
+ * @returns {boolean} Updated inThought state
  */
 function processPart(part, inThought) {
   if (part.text) {
@@ -285,8 +292,10 @@ function processPart(part, inThought) {
 }
 
 /**
+ * Check if the input is an exit command
  *
- * @param input
+ * @param {string} input - User input to check
+ * @returns {boolean} True if input is an exit command
  */
 function isExitCommand(input) {
   const trimmed = input.trim().toLowerCase();
@@ -294,11 +303,13 @@ function isExitCommand(input) {
 }
 
 /**
+ * Format the complete response including function calls
  *
- * @param root0
- * @param root0.candidates
- * @param root0.automaticFunctionCallingHistory
- * @param currentInput
+ * @param {object} root0 - Response object
+ * @param {Array} root0.candidates - Response candidates
+ * @param {Array} root0.automaticFunctionCallingHistory - Function call history
+ * @param {string} currentInput - Current user input
+ * @returns {string} Formatted response string
  */
 function formatResponse(
   { candidates, automaticFunctionCallingHistory: history },
@@ -353,8 +364,10 @@ function formatResponse(
 }
 
 /**
+ * Format the start of a thought block
  *
- * @param text
+ * @param {string} text - Thought text
+ * @returns {string} Formatted thought start
  */
 function startThought(text) {
   return (
@@ -365,8 +378,10 @@ function startThought(text) {
 }
 
 /**
+ * Format continuation of a thought block
  *
- * @param text
+ * @param {string} text - Thought text
+ * @returns {string} Formatted thought continuation
  */
 function continueThought(text) {
   return (
@@ -379,7 +394,9 @@ function continueThought(text) {
 }
 
 /**
+ * Format the end of a thought block
  *
+ * @returns {string} Formatted thought end
  */
 function endThought() {
   return (
@@ -389,9 +406,10 @@ function endThought() {
 }
 
 /**
+ * Log debug information about a result
  *
- * @param result
- * @param verbose
+ * @param {object} result - Result object to debug
+ * @param {boolean} verbose - Include HTTP response details
  */
 function debugResult(result, verbose) {
   const { sdkHttpResponse, candidates, ...rest } = result;
@@ -403,27 +421,31 @@ function debugResult(result, verbose) {
 }
 
 /**
+ * Log an object for debugging
  *
- * @param object
+ * @param {object} object - Object to log
  */
 function debugLog(object) {
   console.log(inspect(object, { depth: 10 }), debugSeparator);
 }
 
 /**
+ * Log a function call for debugging
  *
- * @param funcName
- * @param args
+ * @param {string} funcName - Function name
+ * @param {object} args - Function arguments
  */
 function debugCall(funcName, args) {
   console.log(`${funcName}(${inspect(args, { depth: 10 })})`, debugSeparator);
 }
 
 /**
+ * Truncate a string to a maximum length
  *
- * @param str
- * @param maxLength
- * @param suffix
+ * @param {string} str - String to truncate
+ * @param {number} maxLength - Maximum length
+ * @param {string} suffix - Suffix to append when truncated
+ * @returns {string} Truncated string
  */
 function truncate(str, maxLength, suffix = "…") {
   if ((str?.length ?? 0) <= maxLength) return str;

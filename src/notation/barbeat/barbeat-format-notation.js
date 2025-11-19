@@ -9,8 +9,9 @@ import {
 
 /**
  * Format a number to remove trailing zeros
- * @param {number} value
- * @returns {string}
+ *
+ * @param {number} value - Number to format
+ * @returns {string} Formatted number string
  */
 function formatNumberWithoutTrailingZeros(value) {
   return value % 1 === 0
@@ -20,10 +21,11 @@ function formatNumberWithoutTrailingZeros(value) {
 
 /**
  * Calculate bar and beat from start time
- * @param {number} startTime
- * @param {number} beatsPerBar
- * @param {number|null} timeSigDenominator
- * @returns {{bar: number, beat: number}}
+ *
+ * @param {number} startTime - Start time in beats
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number|null} timeSigDenominator - Time signature denominator for adjustment
+ * @returns {{bar: number, beat: number}} Bar and beat position
  */
 function calculateBarBeat(startTime, beatsPerBar, timeSigDenominator) {
   let adjustedTime = Math.round(startTime * 1000) / 1000;
@@ -37,11 +39,12 @@ function calculateBarBeat(startTime, beatsPerBar, timeSigDenominator) {
 
 /**
  * Check if two time positions are at the same moment
- * @param {number} bar1
- * @param {number} beat1
- * @param {number} bar2
- * @param {number} beat2
- * @returns {boolean}
+ *
+ * @param {number} bar1 - First position bar number
+ * @param {number} beat1 - First position beat number
+ * @param {number} bar2 - Second position bar number
+ * @param {number} beat2 - Second position beat number
+ * @returns {boolean} True if positions are at the same moment
  */
 function isSameTimePosition(bar1, beat1, bar2, beat2) {
   return bar1 === bar2 && Math.abs(beat1 - beat2) <= 0.001;
@@ -49,10 +52,11 @@ function isSameTimePosition(bar1, beat1, bar2, beat2) {
 
 /**
  * Group notes by their time position
- * @param {Array} sortedNotes
- * @param {number} beatsPerBar
- * @param {number|null} timeSigDenominator
- * @returns {Array}
+ *
+ * @param {Array} sortedNotes - Array of sorted note objects
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number|null} timeSigDenominator - Time signature denominator
+ * @returns {Array} Array of time groups with notes
  */
 function groupNotesByTime(sortedNotes, beatsPerBar, timeSigDenominator) {
   const timeGroups = [];
@@ -81,12 +85,13 @@ function groupNotesByTime(sortedNotes, beatsPerBar, timeSigDenominator) {
 
 /**
  * Format velocity change and update state
- * @param {number} noteVelocity
- * @param {number} noteVelocityDeviation
- * @param {number} currentVelocity
- * @param {number} currentVelocityDeviation
- * @param {Array} elements
- * @returns {{velocity: number, velocityDeviation: number}}
+ *
+ * @param {number} noteVelocity - Note velocity value
+ * @param {number} noteVelocityDeviation - Note velocity deviation
+ * @param {number} currentVelocity - Current velocity state
+ * @param {number} currentVelocityDeviation - Current velocity deviation state
+ * @param {Array} elements - Output elements array to append to
+ * @returns {{velocity: number, velocityDeviation: number}} Updated velocity state
  */
 function handleVelocityChange(
   noteVelocity,
@@ -124,10 +129,11 @@ function handleVelocityChange(
 
 /**
  * Format duration change and update state
- * @param {number} noteDuration
- * @param {number} currentDuration
- * @param {Array} elements
- * @returns {number}
+ *
+ * @param {number} noteDuration - Note duration value
+ * @param {number} currentDuration - Current duration state
+ * @param {Array} elements - Output elements array to append to
+ * @returns {number} Updated duration state
  */
 function handleDurationChange(noteDuration, currentDuration, elements) {
   if (Math.abs(noteDuration - currentDuration) > 0.001) {
@@ -140,10 +146,11 @@ function handleDurationChange(noteDuration, currentDuration, elements) {
 
 /**
  * Format probability change and update state
- * @param {number} noteProbability
- * @param {number} currentProbability
- * @param {Array} elements
- * @returns {number}
+ *
+ * @param {number} noteProbability - Note probability value
+ * @param {number} currentProbability - Current probability state
+ * @param {Array} elements - Output elements array to append to
+ * @returns {number} Updated probability state
  */
 function handleProbabilityChange(
   noteProbability,
@@ -161,8 +168,9 @@ function handleProbabilityChange(
 
 /**
  * Format beat value for output
- * @param {number} beat
- * @returns {string}
+ *
+ * @param {number} beat - Beat number to format
+ * @returns {string} Formatted beat string
  */
 function formatBeat(beat) {
   return formatNumberWithoutTrailingZeros(beat);

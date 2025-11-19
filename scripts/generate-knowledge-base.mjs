@@ -23,18 +23,18 @@ const IGNORE_PATTERNS = [
 const FLAT_SEP = "--";
 
 /**
- *
- * @param pathStr
+ * Converts filesystem path separators to flat separator for file naming
+ * @param {string} pathStr - The path string to flatten
  */
 function flattenPath(pathStr) {
   return pathStr.replace(/[/\\]/g, FLAT_SEP);
 }
 
 /**
- *
- * @param groups
- * @param groupName
- * @param {...any} item
+ * Adds items to a named group in the groups map
+ * @param {Map} groups - Map of group names to arrays of items
+ * @param {string} groupName - Name of the group to add to
+ * @param {...any} item - Items to add to the group
  */
 function addToGroup(groups, groupName, ...item) {
   if (!groups.has(groupName)) {
@@ -44,9 +44,9 @@ function addToGroup(groups, groupName, ...item) {
 }
 
 /**
- *
- * @param item
- * @param filePath
+ * Computes the group name for a file based on item configuration
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} filePath - Absolute path to the file
  */
 function computeGroupName(item, filePath) {
   const itemGroup =
@@ -77,9 +77,9 @@ async function cleanAndCreateOutputDir() {
 const codeExts = [".js", ".mjs", ".ts", ".jsx", ".tsx"];
 
 /**
- *
- * @param sourcePath
- * @param targetPath
+ * Copies a file, prepending path comment for code files
+ * @param {string} sourcePath - Source file path
+ * @param {string} targetPath - Target file path
  */
 async function copyFile(sourcePath, targetPath) {
   const ext = path.extname(sourcePath);
@@ -187,10 +187,10 @@ const itemsToCopy = [
 ];
 
 /**
- *
- * @param item
- * @param sourcePath
- * @param excludeGroups
+ * Processes directory copying with flat file naming
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source directory path
+ * @param {Set} excludeGroups - Set of group names to exclude
  */
 async function processCopyDirectory(item, sourcePath, excludeGroups) {
   const files = await findAllFiles(sourcePath, item.exclude || []);
@@ -214,10 +214,10 @@ async function processCopyDirectory(item, sourcePath, excludeGroups) {
 }
 
 /**
- *
- * @param item
- * @param sourcePath
- * @param excludeGroups
+ * Processes single file copying with flat file naming
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source file path
+ * @param {Set} excludeGroups - Set of group names to exclude
  */
 async function processCopyFile(item, sourcePath, excludeGroups) {
   // Check if this file's group should be excluded
@@ -234,8 +234,8 @@ async function processCopyFile(item, sourcePath, excludeGroups) {
 }
 
 /**
- *
- * @param excludeGroups
+ * Copies all configured directories and files with flat naming
+ * @param {Set} excludeGroups - Set of group names to exclude
  */
 async function copyDirectoriesAndFiles(excludeGroups) {
   console.log("Copying files...");
@@ -259,10 +259,10 @@ async function copyDirectoriesAndFiles(excludeGroups) {
 }
 
 /**
- *
- * @param dir
- * @param excludePaths
- * @param baseDir
+ * Recursively finds all files in a directory, excluding specified paths
+ * @param {string} dir - Directory to search
+ * @param {string[]} excludePaths - Array of relative paths to exclude
+ * @param {string} baseDir - Base directory for computing relative paths
  */
 async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   const files = [];
@@ -299,10 +299,10 @@ async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
 }
 
 /**
- *
- * @param item
- * @param sourcePath
- * @param fileGroups
+ * Processes directory for concatenation mode, grouping files
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source directory path
+ * @param {Map} fileGroups - Map of group names to file arrays
  */
 async function processConcatenateDirectory(item, sourcePath, fileGroups) {
   const files = await findAllFiles(sourcePath, item.exclude || []);
@@ -328,10 +328,10 @@ async function processConcatenateDirectory(item, sourcePath, fileGroups) {
 }
 
 /**
- *
- * @param item
- * @param sourcePath
- * @param fileGroups
+ * Processes single file for concatenation mode, adding to group
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source file path
+ * @param {Map} fileGroups - Map of group names to file arrays
  */
 async function processConcatenateFile(item, sourcePath, fileGroups) {
   const relativePath = path.relative(projectRoot, sourcePath);
@@ -347,9 +347,9 @@ async function processConcatenateFile(item, sourcePath, fileGroups) {
 }
 
 /**
- *
- * @param fileGroups
- * @param excludeGroups
+ * Writes concatenated files for each group
+ * @param {Map} fileGroups - Map of group names to file arrays
+ * @param {Set} excludeGroups - Set of group names to exclude
  */
 async function writeGroupFiles(fileGroups, excludeGroups) {
   // Write the concatenated files
@@ -400,8 +400,8 @@ async function writeGroupFiles(fileGroups, excludeGroups) {
 }
 
 /**
- *
- * @param excludeGroups
+ * Concatenates all configured directories and files by group
+ * @param {Set} excludeGroups - Set of group names to exclude
  */
 async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
   console.log("Concatenating files into groups...");

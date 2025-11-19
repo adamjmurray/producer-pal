@@ -7,10 +7,10 @@ import {
 /**
  * Handle arrangement length changes (lengthening via tiling/exposure or shortening)
  * @param {object} args - Operation arguments
- * @param args.clip
- * @param args.isAudioClip
- * @param args.arrangementLengthBeats
- * @param args.context
+ * @param {object} args.clip - The LiveAPI clip object
+ * @param {boolean} args.isAudioClip - Whether the clip is an audio clip
+ * @param {number} args.arrangementLengthBeats - Target length in beats
+ * @param {object} args.context - Tool execution context
  * @returns {Array} Array of clip result objects to add to updatedClips
  */
 export function handleArrangementLengthOperation({

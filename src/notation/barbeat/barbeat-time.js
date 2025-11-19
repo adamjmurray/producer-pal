@@ -226,10 +226,10 @@ function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
 
 /**
  * Convert bar:beat or beat-only duration to musical beats
+ *
  * @param {string} barBeatDuration - "2:1.5" or "2.5" or "5/2" or "1:2+1/3" or "2+3/4"
  * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @param _timeSigDenominator
+ * @param {number} _timeSigDenominator - Time signature denominator (unused)
  * @returns {number} Musical beats (duration)
  */
 export function barBeatDurationToMusicalBeats(

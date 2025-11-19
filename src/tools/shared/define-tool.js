@@ -3,9 +3,9 @@ import { formatErrorResponse } from "../../shared/mcp-response-utils.js";
 import { filterSchemaForSmallModel } from "./filter-schema.js";
 
 /**
- *
- * @param name
- * @param options
+ * Defines an MCP tool with validation and small model mode support
+ * @param {string} name - Tool name
+ * @param {object} options - Tool configuration options
  */
 export function defineTool(name, options) {
   return (server, callLiveApi, mcpOptions = {}) => {

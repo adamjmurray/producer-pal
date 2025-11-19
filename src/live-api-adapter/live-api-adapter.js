@@ -72,9 +72,11 @@ if (process.env.ENABLE_RAW_LIVE_API === "true") {
 }
 
 /**
+ * Call a tool by name with the given arguments
  *
- * @param toolName
- * @param args
+ * @param {string} toolName - Name of the tool to call
+ * @param {object} args - Arguments to pass to the tool
+ * @returns {object} Tool execution result
  */
 function callTool(toolName, args) {
   const tool = tools[toolName];
@@ -86,58 +88,65 @@ function callTool(toolName, args) {
 
 let isCompactOutputEnabled = true;
 /**
+ * Enable or disable compact output format
  *
- * @param enabled
+ * @param {boolean} enabled - Whether to enable compact output
  */
 export function compactOutput(enabled) {
   isCompactOutputEnabled = Boolean(enabled);
 }
 
 /**
+ * Enable or disable small model mode
  *
- * @param enabled
+ * @param {boolean} enabled - Whether to enable small model mode
  */
 export function smallModelMode(enabled) {
   context.smallModelMode = Boolean(enabled);
 }
 
 /**
+ * Enable or disable project notes feature
  *
- * @param enabled
+ * @param {boolean} enabled - Whether to enable project notes
  */
 export function projectNotesEnabled(enabled) {
   context.projectNotes.enabled = Boolean(enabled);
 }
 
 /**
+ * Set whether project notes are writable
  *
- * @param writable
+ * @param {boolean} writable - Whether project notes should be writable
  */
 export function projectNotesWritable(writable) {
   context.projectNotes.writable = Boolean(writable);
 }
 
 /**
+ * Set the project notes content
  *
- * @param _text
- * @param content
+ * @param {string} _text - Unused parameter
+ * @param {string} content - Project notes content
  */
 export function projectNotes(_text, content) {
   context.projectNotes.content = content ?? "";
 }
 
 /**
+ * Set the holding area start position in beats
  *
- * @param beats
+ * @param {number} beats - Start position in beats
  */
 export function holdingAreaStartBeats(beats) {
   context.holdingAreaStartBeats = Number(beats) || 40000;
 }
 
 /**
+ * Send a response back to the MCP server
  *
- * @param requestId
- * @param result
+ * @param {string} requestId - Request identifier
+ * @param {object} result - Result object to send
  */
 function sendResponse(requestId, result) {
   const jsonString = JSON.stringify(result);
@@ -172,11 +181,12 @@ function sendResponse(requestId, result) {
 
 // Handle messages from Node for Max
 /**
+ * Handle MCP request from Node for Max
  *
- * @param requestId
- * @param tool
- * @param argsJSON
- * @param contextJSON
+ * @param {string} requestId - Request identifier
+ * @param {string} tool - Tool name to execute
+ * @param {string} argsJSON - JSON string of arguments
+ * @param {string} contextJSON - JSON string of context
  */
 export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
   let result;

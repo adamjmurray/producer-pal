@@ -62,14 +62,13 @@ export function getActualAudioEnd(clip) {
  * Reveals hidden content in an unwarped audio clip using session holding area technique.
  * Creates a temp warped/looped clip, sets markers, then restores unwarp/unloop state.
  * ONLY used for unlooped + unwarped + audio clips with hidden content.
- * @param {LiveAPI} sourceClip - The source clip to get audio file from
- * @param {LiveAPI} track - The track to work with
+ * @param {object} sourceClip - The source clip to get audio file from
+ * @param {object} track - The track to work with
  * @param {number} newStartMarker - Start marker for revealed content
  * @param {number} newEndMarker - End marker for revealed content
  * @param {number} targetPosition - Where to place revealed clip in arrangement
- * @param {object} context - Context object with paths
- * @param _context
- * @returns {LiveAPI} The revealed clip in arrangement
+ * @param {object} _context - Context object with paths (unused)
+ * @returns {object} The revealed clip in arrangement
  */
 export function revealUnwarpedAudioContent(
   sourceClip,

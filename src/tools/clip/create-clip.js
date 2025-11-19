@@ -9,12 +9,12 @@ import {
 } from "./create-clip-helpers.js";
 
 /**
- *
- * @param view
- * @param trackIndex
- * @param sceneIndex
- * @param arrangementStart
- * @param count
+ * Validates createClip parameters
+ * @param {string} view - View type (session or arrangement)
+ * @param {number} trackIndex - Track index
+ * @param {number} sceneIndex - Scene index for session view
+ * @param {string} arrangementStart - Arrangement start for arrangement view
+ * @param {number} count - Number of clips to create
  */
 function validateCreateClipParams(
   view,
@@ -49,11 +49,11 @@ function validateCreateClipParams(
 }
 
 /**
- *
- * @param endBeats
- * @param notes
- * @param timeSigNumerator
- * @param timeSigDenominator
+ * Calculates the clip length based on notes and parameters
+ * @param {number} endBeats - End position in beats
+ * @param {Array} notes - Array of MIDI notes
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
  */
 function calculateClipLength(
   endBeats,
@@ -92,12 +92,12 @@ function calculateClipLength(
 }
 
 /**
- *
- * @param auto
- * @param view
- * @param sceneIndex
- * @param count
- * @param trackIndex
+ * Handles automatic playback for session clips
+ * @param {string} auto - Auto playback mode (play-scene or play-clip)
+ * @param {string} view - View type
+ * @param {number} sceneIndex - Scene index
+ * @param {number} count - Number of clips
+ * @param {number} trackIndex - Track index
  */
 function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
   if (!auto || view !== "session") {

@@ -7,12 +7,14 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
 import { select } from "./select.js";
 
 /**
+ * Handle playing the arrangement view
  *
- * @param liveSet
- * @param startTime
- * @param startTimeBeats
- * @param autoFollow
- * @param _state
+ * @param {object} liveSet - LiveAPI instance for live_set
+ * @param {string} startTime - Start time in bar|beat format
+ * @param {number} startTimeBeats - Start time in beats
+ * @param {boolean} autoFollow - Whether tracks should follow arrangement
+ * @param {object} _state - Current playback state (unused)
+ * @returns {object} Updated playback state
  */
 function handlePlayArrangement(
   liveSet,
@@ -40,9 +42,11 @@ function handlePlayArrangement(
 }
 
 /**
+ * Handle playing a scene in session view
  *
- * @param sceneId
- * @param state
+ * @param {string} sceneId - Scene ID to play
+ * @param {object} state - Current playback state
+ * @returns {object} Updated playback state
  */
 function handlePlayScene(sceneId, state) {
   if (sceneId == null) {
@@ -60,10 +64,12 @@ function handlePlayScene(sceneId, state) {
 }
 
 /**
+ * Handle playing specific session clips
  *
- * @param liveSet
- * @param clipIds
- * @param state
+ * @param {object} liveSet - LiveAPI instance for live_set
+ * @param {string} clipIds - Comma-separated clip IDs
+ * @param {object} state - Current playback state
+ * @returns {object} Updated playback state
  */
 function handlePlaySessionClips(liveSet, clipIds, state) {
   if (!clipIds) {
@@ -112,9 +118,11 @@ function handlePlaySessionClips(liveSet, clipIds, state) {
 }
 
 /**
+ * Handle stopping specific session clips
  *
- * @param clipIds
- * @param state
+ * @param {string} clipIds - Comma-separated clip IDs
+ * @param {object} state - Current playback state
+ * @returns {object} Updated playback state
  */
 function handleStopSessionClips(clipIds, state) {
   if (!clipIds) {
@@ -155,11 +163,13 @@ function handleStopSessionClips(clipIds, state) {
 }
 
 /**
+ * Route to appropriate handler based on playback action
  *
- * @param action
- * @param liveSet
- * @param params
- * @param state
+ * @param {string} action - Playback action to perform
+ * @param {object} liveSet - LiveAPI instance for live_set
+ * @param {object} params - Action parameters
+ * @param {object} state - Current playback state
+ * @returns {object} Updated playback state
  */
 function handlePlaybackAction(action, liveSet, params, state) {
   const { startTime, startTimeBeats, autoFollow, sceneId, clipIds } = params;
@@ -219,7 +229,7 @@ function handlePlaybackAction(action, liveSet, params, state) {
  * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
  * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
- * @param _context
+ * @param {object} _context - Context from main (unused)
  * @returns {object} Result with transport state
  */
 export function playback(

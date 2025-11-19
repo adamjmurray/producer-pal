@@ -6,8 +6,10 @@ const MASTER_TRACK_PATH = "live_set master_track";
 
 /**
  * Build track path string based on category and index
- * @param category
- * @param trackIndex
+ *
+ * @param {string} category - Track category ('regular', 'return', or 'master')
+ * @param {number} trackIndex - Track index (0-based)
+ * @returns {string|null} Track path string or null if invalid category
  */
 function buildTrackPath(category, trackIndex) {
   const finalCategory = category || "regular";
@@ -51,7 +53,7 @@ function buildTrackPath(category, trackIndex) {
  * @param {string} [args.detailView] - Detail view to show ('clip', 'device', or 'none')
  * @param {boolean} [args.showLoop] - Show loop view for selected clip
  * @param {boolean} [args.showBrowser] - Show browser view
- * @param _context
+ * @param {object} _context - Context from main (unused)
  * @returns {object} Current view state with selection information
  */
 export function select(
@@ -181,16 +183,17 @@ export function select(
 }
 
 /**
+ * Validate selection parameters for conflicts
  *
- * @param root0
- * @param root0.trackId
- * @param root0.category
- * @param root0.trackIndex
- * @param root0.sceneId
- * @param root0.sceneIndex
- * @param root0.deviceId
- * @param root0.instrument
- * @param root0.clipSlot
+ * @param {object} root0 - Parameters object
+ * @param {string} root0.trackId - Track ID
+ * @param {string} root0.category - Track category
+ * @param {number} root0.trackIndex - Track index
+ * @param {string} root0.sceneId - Scene ID
+ * @param {number} root0.sceneIndex - Scene index
+ * @param {string} root0.deviceId - Device ID
+ * @param {boolean} root0.instrument - Instrument selection flag
+ * @param {object} root0.clipSlot - Clip slot coordinates
  */
 function validateParameters({
   trackId,
@@ -235,12 +238,14 @@ function validateParameters({
 }
 
 /**
+ * Update track selection in Live
  *
- * @param root0
- * @param root0.songView
- * @param root0.trackId
- * @param root0.category
- * @param root0.trackIndex
+ * @param {object} root0 - Selection parameters
+ * @param {object} root0.songView - LiveAPI instance for live_set view
+ * @param {string} root0.trackId - Track ID to select
+ * @param {string} root0.category - Track category
+ * @param {number} root0.trackIndex - Track index
+ * @returns {object} Selection result with track info
  */
 function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   const result = {};
@@ -283,11 +288,13 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
 }
 
 /**
+ * Update scene selection in Live
  *
- * @param root0
- * @param root0.songView
- * @param root0.sceneId
- * @param root0.sceneIndex
+ * @param {object} root0 - Selection parameters
+ * @param {object} root0.songView - LiveAPI instance for live_set view
+ * @param {string} root0.sceneId - Scene ID to select
+ * @param {number} root0.sceneIndex - Scene index
+ * @returns {object} Selection result with scene info
  */
 function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   const result = {};
@@ -315,11 +322,12 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
 }
 
 /**
+ * Update device selection in Live
  *
- * @param root0
- * @param root0.deviceId
- * @param root0.instrument
- * @param root0.trackSelectionResult
+ * @param {object} root0 - Selection parameters
+ * @param {string} root0.deviceId - Device ID to select
+ * @param {boolean} root0.instrument - Whether to select instrument
+ * @param {object} root0.trackSelectionResult - Previous track selection result
  */
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
@@ -363,10 +371,11 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
 }
 
 /**
+ * Update highlighted clip slot in Live
  *
- * @param root0
- * @param root0.songView
- * @param root0.clipSlot
+ * @param {object} root0 - Selection parameters
+ * @param {object} root0.songView - LiveAPI instance for live_set view
+ * @param {object} root0.clipSlot - Clip slot coordinates {trackIndex, sceneIndex}
  */
 function updateHighlightedClipSlot({ songView, clipSlot }) {
   if (clipSlot != null) {
@@ -393,6 +402,8 @@ function updateHighlightedClipSlot({ songView, clipSlot }) {
  * 2) After creating/modifying objects the user specifically asked to work on,
  * 3) Context strongly suggests the user would benefit from seeing the result.
  * When in doubt, don't change views.
+ *
+ * @returns {object} Current view state with all selection information
  */
 function readViewState() {
   const appView = new LiveAPI("live_app view");

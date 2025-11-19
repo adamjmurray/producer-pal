@@ -93,9 +93,8 @@ const jsdocRules = {
     },
   ],
   "jsdoc/require-param": "error",
-  // TODO:
-  // "jsdoc/require-param-description": "error",
-  // "jsdoc/require-param-type": "error",
+  "jsdoc/require-param-description": "error",
+  "jsdoc/require-param-type": "error",
   // TODO:
   // "jsdoc/require-returns": "error",
   // "jsdoc/require-returns-description": "error",
