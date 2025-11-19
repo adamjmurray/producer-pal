@@ -64,3 +64,21 @@ jobs:
         with:
           vite-config-path: "./config/vite.config.mjs"
           file-coverage-mode: "all"
+
+  playwright-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - run: npm ci
+
+      - name: Install Playwright Browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        run: npm run docs:test
