@@ -73,8 +73,7 @@ const baseRules = {
       skipComments: true,
     },
   ],
-  // TODO: lower this (final target: 4):
-  "max-depth": ["error", 5], // limits nesting depth (if/for/while blocks)
+  "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
   // TODO: lower this (final target: 15):
   complexity: ["error", 25], // cyclomatic complexity (number of independent code paths)
 };

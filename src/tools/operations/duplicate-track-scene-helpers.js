@@ -386,6 +386,17 @@ export function calculateSceneLength(sceneIndex) {
 }
 
 /**
+ * Assign scene name to clip info objects
+ * @param {Array} clips - Array of clip info objects
+ * @param {string} name - Name to assign to each clip
+ */
+function assignNamesToClips(clips, name) {
+  for (const clipInfo of clips) {
+    clipInfo.name = name;
+  }
+}
+
+/**
  * Duplicate a scene to the arrangement view
  * @param {string} sceneId - Scene ID to duplicate
  * @param {number} arrangementStartBeats - Start position in beats
@@ -466,9 +477,7 @@ export function duplicateSceneToArrangement(
 
         // Add the scene name to each clip result if provided
         if (name != null) {
-          for (const clipInfo of clipsForTrack) {
-            clipInfo.name = name;
-          }
+          assignNamesToClips(clipsForTrack, name);
         }
 
         duplicatedClips.push(...clipsForTrack);

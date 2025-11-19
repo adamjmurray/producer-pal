@@ -170,31 +170,38 @@ async function printStream(stream, { debug, verbose }) {
       debugResult(chunk, verbose);
     }
     for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
-      if (part.text) {
-        if (part.thought) {
-          process.stdout.write(
-            inThought ? continueThought(part.text) : startThought(part.text),
-          );
-          inThought = true;
-        } else {
-          if (inThought) {
-            process.stdout.write(endThought());
-            inThought = false;
-          }
-          process.stdout.write(part.text);
-        }
-      } else if (part.functionCall) {
-        process.stdout.write(
-          `🔧 ${part.functionCall.name}(${inspect(part.functionCall.args, { compact: true, depth: 10 })})\n`,
-        );
-      } else if (part.functionResponse) {
-        process.stdout.write(
-          `   ↳ ${truncate(part.functionResponse?.response?.content?.[0]?.text, 160)}\n`,
-        );
-      }
+      inThought = processPart(part, inThought);
     }
   }
   console.log();
+}
+
+function processPart(part, inThought) {
+  if (part.text) {
+    if (part.thought) {
+      process.stdout.write(
+        inThought ? continueThought(part.text) : startThought(part.text),
+      );
+      return true;
+    }
+    if (inThought) {
+      process.stdout.write(endThought());
+    }
+    process.stdout.write(part.text);
+    return false;
+  }
+  if (part.functionCall) {
+    process.stdout.write(
+      `🔧 ${part.functionCall.name}(${inspect(part.functionCall.args, { compact: true, depth: 10 })})\n`,
+    );
+    return inThought;
+  }
+  if (part.functionResponse) {
+    process.stdout.write(
+      `   ↳ ${truncate(part.functionResponse?.response?.content?.[0]?.text, 160)}\n`,
+    );
+  }
+  return inThought;
 }
 
 function isExitCommand(input) {
