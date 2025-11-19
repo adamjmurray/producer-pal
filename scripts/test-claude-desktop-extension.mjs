@@ -146,32 +146,25 @@ function parseResponse(data) {
   }
 }
 
-// Listen for responses
-bridge.stdout.on("data", (data) => {
-  const response = parseResponse(data);
-
-  // If response is null, we're still accumulating data
-  if (response === null) {
-    return;
-  }
-
-  responseCount++;
-  const elapsed = Date.now() - startTime;
-
-  console.log(`[${elapsed}ms] Bridge response ${responseCount}:`);
-
+/**
+ * Log response based on response count and content
+ */
+function logResponse(response, count, tool) {
   if (response.error) {
     console.log("❌ Error:", response.error);
     if (response.raw) console.log("Raw data:", response.raw);
-  } else if (response.result) {
-    if (responseCount === 1) {
+    return;
+  }
+
+  if (response.result) {
+    if (count === 1) {
       // Initialize response
       console.log("✅ Initialize successful");
       console.log(
         `   Server: ${response.result.serverInfo?.name || "Unknown"}`,
       );
       console.log(`   Protocol: ${response.result.protocolVersion}`);
-    } else if (responseCount === 2) {
+    } else if (count === 2) {
       // Tools list response
       const toolCount = response.result.tools?.length || 0;
       console.log(`✅ Tools list successful - ${toolCount} tools available`);
@@ -181,26 +174,29 @@ bridge.stdout.on("data", (data) => {
           `   Tools: ${toolNames.substring(0, 100)}${toolNames.length > 100 ? "..." : ""}`,
         );
       }
-    } else if (responseCount === 3) {
+    } else if (count === 3) {
       // Tool call response
-      console.log(`✅ Tool call '${toolName}' successful`);
+      console.log(`✅ Tool call '${tool}' successful`);
       if (response.result.content) {
         console.log(`   Content items: ${response.result.content.length}`);
       }
     }
-  } else {
-    console.log(
-      "⚠️  Unexpected response format:",
-      JSON.stringify(response, null, 2),
-    );
+    return;
   }
 
-  console.log("");
+  console.log(
+    "⚠️  Unexpected response format:",
+    JSON.stringify(response, null, 2),
+  );
+}
 
-  // Continue test sequence
-  if (responseCount === 1) {
+/**
+ * Continue test sequence based on response count
+ */
+function continueTestSequence(count, elapsed) {
+  if (count === 1) {
     sendMessage(listToolsMessage, TOOLS_LIST_METHOD);
-  } else if (responseCount === 2 && toolName) {
+  } else if (count === 2 && toolName) {
     const toolCallMessage = {
       jsonrpc: JSON_RPC_VERSION,
       method: "tools/call",
@@ -216,6 +212,24 @@ bridge.stdout.on("data", (data) => {
     console.log(`✅ Test completed successfully in ${elapsed}ms`);
     bridge.kill();
   }
+}
+
+// Listen for responses
+bridge.stdout.on("data", (data) => {
+  const response = parseResponse(data);
+
+  // If response is null, we're still accumulating data
+  if (response === null) {
+    return;
+  }
+
+  responseCount++;
+  const elapsed = Date.now() - startTime;
+
+  console.log(`[${elapsed}ms] Bridge response ${responseCount}:`);
+  logResponse(response, responseCount, toolName);
+  console.log("");
+  continueTestSequence(responseCount, elapsed);
 });
 
 // Filter stderr to reduce noise from bridge debugging
