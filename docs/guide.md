@@ -25,10 +25,10 @@ For detailed installation instructions for your preferred AI platform, see the
 
 Quick options:
 
-- **[Built-in Chat UI](/installation/chat-ui)** - Works with Gemini,
-  Ollama, and more
-- **[Claude Desktop](/installation/claude-desktop)** - Recommended for
-  Anthropic users
+- **[Built-in Chat UI](/installation/chat-ui)** - Works with Gemini, Ollama, and
+  more
+- **[Claude Desktop](/installation/claude-desktop)** - Recommended for Anthropic
+  users
 - **[Command Line Tools](/installation#command-line-interfaces)** - Gemini CLI,
   Codex CLI, Claude Code, and other MCP-compatible coding agents
 - **[Local Models](/installation#local-offline-options)** - Run completely

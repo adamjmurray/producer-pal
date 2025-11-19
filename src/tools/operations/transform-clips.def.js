@@ -53,18 +53,25 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .max(24)
       .optional()
       .describe("max gain offset in dB to add (audio clips)"),
-    pitchMin: z
+    // Transpose parameters (audio and MIDI clips)
+    transposeMin: z
       .number()
-      .min(-48)
-      .max(48)
+      .min(-128)
+      .max(128)
       .optional()
-      .describe("min pitch shift in semitones (audio clips)"),
-    pitchMax: z
+      .describe("min transpose in semitones (audio/MIDI clips)"),
+    transposeMax: z
       .number()
-      .min(-48)
-      .max(48)
+      .min(-128)
+      .max(128)
       .optional()
-      .describe("max pitch shift in semitones (audio clips)"),
+      .describe("max transpose in semitones (audio/MIDI clips)"),
+    transposeValues: z
+      .string()
+      .optional()
+      .describe(
+        "comma-separated semitone values to randomly pick from (audio/MIDI clips, ignores transposeMin/transposeMax)",
+      ),
     // MIDI clip parameters - randomized
     velocityMin: z
       .number()
@@ -80,20 +87,6 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .max(127)
       .optional()
       .describe("max velocity offset to add (MIDI clips)"),
-    transposeMin: z
-      .number()
-      .int()
-      .min(-128)
-      .max(127)
-      .optional()
-      .describe("min transpose in semitones (MIDI clips)"),
-    transposeMax: z
-      .number()
-      .int()
-      .min(-128)
-      .max(127)
-      .optional()
-      .describe("max transpose in semitones (MIDI clips)"),
     durationMin: z
       .number()
       .min(0.01)

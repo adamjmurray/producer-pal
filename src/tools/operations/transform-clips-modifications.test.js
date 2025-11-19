@@ -364,4 +364,193 @@ describe("transformClips - modifications", () => {
     // Should produce identical results
     expect(capturedNotes1).toEqual(capturedNotes2);
   });
+
+  it("should apply transposeValues to MIDI clip notes", () => {
+    const clipId = "clip_1";
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id clip_1") {
+        return clipId;
+      }
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "Clip";
+      }
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._id === clipId) {
+        if (prop === "is_midi_clip") {
+          return [1];
+        }
+        if (prop === "is_audio_clip") {
+          return [0];
+        }
+        if (prop === "is_arrangement_clip") {
+          return [0];
+        }
+        if (prop === "length") {
+          return [4.0];
+        }
+      }
+      return [0];
+    });
+
+    let capturedNotes;
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (this._id === clipId && method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              id: "0",
+              pitch: 60,
+              start_time: 0.0,
+              duration: 1.0,
+              velocity: 100,
+              velocity_deviation: 0,
+              probability: 1.0,
+            },
+          ],
+        });
+      }
+      if (this._id === clipId && method === "apply_note_modifications") {
+        capturedNotes = JSON.parse(_args[0]).notes;
+      }
+    });
+
+    transformClips({
+      clipIds: clipId,
+      transposeValues: "-12, 0, 12",
+      seed: 12345,
+    });
+
+    // Should pick one of the discrete values
+    const transposedPitch = capturedNotes[0].pitch;
+    expect([48, 60, 72]).toContain(transposedPitch);
+  });
+
+  it("should apply transposeValues to audio clips", () => {
+    const clipId = "audio_clip_1";
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id audio_clip_1") {
+        return clipId;
+      }
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "live_set tracks 0 arrangement_clips 0";
+      }
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "Clip";
+      }
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._id === clipId) {
+        if (prop === "is_midi_clip") {
+          return [0];
+        }
+        if (prop === "is_audio_clip") {
+          return [1];
+        }
+        if (prop === "is_arrangement_clip") {
+          return [1];
+        }
+        if (prop === "pitch_coarse") {
+          return [0];
+        }
+        if (prop === "pitch_fine") {
+          return [0];
+        }
+      }
+      return [0];
+    });
+
+    transformClips({
+      clipIds: clipId,
+      transposeValues: "-12, 0, 12",
+      seed: 12345,
+    });
+
+    // Verify pitch was set (either pitch_coarse or pitch_fine)
+    expect(liveApiSet).toHaveBeenCalledWith("pitch_coarse", expect.any(Number));
+  });
+
+  it("should warn when both transposeValues and transposeMin/transposeMax are provided", () => {
+    const clipId = "clip_1";
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id clip_1") {
+        return clipId;
+      }
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "live_set tracks 0 clip_slots 0 clip";
+      }
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "Clip";
+      }
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._id === clipId) {
+        if (prop === "is_midi_clip") {
+          return [1];
+        }
+        if (prop === "is_audio_clip") {
+          return [0];
+        }
+        if (prop === "is_arrangement_clip") {
+          return [0];
+        }
+        if (prop === "length") {
+          return [4.0];
+        }
+      }
+      return [0];
+    });
+    liveApiCall.mockImplementation(function (method) {
+      if (this._id === clipId && method === "get_notes_extended") {
+        return JSON.stringify({
+          notes: [
+            {
+              id: "0",
+              pitch: 60,
+              start_time: 0.0,
+              duration: 1.0,
+              velocity: 100,
+              velocity_deviation: 0,
+              probability: 1.0,
+            },
+          ],
+        });
+      }
+    });
+
+    const consoleErrorSpy = vi.spyOn(console, "error");
+
+    transformClips({
+      clipIds: clipId,
+      transposeValues: "-12, 0, 12",
+      transposeMin: -12,
+      transposeMax: 12,
+      seed: 12345,
+    });
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("transposeValues ignores transposeMin"),
+    );
+  });
 });

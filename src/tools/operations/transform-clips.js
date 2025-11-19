@@ -9,9 +9,9 @@ import {
   tileClipToRange,
 } from "../shared/arrangement-tiling.js";
 import { MAX_SLICES } from "../constants.js";
-import { dbToLiveGain, liveGainToDb } from "../shared/gain-utils.js";
 import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
+import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
 
 const HOLDING_AREA_START = 40000;
 
@@ -26,12 +26,11 @@ const HOLDING_AREA_START = 40000;
  * @param {boolean} [args.shuffleOrder] - Randomize clip positions
  * @param {number} [args.gainDbMin] - Min gain offset in dB to add (audio clips, -24 to 24)
  * @param {number} [args.gainDbMax] - Max gain offset in dB to add (audio clips, -24 to 24)
- * @param {number} [args.pitchMin] - Min pitch shift in semitones (audio clips, -48 to 48)
- * @param {number} [args.pitchMax] - Max pitch shift in semitones (audio clips, -48 to 48)
+ * @param {number} [args.transposeMin] - Min transpose in semitones (audio/MIDI clips, -128 to 128)
+ * @param {number} [args.transposeMax] - Max transpose in semitones (audio/MIDI clips, -128 to 128)
+ * @param {string} [args.transposeValues] - Comma-separated semitone values to randomly pick from (ignores transposeMin/transposeMax)
  * @param {number} [args.velocityMin] - Min velocity offset (MIDI clips, -127 to 127)
  * @param {number} [args.velocityMax] - Max velocity offset (MIDI clips, -127 to 127)
- * @param {number} [args.transposeMin] - Min transpose in semitones (MIDI clips, -128 to 127)
- * @param {number} [args.transposeMax] - Max transpose in semitones (MIDI clips, -128 to 127)
  * @param {number} [args.durationMin] - Min duration multiplier (MIDI clips, 0.01 to 100)
  * @param {number} [args.durationMax] - Max duration multiplier (MIDI clips, 0.01 to 100)
  * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips, -127 to 127)
@@ -49,12 +48,11 @@ export function transformClips(
     shuffleOrder,
     gainDbMin,
     gainDbMax,
-    pitchMin,
-    pitchMax,
-    velocityMin,
-    velocityMax,
     transposeMin,
     transposeMax,
+    transposeValues,
+    velocityMin,
+    velocityMax,
     durationMin,
     durationMax,
     velocityRange,
@@ -66,6 +64,26 @@ export function transformClips(
   // Generate seed if not provided (do this early so it's available for return)
   const actualSeed = seed ?? Date.now();
   const rng = createSeededRNG(actualSeed);
+
+  // Parse transposeValues if provided
+  let transposeValuesArray = null;
+  if (transposeValues != null) {
+    transposeValuesArray = transposeValues
+      .split(",")
+      .map((v) => parseFloat(v.trim()))
+      .filter((v) => !isNaN(v));
+
+    if (transposeValuesArray.length === 0) {
+      throw new Error("transposeValues must contain at least one valid number");
+    }
+
+    // Warn if both transposeValues and transposeMin/transposeMax are provided
+    if (transposeMin != null || transposeMax != null) {
+      console.error(
+        "Warning: transposeValues ignores transposeMin/transposeMax",
+      );
+    }
+  }
 
   // Determine clip selection method
   let clipIdArray;
@@ -373,13 +391,15 @@ export function transformClips(
   const hasAudioParams =
     gainDbMin != null ||
     gainDbMax != null ||
-    pitchMin != null ||
-    pitchMax != null;
+    transposeMin != null ||
+    transposeMax != null ||
+    transposeValues != null;
   const hasMidiParams =
     velocityMin != null ||
     velocityMax != null ||
     transposeMin != null ||
     transposeMax != null ||
+    transposeValues != null ||
     durationMin != null ||
     durationMax != null ||
     velocityRange != null ||
@@ -395,33 +415,17 @@ export function transformClips(
         console.error("Warning: audio parameters ignored for MIDI clips");
         warnings.add("audio-params-midi-clip");
       } else if (isAudioClip) {
-        // Apply gain (additive in dB space)
-        if (gainDbMin != null && gainDbMax != null) {
-          const currentLiveGain = clip.getProperty("gain");
-          const currentGainDb = liveGainToDb(currentLiveGain);
-          const gainDbOffset = randomInRange(gainDbMin, gainDbMax, rng);
-          const newGainDb = Math.max(
-            -70,
-            Math.min(24, currentGainDb + gainDbOffset),
-          );
-          const newLiveGain = dbToLiveGain(newGainDb);
-          clip.set("gain", newLiveGain);
-        }
-
-        // Apply pitch shift
-        if (pitchMin != null && pitchMax != null) {
-          const currentPitchCoarse = clip.getProperty("pitch_coarse");
-          const currentPitchFine = clip.getProperty("pitch_fine");
-          const currentPitch = currentPitchCoarse + currentPitchFine / 100;
-
-          const pitchOffset = randomInRange(pitchMin, pitchMax, rng);
-          const newPitch = currentPitch + pitchOffset;
-
-          const pitchCoarse = Math.floor(newPitch);
-          const pitchFine = Math.round((newPitch - pitchCoarse) * 100);
-          clip.set("pitch_coarse", pitchCoarse);
-          clip.set("pitch_fine", pitchFine);
-        }
+        applyAudioParams(
+          clip,
+          {
+            gainDbMin,
+            gainDbMax,
+            transposeMin,
+            transposeMax,
+            transposeValuesArray,
+          },
+          rng,
+        );
       }
     }
 
@@ -431,76 +435,21 @@ export function transformClips(
         console.error("Warning: MIDI parameters ignored for audio clips");
         warnings.add("midi-params-audio-clip");
       } else if (isMidiClip) {
-        const lengthBeats = clip.getProperty("length");
-
-        // Read notes
-        const notesDictionary = clip.call(
-          "get_notes_extended",
-          0,
-          128,
-          0,
-          lengthBeats,
+        applyMidiParams(
+          clip,
+          {
+            velocityMin,
+            velocityMax,
+            transposeMin,
+            transposeMax,
+            transposeValuesArray,
+            durationMin,
+            durationMax,
+            velocityRange,
+            probability,
+          },
+          rng,
         );
-        const notesData = JSON.parse(notesDictionary);
-        const notes = notesData.notes;
-
-        if (notes.length > 0) {
-          // Modify notes in place
-          for (const note of notes) {
-            // Apply velocity offset
-            if (velocityMin != null && velocityMax != null) {
-              const velocityOffset = Math.round(
-                randomInRange(velocityMin, velocityMax, rng),
-              );
-              note.velocity = Math.max(
-                1,
-                Math.min(127, note.velocity + velocityOffset),
-              );
-            }
-
-            // Apply transpose
-            if (transposeMin != null && transposeMax != null) {
-              const transposeOffset = Math.round(
-                randomInRange(transposeMin, transposeMax, rng),
-              );
-              note.pitch = Math.max(
-                0,
-                Math.min(127, note.pitch + transposeOffset),
-              );
-            }
-
-            // Apply duration multiplier
-            if (durationMin != null && durationMax != null) {
-              const durationMultiplier = randomInRange(
-                durationMin,
-                durationMax,
-                rng,
-              );
-              note.duration = note.duration * durationMultiplier;
-            }
-
-            // Apply velocity range (velocity_deviation) - non-random offset
-            if (velocityRange != null) {
-              const currentDeviation = note.velocity_deviation ?? 0;
-              note.velocity_deviation = Math.max(
-                -127,
-                Math.min(127, currentDeviation + velocityRange),
-              );
-            }
-
-            // Apply probability - non-random offset
-            if (probability != null) {
-              const currentProbability = note.probability ?? 1.0;
-              note.probability = Math.max(
-                0.0,
-                Math.min(1.0, currentProbability + probability),
-              );
-            }
-          }
-
-          // Apply note modifications
-          clip.call("apply_note_modifications", JSON.stringify({ notes }));
-        }
       }
     }
   }
