@@ -68,15 +68,14 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 350, // TODO: lower this (final target: 100)
+      max: 200, // TODO: lower this (final target: 100)
       skipBlankLines: true,
       skipComments: true,
     },
   ],
-  // TODO: lower this (final target: 4):
-  "max-depth": ["error", 5], // limits nesting depth (if/for/while blocks)
+  "max-depth": ["error", 4], // limits nesting depth (if/for/while blocks)
   // TODO: lower this (final target: 15):
-  complexity: ["error", 80], // cyclomatic complexity (number of independent code paths)
+  complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
 };
 
 const jsOnlyRules = {
@@ -261,6 +260,7 @@ export default [
     rules: {
       "@typescript-eslint/no-non-null-assertion": "off",
       "max-lines-per-function": "off",
+      complexity: ["error", 60],
     },
   },
 
@@ -277,12 +277,15 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
+      "src/tools/shared/gain-lookup-table.js", // Auto-generated data
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 600,
+          max: 350,
+          skipBlankLines: true,
+          skipComments: true,
         },
       ],
     },

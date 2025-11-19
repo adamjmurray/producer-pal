@@ -125,6 +125,139 @@ export class LiveAPI {
   }
 }
 
+function getLiveSetProperty(prop) {
+  switch (prop) {
+    case "tracks":
+      return children("track1", "track2");
+    case "scenes":
+      return children("scene1", "scene2");
+    case "signature_numerator":
+      return [4];
+    case "signature_denominator":
+      return [4];
+    default:
+      return null;
+  }
+}
+
+function getAppViewProperty(prop) {
+  switch (prop) {
+    case "focused_document_view":
+      return ["Session"];
+    default:
+      return null;
+  }
+}
+
+function getTrackProperty(prop) {
+  switch (prop) {
+    case "has_midi_input":
+      return [1];
+    case "clip_slots":
+    case "devices":
+      return [];
+    case "name":
+      return ["Test Track"];
+    case "color":
+      return [16711680];
+    case "mute":
+    case "solo":
+    case "muted_via_solo":
+      return [0];
+    case "arm":
+      return [1];
+    case "can_be_armed":
+      return [1];
+    case "is_foldable":
+    case "is_grouped":
+      return [0];
+    case "group_track":
+      return ["id", 0];
+    case "playing_slot_index":
+      return [2];
+    case "fired_slot_index":
+      return [3];
+    default:
+      return null;
+  }
+}
+
+function getSceneProperty(prop) {
+  switch (prop) {
+    case "name":
+      return ["Test Scene"];
+    case "clips":
+      return [];
+    default:
+      return null;
+  }
+}
+
+function getClipSlotProperty(prop) {
+  switch (prop) {
+    case "has_clip":
+      return [1];
+    default:
+      return null;
+  }
+}
+
+function getClipProperty(prop) {
+  switch (prop) {
+    case "name":
+      return ["Test Clip"];
+    case "is_audio_clip":
+      return [0];
+    case "is_midi_clip":
+      return [1];
+    case "color":
+      return [4047616];
+    case "length":
+      return [4];
+    case "looping":
+      return [0];
+    case "start_marker":
+      return [1];
+    case "end_marker":
+      return [5];
+    case "loop_start":
+      return [1];
+    case "loop_end":
+      return [5];
+    case "signature_numerator":
+      return [4];
+    case "signature_denominator":
+      return [4];
+    case "is_playing":
+    case "is_triggered":
+    case "is_recording":
+    case "is_overdubbing":
+    case "muted":
+      return [0];
+    default:
+      return null;
+  }
+}
+
+function getPropertyByType(type, prop) {
+  switch (type) {
+    case "LiveSet":
+      return getLiveSetProperty(prop);
+    case "AppView":
+      return getAppViewProperty(prop);
+    case "Track":
+      return getTrackProperty(prop);
+    case "Scene":
+      return getSceneProperty(prop);
+    case "ClipSlot":
+      return getClipSlotProperty(prop);
+    case "Clip":
+      return getClipProperty(prop);
+    default:
+      return null;
+  }
+}
+
 export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
     const overridesByProp =
@@ -144,105 +277,8 @@ export function mockLiveApiGet(overrides = {}) {
         return Array.isArray(override) ? override : [override];
       }
     }
-    switch (this.type) {
-      case "LiveSet":
-        switch (prop) {
-          case "tracks":
-            return children("track1", "track2");
-          case "scenes":
-            return children("scene1", "scene2");
-          case "signature_numerator":
-            return [4];
-          case "signature_denominator":
-            return [4];
-        }
-        break;
-      case "AppView":
-        switch (prop) {
-          case "focused_document_view":
-            return ["Session"];
-        }
-        break;
-      case "Track":
-        switch (prop) {
-          case "has_midi_input":
-            return [1];
-          case "clip_slots":
-          case "devices":
-            return [];
-          case "name":
-            return ["Test Track"];
-          case "color":
-            return [16711680];
-          case "mute":
-          case "solo":
-          case "muted_via_solo":
-            return [0];
-          case "arm":
-            return [1];
-          case "can_be_armed":
-            return [1];
-          case "is_foldable":
-          case "is_grouped":
-            return [0];
-          case "group_track":
-            return ["id", 0];
-          case "playing_slot_index":
-            return [2];
-          case "fired_slot_index":
-            return [3];
-        }
-        break;
-      case "Scene":
-        switch (prop) {
-          case "name":
-            return ["Test Scene"];
-          case "clips":
-            return [];
-        }
-        break;
-      case "ClipSlot":
-        switch (prop) {
-          case "has_clip":
-            return [1];
-        }
-        break;
-      case "Clip":
-        switch (prop) {
-          case "name":
-            return ["Test Clip"];
-          case "is_audio_clip":
-            return [0];
-          case "is_midi_clip":
-            return [1];
-          case "color":
-            return [4047616];
-          case "length":
-            return [4];
-          case "looping":
-            return [0];
-          case "start_marker":
-            return [1];
-          case "end_marker":
-            return [5];
-          case "loop_start":
-            return [1];
-          case "loop_end":
-            return [5];
-          case "signature_numerator":
-            return [4];
-          case "signature_denominator":
-            return [4];
-          case "is_playing":
-          case "is_triggered":
-          case "is_recording":
-          case "is_overdubbing":
-          case "muted":
-            return [0];
-        }
-        break;
-    }
-    return [0];
+    const result = getPropertyByType(this.type, prop);
+    return result ?? [0];
   });
 }
 

@@ -2,7 +2,6 @@ import * as console from "../../shared/v8-max-console.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 import {
-  parseSongTimeSignature,
   calculateBeatPositions,
   buildClipPropertiesToSet,
   handleNoteUpdates,
@@ -10,11 +9,12 @@ import {
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-helpers.js";
-import { handleArrangementLengthOperation } from "./arrangement-operations.js";
 import {
-  barBeatDurationToAbletonBeats,
-  barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time.js";
+  validateAndParseArrangementParams,
+  buildClipResultObject,
+  emitArrangementWarnings,
+} from "./clip-result-helpers.js";
+import { handleArrangementLengthOperation } from "./arrangement-operations.js";
 
 /**
  * Updates properties of existing clips
@@ -76,36 +76,9 @@ export function updateClip(
     skipInvalid: true,
   });
 
-  // Get song time signature for arrangementStart/arrangementLength conversion
-  let songTimeSigNumerator, songTimeSigDenominator;
-  let arrangementStartBeats = null;
-  let arrangementLengthBeats = null;
-
-  if (arrangementStart != null || arrangementLength != null) {
-    const songTimeSig = parseSongTimeSignature();
-    songTimeSigNumerator = songTimeSig.numerator;
-    songTimeSigDenominator = songTimeSig.denominator;
-
-    if (arrangementStart != null) {
-      arrangementStartBeats = barBeatToAbletonBeats(
-        arrangementStart,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      );
-    }
-
-    if (arrangementLength != null) {
-      arrangementLengthBeats = barBeatDurationToAbletonBeats(
-        arrangementLength,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      );
-
-      if (arrangementLengthBeats <= 0) {
-        throw new Error("arrangementLength must be greater than 0");
-      }
-    }
-  }
+  // Parse and validate arrangement parameters
+  const { arrangementStartBeats, arrangementLengthBeats } =
+    validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
   const updatedClips = [];
 
@@ -220,29 +193,12 @@ export function updateClip(
 
     // Build optimistic result object only if arrangementLength didn't return results
     if (!hasArrangementLengthResults) {
-      const clipResult = {
-        id: finalClipId,
-      };
-
-      // Only include noteCount if notes were modified
-      if (finalNoteCount != null) {
-        clipResult.noteCount = finalNoteCount;
-      }
-
-      updatedClips.push(clipResult);
+      updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
     }
   }
 
   // Emit warning if multiple clips from same track were moved to same position
-  if (arrangementStartBeats != null) {
-    for (const [trackIndex, count] of tracksWithMovedClips.entries()) {
-      if (count > 1) {
-        console.error(
-          `Warning: ${count} clips on track ${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
-        );
-      }
-    }
-  }
+  emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
   // Return single object if one valid result, array for multiple results or empty array for none
   if (updatedClips.length === 0) {

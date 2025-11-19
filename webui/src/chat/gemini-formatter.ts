@@ -4,6 +4,8 @@ import type {
   UIMessage,
   UIPart,
   UIToolPart,
+  UITextPart,
+  UIThoughtPart,
 } from "../types/messages.js";
 
 /**
@@ -46,97 +48,24 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
   const messages = history.reduce<UIMessage[]>(
     (acc, { role, parts = [] }, rawIndex) => {
       const lastMessage = acc.at(-1);
-      let currentMessage: UIMessage;
 
       // Handle error-role messages
       if (role === "error") {
-        // Check if last message is a model message
-        if (lastMessage?.role === "model") {
-          // Merge error into existing model message
-          currentMessage = lastMessage;
-        } else {
-          // Create new model message for the error
-          currentMessage = {
-            role: "model",
-            parts: [],
-            rawHistoryIndex: rawIndex,
-          };
-          acc.push(currentMessage);
-        }
-
-        // Add error parts
-        for (const part of parts) {
-          if (part.text) {
-            currentMessage.parts.push({
-              type: "error",
-              content: part.text,
-              isError: true,
-            });
-          }
-        }
-
+        handleErrorMessage(acc, lastMessage, parts, rawIndex);
         return acc;
       }
 
-      if (
-        lastMessage &&
-        (lastMessage.role === role || isFunctionResponse(parts))
-      ) {
-        currentMessage = lastMessage;
-      } else {
-        currentMessage = {
-          role: role as "user" | "model",
-          parts: [],
-          rawHistoryIndex: rawIndex,
-        };
-        acc.push(currentMessage);
-      }
+      const currentMessage = getOrCreateMessage(
+        acc,
+        lastMessage,
+        role,
+        rawIndex,
+        parts,
+      );
       const currentParts: UIPart[] = currentMessage.parts;
 
       for (const part of parts) {
-        const lastPart = currentParts.at(-1);
-        const { functionCall, functionResponse } = part;
-
-        if (functionCall) {
-          currentParts.push({
-            type: "tool",
-            name: functionCall.name ?? "",
-            args: functionCall.args ?? {},
-            result: null,
-          });
-        } else if (functionResponse) {
-          // Find the first tool call with matching name that doesn't have a result yet
-          const toolPart = currentParts.find(
-            (p): p is UIToolPart =>
-              p.type === "tool" &&
-              p.name === functionResponse.name &&
-              p.result === null,
-          );
-
-          if (toolPart) {
-            toolPart.result = getToolCallResult(functionResponse);
-            if (isToolCallError(functionResponse)) {
-              toolPart.isError = true;
-            }
-          } else {
-            console.error(
-              "Missing corresponding function call for function response",
-              JSON.stringify({ functionResponse, currentParts }, null, 2),
-            );
-          }
-        } else if (part.text) {
-          if (
-            (lastPart?.type === "text" && !part.thought) ||
-            (lastPart?.type === "thought" && part.thought)
-          ) {
-            lastPart.content += part.text;
-          } else {
-            currentParts.push({
-              type: part.thought ? "thought" : "text",
-              content: part.text,
-            });
-          }
-        }
+        processSinglePart(part, currentParts);
       }
 
       return acc;
@@ -144,12 +73,165 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
     [],
   );
 
+  markLastThoughtAsOpen(messages);
+  return messages;
+}
+
+function handleErrorMessage(
+  acc: UIMessage[],
+  lastMessage: UIMessage | undefined,
+  parts: Part[],
+  rawIndex: number,
+): void {
+  const currentMessage =
+    shouldMergeErrorIntoLastMessage(lastMessage) && lastMessage
+      ? lastMessage
+      : createNewErrorMessage(acc, rawIndex);
+
+  for (const part of parts) {
+    if (part.text) {
+      currentMessage.parts.push({
+        type: "error",
+        content: part.text,
+        isError: true,
+      });
+    }
+  }
+}
+
+function shouldMergeErrorIntoLastMessage(
+  lastMessage: UIMessage | undefined,
+): boolean {
+  return lastMessage?.role === "model";
+}
+
+function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
+  const message: UIMessage = {
+    role: "model",
+    parts: [],
+    rawHistoryIndex: rawIndex,
+  };
+  acc.push(message);
+  return message;
+}
+
+function getOrCreateMessage(
+  acc: UIMessage[],
+  lastMessage: UIMessage | undefined,
+  role: string | undefined,
+  rawIndex: number,
+  parts: Part[],
+): UIMessage {
+  const typedRole = role as "user" | "model";
+
+  if (
+    lastMessage &&
+    (lastMessage.role === typedRole || isFunctionResponse(parts))
+  ) {
+    return lastMessage;
+  }
+
+  const message: UIMessage = {
+    role: typedRole,
+    parts: [],
+    rawHistoryIndex: rawIndex,
+  };
+  acc.push(message);
+  return message;
+}
+
+function processSinglePart(part: Part, currentParts: UIPart[]): void {
+  const lastPart = currentParts.at(-1);
+  const { functionCall, functionResponse } = part;
+
+  if (functionCall) {
+    handleFunctionCall(functionCall, currentParts);
+  } else if (functionResponse) {
+    handleFunctionResponse(functionResponse, currentParts);
+  } else if (part.text) {
+    handleTextPart(part, lastPart, currentParts);
+  }
+}
+
+function handleFunctionCall(
+  functionCall: Part["functionCall"],
+  currentParts: UIPart[],
+): void {
+  if (!functionCall) return;
+
+  currentParts.push({
+    type: "tool",
+    name: functionCall.name ?? "",
+    args: functionCall.args ?? {},
+    result: null,
+  });
+}
+
+function handleFunctionResponse(
+  functionResponse: FunctionResponse,
+  currentParts: UIPart[],
+): void {
+  // Find the first tool call with matching name that doesn't have a result yet
+  const toolPart = currentParts.find(
+    (p): p is UIToolPart =>
+      p.type === "tool" &&
+      p.name === functionResponse.name &&
+      p.result === null,
+  );
+
+  if (toolPart) {
+    toolPart.result = getToolCallResult(functionResponse);
+    if (isToolCallError(functionResponse)) {
+      toolPart.isError = true;
+    }
+  } else {
+    console.error(
+      "Missing corresponding function call for function response",
+      JSON.stringify({ functionResponse, currentParts }, null, 2),
+    );
+  }
+}
+
+function handleTextPart(
+  part: Part,
+  lastPart: UIPart | undefined,
+  currentParts: UIPart[],
+): void {
+  const text = part.text ?? "";
+  const isThought = part.thought ?? false;
+
+  const canMerge =
+    lastPart &&
+    lastPart.type !== "tool" &&
+    lastPart.type !== "error" &&
+    canMergeWithLastPart(lastPart, isThought);
+
+  if (canMerge) {
+    (lastPart as UITextPart | UIThoughtPart).content += text;
+  } else {
+    currentParts.push({
+      type: isThought ? "thought" : "text",
+      content: text,
+    });
+  }
+}
+
+function canMergeWithLastPart(
+  lastPart: UIPart | undefined,
+  isThought: boolean,
+): boolean {
+  if (!lastPart) return false;
+  return (
+    (lastPart.type === "text" && !isThought) ||
+    (lastPart.type === "thought" && isThought)
+  );
+}
+
+function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastPart = messages.at(-1)?.parts.at(-1);
   if (lastPart?.type === "thought") {
     lastPart.isOpen = true; // show the thought as currently active
   }
-
-  return messages;
 }
 
 function isFunctionResponse(parts: Part[]): boolean {

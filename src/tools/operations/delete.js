@@ -1,6 +1,79 @@
 import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
+
+/**
+ * Deletes a track by its index
+ * @param {string} id - The object ID
+ * @param {Object} object - The object to delete
+ */
+function deleteTrackObject(id, object) {
+  const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
+  if (Number.isNaN(trackIndex)) {
+    throw new Error(
+      `delete failed: no track index for id "${id}" (path="${object.path}")`,
+    );
+  }
+
+  const hostTrackIndex = getHostTrackIndex();
+  if (trackIndex === hostTrackIndex) {
+    throw new Error(
+      "delete failed: cannot delete track hosting the Producer Pal device",
+    );
+  }
+
+  const liveSet = new LiveAPI("live_set");
+  liveSet.call("delete_track", trackIndex);
+}
+
+/**
+ * Deletes a scene by its index
+ * @param {string} id - The object ID
+ * @param {Object} object - The object to delete
+ */
+function deleteSceneObject(id, object) {
+  const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
+  if (Number.isNaN(sceneIndex)) {
+    throw new Error(
+      `delete failed: no scene index for id "${id}" (path="${object.path}")`,
+    );
+  }
+  const liveSet = new LiveAPI("live_set");
+  liveSet.call("delete_scene", sceneIndex);
+}
+
+/**
+ * Deletes a clip by its track and clip ID
+ * @param {string} id - The object ID
+ * @param {Object} object - The object to delete
+ */
+function deleteClipObject(id, object) {
+  const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
+  if (!trackIndex) {
+    throw new Error(
+      `delete failed: no track index for id "${id}" (path="${object.path}")`,
+    );
+  }
+  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  track.call("delete_clip", `id ${object.id}`);
+}
+
+/**
+ * Deletes an object based on its type
+ * @param {string} type - The type of object ("track", "scene", or "clip")
+ * @param {string} id - The object ID
+ * @param {Object} object - The object to delete
+ */
+function deleteObjectByType(type, id, object) {
+  if (type === "track") {
+    deleteTrackObject(id, object);
+  } else if (type === "scene") {
+    deleteSceneObject(id, object);
+  } else if (type === "clip") {
+    deleteClipObject(id, object);
+  }
+}
+
 /**
  * Deletes objects by ids
  * @param {Object} args - The parameters
@@ -44,47 +117,7 @@ export function deleteObject({ ids, type } = {}, _context = {}) {
   }
 
   for (const { id, object } of objectsToDelete) {
-    if (type === "track") {
-      const trackIndex = Number(
-        object.path.match(/live_set tracks (\d+)/)?.[1],
-      );
-      if (Number.isNaN(trackIndex)) {
-        throw new Error(
-          `delete failed: no track index for id "${id}" (path="${object.path}")`,
-        );
-      }
-
-      const hostTrackIndex = getHostTrackIndex();
-      if (trackIndex === hostTrackIndex) {
-        throw new Error(
-          "delete failed: cannot delete track hosting the Producer Pal device",
-        );
-      }
-
-      const liveSet = new LiveAPI("live_set");
-      liveSet.call("delete_track", trackIndex);
-    } else if (type === "scene") {
-      const sceneIndex = Number(
-        object.path.match(/live_set scenes (\d+)/)?.[1],
-      );
-      if (Number.isNaN(sceneIndex)) {
-        throw new Error(
-          `delete failed: no scene index for id "${id}" (path="${object.path}")`,
-        );
-      }
-      const liveSet = new LiveAPI("live_set");
-      liveSet.call("delete_scene", sceneIndex);
-    } else if (type === "clip") {
-      const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
-      if (!trackIndex) {
-        throw new Error(
-          `delete failed: no track index for id "${id}" (path="${object.path}")`,
-        );
-      }
-      const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-      track.call("delete_clip", `id ${object.id}`);
-    }
-
+    deleteObjectByType(type, id, object);
     deletedObjects.push({ id, type, deleted: true });
   }
 

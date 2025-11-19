@@ -57,29 +57,13 @@ async function chat(
   }
 
   const ai = new GoogleGenAI({ apiKey });
-  const config = {};
-
-  if (outputTokens != null) {
-    config.maxOutputTokens = outputTokens;
-  }
-
-  if (randomness != null) {
-    config.temperature = randomness;
-  }
-
-  if (thinking || thinkingBudget != null) {
-    config.thinkingConfig = {};
-    if (thinking) {
-      config.thinkingConfig.includeThoughts = true;
-    }
-    if (thinkingBudget != null) {
-      config.thinkingConfig.thinkingBudget = thinkingBudget;
-    }
-  }
-
-  if (systemPrompt != null) {
-    config.systemInstruction = systemPrompt;
-  }
+  const config = buildConfig({
+    outputTokens,
+    randomness,
+    thinking,
+    thinkingBudget,
+    systemPrompt,
+  });
 
   let turnCount = 0;
   const initialText = textArray.length > 0 ? textArray.join(" ") : "";
@@ -131,23 +115,14 @@ async function chat(
       turnCount++;
       console.log(`\n[Turn ${turnCount}] User: ${currentInput}`);
 
-      if (stream) {
-        const message = { message: currentInput };
-        if (debug || verbose) debugCall("chat.sendMessageStream", message);
-        const responseStream = await chatSession.sendMessageStream(message);
-        console.log(`\n[Turn ${turnCount}] Assistant:`);
-        await printStream(responseStream, { debug, verbose });
-      } else {
-        const message = { message: currentInput };
-        if (debug || verbose) debugCall("chat.sendMessage", message);
-        const response = await chatSession.sendMessage(message);
-
-        console.log(`\n[Turn ${turnCount}] Assistant:`);
-        if (debug || verbose) {
-          debugResult(response, verbose);
-        }
-        console.log(formatResponse(response, currentInput));
-      }
+      await sendMessage(
+        chatSession,
+        currentInput,
+        turnCount,
+        stream,
+        debug,
+        verbose,
+      );
 
       currentInput = await new Promise((resolve) =>
         rl.question("\n> ", resolve),
@@ -161,6 +136,67 @@ async function chat(
   }
 }
 
+function buildConfig({
+  outputTokens,
+  randomness,
+  thinking,
+  thinkingBudget,
+  systemPrompt,
+}) {
+  const config = {};
+
+  if (outputTokens != null) {
+    config.maxOutputTokens = outputTokens;
+  }
+
+  if (randomness != null) {
+    config.temperature = randomness;
+  }
+
+  if (thinking || thinkingBudget != null) {
+    config.thinkingConfig = {};
+    if (thinking) {
+      config.thinkingConfig.includeThoughts = true;
+    }
+    if (thinkingBudget != null) {
+      config.thinkingConfig.thinkingBudget = thinkingBudget;
+    }
+  }
+
+  if (systemPrompt != null) {
+    config.systemInstruction = systemPrompt;
+  }
+
+  return config;
+}
+
+async function sendMessage(
+  chatSession,
+  currentInput,
+  turnCount,
+  stream,
+  debug,
+  verbose,
+) {
+  const message = { message: currentInput };
+
+  if (stream) {
+    if (debug || verbose) debugCall("chat.sendMessageStream", message);
+    const responseStream = await chatSession.sendMessageStream(message);
+    console.log(`\n[Turn ${turnCount}] Assistant:`);
+    await printStream(responseStream, { debug, verbose });
+  } else {
+    if (debug || verbose) debugCall("chat.sendMessage", message);
+    const response = await chatSession.sendMessage(message);
+
+    console.log(`\n[Turn ${turnCount}] Assistant:`);
+    if (debug || verbose) {
+      debugResult(response, verbose);
+    }
+    console.log(formatResponse(response, currentInput));
+  }
+}
+
 async function printStream(stream, { debug, verbose }) {
   let inThought = false;
   for await (const chunk of stream) {
@@ -170,31 +206,38 @@ async function printStream(stream, { debug, verbose }) {
       debugResult(chunk, verbose);
     }
     for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
-      if (part.text) {
-        if (part.thought) {
-          process.stdout.write(
-            inThought ? continueThought(part.text) : startThought(part.text),
-          );
-          inThought = true;
-        } else {
-          if (inThought) {
-            process.stdout.write(endThought());
-            inThought = false;
-          }
-          process.stdout.write(part.text);
-        }
-      } else if (part.functionCall) {
-        process.stdout.write(
-          `🔧 ${part.functionCall.name}(${inspect(part.functionCall.args, { compact: true, depth: 10 })})\n`,
-        );
-      } else if (part.functionResponse) {
-        process.stdout.write(
-          `   ↳ ${truncate(part.functionResponse?.response?.content?.[0]?.text, 160)}\n`,
-        );
-      }
+      inThought = processPart(part, inThought);
     }
   }
   console.log();
+}
+
+function processPart(part, inThought) {
+  if (part.text) {
+    if (part.thought) {
+      process.stdout.write(
+        inThought ? continueThought(part.text) : startThought(part.text),
+      );
+      return true;
+    }
+    if (inThought) {
+      process.stdout.write(endThought());
+    }
+    process.stdout.write(part.text);
+    return false;
+  }
+  if (part.functionCall) {
+    process.stdout.write(
+      `🔧 ${part.functionCall.name}(${inspect(part.functionCall.args, { compact: true, depth: 10 })})\n`,
+    );
+    return inThought;
+  }
+  if (part.functionResponse) {
+    process.stdout.write(
+      `   ↳ ${truncate(part.functionResponse?.response?.content?.[0]?.text, 160)}\n`,
+    );
+  }
+  return inThought;
 }
 
 function isExitCommand(input) {

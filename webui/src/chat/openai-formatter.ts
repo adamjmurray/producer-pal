@@ -1,5 +1,6 @@
 import type {
   OpenAIMessage,
+  OpenAIToolCall,
   UIMessage,
   UIPart,
   UIThoughtPart,
@@ -62,6 +63,110 @@ function findToolResult(
   }
 
   return { result: null, isError: false };
+}
+
+/**
+ * Process text content and add to parts, merging with previous text part if needed
+ */
+function addTextContent(parts: UIPart[], content: string): void {
+  const lastPart = parts.at(-1);
+  if (lastPart?.type === "text") {
+    lastPart.content += content;
+  } else {
+    parts.push({ type: "text", content });
+  }
+}
+
+/**
+ * Process a single tool call and add it to parts
+ */
+function addToolCall(
+  toolCall: OpenAIToolCall,
+  parts: UIPart[],
+  history: OpenAIMessage[],
+  rawIndex: number,
+): void {
+  if (toolCall.type !== "function") return;
+
+  const args = toolCall.function.arguments
+    ? JSON.parse(toolCall.function.arguments)
+    : {};
+
+  const { result, isError } = findToolResult(
+    history,
+    toolCall.id,
+    rawIndex + 1,
+  );
+
+  parts.push({
+    type: "tool",
+    name: toolCall.function.name,
+    args,
+    result,
+    isError: isError ? true : undefined,
+  });
+}
+
+/**
+ * Process all tool calls for a message
+ */
+function processToolCalls(
+  msg: OpenAIMessage,
+  parts: UIPart[],
+  history: OpenAIMessage[],
+  rawIndex: number,
+): void {
+  if (msg.role !== "assistant" || !("tool_calls" in msg) || !msg.tool_calls) {
+    return;
+  }
+
+  for (const toolCall of msg.tool_calls) {
+    addToolCall(toolCall, parts, history, rawIndex);
+  }
+}
+
+/**
+ * Process user or assistant message content (text and tool calls)
+ */
+function processMessageContent(
+  msg: OpenAIMessage,
+  parts: UIPart[],
+  history: OpenAIMessage[],
+  rawIndex: number,
+): void {
+  if (msg.role !== "user" && msg.role !== "assistant") {
+    return;
+  }
+
+  // Add reasoning content (assistant only)
+  if (msg.role === "assistant" && "reasoning_details" in msg) {
+    const reasoningDetails = msg.reasoning_details as
+      | ReasoningDetail[]
+      | undefined;
+    addReasoningDetails(reasoningDetails, parts);
+  }
+
+  // Add text content
+  const content = typeof msg.content === "string" ? msg.content : undefined;
+  if (content) {
+    addTextContent(parts, content);
+  }
+
+  // Add tool calls
+  processToolCalls(msg, parts, history, rawIndex);
+}
+
+/**
+ * Mark the last thought part as open if it exists
+ */
+function markLastThoughtAsOpen(messages: UIMessage[]): void {
+  const lastMessage = messages.at(-1);
+  if (!lastMessage) return;
+
+  const lastPart = lastMessage.parts.at(-1);
+  if (lastPart?.type === "thought") {
+    (lastPart as UIThoughtPart).isOpen = true;
+  }
 }
 
 /**
@@ -130,66 +235,12 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
       messages.push(currentMessage);
     }
 
-    const parts: UIPart[] = currentMessage.parts;
-
-    if (msg.role === "user" || msg.role === "assistant") {
-      // Add reasoning content (assistant only) - this comes before regular content
-      if (msg.role === "assistant" && "reasoning_details" in msg) {
-        const reasoningDetails = msg.reasoning_details as
-          | ReasoningDetail[]
-          | undefined;
-        addReasoningDetails(reasoningDetails, parts);
-      }
-
-      // Add text content (handle both string and array content types)
-      const content = typeof msg.content === "string" ? msg.content : undefined;
-      if (content) {
-        const lastPart = parts.at(-1);
-        if (lastPart?.type === "text") {
-          // Merge with previous text part
-          lastPart.content += content;
-        } else {
-          parts.push({ type: "text", content });
-        }
-      }
-
-      // Add tool calls (assistant only)
-      if (msg.role === "assistant" && "tool_calls" in msg && msg.tool_calls) {
-        for (const toolCall of msg.tool_calls) {
-          // Only handle function tool calls (skip custom tool calls)
-          if (toolCall.type !== "function") continue;
-
-          const args = toolCall.function.arguments
-            ? JSON.parse(toolCall.function.arguments)
-            : {};
-
-          // Look ahead for matching tool result
-          const { result, isError } = findToolResult(
-            history,
-            toolCall.id,
-            rawIndex + 1,
-          );
-
-          parts.push({
-            type: "tool",
-            name: toolCall.function.name,
-            args,
-            result,
-            isError: isError ? true : undefined,
-          });
-        }
-      }
-    }
+    // Process message content (text, reasoning, tool calls)
+    processMessageContent(msg, currentMessage.parts, history, rawIndex);
   }
 
   // Mark the last thought part as open (similar to Gemini's implementation)
-  const lastMessage = messages.at(-1);
-  if (lastMessage) {
-    const lastPart = lastMessage.parts.at(-1);
-    if (lastPart?.type === "thought") {
-      (lastPart as UIThoughtPart).isOpen = true; // show the thought as currently active
-    }
-  }
+  markLastThoughtAsOpen(messages);
 
   return messages;
 }

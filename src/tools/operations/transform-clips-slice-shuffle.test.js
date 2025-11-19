@@ -52,133 +52,72 @@ describe("transformClips - slice + shuffle combination", () => {
     const slicedClips = [];
     const shuffledClips = [];
 
+    function mockClipProperties(prop, clipId) {
+      if (clipId === clip1Id || clipId === clip2Id) {
+        if (prop === "is_midi_clip") return [0];
+        if (prop === "is_audio_clip") return [1];
+        if (prop === "is_arrangement_clip") return [1];
+        if (prop === "looping") return [1];
+        if (prop === "loop_start") return [0];
+        if (prop === "loop_end") return [2];
+        if (prop === "start_marker") return [0];
+        if (prop === "end_marker") return [2];
+        if (prop === "gain") return [1.0];
+        if (prop === "start_time") return clipId === clip1Id ? [0.0] : [2.0];
+        if (prop === "end_time") return clipId === clip1Id ? [2.0] : [4.0];
+      }
+      return null;
+    }
+
+    function mockSlicedClipProperties(prop, clipId) {
+      if (clipId?.startsWith("moved_") || clipId?.startsWith("tile_")) {
+        if (prop === "is_midi_clip") return [0];
+        if (prop === "is_audio_clip") return [1];
+        if (prop === "is_arrangement_clip") return [1];
+        if (prop === "looping") return [1];
+        if (prop === "loop_start") return [0];
+        if (prop === "loop_end") return [1];
+        if (prop === "start_marker") return [0];
+        if (prop === "end_marker") return [1];
+        if (prop === "gain") return [1.0];
+
+        const clipNum = parseInt(clipId.split("_")[1]);
+        if (prop === "start_time") return [clipNum - 1];
+        if (prop === "end_time") return [clipNum];
+      }
+      return null;
+    }
+
+    function mockShuffledClipProperties(prop, clipId) {
+      if (clipId?.startsWith("shuffled_")) {
+        if (prop === "is_midi_clip") return [0];
+        if (prop === "is_audio_clip") return [1];
+        if (prop === "is_arrangement_clip") return [1];
+        if (prop === "looping") return [1];
+        if (prop === "gain") return [1.0];
+        if (prop === "start_time") return [Math.random() * 4];
+        if (prop === "end_time") return [Math.random() * 4 + 1];
+      }
+      return null;
+    }
+
     liveApiGet.mockImplementation(function (prop) {
       if (this._path === "live_set") {
-        if (prop === "signature_numerator") {
-          return [4];
-        }
-        if (prop === "signature_denominator") {
-          return [4];
-        }
+        if (prop === "signature_numerator") return [4];
+        if (prop === "signature_denominator") return [4];
       }
 
-      // Both original clips are 2 beats long, looped audio clips
-      if (this._id === clip1Id || this._id === clip2Id) {
-        if (prop === "is_midi_clip") {
-          return [0];
-        }
-        if (prop === "is_audio_clip") {
-          return [1];
-        }
-        if (prop === "is_arrangement_clip") {
-          return [1];
-        }
-        if (prop === "looping") {
-          return [1];
-        }
-        if (prop === "loop_start") {
-          return [0];
-        }
-        if (prop === "loop_end") {
-          return [2];
-        }
-        if (prop === "start_marker") {
-          return [0];
-        }
-        if (prop === "end_marker") {
-          return [2];
-        }
-        if (prop === "start_time") {
-          return this._id === clip1Id ? [0.0] : [2.0];
-        }
-        if (prop === "end_time") {
-          return this._id === clip1Id ? [2.0] : [4.0];
-        }
-        if (prop === "gain") {
-          return [1.0];
-        }
-      }
+      const clipResult =
+        mockClipProperties(prop, this._id) ||
+        mockSlicedClipProperties(prop, this._id) ||
+        mockShuffledClipProperties(prop, this._id);
 
-      // Sliced clips (created during slice operation)
-      if (this._id?.startsWith("moved_") || this._id?.startsWith("tile_")) {
-        if (prop === "is_midi_clip") {
-          return [0];
-        }
-        if (prop === "is_audio_clip") {
-          return [1];
-        }
-        if (prop === "is_arrangement_clip") {
-          return [1];
-        }
-        if (prop === "looping") {
-          return [1];
-        }
-        if (prop === "loop_start") {
-          return [0];
-        }
-        if (prop === "loop_end") {
-          return [1];
-        }
-        if (prop === "start_marker") {
-          return [0];
-        }
-        if (prop === "end_marker") {
-          return [1];
-        }
-        if (prop === "gain") {
-          return [1.0];
-        }
-
-        // Return positions for sliced clips
-        const clipNum = parseInt(this._id.split("_")[1]);
-        if (this._id.startsWith("moved_")) {
-          if (prop === "start_time") {
-            return [clipNum - 1];
-          }
-          if (prop === "end_time") {
-            return [clipNum];
-          }
-        } else {
-          if (prop === "start_time") {
-            return [clipNum - 1];
-          }
-          if (prop === "end_time") {
-            return [clipNum];
-          }
-        }
-      }
-
-      // Shuffled clips (created during shuffle operation)
-      if (this._id?.startsWith("shuffled_")) {
-        if (prop === "is_midi_clip") {
-          return [0];
-        }
-        if (prop === "is_audio_clip") {
-          return [1];
-        }
-        if (prop === "is_arrangement_clip") {
-          return [1];
-        }
-        if (prop === "looping") {
-          return [1];
-        }
-        if (prop === "start_time") {
-          return [Math.random() * 4];
-        }
-        if (prop === "end_time") {
-          return [Math.random() * 4 + 1];
-        }
-        if (prop === "gain") {
-          return [1.0];
-        }
-      }
+      if (clipResult) return clipResult;
 
       // Track arrangement_clips query
       if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
         if (slicedClips.length > 0) {
-          // After slicing, return sliced clips
           if (shuffledClips.length > 0) {
-            // After shuffling, return shuffled clips
             return ["id", ...shuffledClips.flatMap((id) => [id, "id"])].slice(
               0,
               -1,
@@ -189,7 +128,6 @@ describe("transformClips - slice + shuffle combination", () => {
             -1,
           );
         }
-        // Initial state: two original clips
         return ["id", clip1Id, "id", clip2Id];
       }
 
