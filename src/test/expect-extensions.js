@@ -1,11 +1,12 @@
 import { expect } from "vitest";
 
 const inspect = (obj) => JSON.stringify(obj, null, 2);
+const EXPECTED_MOCK_FUNCTION_MSG = "Expected a mock function";
 
 expect.extend({
   toHaveBeenCalledWithThis(received, expectedThis, ...expectedArgs) {
     if (typeof received !== "function" || !received.mock) {
-      return { pass: false, message: () => "Expected a mock function" };
+      return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
     }
 
     const { calls, contexts } = received.mock;
@@ -65,7 +66,7 @@ expect.extend({
     ...expectedArgs
   ) {
     if (typeof received !== "function" || !received.mock) {
-      return { pass: false, message: () => "Expected a mock function" };
+      return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
     }
     const { calls, contexts } = received.mock;
 
@@ -115,7 +116,7 @@ expect.extend({
 
   toHaveBeenCalledExactlyOnceWithThis(received, expectedThis, ...expectedArgs) {
     if (typeof received !== "function" || !received.mock) {
-      return { pass: false, message: () => "Expected a mock function" };
+      return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
     }
 
     const { calls, contexts } = received.mock;

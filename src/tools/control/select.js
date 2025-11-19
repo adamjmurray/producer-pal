@@ -2,6 +2,26 @@ import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { validateIdType } from "../shared/id-validation.js";
 import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
 
+const MASTER_TRACK_PATH = "live_set master_track";
+
+/**
+ * Build track path string based on category and index
+ */
+function buildTrackPath(category, trackIndex) {
+  const finalCategory = category || "regular";
+
+  if (finalCategory === "regular") {
+    return `live_set tracks ${trackIndex}`;
+  }
+  if (finalCategory === "return") {
+    return `live_set return_tracks ${trackIndex}`;
+  }
+  if (finalCategory === "master") {
+    return MASTER_TRACK_PATH;
+  }
+  return null;
+}
+
 /**
  * Reads or updates the view state and selection in Ableton Live.
  *
@@ -194,16 +214,7 @@ function validateParameters({
 
   // Cross-validation for track ID vs index (requires Live API calls)
   if (trackId != null && trackIndex != null) {
-    const finalCategory = category || "regular";
-    let trackPath;
-    if (finalCategory === "regular") {
-      trackPath = `live_set tracks ${trackIndex}`;
-    } else if (finalCategory === "return") {
-      trackPath = `live_set return_tracks ${trackIndex}`;
-    } else if (finalCategory === "master") {
-      trackPath = "live_set master_track";
-    }
-
+    const trackPath = buildTrackPath(category, trackIndex);
     if (trackPath) {
       const trackAPI = new LiveAPI(trackPath);
       if (trackAPI.exists() && trackAPI.id !== trackId) {
@@ -250,15 +261,7 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   } else if (category != null || trackIndex != null) {
     // Select by category/index
     const finalCategory = category || "regular";
-    let trackPath;
-
-    if (finalCategory === "regular") {
-      trackPath = `live_set tracks ${trackIndex}`;
-    } else if (finalCategory === "return") {
-      trackPath = `live_set return_tracks ${trackIndex}`;
-    } else if (finalCategory === "master") {
-      trackPath = "live_set master_track";
-    }
+    const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
       trackAPI = new LiveAPI(trackPath);
@@ -329,26 +332,21 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
     songView.call("select_device", deviceIdForApi);
   } else if (instrument === true) {
     // Select instrument on the currently selected or specified track
-    let trackPath = null;
+    let trackPath = buildTrackPath(
+      trackSelectionResult.selectedCategory,
+      trackSelectionResult.selectedTrackIndex,
+    );
 
-    if (trackSelectionResult.selectedCategory === "regular") {
-      trackPath = `live_set tracks ${trackSelectionResult.selectedTrackIndex}`;
-    } else if (trackSelectionResult.selectedCategory === "return") {
-      trackPath = `live_set return_tracks ${trackSelectionResult.selectedTrackIndex}`;
-    } else if (trackSelectionResult.selectedCategory === "master") {
-      trackPath = "live_set master_track";
-    } else {
+    if (!trackPath) {
       // Use currently selected track
       const selectedTrackAPI = new LiveAPI("live_set view selected_track");
       if (selectedTrackAPI.exists()) {
         const category = selectedTrackAPI.category;
-        if (category === "regular") {
-          trackPath = `live_set tracks ${selectedTrackAPI.trackIndex}`;
-        } else if (category === "return") {
-          trackPath = `live_set return_tracks ${selectedTrackAPI.returnTrackIndex}`;
-        } else if (category === "master") {
-          trackPath = "live_set master_track";
-        }
+        const trackIndex =
+          category === "return"
+            ? selectedTrackAPI.returnTrackIndex
+            : selectedTrackAPI.trackIndex;
+        trackPath = buildTrackPath(category, trackIndex);
       }
     }
 

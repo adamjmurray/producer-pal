@@ -303,3 +303,147 @@ export function handleArrangementStartOperation({
   // Return the new clip ID
   return newClip.id;
 }
+
+/**
+ * Process a single clip update
+ * @param {Object} params - Parameters object containing all update parameters
+ */
+export function processSingleClipUpdate(params) {
+  const {
+    clip,
+    notationString,
+    noteUpdateMode,
+    name,
+    color,
+    timeSignature,
+    start,
+    length,
+    firstStart,
+    looping,
+    gainDb,
+    pitchShift,
+    warpMode,
+    warping,
+    warpOp,
+    warpBeatTime,
+    warpSampleTime,
+    warpDistance,
+    arrangementLengthBeats,
+    arrangementStartBeats,
+    context,
+    updatedClips,
+    tracksWithMovedClips,
+    parseTimeSignature,
+    handleArrangementLengthOperation,
+    buildClipResultObject,
+  } = params;
+
+  // Parse time signature if provided
+  let timeSigNumerator, timeSigDenominator;
+  if (timeSignature != null) {
+    const parsed = parseTimeSignature(timeSignature);
+    timeSigNumerator = parsed.numerator;
+    timeSigDenominator = parsed.denominator;
+  } else {
+    timeSigNumerator = clip.getProperty("signature_numerator");
+    timeSigDenominator = clip.getProperty("signature_denominator");
+  }
+
+  // Track final note count
+  let finalNoteCount = null;
+
+  // Determine looping state
+  const isLooping = looping != null ? looping : clip.getProperty("looping") > 0;
+
+  // Handle firstStart warning for non-looping clips
+  if (firstStart != null && !isLooping) {
+    console.error(
+      "Warning: firstStart parameter ignored for non-looping clips",
+    );
+  }
+
+  // Calculate beat positions
+  const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
+    start,
+    length,
+    firstStart,
+    timeSigNumerator,
+    timeSigDenominator,
+    clip,
+    isLooping,
+  });
+
+  // Build and set clip properties
+  const currentLoopEnd = isLooping ? clip.getProperty("loop_end") : null;
+  const propsToSet = buildClipPropertiesToSet({
+    name,
+    color,
+    timeSignature,
+    timeSigNumerator,
+    timeSigDenominator,
+    startMarkerBeats,
+    looping,
+    isLooping,
+    startBeats,
+    endBeats,
+    currentLoopEnd,
+  });
+
+  clip.setAll(propsToSet);
+
+  // Audio-specific parameters
+  const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+  if (isAudioClip) {
+    setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
+  }
+
+  // Handle note updates
+  finalNoteCount = handleNoteUpdates(
+    clip,
+    notationString,
+    noteUpdateMode,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  // Handle warp marker operations
+  if (warpOp != null) {
+    handleWarpMarkerOperation(
+      clip,
+      warpOp,
+      warpBeatTime,
+      warpSampleTime,
+      warpDistance,
+    );
+  }
+
+  // Handle arrangementLength
+  let hasArrangementLengthResults = false;
+  if (arrangementLengthBeats != null) {
+    const results = handleArrangementLengthOperation({
+      clip,
+      isAudioClip,
+      arrangementLengthBeats,
+      context,
+    });
+    if (results.length > 0) {
+      updatedClips.push(...results);
+      hasArrangementLengthResults = true;
+    }
+  }
+
+  // Handle arrangementStart
+  let finalClipId = clip.id;
+  if (arrangementStartBeats != null) {
+    finalClipId = handleArrangementStartOperation({
+      clip,
+      arrangementStartBeats,
+      tracksWithMovedClips,
+    });
+  }
+
+  // Build result object if arrangementLength didn't return results
+  if (!hasArrangementLengthResults) {
+    updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
+  }
+}

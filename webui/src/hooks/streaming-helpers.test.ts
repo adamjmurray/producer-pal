@@ -57,7 +57,12 @@ describe("streaming-helpers", () => {
       const result = createGeminiErrorMessage("Test error", chatHistory);
 
       expect(result).toHaveLength(1);
-      expect(result[0]?.role).toBe("error");
+      expect(result[0]?.role).toBe("model");
+      const firstPart = result[0]?.parts[0];
+      expect(firstPart?.type).toBe("error");
+      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
+        "Error: Test error",
+      );
     });
 
     it("should not duplicate Error prefix", () => {
@@ -65,7 +70,7 @@ describe("streaming-helpers", () => {
       const result = createGeminiErrorMessage("Error: Test", chatHistory);
 
       const firstPart = result[0]?.parts[0];
-      expect(firstPart && "text" in firstPart ? firstPart.text : "").toBe(
+      expect(firstPart && "content" in firstPart ? firstPart.content : "").toBe(
         "Error: Test",
       );
     });
