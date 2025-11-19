@@ -151,7 +151,7 @@ export class OpenAIClient {
 
   /**
    * Tests connection to the MCP server without creating a client instance.
-   * @param mcpUrl - MCP server URL to test
+   * @param {string} [mcpUrl="http://localhost:3350/mcp"] - MCP server URL to test
    * @throws If connection fails
    */
   static async testConnection(
@@ -194,8 +194,8 @@ export class OpenAIClient {
    * 4. Continue streaming with updated history
    * 5. Repeat until no tool_calls
    *
-   * @param message - User message to send
-   * @param abortSignal
+   * @param {string} message - User message to send
+   * @param {AbortSignal} [abortSignal] - Optional abort signal
    * @yields Complete chat history in OpenAI's raw format after each update
    * @throws If MCP client is not initialized or if message sending fails
    *
@@ -277,7 +277,8 @@ export class OpenAIClient {
 
   /**
    * Processes the OpenAI stream and updates chat history with each chunk.
-   * @param tools
+   * @param {OpenAI.Chat.ChatCompletionTool[]} tools - Array of available tools
+   * @returns Generator yielding chat history updates
    */
   private async *processStreamAndUpdateHistory(
     tools: OpenAI.Chat.ChatCompletionTool[],
@@ -322,8 +323,8 @@ export class OpenAIClient {
 
   /**
    * Processes content delta from a stream chunk.
-   * @param delta
-   * @param currentMessage
+   * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - Delta object from stream chunk
+   * @param {OpenAIAssistantMessageWithReasoning} currentMessage - Current message being built
    */
   private processContentDelta(
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -339,8 +340,9 @@ export class OpenAIClient {
 
   /**
    * Processes reasoning delta from a stream chunk and returns updated reasoning text.
-   * @param delta
-   * @param reasoningText
+   * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - Delta object from stream chunk
+   * @param {string} reasoningText - Accumulated reasoning text so far
+   * @returns Updated reasoning text
    */
   private processReasoningDelta(
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -352,8 +354,8 @@ export class OpenAIClient {
 
   /**
    * Processes tool call deltas from a stream chunk.
-   * @param delta
-   * @param toolCallsMap
+   * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - Delta object from stream chunk
+   * @param {Map<number, OpenAIToolCall>} toolCallsMap - Map of tool calls being accumulated
    */
   private processToolCallDeltas(
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -368,8 +370,8 @@ export class OpenAIClient {
 
   /**
    * Accumulates a single tool call delta into the tool calls map.
-   * @param tcDelta
-   * @param toolCallsMap
+   * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall} tcDelta - Tool call delta from stream
+   * @param {Map<number, OpenAIToolCall>} toolCallsMap - Map of tool calls being accumulated
    */
   private accumulateToolCall(
     tcDelta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
@@ -394,9 +396,10 @@ export class OpenAIClient {
 
   /**
    * Builds the assistant message with tool calls and reasoning details.
-   * @param currentMessage
-   * @param toolCallsMap
-   * @param reasoningText
+   * @param {OpenAIAssistantMessageWithReasoning} currentMessage - Current message being built
+   * @param {Map<number, OpenAIToolCall>} toolCallsMap - Map of accumulated tool calls
+   * @param {string} reasoningText - Accumulated reasoning text
+   * @returns Complete assistant message with all parts
    */
   private buildStreamMessage(
     currentMessage: OpenAIAssistantMessageWithReasoning,
@@ -424,7 +427,7 @@ export class OpenAIClient {
 
   /**
    * Updates chat history with a new assistant message.
-   * @param message
+   * @param {OpenAIAssistantMessageWithReasoning} message - Assistant message to add to history
    */
   private updateChatHistoryWithMessage(
     message: OpenAIAssistantMessageWithReasoning,
@@ -450,7 +453,8 @@ export class OpenAIClient {
 
   /**
    * Executes all provided tool calls via MCP.
-   * @param toolCalls
+   * @param {OpenAIToolCall[]} toolCalls - Array of tool calls to execute
+   * @returns Generator yielding chat history updates
    */
   private async *executeToolCalls(
     toolCalls: OpenAIToolCall[],
@@ -476,7 +480,8 @@ export class OpenAIClient {
 
   /**
    * Executes a single tool call and returns the result.
-   * @param toolCall
+   * @param {OpenAIToolCall} toolCall - Tool call to execute
+   * @returns Tool call result
    */
   private async executeSingleToolCall(
     toolCall: OpenAIToolCall,
@@ -499,8 +504,8 @@ export class OpenAIClient {
 
   /**
    * Adds an error tool message to the chat history.
-   * @param toolCall
-   * @param error
+   * @param {OpenAIToolCall} toolCall - Tool call that failed
+   * @param {unknown} error - Error that occurred
    */
   private addErrorToolMessage(toolCall: OpenAIToolCall, error: unknown): void {
     const toolMessage: OpenAIMessage = {

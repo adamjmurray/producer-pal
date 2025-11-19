@@ -99,9 +99,9 @@ describe("transformClips - slice + shuffle combination", () => {
     }
 
     /**
-     *
-     * @param prop
-     * @param clipId
+     * Mock properties for shuffled clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} clipId - Clip ID
      */
     function mockShuffledClipProperties(prop, clipId) {
       if (clipId?.startsWith("shuffled_")) {
