@@ -56,6 +56,113 @@ function expandRepeatPattern(
 }
 
 /**
+ * Emit a single pitch at a position, creating note event and tracking for bar copy
+ * @param {Object} pitchState - Pitch state with velocity, duration, etc.
+ * @param {Object} position - Position with bar and beat
+ * @param {number} beatsPerBar - Musical beats per bar
+ * @param {number} timeSigDenominator - Time signature denominator (or null)
+ * @param {Array} events - Events array to append to
+ * @param {Map} notesByBar - Bar copy tracking map
+ */
+function emitPitchAtPosition(
+  pitchState,
+  position,
+  beatsPerBar,
+  timeSigDenominator,
+  events,
+  notesByBar,
+) {
+  // Convert bar|beat to absolute beats
+  const absoluteBeats = (position.bar - 1) * beatsPerBar + (position.beat - 1);
+
+  // Convert to Ableton beats
+  const abletonBeats =
+    timeSigDenominator != null
+      ? absoluteBeats * (4 / timeSigDenominator)
+      : absoluteBeats;
+
+  const abletonDuration =
+    timeSigDenominator != null
+      ? pitchState.duration * (4 / timeSigDenominator)
+      : pitchState.duration;
+
+  const noteEvent = {
+    pitch: pitchState.pitch,
+    start_time: abletonBeats,
+    duration: abletonDuration,
+    velocity: pitchState.velocity,
+    probability: pitchState.probability,
+    velocity_deviation: pitchState.velocityDeviation,
+  };
+
+  events.push(noteEvent);
+
+  // Track for bar copy: calculate actual bar from note position
+  const barDuration =
+    timeSigDenominator != null
+      ? beatsPerBar * (4 / timeSigDenominator)
+      : beatsPerBar;
+  const actualBar = Math.floor(abletonBeats / barDuration) + 1;
+  const barStartAbletonBeats = (actualBar - 1) * barDuration;
+  const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
+
+  if (!notesByBar.has(actualBar)) {
+    notesByBar.set(actualBar, []);
+  }
+
+  // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
+  notesByBar.get(actualBar).push({
+    ...noteEvent,
+    relativeTime: relativeAbletonBeats,
+    originalBar: actualBar,
+  });
+}
+
+/**
+ * Emit all pitches at multiple positions
+ * @param {Array} positions - Array of positions {bar, beat}
+ * @param {Array} currentPitches - Array of pitch states to emit
+ * @param {Object} element - AST element (to check if bar is explicit)
+ * @param {number} beatsPerBar - Musical beats per bar
+ * @param {number} timeSigDenominator - Time signature denominator (or null)
+ * @param {Array} events - Events array to append to
+ * @param {Map} notesByBar - Bar copy tracking map
+ * @returns {Object} Updated currentTime and hasExplicitBarNumber flag
+ */
+function emitPitchesAtPositions(
+  positions,
+  currentPitches,
+  element,
+  beatsPerBar,
+  timeSigDenominator,
+  events,
+  notesByBar,
+) {
+  let currentTime = null;
+  let hasExplicitBarNumber = false;
+
+  for (const position of positions) {
+    currentTime = position;
+    if (element.bar !== null) {
+      hasExplicitBarNumber = true;
+    }
+
+    for (const pitchState of currentPitches) {
+      emitPitchAtPosition(
+        pitchState,
+        currentTime,
+        beatsPerBar,
+        timeSigDenominator,
+        events,
+        notesByBar,
+      );
+    }
+  }
+
+  return { currentTime, hasExplicitBarNumber };
+}
+
+/**
  * Convert bar|beat notation into note events
  * @param {string} barBeatExpression - bar|beat notation string
  * @param {Object} options - Options
@@ -241,59 +348,18 @@ export function interpretNotation(barBeatExpression, options = {}) {
           }
 
           // Emit all buffered pitches at each position
-          for (const position of positions) {
-            currentTime = position;
-            if (element.bar !== null) {
-              hasExplicitBarNumber = true;
-            }
-
-            for (const pitchState of currentPitches) {
-              // Convert bar|beat to absolute beats
-              const absoluteBeats =
-                (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
-
-              // Convert to Ableton beats
-              const abletonBeats =
-                timeSigDenominator != null
-                  ? absoluteBeats * (4 / timeSigDenominator)
-                  : absoluteBeats;
-
-              const abletonDuration =
-                timeSigDenominator != null
-                  ? pitchState.duration * (4 / timeSigDenominator)
-                  : pitchState.duration;
-
-              const noteEvent = {
-                pitch: pitchState.pitch,
-                start_time: abletonBeats,
-                duration: abletonDuration,
-                velocity: pitchState.velocity,
-                probability: pitchState.probability,
-                velocity_deviation: pitchState.velocityDeviation,
-              };
-
-              events.push(noteEvent);
-
-              // Track for bar copy: calculate actual bar from note position
-              const barDuration =
-                timeSigDenominator != null
-                  ? beatsPerBar * (4 / timeSigDenominator)
-                  : beatsPerBar;
-              const actualBar = Math.floor(abletonBeats / barDuration) + 1;
-              const barStartAbletonBeats = (actualBar - 1) * barDuration;
-              const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
-
-              if (!notesByBar.has(actualBar)) {
-                notesByBar.set(actualBar, []);
-              }
-
-              // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
-              notesByBar.get(actualBar).push({
-                ...noteEvent,
-                relativeTime: relativeAbletonBeats,
-                originalBar: actualBar,
-              });
-            }
+          const emitResult = emitPitchesAtPositions(
+            positions,
+            currentPitches,
+            element,
+            beatsPerBar,
+            timeSigDenominator,
+            events,
+            notesByBar,
+          );
+          currentTime = emitResult.currentTime;
+          if (emitResult.hasExplicitBarNumber) {
+            hasExplicitBarNumber = true;
           }
 
           // Mark pitches as emitted
