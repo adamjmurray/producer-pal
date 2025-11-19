@@ -77,6 +77,13 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
   return messages;
 }
 
+/**
+ *
+ * @param acc
+ * @param lastMessage
+ * @param parts
+ * @param rawIndex
+ */
 function handleErrorMessage(
   acc: UIMessage[],
   lastMessage: UIMessage | undefined,
@@ -99,12 +106,21 @@ function handleErrorMessage(
   }
 }
 
+/**
+ *
+ * @param lastMessage
+ */
 function shouldMergeErrorIntoLastMessage(
   lastMessage: UIMessage | undefined,
 ): boolean {
   return lastMessage?.role === "model";
 }
 
+/**
+ *
+ * @param acc
+ * @param rawIndex
+ */
 function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
   const message: UIMessage = {
     role: "model",
@@ -115,6 +131,14 @@ function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
   return message;
 }
 
+/**
+ *
+ * @param acc
+ * @param lastMessage
+ * @param role
+ * @param rawIndex
+ * @param parts
+ */
 function getOrCreateMessage(
   acc: UIMessage[],
   lastMessage: UIMessage | undefined,
@@ -140,6 +164,11 @@ function getOrCreateMessage(
   return message;
 }
 
+/**
+ *
+ * @param part
+ * @param currentParts
+ */
 function processSinglePart(part: Part, currentParts: UIPart[]): void {
   const lastPart = currentParts.at(-1);
   const { functionCall, functionResponse } = part;
@@ -153,6 +182,11 @@ function processSinglePart(part: Part, currentParts: UIPart[]): void {
   }
 }
 
+/**
+ *
+ * @param functionCall
+ * @param currentParts
+ */
 function handleFunctionCall(
   functionCall: Part["functionCall"],
   currentParts: UIPart[],
@@ -167,6 +201,11 @@ function handleFunctionCall(
   });
 }
 
+/**
+ *
+ * @param functionResponse
+ * @param currentParts
+ */
 function handleFunctionResponse(
   functionResponse: FunctionResponse,
   currentParts: UIPart[],
@@ -192,6 +231,12 @@ function handleFunctionResponse(
   }
 }
 
+/**
+ *
+ * @param part
+ * @param lastPart
+ * @param currentParts
+ */
 function handleTextPart(
   part: Part,
   lastPart: UIPart | undefined,
@@ -216,6 +261,11 @@ function handleTextPart(
   }
 }
 
+/**
+ *
+ * @param lastPart
+ * @param isThought
+ */
 function canMergeWithLastPart(
   lastPart: UIPart | undefined,
   isThought: boolean,
@@ -227,6 +277,10 @@ function canMergeWithLastPart(
   );
 }
 
+/**
+ *
+ * @param messages
+ */
 function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastPart = messages.at(-1)?.parts.at(-1);
   if (lastPart?.type === "thought") {
@@ -234,10 +288,18 @@ function markLastThoughtAsOpen(messages: UIMessage[]): void {
   }
 }
 
+/**
+ *
+ * @param parts
+ */
 function isFunctionResponse(parts: Part[]): boolean {
   return Boolean(parts[0]?.functionResponse);
 }
 
+/**
+ *
+ * @param functionResponse
+ */
 function getToolCallResult(functionResponse: FunctionResponse): string {
   // Warnings can be returned in the additional content entries,
   // but that generally isn't intended to be user-facing, so we ignore it
@@ -252,6 +314,10 @@ function getToolCallResult(functionResponse: FunctionResponse): string {
   );
 }
 
+/**
+ *
+ * @param functionResponse
+ */
 function isToolCallError(functionResponse: FunctionResponse): boolean {
   return functionResponse.response?.error != null;
 }

@@ -9,6 +9,8 @@ import type { ReasoningDetail } from "./openai-client.js";
 
 /**
  * Add reasoning details to parts array
+ * @param reasoningDetails
+ * @param parts
  */
 function addReasoningDetails(
   reasoningDetails: ReasoningDetail[] | undefined,
@@ -35,6 +37,9 @@ function addReasoningDetails(
 
 /**
  * Find matching tool result in history
+ * @param history
+ * @param toolCallId
+ * @param startIndex
  */
 function findToolResult(
   history: OpenAIMessage[],
@@ -67,6 +72,8 @@ function findToolResult(
 
 /**
  * Process text content and add to parts, merging with previous text part if needed
+ * @param parts
+ * @param content
  */
 function addTextContent(parts: UIPart[], content: string): void {
   const lastPart = parts.at(-1);
@@ -79,6 +86,10 @@ function addTextContent(parts: UIPart[], content: string): void {
 
 /**
  * Process a single tool call and add it to parts
+ * @param toolCall
+ * @param parts
+ * @param history
+ * @param rawIndex
  */
 function addToolCall(
   toolCall: OpenAIToolCall,
@@ -109,6 +120,10 @@ function addToolCall(
 
 /**
  * Process all tool calls for a message
+ * @param msg
+ * @param parts
+ * @param history
+ * @param rawIndex
  */
 function processToolCalls(
   msg: OpenAIMessage,
@@ -127,6 +142,10 @@ function processToolCalls(
 
 /**
  * Process user or assistant message content (text and tool calls)
+ * @param msg
+ * @param parts
+ * @param history
+ * @param rawIndex
  */
 function processMessageContent(
   msg: OpenAIMessage,
@@ -158,6 +177,7 @@ function processMessageContent(
 
 /**
  * Mark the last thought part as open if it exists
+ * @param messages
  */
 function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastMessage = messages.at(-1);

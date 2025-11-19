@@ -5,6 +5,12 @@ interface ProviderSelectorProps {
   setProvider: (provider: Provider) => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.provider
+ * @param root0.setProvider
+ */
 export function ProviderSelector({
   provider,
   setProvider,

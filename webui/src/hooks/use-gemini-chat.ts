@@ -2,12 +2,12 @@ import { useCallback, useRef, useState } from "preact/hooks";
 import { GeminiClient } from "../chat/gemini-client.js";
 import { formatGeminiMessages } from "../chat/gemini-formatter.js";
 import type { GeminiMessage, UIMessage } from "../types/messages.js";
+import { buildGeminiConfig } from "./config-builders.js";
 import {
   createGeminiErrorMessage,
   handleMessageStream,
   validateMcpConnection,
 } from "./streaming-helpers.js";
-import { buildGeminiConfig } from "./config-builders.js";
 
 interface UseGeminiChatProps {
   apiKey: string;
@@ -33,6 +33,19 @@ interface UseGeminiChatReturn {
   stopResponse: () => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.apiKey
+ * @param root0.model
+ * @param root0.thinking
+ * @param root0.temperature
+ * @param root0.showThoughts
+ * @param root0.enabledTools
+ * @param root0.mcpStatus
+ * @param root0.mcpError
+ * @param root0.checkMcpConnection
+ */
 export function useGeminiChat({
   apiKey,
   model,

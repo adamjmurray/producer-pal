@@ -10,7 +10,7 @@ import { handleArrangementLengthOperation } from "./arrangement-operations.js";
 
 /**
  * Updates properties of existing clips
- * @param {Object} args - The clip parameters
+ * @param {object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.noteUpdateMode="merge"] - How to handle existing notes: 'replace' or 'merge'
@@ -27,7 +27,12 @@ import { handleArrangementLengthOperation } from "./arrangement-operations.js";
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
  * @param {boolean} [args.warping] - Audio clip warping on/off
- * @returns {Object|Array<Object>} Single clip object or array of clip objects
+ * @param args.warpOp
+ * @param args.warpBeatTime
+ * @param args.warpSampleTime
+ * @param args.warpDistance
+ * @param context
+ * @returns {object | Array<object>} Single clip object or array of clip objects
  */
 export function updateClip(
   {

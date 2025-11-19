@@ -49,6 +49,9 @@ export const moveClipFromHoldingMock = vi.fn(
 );
 
 // Setup mocks for vi.mock calls
+/**
+ *
+ */
 export function setupMocks() {
   vi.mock(import("../clip/update-clip.js"), () => ({
     updateClip: updateClipMock,

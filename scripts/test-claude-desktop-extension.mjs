@@ -111,6 +111,11 @@ console.log("");
 let responseCount = 0;
 const startTime = Date.now();
 
+/**
+ *
+ * @param message
+ * @param description
+ */
 function sendMessage(message, description) {
   console.log(`[${Date.now() - startTime}ms] Sending ${description}...`);
   bridge.stdin.write(JSON.stringify(message) + "\n");
@@ -118,6 +123,10 @@ function sendMessage(message, description) {
 
 let responseBuffer = "";
 
+/**
+ *
+ * @param data
+ */
 function parseResponse(data) {
   responseBuffer += data.toString();
 
@@ -148,6 +157,9 @@ function parseResponse(data) {
 
 /**
  * Log response based on response count and content
+ * @param response
+ * @param count
+ * @param tool
  */
 function logResponse(response, count, tool) {
   if (response.error) {
@@ -192,6 +204,8 @@ function logResponse(response, count, tool) {
 
 /**
  * Continue test sequence based on response count
+ * @param count
+ * @param elapsed
  */
 function continueTestSequence(count, elapsed) {
   if (count === 1) {

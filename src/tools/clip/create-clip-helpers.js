@@ -7,6 +7,12 @@ import {
 } from "../../notation/barbeat/barbeat-time.js";
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 
+/**
+ *
+ * @param name
+ * @param count
+ * @param i
+ */
 export function buildClipName(name, count, i) {
   if (name == null) {
     return undefined;
@@ -23,6 +29,18 @@ export function buildClipName(name, count, i) {
   return `${name} ${i + 1}`;
 }
 
+/**
+ *
+ * @param arrangementStart
+ * @param start
+ * @param firstStart
+ * @param length
+ * @param looping
+ * @param timeSigNumerator
+ * @param timeSigDenominator
+ * @param songTimeSigNumerator
+ * @param songTimeSigDenominator
+ */
 export function convertTimingParameters(
   arrangementStart,
   start,
@@ -73,6 +91,15 @@ export function convertTimingParameters(
   return { arrangementStartBeats, startBeats, firstStartBeats, endBeats };
 }
 
+/**
+ *
+ * @param trackIndex
+ * @param sceneIndex
+ * @param clipLength
+ * @param liveSet
+ * @param i
+ * @param maxAutoCreatedScenes
+ */
 function createSessionClip(
   trackIndex,
   sceneIndex,
@@ -116,6 +143,13 @@ function createSessionClip(
   };
 }
 
+/**
+ *
+ * @param trackIndex
+ * @param arrangementStartBeats
+ * @param clipLength
+ * @param i
+ */
 function createArrangementClip(
   trackIndex,
   arrangementStartBeats,
@@ -144,6 +178,17 @@ function createArrangementClip(
   return { clip, arrangementStartBeats: currentArrangementStartBeats };
 }
 
+/**
+ *
+ * @param startBeats
+ * @param endBeats
+ * @param firstStartBeats
+ * @param looping
+ * @param clipName
+ * @param color
+ * @param timeSigNumerator
+ * @param timeSigDenominator
+ */
 function buildClipProperties(
   startBeats,
   endBeats,
@@ -194,6 +239,23 @@ function buildClipProperties(
   return propsToSet;
 }
 
+/**
+ *
+ * @param clip
+ * @param trackIndex
+ * @param view
+ * @param sceneIndex
+ * @param i
+ * @param arrangementStart
+ * @param songTimeSigNumerator
+ * @param songTimeSigDenominator
+ * @param clipLength
+ * @param notationString
+ * @param notes
+ * @param length
+ * @param timeSigNumerator
+ * @param timeSigDenominator
+ */
 function buildClipResult(
   clip,
   trackIndex,
@@ -253,6 +315,30 @@ function buildClipResult(
   return clipResult;
 }
 
+/**
+ *
+ * @param i
+ * @param view
+ * @param trackIndex
+ * @param sceneIndex
+ * @param arrangementStartBeats
+ * @param clipLength
+ * @param liveSet
+ * @param startBeats
+ * @param endBeats
+ * @param firstStartBeats
+ * @param looping
+ * @param clipName
+ * @param color
+ * @param timeSigNumerator
+ * @param timeSigDenominator
+ * @param notationString
+ * @param notes
+ * @param songTimeSigNumerator
+ * @param songTimeSigDenominator
+ * @param arrangementStart
+ * @param length
+ */
 export function processClipIteration(
   i,
   view,

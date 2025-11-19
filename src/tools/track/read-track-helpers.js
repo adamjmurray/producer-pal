@@ -10,10 +10,10 @@ import { VERSION } from "../../shared/version.js";
 /**
  * Read minimal track information for auto-inclusion when clips are requested.
  * Returns only id, type, trackIndex, and clip arrays/counts based on include flags.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {number} args.trackIndex - Track index
- * @param {Object} args.includeFlags - Parsed include flags
- * @returns {Object} Minimal track information
+ * @param {object} args.includeFlags - Parsed include flags
+ * @returns {object} Minimal track information
  */
 export function readTrackMinimal({ trackIndex, includeFlags }) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
@@ -94,6 +94,8 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 
 /**
  * Handle track that doesn't exist
+ * @param category
+ * @param trackIndex
  */
 export function handleNonExistentTrack(category, trackIndex) {
   const result = {
@@ -113,6 +115,9 @@ export function handleNonExistentTrack(category, trackIndex) {
 
 /**
  * Add optional boolean properties to track result
+ * @param result
+ * @param track
+ * @param canBeArmed
  */
 export function addOptionalBooleanProperties(result, track, canBeArmed) {
   const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
@@ -131,6 +136,9 @@ export function addOptionalBooleanProperties(result, track, canBeArmed) {
 
 /**
  * Add track index property based on category
+ * @param result
+ * @param category
+ * @param trackIndex
  */
 export function addCategoryIndex(result, category, trackIndex) {
   if (category === "regular") {
@@ -142,6 +150,7 @@ export function addCategoryIndex(result, category, trackIndex) {
 
 /**
  * Clean up device chains from result
+ * @param result
  */
 export function cleanupDeviceChains(result) {
   if (result.midiEffects) {
@@ -157,6 +166,9 @@ export function cleanupDeviceChains(result) {
 
 /**
  * Add slot index properties for regular tracks
+ * @param result
+ * @param track
+ * @param category
  */
 export function addSlotIndices(result, track, category) {
   if (category !== "regular") {
@@ -174,6 +186,9 @@ export function addSlotIndices(result, track, category) {
 
 /**
  * Add state property if not default active state
+ * @param result
+ * @param track
+ * @param category
  */
 export function addStateIfNotDefault(result, track, category) {
   const trackState = computeState(track, category);
@@ -184,7 +199,8 @@ export function addStateIfNotDefault(result, track, category) {
 
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
- * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @param {object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @param category
  * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
 function computeState(liveObject, category = "regular") {
@@ -212,6 +228,13 @@ function computeState(liveObject, category = "regular") {
 
 /**
  * Add routing information if requested
+ * @param result
+ * @param track
+ * @param category
+ * @param isGroup
+ * @param canBeArmed
+ * @param includeRoutings
+ * @param includeAvailableRoutings
  */
 export function addRoutingInfo(
   result,
@@ -235,6 +258,8 @@ export function addRoutingInfo(
 
 /**
  * Add producer pal host information if applicable
+ * @param result
+ * @param isProducerPalHost
  */
 export function addProducerPalHostInfo(result, isProducerPalHost) {
   if (isProducerPalHost) {

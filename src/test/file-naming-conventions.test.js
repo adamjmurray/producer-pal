@@ -4,6 +4,8 @@ import { join, basename, extname } from "path";
 
 /**
  * Recursively get all files in a directory
+ * @param dir
+ * @param files
  */
 function getAllFiles(dir, files = []) {
   const entries = readdirSync(dir);
@@ -22,6 +24,7 @@ function getAllFiles(dir, files = []) {
 
 /**
  * Check if a filename follows kebab-case convention
+ * @param name
  */
 function isKebabCase(name) {
   // Remove known suffixes first
@@ -36,6 +39,7 @@ function isKebabCase(name) {
 
 /**
  * Check if a filename has only allowed dots (for suffixes and extension)
+ * @param filename
  */
 function hasValidDots(filename) {
   const name = basename(filename);

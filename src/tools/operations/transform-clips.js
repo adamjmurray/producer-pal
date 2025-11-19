@@ -16,7 +16,7 @@ export { createSeededRNG, randomInRange, shuffleArray };
 
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackId)
  * @param {string} [args.arrangementTrackId] - Track ID to query arrangement clips from (ignored if clipIds provided)
  * @param {string} [args.arrangementStart] - Bar|beat position (e.g., '1|1.0') for range start
@@ -35,7 +35,8 @@ export { createSeededRNG, randomInRange, shuffleArray };
  * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips, -127 to 127)
  * @param {number} [args.probability] - Probability offset (MIDI clips, -1.0 to 1.0)
  * @param {number} [args.seed] - RNG seed for reproducibility
- * @returns {Object} Result with clipIds and seed
+ * @param _context
+ * @returns {object} Result with clipIds and seed
  */
 export function transformClips(
   {

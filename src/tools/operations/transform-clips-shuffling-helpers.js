@@ -2,6 +2,13 @@ import * as console from "../../shared/v8-max-console.js";
 
 const HOLDING_AREA_START = 40000;
 
+/**
+ *
+ * @param arrangementClips
+ * @param clips
+ * @param warnings
+ * @param rng
+ */
 export function performShuffling(arrangementClips, clips, warnings, rng) {
   if (arrangementClips.length === 0) {
     if (!warnings.has("shuffle-no-arrangement")) {

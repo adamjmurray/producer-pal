@@ -22,16 +22,17 @@ import {
 
 /**
  * Read a MIDI or audio clip from Ableton Live
- * @param {Object} args - Arguments for the function
+ * @param {object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.sceneIndex] - Clip slot index (0-based)
  * @param {string} [args.clipId] - Clip ID to directly access any clip
  * @param {string[]} [args.include] - Array of data to include in response
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
- * @returns {Object} Result object with clip information
+ * @returns {object} Result object with clip information
  */
 /**
  * Process warp markers for an audio clip
+ * @param clip
  */
 function processWarpMarkers(clip) {
   try {
@@ -71,6 +72,8 @@ function processWarpMarkers(clip) {
 /**
  * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
  * Only includes properties that are true
+ * @param result
+ * @param clip
  */
 function addBooleanStateProperties(result, clip) {
   if (clip.getProperty("is_playing") > 0) {
@@ -92,6 +95,12 @@ function addBooleanStateProperties(result, clip) {
 
 /**
  * Process MIDI clip specific properties
+ * @param result
+ * @param clip
+ * @param includeClipNotes
+ * @param lengthBeats
+ * @param timeSigNumerator
+ * @param timeSigDenominator
  */
 function processMidiClip(
   result,
@@ -135,6 +144,9 @@ function getWarpModeMapping() {
 
 /**
  * Process audio clip specific properties
+ * @param result
+ * @param clip
+ * @param includeWarpMarkers
  */
 function processAudioClip(result, clip, includeWarpMarkers) {
   const liveGain = clip.getProperty("gain");
@@ -170,6 +182,9 @@ function processAudioClip(result, clip, includeWarpMarkers) {
 
 /**
  * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
+ * @param result
+ * @param clip
+ * @param isArrangementClip
  */
 function addClipLocationProperties(result, clip, isArrangementClip) {
   if (isArrangementClip) {
@@ -197,6 +212,12 @@ function addClipLocationProperties(result, clip, isArrangementClip) {
 
 /**
  * Get the active start and end beats based on looping state
+ * @param isLooping
+ * @param startMarkerBeats
+ * @param loopStartBeats
+ * @param endMarkerBeats
+ * @param loopEndBeats
+ * @param lengthBeats
  */
 function getActiveClipBounds(
   isLooping,
@@ -222,6 +243,11 @@ function getActiveClipBounds(
   return { startBeats, endBeats };
 }
 
+/**
+ *
+ * @param args
+ * @param _context
+ */
 export function readClip(args = {}, _context = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
 

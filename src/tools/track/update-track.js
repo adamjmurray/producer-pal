@@ -9,6 +9,12 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
  * Apply routing properties to a track
+ * @param track
+ * @param root0
+ * @param root0.inputRoutingTypeId
+ * @param root0.inputRoutingChannelId
+ * @param root0.outputRoutingTypeId
+ * @param root0.outputRoutingChannelId
  */
 function applyRoutingProperties(
   track,
@@ -46,6 +52,8 @@ function applyRoutingProperties(
 
 /**
  * Apply monitoring state to a track
+ * @param track
+ * @param monitoringState
  */
 function applyMonitoringState(track, monitoringState) {
   if (monitoringState == null) {
@@ -69,7 +77,7 @@ function applyMonitoringState(track, monitoringState) {
 
 /**
  * Updates properties of existing tracks
- * @param {Object} args - The track parameters
+ * @param {object} args - The track parameters
  * @param {string} args.ids - Track ID or comma-separated list of track IDs to update
  * @param {string} [args.name] - Optional track name
  * @param {string} [args.color] - Optional track color (CSS format: hex)
@@ -82,7 +90,8 @@ function applyMonitoringState(track, monitoringState) {
  * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
  * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
  * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
- * @returns {Object|Array<Object>} Single track object or array of track objects
+ * @param _context
+ * @returns {object | Array<object>} Single track object or array of track objects
  */
 export function updateTrack(
   {

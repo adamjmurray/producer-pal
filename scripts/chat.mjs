@@ -35,6 +35,20 @@ program
 // Run the program:
 program.parse();
 
+/**
+ *
+ * @param textArray
+ * @param root0
+ * @param root0.model
+ * @param root0.debug
+ * @param root0.verbose
+ * @param root0.thinking
+ * @param root0.randomness
+ * @param root0.outputTokens
+ * @param root0.thinkingBudget
+ * @param root0.stream
+ * @param root0.systemPrompt
+ */
 async function chat(
   textArray,
   {
@@ -136,6 +150,15 @@ async function chat(
   }
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.outputTokens
+ * @param root0.randomness
+ * @param root0.thinking
+ * @param root0.thinkingBudget
+ * @param root0.systemPrompt
+ */
 function buildConfig({
   outputTokens,
   randomness,
@@ -170,6 +193,15 @@ function buildConfig({
   return config;
 }
 
+/**
+ *
+ * @param chatSession
+ * @param currentInput
+ * @param turnCount
+ * @param stream
+ * @param debug
+ * @param verbose
+ */
 async function sendMessage(
   chatSession,
   currentInput,
@@ -197,6 +229,13 @@ async function sendMessage(
   }
 }
 
+/**
+ *
+ * @param stream
+ * @param root0
+ * @param root0.debug
+ * @param root0.verbose
+ */
 async function printStream(stream, { debug, verbose }) {
   let inThought = false;
   for await (const chunk of stream) {
@@ -212,6 +251,11 @@ async function printStream(stream, { debug, verbose }) {
   console.log();
 }
 
+/**
+ *
+ * @param part
+ * @param inThought
+ */
 function processPart(part, inThought) {
   if (part.text) {
     if (part.thought) {
@@ -240,11 +284,22 @@ function processPart(part, inThought) {
   return inThought;
 }
 
+/**
+ *
+ * @param input
+ */
 function isExitCommand(input) {
   const trimmed = input.trim().toLowerCase();
   return trimmed === "exit" || trimmed === "quit" || trimmed === "bye";
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.candidates
+ * @param root0.automaticFunctionCallingHistory
+ * @param currentInput
+ */
 function formatResponse(
   { candidates, automaticFunctionCallingHistory: history },
   currentInput,
@@ -297,6 +352,10 @@ function formatResponse(
   return output.join("\n");
 }
 
+/**
+ *
+ * @param text
+ */
 function startThought(text) {
   return (
     "\n╔════════════════════════════════════════════════" +
@@ -305,6 +364,10 @@ function startThought(text) {
   );
 }
 
+/**
+ *
+ * @param text
+ */
 function continueThought(text) {
   return (
     "\n" +
@@ -315,6 +378,9 @@ function continueThought(text) {
   );
 }
 
+/**
+ *
+ */
 function endThought() {
   return (
     "\n╚═══════════════════════════════════════════════" +
@@ -322,6 +388,11 @@ function endThought() {
   );
 }
 
+/**
+ *
+ * @param result
+ * @param verbose
+ */
 function debugResult(result, verbose) {
   const { sdkHttpResponse, candidates, ...rest } = result;
   debugLog({
@@ -331,14 +402,29 @@ function debugResult(result, verbose) {
   });
 }
 
+/**
+ *
+ * @param object
+ */
 function debugLog(object) {
   console.log(inspect(object, { depth: 10 }), debugSeparator);
 }
 
+/**
+ *
+ * @param funcName
+ * @param args
+ */
 function debugCall(funcName, args) {
   console.log(`${funcName}(${inspect(args, { depth: 10 })})`, debugSeparator);
 }
 
+/**
+ *
+ * @param str
+ * @param maxLength
+ * @param suffix
+ */
 function truncate(str, maxLength, suffix = "…") {
   if ((str?.length ?? 0) <= maxLength) return str;
   const cutoff = Math.max(0, maxLength - suffix.length);

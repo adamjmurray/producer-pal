@@ -5,6 +5,12 @@ import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
 
 /**
  * Builds Gemini client configuration from settings
+ * @param model
+ * @param temperature
+ * @param thinking
+ * @param showThoughts
+ * @param enabledTools
+ * @param chatHistory
  */
 export function buildGeminiConfig(
   model: string,
@@ -41,6 +47,7 @@ export function buildGeminiConfig(
 /**
  * Check if we're using the actual OpenAI API (not OpenAI-compatible providers like Groq/Mistral).
  * reasoning_effort is only supported by OpenAI's API.
+ * @param baseUrl
  */
 function isOpenAIProvider(baseUrl?: string): boolean {
   // If no baseUrl, OpenAIClient defaults to OpenAI
@@ -52,6 +59,7 @@ function isOpenAIProvider(baseUrl?: string): boolean {
 /**
  * Maps Gemini thinking setting to OpenAI reasoning_effort parameter.
  * Note: Most OpenAI models don't support reasoning_effort (only o1/o3 series).
+ * @param thinking
  */
 function mapThinkingToReasoningEffort(
   thinking: string,
@@ -73,6 +81,12 @@ function mapThinkingToReasoningEffort(
 
 /**
  * Builds OpenAI client configuration from settings
+ * @param model
+ * @param temperature
+ * @param thinking
+ * @param baseUrl
+ * @param enabledTools
+ * @param chatHistory
  */
 export function buildOpenAIConfig(
   model: string,

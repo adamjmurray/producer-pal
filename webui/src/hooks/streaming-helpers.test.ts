@@ -28,6 +28,9 @@ describe("streaming-helpers", () => {
     });
 
     it("should handle AbortError", async () => {
+      /**
+       *
+       */
       async function* throwingStream(): AsyncGenerator<
         GeminiMessage[],
         void,

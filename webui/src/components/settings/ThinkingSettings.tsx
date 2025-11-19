@@ -9,6 +9,16 @@ interface ThinkingSettingsProps {
   setShowThoughts: (show: boolean) => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.provider
+ * @param root0.model
+ * @param root0.thinking
+ * @param root0.setThinking
+ * @param root0.showThoughts
+ * @param root0.setShowThoughts
+ */
 export function ThinkingSettings({
   provider,
   model: _model,

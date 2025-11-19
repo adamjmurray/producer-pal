@@ -4,6 +4,11 @@ interface AssistantTextProps {
   content: string;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.content
+ */
 export function AssistantText({ content }: AssistantTextProps) {
   return (
     <div

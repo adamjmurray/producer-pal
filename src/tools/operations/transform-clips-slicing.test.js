@@ -545,6 +545,11 @@ describe("transformClips - slicing", () => {
         return "Clip";
       }
     });
+    /**
+     *
+     * @param prop
+     * @param id
+     */
     function mockPrimaryClipProperties(prop, id) {
       if (id === clipId) {
         if (prop === "is_midi_clip") return [0];
@@ -560,6 +565,11 @@ describe("transformClips - slicing", () => {
       return null;
     }
 
+    /**
+     *
+     * @param prop
+     * @param id
+     */
     function mockFollowingClipProperties(prop, id) {
       if (id === followingClipId) {
         if (prop === "is_midi_clip") return [0];
@@ -571,6 +581,11 @@ describe("transformClips - slicing", () => {
       return null;
     }
 
+    /**
+     *
+     * @param prop
+     * @param id
+     */
     function mockHoldingClipProperties(prop, id) {
       if (id?.startsWith("holding_")) {
         if (prop === "end_time") return [40000 + 3];
@@ -580,6 +595,11 @@ describe("transformClips - slicing", () => {
       return null;
     }
 
+    /**
+     *
+     * @param prop
+     * @param id
+     */
     function mockSlicedClipProperties(prop, id) {
       if (id?.startsWith("moved_") || id?.startsWith("tile_")) {
         if (prop === "loop_start") return [0.0];

@@ -3,6 +3,11 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 // Helper function to print large text without truncation
+/**
+ *
+ * @param text
+ * @param prefix
+ */
 function printLargeText(text, prefix = "") {
   const lines = text.split("\n");
   lines.forEach((line) => {
@@ -14,6 +19,9 @@ function printLargeText(text, prefix = "") {
 const DEFAULT_URL = "http://localhost:3350/mcp";
 
 // Parse command line arguments
+/**
+ *
+ */
 function parseArgs() {
   const args = process.argv.slice(2);
   let url = DEFAULT_URL;
@@ -53,6 +61,9 @@ function parseArgs() {
   return { url, command, toolName, toolArgs };
 }
 
+/**
+ *
+ */
 async function main() {
   const { url, command, toolName, toolArgs } = parseArgs();
 

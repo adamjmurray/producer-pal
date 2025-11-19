@@ -12,6 +12,12 @@ import {
   duplicateSceneToArrangement,
 } from "./duplicate-track-scene-helpers.js";
 
+/**
+ *
+ * @param type
+ * @param id
+ * @param count
+ */
 function validateBasicInputs(type, id, count) {
   if (!type) {
     throw new Error("duplicate failed: type is required");
@@ -33,6 +39,13 @@ function validateBasicInputs(type, id, count) {
   }
 }
 
+/**
+ *
+ * @param type
+ * @param routeToSource
+ * @param withoutClips
+ * @param withoutDevices
+ */
 function validateAndConfigureRouteToSource(
   type,
   routeToSource,
@@ -64,6 +77,13 @@ function validateAndConfigureRouteToSource(
   return { withoutClips: true, withoutDevices: true };
 }
 
+/**
+ *
+ * @param type
+ * @param destination
+ * @param toTrackIndex
+ * @param toSceneIndex
+ */
 function validateClipParameters(type, destination, toTrackIndex, toSceneIndex) {
   if (type !== "clip") {
     return;
@@ -96,6 +116,11 @@ function validateClipParameters(type, destination, toTrackIndex, toSceneIndex) {
   }
 }
 
+/**
+ *
+ * @param destination
+ * @param arrangementStart
+ */
 function validateArrangementParameters(destination, arrangementStart) {
   if (destination === "arrangement" && arrangementStart == null) {
     throw new Error(
@@ -104,6 +129,12 @@ function validateArrangementParameters(destination, arrangementStart) {
   }
 }
 
+/**
+ *
+ * @param baseName
+ * @param count
+ * @param index
+ */
 function generateObjectName(baseName, count, index) {
   if (baseName == null) {
     return undefined;
@@ -117,6 +148,11 @@ function generateObjectName(baseName, count, index) {
   return `${baseName} ${index + 1}`;
 }
 
+/**
+ *
+ * @param destination
+ * @param type
+ */
 function determineTargetView(destination, type) {
   if (destination === "arrangement") {
     return "arrangement";
@@ -127,6 +163,12 @@ function determineTargetView(destination, type) {
   return null;
 }
 
+/**
+ *
+ * @param switchView
+ * @param destination
+ * @param type
+ */
 function switchViewIfRequested(switchView, destination, type) {
   if (!switchView) {
     return;
@@ -138,6 +180,18 @@ function switchViewIfRequested(switchView, destination, type) {
   }
 }
 
+/**
+ *
+ * @param type
+ * @param object
+ * @param id
+ * @param i
+ * @param objectName
+ * @param arrangementStart
+ * @param arrangementLength
+ * @param withoutClips
+ * @param context
+ */
 function duplicateToArrangement(
   type,
   object,
@@ -200,6 +254,19 @@ function duplicateToArrangement(
   }
 }
 
+/**
+ *
+ * @param type
+ * @param object
+ * @param id
+ * @param i
+ * @param objectName
+ * @param withoutClips
+ * @param withoutDevices
+ * @param routeToSource
+ * @param toTrackIndex
+ * @param toSceneIndex
+ */
 function duplicateToSession(
   type,
   object,
@@ -262,6 +329,17 @@ function duplicateToSession(
   }
 }
 
+/**
+ *
+ * @param type
+ * @param destination
+ * @param object
+ * @param id
+ * @param i
+ * @param objectName
+ * @param params
+ * @param context
+ */
 function performDuplication(
   type,
   destination,
@@ -312,7 +390,7 @@ function performDuplication(
 /**
  * Duplicates an object based on its type.
  * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.type - Type of object to duplicate ("track", "scene", or "clip")
  * @param {string} args.id - ID of the object to duplicate
  * @param {number} [args.count=1] - Number of duplicates to create
@@ -326,8 +404,8 @@ function performDuplication(
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
  * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
  * @param {number} [args.toSceneIndex] - Destination scene index (required for session clips)
- * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
+ * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns {object | Array<object>} Result object(s) with information about the duplicated object(s)
  */
 export function duplicate(
   {

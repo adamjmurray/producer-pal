@@ -6,6 +6,13 @@ interface AssistantThoughtProps {
   isResponding?: boolean;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.content
+ * @param root0.isOpen
+ * @param root0.isResponding
+ */
 export function AssistantThought({
   content,
   isOpen,

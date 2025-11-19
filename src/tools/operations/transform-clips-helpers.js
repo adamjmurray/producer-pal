@@ -36,6 +36,9 @@ export {
 
 /**
  * Parse transpose values from comma-separated string
+ * @param transposeValues
+ * @param transposeMin
+ * @param transposeMax
  */
 export function parseTransposeValues(
   transposeValues,
@@ -61,6 +64,10 @@ export function parseTransposeValues(
 
 /**
  * Get clip IDs from direct list or arrangement track query
+ * @param clipIds
+ * @param arrangementTrackId
+ * @param arrangementStart
+ * @param arrangementLength
  */
 export function getClipIds(
   clipIds,

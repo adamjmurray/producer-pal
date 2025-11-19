@@ -10,6 +10,13 @@ interface MessageListProps {
   handleRetry: (messageIndex: number) => Promise<void>;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.messages
+ * @param root0.isAssistantResponding
+ * @param root0.handleRetry
+ */
 export function MessageList({
   messages,
   isAssistantResponding,
@@ -81,10 +88,18 @@ export function MessageList({
   );
 }
 
+/**
+ *
+ * @param message
+ */
 function hasContent(message: UIMessage): boolean {
   return message.parts.length > 0;
 }
 
+/**
+ *
+ * @param message
+ */
 function formatUserContent(message: UIMessage): string {
   return message.parts
     .map((part) => {

@@ -8,10 +8,10 @@
  * Creates an audio clip in session view with controlled length.
  * Uses session view because create_audio_clip in arrangement doesn't support length control.
  *
- * @param {Object} track - LiveAPI track instance
+ * @param {object} track - LiveAPI track instance
  * @param {number} targetLength - Desired clip length in beats
  * @param {string} audioFilePath - Path to audio WAV file (can be silence.wav or actual audio)
- * @returns {{clip: Object, slot: Object}} The created clip and slot in session view
+ * @returns {{clip: object, slot: object}} The created clip and slot in session view
  */
 export function createAudioClipInSession(track, targetLength, audioFilePath) {
   const liveSet = new LiveAPI("live_set");
@@ -63,13 +63,13 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
  * Creates a shortened copy of a clip in the holding area.
  * Uses the temp clip shortening technique to achieve the target length.
  *
- * @param {Object} sourceClip - LiveAPI clip instance to duplicate
- * @param {Object} track - LiveAPI track instance
+ * @param {object} sourceClip - LiveAPI clip instance to duplicate
+ * @param {object} track - LiveAPI track instance
  * @param {number} targetLength - Desired clip length in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param {Object} context - Context object with silenceWavPath for audio clips
- * @returns {{holdingClipId: number, holdingClip: Object}} Holding clip ID and instance
+ * @param {object} context - Context object with silenceWavPath for audio clips
+ * @returns {{holdingClipId: number, holdingClip: object}} Holding clip ID and instance
  */
 export function createShortenedClipInHolding(
   sourceClip,
@@ -143,9 +143,9 @@ export function createShortenedClipInHolding(
  * Duplicates the holding clip to the target, then cleans up the holding clip.
  *
  * @param {number} holdingClipId - ID of clip in holding area
- * @param {Object} track - LiveAPI track instance
+ * @param {object} track - LiveAPI track instance
  * @param {number} targetPosition - Target position in beats
- * @returns {Object} The moved clip (LiveAPI instance)
+ * @returns {object} The moved clip (LiveAPI instance)
  */
 export function moveClipFromHolding(holdingClipId, track, targetPosition) {
   // Duplicate holding clip to target position
@@ -166,10 +166,10 @@ export function moveClipFromHolding(holdingClipId, track, targetPosition) {
  * Adjusts a clip's pre-roll by setting start_marker to loop_start and shortening.
  * Only performs adjustment if the clip has pre-roll (start_marker < loop_start).
  *
- * @param {Object} clip - LiveAPI clip instance
- * @param {Object} track - LiveAPI track instance
+ * @param {object} clip - LiveAPI clip instance
+ * @param {object} track - LiveAPI track instance
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param {Object} context - Context object with silenceWavPath for audio clips
+ * @param {object} context - Context object with silenceWavPath for audio clips
  */
 export function adjustClipPreRoll(clip, track, isMidiClip, context) {
   const startMarker = clip.getProperty("start_marker");
@@ -223,16 +223,16 @@ export function adjustClipPreRoll(clip, track, isMidiClip, context) {
  * Creates a partial tile of a clip at a target position.
  * Combines: create shortened clip in holding → move to target → optionally adjust pre-roll.
  *
- * @param {Object} sourceClip - LiveAPI clip instance to tile
- * @param {Object} track - LiveAPI track instance
+ * @param {object} sourceClip - LiveAPI clip instance to tile
+ * @param {object} track - LiveAPI track instance
  * @param {number} targetPosition - Target position in beats
  * @param {number} partialLength - Length of partial tile in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
  * @param {boolean} isMidiClip - Whether the clip is MIDI (true) or audio (false)
- * @param {Object} context - Context object with silenceWavPath for audio clips
+ * @param {object} context - Context object with silenceWavPath for audio clips
  * @param {boolean} [adjustPreRoll=true] - Whether to adjust pre-roll on the created tile
  * @param {number} [contentOffset=0] - Content offset in beats for start_marker
- * @returns {Object} The created partial tile clip (LiveAPI instance)
+ * @returns {object} The created partial tile clip (LiveAPI instance)
  */
 export function createPartialTile(
   sourceClip,
@@ -277,17 +277,17 @@ export function createPartialTile(
  * Tiles a clip across a range by creating full tiles and a partial final tile.
  * High-level orchestrator that handles the complete tiling operation.
  *
- * @param {Object} sourceClip - LiveAPI clip instance to tile
- * @param {Object} track - LiveAPI track instance
+ * @param {object} sourceClip - LiveAPI clip instance to tile
+ * @param {object} track - LiveAPI track instance
  * @param {number} startPosition - Start position for tiling in beats
  * @param {number} totalLength - Total length to fill with tiles in beats
  * @param {number} holdingAreaStart - Start position of holding area in beats
- * @param {Object} context - Context object with silenceWavPath for audio clips
- * @param {Object} options - Configuration options
+ * @param {object} context - Context object with silenceWavPath for audio clips
+ * @param {object} options - Configuration options
  * @param {boolean} [options.adjustPreRoll=true] - Whether to adjust pre-roll on subsequent tiles
  * @param {number} [options.startOffset=0] - Content offset in beats to start tiling from
  * @param {number} [options.tileLength=null] - Arrangement length per tile (defaults to clip content length)
- * @returns {Array<Object>} Array of created clip objects with {id} property
+ * @returns {Array<object>} Array of created clip objects with {id} property
  */
 export function tileClipToRange(
   sourceClip,

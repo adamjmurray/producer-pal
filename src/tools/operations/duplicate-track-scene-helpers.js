@@ -12,7 +12,7 @@ import {
  * Remove the Producer Pal device from a duplicated track if it was the host track
  * @param {number} trackIndex - Original track index
  * @param {boolean} withoutDevices - Whether devices were excluded
- * @param {Object} newTrack - The new track LiveAPI object
+ * @param {object} newTrack - The new track LiveAPI object
  */
 function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
   const hostTrackIndex = getHostTrackIndex();
@@ -41,7 +41,7 @@ function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
 
 /**
  * Delete all devices from a track
- * @param {Object} newTrack - The track LiveAPI object
+ * @param {object} newTrack - The track LiveAPI object
  */
 function deleteAllDevices(newTrack) {
   const deviceIds = newTrack.getChildIds("devices");
@@ -54,7 +54,7 @@ function deleteAllDevices(newTrack) {
 
 /**
  * Collect or delete clips from a duplicated track
- * @param {Object} newTrack - The new track LiveAPI object
+ * @param {object} newTrack - The new track LiveAPI object
  * @param {boolean} withoutClips - Whether to delete clips instead of collecting them
  * @returns {Array} Array of clip info objects
  */
@@ -74,7 +74,7 @@ function processClipsForDuplication(newTrack, withoutClips) {
 
 /**
  * Delete all session clips from a track
- * @param {Object} newTrack - The track LiveAPI object
+ * @param {object} newTrack - The track LiveAPI object
  */
 function deleteSessionClips(newTrack) {
   const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
@@ -88,7 +88,7 @@ function deleteSessionClips(newTrack) {
 
 /**
  * Delete all arrangement clips from a track
- * @param {Object} newTrack - The track LiveAPI object
+ * @param {object} newTrack - The track LiveAPI object
  */
 function deleteArrangementClips(newTrack) {
   const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
@@ -99,7 +99,7 @@ function deleteArrangementClips(newTrack) {
 
 /**
  * Collect info about session clips in a track
- * @param {Object} newTrack - The track LiveAPI object
+ * @param {object} newTrack - The track LiveAPI object
  * @param {Array} duplicatedClips - Array to append clip info to
  */
 function collectSessionClips(newTrack, duplicatedClips) {
@@ -115,7 +115,7 @@ function collectSessionClips(newTrack, duplicatedClips) {
 
 /**
  * Collect info about arrangement clips in a track
- * @param {Object} newTrack - The track LiveAPI object
+ * @param {object} newTrack - The track LiveAPI object
  * @param {Array} duplicatedClips - Array to append clip info to
  */
 function collectArrangementClips(newTrack, duplicatedClips) {
@@ -130,7 +130,7 @@ function collectArrangementClips(newTrack, duplicatedClips) {
 
 /**
  * Configure the source track input routing
- * @param {Object} sourceTrack - The source track LiveAPI object
+ * @param {object} sourceTrack - The source track LiveAPI object
  * @param {string} sourceTrackName - The source track name
  */
 function configureSourceTrackInput(sourceTrack, sourceTrackName) {
@@ -171,10 +171,10 @@ function configureSourceTrackInput(sourceTrack, sourceTrackName) {
 
 /**
  * Find source routing for duplicate track
- * @param {Object} sourceTrack - The source track LiveAPI object
+ * @param {object} sourceTrack - The source track LiveAPI object
  * @param {string} sourceTrackName - The source track name
  * @param {Array} availableTypes - Available routing types
- * @returns {Object|undefined} The routing type to use
+ * @returns {object | undefined} The routing type to use
  */
 function findSourceRouting(sourceTrack, sourceTrackName, availableTypes) {
   // Check if there are duplicate track names
@@ -205,10 +205,10 @@ function findSourceRouting(sourceTrack, sourceTrackName, availableTypes) {
 
 /**
  * Apply output routing configuration to the new track
- * @param {Object} newTrack - The new track LiveAPI object
+ * @param {object} newTrack - The new track LiveAPI object
  * @param {string} sourceTrackName - The source track name
  * @param {Array} availableTypes - Available routing types
- * @param {Object} sourceTrack - The source track LiveAPI object
+ * @param {object} sourceTrack - The source track LiveAPI object
  */
 function applyOutputRouting(
   newTrack,
@@ -241,7 +241,7 @@ function applyOutputRouting(
 
 /**
  * Configure routing to source track
- * @param {Object} newTrack - The new track LiveAPI object
+ * @param {object} newTrack - The new track LiveAPI object
  * @param {number} sourceTrackIndex - Source track index
  */
 function configureRouting(newTrack, sourceTrackIndex) {
@@ -263,7 +263,7 @@ function configureRouting(newTrack, sourceTrackIndex) {
  * @param {boolean} [withoutDevices] - Whether to exclude devices when duplicating
  * @param {boolean} [routeToSource] - Whether to route the new track to the source track
  * @param {number} [sourceTrackIndex] - Source track index for routing
- * @returns {Object} Track info object with id, trackIndex, and clips array
+ * @returns {object} Track info object with id, trackIndex, and clips array
  */
 export function duplicateTrack(
   trackIndex,
@@ -307,7 +307,7 @@ export function duplicateTrack(
  * @param {number} sceneIndex - Scene index to duplicate
  * @param {string} [name] - Optional name for the duplicated scene
  * @param {boolean} [withoutClips] - Whether to exclude clips when duplicating
- * @returns {Object} Scene info object with id, sceneIndex, and clips array
+ * @returns {object} Scene info object with id, sceneIndex, and clips array
  */
 export function duplicateScene(sceneIndex, name, withoutClips) {
   const liveSet = new LiveAPI("live_set");
@@ -405,8 +405,8 @@ function assignNamesToClips(clips, name) {
  * @param {string} [arrangementLength] - Optional length in bar:beat format
  * @param {number} songTimeSigNumerator - Song time signature numerator
  * @param {number} songTimeSigDenominator - Song time signature denominator
- * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {Object} Object with arrangementStart and clips array
+ * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns {object} Object with arrangementStart and clips array
  */
 export function duplicateSceneToArrangement(
   sceneId,

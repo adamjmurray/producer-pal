@@ -171,7 +171,7 @@ function formatBeat(beat) {
 /**
  * Convert Live clip notes to bar|beat string
  * @param {Array} clipNotes - Array of note objects from the Live API
- * @param {Object} options - Formatting options
+ * @param {object} options - Formatting options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
  * @param {number} [options.timeSigDenominator] - Time signature denominator

@@ -125,6 +125,10 @@ export class LiveAPI {
   }
 }
 
+/**
+ *
+ * @param prop
+ */
 function getLiveSetProperty(prop) {
   switch (prop) {
     case "tracks":
@@ -140,6 +144,10 @@ function getLiveSetProperty(prop) {
   }
 }
 
+/**
+ *
+ * @param prop
+ */
 function getAppViewProperty(prop) {
   switch (prop) {
     case "focused_document_view":
@@ -149,6 +157,10 @@ function getAppViewProperty(prop) {
   }
 }
 
+/**
+ *
+ * @param prop
+ */
 function getTrackProperty(prop) {
   switch (prop) {
     case "has_midi_input":
@@ -182,6 +194,10 @@ function getTrackProperty(prop) {
   }
 }
 
+/**
+ *
+ * @param prop
+ */
 function getSceneProperty(prop) {
   switch (prop) {
     case "name":
@@ -193,6 +209,10 @@ function getSceneProperty(prop) {
   }
 }
 
+/**
+ *
+ * @param prop
+ */
 function getClipSlotProperty(prop) {
   switch (prop) {
     case "has_clip":
@@ -202,6 +222,10 @@ function getClipSlotProperty(prop) {
   }
 }
 
+/**
+ *
+ * @param prop
+ */
 function getClipProperty(prop) {
   switch (prop) {
     case "name":
@@ -239,6 +263,11 @@ function getClipProperty(prop) {
   }
 }
 
+/**
+ *
+ * @param type
+ * @param prop
+ */
 function getPropertyByType(type, prop) {
   switch (type) {
     case "LiveSet":
@@ -258,6 +287,10 @@ function getPropertyByType(type, prop) {
   }
 }
 
+/**
+ *
+ * @param overrides
+ */
 export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
     const overridesByProp =
@@ -329,6 +362,10 @@ export const expectedClip = (overrides = {}) => ({
   ...overrides,
 });
 
+/**
+ *
+ * @param {...any} childIds
+ */
 export function children(...childIds) {
   return childIds.flatMap((id) => ["id", id]);
 }

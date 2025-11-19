@@ -14,6 +14,9 @@ const PROVIDER_BASE_URLS = {
   openrouter: "https://openrouter.ai/api/v1",
 } as const;
 
+/**
+ *
+ */
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();

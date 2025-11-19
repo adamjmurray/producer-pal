@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import importPlugin from "eslint-plugin-import";
+import jsdoc from "eslint-plugin-jsdoc";
 import reactHooksPlugin from "eslint-plugin-react-hooks";
 import sonarjs from "eslint-plugin-sonarjs";
 import globals from "globals";
@@ -78,6 +79,30 @@ const baseRules = {
   complexity: ["error", 20], // cyclomatic complexity (number of independent code paths)
 };
 
+const jsdocRules = {
+  // Inline documentation requirements:
+  "jsdoc/require-jsdoc": [
+    "error",
+    {
+      require: {
+        FunctionDeclaration: true,
+        FunctionExpression: false,
+        MethodDefinition: false,
+      },
+      publicOnly: false,
+    },
+  ],
+  "jsdoc/require-param": "error",
+  // TODO:
+  // "jsdoc/require-param-description": "error",
+  // "jsdoc/require-param-type": "error",
+  // TODO:
+  // "jsdoc/require-returns": "error",
+  // "jsdoc/require-returns-description": "error",
+  // "jsdoc/require-returns-type": "error",
+  "jsdoc/check-types": "error",
+};
+
 const jsOnlyRules = {
   "no-unused-vars": [
     // Unused variables (allow _prefixed to signal intentional)
@@ -129,6 +154,9 @@ const tsOnlyRules = {
   "@typescript-eslint/dot-notation": "error", // Use obj.key not obj['key'] (type-aware)
   "@typescript-eslint/no-implied-eval": "error", // Prevents eval-like patterns (type-aware)
   "@typescript-eslint/no-shadow": "error", // Prevents shadowing (type-aware)
+  "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
+  "sonarjs/no-identical-functions": "error", // Duplicate function bodies
+  "sonarjs/cognitive-complexity": ["error", 20], // Similar to complexity but different metric
 };
 
 export default [
@@ -162,6 +190,7 @@ export default [
     plugins: {
       import: importPlugin,
       sonarjs,
+      jsdoc,
     },
     settings: {
       "import/resolver": { node: true },
@@ -170,12 +199,14 @@ export default [
       ...js.configs.recommended.rules,
       ...baseRules,
       ...jsOnlyRules,
+      ...jsdocRules,
     },
   },
 
   // All TypeScript files (any directory)
   {
     files: ["{src,scripts,webui}/**/*.{ts,tsx}"],
+    ...sonarjs.configs.recommended,
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -193,12 +224,15 @@ export default [
     plugins: {
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
+      sonarjs,
+      jsdoc,
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...baseRules,
       ...tsOnlyRules,
+      ...jsdocRules,
     },
   },
 

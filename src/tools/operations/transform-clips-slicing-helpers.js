@@ -11,6 +11,9 @@ const HOLDING_AREA_START = 40000;
 
 /**
  * Prepare slice parameters by converting to Ableton beats
+ * @param slice
+ * @param arrangementClips
+ * @param warnings
  */
 export function prepareSliceParams(slice, arrangementClips, warnings) {
   if (slice == null) {
@@ -37,6 +40,15 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
   return sliceBeats;
 }
 
+/**
+ *
+ * @param arrangementClips
+ * @param sliceBeats
+ * @param clips
+ * @param warnings
+ * @param slice
+ * @param _context
+ */
 export function performSlicing(
   arrangementClips,
   sliceBeats,

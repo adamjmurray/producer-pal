@@ -1,9 +1,9 @@
 /**
  * Filters parameters from a Zod schema object based on excluded parameter names.
  *
- * @param {Object} schema - Zod schema object (key-value pairs of parameter names to Zod schemas)
+ * @param {object} schema - Zod schema object (key-value pairs of parameter names to Zod schemas)
  * @param {string[]} excludeParams - Array of parameter names to exclude
- * @returns {Object} New schema object with excluded parameters removed
+ * @returns {object} New schema object with excluded parameters removed
  */
 export function filterSchemaForSmallModel(schema, excludeParams) {
   if (!excludeParams || excludeParams.length === 0) {

@@ -77,8 +77,8 @@ const SHORTCUT_MAPPINGS = {
 /**
  * Parse include array format and return boolean flags for each option
  * @param {string[]} includeArray - Array of kebab-case include options
- * @param {Object} defaults - Default values for each parameter
- * @returns {Object} Object with boolean include* properties
+ * @param {object} defaults - Default values for each parameter
+ * @returns {object} Object with boolean include* properties
  */
 export function parseIncludeArray(includeArray, defaults = {}) {
   // If no include array is provided (undefined), use defaults
@@ -160,7 +160,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
 
 /**
  * Convert include flags back to an array format
- * @param {Object} includeFlags - Object with boolean include* properties
+ * @param {object} includeFlags - Object with boolean include* properties
  * @returns {string[]} Array of include options
  */
 export function includeArrayFromFlags(includeFlags) {
@@ -287,7 +287,7 @@ export const READ_CLIP_DEFAULTS = {
 /**
  * Expand shortcuts and '*' in include array to concrete options
  * @param {string[]} includeArray - Array of include options that may contain '*' or shortcuts
- * @param {Object} defaults - Default values to determine tool type from structure
+ * @param {object} defaults - Default values to determine tool type from structure
  * @returns {string[]} Expanded array with shortcuts and '*' replaced by concrete options
  */
 function expandWildcardIncludes(includeArray, defaults) {

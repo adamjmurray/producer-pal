@@ -6,6 +6,14 @@ import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 import { select } from "./select.js";
 
+/**
+ *
+ * @param liveSet
+ * @param startTime
+ * @param startTimeBeats
+ * @param autoFollow
+ * @param _state
+ */
 function handlePlayArrangement(
   liveSet,
   startTime,
@@ -31,6 +39,11 @@ function handlePlayArrangement(
   };
 }
 
+/**
+ *
+ * @param sceneId
+ * @param state
+ */
 function handlePlayScene(sceneId, state) {
   if (sceneId == null) {
     throw new Error(
@@ -46,6 +59,12 @@ function handlePlayScene(sceneId, state) {
   };
 }
 
+/**
+ *
+ * @param liveSet
+ * @param clipIds
+ * @param state
+ */
 function handlePlaySessionClips(liveSet, clipIds, state) {
   if (!clipIds) {
     throw new Error(
@@ -92,6 +111,11 @@ function handlePlaySessionClips(liveSet, clipIds, state) {
   };
 }
 
+/**
+ *
+ * @param clipIds
+ * @param state
+ */
 function handleStopSessionClips(clipIds, state) {
   if (!clipIds) {
     throw new Error(
@@ -130,6 +154,13 @@ function handleStopSessionClips(clipIds, state) {
   return state;
 }
 
+/**
+ *
+ * @param action
+ * @param liveSet
+ * @param params
+ * @param state
+ */
 function handlePlaybackAction(action, liveSet, params, state) {
   const { startTime, startTimeBeats, autoFollow, sceneId, clipIds } = params;
 
@@ -178,7 +209,7 @@ function handlePlaybackAction(action, liveSet, params, state) {
  * Unified control for all playback functionality in both Arrangement and Session views.
  * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
  * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.action - Action to perform
  * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
@@ -188,7 +219,8 @@ function handlePlaybackAction(action, liveSet, params, state) {
  * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
  * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
- * @returns {Object} Result with transport state
+ * @param _context
+ * @returns {object} Result with transport state
  */
 export function playback(
   {

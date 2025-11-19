@@ -6,6 +6,8 @@ import {
 
 /**
  * Helper to create a mock LiveAPI class for testing duplicate routing scenarios
+ * @param trackIds
+ * @param trackNameMapping
  */
 function createMockLiveAPI(trackIds, trackNameMapping) {
   return class {

@@ -52,6 +52,11 @@ describe("transformClips - slice + shuffle combination", () => {
     const slicedClips = [];
     const shuffledClips = [];
 
+    /**
+     *
+     * @param prop
+     * @param clipId
+     */
     function mockClipProperties(prop, clipId) {
       if (clipId === clip1Id || clipId === clip2Id) {
         if (prop === "is_midi_clip") return [0];
@@ -69,6 +74,11 @@ describe("transformClips - slice + shuffle combination", () => {
       return null;
     }
 
+    /**
+     *
+     * @param prop
+     * @param clipId
+     */
     function mockSlicedClipProperties(prop, clipId) {
       if (clipId?.startsWith("moved_") || clipId?.startsWith("tile_")) {
         if (prop === "is_midi_clip") return [0];
@@ -88,6 +98,11 @@ describe("transformClips - slice + shuffle combination", () => {
       return null;
     }
 
+    /**
+     *
+     * @param prop
+     * @param clipId
+     */
     function mockShuffledClipProperties(prop, clipId) {
       if (clipId?.startsWith("shuffled_")) {
         if (prop === "is_midi_clip") return [0];

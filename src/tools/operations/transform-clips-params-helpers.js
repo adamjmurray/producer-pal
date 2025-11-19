@@ -3,6 +3,11 @@ import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
 
 /**
  * Check if any audio transformation parameters are specified
+ * @param gainDbMin
+ * @param gainDbMax
+ * @param transposeMin
+ * @param transposeMax
+ * @param transposeValues
  */
 export function hasAudioTransformParams(
   gainDbMin,
@@ -22,6 +27,15 @@ export function hasAudioTransformParams(
 
 /**
  * Check if any MIDI transformation parameters are specified
+ * @param velocityMin
+ * @param velocityMax
+ * @param transposeMin
+ * @param transposeMax
+ * @param transposeValues
+ * @param durationMin
+ * @param durationMax
+ * @param velocityRange
+ * @param probability
  */
 export function hasMidiTransformParams(
   velocityMin,
@@ -49,6 +63,10 @@ export function hasMidiTransformParams(
 
 /**
  * Apply audio parameters to a clip if appropriate
+ * @param clip
+ * @param audioParams
+ * @param rng
+ * @param warnings
  */
 export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
   const isAudioClip = clip.getProperty("is_audio_clip") > 0;
@@ -64,6 +82,10 @@ export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
 
 /**
  * Apply MIDI parameters to a clip if appropriate
+ * @param clip
+ * @param midiParams
+ * @param rng
+ * @param warnings
  */
 export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
@@ -79,6 +101,22 @@ export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
 
 /**
  * Apply parameter transformations to all clips
+ * @param clips
+ * @param root0
+ * @param root0.gainDbMin
+ * @param root0.gainDbMax
+ * @param root0.transposeMin
+ * @param root0.transposeMax
+ * @param root0.transposeValues
+ * @param root0.transposeValuesArray
+ * @param root0.velocityMin
+ * @param root0.velocityMax
+ * @param root0.durationMin
+ * @param root0.durationMax
+ * @param root0.velocityRange
+ * @param root0.probability
+ * @param rng
+ * @param warnings
  */
 export function applyParameterTransforms(
   clips,
