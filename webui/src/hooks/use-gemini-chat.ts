@@ -48,6 +48,7 @@ interface UseGeminiChatReturn {
  * @param {() => Promise<void>} root0.checkMcpConnection - Function to verify MCP connection
  * @returns {UseGeminiChatReturn} Chat state and handlers
  */
+// eslint-disable-next-line max-lines-per-function
 export function useGeminiChat({
   apiKey,
   model,
