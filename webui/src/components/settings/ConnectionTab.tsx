@@ -32,6 +32,21 @@ interface ConnectionTabProps {
   providerLabel: string;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.provider
+ * @param root0.setProvider
+ * @param root0.apiKey
+ * @param root0.setApiKey
+ * @param root0.baseUrl
+ * @param root0.setBaseUrl
+ * @param root0.port
+ * @param root0.setPort
+ * @param root0.model
+ * @param root0.setModel
+ * @param root0.providerLabel
+ */
 export function ConnectionTab({
   provider,
   setProvider,

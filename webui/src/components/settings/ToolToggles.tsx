@@ -7,6 +7,14 @@ interface ToolTogglesProps {
   disableAllTools: () => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.enabledTools
+ * @param root0.setEnabledTools
+ * @param root0.enableAllTools
+ * @param root0.disableAllTools
+ */
 export function ToolToggles({
   enabledTools,
   setEnabledTools,

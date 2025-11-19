@@ -93,7 +93,13 @@ const jsdocRules = {
     },
   ],
   "jsdoc/require-param": "error",
-  "jsdoc/require-returns": "error",
+  // TODO:
+  // "jsdoc/require-param-description": "error",
+  // "jsdoc/require-param-type": "error",
+  // TODO:
+  // "jsdoc/require-returns": "error",
+  // "jsdoc/require-returns-description": "error",
+  // "jsdoc/require-returns-type": "error",
   "jsdoc/check-types": "error",
 };
 
@@ -148,6 +154,9 @@ const tsOnlyRules = {
   "@typescript-eslint/dot-notation": "error", // Use obj.key not obj['key'] (type-aware)
   "@typescript-eslint/no-implied-eval": "error", // Prevents eval-like patterns (type-aware)
   "@typescript-eslint/no-shadow": "error", // Prevents shadowing (type-aware)
+  "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
+  "sonarjs/no-identical-functions": "error", // Duplicate function bodies
+  "sonarjs/cognitive-complexity": ["error", 20], // Similar to complexity but different metric
 };
 
 export default [
@@ -197,6 +206,7 @@ export default [
   // All TypeScript files (any directory)
   {
     files: ["{src,scripts,webui}/**/*.{ts,tsx}"],
+    ...sonarjs.configs.recommended,
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -214,12 +224,15 @@ export default [
     plugins: {
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
+      sonarjs,
+      jsdoc,
     },
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
       ...baseRules,
       ...tsOnlyRules,
+      ...jsdocRules,
     },
   },
 

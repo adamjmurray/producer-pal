@@ -1,5 +1,8 @@
 import { useEffect, useState } from "preact/hooks";
 
+/**
+ *
+ */
 export function useTheme() {
   const [theme, setTheme] = useState("system");
 

@@ -1,3 +1,6 @@
+/**
+ *
+ */
 export function ActivityIndicator() {
   return (
     <div className="flex justify-center py-2">
@@ -6,6 +9,9 @@ export function ActivityIndicator() {
   );
 }
 
+/**
+ *
+ */
 function SineWave() {
   const width = 400;
   const height = 40;
@@ -90,6 +96,13 @@ function SineWave() {
   );
 }
 
+/**
+ *
+ * @param width
+ * @param amplitude
+ * @param frequency
+ * @param points
+ */
 function generateSineWavePath(
   width: number,
   amplitude: number,

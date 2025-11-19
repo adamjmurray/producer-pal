@@ -3,6 +3,9 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import OpenAI from "openai";
 import type { OpenAIMessage, OpenAIToolCall } from "../types/messages.js";
 
+const MCP_NOT_INITIALIZED_ERROR =
+  "MCP client not initialized. Call initialize() first.";
+
 /**
  * Reasoning detail structure from OpenRouter/OpenAI streaming responses.
  */
@@ -192,6 +195,7 @@ export class OpenAIClient {
    * 5. Repeat until no tool_calls
    *
    * @param message - User message to send
+   * @param abortSignal
    * @yields Complete chat history in OpenAI's raw format after each update
    * @throws If MCP client is not initialized or if message sending fails
    *
@@ -206,7 +210,7 @@ export class OpenAIClient {
     abortSignal?: AbortSignal,
   ): AsyncGenerator<OpenAIMessage[], void, unknown> {
     if (!this.mcpClient) {
-      throw new Error("MCP client not initialized. Call initialize() first.");
+      throw new Error(MCP_NOT_INITIALIZED_ERROR);
     }
 
     // Add user message
@@ -254,7 +258,7 @@ export class OpenAIClient {
   private async getFilteredTools(): Promise<OpenAI.Chat.ChatCompletionTool[]> {
     const toolsResult = await this.mcpClient?.listTools();
     if (!toolsResult) {
-      throw new Error("MCP client not initialized. Call initialize() first.");
+      throw new Error(MCP_NOT_INITIALIZED_ERROR);
     }
     const enabledTools = this.config.enabledTools;
     const filteredTools = enabledTools
@@ -273,6 +277,7 @@ export class OpenAIClient {
 
   /**
    * Processes the OpenAI stream and updates chat history with each chunk.
+   * @param tools
    */
   private async *processStreamAndUpdateHistory(
     tools: OpenAI.Chat.ChatCompletionTool[],
@@ -317,6 +322,8 @@ export class OpenAIClient {
 
   /**
    * Processes content delta from a stream chunk.
+   * @param delta
+   * @param currentMessage
    */
   private processContentDelta(
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -332,6 +339,8 @@ export class OpenAIClient {
 
   /**
    * Processes reasoning delta from a stream chunk and returns updated reasoning text.
+   * @param delta
+   * @param reasoningText
    */
   private processReasoningDelta(
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -343,6 +352,8 @@ export class OpenAIClient {
 
   /**
    * Processes tool call deltas from a stream chunk.
+   * @param delta
+   * @param toolCallsMap
    */
   private processToolCallDeltas(
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
@@ -357,6 +368,8 @@ export class OpenAIClient {
 
   /**
    * Accumulates a single tool call delta into the tool calls map.
+   * @param tcDelta
+   * @param toolCallsMap
    */
   private accumulateToolCall(
     tcDelta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta.ToolCall,
@@ -381,6 +394,9 @@ export class OpenAIClient {
 
   /**
    * Builds the assistant message with tool calls and reasoning details.
+   * @param currentMessage
+   * @param toolCallsMap
+   * @param reasoningText
    */
   private buildStreamMessage(
     currentMessage: OpenAIAssistantMessageWithReasoning,
@@ -408,6 +424,7 @@ export class OpenAIClient {
 
   /**
    * Updates chat history with a new assistant message.
+   * @param message
    */
   private updateChatHistoryWithMessage(
     message: OpenAIAssistantMessageWithReasoning,
@@ -433,6 +450,7 @@ export class OpenAIClient {
 
   /**
    * Executes all provided tool calls via MCP.
+   * @param toolCalls
    */
   private async *executeToolCalls(
     toolCalls: OpenAIToolCall[],
@@ -458,6 +476,7 @@ export class OpenAIClient {
 
   /**
    * Executes a single tool call and returns the result.
+   * @param toolCall
    */
   private async executeSingleToolCall(
     toolCall: OpenAIToolCall,
@@ -473,13 +492,15 @@ export class OpenAIClient {
       arguments: args,
     });
     if (!result) {
-      throw new Error("MCP client not initialized. Call initialize() first.");
+      throw new Error(MCP_NOT_INITIALIZED_ERROR);
     }
     return result.content;
   }
 
   /**
    * Adds an error tool message to the chat history.
+   * @param toolCall
+   * @param error
    */
   private addErrorToolMessage(toolCall: OpenAIToolCall, error: unknown): void {
     const toolMessage: OpenAIMessage = {

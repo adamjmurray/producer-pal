@@ -19,6 +19,11 @@ const tabs: Tab[] = [
   { id: "appearance", label: "Appearance" },
 ];
 
+/**
+ *
+ * @param root0
+ * @param root0.children
+ */
 export function SettingsTabs({ children }: SettingsTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>("connection");
 

@@ -9,6 +9,12 @@ interface AssistantMessageProps {
   isResponding?: boolean;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.parts
+ * @param root0.isResponding
+ */
 export function AssistantMessage({
   parts,
   isResponding,

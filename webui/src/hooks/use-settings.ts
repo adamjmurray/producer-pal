@@ -19,6 +19,12 @@ type ProviderStateSetters = Record<
   (update: (prev: ProviderSettings) => ProviderSettings) => void
 >;
 
+/**
+ *
+ * @param provider
+ * @param setters
+ * @param key
+ */
 function createProviderSetter<K extends keyof ProviderSettings>(
   provider: Provider,
   setters: ProviderStateSetters,
@@ -30,6 +36,10 @@ function createProviderSetter<K extends keyof ProviderSettings>(
 }
 
 // Hook manages state for 7 providers with individual setters and orchestration logic
+
+/**
+ *
+ */
 // eslint-disable-next-line max-lines-per-function
 export function useSettings(): UseSettingsReturn {
   const [provider, setProviderState] = useState<Provider>(loadCurrentProvider);

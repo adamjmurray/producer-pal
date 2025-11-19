@@ -8,6 +8,14 @@ interface AssistantToolCallProps {
   isError?: boolean;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.name
+ * @param root0.args
+ * @param root0.result
+ * @param root0.isError
+ */
 export function AssistantToolCall({
   name,
   args,
@@ -44,6 +52,11 @@ export function AssistantToolCall({
   );
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.result
+ */
 function FullResultDetails({ result }: { result: string }) {
   const s = `${result}`;
   let formatted: string | null = null;

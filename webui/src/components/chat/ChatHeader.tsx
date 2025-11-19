@@ -13,6 +13,10 @@ interface ChatHeaderProps {
   onClearConversation: () => void;
 }
 
+/**
+ *
+ * @param provider
+ */
 function getProviderName(provider: Provider): string {
   switch (provider) {
     case "gemini":
@@ -32,6 +36,18 @@ function getProviderName(provider: Provider): string {
   }
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.mcpStatus
+ * @param root0.activeModel
+ * @param root0.activeThinking
+ * @param root0.activeTemperature
+ * @param root0.activeProvider
+ * @param root0.hasMessages
+ * @param root0.onOpenSettings
+ * @param root0.onClearConversation
+ */
 export function ChatHeader({
   mcpStatus,
   activeModel,

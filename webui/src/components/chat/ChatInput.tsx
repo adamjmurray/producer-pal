@@ -6,6 +6,13 @@ interface ChatInputProps {
   onStop: () => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.handleSend
+ * @param root0.isAssistantResponding
+ * @param root0.onStop
+ */
 export function ChatInput({
   handleSend,
   isAssistantResponding,

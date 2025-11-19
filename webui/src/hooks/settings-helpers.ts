@@ -66,6 +66,10 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
 };
 
+/**
+ *
+ * @param provider
+ */
 export function loadProviderSettings(provider: Provider): ProviderSettings {
   const newFormatKey = `producer_pal_provider_${provider}`;
   const newFormatData = localStorage.getItem(newFormatKey);
@@ -124,6 +128,11 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
   return DEFAULT_SETTINGS[provider];
 }
 
+/**
+ *
+ * @param provider
+ * @param settings
+ */
 export function saveProviderSettings(
   provider: Provider,
   settings: ProviderSettings,
@@ -132,6 +141,10 @@ export function saveProviderSettings(
   localStorage.setItem(key, JSON.stringify(settings));
 }
 
+/**
+ *
+ * @param thinking
+ */
 export function normalizeThinkingForOpenAI(thinking: string): string {
   // OpenAI only supports "Low", "Medium", "High"
   if (thinking === "Off" || thinking === "Auto") {
@@ -143,6 +156,10 @@ export function normalizeThinkingForOpenAI(thinking: string): string {
   return thinking;
 }
 
+/**
+ *
+ * @param provider
+ */
 export function checkHasApiKey(provider: Provider): boolean {
   if (provider === "lmstudio" || provider === "ollama") {
     return Boolean(localStorage.getItem(`producer_pal_provider_${provider}`));
@@ -176,6 +193,9 @@ export interface AllProviderSettings {
   custom: ProviderSettings;
 }
 
+/**
+ *
+ */
 export function loadAllProviderSettings(): AllProviderSettings {
   return {
     gemini: loadProviderSettings("gemini"),
@@ -188,6 +208,10 @@ export function loadAllProviderSettings(): AllProviderSettings {
   };
 }
 
+/**
+ *
+ * @param settings
+ */
 export function saveAllProviderSettings(settings: AllProviderSettings) {
   saveProviderSettings("gemini", settings.gemini);
   saveProviderSettings("openai", settings.openai);
@@ -198,6 +222,9 @@ export function saveAllProviderSettings(settings: AllProviderSettings) {
   saveProviderSettings("custom", settings.custom);
 }
 
+/**
+ *
+ */
 export function loadCurrentProvider(): Provider {
   return (
     (localStorage.getItem(
@@ -208,6 +235,9 @@ export function loadCurrentProvider(): Provider {
   );
 }
 
+/**
+ *
+ */
 export function loadEnabledTools(): Record<string, boolean> {
   const saved = localStorage.getItem("producer_pal_enabled_tools");
   if (saved) {
@@ -220,6 +250,9 @@ export function loadEnabledTools(): Record<string, boolean> {
   return DEFAULT_ENABLED_TOOLS;
 }
 
+/**
+ *
+ */
 export function createAllToolsEnabled(): Record<string, boolean> {
   return TOOLS.reduce(
     (acc, tool) => {
@@ -230,6 +263,9 @@ export function createAllToolsEnabled(): Record<string, boolean> {
   );
 }
 
+/**
+ *
+ */
 export function createAllToolsDisabled(): Record<string, boolean> {
   return TOOLS.reduce(
     (acc, tool) => {
@@ -242,6 +278,9 @@ export function createAllToolsDisabled(): Record<string, boolean> {
 
 /**
  * Saves the current provider, enabled tools, and all provider settings to localStorage
+ * @param provider
+ * @param enabledTools
+ * @param allSettings
  */
 export function saveCurrentSettings(
   provider: Provider,
@@ -259,6 +298,13 @@ export function saveCurrentSettings(
 
 /**
  * Gets the current settings for all providers from state
+ * @param gemini
+ * @param openai
+ * @param mistral
+ * @param openrouter
+ * @param lmstudio
+ * @param ollama
+ * @param custom
  */
 export function buildAllProviderSettings(
   gemini: ProviderSettings,

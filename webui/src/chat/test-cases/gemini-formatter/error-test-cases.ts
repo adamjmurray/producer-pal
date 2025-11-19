@@ -1,7 +1,9 @@
+const CONNECT_TO_ABLETON = "Connect to Ableton";
+
 export const historyWithError = [
   {
     role: "user",
-    parts: [{ text: "Connect to Ableton" }],
+    parts: [{ text: CONNECT_TO_ABLETON }],
   },
   {
     role: "model",
@@ -16,7 +18,7 @@ export const historyWithError = [
 export const expectedWithError = [
   {
     role: "user",
-    parts: [{ type: "text", content: "Connect to Ableton" }],
+    parts: [{ type: "text", content: CONNECT_TO_ABLETON }],
     rawHistoryIndex: 0,
   },
   {
@@ -32,7 +34,7 @@ export const expectedWithError = [
 export const historyWithErrorNoModel = [
   {
     role: "user",
-    parts: [{ text: "Connect to Ableton" }],
+    parts: [{ text: CONNECT_TO_ABLETON }],
   },
   {
     role: "error",
@@ -43,7 +45,7 @@ export const historyWithErrorNoModel = [
 export const expectedWithErrorNoModel = [
   {
     role: "user",
-    parts: [{ type: "text", content: "Connect to Ableton" }],
+    parts: [{ type: "text", content: CONNECT_TO_ABLETON }],
     rawHistoryIndex: 0,
   },
   {

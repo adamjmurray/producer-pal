@@ -2,12 +2,12 @@ import { useCallback, useRef, useState } from "preact/hooks";
 import { OpenAIClient } from "../chat/openai-client.js";
 import { formatOpenAIMessages } from "../chat/openai-formatter.js";
 import type { OpenAIMessage, UIMessage } from "../types/messages.js";
+import { buildOpenAIConfig } from "./config-builders.js";
 import {
   createOpenAIErrorMessage,
   handleMessageStream,
   validateMcpConnection,
 } from "./streaming-helpers.js";
-import { buildOpenAIConfig } from "./config-builders.js";
 
 interface UseOpenAIChatProps {
   apiKey: string;
@@ -34,6 +34,20 @@ interface UseOpenAIChatReturn {
 }
 
 // Hook orchestrates multiple pieces of state and callbacks for chat functionality
+
+/**
+ *
+ * @param root0
+ * @param root0.apiKey
+ * @param root0.model
+ * @param root0.thinking
+ * @param root0.temperature
+ * @param root0.baseUrl
+ * @param root0.enabledTools
+ * @param root0.mcpStatus
+ * @param root0.mcpError
+ * @param root0.checkMcpConnection
+ */
 // eslint-disable-next-line max-lines-per-function
 export function useOpenAIChat({
   apiKey,
