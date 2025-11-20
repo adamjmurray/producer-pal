@@ -6,7 +6,8 @@ import { useApiKey } from './hooks/useApiKey';
 type View = 'voice' | 'settings';
 
 /**
- *
+ * Main application component
+ * @returns {JSX.Element} App component
  */
 function App() {
   const { apiKey, saveApiKey } = useApiKey();
@@ -30,13 +31,6 @@ function App() {
               setCurrentView('voice');
             }}
             onBack={() => setCurrentView('voice')}
-          />
-        );
-      default:
-        return (
-          <VoiceChat
-            apiKey={apiKey}
-            onOpenSettings={() => setCurrentView('settings')}
           />
         );
     }
