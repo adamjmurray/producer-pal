@@ -15,9 +15,9 @@ import { toolDefTransformClips } from "../tools/operations/transform-clips/trans
 import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
 import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
 import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
-import { toolDefCreateTrack } from "../tools/track/create-track.def.js";
-import { toolDefReadTrack } from "../tools/track/read-track.def.js";
-import { toolDefUpdateTrack } from "../tools/track/update-track.def.js";
+import { toolDefCreateTrack } from "../tools/track/create/create-track.def.js";
+import { toolDefReadTrack } from "../tools/track/read/read-track.def.js";
+import { toolDefUpdateTrack } from "../tools/track/update/update-track.def.js";
 import { toolDefConnect } from "../tools/workflow/connect.def.js";
 import { toolDefMemory } from "../tools/workflow/memory.def.js";
 

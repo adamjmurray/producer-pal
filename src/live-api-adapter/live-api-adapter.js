@@ -25,9 +25,9 @@ import { transformClips } from "../tools/operations/transform-clips/transform-cl
 import { createScene } from "../tools/scene/create-scene.js";
 import { readScene } from "../tools/scene/read-scene.js";
 import { updateScene } from "../tools/scene/update-scene.js";
-import { createTrack } from "../tools/track/create-track.js";
-import { readTrack } from "../tools/track/read-track.js";
-import { updateTrack } from "../tools/track/update-track.js";
+import { createTrack } from "../tools/track/create/create-track.js";
+import { readTrack } from "../tools/track/read/read-track.js";
+import { updateTrack } from "../tools/track/update/update-track.js";
 import { connect } from "../tools/workflow/connect.js";
 import { memory } from "../tools/workflow/memory.js";
 
