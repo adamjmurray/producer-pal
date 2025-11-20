@@ -1,4 +1,4 @@
-import * as console from "../../shared/v8-max-console.js";
+import * as console from "../../../shared/v8-max-console.js";
 import { readClip } from "../clip/read/read-clip.js";
 import { DEVICE_TYPE } from "../../constants.js";
 import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
