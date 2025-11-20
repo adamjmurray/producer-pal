@@ -1,6 +1,6 @@
 import type { GeminiClientConfig } from "../chat/gemini-client";
 import type { OpenAIClientConfig } from "../chat/openai-client";
-import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config";
+import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../lib/config";
 import type { GeminiMessage, OpenAIMessage } from "../types/messages";
 
 /**

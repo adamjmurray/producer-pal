@@ -1,4 +1,4 @@
-import { DEFAULT_ENABLED_TOOLS, TOOLS } from "../constants/tools";
+import { DEFAULT_ENABLED_TOOLS, TOOLS } from "../lib/constants/tools";
 import type { Provider } from "../types/settings";
 
 export interface ProviderSettings {
