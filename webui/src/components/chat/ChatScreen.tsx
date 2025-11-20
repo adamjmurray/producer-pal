@@ -1,3 +1,4 @@
+import { useState } from "preact/hooks";
 import type { UIMessage } from "../../types/messages.js";
 import type { Provider } from "../../types/settings.js";
 import { ChatHeader } from "./ChatHeader.jsx";
@@ -71,6 +72,16 @@ export function ChatScreen({
   enabledTools,
   enableVoice = false,
 }: ChatScreenProps) {
+  const [voiceMessages, setVoiceMessages] = useState<UIMessage[]>([]);
+
+  const handleVoiceMessages = (newVoiceMessages: UIMessage[]) => {
+    setVoiceMessages(newVoiceMessages);
+  };
+
+  // Use voice messages if available, otherwise use regular messages
+  const displayMessages = voiceMessages.length > 0 ? voiceMessages : messages;
+  const hasAnyMessages = displayMessages.length > 0;
+
   return (
     <div className="flex flex-col h-screen">
       <ChatHeader
@@ -79,13 +90,13 @@ export function ChatScreen({
         activeThinking={activeThinking}
         activeTemperature={activeTemperature}
         activeProvider={activeProvider}
-        hasMessages={messages.length > 0}
+        hasMessages={hasAnyMessages}
         onOpenSettings={onOpenSettings}
         onClearConversation={onClearConversation}
       />
 
       <div class="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
+        {!hasAnyMessages ? (
           <ChatStart
             mcpStatus={mcpStatus}
             mcpError={mcpError}
@@ -94,7 +105,7 @@ export function ChatScreen({
           />
         ) : (
           <MessageList
-            messages={messages}
+            messages={displayMessages}
             isAssistantResponding={isAssistantResponding}
             handleRetry={handleRetry}
           />
@@ -105,6 +116,7 @@ export function ChatScreen({
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
         onStop={onStop}
+        onVoiceMessages={handleVoiceMessages}
         apiKey={apiKey}
         model={model}
         temperature={temperature}

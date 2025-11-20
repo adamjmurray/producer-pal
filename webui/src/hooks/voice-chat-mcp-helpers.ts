@@ -7,24 +7,32 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 const MCP_ERROR_MESSAGE = "Error closing MCP client:";
 
+export interface ToolCallResult {
+  name: string;
+  args: Record<string, unknown>;
+  result: string;
+  isError: boolean;
+}
+
 /**
  * Handles tool calls from the Live API by executing them via MCP client
  * @param toolCall - Tool call from Gemini Live API
  * @param mcpClient - MCP client instance
  * @param session - Gemini Live session
- * @returns {Promise<void>} Promise that resolves when tool call is handled
+ * @returns {Promise<ToolCallResult[]>} Promise that resolves with tool call results
  */
 export async function handleToolCall(
   toolCall: LiveServerToolCall,
   mcpClient: Client | null,
   session: Session | null,
-): Promise<void> {
+): Promise<ToolCallResult[]> {
   if (!toolCall.functionCalls || !mcpClient) {
     console.log("No function calls or MCP client not initialized");
-    return;
+    return [];
   }
 
   const toolResponses = [];
+  const results: ToolCallResult[] = [];
 
   for (const functionCall of toolCall.functionCalls) {
     if (!functionCall.name || !functionCall.id) {
@@ -44,6 +52,18 @@ export async function handleToolCall(
 
       console.log(`Tool result:`, result);
 
+      const isError = Boolean(result.isError);
+      const resultText = JSON.stringify(
+        result.isError ? { error: result } : result.content,
+      );
+
+      results.push({
+        name: functionCall.name,
+        args: functionCall.args ?? {},
+        result: resultText,
+        isError,
+      });
+
       toolResponses.push({
         functionResponses: [
           {
@@ -56,6 +76,13 @@ export async function handleToolCall(
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error(`Tool execution error: ${errMsg}`);
+
+      results.push({
+        name: functionCall.name,
+        args: functionCall.args ?? {},
+        result: errMsg,
+        isError: true,
+      });
 
       toolResponses.push({
         functionResponses: [
@@ -81,6 +108,8 @@ export async function handleToolCall(
       console.error(`Error sending tool response: ${errMsg}`);
     }
   }
+
+  return results;
 }
 
 /**

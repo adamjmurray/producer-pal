@@ -1,5 +1,6 @@
 import { useEffect } from "preact/hooks";
 import { useVoiceChat } from "../../hooks/use-voice-chat.js";
+import type { UIMessage } from "../../types/messages.js";
 
 interface VoiceInputProps {
   apiKey: string;
@@ -8,7 +9,7 @@ interface VoiceInputProps {
   voice?: string;
   mcpUrl?: string;
   enabledTools?: Record<string, boolean>;
-  onTranscriptUpdate: (transcript: string) => void;
+  onMessagesUpdate: (messages: UIMessage[]) => void;
   disabled?: boolean;
 }
 
@@ -19,7 +20,7 @@ interface VoiceInputProps {
  * @param props.voice - Voice name for text-to-speech
  * @param props.mcpUrl - MCP server URL
  * @param props.enabledTools - Enabled MCP tools
- * @param props.onTranscriptUpdate - Callback for transcription updates
+ * @param props.onMessagesUpdate - Callback for messages updates
  * @param props.disabled - Whether the component is disabled
  * @returns {JSX.Element} Voice input button component
  */
@@ -28,25 +29,23 @@ export function VoiceInput({
   voice,
   mcpUrl,
   enabledTools,
-  onTranscriptUpdate,
+  onMessagesUpdate,
   disabled = false,
 }: VoiceInputProps) {
   const {
     isConnected,
     isStreaming,
     error,
-    transcription,
+    messages,
     connect,
     startStreaming,
     stopStreaming,
   } = useVoiceChat(apiKey, voice, mcpUrl, enabledTools);
 
-  // Update parent with transcription changes
+  // Update parent with message changes
   useEffect(() => {
-    if (transcription) {
-      onTranscriptUpdate(transcription);
-    }
-  }, [transcription, onTranscriptUpdate]);
+    onMessagesUpdate(messages);
+  }, [messages, onMessagesUpdate]);
 
   const handleToggle = async (): Promise<void> => {
     if (isStreaming) {

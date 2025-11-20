@@ -3,6 +3,7 @@ import type { LiveServerToolCall, Session } from "@google/genai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { useCallback, useRef, useState } from "preact/hooks";
+import type { UIMessage, UIPart } from "../types/messages.js";
 import {
   playAudioChunk as playAudio,
   processAudioInput,
@@ -11,12 +12,13 @@ import {
   closeMcpClient,
   handleToolCall as handleMcpToolCall,
 } from "./voice-chat-mcp-helpers.js";
+import { createMessageHandler } from "./voice-chat-message-handler.js";
 
 export interface VoiceChatState {
   isConnected: boolean;
   isStreaming: boolean;
   error: string | null;
-  transcription: string;
+  messages: UIMessage[];
   connect: () => Promise<void>;
   disconnect: () => void;
   startStreaming: () => Promise<void>;
@@ -41,7 +43,7 @@ export function useVoiceChat(
   const [isConnected, setIsConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transcription, setTranscription] = useState("");
+  const [messages, setMessages] = useState<UIMessage[]>([]);
 
   const sessionRef = useRef<Session | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
@@ -52,9 +54,47 @@ export function useVoiceChat(
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const isConnectedRef = useRef(false);
   const nextPlayTimeRef = useRef(0);
+  const currentUserMessageRef = useRef<string>("");
+  const currentAssistantMessageRef = useRef<string>("");
 
   const handleToolCall = useCallback(async (toolCall: LiveServerToolCall) => {
-    await handleMcpToolCall(toolCall, mcpClientRef.current, sessionRef.current);
+    const results = await handleMcpToolCall(
+      toolCall,
+      mcpClientRef.current,
+      sessionRef.current,
+    );
+
+    // Add tool calls to the current assistant message
+    if (results.length > 0) {
+      setMessages((prev) => {
+        const updated = [...prev];
+        // Find or create the last assistant message
+        let lastMessage = updated[updated.length - 1];
+
+        if (lastMessage?.role !== "model") {
+          lastMessage = {
+            role: "model",
+            parts: [],
+            rawHistoryIndex: updated.length,
+          };
+          updated.push(lastMessage);
+        }
+
+        // Add tool parts
+        for (const result of results) {
+          const toolPart: UIPart = {
+            type: "tool",
+            name: result.name,
+            args: result.args,
+            result: result.result,
+            isError: result.isError,
+          };
+          lastMessage.parts.push(toolPart);
+        }
+
+        return updated;
+      });
+    }
   }, []);
 
   const playAudioChunk = useCallback(async (base64Audio: string) => {
@@ -138,52 +178,20 @@ export function useVoiceChat(
             isConnectedRef.current = true;
             setError(null);
           },
-          onmessage: (message) => {
-            try {
-              // Handle interruptions
-              if (message.serverContent?.interrupted) {
-                console.log("AI interrupted - clearing audio queue");
-                if (currentAudioSourceRef.current) {
-                  currentAudioSourceRef.current.stop();
-                  currentAudioSourceRef.current = null;
-                }
-                nextPlayTimeRef.current = 0;
-                return;
-              }
-
-              // Handle transcriptions
-              if (message.serverContent?.inputTranscription) {
-                const text = message.serverContent.inputTranscription;
-                console.log(`User transcription: ${text}`);
-                setTranscription((p) => `${p}You: ${text}\n`);
-              }
-
-              if (message.serverContent?.outputTranscription) {
-                const text = message.serverContent.outputTranscription;
-                console.log(`AI transcription: ${text}`);
-                setTranscription((p) => `${p}AI: ${text}\n`);
-              }
-
-              // Handle tool calls
-              if (message.toolCall) {
-                console.log(`Tool call received:`, message.toolCall);
-                void handleToolCall(message.toolCall);
-                return;
-              }
-
-              // Handle audio
-              const turn = message.serverContent?.modelTurn;
-              if (turn?.parts) {
-                for (const part of turn.parts) {
-                  if ("inlineData" in part && part.inlineData?.data) {
-                    void playAudioChunk(part.inlineData.data);
-                  }
-                }
-              }
-            } catch (err) {
-              console.error("Message handler error:", err);
-            }
-          },
+          onmessage: createMessageHandler(
+            {
+              currentAudioSourceRef,
+              nextPlayTimeRef,
+              currentUserMessageRef,
+              currentAssistantMessageRef,
+            },
+            {
+              setMessages,
+              handleToolCall: (toolCall) =>
+                void handleToolCall(toolCall as LiveServerToolCall),
+              playAudioChunk: (data) => void playAudioChunk(data),
+            },
+          ),
           onerror: (e) => {
             console.error("WebSocket error:", e);
             setError(e.message || "An error occurred");
@@ -366,7 +374,7 @@ export function useVoiceChat(
     isConnected,
     isStreaming,
     error,
-    transcription,
+    messages,
     connect,
     disconnect,
     startStreaming,

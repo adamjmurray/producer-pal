@@ -1,10 +1,12 @@
 import { useState } from "preact/hooks";
+import type { UIMessage } from "../../types/messages.js";
 import { VoiceInput } from "./VoiceInput.js";
 
 interface ChatInputProps {
   handleSend: (message: string) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
+  onVoiceMessages?: (messages: UIMessage[]) => void;
   apiKey?: string;
   model?: string;
   temperature?: number;
@@ -20,12 +22,14 @@ interface ChatInputProps {
  * @param {(message: string) => Promise<void>} root0.handleSend - Callback to send message
  * @param {boolean} root0.isAssistantResponding - Whether assistant is currently responding
  * @param {() => void} root0.onStop - Callback to stop assistant response
+ * @param {(messages: UIMessage[]) => void} [root0.onVoiceMessages] - Callback for voice messages
  * @returns {JSX.Element} - React component
  */
 export function ChatInput({
   handleSend,
   isAssistantResponding,
   onStop,
+  onVoiceMessages,
   apiKey = "",
   model = "models/gemini-2.0-flash-exp",
   temperature = 1.0,
@@ -51,8 +55,8 @@ export function ChatInput({
     setInput("");
   };
 
-  const handleTranscriptUpdate = (transcript: string): void => {
-    setInput(transcript);
+  const handleVoiceMessagesUpdate = (messages: UIMessage[]): void => {
+    onVoiceMessages?.(messages);
   };
 
   return (
@@ -75,7 +79,7 @@ export function ChatInput({
               voice={voice}
               mcpUrl={mcpUrl}
               enabledTools={enabledTools}
-              onTranscriptUpdate={handleTranscriptUpdate}
+              onMessagesUpdate={handleVoiceMessagesUpdate}
               disabled={isAssistantResponding}
             />
           )}
