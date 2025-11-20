@@ -11,9 +11,9 @@ import {
 } from "../shared/mcp-response-utils.js";
 import * as console from "../shared/v8-max-console.js";
 import { VERSION } from "../shared/version.js";
-import { createClip } from "../tools/clip/create-clip.js";
-import { readClip } from "../tools/clip/read-clip.js";
-import { updateClip } from "../tools/clip/update-clip.js";
+import { createClip } from "../tools/clip/create/create-clip.js";
+import { readClip } from "../tools/clip/read/read-clip.js";
+import { updateClip } from "../tools/clip/update/update-clip.js";
 import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
 import { select } from "../tools/control/select.js";

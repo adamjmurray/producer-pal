@@ -1,8 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "../shared/version.js";
-import { toolDefCreateClip } from "../tools/clip/create-clip.def.js";
-import { toolDefReadClip } from "../tools/clip/read-clip.def.js";
-import { toolDefUpdateClip } from "../tools/clip/update-clip.def.js";
+import { toolDefCreateClip } from "../tools/clip/create/create-clip.def.js";
+import { toolDefReadClip } from "../tools/clip/read/read-clip.def.js";
+import { toolDefUpdateClip } from "../tools/clip/update/update-clip.def.js";
 // import { toolDefReadDevice } from "./tool-def-read-device.js";  // UNUSED - see read-device.js for why
 import { toolDefPlayback } from "../tools/control/playback.def.js";
 import { toolDefRawLiveApi } from "../tools/control/raw-live-api.def.js";
