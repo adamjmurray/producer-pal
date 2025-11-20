@@ -18,7 +18,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
@@ -74,7 +74,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
@@ -110,7 +110,7 @@ jobs:
       contents: read
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v6
         with:
