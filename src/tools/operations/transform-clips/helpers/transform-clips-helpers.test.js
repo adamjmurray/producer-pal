@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   createSeededRNG,
   randomInRange,
-  shuffleArray,
-} from "./transform-clips.js";
+} from "./transform-clips-helpers.js";
+import { shuffleArray } from "./transform-clips-shuffling-helpers.js";
 
 describe("transform-clips helpers", () => {
   describe("createSeededRNG", () => {

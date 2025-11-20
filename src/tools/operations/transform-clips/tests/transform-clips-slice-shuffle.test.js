@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  LiveAPI,
   liveApiCall,
   liveApiGet,
   liveApiId,
