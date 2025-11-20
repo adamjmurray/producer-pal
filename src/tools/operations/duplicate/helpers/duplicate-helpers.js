@@ -7,7 +7,7 @@ import {
   moveClipFromHolding,
 } from "../../../shared/arrangement/arrangement-tiling.js";
 import * as console from "../../../../shared/v8-max-console.js";
-import { updateClip } from "../../clip/update/update-clip.js";
+import { updateClip } from "../../../clip/update/update-clip.js";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats
