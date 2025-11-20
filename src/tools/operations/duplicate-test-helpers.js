@@ -57,7 +57,7 @@ export function setupMocks() {
     updateClip: updateClipMock,
   }));
 
-  vi.mock(import("../shared/arrangement-tiling.js"), () => ({
+  vi.mock(import("../shared/arrangement/arrangement-tiling.js"), () => ({
     createShortenedClipInHolding: createShortenedClipInHoldingMock,
     moveClipFromHolding: moveClipFromHoldingMock,
   }));

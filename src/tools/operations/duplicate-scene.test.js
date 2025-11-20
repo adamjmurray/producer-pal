@@ -18,7 +18,7 @@ vi.mock(import("../clip/update-clip.js"), () => ({
 }));
 
 // Mock arrangement-tiling helpers
-vi.mock(import("../shared/arrangement-tiling.js"), () => ({
+vi.mock(import("../shared/arrangement/arrangement-tiling.js"), () => ({
   createShortenedClipInHolding: vi.fn(() => ({
     holdingClipId: "holding_clip_id",
   })),
