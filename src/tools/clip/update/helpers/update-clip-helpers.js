@@ -1,10 +1,10 @@
 import { MAX_CLIP_BEATS } from "../../../constants.js";
-import { formatNotation } from "../../../notation/barbeat/barbeat-format-notation.js";
-import { interpretNotation } from "../../../notation/barbeat/interpreter/barbeat-interpreter.js";
+import { formatNotation } from "../../../../notation/barbeat/barbeat-format-notation.js";
+import { interpretNotation } from "../../../../notation/barbeat/interpreter/barbeat-interpreter.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "../../../notation/barbeat/time/barbeat-time.js";
+} from "../../../../notation/barbeat/time/barbeat-time.js";
 import * as console from "../../../shared/v8-max-console.js";
 import {
   getActualAudioEnd,
