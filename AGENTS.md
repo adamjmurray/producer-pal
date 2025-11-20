@@ -59,7 +59,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   exported function(s). This improves code readability and makes it immediately
   clear what the primary purpose of each file is.
 
-- **Import extensions**: Always include `.js` in imports
+- **Import extensions**: `scripts/` code must ALWAYS include `.js` file
+  extensions in imports, as required by the Node.js ESM loader. All code in
+  `src/` and `webui/` NEVER use file extensions in imports.
 
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)

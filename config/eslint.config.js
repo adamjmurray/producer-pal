@@ -342,6 +342,38 @@ export default [
     },
   },
 
+  // No extensions for imports in src or webui:
+  {
+    files: ["{src,webui}/**/*.{js,mjs,ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/\\.(jsx?|tsx?)$/]",
+          message:
+            "Do not use file extensions in imports (bundlers handle resolution)",
+        },
+      ],
+    },
+  },
+
+  // Require extensions for scripts:
+  {
+    files: ["scripts/**/*.{js,mjs,ts,tsx}"],
+    rules: {
+      // Node.js ESM requires explicit file extensions for relative imports.
+      // See: https://nodejs.org/api/esm.html#import-specifiers
+      "import/extensions": [
+        "error",
+        "always",
+        {
+          js: "always",
+          ignorePackages: true,
+        },
+      ],
+    },
+  },
+
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}"],
