@@ -8,7 +8,7 @@ import {
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
 } from "../../../constants.js";
-import { createAudioClipInSession } from "../../shared/arrangement/arrangement-tiling.js";
+import { createAudioClipInSession } from "../../../shared/arrangement/arrangement-tiling.js";
 import { dbToLiveGain } from "../../shared/gain-utils.js";
 import * as console from "../../shared/v8-max-console.js";
 
