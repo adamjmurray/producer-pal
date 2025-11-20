@@ -1,4 +1,4 @@
-import { useEffect } from "preact/hooks";
+import { useEffect, useRef } from "preact/hooks";
 import { useVoiceChat } from "../../hooks/use-voice-chat.js";
 import type { UIMessage } from "../../types/messages.js";
 
@@ -42,10 +42,20 @@ export function VoiceInput({
     stopStreaming,
   } = useVoiceChat(apiKey, voice, mcpUrl, enabledTools);
 
+  const hasConnectedRef = useRef(false);
+
   // Update parent with message changes
   useEffect(() => {
     onMessagesUpdate(messages);
   }, [messages, onMessagesUpdate]);
+
+  // Auto-start streaming after first connect
+  useEffect(() => {
+    if (isConnected && !hasConnectedRef.current) {
+      hasConnectedRef.current = true;
+      void startStreaming();
+    }
+  }, [isConnected, startStreaming]);
 
   const handleToggle = async (): Promise<void> => {
     if (isStreaming) {
@@ -53,16 +63,12 @@ export function VoiceInput({
     } else if (isConnected) {
       await startStreaming();
     } else {
-      // Connect and then start streaming
       await connect();
-      // Note: We'll need to click again to start streaming after connecting
-      // This is intentional to give user control
+      // Streaming will auto-start via useEffect
     }
   };
 
-  const buttonText = !isConnected ? "Connect" : isStreaming ? "Stop" : "Voice";
-
-  const buttonClass = `px-4 py-2 rounded text-sm ${
+  const buttonClass = `px-4 py-2 rounded text-sm flex items-center gap-2 ${
     disabled
       ? "bg-gray-400 dark:bg-gray-700 cursor-not-allowed"
       : isStreaming
@@ -84,10 +90,11 @@ export function VoiceInput({
               : "Start voice input"
         }
       >
+        <span className="text-lg">🎤</span>
         {isStreaming && (
-          <span className="inline-block w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
+          <span className="inline-block w-2 h-2 bg-white rounded-full animate-pulse" />
         )}
-        {buttonText}
+        {!isConnected && <span>Connect</span>}
       </button>
 
       {error && (
