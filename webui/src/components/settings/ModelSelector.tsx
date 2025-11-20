@@ -89,11 +89,12 @@ const OPENROUTER_MODELS = [
 ];
 
 /**
- *
- * @param root0
- * @param root0.provider
- * @param root0.model
- * @param root0.setModel
+ * Model selection dropdown with provider-specific presets
+ * @param {ModelSelectorProps} root0 - Component props
+ * @param {Provider} root0.provider - Current provider
+ * @param {string} root0.model - Current model
+ * @param {(model: string) => void} root0.setModel - Model setter callback
+ * @returns {JSX.Element} - React component
  */
 export function ModelSelector({
   provider,

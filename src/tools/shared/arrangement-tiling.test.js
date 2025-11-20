@@ -385,24 +385,26 @@ describe("createPartialTile", () => {
 
     const track = new LiveAPI("live_set tracks 0");
 
-    // Mock createShortenedClipInHolding
+    // Mock createShortenedClipInHolding - clip needs to be longer than target for temp clip creation
     liveApiCall.mockReturnValueOnce(["id", "200"]);
     mockLiveApiGet({
       "id 200": {
-        end_time: 1000 + 8,
+        end_time: 1000 + 10, // Longer than target length of 8
         start_marker: 1,
         loop_start: 4,
       },
     });
     liveApiCall.mockReturnValueOnce(["id", "300"]);
+    liveApiCall.mockReturnValueOnce(undefined); // delete temp clip
 
     // Mock moveClipFromHolding
     liveApiCall.mockReturnValueOnce(["id", "400"]);
+    liveApiCall.mockReturnValueOnce(undefined); // delete holding clip
 
-    createPartialTile(sourceClip, track, 500, 8, 1000, true, false);
+    createPartialTile(sourceClip, track, 500, 8, 1000, true, {}, false);
 
-    // Should only have 5 calls: duplicate to holding, temp for shorten, delete temp, move, cleanup
-    // No pre-roll adjustment calls
+    // Should have 5 calls: duplicate to holding, create temp, delete temp, move to target, delete holding
+    // No pre-roll adjustment calls (since adjustPreRoll is false)
     expect(liveApiCall).toHaveBeenCalledTimes(5);
   });
 });

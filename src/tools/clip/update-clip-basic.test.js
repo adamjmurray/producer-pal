@@ -5,8 +5,8 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
-import { updateClip } from "./update-clip.js";
 import { setupMocks } from "./update-clip-test-helpers.js";
+import { updateClip } from "./update-clip.js";
 
 describe("updateClip - Basic operations", () => {
   beforeEach(() => {
@@ -174,10 +174,13 @@ describe("updateClip - Basic operations", () => {
       },
     });
 
-    updateClip({
+    const result = updateClip({
       ids: "999",
       name: "Test Arrangement Clip",
     });
+
+    // Verify result is returned (view switching is a side effect)
+    expect(result).toEqual({ id: "999" });
   });
 
   it("should update multiple clips by comma-separated IDs", () => {

@@ -231,12 +231,7 @@ export function createClip(
       : [];
 
   // Apply modulations to notes if provided
-  applyModulations(
-    notes,
-    modulationString,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+  applyModulations(notes, modulationString, timeSigNumerator, timeSigDenominator);
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   const clipLength = calculateClipLength(

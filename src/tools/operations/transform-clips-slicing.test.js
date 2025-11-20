@@ -79,7 +79,7 @@ describe("transformClips - slicing", () => {
       // Mocks for holding/moved clips
       if (this._id?.startsWith("holding_")) {
         if (prop === "end_time") {
-          return [40000 + 4]; // Holding area position + shortened length
+          return [40000 + 16]; // Holding area position + original clip length (needs temp clip to shorten)
         }
         if (prop === "loop_start") {
           return [0.0];
@@ -114,10 +114,9 @@ describe("transformClips - slicing", () => {
         } else if (callCount === 2) {
           // Second call: move from holding to original position
           return ["id", "moved_1"];
-        } 
-          // Subsequent calls: tiling
-          return ["id", `tile_${callCount}`];
-        
+        }
+        // Subsequent calls: tiling
+        return ["id", `tile_${callCount}`];
       }
       if (method === "create_midi_clip") {
         return ["id", "temp_1"];
@@ -509,5 +508,178 @@ describe("transformClips - slicing", () => {
         seed: 12345,
       }),
     ).toThrow(/would create 64 slices.*Maximum 64 slices total/);
+  });
+
+  it("should only return newly created clips from slicing, not following clips", () => {
+    const clipId = "clip_1";
+    const followingClipId = "clip_following";
+    let callCount = 0;
+
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id clip_1") {
+        return clipId;
+      }
+      if (this._path === "id clip_following") {
+        return followingClipId;
+      }
+      return this._id;
+    });
+    liveApiPath.mockImplementation(function () {
+      if (this._id === clipId) {
+        return "live_set tracks 0 arrangement_clips 0";
+      }
+      if (this._id === followingClipId) {
+        return "live_set tracks 0 arrangement_clips 1";
+      }
+      if (
+        this._id?.startsWith("holding_") ||
+        this._id?.startsWith("moved_") ||
+        this._id?.startsWith("tile_")
+      ) {
+        return "live_set tracks 0 arrangement_clips 2";
+      }
+      return this._path;
+    });
+    liveApiType.mockImplementation(function () {
+      if (this._id === clipId || this._id === followingClipId) {
+        return "Clip";
+      }
+    });
+    /**
+     * Mock properties for primary clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
+     */
+    function mockPrimaryClipProperties(prop, id) {
+      if (id === clipId) {
+        if (prop === "is_midi_clip") return [0];
+        if (prop === "is_audio_clip") return [1];
+        if (prop === "is_arrangement_clip") return [1];
+        if (prop === "looping") return [1];
+        if (prop === "start_time") return [0.0];
+        if (prop === "end_time") return [3.0];
+        if (prop === "loop_start") return [0.0];
+        if (prop === "loop_end") return [8.0];
+        if (prop === "end_marker") return [8.0];
+      }
+      return null;
+    }
+
+    /**
+     * Mock properties for following clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
+     */
+    function mockFollowingClipProperties(prop, id) {
+      if (id === followingClipId) {
+        if (prop === "is_midi_clip") return [0];
+        if (prop === "is_audio_clip") return [1];
+        if (prop === "is_arrangement_clip") return [1];
+        if (prop === "start_time") return [3.0];
+        if (prop === "end_time") return [7.0];
+      }
+      return null;
+    }
+
+    /**
+     * Mock properties for holding clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
+     */
+    function mockHoldingClipProperties(prop, id) {
+      if (id?.startsWith("holding_")) {
+        if (prop === "end_time") return [40000 + 3];
+        if (prop === "loop_start") return [0.0];
+        if (prop === "start_marker") return [0.0];
+      }
+      return null;
+    }
+
+    /**
+     * Mock properties for sliced clip objects
+     * @param {string} prop - Property name to retrieve
+     * @param {string} id - Clip ID
+     * @returns {*} - Mock property value
+     */
+    function mockSlicedClipProperties(prop, id) {
+      if (id?.startsWith("moved_") || id?.startsWith("tile_")) {
+        if (prop === "loop_start") return [0.0];
+        if (prop === "start_marker") return [0.0];
+        if (prop === "start_time") {
+          if (id === "moved_1") return [0.0];
+          if (id === "tile_2") return [1.0];
+          if (id === "tile_3") return [2.0];
+        }
+      }
+      return null;
+    }
+
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._path === "live_set") {
+        if (prop === "signature_numerator") return [4];
+        if (prop === "signature_denominator") return [4];
+      }
+
+      const result =
+        mockPrimaryClipProperties(prop, this._id) ||
+        mockFollowingClipProperties(prop, this._id) ||
+        mockHoldingClipProperties(prop, this._id) ||
+        mockSlicedClipProperties(prop, this._id);
+
+      if (result) return result;
+
+      if (this._path === "live_set tracks 0") {
+        if (prop === "track_index") return [0];
+        if (prop === "arrangement_clips") {
+          return [
+            "id",
+            "moved_1",
+            "id",
+            "tile_2",
+            "id",
+            "tile_3",
+            "id",
+            followingClipId,
+          ];
+        }
+      }
+
+      return [0];
+    });
+
+    // Mock liveApiCall for clip operations
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (method === "duplicate_clip_to_arrangement") {
+        callCount++;
+        if (callCount === 1) {
+          return ["id", "holding_1"];
+        } else if (callCount === 2) {
+          return ["id", "moved_1"];
+        } else if (callCount === 3) {
+          return ["id", "tile_2"];
+        } else if (callCount === 4) {
+          return ["id", "tile_3"];
+        }
+      }
+      if (method === "create_audio_clip") {
+        return ["id", "temp_1"];
+      }
+      return undefined;
+    });
+
+    const result = transformClips({
+      clipIds: clipId,
+      slice: "0:1.0", // 1 beat slices (creates 3 slices from 3-beat clip)
+      seed: 12345,
+    });
+
+    // Should return exactly 3 clips (the new sliced clips)
+    // Should NOT include the following clip
+    expect(result.clipIds).toHaveLength(3);
+    expect(result.clipIds).toEqual(["moved_1", "tile_2", "tile_3"]);
+    expect(result.clipIds).not.toContain(followingClipId);
   });
 });

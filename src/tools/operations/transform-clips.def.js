@@ -41,61 +41,78 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       ),
     shuffleOrder: z.boolean().optional().describe("randomize clip positions"),
     // Audio clip parameters
-    gainMin: z
+    gainDbMin: z
       .number()
+      .min(-24)
+      .max(24)
       .optional()
-      .describe("min gain multiplier (audio clips)"),
-    gainMax: z
+      .describe("min gain offset in dB to add (audio clips)"),
+    gainDbMax: z
       .number()
+      .min(-24)
+      .max(24)
       .optional()
-      .describe("max gain multiplier (audio clips)"),
-    pitchMin: z
+      .describe("max gain offset in dB to add (audio clips)"),
+    // Transpose parameters (audio and MIDI clips)
+    transposeMin: z
       .number()
+      .min(-128)
+      .max(128)
       .optional()
-      .describe("min pitch shift in semitones (audio clips)"),
-    pitchMax: z
+      .describe("min transpose in semitones (audio/MIDI clips)"),
+    transposeMax: z
       .number()
+      .min(-128)
+      .max(128)
       .optional()
-      .describe("max pitch shift in semitones (audio clips)"),
+      .describe("max transpose in semitones (audio/MIDI clips)"),
+    transposeValues: z
+      .string()
+      .optional()
+      .describe(
+        "comma-separated semitone values to randomly pick from (audio/MIDI clips, ignores transposeMin/transposeMax)",
+      ),
     // MIDI clip parameters - randomized
     velocityMin: z
       .number()
       .int()
+      .min(-127)
+      .max(127)
       .optional()
       .describe("min velocity offset to add (MIDI clips)"),
     velocityMax: z
       .number()
       .int()
+      .min(-127)
+      .max(127)
       .optional()
       .describe("max velocity offset to add (MIDI clips)"),
-    transposeMin: z
-      .number()
-      .int()
-      .optional()
-      .describe("min transpose in semitones (MIDI clips)"),
-    transposeMax: z
-      .number()
-      .int()
-      .optional()
-      .describe("max transpose in semitones (MIDI clips)"),
     durationMin: z
       .number()
+      .min(0.01)
+      .max(100)
       .optional()
       .describe("min duration multiplier (MIDI clips)"),
     durationMax: z
       .number()
+      .min(0.01)
+      .max(100)
       .optional()
       .describe("max duration multiplier (MIDI clips)"),
     // MIDI clip properties - set to specific values
     velocityRange: z
       .number()
       .int()
+      .min(-127)
+      .max(127)
       .optional()
-      .describe("velocity deviation offset to add (MIDI clips, -127 to +127)"),
+      .describe("velocity deviation offset to add (MIDI clips)"),
     probability: z
       .number()
+      .min(-1.0)
+      .max(1.0)
       .optional()
-      .describe("probability offset to add (MIDI clips, -1.0 to +1.0)"),
+      .describe("probability offset to add (MIDI clips)"),
     seed: z.number().int().optional().describe("RNG seed for reproducibility"),
   },
 });

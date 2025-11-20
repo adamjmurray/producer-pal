@@ -343,21 +343,21 @@ describe("view", () => {
   });
 
   describe("read functionality (no arguments)", () => {
-    let mockAppView,
-      mockSelectedTrack,
-      mockSelectedScene,
-      mockDetailClip,
-      mockHighlightedSlot;
+    let readAppView,
+      readSelectedTrack,
+      readSelectedScene,
+      readDetailClip,
+      readHighlightedSlot;
 
     beforeEach(() => {
       vi.clearAllMocks();
 
       // Create mock instances for read functionality
-      mockAppView = {
+      readAppView = {
         getProperty: vi.fn(),
         call: vi.fn(),
       };
-      mockSelectedTrack = {
+      readSelectedTrack = {
         exists: vi.fn(),
         trackIndex: 0,
         returnTrackIndex: null,
@@ -365,16 +365,16 @@ describe("view", () => {
         id: "id 789",
         path: "live_set tracks 0",
       };
-      mockSelectedScene = {
+      readSelectedScene = {
         exists: vi.fn(),
         sceneIndex: 2,
         id: "id 012",
       };
-      mockDetailClip = {
+      readDetailClip = {
         exists: vi.fn(),
         id: "id 123",
       };
-      mockHighlightedSlot = {
+      readHighlightedSlot = {
         exists: vi.fn(),
         id: "id 999",
         trackIndex: 1,
@@ -385,19 +385,19 @@ describe("view", () => {
       global.LiveAPI.mockImplementation(function (path) {
         const instance = (() => {
           if (path === "live_app view") {
-            return mockAppView;
+            return readAppView;
           }
           if (path === "live_set view selected_track") {
-            return mockSelectedTrack;
+            return readSelectedTrack;
           }
           if (path === "live_set view selected_scene") {
-            return mockSelectedScene;
+            return readSelectedScene;
           }
           if (path === "live_set view detail_clip") {
-            return mockDetailClip;
+            return readDetailClip;
           }
           if (path === "live_set view highlighted_clip_slot") {
-            return mockHighlightedSlot;
+            return readHighlightedSlot;
           }
           // Handle dynamic track view paths
           if (path.match(/^live_set tracks \d+ view$/)) {
@@ -426,12 +426,12 @@ describe("view", () => {
 
     it("reads basic view state with session view when no arguments", () => {
       // Setup
-      mockAppView.getProperty.mockReturnValue(1); // Session view
-      mockAppView.call.mockReturnValue(0); // No detail views or browser visible
-      mockSelectedTrack.exists.mockReturnValue(true);
-      mockSelectedScene.exists.mockReturnValue(true);
-      mockDetailClip.exists.mockReturnValue(true);
-      mockHighlightedSlot.exists.mockReturnValue(true);
+      readAppView.getProperty.mockReturnValue(1); // Session view
+      readAppView.call.mockReturnValue(0); // No detail views or browser visible
+      readSelectedTrack.exists.mockReturnValue(true);
+      readSelectedScene.exists.mockReturnValue(true);
+      readDetailClip.exists.mockReturnValue(true);
+      readHighlightedSlot.exists.mockReturnValue(true);
 
       // Execute
       const result = select();
@@ -461,8 +461,8 @@ describe("view", () => {
 
     it("reads view state with arrangement view and detail clip view", () => {
       // Setup
-      mockAppView.getProperty.mockReturnValue(2); // Arrangement view
-      mockAppView.call.mockImplementation((method, view) => {
+      readAppView.getProperty.mockReturnValue(2); // Arrangement view
+      readAppView.call.mockImplementation((method, view) => {
         if (
           method === "is_view_visible" &&
           view === LIVE_API_VIEW_NAMES.DETAIL_CLIP
@@ -471,10 +471,10 @@ describe("view", () => {
         }
         return 0;
       });
-      mockSelectedTrack.exists.mockReturnValue(false);
-      mockSelectedScene.exists.mockReturnValue(false);
-      mockDetailClip.exists.mockReturnValue(false);
-      mockHighlightedSlot.exists.mockReturnValue(false);
+      readSelectedTrack.exists.mockReturnValue(false);
+      readSelectedScene.exists.mockReturnValue(false);
+      readDetailClip.exists.mockReturnValue(false);
+      readHighlightedSlot.exists.mockReturnValue(false);
 
       // Execute
       const result = select({});
@@ -500,12 +500,12 @@ describe("view", () => {
 
     it("handles null values when nothing is selected", () => {
       // Setup
-      mockAppView.getProperty.mockReturnValue(2); // Arrangement view
-      mockAppView.call.mockReturnValue(0); // No detail views or browser visible
-      mockSelectedTrack.exists.mockReturnValue(false);
-      mockSelectedScene.exists.mockReturnValue(false);
-      mockDetailClip.exists.mockReturnValue(false);
-      mockHighlightedSlot.exists.mockReturnValue(false);
+      readAppView.getProperty.mockReturnValue(2); // Arrangement view
+      readAppView.call.mockReturnValue(0); // No detail views or browser visible
+      readSelectedTrack.exists.mockReturnValue(false);
+      readSelectedScene.exists.mockReturnValue(false);
+      readDetailClip.exists.mockReturnValue(false);
+      readHighlightedSlot.exists.mockReturnValue(false);
 
       // Execute
       const result = select();

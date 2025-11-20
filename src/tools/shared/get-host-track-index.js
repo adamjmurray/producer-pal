@@ -1,5 +1,6 @@
 /**
- *
+ * Get the track index of the host device
+ * @returns {number|null} - Track index or null if not found
  */
 export function getHostTrackIndex() {
   try {

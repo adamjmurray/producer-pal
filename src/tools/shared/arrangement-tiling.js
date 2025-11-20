@@ -96,35 +96,40 @@ export function createShortenedClipInHolding(
   const newHoldingEnd = holdingAreaStart + targetLength;
   const tempLength = holdingClipEnd - newHoldingEnd;
 
-  // For audio clips, create in session then duplicate to arrangement
-  // For MIDI clips, create directly in arrangement
-  if (isMidiClip) {
-    const tempResult = track.call(
-      "create_midi_clip",
-      newHoldingEnd,
-      tempLength,
-    );
-    const tempClip = LiveAPI.from(tempResult);
-    track.call("delete_clip", `id ${tempClip.id}`);
-  } else {
-    // Create audio clip in session with exact length
-    const { clip: sessionClip, slot } = createAudioClipInSession(
-      track,
-      tempLength,
-      context.silenceWavPath,
-    );
+  // Only create temp clip if there's actually something to truncate
+  // Use small epsilon to handle floating-point precision
+  const EPSILON = 0.001;
+  if (tempLength > EPSILON) {
+    // For audio clips, create in session then duplicate to arrangement
+    // For MIDI clips, create directly in arrangement
+    if (isMidiClip) {
+      const tempResult = track.call(
+        "create_midi_clip",
+        newHoldingEnd,
+        tempLength,
+      );
+      const tempClip = LiveAPI.from(tempResult);
+      track.call("delete_clip", `id ${tempClip.id}`);
+    } else {
+      // Create audio clip in session with exact length
+      const { clip: sessionClip, slot } = createAudioClipInSession(
+        track,
+        tempLength,
+        context.silenceWavPath,
+      );
 
-    // Duplicate to arrangement at the truncation position
-    const tempResult = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${sessionClip.id}`,
-      newHoldingEnd,
-    );
-    const tempClip = LiveAPI.from(tempResult);
+      // Duplicate to arrangement at the truncation position
+      const tempResult = track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sessionClip.id}`,
+        newHoldingEnd,
+      );
+      const tempClip = LiveAPI.from(tempResult);
 
-    // Delete both session and arrangement clips
-    slot.call("delete_clip");
-    track.call("delete_clip", `id ${tempClip.id}`);
+      // Delete both session and arrangement clips
+      slot.call("delete_clip");
+      track.call("delete_clip", `id ${tempClip.id}`);
+    }
   }
 
   return {

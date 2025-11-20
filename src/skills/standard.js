@@ -192,9 +192,28 @@ C3 4|1                       // this C3 is NOT deleted (v80 still active)
 
 \`arrangementStart\` moves clips in the timeline. \`arrangementLength\` expands or reduces visible playback region.
 
-**Lengthening clips:** Producer Pal duplicates and tiles the clip to fill the requested length
+Note: Any operation that moves a clip causes the clip ID to change. 
+Most operations return the new IDs.
+Re-read the Set or Track to see the new IDs.
+
+#### Lengthening Clips
+
+Producer Pal duplicates and tiles the clip to fill the requested length
 (creates multiple clips in arrangement). This differs from Live's native behavior but achieves
 the same playback result.
+
+#### Moving Multiple Clips in Arrangement
+
+When moving multiple clips to new arrangement positions (e.g., "move all clips forward by 1 bar"):
+
+1. **Process clips in reverse order** - start with the clip that has the latest \`arrangementStart\` time and work backwards
+2. This prevents earlier clips from overwriting later clips during sequential \`ppal-update-clip\` calls
+3. Sort clips by \`arrangementStart\` descending before updating
+
+Example sequence (move three clips forward one bar):
+- Clip at bar 5 → move to bar 6 (call update-clip)
+- Clip at bar 4 → move to bar 5 (call update-clip)
+- Clip at bar 3 → move to bar 4 (call update-clip)
 `;
 
 /**

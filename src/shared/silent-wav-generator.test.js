@@ -1,9 +1,21 @@
-import { describe, it, expect } from "vitest";
 import fs from "node:fs";
+import { describe, it, expect } from "vitest";
 import { ensureSilenceWav, SILENCE_WAV } from "./silent-wav-generator.js";
 
 describe("silent-wav-generator", () => {
   describe("ensureSilenceWav", () => {
+    it("should create file when it doesn't exist", () => {
+      // Delete the file to test creation path
+      if (fs.existsSync(SILENCE_WAV)) {
+        fs.unlinkSync(SILENCE_WAV);
+      }
+
+      const wavPath = ensureSilenceWav();
+
+      expect(wavPath).toBe(SILENCE_WAV);
+      expect(fs.existsSync(wavPath)).toBe(true);
+    });
+
     it("should create and return path to silent WAV file", () => {
       const wavPath = ensureSilenceWav();
 

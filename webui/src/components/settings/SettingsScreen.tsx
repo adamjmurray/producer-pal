@@ -1,6 +1,5 @@
 import type { Provider } from "../../types/settings.js";
-import { ModelSelector } from "./ModelSelector.jsx";
-import { ProviderSelector } from "./ProviderSelector.jsx";
+import { ConnectionTab } from "./ConnectionTab.jsx";
 import { RandomnessSlider } from "./RandomnessSlider.jsx";
 import { SettingsTabs } from "./SettingsTabs.jsx";
 import { ThinkingSettings } from "./ThinkingSettings.jsx";
@@ -36,34 +35,59 @@ interface SettingsScreenProps {
 }
 
 /**
- *
- * @param root0
- * @param root0.provider
- * @param root0.setProvider
- * @param root0.apiKey
- * @param root0.setApiKey
- * @param root0.baseUrl
- * @param root0.setBaseUrl
- * @param root0.port
- * @param root0.setPort
- * @param root0.model
- * @param root0.setModel
- * @param root0.thinking
- * @param root0.setThinking
- * @param root0.temperature
- * @param root0.setTemperature
- * @param root0.showThoughts
- * @param root0.setShowThoughts
- * @param root0.theme
- * @param root0.setTheme
- * @param root0.enabledTools
- * @param root0.setEnabledTools
- * @param root0.enableAllTools
- * @param root0.disableAllTools
- * @param root0.resetBehaviorToDefaults
- * @param root0.saveSettings
- * @param root0.cancelSettings
- * @param root0.settingsConfigured
+ * Gets a display label for the provider
+ * @param {string} provider - The provider identifier
+ * @returns {string} Display label for the provider
+ */
+function getProviderLabel(provider: string): string {
+  switch (provider) {
+    case "gemini":
+      return "Gemini";
+    case "openai":
+      return "OpenAI";
+    case "mistral":
+      return "Mistral";
+    case "openrouter":
+      return "OpenRouter";
+    case "lmstudio":
+      return "LM Studio";
+    case "ollama":
+      return "Ollama";
+    default:
+      return "Custom";
+  }
+}
+
+/**
+ * Settings screen component
+ * @param {object} root0 - Component props
+ * @param {Provider} root0.provider - Selected provider
+ * @param {Function} root0.setProvider - Function to update provider
+ * @param {string} root0.apiKey - API key for the provider
+ * @param {Function} root0.setApiKey - Function to update API key
+ * @param {string} root0.baseUrl - Base URL for custom provider
+ * @param {Function} root0.setBaseUrl - Function to update base URL
+ * @param {number} root0.port - Port for local provider
+ * @param {Function} root0.setPort - Function to update port
+ * @param {string} root0.model - Selected model
+ * @param {Function} root0.setModel - Function to update model
+ * @param {string} root0.thinking - Thinking mode setting
+ * @param {Function} root0.setThinking - Function to update thinking mode
+ * @param {number} root0.temperature - Temperature/randomness setting
+ * @param {Function} root0.setTemperature - Function to update temperature
+ * @param {boolean} root0.showThoughts - Whether to show thought blocks
+ * @param {Function} root0.setShowThoughts - Function to toggle thought display
+ * @param {string} root0.theme - UI theme setting
+ * @param {Function} root0.setTheme - Function to update theme
+ * @param {object} root0.enabledTools - Map of enabled/disabled tools
+ * @param {Function} root0.setEnabledTools - Function to update enabled tools
+ * @param {Function} root0.enableAllTools - Function to enable all tools
+ * @param {Function} root0.disableAllTools - Function to disable all tools
+ * @param {Function} root0.resetBehaviorToDefaults - Function to reset behavior settings
+ * @param {Function} root0.saveSettings - Function to save settings
+ * @param {Function} root0.cancelSettings - Function to cancel settings changes
+ * @param {boolean} root0.settingsConfigured - Whether settings have been configured
+ * @returns {JSX.Element} Settings screen component
  */
 export function SettingsScreen({
   provider,
@@ -93,36 +117,7 @@ export function SettingsScreen({
   cancelSettings,
   settingsConfigured,
 }: SettingsScreenProps) {
-  const apiKeyUrls: Record<string, string | undefined> = {
-    gemini: "https://aistudio.google.com/apikey",
-    openai: "https://platform.openai.com/api-keys",
-    mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
-    openrouter: "https://openrouter.ai/settings/keys",
-  };
-
-  const modelDocsUrls: Record<string, string | undefined> = {
-    gemini: "https://ai.google.dev/gemini-api/docs/models",
-    openai: "https://platform.openai.com/docs/models",
-    mistral: "https://docs.mistral.ai/getting-started/models",
-    openrouter: "https://openrouter.ai/models",
-    lmstudio: "https://lmstudio.ai/models",
-    ollama: "https://ollama.com/search",
-  };
-
-  const providerLabel =
-    provider === "gemini"
-      ? "Gemini"
-      : provider === "openai"
-        ? "OpenAI"
-        : provider === "mistral"
-          ? "Mistral"
-          : provider === "openrouter"
-            ? "OpenRouter"
-            : provider === "lmstudio"
-              ? "LM Studio"
-              : provider === "ollama"
-                ? "Ollama"
-                : "Custom";
+  const providerLabel = getProviderLabel(provider);
 
   return (
     <div className="flex justify-center min-h-screen p-4 pt-20">
@@ -136,108 +131,19 @@ export function SettingsScreen({
             <div className="space-y-4">
               {/* Connection Tab */}
               {activeTab === "connection" && (
-                <>
-                  <ProviderSelector
-                    provider={provider}
-                    setProvider={setProvider}
-                  />
-
-                  {/* API Key Input (not for local providers) */}
-                  {provider !== "lmstudio" && provider !== "ollama" && (
-                    <div>
-                      <label className="block text-sm mb-2">
-                        {providerLabel} API Key
-                      </label>
-                      <input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) =>
-                          setApiKey((e.target as HTMLInputElement).value)
-                        }
-                        placeholder={`Enter your ${providerLabel} API key`}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-                      />
-                      {apiKeyUrls[provider] && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          <a
-                            href={apiKeyUrls[provider]}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 dark:text-blue-400 hover:underline"
-                          >
-                            {providerLabel} API keys
-                          </a>
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Port field for local providers */}
-                  {(provider === "lmstudio" || provider === "ollama") &&
-                    setPort && (
-                      <div>
-                        <label className="block text-sm mb-2">Port</label>
-                        <input
-                          type="text"
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          value={port?.toString() ?? ""}
-                          onChange={(e) => {
-                            const value = (e.target as HTMLInputElement).value;
-                            const numValue = parseInt(value, 10);
-                            if (!isNaN(numValue)) {
-                              setPort(numValue);
-                            }
-                          }}
-                          placeholder={
-                            provider === "lmstudio" ? "1234" : "11434"
-                          }
-                          className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-                        />
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          Base URL: http://localhost:
-                          {port ?? (provider === "lmstudio" ? 1234 : 11434)}/v1
-                        </p>
-                      </div>
-                    )}
-
-                  {/* Base URL (custom provider only) */}
-                  {provider === "custom" && setBaseUrl && (
-                    <div>
-                      <label className="block text-sm mb-2">Base URL</label>
-                      <input
-                        type="text"
-                        value={baseUrl ?? ""}
-                        onChange={(e) =>
-                          setBaseUrl((e.target as HTMLInputElement).value)
-                        }
-                        placeholder="https://api.example.com/v1"
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-                      />
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        OpenAI-compatible API endpoint
-                      </p>
-                    </div>
-                  )}
-
-                  <ModelSelector
-                    provider={provider}
-                    model={model}
-                    setModel={setModel}
-                  />
-                  {modelDocsUrls[provider] && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-                      <a
-                        href={modelDocsUrls[provider]}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        {providerLabel} models
-                      </a>
-                    </p>
-                  )}
-                </>
+                <ConnectionTab
+                  provider={provider}
+                  setProvider={setProvider}
+                  apiKey={apiKey}
+                  setApiKey={setApiKey}
+                  baseUrl={baseUrl}
+                  setBaseUrl={setBaseUrl}
+                  port={port}
+                  setPort={setPort}
+                  model={model}
+                  setModel={setModel}
+                  providerLabel={providerLabel}
+                />
               )}
 
               {/* Behavior Tab */}

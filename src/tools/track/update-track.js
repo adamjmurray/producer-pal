@@ -8,6 +8,74 @@ import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 
 /**
+ * Apply routing properties to a track
+ * @param {LiveAPI} track - Track object
+ * @param {object} root0 - Routing properties
+ * @param {string} root0.inputRoutingTypeId - Input routing type ID
+ * @param {string} root0.inputRoutingChannelId - Input routing channel ID
+ * @param {string} root0.outputRoutingTypeId - Output routing type ID
+ * @param {string} root0.outputRoutingChannelId - Output routing channel ID
+ */
+function applyRoutingProperties(
+  track,
+  {
+    inputRoutingTypeId,
+    inputRoutingChannelId,
+    outputRoutingTypeId,
+    outputRoutingChannelId,
+  },
+) {
+  if (inputRoutingTypeId != null) {
+    track.setProperty("input_routing_type", {
+      identifier: Number(inputRoutingTypeId),
+    });
+  }
+
+  if (inputRoutingChannelId != null) {
+    track.setProperty("input_routing_channel", {
+      identifier: Number(inputRoutingChannelId),
+    });
+  }
+
+  if (outputRoutingTypeId != null) {
+    track.setProperty("output_routing_type", {
+      identifier: Number(outputRoutingTypeId),
+    });
+  }
+
+  if (outputRoutingChannelId != null) {
+    track.setProperty("output_routing_channel", {
+      identifier: Number(outputRoutingChannelId),
+    });
+  }
+}
+
+/**
+ * Apply monitoring state to a track
+ * @param {LiveAPI} track - Track object
+ * @param {string} monitoringState - Monitoring state value (in, auto, off)
+ */
+function applyMonitoringState(track, monitoringState) {
+  if (monitoringState == null) {
+    return;
+  }
+
+  const monitoringValue = {
+    [MONITORING_STATE.IN]: LIVE_API_MONITORING_STATE_IN,
+    [MONITORING_STATE.AUTO]: LIVE_API_MONITORING_STATE_AUTO,
+    [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
+  }[monitoringState];
+
+  if (monitoringValue === undefined) {
+    throw new Error(
+      `updateTrack failed: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
+    );
+  }
+
+  track.set("current_monitoring_state", monitoringValue);
+}
+
+/**
  * Updates properties of existing tracks
  * @param {object} args - The track parameters
  * @param {string} args.ids - Track ID or comma-separated list of track IDs to update
@@ -22,7 +90,7 @@ import { parseCommaSeparatedIds } from "../shared/utils.js";
  * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
  * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
  * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
- * @param _context
+ * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single track object or array of track objects
  */
 export function updateTrack(
@@ -66,29 +134,12 @@ export function updateTrack(
     });
 
     // Handle routing properties
-    if (inputRoutingTypeId != null) {
-      track.setProperty("input_routing_type", {
-        identifier: Number(inputRoutingTypeId),
-      });
-    }
-
-    if (inputRoutingChannelId != null) {
-      track.setProperty("input_routing_channel", {
-        identifier: Number(inputRoutingChannelId),
-      });
-    }
-
-    if (outputRoutingTypeId != null) {
-      track.setProperty("output_routing_type", {
-        identifier: Number(outputRoutingTypeId),
-      });
-    }
-
-    if (outputRoutingChannelId != null) {
-      track.setProperty("output_routing_channel", {
-        identifier: Number(outputRoutingChannelId),
-      });
-    }
+    applyRoutingProperties(track, {
+      inputRoutingTypeId,
+      inputRoutingChannelId,
+      outputRoutingTypeId,
+      outputRoutingChannelId,
+    });
 
     // Handle arrangement follower
     if (arrangementFollower != null) {
@@ -96,21 +147,7 @@ export function updateTrack(
     }
 
     // Handle monitoring state
-    if (monitoringState != null) {
-      const monitoringValue = {
-        [MONITORING_STATE.IN]: LIVE_API_MONITORING_STATE_IN,
-        [MONITORING_STATE.AUTO]: LIVE_API_MONITORING_STATE_AUTO,
-        [MONITORING_STATE.OFF]: LIVE_API_MONITORING_STATE_OFF,
-      }[monitoringState];
-
-      if (monitoringValue === undefined) {
-        throw new Error(
-          `updateTrack failed: invalid monitoring state "${monitoringState}". Must be one of: ${Object.values(MONITORING_STATE).join(", ")}`,
-        );
-      }
-
-      track.set("current_monitoring_state", monitoringValue);
-    }
+    applyMonitoringState(track, monitoringState);
 
     // Build optimistic result object
     updatedTracks.push({

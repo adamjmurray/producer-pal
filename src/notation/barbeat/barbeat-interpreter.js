@@ -14,45 +14,287 @@ import {
   handleBarCopySingleDestination,
   handleClearBuffer,
 } from "./barbeat-interpreter-helpers.js";
+import {
+  calculatePositions,
+  handlePitchEmission,
+} from "./barbeat-interpreter-pitch-helpers.js";
 import * as parser from "./barbeat-parser.js";
 import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
 
 /**
- * Expand a repeat pattern into multiple beat positions
- * @param {object} pattern - Repeat pattern { start, times, step }
- * @param {number} currentBar - Current bar number (1-indexed)
- * @param {number} beatsPerBar - Musical beats per bar
- * @param {number} currentDuration - Current note duration (used when step is null)
- * @returns {Array<{bar: number, beat: number}>} Expanded positions
+ * Process a velocity update (single value)
+ * @param {object} element - AST element with velocity property
+ * @param {object} state - Interpreter state object
  */
-function expandRepeatPattern(
-  pattern,
-  currentBar,
-  beatsPerBar,
-  currentDuration,
+function processVelocityUpdate(element, state) {
+  state.currentVelocity = element.velocity;
+  state.currentVelocityMin = null;
+  state.currentVelocityMax = null;
+  if (state.pitchGroupStarted && state.currentPitches.length > 0) {
+    state.stateChangedSinceLastPitch = true;
+  }
+  if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
+    for (const pitchState of state.currentPitches) {
+      pitchState.velocity = element.velocity;
+      pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+    }
+    state.stateChangedAfterEmission = true;
+  }
+  if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
+    state.stateChangedAfterEmission = true;
+  }
+}
+
+/**
+ * Process a velocity range update
+ * @param {object} element - AST element with velocityMin/Max properties
+ * @param {object} state - Interpreter state object
+ */
+function processVelocityRangeUpdate(element, state) {
+  state.currentVelocityMin = element.velocityMin;
+  state.currentVelocityMax = element.velocityMax;
+  state.currentVelocity = null;
+  if (state.pitchGroupStarted && state.currentPitches.length > 0) {
+    state.stateChangedSinceLastPitch = true;
+  }
+  if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
+    for (const pitchState of state.currentPitches) {
+      pitchState.velocity = element.velocityMin;
+      pitchState.velocityDeviation = element.velocityMax - element.velocityMin;
+    }
+    state.stateChangedAfterEmission = true;
+  }
+  if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
+    state.stateChangedAfterEmission = true;
+  }
+}
+
+/**
+ * Process a duration update
+ * @param {object} element - AST element with duration property
+ * @param {object} state - Interpreter state object
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ */
+function processDurationUpdate(
+  element,
+  state,
+  timeSigNumerator,
+  timeSigDenominator,
 ) {
-  const { start, times, step: stepValue } = pattern;
-  const step = stepValue ?? currentDuration;
-
-  if (times > 100) {
-    console.error(
-      `WARNING: Repeat pattern generates ${times} notes, which may be excessive`,
+  if (typeof element.duration === "string") {
+    state.currentDuration = barBeatDurationToMusicalBeats(
+      element.duration,
+      timeSigNumerator,
+      timeSigDenominator,
     );
+  } else {
+    state.currentDuration = element.duration;
   }
-
-  const positions = [];
-
-  // Convert starting position to absolute beats (0-based)
-  const startBeats = (currentBar - 1) * beatsPerBar + (start - 1);
-
-  for (let i = 0; i < times; i++) {
-    const absoluteBeats = startBeats + i * step;
-    const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
-    const beat = (absoluteBeats % beatsPerBar) + 1;
-    positions.push({ bar, beat });
+  if (state.pitchGroupStarted && state.currentPitches.length > 0) {
+    state.stateChangedSinceLastPitch = true;
   }
+  if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
+    for (const pitchState of state.currentPitches) {
+      pitchState.duration = state.currentDuration;
+    }
+    state.stateChangedAfterEmission = true;
+  }
+  if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
+    state.stateChangedAfterEmission = true;
+  }
+}
+/**
+ * Process a probability update
+ * @param {object} element - AST element with probability property
+ * @param {object} state - Interpreter state object
+ */
+function processProbabilityUpdate(element, state) {
+  state.currentProbability = element.probability;
+  if (state.pitchGroupStarted && state.currentPitches.length > 0) {
+    state.stateChangedSinceLastPitch = true;
+  }
+  if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
+    for (const pitchState of state.currentPitches) {
+      pitchState.probability = element.probability;
+    }
+    state.stateChangedAfterEmission = true;
+  }
+  if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
+    state.stateChangedAfterEmission = true;
+  }
+}
+/**
+ * Process a pitch element
+ * @param {object} element - AST element with pitch property
+ * @param {object} state - Interpreter state object
+ */
+function processPitchElement(element, state) {
+  if (!state.pitchGroupStarted) {
+    state.currentPitches = [];
+    state.pitchGroupStarted = true;
+    state.pitchesEmitted = false;
+    state.stateChangedAfterEmission = false;
+  }
+  let velocity, velocityDeviation;
+  if (state.currentVelocityMin !== null && state.currentVelocityMax !== null) {
+    velocity = state.currentVelocityMin;
+    velocityDeviation = state.currentVelocityMax - state.currentVelocityMin;
+  } else {
+    velocity = state.currentVelocity ?? DEFAULT_VELOCITY;
+    velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
+  }
+  state.currentPitches.push({
+    pitch: element.pitch,
+    velocity: velocity,
+    velocityDeviation: velocityDeviation,
+    duration: state.currentDuration,
+    probability: state.currentProbability,
+  });
+  state.stateChangedSinceLastPitch = false;
+}
+/**
+ * Reset pitch buffer state
+ * @param {object} state - Interpreter state object
+ */
+function resetPitchBufferState(state) {
+  state.currentPitches = [];
+  state.pitchGroupStarted = false;
+  state.pitchesEmitted = false;
+  state.stateChangedSinceLastPitch = false;
+  state.stateChangedAfterEmission = false;
+}
 
-  return positions;
+/**
+ * Process a time position element
+ * @param {object} element - AST element with bar/beat properties
+ * @param {object} state - Interpreter state object
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @param {Array} events - Array of note events
+ * @param {Map} notesByBar - Map of bar numbers to note metadata
+ */
+function processTimePosition(
+  element,
+  state,
+  beatsPerBar,
+  timeSigDenominator,
+  events,
+  notesByBar,
+) {
+  const positions = calculatePositions(element, state, beatsPerBar);
+
+  handlePitchEmission(
+    positions,
+    state,
+    element,
+    beatsPerBar,
+    timeSigDenominator,
+    events,
+    notesByBar,
+  );
+
+  state.pitchGroupStarted = false;
+  state.stateChangedSinceLastPitch = false;
+  state.stateChangedAfterEmission = false;
+}
+
+/**
+ * Process a single element in the main AST loop
+ * Dispatches to appropriate handler based on element type
+ * @param {object} element - AST element to process
+ * @param {object} state - Interpreter state object
+ * @param {number} beatsPerBar - Beats per bar
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @param {Map} notesByBar - Map of bar numbers to note metadata
+ * @param {Array} events - Array of note events
+ */
+function processElementInLoop(
+  element,
+  state,
+  beatsPerBar,
+  timeSigNumerator,
+  timeSigDenominator,
+  notesByBar,
+  events,
+) {
+  if (element.destination?.range !== undefined) {
+    const result = handleBarCopyRangeDestination(
+      element,
+      beatsPerBar,
+      timeSigDenominator,
+      notesByBar,
+      events,
+      {
+        currentPitches: state.currentPitches,
+        pitchesEmitted: state.pitchesEmitted,
+        stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
+        pitchGroupStarted: state.pitchGroupStarted,
+        stateChangedAfterEmission: state.stateChangedAfterEmission,
+      },
+    );
+    if (result.currentTime) {
+      state.currentTime = result.currentTime;
+      state.hasExplicitBarNumber = result.hasExplicitBarNumber;
+    }
+    resetPitchBufferState(state);
+  } else if (element.destination?.bar !== undefined) {
+    const result = handleBarCopySingleDestination(
+      element,
+      beatsPerBar,
+      timeSigDenominator,
+      notesByBar,
+      events,
+      {
+        currentPitches: state.currentPitches,
+        pitchesEmitted: state.pitchesEmitted,
+        stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
+        pitchGroupStarted: state.pitchGroupStarted,
+        stateChangedAfterEmission: state.stateChangedAfterEmission,
+      },
+    );
+    if (result.currentTime) {
+      state.currentTime = result.currentTime;
+      state.hasExplicitBarNumber = result.hasExplicitBarNumber;
+    }
+    resetPitchBufferState(state);
+  } else if (element.clearBuffer) {
+    validateBufferedState(
+      {
+        currentPitches: state.currentPitches,
+        pitchesEmitted: state.pitchesEmitted,
+        stateChangedSinceLastPitch: state.stateChangedSinceLastPitch,
+        pitchGroupStarted: state.pitchGroupStarted,
+        stateChangedAfterEmission: state.stateChangedAfterEmission,
+      },
+      "@clear",
+    );
+    handleClearBuffer(notesByBar);
+    resetPitchBufferState(state);
+  } else if (element.bar !== undefined && element.beat !== undefined) {
+    processTimePosition(
+      element,
+      state,
+      beatsPerBar,
+      timeSigDenominator,
+      events,
+      notesByBar,
+    );
+  } else if (element.pitch !== undefined) {
+    processPitchElement(element, state);
+  } else if (element.velocity !== undefined) {
+    processVelocityUpdate(element, state);
+  } else if (
+    element.velocityMin !== undefined &&
+    element.velocityMax !== undefined
+  ) {
+    processVelocityRangeUpdate(element, state);
+  } else if (element.duration !== undefined) {
+    processDurationUpdate(element, state, timeSigNumerator, timeSigDenominator);
+  } else if (element.probability !== undefined) {
+    processProbabilityUpdate(element, state);
+  }
 }
 
 /**
@@ -62,13 +304,12 @@ function expandRepeatPattern(
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
  * @param {number} [options.timeSigDenominator] - Time signature denominator
- * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>}
+ * @returns {Array<{pitch: number, start_time: number, duration: number, velocity: number}>} - Array of note events
  */
 export function interpretNotation(barBeatExpression, options = {}) {
   if (!barBeatExpression) {
     return [];
   }
-
   const {
     beatsPerBar: beatsPerBarOption,
     timeSigNumerator,
@@ -84,378 +325,43 @@ export function interpretNotation(barBeatExpression, options = {}) {
   }
   const beatsPerBar =
     timeSigNumerator ?? beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR;
-
   try {
     const ast = parser.parse(barBeatExpression);
-
-    // State variables
-    let currentTime = DEFAULT_TIME;
-    let currentVelocity = DEFAULT_VELOCITY;
-    let currentDuration = DEFAULT_DURATION;
-    let currentProbability = DEFAULT_PROBABILITY;
-    let currentVelocityMin = null;
-    let currentVelocityMax = null;
-    let hasExplicitBarNumber = false;
-
-    // New: Pitch buffering
-    let currentPitches = [];
-    let pitchGroupStarted = false;
-    let pitchesEmitted = false; // Track if current pitches have been emitted at least once
-    let stateChangedSinceLastPitch = false;
-    let stateChangedAfterEmission = false; // Track wasted state changes before bar copy
-
     // Bar copy tracking: Map bar number -> array of note metadata
     const notesByBar = new Map();
-
     const events = [];
-
+    // Create state object for easier passing to helper functions
+    const state = {
+      currentTime: DEFAULT_TIME,
+      currentVelocity: DEFAULT_VELOCITY,
+      currentDuration: DEFAULT_DURATION,
+      currentProbability: DEFAULT_PROBABILITY,
+      currentVelocityMin: null,
+      currentVelocityMax: null,
+      hasExplicitBarNumber: false,
+      currentPitches: [],
+      pitchGroupStarted: false,
+      pitchesEmitted: false,
+      stateChangedSinceLastPitch: false,
+      stateChangedAfterEmission: false,
+    };
     for (const element of ast) {
-      if (element.destination?.range !== undefined) {
-        // BAR COPY RANGE - copy notes from single source to multiple destinations
-        const result = handleBarCopyRangeDestination(
-          element,
-          beatsPerBar,
-          timeSigDenominator,
-          notesByBar,
-          events,
-          {
-            currentPitches,
-            pitchesEmitted,
-            stateChangedSinceLastPitch,
-            pitchGroupStarted,
-            stateChangedAfterEmission,
-          },
-        );
-
-        if (result.currentTime) {
-          currentTime = result.currentTime;
-          hasExplicitBarNumber = result.hasExplicitBarNumber;
-        }
-
-        // Clear pitch buffer (don't emit) and reset flags
-        currentPitches = [];
-        pitchGroupStarted = false;
-        pitchesEmitted = false;
-        stateChangedSinceLastPitch = false;
-        stateChangedAfterEmission = false;
-      } else if (element.destination?.bar !== undefined) {
-        // BAR COPY - copy notes from source bar(s) to destination
-        const result = handleBarCopySingleDestination(
-          element,
-          beatsPerBar,
-          timeSigDenominator,
-          notesByBar,
-          events,
-          {
-            currentPitches,
-            pitchesEmitted,
-            stateChangedSinceLastPitch,
-            pitchGroupStarted,
-            stateChangedAfterEmission,
-          },
-        );
-
-        if (result.currentTime) {
-          currentTime = result.currentTime;
-          hasExplicitBarNumber = result.hasExplicitBarNumber;
-        }
-
-        // Clear pitch buffer (don't emit) and reset flags
-        currentPitches = [];
-        pitchGroupStarted = false;
-        pitchesEmitted = false;
-        stateChangedSinceLastPitch = false;
-        stateChangedAfterEmission = false;
-      } else if (element.clearBuffer) {
-        // CLEAR BUFFER - immediately clear the copy buffer
-        validateBufferedState(
-          {
-            currentPitches,
-            pitchesEmitted,
-            stateChangedSinceLastPitch,
-            pitchGroupStarted,
-            stateChangedAfterEmission,
-          },
-          "@clear",
-        );
-
-        handleClearBuffer(notesByBar);
-
-        // Clear pitch buffer (don't emit) and reset flags
-        currentPitches = [];
-        pitchGroupStarted = false;
-        pitchesEmitted = false;
-        stateChangedSinceLastPitch = false;
-        stateChangedAfterEmission = false;
-      } else if (element.bar !== undefined && element.beat !== undefined) {
-        // TIME POSITION - emit notes
-
-        // Determine positions to emit at (expand repeat patterns if needed)
-        let positions;
-        if (
-          typeof element.beat === "object" &&
-          element.beat.start !== undefined
-        ) {
-          // REPEAT PATTERN - expand to multiple positions
-          const currentBar =
-            element.bar === null
-              ? hasExplicitBarNumber
-                ? currentTime.bar
-                : 1
-              : element.bar;
-          positions = expandRepeatPattern(
-            element.beat,
-            currentBar,
-            beatsPerBar,
-            currentDuration,
-          );
-        } else {
-          // SINGLE POSITION
-          const bar =
-            element.bar === null
-              ? hasExplicitBarNumber
-                ? currentTime.bar
-                : 1
-              : element.bar;
-          const beat = element.beat;
-          positions = [{ bar, beat }];
-        }
-
-        // Warn once if no pitches to emit
-        if (currentPitches.length === 0) {
-          if (positions.length === 1) {
-            console.error(
-              `Warning: Time position ${positions[0].bar}|${positions[0].beat} has no pitches`,
-            );
-          } else {
-            console.error(
-              `Warning: Time position has no pitches (first position: ${positions[0].bar}|${positions[0].beat})`,
-            );
-          }
-        } else {
-          // Warn if state changed after pitch but before this time (only once)
-          if (stateChangedSinceLastPitch) {
-            console.error(
-              "Warning: state change after pitch(es) but before time position won't affect this group",
-            );
-          }
-
-          // Emit all buffered pitches at each position
-          for (const position of positions) {
-            currentTime = position;
-            if (element.bar !== null) {
-              hasExplicitBarNumber = true;
-            }
-
-            for (const pitchState of currentPitches) {
-              // Convert bar|beat to absolute beats
-              const absoluteBeats =
-                (currentTime.bar - 1) * beatsPerBar + (currentTime.beat - 1);
-
-              // Convert to Ableton beats
-              const abletonBeats =
-                timeSigDenominator != null
-                  ? absoluteBeats * (4 / timeSigDenominator)
-                  : absoluteBeats;
-
-              const abletonDuration =
-                timeSigDenominator != null
-                  ? pitchState.duration * (4 / timeSigDenominator)
-                  : pitchState.duration;
-
-              const noteEvent = {
-                pitch: pitchState.pitch,
-                start_time: abletonBeats,
-                duration: abletonDuration,
-                velocity: pitchState.velocity,
-                probability: pitchState.probability,
-                velocity_deviation: pitchState.velocityDeviation,
-              };
-
-              events.push(noteEvent);
-
-              // Track for bar copy: calculate actual bar from note position
-              const barDuration =
-                timeSigDenominator != null
-                  ? beatsPerBar * (4 / timeSigDenominator)
-                  : beatsPerBar;
-              const actualBar = Math.floor(abletonBeats / barDuration) + 1;
-              const barStartAbletonBeats = (actualBar - 1) * barDuration;
-              const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
-
-              if (!notesByBar.has(actualBar)) {
-                notesByBar.set(actualBar, []);
-              }
-
-              // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
-              notesByBar.get(actualBar).push({
-                ...noteEvent,
-                relativeTime: relativeAbletonBeats,
-                originalBar: actualBar,
-              });
-            }
-          }
-
-          // Mark pitches as emitted
-          pitchesEmitted = true;
-        }
-
-        // Reset flags (but keep pitches for next time)
-        pitchGroupStarted = false;
-        stateChangedSinceLastPitch = false;
-        stateChangedAfterEmission = false;
-      } else if (element.pitch !== undefined) {
-        // PITCH - buffer it
-
-        // First pitch after a time position clears the buffer
-        if (!pitchGroupStarted) {
-          currentPitches = [];
-          pitchGroupStarted = true;
-          pitchesEmitted = false; // Reset emission flag for new pitch group
-          stateChangedAfterEmission = false; // State will be captured with pitches
-        }
-
-        // Capture current state with this pitch
-        let velocity, velocityDeviation;
-        if (currentVelocityMin !== null && currentVelocityMax !== null) {
-          velocity = currentVelocityMin;
-          velocityDeviation = currentVelocityMax - currentVelocityMin;
-        } else {
-          velocity = currentVelocity ?? DEFAULT_VELOCITY;
-          velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
-        }
-
-        currentPitches.push({
-          pitch: element.pitch,
-          velocity: velocity,
-          velocityDeviation: velocityDeviation,
-          duration: currentDuration,
-          probability: currentProbability,
-        });
-
-        // Pitch consumed the state change
-        stateChangedSinceLastPitch = false;
-      } else if (element.velocity !== undefined) {
-        // STATE UPDATE - velocity (single)
-
-        currentVelocity = element.velocity;
-        currentVelocityMin = null;
-        currentVelocityMax = null;
-
-        // Track if state changed after pitch in current group
-        if (pitchGroupStarted && currentPitches.length > 0) {
-          stateChangedSinceLastPitch = true;
-        }
-
-        // Update buffered pitches if after time position
-        if (!pitchGroupStarted && currentPitches.length > 0) {
-          for (const pitchState of currentPitches) {
-            pitchState.velocity = element.velocity;
-            pitchState.velocityDeviation = DEFAULT_VELOCITY_DEVIATION;
-          }
-          // State changes applied to buffered pitches could be wasted if bar copy occurs
-          stateChangedAfterEmission = true;
-        }
-
-        // Track wasted state changes (after emission, before pitches)
-        if (!pitchGroupStarted && currentPitches.length === 0) {
-          stateChangedAfterEmission = true;
-        }
-      } else if (
-        element.velocityMin !== undefined &&
-        element.velocityMax !== undefined
-      ) {
-        // STATE UPDATE - velocity (range)
-
-        currentVelocityMin = element.velocityMin;
-        currentVelocityMax = element.velocityMax;
-        currentVelocity = null;
-
-        // Track if state changed after pitch in current group
-        if (pitchGroupStarted && currentPitches.length > 0) {
-          stateChangedSinceLastPitch = true;
-        }
-
-        // Update buffered pitches if after time position
-        if (!pitchGroupStarted && currentPitches.length > 0) {
-          for (const pitchState of currentPitches) {
-            pitchState.velocity = element.velocityMin;
-            pitchState.velocityDeviation =
-              element.velocityMax - element.velocityMin;
-          }
-          // State changes applied to buffered pitches could be wasted if bar copy occurs
-          stateChangedAfterEmission = true;
-        }
-
-        // Track wasted state changes (after emission, before pitches)
-        if (!pitchGroupStarted && currentPitches.length === 0) {
-          stateChangedAfterEmission = true;
-        }
-      } else if (element.duration !== undefined) {
-        // STATE UPDATE - duration
-
-        // Handle both string (bar:beat) and number (beat-only) formats
-        if (typeof element.duration === "string") {
-          currentDuration = barBeatDurationToMusicalBeats(
-            element.duration,
-            timeSigNumerator,
-            timeSigDenominator,
-          );
-        } else {
-          currentDuration = element.duration; // Already in musical beats
-        }
-
-        // Track if state changed after pitch in current group
-        if (pitchGroupStarted && currentPitches.length > 0) {
-          stateChangedSinceLastPitch = true;
-        }
-
-        // Update buffered pitches if after time position
-        if (!pitchGroupStarted && currentPitches.length > 0) {
-          for (const pitchState of currentPitches) {
-            pitchState.duration = currentDuration; // Use converted value
-          }
-          // State changes applied to buffered pitches could be wasted if bar copy occurs
-          stateChangedAfterEmission = true;
-        }
-
-        // Track wasted state changes (after emission, before pitches)
-        if (!pitchGroupStarted && currentPitches.length === 0) {
-          stateChangedAfterEmission = true;
-        }
-      } else if (element.probability !== undefined) {
-        // STATE UPDATE - probability
-
-        currentProbability = element.probability;
-
-        // Track if state changed after pitch in current group
-        if (pitchGroupStarted && currentPitches.length > 0) {
-          stateChangedSinceLastPitch = true;
-        }
-
-        // Update buffered pitches if after time position
-        if (!pitchGroupStarted && currentPitches.length > 0) {
-          for (const pitchState of currentPitches) {
-            pitchState.probability = element.probability;
-          }
-          // State changes applied to buffered pitches could be wasted if bar copy occurs
-          stateChangedAfterEmission = true;
-        }
-
-        // Track wasted state changes (after emission, before pitches)
-        if (!pitchGroupStarted && currentPitches.length === 0) {
-          stateChangedAfterEmission = true;
-        }
-      }
-    }
-
-    // Warn if pitches buffered but never emitted
-    if (currentPitches.length > 0 && !pitchesEmitted) {
-      console.error(
-        `Warning: ${currentPitches.length} pitch(es) buffered but no time position to emit them`,
+      processElementInLoop(
+        element,
+        state,
+        beatsPerBar,
+        timeSigNumerator,
+        timeSigDenominator,
+        notesByBar,
+        events,
       );
     }
-
+    // Warn if pitches buffered but never emitted
+    if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
+      console.error(
+        `Warning: ${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
+      );
+    }
     // Apply v0 deletions as final post-processing step
     return applyV0Deletions(events);
   } catch (error) {
@@ -464,7 +370,6 @@ export function interpretNotation(barBeatExpression, options = {}) {
       const position = location.start
         ? `at position ${location.start.offset} (line ${location.start.line}, column ${location.start.column})`
         : "at unknown position";
-
       throw new Error(`bar|beat syntax error ${position}: ${error.message}`);
     }
     throw error;

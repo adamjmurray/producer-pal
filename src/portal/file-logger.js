@@ -15,10 +15,9 @@ const LOG_DIR = (() => {
     return join(homedir(), "Library", "Logs", "Producer Pal");
   } else if (process.platform === "win32") {
     return join(process.env.LOCALAPPDATA || homedir(), "ProducerPal", "Logs");
-  } 
-    // Linux/Unix: follows XDG Base Directory specification
-    return join(homedir(), ".local", "share", "Producer Pal", "logs");
-  
+  }
+  // Linux/Unix: follows XDG Base Directory specification
+  return join(homedir(), ".local", "share", "Producer Pal", "logs");
 })();
 
 // Ensure directory exists (skip during tests or when logging disabled)
@@ -37,6 +36,12 @@ const LOG_FILE = join(
   `bridge-${new Date().toISOString().split("T")[0]}.log`,
 );
 
+/**
+ * Write a log message to the log file
+ *
+ * @param {string} level - Log level (INFO, ERROR, DEBUG)
+ * @param {string} message - Message to log
+ */
 function writeLog(level, message) {
   // Skip file operations when running under Vitest or when logging disabled
   if (isRunningInVitest || !enableLogging) {

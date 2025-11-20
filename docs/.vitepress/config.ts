@@ -11,6 +11,8 @@ export default defineConfig({
 
   sitemap: { hostname: "https://producer-pal.org" },
 
+  cleanUrls: true,
+
   head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],
 
   themeConfig: {
@@ -19,10 +21,10 @@ export default defineConfig({
 
     nav: [
       { text: "Home", link: "/" },
-      { text: "Installation", link: "/installation/" },
-      { text: "Guide", link: "/guide/" },
-      { text: "Features", link: "/features/" },
-      { text: "Roadmap", link: "/roadmap/" },
+      { text: "Installation", link: "/installation" },
+      { text: "Guide", link: "/guide" },
+      { text: "Features", link: "/features" },
+      { text: "Roadmap", link: "/roadmap" },
       {
         text: "GitHub",
         link: "https://github.com/adamjmurray/producer-pal",
@@ -33,21 +35,22 @@ export default defineConfig({
       {
         text: "Guide",
         items: [
-          { text: "Getting Started", link: "/guide/" },
-          { text: "Usage Examples", link: "/guide/usage/" },
+          { text: "Getting Started", link: "/guide" },
+          { text: "Usage Examples", link: "/guide/usage" },
         ],
       },
       {
         text: "Reference",
         items: [
-          { text: "Features", link: "/features/" },
-          { text: "Roadmap", link: "/roadmap/" },
+          { text: "Features", link: "/features" },
+          { text: "Roadmap", link: "/roadmap" },
+          { text: "Known Issues", link: "/known-issues" },
         ],
       },
       {
         text: "Installation",
         items: [
-          { text: "Overview", link: "/installation/" },
+          { text: "Overview", link: "/installation" },
           { text: "Upgrading", link: "/installation/upgrading" },
         ],
       },

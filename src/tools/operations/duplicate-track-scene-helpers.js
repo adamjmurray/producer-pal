@@ -9,6 +9,253 @@ import {
 } from "./duplicate-helpers.js";
 
 /**
+ * Remove the Producer Pal device from a duplicated track if it was the host track
+ * @param {number} trackIndex - Original track index
+ * @param {boolean} withoutDevices - Whether devices were excluded
+ * @param {object} newTrack - The new track LiveAPI object
+ */
+function removeHostTrackDevice(trackIndex, withoutDevices, newTrack) {
+  const hostTrackIndex = getHostTrackIndex();
+  if (trackIndex === hostTrackIndex && withoutDevices !== true) {
+    try {
+      const thisDevice = new LiveAPI("this_device");
+      const thisDevicePath = thisDevice.path;
+
+      // Extract device index from path like "live_set tracks 1 devices 0"
+      const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
+      if (deviceIndexMatch) {
+        const deviceIndex = parseInt(deviceIndexMatch[1]);
+        newTrack.call("delete_device", deviceIndex);
+        console.error(
+          "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
+        );
+      }
+    } catch (_error) {
+      // If we can't access this_device, just continue without removing anything
+      console.error(
+        "Warning: Could not check for Producer Pal device in duplicated track",
+      );
+    }
+  }
+}
+
+/**
+ * Delete all devices from a track
+ * @param {object} newTrack - The track LiveAPI object
+ */
+function deleteAllDevices(newTrack) {
+  const deviceIds = newTrack.getChildIds("devices");
+  const deviceCount = deviceIds.length;
+  // Delete from the end backwards to avoid index shifting
+  for (let i = deviceCount - 1; i >= 0; i--) {
+    newTrack.call("delete_device", i);
+  }
+}
+
+/**
+ * Collect or delete clips from a duplicated track
+ * @param {object} newTrack - The new track LiveAPI object
+ * @param {boolean} withoutClips - Whether to delete clips instead of collecting them
+ * @returns {Array} Array of clip info objects
+ */
+function processClipsForDuplication(newTrack, withoutClips) {
+  const duplicatedClips = [];
+
+  if (withoutClips === true) {
+    deleteSessionClips(newTrack);
+    deleteArrangementClips(newTrack);
+  } else {
+    collectSessionClips(newTrack, duplicatedClips);
+    collectArrangementClips(newTrack, duplicatedClips);
+  }
+
+  return duplicatedClips;
+}
+
+/**
+ * Delete all session clips from a track
+ * @param {object} newTrack - The track LiveAPI object
+ */
+function deleteSessionClips(newTrack) {
+  const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
+  for (const clipSlotId of sessionClipSlotIds) {
+    const clipSlot = new LiveAPI(clipSlotId);
+    if (clipSlot.getProperty("has_clip")) {
+      clipSlot.call("delete_clip");
+    }
+  }
+}
+
+/**
+ * Delete all arrangement clips from a track
+ * @param {object} newTrack - The track LiveAPI object
+ */
+function deleteArrangementClips(newTrack) {
+  const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
+  for (const clipId of arrangementClipIds) {
+    newTrack.call("delete_clip", clipId);
+  }
+}
+
+/**
+ * Collect info about session clips in a track
+ * @param {object} newTrack - The track LiveAPI object
+ * @param {Array} duplicatedClips - Array to append clip info to
+ */
+function collectSessionClips(newTrack, duplicatedClips) {
+  const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
+  for (const clipSlotId of sessionClipSlotIds) {
+    const clipSlot = new LiveAPI(clipSlotId);
+    if (clipSlot.getProperty("has_clip")) {
+      const clip = new LiveAPI(`${clipSlot.path} clip`);
+      duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
+    }
+  }
+}
+
+/**
+ * Collect info about arrangement clips in a track
+ * @param {object} newTrack - The track LiveAPI object
+ * @param {Array} duplicatedClips - Array to append clip info to
+ */
+function collectArrangementClips(newTrack, duplicatedClips) {
+  const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
+  for (const clipId of arrangementClipIds) {
+    const clip = new LiveAPI(clipId);
+    if (clip.exists()) {
+      duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
+    }
+  }
+}
+
+/**
+ * Configure the source track input routing
+ * @param {object} sourceTrack - The source track LiveAPI object
+ * @param {string} sourceTrackName - The source track name
+ */
+function configureSourceTrackInput(sourceTrack, sourceTrackName) {
+  // Arm the source track for input
+  const currentArm = sourceTrack.getProperty("arm");
+  sourceTrack.set("arm", 1);
+  if (currentArm !== 1) {
+    console.error(`routeToSource: Armed the source track`);
+  }
+
+  const currentInputType = sourceTrack.getProperty("input_routing_type");
+  const currentInputName = currentInputType?.display_name;
+
+  if (currentInputName !== "No Input") {
+    // Set source track input to "No Input" to prevent unwanted external input
+    const sourceInputTypes = sourceTrack.getProperty(
+      "available_input_routing_types",
+    );
+    const noInput = sourceInputTypes?.find(
+      (type) => type.display_name === "No Input",
+    );
+
+    if (noInput) {
+      sourceTrack.setProperty("input_routing_type", {
+        identifier: noInput.identifier,
+      });
+      // Warn that input routing changed
+      console.error(
+        `Warning: Changed track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input"`,
+      );
+    } else {
+      console.error(
+        `Warning: Tried to change track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
+      );
+    }
+  }
+}
+
+/**
+ * Find source routing for duplicate track
+ * @param {object} sourceTrack - The source track LiveAPI object
+ * @param {string} sourceTrackName - The source track name
+ * @param {Array} availableTypes - Available routing types
+ * @returns {object | undefined} The routing type to use
+ */
+function findSourceRouting(sourceTrack, sourceTrackName, availableTypes) {
+  // Check if there are duplicate track names
+  const matchingNames =
+    availableTypes?.filter((type) => type.display_name === sourceTrackName) ||
+    [];
+
+  if (matchingNames.length > 1) {
+    // Multiple tracks with the same name - use duplicate-aware matching
+    const sourceRouting = findRoutingOptionForDuplicateNames(
+      sourceTrack,
+      sourceTrackName,
+      availableTypes,
+    );
+
+    if (!sourceRouting) {
+      console.error(
+        `Warning: Could not route to "${sourceTrackName}" due to duplicate track names. ` +
+          `Consider renaming tracks to have unique names.`,
+      );
+    }
+    return sourceRouting;
+  }
+
+  // Simple case - use the single match (or undefined if no match)
+  return matchingNames[0];
+}
+
+/**
+ * Apply output routing configuration to the new track
+ * @param {object} newTrack - The new track LiveAPI object
+ * @param {string} sourceTrackName - The source track name
+ * @param {Array} availableTypes - Available routing types
+ * @param {object} sourceTrack - The source track LiveAPI object
+ */
+function applyOutputRouting(
+  newTrack,
+  sourceTrackName,
+  availableTypes,
+  sourceTrack,
+) {
+  const sourceRouting = findSourceRouting(
+    sourceTrack,
+    sourceTrackName,
+    availableTypes,
+  );
+
+  if (sourceRouting) {
+    newTrack.setProperty("output_routing_type", {
+      identifier: sourceRouting.identifier,
+    });
+    // Let Live set the default channel for this routing type
+  } else {
+    const matchingNames =
+      availableTypes?.filter((type) => type.display_name === sourceTrackName) ||
+      [];
+    if (matchingNames.length === 0) {
+      console.error(
+        `Warning: Could not find track "${sourceTrackName}" in routing options`,
+      );
+    }
+  }
+}
+
+/**
+ * Configure routing to source track
+ * @param {object} newTrack - The new track LiveAPI object
+ * @param {number} sourceTrackIndex - Source track index
+ */
+function configureRouting(newTrack, sourceTrackIndex) {
+  const sourceTrack = new LiveAPI(`live_set tracks ${sourceTrackIndex}`);
+  const sourceTrackName = sourceTrack.getProperty("name");
+
+  configureSourceTrackInput(sourceTrack, sourceTrackName);
+
+  const availableTypes = newTrack.getProperty("available_output_routing_types");
+
+  applyOutputRouting(newTrack, sourceTrackName, availableTypes, sourceTrack);
+}
+
+/**
  * Duplicate a track
  * @param {number} trackIndex - Track index to duplicate
  * @param {string} [name] - Optional name for the duplicated track
@@ -36,162 +283,16 @@ export function duplicateTrack(
     newTrack.set("name", name);
   }
 
-  // Check if we're duplicating the Producer Pal host track and remove the device
-  const hostTrackIndex = getHostTrackIndex();
-  if (trackIndex === hostTrackIndex && withoutDevices !== true) {
-    try {
-      const thisDevice = new LiveAPI("this_device");
-      const thisDevicePath = thisDevice.path;
+  removeHostTrackDevice(trackIndex, withoutDevices, newTrack);
 
-      // Extract device index from path like "live_set tracks 1 devices 0"
-      const deviceIndexMatch = thisDevicePath.match(/devices (\d+)/);
-      if (deviceIndexMatch) {
-        const deviceIndex = parseInt(deviceIndexMatch[1]);
-        newTrack.call("delete_device", deviceIndex);
-        console.error(
-          "Removed Producer Pal device from duplicated track - the device cannot be duplicated",
-        );
-      }
-    } catch (_error) {
-      // If we can't access this_device, just continue without removing anything
-      console.error(
-        "Warning: Could not check for Producer Pal device in duplicated track",
-      );
-    }
-  }
-
-  // Delete devices if withoutDevices is true
   if (withoutDevices === true) {
-    const deviceIds = newTrack.getChildIds("devices");
-    const deviceCount = deviceIds.length;
-    // Delete from the end backwards to avoid index shifting
-    for (let i = deviceCount - 1; i >= 0; i--) {
-      newTrack.call("delete_device", i);
-    }
+    deleteAllDevices(newTrack);
   }
 
-  // Get all duplicated clips
-  const duplicatedClips = [];
+  const duplicatedClips = processClipsForDuplication(newTrack, withoutClips);
 
-  if (withoutClips === true) {
-    // Delete all clips that were duplicated
-    // Session clips
-    const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
-    for (const clipSlotId of sessionClipSlotIds) {
-      const clipSlot = new LiveAPI(clipSlotId);
-      if (clipSlot.getProperty("has_clip")) {
-        clipSlot.call("delete_clip");
-      }
-    }
-
-    // Arrangement clips - must use track.delete_clip with clip ID
-    const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
-    for (const clipId of arrangementClipIds) {
-      newTrack.call("delete_clip", clipId);
-    }
-  } else {
-    // Default behavior: collect info about duplicated clips
-    // Session clips
-    const sessionClipSlotIds = newTrack.getChildIds("clip_slots");
-    //for (let sceneIndex = 0; sceneIndex < sessionClipSlotIds.length; sceneIndex++) {
-    //const clipSlot = new LiveAPI(`live_set tracks ${newTrackIndex} clip_slots ${sceneIndex}`);
-    for (const clipSlotId of sessionClipSlotIds) {
-      const clipSlot = new LiveAPI(clipSlotId);
-      if (clipSlot.getProperty("has_clip")) {
-        const clip = new LiveAPI(`${clipSlot.path} clip`);
-        duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
-      }
-    }
-
-    // Arrangement clips
-    const arrangementClipIds = newTrack.getChildIds("arrangement_clips");
-    for (const clipId of arrangementClipIds) {
-      const clip = new LiveAPI(clipId);
-      if (clip.exists()) {
-        duplicatedClips.push(getMinimalClipInfo(clip, ["trackIndex"]));
-      }
-    }
-  }
-
-  // Configure routing if requested
   if (routeToSource) {
-    const sourceTrack = new LiveAPI(`live_set tracks ${sourceTrackIndex}`);
-    const sourceTrackName = sourceTrack.getProperty("name");
-
-    // Arm the source track for input
-    const currentArm = sourceTrack.getProperty("arm");
-    sourceTrack.set("arm", 1);
-    if (currentArm !== 1) {
-      console.error(`routeToSource: Armed the source track`);
-    }
-
-    const currentInputType = sourceTrack.getProperty("input_routing_type");
-    const currentInputName = currentInputType?.display_name;
-
-    if (currentInputName !== "No Input") {
-      // Set source track input to "No Input" to prevent unwanted external input
-      const sourceInputTypes = sourceTrack.getProperty(
-        "available_input_routing_types",
-      );
-      const noInput = sourceInputTypes?.find(
-        (type) => type.display_name === "No Input",
-      );
-
-      if (noInput) {
-        sourceTrack.setProperty("input_routing_type", {
-          identifier: noInput.identifier,
-        });
-        // Warn that input routing changed
-        console.error(
-          `Warning: Changed track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input"`,
-        );
-      } else {
-        console.error(
-          `Warning: Tried to change track "${sourceTrackName}" input routing from "${currentInputName}" to "No Input" but could not find "No Input"`,
-        );
-      }
-    }
-
-    // Find source track in new track's available OUTPUT routing types
-    const availableTypes = newTrack.getProperty(
-      "available_output_routing_types",
-    );
-
-    // Check if there are duplicate track names
-    const matchingNames =
-      availableTypes?.filter((type) => type.display_name === sourceTrackName) ||
-      [];
-
-    let sourceRouting;
-    if (matchingNames.length > 1) {
-      // Multiple tracks with the same name - use duplicate-aware matching
-      sourceRouting = findRoutingOptionForDuplicateNames(
-        sourceTrack,
-        sourceTrackName,
-        availableTypes,
-      );
-
-      if (!sourceRouting) {
-        console.error(
-          `Warning: Could not route to "${sourceTrackName}" due to duplicate track names. ` +
-            `Consider renaming tracks to have unique names.`,
-        );
-      }
-    } else {
-      // Simple case - use the single match (or undefined if no match)
-      sourceRouting = matchingNames[0];
-    }
-
-    if (sourceRouting) {
-      newTrack.setProperty("output_routing_type", {
-        identifier: sourceRouting.identifier,
-      });
-      // Let Live set the default channel for this routing type
-    } else if (matchingNames.length === 0) {
-      console.error(
-        `Warning: Could not find track "${sourceTrackName}" in routing options`,
-      );
-    }
+    configureRouting(newTrack, sourceTrackIndex);
   }
 
   return {
@@ -285,6 +386,17 @@ export function calculateSceneLength(sceneIndex) {
 }
 
 /**
+ * Assign scene name to clip info objects
+ * @param {Array} clips - Array of clip info objects
+ * @param {string} name - Name to assign to each clip
+ */
+function assignNamesToClips(clips, name) {
+  for (const clipInfo of clips) {
+    clipInfo.name = name;
+  }
+}
+
+/**
  * Duplicate a scene to the arrangement view
  * @param {string} sceneId - Scene ID to duplicate
  * @param {number} arrangementStartBeats - Start position in beats
@@ -365,9 +477,7 @@ export function duplicateSceneToArrangement(
 
         // Add the scene name to each clip result if provided
         if (name != null) {
-          for (const clipInfo of clipsForTrack) {
-            clipInfo.name = name;
-          }
+          assignNamesToClips(clipsForTrack, name);
         }
 
         duplicatedClips.push(...clipsForTrack);

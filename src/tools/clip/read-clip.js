@@ -28,8 +28,229 @@ import {
  * @param {string} [args.clipId] - Clip ID to directly access any clip
  * @param {string[]} [args.include] - Array of data to include in response
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
- * @param _context
  * @returns {object} Result object with clip information
+ */
+/**
+ * Process warp markers for an audio clip
+ * @param {object} clip - LiveAPI clip object
+ * @returns {Array|undefined} - Array of warp markers or undefined
+ */
+function processWarpMarkers(clip) {
+  try {
+    const warpMarkersJson = clip.getProperty("warp_markers");
+    if (!warpMarkersJson || warpMarkersJson === "") {
+      return undefined;
+    }
+
+    const warpMarkersData = JSON.parse(warpMarkersJson);
+    const mapMarker = (marker) => ({
+      sampleTime: marker.sample_time,
+      beatTime: marker.beat_time,
+    });
+
+    // Handle both possible structures: direct array or nested in warp_markers property
+    if (Array.isArray(warpMarkersData)) {
+      return warpMarkersData.map(mapMarker);
+    }
+
+    if (
+      warpMarkersData.warp_markers &&
+      Array.isArray(warpMarkersData.warp_markers)
+    ) {
+      return warpMarkersData.warp_markers.map(mapMarker);
+    }
+
+    return undefined;
+  } catch (error) {
+    // Fail gracefully - clip might not support warp markers or format might be unexpected
+    console.error(
+      `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
+    );
+    return undefined;
+  }
+}
+
+/**
+ * Add boolean state properties (playing, triggered, recording, overdubbing, muted)
+ * Only includes properties that are true
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
+ */
+function addBooleanStateProperties(result, clip) {
+  if (clip.getProperty("is_playing") > 0) {
+    result.playing = true;
+  }
+  if (clip.getProperty("is_triggered") > 0) {
+    result.triggered = true;
+  }
+  if (clip.getProperty("is_recording") > 0) {
+    result.recording = true;
+  }
+  if (clip.getProperty("is_overdubbing") > 0) {
+    result.overdubbing = true;
+  }
+  if (clip.getProperty("muted") > 0) {
+    result.muted = true;
+  }
+}
+
+/**
+ * Process MIDI clip specific properties
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
+ * @param {boolean} includeClipNotes - Whether to include formatted notes
+ * @param {number} lengthBeats - Clip length in beats
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ */
+function processMidiClip(
+  result,
+  clip,
+  includeClipNotes,
+  lengthBeats,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  const notesDictionary = clip.call(
+    "get_notes_extended",
+    0,
+    128,
+    0,
+    lengthBeats,
+  );
+  const notes = JSON.parse(notesDictionary).notes;
+  result.noteCount = notes.length;
+  if (includeClipNotes) {
+    result.notes = formatNotation(notes, {
+      timeSigNumerator,
+      timeSigDenominator,
+    });
+  }
+}
+
+/**
+ * Get warp mode mapping for audio clips
+ * @returns {object} - Mapping of Live API warp modes to friendly names
+ */
+function getWarpModeMapping() {
+  return {
+    [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
+    [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
+    [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
+    [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
+    [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
+    [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
+    [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
+  };
+}
+
+/**
+ * Process audio clip specific properties
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
+ * @param {boolean} includeWarpMarkers - Whether to include warp markers
+ */
+function processAudioClip(result, clip, includeWarpMarkers) {
+  const liveGain = clip.getProperty("gain");
+  result.gainDb = liveGainToDb(liveGain);
+
+  const filePath = clip.getProperty("file_path");
+  if (filePath) {
+    // Extract just filename, handle both Unix and Windows paths
+    result.filename = filePath.split(/[/\\]/).pop();
+  }
+
+  const pitchCoarse = clip.getProperty("pitch_coarse");
+  const pitchFine = clip.getProperty("pitch_fine");
+  result.pitchShift = pitchCoarse + pitchFine / 100;
+
+  result.sampleLength = clip.getProperty("sample_length");
+  result.sampleRate = clip.getProperty("sample_rate");
+
+  // Warping state
+  result.warping = clip.getProperty("warping") > 0;
+  const warpModeValue = clip.getProperty("warp_mode");
+  const warpModeMapping = getWarpModeMapping();
+  result.warpMode = warpModeMapping[warpModeValue] ?? "unknown";
+
+  // Add warp markers array when requested
+  if (includeWarpMarkers) {
+    const warpMarkers = processWarpMarkers(clip);
+    if (warpMarkers !== undefined) {
+      result.warpMarkers = warpMarkers;
+    }
+  }
+}
+
+/**
+ * Add clip location properties (trackIndex, sceneIndex, or arrangement properties)
+ * @param {object} result - Result object to add properties to
+ * @param {object} clip - LiveAPI clip object
+ * @param {boolean} isArrangementClip - Whether clip is in arrangement view
+ */
+function addClipLocationProperties(result, clip, isArrangementClip) {
+  if (isArrangementClip) {
+    const liveSet = new LiveAPI("live_set");
+    const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+    const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+    result.trackIndex = clip.trackIndex;
+    const startTimeBeats = clip.getProperty("start_time");
+    const endTimeBeats = clip.getProperty("end_time");
+    result.arrangementStart = abletonBeatsToBarBeat(
+      startTimeBeats,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+    result.arrangementLength = abletonBeatsToBarBeatDuration(
+      endTimeBeats - startTimeBeats,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+  } else {
+    result.trackIndex = clip.trackIndex;
+    result.sceneIndex = clip.sceneIndex;
+  }
+}
+
+/**
+ * Get the active start and end beats based on looping state
+ * @param {boolean} isLooping - Whether the clip is looping
+ * @param {number} startMarkerBeats - Start marker position in beats
+ * @param {number} loopStartBeats - Loop start position in beats
+ * @param {number} endMarkerBeats - End marker position in beats
+ * @param {number} loopEndBeats - Loop end position in beats
+ * @param {number} lengthBeats - Clip length in beats
+ * @returns {object} - Object with startBeats and endBeats
+ */
+function getActiveClipBounds(
+  isLooping,
+  startMarkerBeats,
+  loopStartBeats,
+  endMarkerBeats,
+  loopEndBeats,
+  lengthBeats,
+) {
+  const startBeats = isLooping ? loopStartBeats : startMarkerBeats;
+  const endBeats = isLooping ? loopEndBeats : endMarkerBeats;
+
+  // Sanity check for non-looping clips
+  if (!isLooping) {
+    const derivedStart = endBeats - lengthBeats;
+    if (Math.abs(derivedStart - startBeats) > 0.001) {
+      console.error(
+        `Warning: Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
+      );
+    }
+  }
+
+  return { startBeats, endBeats };
+}
+
+/**
+ * Read a MIDI or audio clip from Ableton Live
+ * @param {object} args - Arguments object
+ * @param {object} _context - Context object (unused)
+ * @returns {object} - Clip information object
  */
 export function readClip(args = {}, _context = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
@@ -78,31 +299,15 @@ export function readClip(args = {}, _context = {}) {
   const loopEndBeats = clip.getProperty("loop_end");
   const endMarkerBeats = clip.getProperty("end_marker");
 
-  // Calculate start based on looping state
-  let startBeats;
-  if (isLooping) {
-    startBeats = loopStartBeats;
-  } else {
-    startBeats = startMarkerBeats;
-  }
-
-  // Calculate end based on looping state
-  let endBeats;
-  if (isLooping) {
-    endBeats = loopEndBeats;
-  } else {
-    endBeats = endMarkerBeats;
-  }
-
-  // Sanity check for non-looping clips
-  if (!isLooping) {
-    const derivedStart = endBeats - lengthBeats;
-    if (Math.abs(derivedStart - startBeats) > 0.001) {
-      console.error(
-        `Warning: Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
-      );
-    }
-  }
+  // Calculate start and end based on looping state
+  const { startBeats, endBeats } = getActiveClipBounds(
+    isLooping,
+    startMarkerBeats,
+    loopStartBeats,
+    endMarkerBeats,
+    loopEndBeats,
+    lengthBeats,
+  );
 
   // Convert to bar|beat notation
   const start = abletonBeatsToBarBeat(
@@ -145,136 +350,27 @@ export function readClip(args = {}, _context = {}) {
     ...(firstStart != null && { firstStart }),
   };
 
-  // Only include these boolean properties when true
-  const playing = clip.getProperty("is_playing") > 0;
-  if (playing) {
-    result.playing = true;
-  }
+  // Add boolean state properties
+  addBooleanStateProperties(result, clip);
 
-  const triggered = clip.getProperty("is_triggered") > 0;
-  if (triggered) {
-    result.triggered = true;
-  }
+  // Add location properties
+  addClipLocationProperties(result, clip, isArrangementClip);
 
-  const recording = clip.getProperty("is_recording") > 0;
-  if (recording) {
-    result.recording = true;
-  }
-
-  const overdubbing = clip.getProperty("is_overdubbing") > 0;
-  if (overdubbing) {
-    result.overdubbing = true;
-  }
-
-  const muted = clip.getProperty("muted") > 0;
-  if (muted) {
-    result.muted = true;
-  }
-
-  if (isArrangementClip) {
-    const liveSet = new LiveAPI("live_set");
-    const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-    const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
-    result.trackIndex = clip.trackIndex;
-    const startTimeBeats = clip.getProperty("start_time");
-    const endTimeBeats = clip.getProperty("end_time");
-    result.arrangementStart = abletonBeatsToBarBeat(
-      startTimeBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-    result.arrangementLength = abletonBeatsToBarBeatDuration(
-      endTimeBeats - startTimeBeats,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-  } else {
-    result.trackIndex = clip.trackIndex;
-    result.sceneIndex = clip.sceneIndex;
-  }
-
+  // Process MIDI clip properties
   if (result.type === "midi") {
-    // Use the Live API's length property directly
-    const notesDictionary = clip.call(
-      "get_notes_extended",
-      0,
-      128,
-      0,
+    processMidiClip(
+      result,
+      clip,
+      includeClipNotes,
       lengthBeats,
+      timeSigNumerator,
+      timeSigDenominator,
     );
-    const notes = JSON.parse(notesDictionary).notes;
-    result.noteCount = notes.length;
-    if (includeClipNotes) {
-      result.notes = formatNotation(notes, {
-        timeSigNumerator,
-        timeSigDenominator,
-      });
-    }
   }
 
+  // Process audio clip properties
   if (result.type === "audio") {
-    const liveGain = clip.getProperty("gain");
-    result.gainDb = liveGainToDb(liveGain);
-    // Uncomment for validating our gainDb conversion against Live's display:
-    // result.gainDisplay = clip.getProperty("gain_display_string");
-
-    const filePath = clip.getProperty("file_path");
-    if (filePath) {
-      // Extract just filename, handle both Unix and Windows paths
-      result.filename = filePath.split(/[/\\]/).pop();
-    }
-
-    const pitchCoarse = clip.getProperty("pitch_coarse");
-    const pitchFine = clip.getProperty("pitch_fine");
-    result.pitchShift = pitchCoarse + pitchFine / 100;
-
-    result.sampleLength = clip.getProperty("sample_length");
-    result.sampleRate = clip.getProperty("sample_rate");
-
-    // Warping state
-    result.warping = clip.getProperty("warping") > 0;
-    const warpModeValue = clip.getProperty("warp_mode");
-    result.warpMode =
-      {
-        [LIVE_API_WARP_MODE_BEATS]: WARP_MODE.BEATS,
-        [LIVE_API_WARP_MODE_TONES]: WARP_MODE.TONES,
-        [LIVE_API_WARP_MODE_TEXTURE]: WARP_MODE.TEXTURE,
-        [LIVE_API_WARP_MODE_REPITCH]: WARP_MODE.REPITCH,
-        [LIVE_API_WARP_MODE_COMPLEX]: WARP_MODE.COMPLEX,
-        [LIVE_API_WARP_MODE_REX]: WARP_MODE.REX,
-        [LIVE_API_WARP_MODE_PRO]: WARP_MODE.PRO,
-      }[warpModeValue] ?? "unknown";
-  }
-
-  // Add warp markers array for audio clips when requested
-  if (result.type === "audio" && includeWarpMarkers) {
-    try {
-      const warpMarkersJson = clip.getProperty("warp_markers");
-      if (warpMarkersJson && warpMarkersJson !== "") {
-        const warpMarkersData = JSON.parse(warpMarkersJson);
-        // Handle both possible structures: direct array or nested in warp_markers property
-        // Transform snake_case properties to camelCase for consistency with update-clip
-        if (Array.isArray(warpMarkersData)) {
-          result.warpMarkers = warpMarkersData.map((marker) => ({
-            sampleTime: marker.sample_time,
-            beatTime: marker.beat_time,
-          }));
-        } else if (
-          warpMarkersData.warp_markers &&
-          Array.isArray(warpMarkersData.warp_markers)
-        ) {
-          result.warpMarkers = warpMarkersData.warp_markers.map((marker) => ({
-            sampleTime: marker.sample_time,
-            beatTime: marker.beat_time,
-          }));
-        }
-      }
-    } catch (error) {
-      // Fail gracefully - clip might not support warp markers or format might be unexpected
-      console.error(
-        `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
-      );
-    }
+    processAudioClip(result, clip, includeWarpMarkers);
   }
 
   return result;

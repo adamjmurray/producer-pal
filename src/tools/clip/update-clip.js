@@ -1,20 +1,12 @@
-import {
-  barBeatDurationToAbletonBeats,
-  barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time.js";
-import * as console from "../../shared/v8-max-console.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 import { handleArrangementLengthOperation } from "./arrangement-operations.js";
 import {
-  parseSongTimeSignature,
-  calculateBeatPositions,
-  buildClipPropertiesToSet,
-  handleNoteUpdates,
-  handleArrangementStartOperation,
-  setAudioParameters,
-  handleWarpMarkerOperation,
-} from "./update-clip-helpers.js";
+  validateAndParseArrangementParams,
+  buildClipResultObject,
+  emitArrangementWarnings,
+} from "./clip-result-helpers.js";
+import { processSingleClipUpdate } from "./update-clip-helpers.js";
 
 /**
  * Updates properties of existing clips
@@ -36,11 +28,11 @@ import {
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
  * @param {boolean} [args.warping] - Audio clip warping on/off
- * @param args.warpOp
- * @param args.warpBeatTime
- * @param args.warpSampleTime
- * @param args.warpDistance
- * @param context
+ * @param {string} [args.warpOp] - Warp marker operation: add, move, remove
+ * @param {number} [args.warpBeatTime] - Beat time for warp marker operation
+ * @param {number} [args.warpSampleTime] - Sample time for warp marker operation
+ * @param {number} [args.warpDistance] - Distance parameter for move operations
+ * @param {object} context - Tool execution context with holding area settings
  * @returns {object | Array<object>} Single clip object or array of clip objects
  */
 export function updateClip(
@@ -83,36 +75,9 @@ export function updateClip(
     skipInvalid: true,
   });
 
-  // Get song time signature for arrangementStart/arrangementLength conversion
-  let songTimeSigNumerator, songTimeSigDenominator;
-  let arrangementStartBeats = null;
-  let arrangementLengthBeats = null;
-
-  if (arrangementStart != null || arrangementLength != null) {
-    const songTimeSig = parseSongTimeSignature();
-    songTimeSigNumerator = songTimeSig.numerator;
-    songTimeSigDenominator = songTimeSig.denominator;
-
-    if (arrangementStart != null) {
-      arrangementStartBeats = barBeatToAbletonBeats(
-        arrangementStart,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      );
-    }
-
-    if (arrangementLength != null) {
-      arrangementLengthBeats = barBeatDurationToAbletonBeats(
-        arrangementLength,
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      );
-
-      if (arrangementLengthBeats <= 0) {
-        throw new Error("arrangementLength must be greater than 0");
-      }
-    }
-  }
+  // Parse and validate arrangement parameters
+  const { arrangementStartBeats, arrangementLengthBeats } =
+    validateAndParseArrangementParams(arrangementStart, arrangementLength);
 
   const updatedClips = [];
 
@@ -120,137 +85,39 @@ export function updateClip(
   const tracksWithMovedClips = new Map(); // trackIndex -> count
 
   for (const clip of clips) {
-    // Parse time signature if provided to get numerator/denominator
-    let timeSigNumerator, timeSigDenominator;
-    if (timeSignature != null) {
-      const parsed = parseTimeSignature(timeSignature);
-      timeSigNumerator = parsed.numerator;
-      timeSigDenominator = parsed.denominator;
-    } else {
-      timeSigNumerator = clip.getProperty("signature_numerator");
-      timeSigDenominator = clip.getProperty("signature_denominator");
-    }
-
-    // Track final note count for response
-    let finalNoteCount = null;
-
-    // Determine current looping state (needed for boundary calculations)
-    const isLooping =
-      looping != null ? looping : clip.getProperty("looping") > 0;
-
-    // Handle firstStart warning for non-looping clips
-    if (firstStart != null && !isLooping) {
-      console.error(
-        "Warning: firstStart parameter ignored for non-looping clips",
-      );
-    }
-
-    // Calculate beat positions using helper
-    const { startBeats, endBeats, startMarkerBeats } = calculateBeatPositions({
-      start,
-      length,
-      firstStart,
-      timeSigNumerator,
-      timeSigDenominator,
-      clip,
-      isLooping,
-    });
-
-    // Build and set clip properties
-    const currentLoopEnd = isLooping ? clip.getProperty("loop_end") : null;
-    const propsToSet = buildClipPropertiesToSet({
-      name,
-      color,
-      timeSignature,
-      timeSigNumerator,
-      timeSigDenominator,
-      startMarkerBeats,
-      looping,
-      isLooping,
-      startBeats,
-      endBeats,
-      currentLoopEnd: currentLoopEnd,
-    });
-
-    clip.setAll(propsToSet);
-
-    // Audio-specific parameters (only for audio clips)
-    const isAudioClip = clip.getProperty("is_audio_clip") > 0;
-    if (isAudioClip) {
-      setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
-    }
-
-    // Handle note updates using helper
-    finalNoteCount = handleNoteUpdates(
+    processSingleClipUpdate({
       clip,
       notationString,
       modulationString,
       noteUpdateMode,
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-
-    // Handle warp marker operations (audio clips only)
-    if (warpOp != null) {
-      handleWarpMarkerOperation(
-        clip,
-        warpOp,
-        warpBeatTime,
-        warpSampleTime,
-        warpDistance,
-      );
-    }
-
-    // Handle arrangementLength (shortening, hidden content exposure, and tiling)
-    let hasArrangementLengthResults = false;
-    if (arrangementLengthBeats != null) {
-      const results = handleArrangementLengthOperation({
-        clip,
-        isAudioClip,
-        arrangementLengthBeats,
-        context,
-      });
-      if (results.length > 0) {
-        updatedClips.push(...results);
-        hasArrangementLengthResults = true;
-      }
-    }
-
-    // Handle arrangementStart (move clip) after all property updates
-    let finalClipId = clip.id;
-    if (arrangementStartBeats != null) {
-      finalClipId = handleArrangementStartOperation({
-        clip,
-        arrangementStartBeats,
-        tracksWithMovedClips,
-      });
-    }
-
-    // Build optimistic result object only if arrangementLength didn't return results
-    if (!hasArrangementLengthResults) {
-      const clipResult = {
-        id: finalClipId,
-      };
-
-      // Only include noteCount if notes were modified
-      if (finalNoteCount != null) {
-        clipResult.noteCount = finalNoteCount;
-      }
-
-      updatedClips.push(clipResult);
-    }
+      name,
+      color,
+      timeSignature,
+      start,
+      length,
+      firstStart,
+      looping,
+      gainDb,
+      pitchShift,
+      warpMode,
+      warping,
+      warpOp,
+      warpBeatTime,
+      warpSampleTime,
+      warpDistance,
+      arrangementLengthBeats,
+      arrangementStartBeats,
+      context,
+      updatedClips,
+      tracksWithMovedClips,
+      parseTimeSignature,
+      handleArrangementLengthOperation,
+      buildClipResultObject,
+    });
   }
 
   // Emit warning if multiple clips from same track were moved to same position
-  if (arrangementStartBeats != null) {
-    for (const [trackIndex, count] of tracksWithMovedClips.entries()) {
-      if (count > 1) {
-        console.error(
-          `Warning: ${count} clips on track ${trackIndex} moved to the same position - later clips will overwrite earlier ones`,
-        );
-      }
-    }
-  }
+  emitArrangementWarnings(arrangementStartBeats, tracksWithMovedClips);
 
   // Return single object if one valid result, array for multiple results or empty array for none
   if (updatedClips.length === 0) {
