@@ -346,4 +346,68 @@ describe("ChatInput", () => {
       expect(handleSend).not.toHaveBeenCalled();
     });
   });
+
+  describe("per-message settings", () => {
+    it("passes default thinking and temperature on send", () => {
+      const handleSend = vi.fn();
+      const onStop = vi.fn();
+      render(
+        <ChatInput
+          handleSend={handleSend}
+          isAssistantResponding={false}
+          onStop={onStop}
+          {...defaultProps}
+        />,
+      );
+
+      const textarea = screen.getByRole("textbox");
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+
+      const button = screen.getByRole("button", { name: "Send" });
+      fireEvent.click(button);
+
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Auto",
+        temperature: 1.0,
+      });
+    });
+
+    it("resets to defaults when reset button clicked", () => {
+      const handleSend = vi.fn();
+      const onStop = vi.fn();
+      const { container } = render(
+        <ChatInput
+          handleSend={handleSend}
+          isAssistantResponding={false}
+          onStop={onStop}
+          {...defaultProps}
+        />,
+      );
+
+      // Expand settings toolbar
+      const expandButton = container.querySelector("button");
+      fireEvent.click(expandButton!);
+
+      // Change thinking
+      const select = container.querySelector("select");
+      fireEvent.change(select!, { target: { value: "High" } });
+
+      // Reset to defaults
+      const resetButton = Array.from(container.querySelectorAll("button")).find(
+        (btn) => btn.textContent.includes("Use defaults"),
+      );
+      fireEvent.click(resetButton!);
+
+      // Send message and verify defaults are used
+      const textarea = screen.getByRole("textbox");
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+      const sendButton = screen.getByRole("button", { name: "Send" });
+      fireEvent.click(sendButton);
+
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Auto",
+        temperature: 1.0,
+      });
+    });
+  });
 });
