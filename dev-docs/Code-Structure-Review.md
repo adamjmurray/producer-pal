@@ -1,12 +1,11 @@
 # Code Structure Review
 
-**Review Date:** November 20, 2025
-**Branch:** dev (commit `096ef95`)
-**Scope:** src/ and webui/ folders
+**Review Date:** November 20, 2025 **Branch:** dev (commit `096ef95`) **Scope:**
+src/ and webui/ folders
 
-This document analyzes the Producer Pal codebase for cleanliness, maintainability,
-consistency, and understandability, focusing on file organization, folder
-structure, and naming conventions.
+This document analyzes the Producer Pal codebase for cleanliness,
+maintainability, consistency, and understandability, focusing on file
+organization, folder structure, and naming conventions.
 
 ## Executive Summary
 
@@ -312,8 +311,8 @@ test file:
 - `use-settings.ts` (239 lines) → `settings-helpers.ts` (345 lines)
 - `use-gemini-chat.ts` (226 lines) → `streaming-helpers.ts` (110 lines) +
   `config-builders.ts` (124 lines)
-- `use-openai-chat.ts` (229 lines) → `streaming-helpers.ts` + `config-builders.ts`
-  (shared)
+- `use-openai-chat.ts` (229 lines) → `streaming-helpers.ts` +
+  `config-builders.ts` (shared)
 
 #### 5. Thoughtful Type Organization
 
@@ -377,16 +376,16 @@ The webui folder organization is exemplary with no minor issues to report.
 
 ## Comparison: src/ vs webui/
 
-| Aspect                   | src/                   | webui/                  |
-| ------------------------ | ---------------------- | ----------------------- |
-| **Naming Conventions**   | ✅ Excellent           | ✅ Excellent            |
-| **Folder Organization**  | ✅ Excellent           | ✅ Excellent            |
-| **Helper Extraction**    | ✅ Excellent           | ✅ Excellent            |
-| **Test Coverage**        | ✅ Comprehensive       | ✅ Comprehensive        |
-| **File Sizes**           | ✅ Well-managed        | ✅ Well-managed         |
-| **Import Extensions**    | ❌ Missing `.js`       | ⚠️ Wrong `.jsx`/`.tsx` |
-| **Function Organization** | ⚠️ 3 violations        | N/A                     |
-| **Doc Consistency**      | ⚠️ Test naming pattern | N/A                     |
+| Aspect                    | src/                   | webui/                 |
+| ------------------------- | ---------------------- | ---------------------- |
+| **Naming Conventions**    | ✅ Excellent           | ✅ Excellent           |
+| **Folder Organization**   | ✅ Excellent           | ✅ Excellent           |
+| **Helper Extraction**     | ✅ Excellent           | ✅ Excellent           |
+| **Test Coverage**         | ✅ Comprehensive       | ✅ Comprehensive       |
+| **File Sizes**            | ✅ Well-managed        | ✅ Well-managed        |
+| **Import Extensions**     | ❌ Missing `.js`       | ⚠️ Wrong `.jsx`/`.tsx` |
+| **Function Organization** | ⚠️ 3 violations        | N/A                    |
+| **Doc Consistency**       | ⚠️ Test naming pattern | N/A                    |
 
 Both folders demonstrate strong organizational principles with different but
 related issues around import statements.
@@ -409,7 +408,8 @@ related issues around import statements.
    - `read-clip.js` - Move `readClip()` from line 255 to top
 
 3. **Fix import extensions in webui/** - Replace `.jsx` with `.tsx`
-   - Automated fix: `find webui/src -name "*.tsx" -exec sed -i 's/\.jsx"/\.tsx"/g' {} +`
+   - Automated fix:
+     `find webui/src -name "*.tsx" -exec sed -i 's/\.jsx"/\.tsx"/g' {} +`
    - Affects 20+ files but straightforward to fix
 
 ### Medium Priority
