@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import { VoiceInput } from "./VoiceInput.jsx";
+import { VoiceInput } from "./VoiceInput.js";
 
 interface ChatInputProps {
   handleSend: (message: string) => Promise<void>;
