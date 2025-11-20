@@ -1,6 +1,6 @@
-import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
-import { select } from "../control/select.js";
-import { validateIdType } from "../shared/validation/id-validation.js";
+import { barBeatToAbletonBeats } from "../../../notation/barbeat/time/barbeat-time.js";
+import { select } from "../../control/select.js";
+import { validateIdType } from "../../shared/validation/id-validation.js";
 import {
   duplicateClipSlot,
   duplicateClipToArrangement,

@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { MAX_SLICES } from "../constants.js";
-import { defineTool } from "../shared/tool-framework/define-tool.js";
+import { defineTool } from "../../shared/tool-framework/define-tool.js";
 
 export const toolDefTransformClips = defineTool("ppal-transform-clips", {
   title: "Transform Clips",

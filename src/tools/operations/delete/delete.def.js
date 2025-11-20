@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "../shared/tool-framework/define-tool.js";
+import { defineTool } from "../../shared/tool-framework/define-tool.js";
 
 export const toolDefDelete = defineTool("ppal-delete", {
   title: "Delete Track/Scene/Clip",

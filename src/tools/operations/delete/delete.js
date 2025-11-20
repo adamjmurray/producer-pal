@@ -1,6 +1,6 @@
-import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
-import { parseCommaSeparatedIds } from "../shared/utils.js";
-import { validateIdTypes } from "../shared/validation/id-validation.js";
+import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
+import { parseCommaSeparatedIds } from "../../shared/utils.js";
+import { validateIdTypes } from "../../shared/validation/id-validation.js";
 
 /**
  * Deletes a track by its index
