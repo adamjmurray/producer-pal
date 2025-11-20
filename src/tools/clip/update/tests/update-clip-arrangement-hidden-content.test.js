@@ -3,7 +3,7 @@ import {
   liveApiCall,
   liveApiPath,
   mockLiveApiGet,
-} from "../../../../../test/mock-live-api.js";
+} from "../../../../test/mock-live-api.js";
 import { mockContext } from "../helpers/update-clip-test-helpers.js";
 import { updateClip } from "../update-clip.js";
 

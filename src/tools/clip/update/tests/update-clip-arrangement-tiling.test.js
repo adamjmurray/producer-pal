@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../../test/mock-live-api.js";
+} from "../../../../test/mock-live-api.js";
 import {
   mockContext,
   setupMocks,

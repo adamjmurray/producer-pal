@@ -6,7 +6,7 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "../../../test/mock-live-api.js";
-import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
+import { MAX_AUTO_CREATED_TRACKS } from "../../constants.js";
 import { createTrack } from "./create-track.js";
 
 describe("createTrack", () => {

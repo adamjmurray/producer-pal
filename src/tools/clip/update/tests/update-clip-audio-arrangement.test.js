@@ -4,7 +4,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../../../../test/mock-live-api.js";
+} from "../../../../test/mock-live-api.js";
 import { updateClip } from "../update-clip.js";
 
 describe("Unlooped audio clips - arrangementLength extension", () => {

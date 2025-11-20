@@ -5,7 +5,7 @@ import {
   liveApiSet,
   liveApiType,
 } from "../../../test/mock-live-api.js";
-import { MONITORING_STATE } from "../constants.js";
+import { MONITORING_STATE } from "../../constants.js";
 import { updateTrack } from "./update-track.js";
 
 describe("updateTrack", () => {

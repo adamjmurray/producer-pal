@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { liveApiGet, liveApiId } from "../../test/mock-live-api.js";
+import { liveApiGet, liveApiId } from "../../../../test/mock-live-api.js";
 import { calculateSceneLength } from "./duplicate-track-scene-helpers.js";
 
 describe("duplicate-track-scene-helpers", () => {
