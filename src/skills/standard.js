@@ -46,25 +46,13 @@ Create MIDI clips using the bar|beat notation syntax:
   - After \`@2=1\`, your current v/t/p settings remain unchanged
 
 ## Audio Clips
+Audio clip properties are always included in \`ppal-read-clip\` results: \`filename\`,
+\`gainDb\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`.
 
-Audio clips support gain and pitch adjustment:
-
-**Reading Audio Clips:**
-- By default, \`ppal-read-clip\` returns audio properties: \`filename\`, \`gainDb\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`
-- Use \`include: []\` to omit audio properties
-- \`gainDb\` is in decibels (e.g., 0 dB = unity, -6 dB = half volume, +12 dB = 4x volume)
-- \`pitchShift\` is in semitones (e.g., -2.5 = down 2.5 semitones)
-
-**Updating Audio Clips:**
-- \`gainDb\`: -70 to 24 dB range (0 dB = unity gain)
-- \`pitchShift\`: -48 to +48 semitones, supports decimals
-- These parameters are ignored for MIDI clips (no error)
-
-**Example:**
-
-Audio clip with audio-info (default): \`{ id: "id 456", type: "audio", name: "Kick", gainDb: 12.0, filename: "kick.wav", pitchShift: -2.5, sampleLength: 44100, sampleRate: 44100 }\`
-
-Update audio clip: \`ppal-update-clip ids="id 456" gainDb=-6 pitchShift=-3\`
+**Understanding audio parameters:**
+- \`gainDb\`: Decibels (0 dB = unity, -6 dB = half volume, +12 dB = 4x volume)
+- \`pitchShift\`: Semitones (e.g., -2.5 = down 2.5 semitones)
+- These parameters are ignored when updating MIDI clips (no error)
 
 ## Examples
 
