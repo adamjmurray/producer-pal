@@ -66,6 +66,9 @@ export default defineConfig({
         "src/portal/file-logger.js",
         "src/shared/v8-max-console.js",
 
+        // ignore test helpers:
+        "**/*-test-helpers.js",
+
         // ignore other hard-to-test files:
         "src/test/mock-task.js",
         "src/test/mock-chat-ui-html.js",
