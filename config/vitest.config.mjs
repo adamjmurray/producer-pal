@@ -69,20 +69,15 @@ export default defineConfig({
         // ignore other hard-to-test files:
         "src/test/mock-task.js",
         "src/test/mock-chat-ui-html.js",
-
-        // Voice chat integration (complex API mocking required):
-        "webui/src/hooks/use-voice-chat.ts",
-        "webui/src/hooks/voice-chat-*.ts",
-        "webui/src/components/chat/VoiceInput.tsx",
       ],
       reportOnFailure: true,
 
       // do not let test coverage drop:
       thresholds: {
-        statements: 89.2, // TODO: try to get to 90
-        branches: 83.7, // TODO: try to get to 85
-        functions: 89.5, // TODO: try to get to 90
-        lines: 89.8, // TODO: try to get to 90
+        statements: 85.7,
+        branches: 80.8,
+        functions: 86.3,
+        lines: 86.3,
       },
     },
   },
