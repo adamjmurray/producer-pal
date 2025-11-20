@@ -1,4 +1,4 @@
-import { validateIdTypes } from "../shared/id-validation.js";
+import { validateIdTypes } from "../shared/validation/id-validation.js";
 import {
   parseTransposeValues,
   getClipIds,

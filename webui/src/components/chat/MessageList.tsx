@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "preact/hooks";
 import type { UIMessage } from "../../types/messages";
-import { ActivityIndicator } from "./ActivityIndicator";
 import { AssistantMessage } from "./assistant/AssistantMessage";
-import { RetryButton } from "./RetryButton";
+import { ActivityIndicator } from "./controls/ActivityIndicator";
+import { RetryButton } from "./controls/RetryButton";
 
 interface MessageListProps {
   messages: UIMessage[];

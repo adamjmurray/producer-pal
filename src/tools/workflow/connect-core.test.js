@@ -7,7 +7,7 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
-import { getHostTrackIndex } from "../shared/get-host-track-index.js";
+import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
 // Mock the getHostTrackIndex function
 vi.mock(import("../shared/get-host-track-index.js"), () => ({

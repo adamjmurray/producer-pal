@@ -7,7 +7,7 @@ import {
   includeArrayFromFlags,
   parseIncludeArray,
   READ_SONG_DEFAULTS,
-} from "../shared/include-params.js";
+} from "../shared/tool-framework/include-params.js";
 import { readTrackMinimal } from "../track/read-track-helpers.js";
 import { readTrack, readTrackGeneric } from "../track/read-track.js";
 

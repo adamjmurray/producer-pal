@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "../shared/define-tool.js";
+import { defineTool } from "../shared/tool-framework/define-tool.js";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",

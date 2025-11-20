@@ -14,11 +14,11 @@ import {
   WARP_MODE,
 } from "../constants.js";
 import { liveGainToDb } from "../shared/gain-utils.js";
-import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
-} from "../shared/include-params.js";
+} from "../shared/tool-framework/include-params.js";
+import { validateIdType } from "../shared/validation/id-validation.js";
 
 /**
  * Read a MIDI or audio clip from Ableton Live

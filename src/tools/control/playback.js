@@ -2,8 +2,11 @@ import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
-import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
+import {
+  validateIdType,
+  validateIdTypes,
+} from "../shared/validation/id-validation.js";
 import { select } from "./select.js";
 
 /**

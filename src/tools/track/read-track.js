@@ -1,13 +1,13 @@
 import * as console from "../../shared/v8-max-console.js";
 import { readClip } from "../clip/read-clip.js";
 import { DEVICE_TYPE } from "../constants.js";
-import { getDrumMap, readDevice } from "../shared/device-reader.js";
-import { getHostTrackIndex } from "../shared/get-host-track-index.js";
-import { validateIdType } from "../shared/id-validation.js";
+import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
+import { getDrumMap, readDevice } from "../shared/device/device-reader.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
-} from "../shared/include-params.js";
+} from "../shared/tool-framework/include-params.js";
+import { validateIdType } from "../shared/validation/id-validation.js";
 import {
   handleNonExistentTrack,
   addOptionalBooleanProperties,

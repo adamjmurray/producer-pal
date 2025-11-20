@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { TOOLS } from "../../constants/tools";
+import { TOOLS } from "../../../constants/tools";
 import { ToolToggles } from "./ToolToggles";
 
 describe("ToolToggles", () => {

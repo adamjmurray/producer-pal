@@ -5,7 +5,7 @@ import {
   liveApiPath,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
-import * as arrangementTiling from "../shared/arrangement-tiling.js";
+import * as arrangementTiling from "../shared/arrangement/arrangement-tiling.js";
 import { setupMocks } from "./update-clip-test-helpers.js";
 import { updateClip } from "./update-clip.js";
 

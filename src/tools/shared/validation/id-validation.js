@@ -1,4 +1,4 @@
-import * as console from "../../shared/v8-max-console.js";
+import * as console from "../../../shared/v8-max-console.js";
 
 /**
  * Validates a single ID matches expected type

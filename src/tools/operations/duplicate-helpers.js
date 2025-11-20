@@ -7,7 +7,7 @@ import { updateClip } from "../clip/update-clip.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
-} from "../shared/arrangement-tiling.js";
+} from "../shared/arrangement/arrangement-tiling.js";
 
 /**
  * Parse arrangementLength from bar:beat duration format to absolute beats

@@ -3,7 +3,7 @@ import {
   LiveAPI,
   liveApiCall,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
+} from "../../../test/mock-live-api.js";
 import {
   adjustClipPreRoll,
   createPartialTile,

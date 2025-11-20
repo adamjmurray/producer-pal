@@ -1,9 +1,9 @@
 import type { Provider } from "../../types/settings";
 import { ConnectionTab } from "./ConnectionTab";
-import { RandomnessSlider } from "./RandomnessSlider";
+import { RandomnessSlider } from "./controls/RandomnessSlider";
+import { ThinkingSettings } from "./controls/ThinkingSettings";
+import { ToolToggles } from "./controls/ToolToggles";
 import { SettingsTabs } from "./SettingsTabs";
-import { ThinkingSettings } from "./ThinkingSettings";
-import { ToolToggles } from "./ToolToggles";
 
 interface SettingsScreenProps {
   provider: Provider;

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { defineTool } from "../shared/define-tool.js";
+import { defineTool } from "../shared/tool-framework/define-tool.js";
 
 export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
   title: "Update Live Set",

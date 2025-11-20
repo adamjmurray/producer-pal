@@ -5,7 +5,7 @@ import {
   createShortenedClipInHolding,
   moveClipFromHolding,
   tileClipToRange,
-} from "../shared/arrangement-tiling.js";
+} from "../shared/arrangement/arrangement-tiling.js";
 
 const HOLDING_AREA_START = 40000;
 

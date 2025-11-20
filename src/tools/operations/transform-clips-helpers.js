@@ -3,8 +3,8 @@ import {
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
-import { validateIdType } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
+import { validateIdType } from "../shared/validation/id-validation.js";
 import {
   hasAudioTransformParams,
   hasMidiTransformParams,

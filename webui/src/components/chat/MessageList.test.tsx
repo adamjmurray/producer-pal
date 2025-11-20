@@ -7,7 +7,7 @@ import type { UIMessage } from "../../types/messages";
 import { MessageList } from "./MessageList";
 
 // Mock child components
-vi.mock("./ActivityIndicator.jsx", () => ({
+vi.mock("./controls/ActivityIndicator.jsx", () => ({
   ActivityIndicator: () => (
     <div data-testid="activity-indicator">Loading...</div>
   ),
