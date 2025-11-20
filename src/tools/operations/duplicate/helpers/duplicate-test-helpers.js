@@ -9,7 +9,7 @@ export {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
+} from "../../../../test/mock-live-api.js";
 
 // Mock updateClip to avoid complex internal logic
 export const updateClipMock = vi.fn(({ ids }) => {

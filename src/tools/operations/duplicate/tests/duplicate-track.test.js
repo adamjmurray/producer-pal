@@ -7,7 +7,7 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../duplicate-test-helpers.js";
+} from "../helpers/duplicate-test-helpers.js";
 
 // Mock updateClip to avoid complex internal logic
 vi.mock(import("../clip/update-clip.js"), () => ({
