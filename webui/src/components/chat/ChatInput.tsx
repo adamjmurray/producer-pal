@@ -8,6 +8,7 @@ interface ChatInputProps {
   apiKey?: string;
   model?: string;
   temperature?: number;
+  voice?: string;
   mcpUrl?: string;
   enabledTools?: Record<string, boolean>;
   enableVoice?: boolean;
@@ -28,6 +29,7 @@ export function ChatInput({
   apiKey = "",
   model = "models/gemini-2.0-flash-exp",
   temperature = 1.0,
+  voice,
   mcpUrl,
   enabledTools,
   enableVoice = false,
@@ -70,6 +72,7 @@ export function ChatInput({
               apiKey={apiKey}
               model={model}
               temperature={temperature}
+              voice={voice}
               mcpUrl={mcpUrl}
               enabledTools={enabledTools}
               onTranscriptUpdate={handleTranscriptUpdate}

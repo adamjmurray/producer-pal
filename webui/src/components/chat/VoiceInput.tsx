@@ -5,6 +5,7 @@ interface VoiceInputProps {
   apiKey: string;
   model?: string;
   temperature?: number;
+  voice?: string;
   mcpUrl?: string;
   enabledTools?: Record<string, boolean>;
   onTranscriptUpdate: (transcript: string) => void;
@@ -15,6 +16,7 @@ interface VoiceInputProps {
  * Voice input component for voice chat functionality
  * @param props - Component properties
  * @param props.apiKey - Gemini API key
+ * @param props.voice - Voice name for text-to-speech
  * @param props.mcpUrl - MCP server URL
  * @param props.enabledTools - Enabled MCP tools
  * @param props.onTranscriptUpdate - Callback for transcription updates
@@ -23,6 +25,7 @@ interface VoiceInputProps {
  */
 export function VoiceInput({
   apiKey,
+  voice,
   mcpUrl,
   enabledTools,
   onTranscriptUpdate,
@@ -36,7 +39,7 @@ export function VoiceInput({
     connect,
     startStreaming,
     stopStreaming,
-  } = useVoiceChat(apiKey, undefined, mcpUrl, enabledTools);
+  } = useVoiceChat(apiKey, voice, mcpUrl, enabledTools);
 
   // Update parent with transcription changes
   useEffect(() => {

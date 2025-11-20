@@ -114,6 +114,8 @@ export function App() {
         setTemperature={settings.setTemperature}
         showThoughts={settings.showThoughts}
         setShowThoughts={settings.setShowThoughts}
+        voice={settings.voice}
+        setVoice={settings.setVoice}
         theme={theme}
         setTheme={setTheme}
         enabledTools={settings.enabledTools}
@@ -147,6 +149,7 @@ export function App() {
       apiKey={settings.apiKey}
       model={settings.model}
       temperature={settings.temperature}
+      voice={settings.voice}
       mcpUrl="http://localhost:3350/mcp"
       enabledTools={settings.enabledTools}
       enableVoice={settings.provider === "gemini"}

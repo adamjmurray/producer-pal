@@ -4,6 +4,7 @@ import { RandomnessSlider } from "./RandomnessSlider.jsx";
 import { SettingsTabs } from "./SettingsTabs.jsx";
 import { ThinkingSettings } from "./ThinkingSettings.jsx";
 import { ToolToggles } from "./ToolToggles.jsx";
+import { VoiceSelector } from "./VoiceSelector.js";
 
 interface SettingsScreenProps {
   provider: Provider;
@@ -22,6 +23,8 @@ interface SettingsScreenProps {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
+  voice: string;
+  setVoice: (voice: string) => void;
   theme: string;
   setTheme: (theme: string) => void;
   enabledTools: Record<string, boolean>;
@@ -77,6 +80,8 @@ function getProviderLabel(provider: string): string {
  * @param {Function} root0.setTemperature - Function to update temperature
  * @param {boolean} root0.showThoughts - Whether to show thought blocks
  * @param {Function} root0.setShowThoughts - Function to toggle thought display
+ * @param {string} root0.voice - Voice selection for Gemini voice chat
+ * @param {Function} root0.setVoice - Function to update voice
  * @param {string} root0.theme - UI theme setting
  * @param {Function} root0.setTheme - Function to update theme
  * @param {object} root0.enabledTools - Map of enabled/disabled tools
@@ -89,6 +94,7 @@ function getProviderLabel(provider: string): string {
  * @param {boolean} root0.settingsConfigured - Whether settings have been configured
  * @returns {JSX.Element} Settings screen component
  */
+// eslint-disable-next-line max-lines-per-function -- Settings screen requires complex tabbed UI
 export function SettingsScreen({
   provider,
   setProvider,
@@ -106,6 +112,8 @@ export function SettingsScreen({
   setTemperature,
   showThoughts,
   setShowThoughts,
+  voice,
+  setVoice,
   theme,
   setTheme,
   enabledTools,
@@ -173,6 +181,11 @@ export function SettingsScreen({
                         setTemperature={setTemperature}
                       />
                     </div>
+                    {provider === "gemini" && (
+                      <div className="mt-8">
+                        <VoiceSelector voice={voice} setVoice={setVoice} />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

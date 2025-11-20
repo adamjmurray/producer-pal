@@ -9,6 +9,7 @@ export interface ProviderSettings {
   thinking: string;
   temperature: number;
   showThoughts: boolean;
+  voice: string;
 }
 
 export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
@@ -18,6 +19,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
+    voice: "",
   },
   openai: {
     apiKey: "",
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     thinking: "Medium",
     temperature: 1.0,
     showThoughts: true,
+    voice: "",
   },
   mistral: {
     apiKey: "",
@@ -32,6 +35,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
+    voice: "",
   },
   openrouter: {
     apiKey: "",
@@ -39,6 +43,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
+    voice: "",
   },
   lmstudio: {
     apiKey: "",
@@ -47,6 +52,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
+    voice: "",
   },
   ollama: {
     apiKey: "",
@@ -55,6 +61,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
+    voice: "",
   },
   custom: {
     apiKey: "",
@@ -63,6 +70,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
+    voice: "",
   },
 };
 

@@ -52,6 +52,8 @@ describe("SettingsScreen", () => {
     setTemperature: vi.fn(),
     showThoughts: false,
     setShowThoughts: vi.fn(),
+    voice: "",
+    setVoice: vi.fn(),
     theme: "system",
     setTheme: vi.fn(),
     enabledTools: {},

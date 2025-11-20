@@ -28,6 +28,7 @@ export interface GeminiSettings {
   thinking: string; // "Auto" | "Off" | specific thinking budget (e.g., "5000")
   temperature: number;
   showThoughts: boolean;
+  voice: string; // Voice name for Live API (e.g., "Puck", "Charon", etc.)
 }
 
 // Provider settings interface
@@ -56,6 +57,7 @@ export interface ProviderSettings {
   temperature: number;
   thinking: string;
   showThoughts: boolean;
+  voice: string; // Voice for Gemini Live API
 }
 
 // Hook return type for useSettings
@@ -76,6 +78,8 @@ export interface UseSettingsReturn {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
+  voice: string;
+  setVoice: (voice: string) => void;
   saveSettings: () => void;
   cancelSettings: () => void;
   hasApiKey: boolean;
