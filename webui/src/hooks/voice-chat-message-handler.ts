@@ -5,7 +5,7 @@
 import type { LiveServerMessage } from "@google/genai";
 import type { RefObject } from "preact";
 import type { Dispatch, StateUpdater } from "preact/hooks";
-import type { UIMessage } from "../types/messages.js";
+import type { UIMessage } from "../types/messages";
 
 /**
  * Handles user transcription updates

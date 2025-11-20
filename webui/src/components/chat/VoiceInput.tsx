@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "preact/hooks";
-import { useVoiceChat } from "../../hooks/use-voice-chat.js";
-import type { UIMessage } from "../../types/messages.js";
+import { useVoiceChat } from "../../hooks/use-voice-chat";
+import type { UIMessage } from "../../types/messages";
 
 interface VoiceInputProps {
   apiKey: string;

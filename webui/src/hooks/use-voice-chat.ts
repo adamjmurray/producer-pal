@@ -3,16 +3,16 @@ import type { LiveServerToolCall, Session } from "@google/genai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { useCallback, useRef, useState } from "preact/hooks";
-import type { UIMessage, UIPart } from "../types/messages.js";
+import type { UIMessage, UIPart } from "../types/messages";
 import {
   playAudioChunk as playAudio,
   processAudioInput,
-} from "./voice-chat-audio-helpers.js";
+} from "./voice-chat-audio-helpers";
 import {
   closeMcpClient,
   handleToolCall as handleMcpToolCall,
-} from "./voice-chat-mcp-helpers.js";
-import { createMessageHandler } from "./voice-chat-message-handler.js";
+} from "./voice-chat-mcp-helpers";
+import { createMessageHandler } from "./voice-chat-message-handler";
 
 export interface VoiceChatState {
   isConnected: boolean;
