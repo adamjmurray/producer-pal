@@ -5,8 +5,8 @@ import {
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
-} from "../../shared/arrangement/arrangement-tiling.js";
-import * as console from "../../shared/v8-max-console.js";
+} from "../../../shared/arrangement/arrangement-tiling.js";
+import * as console from "../../../../shared/v8-max-console.js";
 import { updateClip } from "../../clip/update/update-clip.js";
 
 /**
