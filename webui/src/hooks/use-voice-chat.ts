@@ -1,8 +1,16 @@
-import { useState, useCallback, useRef } from "preact/hooks";
 import { GoogleGenAI, Modality } from "@google/genai";
-import type { Session, LiveServerToolCall } from "@google/genai";
+import type { LiveServerToolCall, Session } from "@google/genai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { useCallback, useRef, useState } from "preact/hooks";
+import {
+  playAudioChunk as playAudio,
+  processAudioInput,
+} from "./voice-chat-audio-helpers.js";
+import {
+  closeMcpClient,
+  handleToolCall as handleMcpToolCall,
+} from "./voice-chat-mcp-helpers.js";
 
 export interface VoiceChatState {
   isConnected: boolean;
@@ -15,6 +23,15 @@ export interface VoiceChatState {
   stopStreaming: () => void;
 }
 
+/**
+ * Custom hook for managing voice chat with Gemini Live API and MCP tools
+ * @param apiKey - Gemini API key for authentication
+ * @param voiceName - Optional voice name for text-to-speech
+ * @param mcpUrl - URL of the MCP server (default: http://localhost:3350/mcp)
+ * @param enabledTools - Record of enabled tool names
+ * @returns {VoiceChatState} Voice chat state and control functions
+ */
+// eslint-disable-next-line max-lines-per-function -- Voice chat hook requires complex initialization
 export function useVoiceChat(
   apiKey: string,
   voiceName?: string,
@@ -34,144 +51,19 @@ export function useVoiceChat(
   const playbackAudioContextRef = useRef<AudioContext | null>(null);
   const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const isConnectedRef = useRef(false);
-  const nextPlayTimeRef = useRef(0); // Track when next audio chunk should play
+  const nextPlayTimeRef = useRef(0);
 
-  // Handle tool calls from Live API
   const handleToolCall = useCallback(async (toolCall: LiveServerToolCall) => {
-    if (!toolCall.functionCalls || !mcpClientRef.current) {
-      console.log("No function calls or MCP client not initialized");
-      return;
-    }
-
-    const toolResponses = [];
-
-    for (const functionCall of toolCall.functionCalls) {
-      if (!functionCall.name || !functionCall.id) {
-        console.log("Invalid function call: missing name or id");
-        continue;
-      }
-
-      try {
-        console.log(
-          `Executing tool: ${functionCall.name} with args:`,
-          functionCall.args,
-        );
-        const result = await mcpClientRef.current.callTool({
-          name: functionCall.name,
-          arguments: functionCall.args ?? {},
-        });
-
-        console.log(`Tool result:`, result);
-
-        toolResponses.push({
-          functionResponses: [
-            {
-              name: functionCall.name,
-              response: result.isError ? { error: result } : result,
-              id: functionCall.id,
-            },
-          ],
-        });
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.error(`Tool execution error: ${errMsg}`);
-
-        toolResponses.push({
-          functionResponses: [
-            {
-              name: functionCall.name,
-              response: {
-                error: errMsg,
-              },
-              id: functionCall.id,
-            },
-          ],
-        });
-      }
-    }
-
-    // Send tool responses back to the session
-    for (const response of toolResponses) {
-      try {
-        sessionRef.current?.sendToolResponse(response);
-        console.log(`Sent tool response:`, response);
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        console.error(`Error sending tool response: ${errMsg}`);
-      }
-    }
+    await handleMcpToolCall(toolCall, mcpClientRef.current, sessionRef.current);
   }, []);
 
   const playAudioChunk = useCallback(async (base64Audio: string) => {
-    try {
-      // Ensure playback audio context exists and is running
-      playbackAudioContextRef.current ??= new AudioContext({
-        sampleRate: 24000,
-      });
-
-      const ctx = playbackAudioContextRef.current;
-
-      // Resume if suspended (iOS requirement)
-      if (ctx.state === "suspended") {
-        await ctx.resume();
-      }
-
-      // Decode base64 to get raw PCM bytes (16-bit little-endian)
-      const binaryString = atob(base64Audio);
-      const bytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-      }
-
-      // Convert Int16 PCM to Float32 samples
-      const int16Array = new Int16Array(bytes.buffer);
-      const float32Array = new Float32Array(int16Array.length);
-      for (let i = 0; i < int16Array.length; i++) {
-        // Convert from int16 range (-32768 to 32767) to float32 range (-1.0 to 1.0)
-        const sample = int16Array[i] ?? 0;
-        float32Array[i] = sample / (sample < 0 ? 32768 : 32767);
-      }
-
-      // Create audio buffer manually for raw PCM
-      const audioBuffer = ctx.createBuffer(
-        1, // mono
-        float32Array.length,
-        24000, // 24kHz sample rate
-      );
-
-      // Copy samples to the audio buffer
-      audioBuffer.getChannelData(0).set(float32Array);
-
-      // Calculate chunk duration in seconds
-      const chunkDuration = float32Array.length / 24000;
-
-      // Schedule audio to play sequentially
-      const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(ctx.destination);
-
-      // Determine when to start this chunk
-      // If we're behind schedule (nextPlayTime < currentTime), catch up immediately
-      const startTime = Math.max(ctx.currentTime, nextPlayTimeRef.current);
-      const endTime = startTime + chunkDuration;
-
-      // Update next play time for the next chunk
-      nextPlayTimeRef.current = endTime;
-
-      // Clean up reference when done
-      source.onended = () => {
-        if (currentAudioSourceRef.current === source) {
-          currentAudioSourceRef.current = null;
-        }
-      };
-
-      currentAudioSourceRef.current = source;
-
-      // Schedule the audio to start at the calculated time
-      source.start(startTime);
-    } catch (err) {
-      console.error("Error playing audio:", err);
-    }
+    await playAudio(
+      base64Audio,
+      playbackAudioContextRef,
+      currentAudioSourceRef,
+      nextPlayTimeRef,
+    );
   }, []);
 
   const connect = useCallback(async () => {
@@ -185,8 +77,9 @@ export function useVoiceChat(
       const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-2.5-flash-native-audio-preview-09-2025";
 
-      // Connect to MCP server and fetch tools
+      // Connect to MCP server
       const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
+
       mcpClientRef.current = new Client({
         name: "producer-pal-voice-chat",
         version: "1.0.0",
@@ -201,7 +94,7 @@ export function useVoiceChat(
 
       console.log(`Loaded ${filteredTools.length} MCP tools for voice chat`);
 
-      // Convert MCP tools to Gemini Live API format
+      // Convert to Gemini format
       const tools =
         filteredTools.length > 0
           ? [
@@ -220,11 +113,7 @@ export function useVoiceChat(
         systemInstruction: string;
         tools?: typeof tools;
         speechConfig?: {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName: string;
-            };
-          };
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: string } };
         };
       } = {
         responseModalities: [Modality.AUDIO],
@@ -233,14 +122,9 @@ export function useVoiceChat(
         ...(tools.length > 0 ? { tools } : {}),
       };
 
-      // Add voice configuration if specified
       if (voiceName) {
         config.speechConfig = {
-          voiceConfig: {
-            prebuiltVoiceConfig: {
-              voiceName,
-            },
-          },
+          voiceConfig: { prebuiltVoiceConfig: { voiceName } },
         };
       }
 
@@ -259,49 +143,39 @@ export function useVoiceChat(
               // Handle interruptions
               if (message.serverContent?.interrupted) {
                 console.log("AI interrupted - clearing audio queue");
-                // Stop current audio playback
                 if (currentAudioSourceRef.current) {
                   currentAudioSourceRef.current.stop();
                   currentAudioSourceRef.current = null;
                 }
-                // Reset audio queue when interrupted
                 nextPlayTimeRef.current = 0;
                 return;
               }
 
               // Handle transcriptions
               if (message.serverContent?.inputTranscription) {
-                const inputText = message.serverContent.inputTranscription;
-                console.log(`User transcription: ${inputText}`);
-                setTranscription((prev) => {
-                  const userText = `You: ${inputText}\n`;
-                  return prev + userText;
-                });
+                const text = message.serverContent.inputTranscription;
+                console.log(`User transcription: ${text}`);
+                setTranscription((p) => `${p}You: ${text}\n`);
               }
 
               if (message.serverContent?.outputTranscription) {
-                const outputText = message.serverContent.outputTranscription;
-                console.log(`AI transcription: ${outputText}`);
-                setTranscription((prev) => {
-                  const aiText = `AI: ${outputText}\n`;
-                  return prev + aiText;
-                });
+                const text = message.serverContent.outputTranscription;
+                console.log(`AI transcription: ${text}`);
+                setTranscription((p) => `${p}AI: ${text}\n`);
               }
 
               // Handle tool calls
-              const toolCall = message.toolCall;
-              if (toolCall) {
-                console.log(`Tool call received:`, toolCall);
-                void handleToolCall(toolCall);
+              if (message.toolCall) {
+                console.log(`Tool call received:`, message.toolCall);
+                void handleToolCall(message.toolCall);
                 return;
               }
 
-              // Handle incoming audio
-              const modelTurn = message.serverContent?.modelTurn;
-              if (modelTurn?.parts) {
-                for (const part of modelTurn.parts) {
+              // Handle audio
+              const turn = message.serverContent?.modelTurn;
+              if (turn?.parts) {
+                for (const part of turn.parts) {
                   if ("inlineData" in part && part.inlineData?.data) {
-                    // Handle audio output
                     void playAudioChunk(part.inlineData.data);
                   }
                 }
@@ -332,15 +206,9 @@ export function useVoiceChat(
       console.error("Connection failed:", err);
       setError(errorMessage);
 
-      // Clean up MCP client on error
-      if (mcpClientRef.current) {
-        try {
-          await mcpClientRef.current.close();
-        } catch (closeErr) {
-          console.error("Error closing MCP client:", closeErr);
-        }
-        mcpClientRef.current = null;
-      }
+      await closeMcpClient(mcpClientRef.current);
+      // eslint-disable-next-line require-atomic-updates -- Cleanup after error is safe
+      mcpClientRef.current = null;
     }
   }, [apiKey, voiceName, mcpUrl, enabledTools, playAudioChunk, handleToolCall]);
 
@@ -352,23 +220,18 @@ export function useVoiceChat(
       }
 
       console.log("Starting audio streaming...");
-
-      // Reset audio playback queue for new conversation
       nextPlayTimeRef.current = 0;
 
-      // Create playback AudioContext with user gesture (iOS requirement)
       if (!playbackAudioContextRef.current) {
         playbackAudioContextRef.current = new AudioContext({
           sampleRate: 24000,
         });
 
-        // iOS requires explicit resume after user gesture
         if (playbackAudioContextRef.current.state === "suspended") {
           await playbackAudioContextRef.current.resume();
         }
       }
 
-      // Request microphone access
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           channelCount: 1,
@@ -381,70 +244,26 @@ export function useVoiceChat(
       console.log("Microphone access granted");
       mediaStreamRef.current = stream;
 
-      // Create audio context for processing
-      // Use default sample rate to avoid browser compatibility issues
       const audioContext = new AudioContext();
       audioContextRef.current = audioContext;
 
-      // Resume if suspended (iOS requirement)
       if (audioContext.state === "suspended") {
         await audioContext.resume();
       }
 
       const source = audioContext.createMediaStreamSource(stream);
-
-      // Create a script processor to capture raw audio
-      // Note: ScriptProcessor is deprecated but AudioWorklet requires HTTPS
       const processor = audioContext.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
 
       processor.onaudioprocess = (e) => {
-        // Check connection state to prevent sending to closing/closed WebSocket
         if (!isConnectedRef.current) return;
 
         const inputData = e.inputBuffer.getChannelData(0);
-        const sourceSampleRate = audioContext.sampleRate;
-        const targetSampleRate = 16000;
+        const base64Data = processAudioInput(
+          inputData,
+          audioContext.sampleRate,
+        );
 
-        // Resample to 16kHz if needed
-        let resampledData: Float32Array;
-        if (sourceSampleRate !== targetSampleRate) {
-          const ratio = sourceSampleRate / targetSampleRate;
-          const resampledLength = Math.floor(inputData.length / ratio);
-          resampledData = new Float32Array(resampledLength);
-
-          for (let i = 0; i < resampledLength; i++) {
-            const sourceIndex = i * ratio;
-            const index = Math.floor(sourceIndex);
-            const frac = sourceIndex - index;
-
-            // Linear interpolation
-            const sample1 = inputData[index] ?? 0;
-            const sample2 =
-              inputData[Math.min(index + 1, inputData.length - 1)] ?? 0;
-            resampledData[i] = sample1 + (sample2 - sample1) * frac;
-          }
-        } else {
-          resampledData = inputData;
-        }
-
-        // Convert float32 samples to int16 PCM
-        const pcmData = new Int16Array(resampledData.length);
-        for (let i = 0; i < resampledData.length; i++) {
-          // Clamp to [-1, 1] and convert to int16
-          const s = Math.max(-1, Math.min(1, resampledData[i] ?? 0));
-          pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-        }
-
-        // Convert to base64
-        const uint8Array = new Uint8Array(pcmData.buffer);
-        let binaryString = "";
-        for (let i = 0; i < uint8Array.length; i++) {
-          binaryString += String.fromCharCode(uint8Array[i] ?? 0);
-        }
-        const base64Data = btoa(binaryString);
-
-        // Send audio using optional chaining
         try {
           sessionRef.current?.sendRealtimeInput({
             audio: {
@@ -475,51 +294,41 @@ export function useVoiceChat(
   const stopStreaming = useCallback(() => {
     console.log("Stopping audio streaming...");
 
-    // CRITICAL: Disconnect audio processor FIRST to stop callbacks
     if (processorRef.current) {
       processorRef.current.disconnect();
       processorRef.current = null;
     }
 
-    // Close audio context
     if (audioContextRef.current) {
       void audioContextRef.current.close();
       audioContextRef.current = null;
     }
 
-    // Stop media stream
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach((track) => track.stop());
       mediaStreamRef.current = null;
     }
 
-    // Stop any playing audio
     if (currentAudioSourceRef.current) {
       currentAudioSourceRef.current.stop();
       currentAudioSourceRef.current = null;
     }
 
-    // Reset audio playback queue
     nextPlayTimeRef.current = 0;
 
-    // Close playback audio context
     if (playbackAudioContextRef.current) {
       void playbackAudioContextRef.current.close();
       playbackAudioContextRef.current = null;
     }
 
-    // Signal end of audio stream to Live API
     try {
-      sessionRef.current?.sendRealtimeInput({
-        audioStreamEnd: true,
-      });
+      sessionRef.current?.sendRealtimeInput({ audioStreamEnd: true });
     } catch (err) {
       console.error("Error sending audioStreamEnd:", err);
     }
 
     setIsStreaming(false);
 
-    // Auto-disconnect: close the session
     isConnectedRef.current = false;
     try {
       sessionRef.current?.close();
@@ -528,25 +337,16 @@ export function useVoiceChat(
     }
     sessionRef.current = null;
 
-    // Close MCP client
-    if (mcpClientRef.current) {
-      try {
-        void mcpClientRef.current.close();
-      } catch (err) {
-        console.error("Error closing MCP client:", err);
-      }
-      mcpClientRef.current = null;
-    }
+    void closeMcpClient(mcpClientRef.current);
+    mcpClientRef.current = null;
 
     setIsConnected(false);
   }, []);
 
   const disconnect = useCallback(() => {
-    // Since stopStreaming now auto-disconnects, just call it
     if (isStreaming) {
       stopStreaming();
     } else {
-      // If not streaming, just disconnect the session and MCP client
       isConnectedRef.current = false;
       try {
         sessionRef.current?.close();
@@ -555,15 +355,8 @@ export function useVoiceChat(
       }
       sessionRef.current = null;
 
-      // Close MCP client
-      if (mcpClientRef.current) {
-        try {
-          void mcpClientRef.current.close();
-        } catch (err) {
-          console.error("Error closing MCP client:", err);
-        }
-        mcpClientRef.current = null;
-      }
+      void closeMcpClient(mcpClientRef.current);
+      mcpClientRef.current = null;
 
       setIsConnected(false);
     }

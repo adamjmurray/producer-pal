@@ -11,6 +11,16 @@ interface VoiceInputProps {
   disabled?: boolean;
 }
 
+/**
+ * Voice input component for voice chat functionality
+ * @param props - Component properties
+ * @param props.apiKey - Gemini API key
+ * @param props.mcpUrl - MCP server URL
+ * @param props.enabledTools - Enabled MCP tools
+ * @param props.onTranscriptUpdate - Callback for transcription updates
+ * @param props.disabled - Whether the component is disabled
+ * @returns {JSX.Element} Voice input button component
+ */
 export function VoiceInput({
   apiKey,
   mcpUrl,
