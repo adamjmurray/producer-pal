@@ -1,7 +1,7 @@
 import {
   abletonBeatsToBarBeat,
   barBeatDurationToAbletonBeats,
-} from "../../../notation/barbeat/time/barbeat-time.js";
+} from "../../../../../notation/barbeat/time/barbeat-time.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
