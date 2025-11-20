@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { interpretNotation } from "./barbeat-interpreter";
+import { interpretNotation } from "./barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - core functionality", () => {
   it("returns empty array for empty input", () => {

@@ -6,8 +6,8 @@ import {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
-} from "../../test/mock-live-api";
-import { playback } from "./playback";
+} from "../../test/mock-live-api.js";
+import { playback } from "./playback.js";
 
 describe("transport", () => {
   beforeEach(() => {

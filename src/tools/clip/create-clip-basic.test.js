@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "../../test/mock-live-api";
-import { createClip } from "./create-clip";
+import { liveApiCall, mockLiveApiGet } from "../../test/mock-live-api.js";
+import { createClip } from "./create-clip.js";
 
 describe("createClip - basic validation and time signatures", () => {
   it("should throw error when required parameters are missing", () => {

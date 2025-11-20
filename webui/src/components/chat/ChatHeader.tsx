@@ -1,6 +1,6 @@
 import logoSvg from "../../assets/producer-pal-logo.svg";
-import { getModelName } from "../../config.js";
-import type { Provider } from "../../types/settings.js";
+import { getModelName } from "../../config";
+import type { Provider } from "../../types/settings";
 
 interface ChatHeaderProps {
   mcpStatus: "connected" | "connecting" | "error";

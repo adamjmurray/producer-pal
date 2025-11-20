@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { Provider } from "../../types/settings.js";
+import type { Provider } from "../../types/settings";
 
 interface ModelSelectorProps {
   provider: Provider;

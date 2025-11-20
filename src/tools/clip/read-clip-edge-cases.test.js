@@ -3,8 +3,8 @@ import {
   children,
   liveApiCall,
   mockLiveApiGet,
-} from "../../test/mock-live-api";
-import { readClip } from "./read-clip";
+} from "../../test/mock-live-api.js";
+import { readClip } from "./read-clip.js";
 
 describe("readClip", () => {
   // E2E test with real bar|beat notation

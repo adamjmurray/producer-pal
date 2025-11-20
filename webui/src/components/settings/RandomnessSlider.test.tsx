@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { RandomnessSlider } from "./RandomnessSlider.jsx";
+import { RandomnessSlider } from "./RandomnessSlider";
 
 describe("RandomnessSlider", () => {
   it("renders with correct temperature value", () => {

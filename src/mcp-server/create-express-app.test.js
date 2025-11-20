@@ -14,7 +14,7 @@ describe("MCP Express App", () => {
     process.env.ENABLE_RAW_LIVE_API = "true";
 
     // Import and start the server first
-    const { createExpressApp } = await import("./create-express-app");
+    const { createExpressApp } = await import("./create-express-app.js");
 
     const app = createExpressApp({ timeoutMs: 100 }); // Use a short timeout to avoid hanging tests
     const port = await new Promise((resolve) => {
@@ -385,7 +385,7 @@ describe("MCP Express App", () => {
 
   describe("Configuration Options", () => {
     it("should create app successfully without configuration options", async () => {
-      const { createExpressApp } = await import("./create-express-app");
+      const { createExpressApp } = await import("./create-express-app.js");
       const app = createExpressApp();
 
       expect(app).toBeDefined();

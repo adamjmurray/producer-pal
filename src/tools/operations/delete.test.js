@@ -4,8 +4,8 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "../../test/mock-live-api";
-import { deleteObject } from "./delete";
+} from "../../test/mock-live-api.js";
+import { deleteObject } from "./delete.js";
 
 describe("deleteObject", () => {
   it("should delete a single track when type is 'track'", () => {

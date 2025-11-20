@@ -1,13 +1,13 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import { OpenAIClient } from "../chat/openai-client.js";
-import { formatOpenAIMessages } from "../chat/openai-formatter.js";
-import type { OpenAIMessage, UIMessage } from "../types/messages.js";
-import { buildOpenAIConfig } from "./config-builders.js";
+import { OpenAIClient } from "../chat/openai-client";
+import { formatOpenAIMessages } from "../chat/openai-formatter";
+import type { OpenAIMessage, UIMessage } from "../types/messages";
+import { buildOpenAIConfig } from "./config-builders";
 import {
   createOpenAIErrorMessage,
   handleMessageStream,
   validateMcpConnection,
-} from "./streaming-helpers.js";
+} from "./streaming-helpers";
 
 interface UseOpenAIChatProps {
   apiKey: string;

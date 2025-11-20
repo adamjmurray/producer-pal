@@ -5,8 +5,8 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "../../test/mock-live-api";
-import { readClip } from "./read-clip";
+} from "../../test/mock-live-api.js";
+import { readClip } from "./read-clip.js";
 
 describe("readClip", () => {
   it("returns clip information when a valid MIDI clip exists (4/4 time)", () => {

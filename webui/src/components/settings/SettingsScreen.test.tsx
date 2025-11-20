@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { SettingsScreen } from "./SettingsScreen.jsx";
+import { SettingsScreen } from "./SettingsScreen";
 
 // Mock child components
 vi.mock("./ModelSelector.jsx", () => ({

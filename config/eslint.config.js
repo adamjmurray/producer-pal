@@ -342,6 +342,38 @@ export default [
     },
   },
 
+  // Require extensions for src and scripts (unbundled Node.js execution)
+  {
+    files: ["{src,scripts}/**/*.{js,mjs}"],
+    rules: {
+      // Node.js ESM requires explicit file extensions for relative imports.
+      // See: https://nodejs.org/api/esm.html#import-specifiers
+      "import/extensions": [
+        "error",
+        "always",
+        {
+          js: "always",
+          ignorePackages: true,
+        },
+      ],
+    },
+  },
+
+  // No extensions for webui (bundled code)
+  {
+    files: ["webui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/^\\..*\\.(jsx?|tsx?)$/]",
+          message:
+            "Do not use file extensions in relative imports (bundlers handle resolution)",
+        },
+      ],
+    },
+  },
+
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}"],

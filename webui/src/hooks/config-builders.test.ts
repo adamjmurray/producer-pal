@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildGeminiConfig, buildOpenAIConfig } from "./config-builders.js";
+import { buildGeminiConfig, buildOpenAIConfig } from "./config-builders";
 
 describe("config-builders", () => {
   describe("buildGeminiConfig", () => {
