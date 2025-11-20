@@ -222,6 +222,7 @@ export default [
       "node_modules/**",
       "release/**",
       "src/notation/barbeat/barbeat-parser.js", // Generated parser
+      "src/notation/modulation/modulation-parser.js", // Generated parser
       "**/*.d.ts", // TypeScript declaration files
     ],
   },

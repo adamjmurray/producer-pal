@@ -252,7 +252,12 @@ export function handleNoteUpdates(
     timeSigDenominator,
   });
   // Apply modulations to notes if provided
-  applyModulations(notes, modulationString, timeSigNumerator, timeSigDenominator);
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
   if (notes.length > 0) {

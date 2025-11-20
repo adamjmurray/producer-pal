@@ -574,35 +574,34 @@ function peg$parse(input, options) {
 
     if (details) {
       return details;
-    } 
-      if (pos >= peg$posDetailsCache.length) {
-        p = peg$posDetailsCache.length - 1;
+    }
+    if (pos >= peg$posDetailsCache.length) {
+      p = peg$posDetailsCache.length - 1;
+    } else {
+      p = pos;
+      while (!peg$posDetailsCache[--p]) {}
+    }
+
+    details = peg$posDetailsCache[p];
+    details = {
+      line: details.line,
+      column: details.column,
+    };
+
+    while (p < pos) {
+      if (input.charCodeAt(p) === 10) {
+        details.line++;
+        details.column = 1;
       } else {
-        p = pos;
-        while (!peg$posDetailsCache[--p]) {}
+        details.column++;
       }
 
-      details = peg$posDetailsCache[p];
-      details = {
-        line: details.line,
-        column: details.column,
-      };
+      p++;
+    }
 
-      while (p < pos) {
-        if (input.charCodeAt(p) === 10) {
-          details.line++;
-          details.column = 1;
-        } else {
-          details.column++;
-        }
+    peg$posDetailsCache[pos] = details;
 
-        p++;
-      }
-
-      peg$posDetailsCache[pos] = details;
-
-      return details;
-    
+    return details;
   }
 
   function peg$computeLocation(startPos, endPos, offset) {
@@ -2797,9 +2796,8 @@ function peg$parse(input, options) {
   }
   if (peg$success) {
     return peg$result;
-  } 
-    peg$throw();
-  
+  }
+  peg$throw();
 }
 
 const peg$allowedStartRules = ["start"];

@@ -8,6 +8,30 @@ import {
 import { MAX_AUTO_CREATED_SCENES } from "../constants.js";
 
 /**
+ * Determine clip time signature (custom or from song)
+ * @param {string} timeSignature - Optional time signature string
+ * @param {number} songTimeSigNumerator - Song time signature numerator
+ * @param {number} songTimeSigDenominator - Song time signature denominator
+ * @param {Function} parseTimeSignature - Function to parse time signature string
+ * @returns {{numerator: number, denominator: number}} Time signature components
+ */
+export function determineClipTimeSignature(
+  timeSignature,
+  songTimeSigNumerator,
+  songTimeSigDenominator,
+  parseTimeSignature,
+) {
+  if (timeSignature != null) {
+    return parseTimeSignature(timeSignature);
+  }
+  // Use song time signature as default for clips
+  return {
+    numerator: songTimeSigNumerator,
+    denominator: songTimeSigDenominator,
+  };
+}
+
+/**
  * Builds a clip name based on count and iteration index
  * @param {string} name - Base clip name
  * @param {number} count - Total number of clips being created

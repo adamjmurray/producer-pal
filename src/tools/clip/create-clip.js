@@ -6,6 +6,7 @@ import { parseTimeSignature } from "../shared/utils.js";
 import {
   buildClipName,
   convertTimingParameters,
+  determineClipTimeSignature,
   processClipIteration,
 } from "./create-clip-helpers.js";
 
@@ -196,16 +197,13 @@ export function createClip(
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   // Determine clip time signature
-  let timeSigNumerator, timeSigDenominator;
-  if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-    timeSigNumerator = parsed.numerator;
-    timeSigDenominator = parsed.denominator;
-  } else {
-    // Use song time signature as default for clips
-    timeSigNumerator = songTimeSigNumerator;
-    timeSigDenominator = songTimeSigDenominator;
-  }
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    determineClipTimeSignature(
+      timeSignature,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      parseTimeSignature,
+    );
 
   // Convert timing parameters to Ableton beats
   const { arrangementStartBeats, startBeats, firstStartBeats, endBeats } =
@@ -231,7 +229,12 @@ export function createClip(
       : [];
 
   // Apply modulations to notes if provided
-  applyModulations(notes, modulationString, timeSigNumerator, timeSigDenominator);
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   const clipLength = calculateClipLength(
