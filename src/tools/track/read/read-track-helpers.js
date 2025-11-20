@@ -5,7 +5,7 @@ import { cleanupInternalDrumChains } from "../../shared/device/device-reader.js"
 import {
   processAvailableRouting,
   processCurrentRouting,
-} from "./track-routing-helpers.js";
+} from "../helpers/track-routing-helpers.js";
 
 /**
  * Read minimal track information for auto-inclusion when clips are requested.
