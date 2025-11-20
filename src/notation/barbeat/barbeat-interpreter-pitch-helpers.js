@@ -1,4 +1,4 @@
-import * as console from "../../shared/v8-max-console";
+import * as console from "../../shared/v8-max-console.js";
 
 /**
  * Expand a repeat pattern into multiple beat positions

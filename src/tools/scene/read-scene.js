@@ -1,4 +1,4 @@
-import { readClip } from "../clip/read-clip";
+import { readClip } from "../clip/read-clip.js";
 import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,

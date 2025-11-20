@@ -1,13 +1,13 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import { GeminiClient } from "../chat/gemini-client.js";
-import { formatGeminiMessages } from "../chat/gemini-formatter.js";
-import type { GeminiMessage, UIMessage } from "../types/messages.js";
-import { buildGeminiConfig } from "./config-builders.js";
+import { GeminiClient } from "../chat/gemini-client";
+import { formatGeminiMessages } from "../chat/gemini-formatter";
+import type { GeminiMessage, UIMessage } from "../types/messages";
+import { buildGeminiConfig } from "./config-builders";
 import {
   createGeminiErrorMessage,
   handleMessageStream,
   validateMcpConnection,
-} from "./streaming-helpers.js";
+} from "./streaming-helpers";
 
 interface UseGeminiChatProps {
   apiKey: string;

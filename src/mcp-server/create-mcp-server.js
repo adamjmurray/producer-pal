@@ -1,4 +1,4 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp";
 import { VERSION } from "../shared/version.js";
 import { toolDefCreateClip } from "../tools/clip/create-clip.def.js";
 import { toolDefReadClip } from "../tools/clip/read-clip.def.js";

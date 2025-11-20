@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ChatInput } from "./ChatInput.jsx";
+import { ChatInput } from "./ChatInput";
 
 describe("ChatInput", () => {
   describe("rendering", () => {

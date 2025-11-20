@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ModelSelector } from "./ModelSelector.jsx";
+import { ModelSelector } from "./ModelSelector";
 
 describe("ModelSelector", () => {
   it("renders with correct selected model", () => {

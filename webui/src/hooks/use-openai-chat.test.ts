@@ -4,7 +4,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { useOpenAIChat } from "./use-openai-chat.js";
+import { useOpenAIChat } from "./use-openai-chat";
 
 // Mock OpenAI
 vi.mock("openai", () => ({

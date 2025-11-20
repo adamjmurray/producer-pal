@@ -1,11 +1,11 @@
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
+import { ErrorCode } from "@modelcontextprotocol/sdk/types";
 import express from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
-import { createMcpServer } from "./create-mcp-server";
+import { createMcpServer } from "./create-mcp-server.js";
 import { callLiveApi } from "./max-api-adapter.js";
-import * as console from "./node-for-max-logger";
+import * as console from "./node-for-max-logger.js";
 
 let chatUIEnabled = true; // default
 Max.addHandler(

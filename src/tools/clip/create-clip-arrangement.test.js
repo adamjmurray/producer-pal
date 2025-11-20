@@ -4,8 +4,8 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../test/mock-live-api";
-import { createClip } from "./create-clip";
+} from "../../test/mock-live-api.js";
+import { createClip } from "./create-clip.js";
 
 describe("createClip - arrangement view", () => {
   it("should create a single clip in arrangement", () => {

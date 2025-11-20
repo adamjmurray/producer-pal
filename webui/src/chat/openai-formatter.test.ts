@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatOpenAIMessages } from "./openai-formatter.js";
+import { formatOpenAIMessages } from "./openai-formatter";
 import {
   expected,
   history,
-} from "./test-cases/openai-formatter/basic-test-case.js";
+} from "./test-cases/openai-formatter/basic-test-case";
 import {
   expectedWithEmptyToolCallArgs,
   historyWithEmptyToolCallArgs,
-} from "./test-cases/openai-formatter/empty-tool-call-args.js";
+} from "./test-cases/openai-formatter/empty-tool-call-args";
 
 describe("formatOpenAIMessages", () => {
   it("handles the initial 'Connect to Ableton' flow  ", () => {

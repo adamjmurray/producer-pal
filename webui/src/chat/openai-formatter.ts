@@ -4,8 +4,8 @@ import type {
   UIMessage,
   UIPart,
   UIThoughtPart,
-} from "../types/messages.js";
-import type { ReasoningDetail } from "./openai-client.js";
+} from "../types/messages";
+import type { ReasoningDetail } from "./openai-client";
 
 /**
  * Add reasoning details to parts array

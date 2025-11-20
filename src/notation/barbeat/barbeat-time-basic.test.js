@@ -4,7 +4,7 @@ import {
   barBeatToAbletonBeats,
   barBeatToBeats,
   beatsToBarBeat,
-} from "./barbeat-time";
+} from "./barbeat-time.js";
 
 describe("barbeat-time utilities", () => {
   describe("beatsToBarBeat", () => {

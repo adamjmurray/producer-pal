@@ -3,8 +3,8 @@
  */
 import { render, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { Provider } from "../../types/settings.js";
-import { ProviderSelector } from "./ProviderSelector.jsx";
+import type { Provider } from "../../types/settings";
+import { ProviderSelector } from "./ProviderSelector";
 
 describe("ProviderSelector", () => {
   describe("basic rendering", () => {

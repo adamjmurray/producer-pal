@@ -3,8 +3,8 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { UIMessage } from "../../types/messages.js";
-import { MessageList } from "./MessageList.jsx";
+import type { UIMessage } from "../../types/messages";
+import { MessageList } from "./MessageList";
 
 // Mock child components
 vi.mock("./ActivityIndicator.jsx", () => ({

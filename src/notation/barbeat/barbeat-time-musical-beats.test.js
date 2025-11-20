@@ -3,7 +3,7 @@ import {
   abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
   barBeatDurationToMusicalBeats,
-} from "./barbeat-time";
+} from "./barbeat-time.js";
 
 describe("barBeatDurationToMusicalBeats", () => {
   describe("beat-only format (NEW)", () => {

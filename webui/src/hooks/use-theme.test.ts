@@ -4,7 +4,7 @@
  */
 import { renderHook, act, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { useTheme } from "./use-theme.js";
+import { useTheme } from "./use-theme";
 
 describe("useTheme", () => {
   let matchMediaMock: ReturnType<typeof vi.fn>;

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { interpretNotation } from "./barbeat-interpreter";
+import { interpretNotation } from "./barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - timing features", () => {
   describe("time-position-driven note emission", () => {

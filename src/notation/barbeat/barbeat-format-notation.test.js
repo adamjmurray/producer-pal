@@ -1,5 +1,5 @@
-import { formatNotation } from "./barbeat-format-notation";
-import { interpretNotation } from "./barbeat-interpreter";
+import { formatNotation } from "./barbeat-format-notation.js";
+import { interpretNotation } from "./barbeat-interpreter.js";
 
 describe("bar|beat formatNotation()", () => {
   it("returns empty string for empty input", () => {
