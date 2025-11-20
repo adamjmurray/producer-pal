@@ -6,13 +6,15 @@ import { describe, expect, it, vi } from "vitest";
 import { SettingsScreen } from "./SettingsScreen";
 
 // Mock child components
-vi.mock("./ModelSelector.jsx", () => ({
-  ModelSelector: ({ model }: { model: string }) => (
-    <div data-testid="model-selector">{model}</div>
+vi.mock(import("./ConnectionTab"), () => ({
+  ConnectionTab: ({ model }: { model: string }) => (
+    <div>
+      <div data-testid="model-selector">{model}</div>
+    </div>
   ),
 }));
 
-vi.mock("./ThinkingSettings.jsx", () => ({
+vi.mock(import("./controls/ThinkingSettings"), () => ({
   ThinkingSettings: ({
     provider,
     model,
@@ -28,13 +30,13 @@ vi.mock("./ThinkingSettings.jsx", () => ({
   ),
 }));
 
-vi.mock("./RandomnessSlider.jsx", () => ({
+vi.mock(import("./controls/RandomnessSlider"), () => ({
   RandomnessSlider: ({ temperature }: { temperature: number }) => (
     <div data-testid="randomness-slider">{temperature}</div>
   ),
 }));
 
-vi.mock("./ToolToggles.jsx", () => ({
+vi.mock(import("./controls/ToolToggles"), () => ({
   ToolToggles: () => <div data-testid="tool-toggles">Tool Toggles</div>,
 }));
 

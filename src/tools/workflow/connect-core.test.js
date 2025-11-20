@@ -10,7 +10,7 @@ import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
 // Mock the getHostTrackIndex function
-vi.mock(import("../shared/get-host-track-index.js"), () => ({
+vi.mock(import("../shared/arrangement/get-host-track-index.js"), () => ({
   getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
 }));
 
