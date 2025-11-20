@@ -10,7 +10,7 @@ import {
 
 /**
  * Determine device type from Live API properties
- * @param {Object} device - Live API device object
+ * @param {object} device - Live API device object
  * @returns {string} Combined device type string
  */
 export function getDeviceType(device) {
@@ -43,8 +43,8 @@ export function getDeviceType(device) {
 
 /**
  * Clean up internal _processedDrumChains property from device objects
- * @param {Object|Array} obj - Device object or array of devices to clean
- * @returns {Object|Array} Cleaned object/array
+ * @param {object | Array} obj - Device object or array of devices to clean
+ * @returns {object | Array} Cleaned object/array
  */
 export function cleanupInternalDrumChains(obj) {
   if (!obj || typeof obj !== "object") {
@@ -77,7 +77,7 @@ export function cleanupInternalDrumChains(obj) {
  * Extract track-level drum map from the processed device structure
  * This maintains API compatibility while using the new device structure as the source of truth
  * @param {Array} devices - Array of processed device objects (output from readDevice)
- * @returns {Object|null} Object mapping pitch names to drum chain names, or null if none found
+ * @returns {object | null} Object mapping pitch names to drum chain names, or null if none found
  */
 export function getDrumMap(devices) {
   // Recursively search for drum rack devices in the processed structure
@@ -131,13 +131,13 @@ export function getDrumMap(devices) {
 
 /**
  * Read device information including nested chains for rack devices
- * @param {Object} device - Live API device object
- * @param {Object} options - Options for reading device
+ * @param {object} device - Live API device object
+ * @param {object} options - Options for reading device
  * @param {boolean} options.includeChains - Include chains in rack devices
  * @param {boolean} options.includeDrumChains - Include drum pad chains and return chains
  * @param {number} options.depth - Current recursion depth
  * @param {number} options.maxDepth - Maximum recursion depth
- * @returns {Object} Device object with nested structure
+ * @returns {object} Device object with nested structure
  */
 export function readDevice(device, options = {}) {
   const {
@@ -273,7 +273,7 @@ export function readDevice(device, options = {}) {
         processedDrumChains.forEach((drumChainInfo) => {
           if (drumChainInfo.state === STATE.SOLOED) {
             // Keep soloed state as-is
-            return;
+            
           } else if (drumChainInfo.state === STATE.MUTED) {
             // Muted chain in solo context becomes muted-also-via-solo
             drumChainInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
@@ -379,7 +379,8 @@ export function readDevice(device, options = {}) {
 
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
- * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @param {object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @param category
  * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
 function computeState(liveObject, category = "regular") {

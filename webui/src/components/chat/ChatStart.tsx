@@ -5,6 +5,14 @@ interface ChatStartProps {
   handleSend: (message: string) => Promise<void>;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.mcpStatus
+ * @param root0.mcpError
+ * @param root0.checkMcpConnection
+ * @param root0.handleSend
+ */
 export function ChatStart({
   mcpStatus,
   mcpError,

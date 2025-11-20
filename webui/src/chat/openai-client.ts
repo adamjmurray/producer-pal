@@ -192,6 +192,7 @@ export class OpenAIClient {
    * 5. Repeat until no tool_calls
    *
    * @param message - User message to send
+   * @param abortSignal
    * @yields Complete chat history in OpenAI's raw format after each update
    * @throws If MCP client is not initialized or if message sending fails
    *

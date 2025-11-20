@@ -3,10 +3,10 @@ import { readClip } from "../clip/read-clip.js";
 /**
  * Read minimal track information for auto-inclusion when clips are requested.
  * Returns only id, type, trackIndex, and clip arrays/counts based on include flags.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {number} args.trackIndex - Track index
- * @param {Object} args.includeFlags - Parsed include flags
- * @returns {Object} Minimal track information
+ * @param {object} args.includeFlags - Parsed include flags
+ * @returns {object} Minimal track information
  */
 export function readTrackMinimal({ trackIndex, includeFlags }) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);

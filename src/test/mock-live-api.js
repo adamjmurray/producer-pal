@@ -125,6 +125,10 @@ export class LiveAPI {
   }
 }
 
+/**
+ *
+ * @param overrides
+ */
 export function mockLiveApiGet(overrides = {}) {
   liveApiGet.mockImplementation(function (prop) {
     const overridesByProp =
@@ -293,6 +297,10 @@ export const expectedClip = (overrides = {}) => ({
   ...overrides,
 });
 
+/**
+ *
+ * @param {...any} childIds
+ */
 export function children(...childIds) {
   return childIds.flatMap((id) => ["id", id]);
 }

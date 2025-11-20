@@ -16,7 +16,7 @@ import {
  * @param {boolean} [withoutDevices] - Whether to exclude devices when duplicating
  * @param {boolean} [routeToSource] - Whether to route the new track to the source track
  * @param {number} [sourceTrackIndex] - Source track index for routing
- * @returns {Object} Track info object with id, trackIndex, and clips array
+ * @returns {object} Track info object with id, trackIndex, and clips array
  */
 export function duplicateTrack(
   trackIndex,
@@ -206,7 +206,7 @@ export function duplicateTrack(
  * @param {number} sceneIndex - Scene index to duplicate
  * @param {string} [name] - Optional name for the duplicated scene
  * @param {boolean} [withoutClips] - Whether to exclude clips when duplicating
- * @returns {Object} Scene info object with id, sceneIndex, and clips array
+ * @returns {object} Scene info object with id, sceneIndex, and clips array
  */
 export function duplicateScene(sceneIndex, name, withoutClips) {
   const liveSet = new LiveAPI("live_set");
@@ -293,8 +293,8 @@ export function calculateSceneLength(sceneIndex) {
  * @param {string} [arrangementLength] - Optional length in bar:beat format
  * @param {number} songTimeSigNumerator - Song time signature numerator
  * @param {number} songTimeSigDenominator - Song time signature denominator
- * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {Object} Object with arrangementStart and clips array
+ * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns {object} Object with arrangementStart and clips array
  */
 export function duplicateSceneToArrangement(
   sceneId,

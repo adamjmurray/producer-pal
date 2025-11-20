@@ -153,7 +153,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
 }
 
 function isFunctionResponse(parts: Part[]): boolean {
-  return !!parts[0]?.functionResponse;
+  return Boolean(parts[0]?.functionResponse);
 }
 
 function getToolCallResult(functionResponse: FunctionResponse): string {

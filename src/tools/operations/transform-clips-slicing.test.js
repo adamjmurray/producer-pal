@@ -114,10 +114,10 @@ describe("transformClips - slicing", () => {
         } else if (callCount === 2) {
           // Second call: move from holding to original position
           return ["id", "moved_1"];
-        } else {
+        } 
           // Subsequent calls: tiling
           return ["id", `tile_${callCount}`];
-        }
+        
       }
       if (method === "create_midi_clip") {
         return ["id", "temp_1"];

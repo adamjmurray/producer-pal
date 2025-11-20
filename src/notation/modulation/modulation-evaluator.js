@@ -9,7 +9,7 @@ import * as waveforms from "./modulation-waveforms.js";
 
 /**
  * Apply modulations to a list of notes in-place
- * @param {Array<Object>} notes - Array of note objects to modify
+ * @param {Array<object>} notes - Array of note objects to modify
  * @param {string} modulationString - Multi-line modulation string
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -140,25 +140,25 @@ export function applyModulations(
 /**
  * Evaluate a modulation expression for a specific note context
  * @param {string} modulationString - Multi-line modulation string with optional pitch/time filters
- * @param {Object} noteContext - Note context with position, pitch, and time signature
+ * @param {object} noteContext - Note context with position, pitch, and time signature
  * @param {number} noteContext.position - Note position in musical beats (0-based)
  * @param {number} [noteContext.pitch] - MIDI pitch (0-127) for pitch filtering
  * @param {number} [noteContext.bar] - Current bar number (1-based) for time range filtering
  * @param {number} [noteContext.beat] - Current beat position within bar (1-based) for time range filtering
- * @param {Object} noteContext.timeSig - Time signature
+ * @param {object} noteContext.timeSig - Time signature
  * @param {number} noteContext.timeSig.numerator - Time signature numerator
  * @param {number} noteContext.timeSig.denominator - Time signature denominator
- * @param {Object} [noteContext.clipTimeRange] - Overall clip time range
+ * @param {object} [noteContext.clipTimeRange] - Overall clip time range
  * @param {number} noteContext.clipTimeRange.start - Clip start time in musical beats
  * @param {number} noteContext.clipTimeRange.end - Clip end time in musical beats
- * @param {Object} [noteProperties] - Note properties accessible via note.* variables
+ * @param {object} [noteProperties] - Note properties accessible via note.* variables
  * @param {number} [noteProperties.pitch] - MIDI pitch (0-127)
  * @param {number} [noteProperties.start] - Start time in musical beats
  * @param {number} [noteProperties.velocity] - Velocity (1-127)
  * @param {number} [noteProperties.velocityDeviation] - Velocity deviation
  * @param {number} [noteProperties.duration] - Duration in beats
  * @param {number} [noteProperties.probability] - Probability (0.0-1.0)
- * @returns {Object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
+ * @returns {object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
  */
 export function evaluateModulation(
   modulationString,
@@ -185,25 +185,25 @@ export function evaluateModulation(
 /**
  * Evaluate a pre-parsed modulation AST for a specific note context
  * @param {Array} ast - Parsed modulation AST
- * @param {Object} noteContext - Note context with position, pitch, and time signature
+ * @param {object} noteContext - Note context with position, pitch, and time signature
  * @param {number} noteContext.position - Note position in musical beats (0-based)
  * @param {number} [noteContext.pitch] - MIDI pitch (0-127) for pitch filtering
  * @param {number} [noteContext.bar] - Current bar number (1-based) for time range filtering
  * @param {number} [noteContext.beat] - Current beat position within bar (1-based) for time range filtering
- * @param {Object} noteContext.timeSig - Time signature
+ * @param {object} noteContext.timeSig - Time signature
  * @param {number} noteContext.timeSig.numerator - Time signature numerator
  * @param {number} noteContext.timeSig.denominator - Time signature denominator
- * @param {Object} [noteContext.clipTimeRange] - Overall clip time range
+ * @param {object} [noteContext.clipTimeRange] - Overall clip time range
  * @param {number} noteContext.clipTimeRange.start - Clip start time in musical beats
  * @param {number} noteContext.clipTimeRange.end - Clip end time in musical beats
- * @param {Object} [noteProperties] - Note properties accessible via note.* variables
+ * @param {object} [noteProperties] - Note properties accessible via note.* variables
  * @param {number} [noteProperties.pitch] - MIDI pitch (0-127)
  * @param {number} [noteProperties.start] - Start time in musical beats
  * @param {number} [noteProperties.velocity] - Velocity (1-127)
  * @param {number} [noteProperties.velocityDeviation] - Velocity deviation
  * @param {number} [noteProperties.duration] - Duration in beats
  * @param {number} [noteProperties.probability] - Probability (0.0-1.0)
- * @returns {Object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
+ * @returns {object} Modulation values with operators, e.g., {velocity: {operator: "add", value: 10}}
  */
 function evaluateModulationAST(ast, noteContext, noteProperties = {}) {
   const { position, pitch, bar, beat, timeSig, clipTimeRange } = noteContext;
@@ -287,10 +287,10 @@ function evaluateModulationAST(ast, noteContext, noteProperties = {}) {
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {Object} timeRange - Active time range for this expression
+ * @param {object} timeRange - Active time range for this expression
  * @param {number} timeRange.start - Start time in musical beats
  * @param {number} timeRange.end - End time in musical beats
- * @param {Object} [noteProperties] - Note properties accessible via note.* variables
+ * @param {object} [noteProperties] - Note properties accessible via note.* variables
  * @returns {number} Evaluated value
  */
 function evaluateExpression(
@@ -424,8 +424,8 @@ function evaluateExpression(
  * @param {number} position - Note position in musical beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @param {Object} timeRange - Active time range for this expression
- * @param {Object} [noteProperties] - Note properties accessible via note.* variables
+ * @param {object} timeRange - Active time range for this expression
+ * @param {object} [noteProperties] - Note properties accessible via note.* variables
  * @returns {number} Function result
  */
 function evaluateFunction(

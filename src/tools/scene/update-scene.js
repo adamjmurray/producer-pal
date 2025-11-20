@@ -3,13 +3,14 @@ import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 
 /**
  * Updates properties of existing scenes
- * @param {Object} args - The scene parameters
+ * @param {object} args - The scene parameters
  * @param {string} args.ids - Scene ID or comma-separated list of scene IDs to update
  * @param {string} [args.name] - Optional scene name
  * @param {string} [args.color] - Optional scene color (CSS format: hex)
  * @param {number|null} [args.tempo] - Optional scene tempo BPM. Pass -1 to disable.
  * @param {string|null} [args.timeSignature] - Optional time signature in format "4/4". Pass "disabled" to disable.
- * @returns {Object|Array<Object>} Single scene object or array of scene objects
+ * @param _context
+ * @returns {object | Array<object>} Single scene object or array of scene objects
  */
 export function updateScene(
   { ids, name, color, tempo, timeSignature } = {},

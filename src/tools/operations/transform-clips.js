@@ -3,12 +3,12 @@ import {
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
+import { MAX_SLICES } from "../constants.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
   tileClipToRange,
 } from "../shared/arrangement-tiling.js";
-import { MAX_SLICES } from "../constants.js";
 import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 
@@ -16,7 +16,7 @@ const HOLDING_AREA_START = 40000;
 
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackId)
  * @param {string} [args.arrangementTrackId] - Track ID to query arrangement clips from (ignored if clipIds provided)
  * @param {string} [args.arrangementStart] - Bar|beat position (e.g., '1|1.0') for range start
@@ -36,7 +36,8 @@ const HOLDING_AREA_START = 40000;
  * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips)
  * @param {number} [args.probability] - Probability offset (MIDI clips)
  * @param {number} [args.seed] - RNG seed for reproducibility
- * @returns {Object} Result with clipIds and seed
+ * @param _context
+ * @returns {object} Result with clipIds and seed
  */
 export function transformClips(
   {

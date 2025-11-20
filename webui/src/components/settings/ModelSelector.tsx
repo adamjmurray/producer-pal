@@ -88,6 +88,13 @@ const OPENROUTER_MODELS = [
   { value: "OTHER", label: "Other..." },
 ];
 
+/**
+ *
+ * @param root0
+ * @param root0.provider
+ * @param root0.model
+ * @param root0.setModel
+ */
 export function ModelSelector({
   provider,
   model,

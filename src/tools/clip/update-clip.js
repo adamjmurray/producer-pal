@@ -1,6 +1,11 @@
+import {
+  barBeatDurationToAbletonBeats,
+  barBeatToAbletonBeats,
+} from "../../notation/barbeat/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
+import { handleArrangementLengthOperation } from "./arrangement-operations.js";
 import {
   parseSongTimeSignature,
   calculateBeatPositions,
@@ -10,15 +15,10 @@ import {
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-helpers.js";
-import { handleArrangementLengthOperation } from "./arrangement-operations.js";
-import {
-  barBeatDurationToAbletonBeats,
-  barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time.js";
 
 /**
  * Updates properties of existing clips
- * @param {Object} args - The clip parameters
+ * @param {object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param {string} [args.notes] - Musical notation string
  * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
@@ -36,7 +36,12 @@ import {
  * @param {number} [args.pitchShift] - Audio clip pitch shift in semitones (-48 to 48)
  * @param {string} [args.warpMode] - Audio clip warp mode: beats, tones, texture, repitch, complex, rex, pro
  * @param {boolean} [args.warping] - Audio clip warping on/off
- * @returns {Object|Array<Object>} Single clip object or array of clip objects
+ * @param args.warpOp
+ * @param args.warpBeatTime
+ * @param args.warpSampleTime
+ * @param args.warpDistance
+ * @param context
+ * @returns {object | Array<object>} Single clip object or array of clip objects
  */
 export function updateClip(
   {

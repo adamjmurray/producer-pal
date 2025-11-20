@@ -2,7 +2,7 @@ const MAX_OPERATIONS = 50;
 
 /**
  * Provides direct, low-level access to the Live API for research, development, and debugging
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} [args.path] - Optional LiveAPI path (e.g., "live_set tracks 0")
  * @param {Array} args.operations - Array of operations to execute (max 50)
  * @param {string} args.operations[].type - Operation type: "get_property", "set_property", "call_method", "get", "set", "call", "goto", "info", "getProperty", "getChildIds", "exists", "getColor", or "setColor"
@@ -10,7 +10,8 @@ const MAX_OPERATIONS = 50;
  * @param {string} [args.operations[].method] - Method name for call_method operations
  * @param {Array} [args.operations[].args] - Arguments for call_method operations or convenience operations
  * @param {*} [args.operations[].value] - Value for set_property operations
- * @returns {Object} Result object with path, id, and operation results
+ * @param _context
+ * @returns {object} Result object with path, id, and operation results
  */
 export function rawLiveApi({ path, operations } = {}, _context = {}) {
   if (!Array.isArray(operations)) {

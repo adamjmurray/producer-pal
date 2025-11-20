@@ -52,7 +52,7 @@ export function parseArrangementLength(
  * Get minimal clip information for result objects
  * @param {LiveAPI} clip - The clip to get info from
  * @param {Array<string>} [omitFields] - Optional fields to omit from result
- * @returns {Object} Minimal clip info object
+ * @returns {object} Minimal clip info object
  */
 export function getMinimalClipInfo(clip, omitFields = []) {
   const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
@@ -89,7 +89,7 @@ export function getMinimalClipInfo(clip, omitFields = []) {
     }
 
     return result;
-  } else {
+  } 
     const trackIndex = clip.trackIndex;
     const sceneIndex = clip.sceneIndex;
 
@@ -111,7 +111,7 @@ export function getMinimalClipInfo(clip, omitFields = []) {
     }
 
     return result;
-  }
+  
 }
 
 /**
@@ -122,8 +122,8 @@ export function getMinimalClipInfo(clip, omitFields = []) {
  * @param {number} arrangementLengthBeats - Total length to fill in Ableton beats (quarter notes)
  * @param {string} [name] - Optional name for the clips
  * @param {Array<string>} [omitFields] - Optional fields to omit from clip info
- * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {Array<Object>} Array of minimal clip info objects
+ * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns {Array<object>} Array of minimal clip info objects
  */
 export function createClipsForLength(
   sourceClip,
@@ -246,7 +246,7 @@ export function createClipsForLength(
  * @param {LiveAPI} sourceTrack - The source track LiveAPI object
  * @param {string} sourceTrackName - The source track's name
  * @param {Array} availableTypes - Available output routing types from the new track
- * @returns {Object|undefined} The correct routing option or undefined
+ * @returns {object | undefined} The correct routing option or undefined
  */
 export function findRoutingOptionForDuplicateNames(
   sourceTrack,
@@ -309,7 +309,7 @@ export function findRoutingOptionForDuplicateNames(
  * @param {number} toTrackIndex - Destination track index
  * @param {number} toSceneIndex - Destination scene index
  * @param {string} [name] - Optional name for the duplicated clip
- * @returns {Object} Minimal clip info object
+ * @returns {object} Minimal clip info object
  */
 export function duplicateClipSlot(
   sourceTrackIndex,
@@ -370,8 +370,8 @@ export function duplicateClipSlot(
  * @param {string} [arrangementLength] - Optional length in bar:beat format
  * @param {number} _songTimeSigNumerator - Song time signature numerator (unused but kept for API compat)
  * @param {number} _songTimeSigDenominator - Song time signature denominator (unused but kept for API compat)
- * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {Object|Array<Object>} Clip info or object with trackIndex and clips array
+ * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns {object | Array<object>} Clip info or object with trackIndex and clips array
  */
 export function duplicateClipToArrangement(
   clipId,
@@ -438,10 +438,10 @@ export function duplicateClipToArrangement(
   // Return single clip info directly, or clips array with trackIndex for multiple
   if (duplicatedClips.length === 1) {
     return duplicatedClips[0];
-  } else {
+  } 
     return {
       trackIndex,
       clips: duplicatedClips,
     };
-  }
+  
 }

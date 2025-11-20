@@ -41,6 +41,9 @@ const internalError = (message) => ({
   id: null,
 });
 
+/**
+ *
+ */
 export function createExpressApp() {
   const app = express();
 

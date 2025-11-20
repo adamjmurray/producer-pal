@@ -10,6 +10,13 @@ interface MessageListProps {
   handleRetry: (messageIndex: number) => Promise<void>;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.messages
+ * @param root0.isAssistantResponding
+ * @param root0.handleRetry
+ */
 export function MessageList({
   messages,
   isAssistantResponding,

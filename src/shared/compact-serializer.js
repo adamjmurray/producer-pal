@@ -6,6 +6,7 @@
  * - No whitespace
  * - Skips undefined values in objects/arrays
  * - Top-level undefined returns empty string
+ * @param obj
  */
 export function toCompactJSLiteral(obj) {
   function convert(val) {

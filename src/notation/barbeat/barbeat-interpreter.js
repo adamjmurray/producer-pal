@@ -19,7 +19,7 @@ import { barBeatDurationToMusicalBeats } from "./barbeat-time.js";
 
 /**
  * Expand a repeat pattern into multiple beat positions
- * @param {Object} pattern - Repeat pattern { start, times, step }
+ * @param {object} pattern - Repeat pattern { start, times, step }
  * @param {number} currentBar - Current bar number (1-indexed)
  * @param {number} beatsPerBar - Musical beats per bar
  * @param {number} currentDuration - Current note duration (used when step is null)
@@ -58,7 +58,7 @@ function expandRepeatPattern(
 /**
  * Convert bar|beat notation into note events
  * @param {string} barBeatExpression - bar|beat notation string
- * @param {Object} options - Options
+ * @param {object} options - Options
  * @param {number} [options.beatsPerBar] - beats per bar (legacy, prefer timeSigNumerator/timeSigDenominator)
  * @param {number} [options.timeSigNumerator] - Time signature numerator
  * @param {number} [options.timeSigDenominator] - Time signature denominator

@@ -2,6 +2,11 @@ interface RetryButtonProps {
   onClick: () => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.onClick
+ */
 export function RetryButton({ onClick }: RetryButtonProps) {
   return (
     <button

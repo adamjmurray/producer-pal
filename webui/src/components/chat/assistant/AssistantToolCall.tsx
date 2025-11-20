@@ -8,6 +8,14 @@ interface AssistantToolCallProps {
   isError?: boolean;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.name
+ * @param root0.args
+ * @param root0.result
+ * @param root0.isError
+ */
 export function AssistantToolCall({
   name,
   args,

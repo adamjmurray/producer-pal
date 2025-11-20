@@ -10,7 +10,7 @@ import { select } from "./select.js";
  * Unified control for all playback functionality in both Arrangement and Session views.
  * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
  * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.action - Action to perform
  * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
@@ -20,7 +20,8 @@ import { select } from "./select.js";
  * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
  * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
- * @returns {Object} Result with transport state
+ * @param _context
+ * @returns {object} Result with transport state
  */
 export function playback(
   {

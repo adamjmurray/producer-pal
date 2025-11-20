@@ -1,13 +1,13 @@
 // Adapter for communication between Node.js MCP server and Max v8 environment
 
-import Max from "max-api";
 import crypto from "node:crypto";
+import Max from "max-api";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
 } from "../shared/mcp-response-utils.js";
-import * as console from "./node-for-max-logger.js";
 import { ensureSilenceWav } from "../shared/silent-wav-generator.js";
+import * as console from "./node-for-max-logger.js";
 
 // Generate silent WAV on module load
 const silenceWavPath = ensureSilenceWav();
@@ -28,6 +28,11 @@ Max.addHandler("timeoutMs", (input) => {
 });
 
 // Function to send a tool call to the Max v8 environment
+/**
+ *
+ * @param tool
+ * @param args
+ */
 function callLiveApi(tool, args) {
   const argsJSON = JSON.stringify(args);
   const contextJSON = JSON.stringify({ silenceWavPath });
@@ -67,6 +72,11 @@ function callLiveApi(tool, args) {
   });
 }
 
+/**
+ *
+ * @param requestId
+ * @param {...any} params
+ */
 function handleLiveApiResult(requestId, ...params) {
   console.info(`mcp_response(requestId=${requestId}, params=${params.length})`);
 
@@ -135,6 +145,10 @@ function handleLiveApiResult(requestId, ...params) {
 Max.addHandler("mcp_response", handleLiveApiResult);
 
 // Test helper function to control timeout in tests
+/**
+ *
+ * @param ms
+ */
 export function setTimeoutForTesting(ms) {
   timeoutMs = ms;
 }

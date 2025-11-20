@@ -9,6 +9,12 @@ interface AssistantMessageProps {
   isResponding?: boolean;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.parts
+ * @param root0.isResponding
+ */
 export function AssistantMessage({
   parts,
   isResponding,
@@ -37,10 +43,10 @@ export function AssistantMessage({
           );
         } else if (part.type === "text") {
           return <AssistantText key={i} content={part.content} />;
-        } else {
+        } 
           // TypeScript has narrowed this to UIErrorPart
           return <AssistantError key={i} content={part.content} />;
-        }
+        
       })}
     </div>
   );

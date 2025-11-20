@@ -199,7 +199,7 @@ the same playback result.
 
 /**
  * Generate initialization instructions based on context
- * @param {Object} context - The userContext from main.js
+ * @param {object} context - The userContext from main.js
  * @returns {string} Instructions for completing Producer Pal initialization
  */
 export function buildInstructions(context) {

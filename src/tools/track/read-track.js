@@ -21,6 +21,11 @@ import {
   READ_TRACK_DEFAULTS,
 } from "../shared/include-params.js";
 
+/**
+ *
+ * @param args
+ * @param _context
+ */
 export function readTrack(args = {}, _context = {}) {
   const { trackIndex, trackId, category = "regular" } = args;
 
@@ -69,12 +74,12 @@ export function readTrack(args = {}, _context = {}) {
 /**
  * Generic track reader that works with any track type. This is an internal helper function
  * used by readTrack to read comprehensive information about tracks.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {LiveAPI} args.track - LiveAPI track object
  * @param {number|null} args.trackIndex - Track index (null for master track)
  * @param {string} [args.category="regular"] - Track category: "regular", "return", or "master"
  * @param {Array<string>} [args.include] - Array of data to include in the response
- * @returns {Object} Track information including clips, devices, routing, and state
+ * @returns {object} Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
   track,
@@ -420,7 +425,8 @@ export function readTrackGeneric({
 
 /**
  * Compute the state of a Live object (track, drum pad, or chain) based on mute/solo properties
- * @param {Object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @param {object} liveObject - Live API object with mute, solo, and muted_via_solo properties
+ * @param category
  * @returns {string} State: "active" | "muted" | "muted-via-solo" | "muted-also-via-solo" | "soloed"
  */
 function computeState(liveObject, category = "regular") {
@@ -457,7 +463,7 @@ function computeState(liveObject, category = "regular") {
  * @param {Array} devices - Array of Live API device objects
  * @param {boolean} includeDrumChains - Whether to include drum pad chains and return chains
  * @param {boolean} includeRackChains - Whether to include chains in rack devices
- * @returns {Object} Object with midiEffects, instrument, and audioEffects arrays
+ * @returns {object} Object with midiEffects, instrument, and audioEffects arrays
  */
 function categorizeDevices(
   devices,

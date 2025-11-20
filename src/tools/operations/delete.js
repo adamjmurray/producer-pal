@@ -3,10 +3,11 @@ import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 /**
  * Deletes objects by ids
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.ids - ID or comma-separated list of IDs to delete
  * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
- * @returns {Object|Array<Object>} Result object(s) with success information
+ * @param _context
+ * @returns {object | Array<object>} Result object(s) with success information
  */
 export function deleteObject({ ids, type } = {}, _context = {}) {
   if (!ids) {

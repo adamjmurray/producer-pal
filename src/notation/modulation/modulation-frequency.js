@@ -2,7 +2,7 @@ import { barBeatDurationToMusicalBeats } from "../barbeat/barbeat-time.js";
 
 /**
  * Parse a period parameter and convert to period in musical beats
- * @param {Object} periodObj - Period object from parser: {type: "period", bars: number, beats: number}
+ * @param {object} periodObj - Period object from parser: {type: "period", bars: number, beats: number}
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} Period in musical beats

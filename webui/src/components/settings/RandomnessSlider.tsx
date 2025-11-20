@@ -3,6 +3,12 @@ interface RandomnessSliderProps {
   setTemperature: (temp: number) => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.temperature
+ * @param root0.setTemperature
+ */
 export function RandomnessSlider({
   temperature,
   setTemperature,

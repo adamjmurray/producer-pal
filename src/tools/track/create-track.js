@@ -2,7 +2,7 @@ import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
 
 /**
  * Creates new tracks at the specified index
- * @param {Object} args - The track parameters
+ * @param {object} args - The track parameters
  * @param {number} args.trackIndex - Track index (0-based) where to insert new tracks
  * @param {number} [args.count=1] - Number of tracks to create
  * @param {string} [args.name] - Base name for the tracks
@@ -11,7 +11,8 @@ import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
  * @param {boolean} [args.mute] - Mute state for the tracks
  * @param {boolean} [args.solo] - Solo state for the tracks
  * @param {boolean} [args.arm] - Arm state for the tracks
- * @returns {Object|Array<Object>} Single track object when count=1, array when count>1
+ * @param _context
+ * @returns {object | Array<object>} Single track object when count=1, array when count>1
  */
 export function createTrack(
   { trackIndex, count = 1, name, color, type = "midi", mute, solo, arm } = {},

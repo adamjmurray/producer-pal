@@ -35,6 +35,36 @@ interface SettingsScreenProps {
   settingsConfigured: boolean;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.provider
+ * @param root0.setProvider
+ * @param root0.apiKey
+ * @param root0.setApiKey
+ * @param root0.baseUrl
+ * @param root0.setBaseUrl
+ * @param root0.port
+ * @param root0.setPort
+ * @param root0.model
+ * @param root0.setModel
+ * @param root0.thinking
+ * @param root0.setThinking
+ * @param root0.temperature
+ * @param root0.setTemperature
+ * @param root0.showThoughts
+ * @param root0.setShowThoughts
+ * @param root0.theme
+ * @param root0.setTheme
+ * @param root0.enabledTools
+ * @param root0.setEnabledTools
+ * @param root0.enableAllTools
+ * @param root0.disableAllTools
+ * @param root0.resetBehaviorToDefaults
+ * @param root0.saveSettings
+ * @param root0.cancelSettings
+ * @param root0.settingsConfigured
+ */
 export function SettingsScreen({
   provider,
   setProvider,

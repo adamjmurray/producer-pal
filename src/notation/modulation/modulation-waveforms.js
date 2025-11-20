@@ -28,10 +28,10 @@ export function tri(phase) {
   if (normalizedPhase <= 0.5) {
     // Descending: 1.0 -> -1.0 over first half
     return 1.0 - 4.0 * normalizedPhase;
-  } else {
+  } 
     // Ascending: -1.0 -> 1.0 over second half
     return -3.0 + 4.0 * normalizedPhase;
-  }
+  
 }
 
 /**

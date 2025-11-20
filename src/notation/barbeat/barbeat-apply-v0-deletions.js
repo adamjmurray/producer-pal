@@ -18,9 +18,9 @@ export function applyV0Deletions(notes) {
           existingNote.pitch !== note.pitch ||
           Math.abs(existingNote.start_time - note.start_time) >= 0.001,
       );
-    } else {
+    } 
       // Regular note - add to results
       return [...result, note];
-    }
+    
   }, []);
 }

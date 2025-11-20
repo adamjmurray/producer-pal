@@ -2,7 +2,7 @@ import * as console from "../../shared/v8-max-console.js";
 
 /**
  * Clear pitch buffer and reset all pitch-related flags
- * @param {Object} state - State object containing pitch buffer and flags
+ * @param {object} state - State object containing pitch buffer and flags
  */
 export function clearPitchBuffer(state) {
   state.currentPitches = [];
@@ -14,7 +14,7 @@ export function clearPitchBuffer(state) {
 
 /**
  * Validate buffered state before an operation and warn if needed
- * @param {Object} state - State object
+ * @param {object} state - State object
  * @param {string} operationType - Type of operation (for warning message)
  */
 export function validateBufferedState(state, operationType) {
@@ -36,7 +36,7 @@ export function validateBufferedState(state, operationType) {
 
 /**
  * Copy a note to a destination bar
- * @param {Object} sourceNote - Source note with pitch, relativeTime, duration, velocity, probability, velocity_deviation
+ * @param {object} sourceNote - Source note with pitch, relativeTime, duration, velocity, probability, velocity_deviation
  * @param {number} destBar - Destination bar number
  * @param {number} destinationBarStart - Destination bar start time in beats
  * @param {Array} events - Events array to push to
@@ -72,7 +72,7 @@ export function copyNoteToDestination(
 
 /**
  * Track state changes and update buffered pitches
- * @param {Object} state - State object
+ * @param {object} state - State object
  * @param {Function} updateFn - Function that updates the state (receives state, returns void)
  */
 export function trackStateChange(state, updateFn) {
@@ -92,7 +92,7 @@ export function trackStateChange(state, updateFn) {
 
 /**
  * Update buffered pitches with new state values
- * @param {Object} state - State object
+ * @param {object} state - State object
  * @param {Function} updateFn - Function that updates a single pitch state (receives pitchState, returns void)
  */
 export function updateBufferedPitches(state, updateFn) {
@@ -108,13 +108,13 @@ export function updateBufferedPitches(state, updateFn) {
 
 /**
  * Handle bar copy with range destination (multiple destination bars from source bar(s))
- * @param {Object} element - AST element
+ * @param {object} element - AST element
  * @param {number} beatsPerBar - Beats per bar
  * @param {number|null} timeSigDenominator - Time signature denominator
  * @param {Map} notesByBar - Notes by bar map
  * @param {Array} events - Events array to append to
- * @param {Object} bufferState - Current buffer state for validation
- * @returns {Object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
+ * @param {object} bufferState - Current buffer state for validation
+ * @returns {object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
  */
 export function handleBarCopyRangeDestination(
   element,
@@ -287,13 +287,13 @@ export function handleBarCopyRangeDestination(
 
 /**
  * Handle bar copy with single destination bar (can have multiple source bars)
- * @param {Object} element - AST element
+ * @param {object} element - AST element
  * @param {number} beatsPerBar - Beats per bar
  * @param {number|null} timeSigDenominator - Time signature denominator
  * @param {Map} notesByBar - Notes by bar map
  * @param {Array} events - Events array to append to
- * @param {Object} bufferState - Current buffer state for validation
- * @returns {Object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
+ * @param {object} bufferState - Current buffer state for validation
+ * @returns {object} { currentTime: {bar, beat}|null, hasExplicitBarNumber: boolean }
  */
 export function handleBarCopySingleDestination(
   element,

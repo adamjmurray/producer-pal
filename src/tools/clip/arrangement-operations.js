@@ -11,7 +11,11 @@ import {
 
 /**
  * Handle arrangement length changes (lengthening via tiling/exposure or shortening)
- * @param {Object} args - Operation arguments
+ * @param {object} args - Operation arguments
+ * @param args.clip
+ * @param args.isAudioClip
+ * @param args.arrangementLengthBeats
+ * @param args.context
  * @returns {Array} Array of clip result objects to add to updatedClips
  */
 export function handleArrangementLengthOperation({
@@ -65,6 +69,14 @@ export function handleArrangementLengthOperation({
 
 /**
  * Handle lengthening of arrangement clips via tiling or content exposure
+ * @param root0
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentArrangementLength
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0.context
  */
 function handleArrangementLengthening({
   clip,
@@ -163,6 +175,16 @@ function handleArrangementLengthening({
 
 /**
  * Handle unlooped clip lengthening
+ * @param root0
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentArrangementLength
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0.clipStartMarker
+ * @param root0.track
+ * @param root0.context
  */
 function handleUnloopedLengthening({
   clip,
@@ -312,6 +334,20 @@ function handleUnloopedLengthening({
 
 /**
  * Create tiles for looped clips
+ * @param root0
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentArrangementLength
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0._clipLoopStart
+ * @param root0._clipLoopEnd
+ * @param root0._clipStartMarker
+ * @param root0.totalContentLength
+ * @param root0.currentOffset
+ * @param root0.track
+ * @param root0.context
  */
 function createLoopeClipTiles({
   clip,
@@ -428,6 +464,13 @@ function createLoopeClipTiles({
 
 /**
  * Handle arrangement clip shortening
+ * @param root0
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0.context
  */
 function handleArrangementShortening({
   clip,

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
-import type { Provider, UseSettingsReturn } from "../types/settings.js";
 import { DEFAULT_ENABLED_TOOLS, TOOLS } from "../constants/tools.js";
+import type { Provider, UseSettingsReturn } from "../types/settings.js";
 
 interface ProviderSettings {
   apiKey: string;
@@ -141,6 +141,9 @@ function normalizeThinkingForOpenAI(thinking: string): string {
   return thinking;
 }
 
+/**
+ *
+ */
 export function useSettings(): UseSettingsReturn {
   const [provider, setProviderState] = useState<Provider>("gemini");
   const [settingsConfigured, setSettingsConfigured] = useState<boolean>(
@@ -425,7 +428,7 @@ export function useSettings(): UseSettingsReturn {
   // Local providers (lmstudio, ollama) don't require API keys
   const hasApiKey =
     provider === "lmstudio" || provider === "ollama"
-      ? !!localStorage.getItem(`producer_pal_provider_${provider}`)
+      ? Boolean(localStorage.getItem(`producer_pal_provider_${provider}`))
       : localStorage.getItem(`producer_pal_provider_${provider}`)
         ? (() => {
             try {
@@ -433,13 +436,13 @@ export function useSettings(): UseSettingsReturn {
                 localStorage.getItem(`producer_pal_provider_${provider}`) ??
                   "{}",
               );
-              return !!data.apiKey;
+              return Boolean(data.apiKey);
             } catch {
               return false;
             }
           })()
         : provider === "gemini"
-          ? !!localStorage.getItem("gemini_api_key")
+          ? Boolean(localStorage.getItem("gemini_api_key"))
           : false;
 
   // Tool toggle helper functions

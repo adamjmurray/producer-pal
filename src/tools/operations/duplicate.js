@@ -15,7 +15,7 @@ import {
 /**
  * Duplicates an object based on its type.
  * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.type - Type of object to duplicate ("track", "scene", or "clip")
  * @param {string} args.id - ID of the object to duplicate
  * @param {number} [args.count=1] - Number of duplicates to create
@@ -29,8 +29,8 @@ import {
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
  * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
  * @param {number} [args.toSceneIndex] - Destination scene index (required for session clips)
- * @param {Object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {Object|Array<Object>} Result object(s) with information about the duplicated object(s)
+ * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns {object | Array<object>} Result object(s) with information about the duplicated object(s)
  */
 export function duplicate(
   {
@@ -278,7 +278,7 @@ export function duplicate(
   // Return appropriate format based on count
   if (count === 1) {
     return createdObjects[0];
-  } else {
+  } 
     return createdObjects;
-  }
+  
 }

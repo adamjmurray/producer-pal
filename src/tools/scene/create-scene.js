@@ -5,7 +5,7 @@ import { captureScene } from "./capture-scene.js";
 
 /**
  * Creates new scenes at the specified index or captures currently playing clips
- * @param {Object} args - The scene parameters
+ * @param {object} args - The scene parameters
  * @param {number} [args.sceneIndex] - Scene index (0-based) where to insert new scenes. Required when capture=false, optional when capture=true
  * @param {number} [args.count=1] - Number of scenes to create (ignored when capture=true)
  * @param {boolean} [args.capture=false] - Capture currently playing Session clips instead of creating empty scenes
@@ -14,7 +14,8 @@ import { captureScene } from "./capture-scene.js";
  * @param {number|null} [args.tempo] - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
  * @param {boolean} [args.switchView=false] - Automatically switch to session view
- * @returns {Object|Array<Object>} Single scene object when count=1, array when count>1
+ * @param _context
+ * @returns {object | Array<object>} Single scene object when count=1, array when count>1
  */
 export function createScene(
   {

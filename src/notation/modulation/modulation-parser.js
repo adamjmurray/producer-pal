@@ -205,6 +205,11 @@ class peg$SyntaxError extends SyntaxError {
   }
 }
 
+/**
+ *
+ * @param input
+ * @param options
+ */
 function peg$parse(input, options) {
   options = options !== undefined ? options : {};
 
@@ -569,7 +574,7 @@ function peg$parse(input, options) {
 
     if (details) {
       return details;
-    } else {
+    } 
       if (pos >= peg$posDetailsCache.length) {
         p = peg$posDetailsCache.length - 1;
       } else {
@@ -597,7 +602,7 @@ function peg$parse(input, options) {
       peg$posDetailsCache[pos] = details;
 
       return details;
-    }
+    
   }
 
   function peg$computeLocation(startPos, endPos, offset) {
@@ -2792,9 +2797,9 @@ function peg$parse(input, options) {
   }
   if (peg$success) {
     return peg$result;
-  } else {
+  } 
     peg$throw();
-  }
+  
 }
 
 const peg$allowedStartRules = ["start"];

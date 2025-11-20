@@ -147,6 +147,7 @@ export function abletonBeatsToBarBeatDuration(
  * @param {string} barBeatDuration - "2:1.5" or "2.5" or "5/2" or "1:2+1/3" or "2+3/4"
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
+ * @param _timeSigDenominator
  * @returns {number} Musical beats (duration)
  */
 export function barBeatDurationToMusicalBeats(
@@ -191,7 +192,7 @@ export function barBeatDurationToMusicalBeats(
 
     const musicalBeatsPerBar = timeSigNumerator;
     return bars * musicalBeatsPerBar + beats; // RETURN EARLY (musical beats)
-  } else {
+  } 
     // NEW: Beat-only format (decimal, fraction, or integer+fraction)
 
     // Validate format: must be valid number or fraction, not containing invalid characters
@@ -255,7 +256,7 @@ export function barBeatDurationToMusicalBeats(
     }
 
     return beats; // Musical beats directly
-  }
+  
 }
 
 /**

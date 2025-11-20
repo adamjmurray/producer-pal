@@ -63,6 +63,7 @@ interface UseOpenAIChatReturn {
 /**
  * Check if we're using the actual OpenAI API (not OpenAI-compatible providers like Groq/Mistral).
  * reasoning_effort is only supported by OpenAI's API.
+ * @param baseUrl
  */
 function isOpenAIProvider(baseUrl?: string): boolean {
   // If no baseUrl, OpenAIClient defaults to OpenAI
@@ -74,6 +75,7 @@ function isOpenAIProvider(baseUrl?: string): boolean {
 /**
  * Maps Gemini thinking setting to OpenAI reasoning_effort parameter.
  * Note: Most OpenAI models don't support reasoning_effort (only o1/o3 series).
+ * @param thinking
  */
 function mapThinkingToReasoningEffort(
   thinking: string,
@@ -93,6 +95,19 @@ function mapThinkingToReasoningEffort(
   }
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.apiKey
+ * @param root0.model
+ * @param root0.thinking
+ * @param root0.temperature
+ * @param root0.baseUrl
+ * @param root0.enabledTools
+ * @param root0.mcpStatus
+ * @param root0.mcpError
+ * @param root0.checkMcpConnection
+ */
 export function useOpenAIChat({
   apiKey,
   model,

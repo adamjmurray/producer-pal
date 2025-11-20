@@ -22,13 +22,14 @@ import {
 
 /**
  * Read a MIDI or audio clip from Ableton Live
- * @param {Object} args - Arguments for the function
+ * @param {object} args - Arguments for the function
  * @param {number} [args.trackIndex] - Track index (0-based)
  * @param {number} [args.sceneIndex] - Clip slot index (0-based)
  * @param {string} [args.clipId] - Clip ID to directly access any clip
  * @param {string[]} [args.include] - Array of data to include in response
  * @param {boolean} [args.includeClipNotes] - Whether to include notes data (legacy parameter)
- * @returns {Object} Result object with clip information
+ * @param _context
+ * @returns {object} Result object with clip information
  */
 export function readClip(args = {}, _context = {}) {
   const { trackIndex = null, sceneIndex = null, clipId = null } = args;
