@@ -1,4 +1,3 @@
-import * as console from "../../shared/v8-max-console.js";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -11,6 +10,7 @@ import {
 } from "../../constants.js";
 import { createAudioClipInSession } from "../../shared/arrangement/arrangement-tiling.js";
 import { dbToLiveGain } from "../../shared/gain-utils.js";
+import * as console from "../../shared/v8-max-console.js";
 
 /**
  * Get the actual audio content end position for unlooped audio clips.

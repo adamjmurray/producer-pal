@@ -2,11 +2,11 @@ import {
   createAudioClipInSession,
   tileClipToRange,
 } from "../../../shared/arrangement/arrangement-tiling.js";
-import { getActualContentEnd } from "../update/update-clip-helpers.js";
 import {
   getActualAudioEnd,
   revealUnwarpedAudioContent,
 } from "../update/update-clip-audio-helpers.js";
+import { getActualContentEnd } from "../update/update-clip-helpers.js";
 
 /**
  * Handle lengthening of arrangement clips via tiling or content exposure

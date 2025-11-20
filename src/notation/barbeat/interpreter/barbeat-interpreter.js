@@ -8,6 +8,8 @@ import {
   DEFAULT_VELOCITY,
   DEFAULT_VELOCITY_DEVIATION,
 } from "../barbeat-config.js";
+import * as parser from "../parser/barbeat-parser.js";
+import { barBeatDurationToMusicalBeats } from "../time/barbeat-time.js";
 import {
   validateBufferedState,
   handleBarCopyRangeDestination,
@@ -18,8 +20,6 @@ import {
   calculatePositions,
   handlePitchEmission,
 } from "./helpers/barbeat-interpreter-pitch-helpers.js";
-import * as parser from "../parser/barbeat-parser.js";
-import { barBeatDurationToMusicalBeats } from "../time/barbeat-time.js";
 
 /**
  * Process a velocity update (single value)

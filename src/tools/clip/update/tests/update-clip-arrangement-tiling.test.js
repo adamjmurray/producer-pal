@@ -6,7 +6,10 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "../../../test/mock-live-api.js";
-import { mockContext, setupMocks } from "../helpers/update-clip-test-helpers.js";
+import {
+  mockContext,
+  setupMocks,
+} from "../helpers/update-clip-test-helpers.js";
 import { updateClip } from "../update-clip.js";
 
 describe("updateClip - arrangementLength (clean tiling)", () => {

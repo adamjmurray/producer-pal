@@ -4,7 +4,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { useGeminiChat } from "../chat/use-gemini-chat";
+import { useGeminiChat } from "./use-gemini-chat";
 
 // Mock GeminiClient
 vi.mock("../chat/gemini-client.js", () => ({
