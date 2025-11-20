@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  createSeededRNG,
-  randomInRange,
-} from "./transform-clips-helpers.js";
+import { createSeededRNG, randomInRange } from "./transform-clips-helpers.js";
 import { shuffleArray } from "./transform-clips-shuffling-helpers.js";
 
 describe("transform-clips helpers", () => {
