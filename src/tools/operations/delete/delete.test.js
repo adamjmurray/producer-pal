@@ -4,7 +4,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "../../test/mock-live-api.js";
+} from "../../../test/mock-live-api.js";
 import { deleteObject } from "./delete.js";
 
 describe("deleteObject", () => {

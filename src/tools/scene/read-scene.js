@@ -1,4 +1,4 @@
-import { readClip } from "../clip/read-clip.js";
+import { readClip } from "../clip/read/read-clip.js";
 import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,

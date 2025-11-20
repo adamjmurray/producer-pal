@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { VERSION } from "../../shared/version.js";
+import { VERSION } from "../../../shared/version.js";
 import {
   children,
   expectedClip,
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
+} from "../../../test/mock-live-api.js";
 import { mockTrackProperties } from "./read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
