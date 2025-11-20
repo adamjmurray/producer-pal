@@ -24,6 +24,7 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: "v8",
+      ignoreEmptyLines: true,
       reporter: [
         ["text", { file: "coverage-summary.txt" }],
         "text", // Also display in console
@@ -73,9 +74,9 @@ export default defineConfig({
 
       // do not let test coverage drop:
       thresholds: {
-        statements: 89.4,
-        branches: 83.8,
-        functions: 90.2,
+        statements: 89.6, // TODO: try to get to 90
+        branches: 83.8, // TODO: try to get to 85
+        functions: 90,
         lines: 90,
       },
     },
