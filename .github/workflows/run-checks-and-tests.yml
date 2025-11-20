@@ -38,8 +38,12 @@ jobs:
           if ! diff -q src/notation/barbeat/barbeat-parser.js barbeat-parser-backup.js > /dev/null; then
             echo "Error: The checked-in bbs parser does not match the generated parser."
             echo "Please run 'npm run parser:build' and commit the changes."
+            rm barbeat-parser-backup.js
             exit 1
           fi
+
+          # Clean up backup file
+          rm barbeat-parser-backup.js
 
       - name: Lint
         run: npm run lint
