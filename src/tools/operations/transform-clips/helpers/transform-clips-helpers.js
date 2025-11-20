@@ -2,7 +2,7 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../../../notation/barbeat/time/barbeat-time.js";
-import { parseCommaSeparatedIds } from "../../shared/utils.js";
+import { parseCommaSeparatedIds } from "../../../shared/utils.js";
 import * as console from "../../../../shared/v8-max-console.js";
 import { validateIdType } from "../../../shared/validation/id-validation.js";
 import {
