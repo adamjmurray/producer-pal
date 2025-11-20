@@ -5,6 +5,15 @@ interface ChatStartProps {
   handleSend: (message: string) => Promise<void>;
 }
 
+/**
+ * Start screen shown when no messages exist
+ * @param {ChatStartProps} root0 - Component props
+ * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
+ * @param {string | null} root0.mcpError - MCP error message
+ * @param {() => Promise<void>} root0.checkMcpConnection - Check MCP connection callback
+ * @param {(message: string) => Promise<void>} root0.handleSend - Send message callback
+ * @returns {JSX.Element} - React component
+ */
 export function ChatStart({
   mcpStatus,
   mcpError,

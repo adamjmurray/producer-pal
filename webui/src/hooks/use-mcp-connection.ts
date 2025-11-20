@@ -9,6 +9,10 @@ interface UseMcpConnectionReturn {
   checkMcpConnection: () => Promise<void>;
 }
 
+/**
+ *
+ * @returns {any} - Hook return value
+ */
 export function useMcpConnection(): UseMcpConnectionReturn {
   const [mcpStatus, setMcpStatus] = useState<McpStatus>("connecting");
   const [mcpError, setMcpError] = useState<string | null>(null);

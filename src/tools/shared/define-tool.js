@@ -2,6 +2,12 @@ import { z } from "zod";
 import { formatErrorResponse } from "../../shared/mcp-response-utils.js";
 import { filterSchemaForSmallModel } from "./filter-schema.js";
 
+/**
+ * Defines an MCP tool with validation and small model mode support
+ * @param {string} name - Tool name
+ * @param {object} options - Tool configuration options
+ * @returns {Function} - Function that registers the tool with the MCP server
+ */
 export function defineTool(name, options) {
   return (server, callLiveApi, mcpOptions = {}) => {
     const { smallModelMode = false } = mcpOptions;

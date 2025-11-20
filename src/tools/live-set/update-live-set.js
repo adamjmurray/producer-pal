@@ -16,12 +16,13 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
 
 /**
  * Updates Live Set parameters like tempo, time signature, and scale.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
  * @param {boolean} [args.arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
- * @returns {Object} Updated Live Set information
+ * @param {object} _context - Internal context object (unused)
+ * @returns {object} Updated Live Set information
  */
 export function updateLiveSet(
   { tempo, timeSignature, scale, arrangementFollower } = {},
@@ -67,7 +68,10 @@ export function updateLiveSet(
 
       result.scale = `${scaleRoot} ${scaleName}`;
     }
-    (result.$meta ??= []).push(
+    if (!result.$meta) {
+      result.$meta = [];
+    }
+    result.$meta.push(
       "Scale applied to selected clips and defaults for new clips.",
     );
   }

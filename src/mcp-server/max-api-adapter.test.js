@@ -10,6 +10,15 @@ import {
 // Make sure the module's handler is registered
 import "./max-api-adapter.js";
 
+// Capture the timeoutMs handler before mocks are cleared
+let timeoutMsHandler;
+const timeoutMsCall = Max.addHandler.mock.calls.find(
+  (call) => call[0] === "timeoutMs",
+);
+if (timeoutMsCall) {
+  timeoutMsHandler = timeoutMsCall[1];
+}
+
 describe("Max API Adapter", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -125,6 +134,53 @@ describe("Max API Adapter", () => {
         ],
         isError: true,
       });
+    });
+  });
+
+  describe("timeoutMs handler", () => {
+    it("should set timeout when valid value is provided", () => {
+      expect(timeoutMsHandler).toBeDefined();
+
+      // Call the handler with a valid timeout
+      timeoutMsHandler(5000);
+
+      // Verify it doesn't log an error
+      expect(Max.post).not.toHaveBeenCalled();
+    });
+
+    it("should reject timeout values above 60000ms", () => {
+      // Call with invalid timeout (too high)
+      timeoutMsHandler(70000);
+
+      // Should log an error
+      expect(Max.post).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid Live API timeoutMs: 70000"),
+        "error",
+      );
+    });
+
+    it("should reject timeout values at or below 0", () => {
+      vi.clearAllMocks();
+
+      // Call with invalid timeout (zero)
+      timeoutMsHandler(0);
+
+      expect(Max.post).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid Live API timeoutMs: 0"),
+        "error",
+      );
+    });
+
+    it("should reject non-numeric timeout values", () => {
+      vi.clearAllMocks();
+
+      // Call with non-numeric value
+      timeoutMsHandler("invalid");
+
+      expect(Max.post).toHaveBeenCalledWith(
+        expect.stringContaining("Invalid Live API timeoutMs: invalid"),
+        "error",
+      );
     });
   });
 

@@ -21,6 +21,13 @@ import { toolDefUpdateTrack } from "../tools/track/update-track.def.js";
 import { toolDefConnect } from "../tools/workflow/connect.def.js";
 import { toolDefMemory } from "../tools/workflow/memory.def.js";
 
+/**
+ * Create and configure an MCP server instance
+ *
+ * @param {Function} callLiveApi - Function to call Live API
+ * @param {object} options - Configuration options
+ * @returns {McpServer} Configured MCP server instance
+ */
 export function createMcpServer(callLiveApi, options = {}) {
   const { smallModelMode = false } = options;
 

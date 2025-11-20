@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { liveApiId, liveApiPath } from "./duplicate-test-helpers.js";
 import { duplicate } from "./duplicate";
+import { liveApiId, liveApiPath } from "./duplicate-test-helpers.js";
 
 // Mock updateClip to avoid complex internal logic
 vi.mock(import("../clip/update-clip.js"), () => ({

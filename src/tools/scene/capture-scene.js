@@ -1,9 +1,9 @@
 /**
  * Captures the currently playing clips into a new scene
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {number} [args.sceneIndex] - Optional scene index to select before capturing
  * @param {string} [args.name] - Optional name for the captured scene
- * @returns {Object} Result object with information about the captured scene
+ * @returns {object} Result object with information about the captured scene
  */
 export function captureScene({ sceneIndex, name } = {}) {
   const liveSet = new LiveAPI("live_set");

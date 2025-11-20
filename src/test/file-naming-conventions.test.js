@@ -1,9 +1,12 @@
-import { describe, it, expect } from "vitest";
 import { readdirSync, statSync } from "fs";
 import { join, basename, extname } from "path";
+import { describe, it, expect } from "vitest";
 
 /**
  * Recursively get all files in a directory
+ * @param {string} dir - Directory path to scan
+ * @param {Array<string>} files - Accumulator array for file paths
+ * @returns {Array<string>} - Array of file paths
  */
 function getAllFiles(dir, files = []) {
   const entries = readdirSync(dir);
@@ -22,6 +25,8 @@ function getAllFiles(dir, files = []) {
 
 /**
  * Check if a filename follows kebab-case convention
+ * @param {string} name - Filename (without extension) to check
+ * @returns {boolean} - True if filename follows kebab-case
  */
 function isKebabCase(name) {
   // Remove known suffixes first
@@ -36,6 +41,8 @@ function isKebabCase(name) {
 
 /**
  * Check if a filename has only allowed dots (for suffixes and extension)
+ * @param {string} filename - Full filename to validate
+ * @returns {boolean} - True if filename has valid dot usage
  */
 function hasValidDots(filename) {
   const name = basename(filename);
@@ -84,6 +91,7 @@ describe("File naming conventions", () => {
         .join("\n");
       throw new Error(`File naming violations found:\n${message}`);
     }
+    expect(violations).toHaveLength(0);
   });
 
   it("all src files should only use dots for known suffixes and extensions", () => {
@@ -117,5 +125,6 @@ describe("File naming conventions", () => {
           `  - name.config.js (use name-config.js)`,
       );
     }
+    expect(violations).toHaveLength(0);
   });
 });

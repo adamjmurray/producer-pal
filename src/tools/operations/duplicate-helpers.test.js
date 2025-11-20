@@ -4,6 +4,41 @@ import {
   findRoutingOptionForDuplicateNames,
 } from "./duplicate-helpers.js";
 
+/**
+ * Helper to create a mock LiveAPI class for testing duplicate routing scenarios
+ * @param {Array<string>} trackIds - Array of track IDs
+ * @param {object} trackNameMapping - Mapping of track paths to names
+ * @returns {class} - Mock LiveAPI class
+ */
+function createMockLiveAPI(trackIds, trackNameMapping) {
+  return class {
+    constructor(path) {
+      this.path = path;
+      if (path === "live_set") {
+        this._isLiveSet = true;
+      }
+    }
+
+    getChildIds(property) {
+      if (this._isLiveSet && property === "tracks") {
+        return trackIds;
+      }
+      return [];
+    }
+
+    getProperty(prop) {
+      if (prop === "name" && trackNameMapping[this.path]) {
+        return trackNameMapping[this.path];
+      }
+      return null;
+    }
+
+    get id() {
+      return this.path;
+    }
+  };
+}
+
 describe("duplicate-helpers", () => {
   describe("parseArrangementLength", () => {
     it("parses valid bar:beat duration to beats", () => {
@@ -84,40 +119,11 @@ describe("duplicate-helpers", () => {
 
     it("finds correct option when multiple tracks have same name", () => {
       // Mock LiveAPI for global access
-      global.LiveAPI = class {
-        constructor(path) {
-          this.path = path;
-          // Mock getChildIds for "live_set"
-          if (path === "live_set") {
-            this._isLiveSet = true;
-          }
-        }
-
-        getChildIds(property) {
-          if (this._isLiveSet && property === "tracks") {
-            return ["id1", "id2", "id3"];
-          }
-          return [];
-        }
-
-        getProperty(prop) {
-          // Mock track names based on path
-          if (this.path === "id1" && prop === "name") {
-            return "Drums";
-          }
-          if (this.path === "id2" && prop === "name") {
-            return "Drums";
-          }
-          if (this.path === "id3" && prop === "name") {
-            return "Bass";
-          }
-          return null;
-        }
-
-        get id() {
-          return this.path;
-        }
-      };
+      global.LiveAPI = createMockLiveAPI(["id1", "id2", "id3"], {
+        id1: "Drums",
+        id2: "Drums",
+        id3: "Bass",
+      });
 
       const sourceTrack = {
         id: "id1",
@@ -141,38 +147,11 @@ describe("duplicate-helpers", () => {
     });
 
     it("finds correct option for second track with duplicate name", () => {
-      global.LiveAPI = class {
-        constructor(path) {
-          this.path = path;
-          if (path === "live_set") {
-            this._isLiveSet = true;
-          }
-        }
-
-        getChildIds(property) {
-          if (this._isLiveSet && property === "tracks") {
-            return ["id1", "id2", "id3"];
-          }
-          return [];
-        }
-
-        getProperty(prop) {
-          if (this.path === "id1" && prop === "name") {
-            return "Drums";
-          }
-          if (this.path === "id2" && prop === "name") {
-            return "Drums";
-          }
-          if (this.path === "id3" && prop === "name") {
-            return "Bass";
-          }
-          return null;
-        }
-
-        get id() {
-          return this.path;
-        }
-      };
+      global.LiveAPI = createMockLiveAPI(["id1", "id2", "id3"], {
+        id1: "Drums",
+        id2: "Drums",
+        id3: "Bass",
+      });
 
       const sourceTrack = {
         id: "id2",
@@ -195,35 +174,10 @@ describe("duplicate-helpers", () => {
     });
 
     it("returns undefined when source track not found in duplicate list", () => {
-      global.LiveAPI = class {
-        constructor(path) {
-          this.path = path;
-          if (path === "live_set") {
-            this._isLiveSet = true;
-          }
-        }
-
-        getChildIds(property) {
-          if (this._isLiveSet && property === "tracks") {
-            return ["id1", "id2"];
-          }
-          return [];
-        }
-
-        getProperty(prop) {
-          if (this.path === "id1" && prop === "name") {
-            return "Drums";
-          }
-          if (this.path === "id2" && prop === "name") {
-            return "Drums";
-          }
-          return null;
-        }
-
-        get id() {
-          return this.path;
-        }
-      };
+      global.LiveAPI = createMockLiveAPI(["id1", "id2"], {
+        id1: "Drums",
+        id2: "Drums",
+      });
 
       const sourceTrack = {
         id: "id999", // Non-existent track

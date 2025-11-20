@@ -1,5 +1,6 @@
 /**
  * @vitest-environment happy-dom
+ * @returns {any} - Hook return value
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
