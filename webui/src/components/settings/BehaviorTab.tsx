@@ -1,6 +1,6 @@
-import type { Provider } from "../../types/settings.js";
-import { RandomnessSlider } from "./RandomnessSlider.jsx";
-import { ThinkingSettings } from "./ThinkingSettings.jsx";
+import type { Provider } from "../../types/settings";
+import { RandomnessSlider } from "./RandomnessSlider";
+import { ThinkingSettings } from "./ThinkingSettings";
 
 interface BehaviorTabProps {
   provider: Provider;

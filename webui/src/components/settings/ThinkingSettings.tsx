@@ -1,4 +1,4 @@
-import type { Provider } from "../../types/settings.js";
+import type { Provider } from "../../types/settings";
 
 interface ThinkingSettingsProps {
   provider: Provider;

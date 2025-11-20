@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import type { Provider, UseSettingsReturn } from "../types/settings.js";
+import type { Provider, UseSettingsReturn } from "../types/settings";
 import {
   buildAllProviderSettings,
   checkHasApiKey,
@@ -12,7 +12,7 @@ import {
   normalizeThinkingForOpenAI,
   type ProviderSettings,
   saveCurrentSettings,
-} from "./settings-helpers.js";
+} from "./settings-helpers";
 
 type ProviderStateSetters = Record<
   Provider,

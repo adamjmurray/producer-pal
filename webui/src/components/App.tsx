@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "preact/hooks";
-import { useGeminiChat } from "../hooks/use-gemini-chat.js";
-import { useMcpConnection } from "../hooks/use-mcp-connection.js";
-import { useOpenAIChat } from "../hooks/use-openai-chat.js";
-import { useSettings } from "../hooks/use-settings.js";
-import { useTheme } from "../hooks/use-theme.js";
-import { ChatScreen } from "./chat/ChatScreen.jsx";
-import { SettingsScreen } from "./settings/SettingsScreen.jsx";
+import { useGeminiChat } from "../hooks/use-gemini-chat";
+import { useMcpConnection } from "../hooks/use-mcp-connection";
+import { useOpenAIChat } from "../hooks/use-openai-chat";
+import { useSettings } from "../hooks/use-settings";
+import { useTheme } from "../hooks/use-theme";
+import { ChatScreen } from "./chat/ChatScreen";
+import { SettingsScreen } from "./settings/SettingsScreen";
 
 // Base URLs for each provider
 const PROVIDER_BASE_URLS = {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as parser from "./barbeat-parser";
+import * as parser from "./barbeat-parser.js";
 
 describe("BarBeatScript Parser - time declarations", () => {
   it("parses integer and floating point beats", () => {

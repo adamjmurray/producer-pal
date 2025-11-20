@@ -3,7 +3,7 @@
  */
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { AppearanceTab } from "./AppearanceTab.jsx";
+import { AppearanceTab } from "./AppearanceTab";
 
 describe("AppearanceTab", () => {
   const mockSetTheme = vi.fn();

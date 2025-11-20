@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ChatStart } from "./ChatStart.jsx";
+import { ChatStart } from "./ChatStart";
 
 describe("ChatStart", () => {
   describe("when mcpStatus is connected", () => {

@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ChatHeader } from "./ChatHeader.jsx";
+import { ChatHeader } from "./ChatHeader";
 
 describe("ChatHeader", () => {
   const defaultProps = {

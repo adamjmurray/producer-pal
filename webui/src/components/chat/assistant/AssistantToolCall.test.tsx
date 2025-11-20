@@ -3,7 +3,7 @@
  */
 import { render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { AssistantToolCall } from "./AssistantToolCall.jsx";
+import { AssistantToolCall } from "./AssistantToolCall";
 
 // Mock the config module
 vi.mock("../../../config.js", () => ({

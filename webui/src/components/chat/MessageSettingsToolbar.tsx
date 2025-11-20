@@ -1,5 +1,5 @@
 import { useState } from "preact/hooks";
-import type { Provider } from "../../types/settings.js";
+import type { Provider } from "../../types/settings";
 
 interface MessageSettingsToolbarProps {
   provider: Provider;

@@ -3,7 +3,7 @@
  */
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { ThinkingSettings } from "./ThinkingSettings.jsx";
+import { ThinkingSettings } from "./ThinkingSettings";
 
 describe("ThinkingSettings", () => {
   describe("Gemini provider", () => {

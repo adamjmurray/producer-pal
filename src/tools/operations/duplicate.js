@@ -1,4 +1,4 @@
-import { barBeatToAbletonBeats } from "../../notation/barbeat/barbeat-time";
+import { barBeatToAbletonBeats } from "../../notation/barbeat/barbeat-time.js";
 import { select } from "../control/select.js";
 import { validateIdType } from "../shared/id-validation.js";
 import {
@@ -11,6 +11,106 @@ import {
   calculateSceneLength,
   duplicateSceneToArrangement,
 } from "./duplicate-track-scene-helpers.js";
+
+/**
+ * Duplicates an object based on its type.
+ * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
+ * @param {object} args - The parameters
+ * @param {string} args.type - Type of object to duplicate ("track", "scene", or "clip")
+ * @param {string} args.id - ID of the object to duplicate
+ * @param {number} [args.count=1] - Number of duplicates to create
+ * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement"), required when type is "clip"
+ * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
+ * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
+ * @param {string} [args.name] - Optional name for the duplicated object(s)
+ * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
+ * @param {boolean} [args.withoutDevices] - Whether to exclude devices when duplicating tracks
+ * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering by routing the new track to the source track
+ * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
+ * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
+ * @param {number} [args.toSceneIndex] - Destination scene index (required for session clips)
+ * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
+ * @returns {object | Array<object>} Result object(s) with information about the duplicated object(s)
+ */
+export function duplicate(
+  {
+    type,
+    id,
+    count = 1,
+    destination,
+    arrangementStart,
+    arrangementLength,
+    name,
+    withoutClips,
+    withoutDevices,
+    routeToSource,
+    switchView,
+    toTrackIndex,
+    toSceneIndex,
+  } = {},
+  context = {
+    holdingAreaStartBeats: 40000,
+  },
+) {
+  // Validate basic inputs
+  validateBasicInputs(type, id, count);
+
+  // Auto-configure for routing back to source
+  const routeToSourceConfig = validateAndConfigureRouteToSource(
+    type,
+    routeToSource,
+    withoutClips,
+    withoutDevices,
+  );
+  withoutClips = routeToSourceConfig.withoutClips;
+  withoutDevices = routeToSourceConfig.withoutDevices;
+
+  // Validate the ID exists and matches the expected type
+  const object = validateIdType(id, type, "duplicate");
+
+  // Validate clip-specific parameters
+  validateClipParameters(type, destination, toTrackIndex, toSceneIndex);
+
+  // Validate arrangement parameters
+  validateArrangementParameters(destination, arrangementStart);
+
+  const createdObjects = [];
+
+  for (let i = 0; i < count; i++) {
+    // Build the object name for this duplicate
+    const objectName = generateObjectName(name, count, i);
+
+    const newObjectMetadata = performDuplication(
+      type,
+      destination,
+      object,
+      id,
+      i,
+      objectName,
+      {
+        arrangementStart,
+        arrangementLength,
+        withoutClips,
+        withoutDevices,
+        routeToSource,
+        toTrackIndex,
+        toSceneIndex,
+      },
+      context,
+    );
+
+    createdObjects.push(newObjectMetadata);
+  }
+
+  // Handle view switching if requested
+  switchViewIfRequested(switchView, destination, type);
+
+  // Return appropriate format based on count
+  if (count === 1) {
+    return createdObjects[0];
+  }
+  return createdObjects;
+}
 
 /**
  * Validates basic input parameters for duplication
@@ -391,104 +491,4 @@ function performDuplication(
     toTrackIndex,
     toSceneIndex,
   );
-}
-
-/**
- * Duplicates an object based on its type.
- * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
- * @param {object} args - The parameters
- * @param {string} args.type - Type of object to duplicate ("track", "scene", or "clip")
- * @param {string} args.id - ID of the object to duplicate
- * @param {number} [args.count=1] - Number of duplicates to create
- * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement"), required when type is "clip"
- * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
- * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
- * @param {string} [args.name] - Optional name for the duplicated object(s)
- * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
- * @param {boolean} [args.withoutDevices] - Whether to exclude devices when duplicating tracks
- * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering by routing the new track to the source track
- * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
- * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
- * @param {number} [args.toSceneIndex] - Destination scene index (required for session clips)
- * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
- * @returns {object | Array<object>} Result object(s) with information about the duplicated object(s)
- */
-export function duplicate(
-  {
-    type,
-    id,
-    count = 1,
-    destination,
-    arrangementStart,
-    arrangementLength,
-    name,
-    withoutClips,
-    withoutDevices,
-    routeToSource,
-    switchView,
-    toTrackIndex,
-    toSceneIndex,
-  } = {},
-  context = {
-    holdingAreaStartBeats: 40000,
-  },
-) {
-  // Validate basic inputs
-  validateBasicInputs(type, id, count);
-
-  // Auto-configure for routing back to source
-  const routeToSourceConfig = validateAndConfigureRouteToSource(
-    type,
-    routeToSource,
-    withoutClips,
-    withoutDevices,
-  );
-  withoutClips = routeToSourceConfig.withoutClips;
-  withoutDevices = routeToSourceConfig.withoutDevices;
-
-  // Validate the ID exists and matches the expected type
-  const object = validateIdType(id, type, "duplicate");
-
-  // Validate clip-specific parameters
-  validateClipParameters(type, destination, toTrackIndex, toSceneIndex);
-
-  // Validate arrangement parameters
-  validateArrangementParameters(destination, arrangementStart);
-
-  const createdObjects = [];
-
-  for (let i = 0; i < count; i++) {
-    // Build the object name for this duplicate
-    const objectName = generateObjectName(name, count, i);
-
-    const newObjectMetadata = performDuplication(
-      type,
-      destination,
-      object,
-      id,
-      i,
-      objectName,
-      {
-        arrangementStart,
-        arrangementLength,
-        withoutClips,
-        withoutDevices,
-        routeToSource,
-        toTrackIndex,
-        toSceneIndex,
-      },
-      context,
-    );
-
-    createdObjects.push(newObjectMetadata);
-  }
-
-  // Handle view switching if requested
-  switchViewIfRequested(switchView, destination, type);
-
-  // Return appropriate format based on count
-  if (count === 1) {
-    return createdObjects[0];
-  }
-  return createdObjects;
 }

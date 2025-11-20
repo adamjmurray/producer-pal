@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
-import type { Provider } from "../../types/settings.js";
-import { MessageSettingsToolbar } from "./MessageSettingsToolbar.jsx";
+import type { Provider } from "../../types/settings";
+import { MessageSettingsToolbar } from "./MessageSettingsToolbar";
 
 interface ChatInputProps {
   handleSend: (

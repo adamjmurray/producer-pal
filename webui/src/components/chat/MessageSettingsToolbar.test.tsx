@@ -3,7 +3,7 @@
  */
 import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { MessageSettingsToolbar } from "./MessageSettingsToolbar.jsx";
+import { MessageSettingsToolbar } from "./MessageSettingsToolbar";
 
 describe("MessageSettingsToolbar", () => {
   const mockOnThinkingChange = vi.fn();

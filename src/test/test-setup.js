@@ -1,5 +1,5 @@
 import { beforeEach, vi } from "vitest";
-import "./expect-extensions";
+import "./expect-extensions.js";
 import {
   LiveAPI,
   liveApiCall,
@@ -7,11 +7,11 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "./mock-live-api";
-import { Task } from "./mock-task";
+} from "./mock-live-api.js";
+import { Task } from "./mock-task.js";
 
 globalThis.LiveAPI = LiveAPI;
-await import("../live-api-adapter/live-api-extensions");
+await import("../live-api-adapter/live-api-extensions.js");
 
 globalThis.Task = Task;
 globalThis.outlet = vi.fn();

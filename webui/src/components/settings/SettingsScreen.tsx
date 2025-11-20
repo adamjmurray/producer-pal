@@ -1,9 +1,9 @@
-import type { Provider } from "../../types/settings.js";
-import { AppearanceTab } from "./AppearanceTab.jsx";
-import { BehaviorTab } from "./BehaviorTab.jsx";
-import { ConnectionTab } from "./ConnectionTab.jsx";
-import { SettingsTabs } from "./SettingsTabs.jsx";
-import { ToolToggles } from "./ToolToggles.jsx";
+import type { Provider } from "../../types/settings";
+import { AppearanceTab } from "./AppearanceTab";
+import { BehaviorTab } from "./BehaviorTab";
+import { ConnectionTab } from "./ConnectionTab";
+import { SettingsTabs } from "./SettingsTabs";
+import { ToolToggles } from "./ToolToggles";
 
 interface SettingsScreenProps {
   provider: Provider;
