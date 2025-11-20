@@ -5,8 +5,8 @@ import {
 import {
   getActualAudioEnd,
   revealUnwarpedAudioContent,
-} from "../update/update-clip-audio-helpers.js";
-import { getActualContentEnd } from "../update/update-clip-helpers.js";
+} from "../update/helpers/update-clip-audio-helpers.js";
+import { getActualContentEnd } from "../update/helpers/update-clip-helpers.js";
 
 /**
  * Handle lengthening of arrangement clips via tiling or content exposure
