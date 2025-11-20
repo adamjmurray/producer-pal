@@ -169,11 +169,6 @@ class peg$SyntaxError extends SyntaxError {
   }
 }
 
-/**
- *
- * @param input
- * @param options
- */
 function peg$parse(input, options) {
   options = options !== undefined ? options : {};
 
@@ -294,7 +289,7 @@ function peg$parse(input, options) {
     if (val >= 0.0 && val <= 1.0) {
       return { probability: val };
     }
-    throw new Error(`Note probability ${val} outside valid range 0.0-1.0`);
+    else throw new Error(`Note probability ${val} outside valid range 0.0-1.0`);
   }
   function peg$f10(start, end) {
     if (start >= 0 && start <= 127 && end >= 0 && end <= 127) {
@@ -303,13 +298,13 @@ function peg$parse(input, options) {
         velocityMax: Math.max(start, end),
       };
     }
-    throw new Error(`Invalid velocity range ${start}-${end}`);
+    else throw new Error(`Invalid velocity range ${start}-${end}`);
   }
   function peg$f11(val) {
     if (val >= 0 && val <= 127) {
       return { velocity: val };
     }
-    throw new Error(`MIDI velocity ${val} outside valid range 0-127`);
+    else throw new Error(`MIDI velocity ${val} outside valid range 0-127`);
   }
   function peg$f12(bars, beats) {
     return { duration: `${bars}:${beats}` };  // String for bar:beat format
@@ -323,7 +318,7 @@ function peg$parse(input, options) {
     if (pitch >= 0 && pitch <= 127) {
       return { pitch };
     }
-    throw new Error(`MIDI pitch ${pitch} (${name}) outside valid range 0-127`);    
+    else throw new Error(`MIDI pitch ${pitch} (${name}) outside valid range 0-127`);    
   }
   function peg$f15(pc) {
     return { name: pc, value: PITCH_CLASS_VALUES[pc] };
@@ -454,7 +449,7 @@ function peg$parse(input, options) {
 
     if (details) {
       return details;
-    } 
+    } else {
       if (pos >= peg$posDetailsCache.length) {
         p = peg$posDetailsCache.length - 1;
       } else {
@@ -482,7 +477,7 @@ function peg$parse(input, options) {
       peg$posDetailsCache[pos] = details;
 
       return details;
-    
+    }
   }
 
   function peg$computeLocation(startPos, endPos, offset) {
@@ -2047,9 +2042,9 @@ function peg$parse(input, options) {
   }
   if (peg$success) {
     return peg$result;
-  } 
+  } else {
     peg$throw();
-  
+  }
 }
 
 const peg$allowedStartRules = [

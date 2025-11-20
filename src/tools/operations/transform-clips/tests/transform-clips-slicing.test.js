@@ -5,7 +5,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "../../test/mock-live-api.js";
+} from "../../../../test/mock-live-api.js";
 import { transformClips } from "../transform-clips.js";
 
 describe("transformClips - slicing", () => {
