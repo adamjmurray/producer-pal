@@ -6,13 +6,128 @@ import { describe, expect, it, vi } from "vitest";
 import { SettingsScreen } from "./SettingsScreen";
 
 // Mock child components
-vi.mock(import("./ConnectionTab"), () => ({
-  ConnectionTab: ({ model }: { model: string }) => (
-    <div>
-      <div data-testid="model-selector">{model}</div>
-    </div>
-  ),
-}));
+vi.mock(import("./ConnectionTab"), () => {
+  const API_KEY_URLS: Record<string, string | undefined> = {
+    gemini: "https://aistudio.google.com/apikey",
+    openai: "https://platform.openai.com/api-keys",
+    mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
+    openrouter: "https://openrouter.ai/settings/keys",
+  };
+
+  const MODEL_DOCS_URLS: Record<string, string | undefined> = {
+    gemini: "https://ai.google.dev/gemini-api/docs/models",
+    openai: "https://platform.openai.com/docs/models",
+    mistral: "https://docs.mistral.ai/getting-started/models",
+    openrouter: "https://openrouter.ai/models",
+    lmstudio: "https://lmstudio.ai/models",
+    ollama: "https://ollama.com/search",
+  };
+
+  return {
+    ConnectionTab: ({
+      provider,
+      apiKey,
+      setApiKey,
+      model,
+      port,
+      setPort,
+      baseUrl,
+      setBaseUrl,
+      providerLabel,
+    }: {
+      provider: string;
+      apiKey: string;
+      setApiKey: (key: string) => void;
+      model: string;
+      port?: number | null;
+      setPort?: (port: number) => void;
+      baseUrl?: string | null;
+      setBaseUrl?: (url: string) => void;
+      providerLabel: string;
+    }) => (
+      <div>
+        {/* Provider selector mock */}
+        <div>
+          <label className="block text-sm mb-2">Provider</label>
+          <select>
+            <option value={provider}>{providerLabel}</option>
+          </select>
+        </div>
+
+        {/* API Key for non-local providers */}
+        {provider !== "lmstudio" && provider !== "ollama" && (
+          <div>
+            <label>{providerLabel} API Key</label>
+            <input
+              type="password"
+              placeholder={`Enter your ${providerLabel} API key`}
+              value={apiKey}
+              onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
+            />
+            {API_KEY_URLS[provider] && (
+              <p>
+                <a
+                  href={API_KEY_URLS[provider]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {providerLabel} API keys
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Port for local providers */}
+        {(provider === "lmstudio" || provider === "ollama") && setPort && (
+          <div>
+            <label>Port</label>
+            <input
+              type="text"
+              placeholder={provider === "lmstudio" ? "1234" : "11434"}
+              value={port?.toString() ?? ""}
+              onChange={(e) => {
+                const value = (e.target as HTMLInputElement).value;
+                const numValue = parseInt(value, 10);
+                if (!isNaN(numValue)) {
+                  setPort(numValue);
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* Base URL for custom provider */}
+        {provider === "custom" && setBaseUrl && (
+          <div>
+            <label>Base URL</label>
+            <input
+              type="text"
+              placeholder="https://api.example.com/v1"
+              value={baseUrl ?? ""}
+              onChange={(e) => setBaseUrl((e.target as HTMLInputElement).value)}
+            />
+          </div>
+        )}
+
+        {/* Model selector mock */}
+        <div data-testid="model-selector">{model}</div>
+        {/* Model docs link - only for providers with docs */}
+        {MODEL_DOCS_URLS[provider] && (
+          <p>
+            <a
+              href={MODEL_DOCS_URLS[provider]}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {providerLabel} models
+            </a>
+          </p>
+        )}
+      </div>
+    ),
+  };
+});
 
 vi.mock(import("./controls/ThinkingSettings"), () => ({
   ThinkingSettings: ({
