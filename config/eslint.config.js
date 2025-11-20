@@ -222,14 +222,13 @@ export default [
       "node_modules/**",
       "release/**",
       "src/notation/barbeat/barbeat-parser.js", // Generated parser
-      "voice/**", // Reference implementation
       "**/*.d.ts", // TypeScript declaration files
     ],
   },
 
   // All JavaScript files (any directory)
   {
-    files: ["{src,scripts,webui}/**/*.{js,mjs}"],
+    files: ["{src,scripts,webui,voice}/**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -251,7 +250,7 @@ export default [
     },
   },
 
-  // All TypeScript files (any directory)
+  // All TypeScript files (any directory except voice - voice has its own config)
   {
     files: ["{src,scripts,webui}/**/*.{ts,tsx}"],
     languageOptions: {
@@ -321,6 +320,57 @@ export default [
     },
   },
 
+  // voice/ - No type-aware linting (no tsconfig)
+  {
+    files: ["voice/**/*.{ts,tsx}"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+        ecmaFeatures: { jsx: true },
+        // No project - disable type-aware linting
+      },
+      globals: {
+        ...globals.browser,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: true,
+        node: true,
+      },
+    },
+    plugins: {
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      jsdoc,
+      "react-hooks": reactHooksPlugin,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...jsdocRules,
+      ...reactHooksPlugin.configs.recommended.rules,
+      // Disable type-aware rules for voice
+      "@typescript-eslint/no-floating-promises": "off",
+      "@typescript-eslint/await-thenable": "off",
+      "@typescript-eslint/no-misused-promises": "off",
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/prefer-optional-chain": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/dot-notation": "off",
+      "@typescript-eslint/no-implied-eval": "off",
+      // JSDoc overrides for TypeScript - TS types are source of truth
+      "jsdoc/require-param-type": "off",
+      "jsdoc/require-returns-type": "off",
+      "jsdoc/check-types": "off",
+    },
+  },
+
   // Max for Live / Live API rules
   {
     files: ["src/**/*.js"],
@@ -369,6 +419,8 @@ export default [
       "scripts/**/*.mjs",
       "webui/**/*.ts",
       "webui/**/*.tsx",
+      "voice/**/*.ts",
+      "voice/**/*.tsx",
     ],
     ignores: [
       "**/*.test.js",

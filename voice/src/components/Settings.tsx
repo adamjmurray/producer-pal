@@ -6,6 +6,14 @@ interface SettingsProps {
   onBack: () => void;
 }
 
+/**
+ * Settings component for managing API key
+ * @param root0 - Component props
+ * @param root0.apiKey - Current API key
+ * @param root0.onSave - Callback to save API key
+ * @param root0.onBack - Callback to return to chat
+ * @returns {JSX.Element} Settings component
+ */
 export function Settings({ apiKey, onSave, onBack }: SettingsProps) {
   const [inputValue, setInputValue] = useState(apiKey);
   const [saved, setSaved] = useState(false);

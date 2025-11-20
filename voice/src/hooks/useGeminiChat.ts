@@ -1,11 +1,15 @@
-import { useState, useCallback, useRef } from 'react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { useState, useCallback, useRef } from 'react';
 
 export interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
+/**
+ *
+ * @param apiKey
+ */
 export function useGeminiChat(apiKey: string) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -68,13 +72,13 @@ export function useGeminiChat(apiKey: string) {
                 ...prev.slice(0, -1),
                 { ...lastMessage, content: assistantMessage },
               ];
-            } else {
+            } 
               // Add new assistant message
               return [
                 ...prev,
                 { role: 'assistant', content: assistantMessage },
               ];
-            }
+            
           });
         }
 

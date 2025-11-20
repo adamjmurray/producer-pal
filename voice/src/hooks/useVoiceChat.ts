@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
 import { GoogleGenAI, Modality } from '@google/genai';
 import type { Session, LiveServerToolCall } from '@google/genai';
+import { useState, useCallback, useRef } from 'react';
 import { tools, executeTool } from '../services/tools';
 
 export interface VoiceChatState {
@@ -17,6 +17,11 @@ export interface VoiceChatState {
   stopStreaming: () => void;
 }
 
+/**
+ *
+ * @param apiKey
+ * @param voiceName
+ */
 export function useVoiceChat(apiKey: string, voiceName?: string): VoiceChatState {
   const [isConnected, setIsConnected] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);

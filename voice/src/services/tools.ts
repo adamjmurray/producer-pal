@@ -32,6 +32,8 @@ export const tools: ToolDefinition[] = [
 
 /**
  * Execute a tool by name
+ * @param name
+ * @param _args
  */
 export async function executeTool(name: string, _args: Record<string, unknown> = {}): Promise<ToolResult> {
   switch (name) {

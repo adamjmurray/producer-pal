@@ -1,12 +1,18 @@
 import { useState } from 'react';
-import { useVoiceChat } from '../hooks/useVoiceChat';
 import { GEMINI_VOICES, DEFAULT_VOICE, type GeminiVoice } from '../constants/voices';
+import { useVoiceChat } from '../hooks/useVoiceChat';
 
 interface VoiceChatProps {
   apiKey: string;
   onOpenSettings: () => void;
 }
 
+/**
+ *
+ * @param root0
+ * @param root0.apiKey
+ * @param root0.onOpenSettings
+ */
 export function VoiceChat({ apiKey, onOpenSettings }: VoiceChatProps) {
   const [selectedVoice, setSelectedVoice] = useState<GeminiVoice>(DEFAULT_VOICE);
 

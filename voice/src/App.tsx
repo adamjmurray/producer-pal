@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { useApiKey } from './hooks/useApiKey';
-import { VoiceChat } from './components/VoiceChat';
 import { Settings } from './components/Settings';
+import { VoiceChat } from './components/VoiceChat';
+import { useApiKey } from './hooks/useApiKey';
 
 type View = 'voice' | 'settings';
 
+/**
+ *
+ */
 function App() {
   const { apiKey, saveApiKey } = useApiKey();
   const [currentView, setCurrentView] = useState<View>('voice');
