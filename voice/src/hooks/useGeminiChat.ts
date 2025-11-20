@@ -7,8 +7,9 @@ export interface Message {
 }
 
 /**
- *
- * @param apiKey
+ * Hook for managing Gemini chat with streaming responses
+ * @param apiKey - Gemini API key
+ * @returns {object} Chat state and functions
  */
 export function useGeminiChat(apiKey: string) {
   const [messages, setMessages] = useState<Message[]>([]);

@@ -32,10 +32,11 @@ export const tools: ToolDefinition[] = [
 
 /**
  * Execute a tool by name
- * @param name
- * @param _args
+ * @param name - Tool name to execute
+ * @param _args - Tool arguments (currently unused)
+ * @returns {Promise<ToolResult>} Tool execution result
  */
-export async function executeTool(name: string, _args: Record<string, unknown> = {}): Promise<ToolResult> {
+export async function executeTool(name: string, _args?: Record<string, unknown>): Promise<ToolResult> {
   switch (name) {
     case 'generate_uuid':
       return {

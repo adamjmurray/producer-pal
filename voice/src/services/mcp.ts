@@ -4,6 +4,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 /**
  * Creates and initializes an MCP server with tools
+ * @returns {Promise<McpServer>} Initialized MCP server
  */
 export async function createMcpServer() {
   const server = new McpServer(
@@ -43,6 +44,7 @@ export async function createMcpServer() {
 
 /**
  * Creates and initializes an MCP client
+ * @returns {Promise<Client>} Initialized MCP client
  */
 export async function createMcpClient() {
   const client = new Client(
@@ -60,6 +62,7 @@ export async function createMcpClient() {
 
 /**
  * Creates a connected MCP server-client pair for in-browser use
+ * @returns {Promise<object>} Connected server and client pair
  */
 export async function createConnectedMcpPair() {
   // Create server and client
