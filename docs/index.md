@@ -11,10 +11,10 @@ hero:
   actions:
     - theme: brand
       text: Installation
-      link: /installation/
+      link: /installation
     - theme: alt
       text: Getting Started
-      link: /guide/
+      link: /guide
 
 features:
   - title: Natural Language Control

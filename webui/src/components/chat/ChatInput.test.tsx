@@ -1,9 +1,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { ChatInput } from "./ChatInput.jsx";
+import { describe, expect, it, vi } from "vitest";
+import { ChatInput } from "./ChatInput";
 
 describe("ChatInput", () => {
   describe("rendering", () => {

@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Stdio-to-HTTP bridge for Producer Pal MCP server",
   "homepage": "https://producer-pal.org",
   "type": "module",

@@ -3,7 +3,7 @@
  */
 import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { RetryButton } from "./RetryButton.jsx";
+import { RetryButton } from "./RetryButton";
 
 describe("RetryButton", () => {
   it("renders the retry button", () => {

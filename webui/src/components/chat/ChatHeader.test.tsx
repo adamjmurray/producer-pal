@@ -1,9 +1,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { ChatHeader } from "./ChatHeader.jsx";
+import { describe, expect, it, vi } from "vitest";
+import { ChatHeader } from "./ChatHeader";
 
 describe("ChatHeader", () => {
   const defaultProps = {

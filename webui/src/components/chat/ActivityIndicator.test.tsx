@@ -1,9 +1,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/preact";
-import { ActivityIndicator } from "./ActivityIndicator.jsx";
+import { describe, expect, it } from "vitest";
+import { ActivityIndicator } from "./ActivityIndicator";
 
 describe("ActivityIndicator", () => {
   it("renders without errors", () => {

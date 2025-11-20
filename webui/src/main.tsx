@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { App } from "./components/App.jsx";
+import { App } from "./components/App";
 import "./main.css";
 
 const appElement = document.getElementById("app");

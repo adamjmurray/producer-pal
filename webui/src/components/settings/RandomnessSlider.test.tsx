@@ -1,9 +1,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { RandomnessSlider } from "./RandomnessSlider.jsx";
+import { describe, expect, it, vi } from "vitest";
+import { RandomnessSlider } from "./RandomnessSlider";
 
 describe("RandomnessSlider", () => {
   it("renders with correct temperature value", () => {

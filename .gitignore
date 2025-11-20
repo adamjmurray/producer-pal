@@ -27,3 +27,6 @@ scratchpad
 # VitePress Documentation Site
 docs/.vitepress/dist
 docs/.vitepress/cache
+
+# Playwright Test Results
+test-results

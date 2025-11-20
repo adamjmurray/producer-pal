@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { Provider } from "../../types/settings.js";
+import type { Provider } from "../../types/settings";
 
 interface ModelSelectorProps {
   provider: Provider;
@@ -88,6 +88,14 @@ const OPENROUTER_MODELS = [
   { value: "OTHER", label: "Other..." },
 ];
 
+/**
+ * Model selection dropdown with provider-specific presets
+ * @param {ModelSelectorProps} root0 - Component props
+ * @param {Provider} root0.provider - Current provider
+ * @param {string} root0.model - Current model
+ * @param {(model: string) => void} root0.setModel - Model setter callback
+ * @returns {JSX.Element} - React component
+ */
 export function ModelSelector({
   provider,
   model,

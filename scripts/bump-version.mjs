@@ -13,6 +13,10 @@ if (!["major", "minor", "patch"].includes(versionType)) {
   process.exit(1);
 }
 
+// Read old version before bumping
+const oldPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
+const oldVersion = oldPkg.version;
+
 // Bump root package.json
 console.log(`Bumping ${versionType} version...`);
 execSync(`npm version ${versionType} --no-git-tag-version`, {
@@ -54,6 +58,21 @@ const npmPkg = JSON.parse(readFileSync(npmPkgPath, "utf8"));
 npmPkg.version = newVersion;
 writeFileSync(npmPkgPath, JSON.stringify(npmPkg, null, 2) + "\n");
 console.log("✓ Updated npm/package.json");
+
+// Update connect.test.js
+const connectTestPath = join(rootDir, "src/tools/workflow/connect.test.js");
+let connectTestContent = readFileSync(connectTestPath, "utf8");
+connectTestContent = connectTestContent
+  .replace(
+    `producerPalVersion: "${oldVersion}"`,
+    `producerPalVersion: "${newVersion}"`,
+  )
+  .replace(
+    `Producer Pal ${oldVersion} connected to Ableton Live`,
+    `Producer Pal ${newVersion} connected to Ableton Live`,
+  );
+writeFileSync(connectTestPath, connectTestContent);
+console.log("✓ Updated src/tools/workflow/connect.test.js");
 
 console.log(`\n✅ Version bumped to ${newVersion}\n`);
 console.log("⚠️  Manual step required:");

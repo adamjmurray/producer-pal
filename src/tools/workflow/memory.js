@@ -1,10 +1,10 @@
 /**
  * Manages user-defined project context stored in the Max device.
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.action - Action to perform: "read" or "write"
  * @param {string} [args.content] - Content to write (required when action is "write")
- * @param {Object} context - The context object from main.js
- * @returns {Object} Project context information
+ * @param {object} context - The context object from main.js
+ * @returns {object} Project context information
  */
 export function memory({ action, content } = {}, context = {}) {
   if (!action) {

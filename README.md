@@ -1,10 +1,10 @@
-# <sub><img src="./dev-docs/img/producer-pal-logo.svg" height="40"/></sub> Producer Pal
+# <sub><img src="./assets/image/producer-pal-logo.svg" height="40"/></sub> Producer Pal
 
 **Natural language interface for Ableton Live**
 
 Control Ableton with Claude, Gemini, OpenAI, local models, and more.
 
-<img src="./dev-docs/img/screenshot.png" alt="Producer Pal Screenshot" width="1000">
+<img src="./assets/image/screenshot.png" alt="Producer Pal Screenshot" width="1000">
 
 ## Quick Start
 

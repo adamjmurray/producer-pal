@@ -9,26 +9,26 @@ import {
 describe("pitch-class-name-to-number", () => {
   describe("PITCH_CLASS_VALUES", () => {
     it("should map natural notes correctly", () => {
-      expect(PITCH_CLASS_VALUES["C"]).toBe(0);
-      expect(PITCH_CLASS_VALUES["D"]).toBe(2);
-      expect(PITCH_CLASS_VALUES["E"]).toBe(4);
-      expect(PITCH_CLASS_VALUES["F"]).toBe(5);
-      expect(PITCH_CLASS_VALUES["G"]).toBe(7);
-      expect(PITCH_CLASS_VALUES["A"]).toBe(9);
-      expect(PITCH_CLASS_VALUES["B"]).toBe(11);
+      expect(PITCH_CLASS_VALUES.C).toBe(0);
+      expect(PITCH_CLASS_VALUES.D).toBe(2);
+      expect(PITCH_CLASS_VALUES.E).toBe(4);
+      expect(PITCH_CLASS_VALUES.F).toBe(5);
+      expect(PITCH_CLASS_VALUES.G).toBe(7);
+      expect(PITCH_CLASS_VALUES.A).toBe(9);
+      expect(PITCH_CLASS_VALUES.B).toBe(11);
     });
 
     it("should map sharp and flat enharmonic equivalents", () => {
       expect(PITCH_CLASS_VALUES["C#"]).toBe(1);
-      expect(PITCH_CLASS_VALUES["Db"]).toBe(1);
+      expect(PITCH_CLASS_VALUES.Db).toBe(1);
       expect(PITCH_CLASS_VALUES["D#"]).toBe(3);
-      expect(PITCH_CLASS_VALUES["Eb"]).toBe(3);
+      expect(PITCH_CLASS_VALUES.Eb).toBe(3);
       expect(PITCH_CLASS_VALUES["F#"]).toBe(6);
-      expect(PITCH_CLASS_VALUES["Gb"]).toBe(6);
+      expect(PITCH_CLASS_VALUES.Gb).toBe(6);
       expect(PITCH_CLASS_VALUES["G#"]).toBe(8);
-      expect(PITCH_CLASS_VALUES["Ab"]).toBe(8);
+      expect(PITCH_CLASS_VALUES.Ab).toBe(8);
       expect(PITCH_CLASS_VALUES["A#"]).toBe(10);
-      expect(PITCH_CLASS_VALUES["Bb"]).toBe(10);
+      expect(PITCH_CLASS_VALUES.Bb).toBe(10);
     });
   });
 

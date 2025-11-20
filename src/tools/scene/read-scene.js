@@ -1,4 +1,4 @@
-import { readClip } from "../clip/read-clip";
+import { readClip } from "../clip/read-clip.js";
 import { validateIdType } from "../shared/id-validation.js";
 import {
   parseIncludeArray,
@@ -7,11 +7,12 @@ import {
 
 /**
  * Read comprehensive information about a scene
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {number} [args.sceneIndex] - Scene index (0-based)
  * @param {string} [args.sceneId] - Scene ID to directly access any scene
  * @param {string[]} [args.include=[]] - Array of data to include
- * @returns {Object} Result object with scene information
+ * @param {object} _context - Internal context object (unused)
+ * @returns {object} Result object with scene information
  */
 export function readScene(args = {}, _context = {}) {
   const { sceneIndex, sceneId } = args;

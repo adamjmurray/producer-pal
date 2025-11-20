@@ -5,9 +5,9 @@ import {
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
-} from "../../test/mock-live-api";
-import { MAX_AUTO_CREATED_TRACKS } from "../constants";
-import { createTrack } from "./create-track";
+} from "../../test/mock-live-api.js";
+import { MAX_AUTO_CREATED_TRACKS } from "../constants.js";
+import { createTrack } from "./create-track.js";
 
 describe("createTrack", () => {
   beforeEach(() => {

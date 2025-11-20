@@ -1,10 +1,10 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { ToolToggles } from "./ToolToggles.jsx";
-import { TOOLS } from "../../constants/tools.js";
+import { describe, expect, it, vi } from "vitest";
+import { TOOLS } from "../../constants/tools";
+import { ToolToggles } from "./ToolToggles";
 
 describe("ToolToggles", () => {
   const defaultProps = {

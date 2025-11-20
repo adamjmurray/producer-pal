@@ -5,8 +5,8 @@ import {
   liveApiPath,
   liveApiSet,
   mockLiveApiGet,
-} from "../../test/mock-live-api";
-import { captureScene } from "./capture-scene";
+} from "../../test/mock-live-api.js";
+import { captureScene } from "./capture-scene.js";
 
 describe("captureScene", () => {
   it("should capture the currently playing clips", () => {

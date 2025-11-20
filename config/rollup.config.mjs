@@ -144,7 +144,7 @@ export default [
             dest: "npm/licenses",
           },
           {
-            src: join(rootDir, "dev-docs/img/producer-pal-logo.svg"),
+            src: join(rootDir, "assets/image/producer-pal-logo.svg"),
             dest: "npm",
           },
         ],

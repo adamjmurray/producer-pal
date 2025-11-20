@@ -1,3 +1,5 @@
+const PPAL_CREATE_CLIP = "ppal-create-clip";
+
 export const parallelToolCallHistory = [
   {
     role: "user",
@@ -16,7 +18,7 @@ export const parallelToolCallHistory = [
       },
       {
         functionCall: {
-          name: "ppal-create-clip",
+          name: PPAL_CREATE_CLIP,
           args: {
             name: "Empty Clip Drums",
             length: "1:0",
@@ -30,7 +32,7 @@ export const parallelToolCallHistory = [
       },
       {
         functionCall: {
-          name: "ppal-create-clip",
+          name: PPAL_CREATE_CLIP,
           args: {
             view: "session",
             sceneIndex: 0,
@@ -47,7 +49,7 @@ export const parallelToolCallHistory = [
     parts: [
       {
         functionResponse: {
-          name: "ppal-create-clip",
+          name: PPAL_CREATE_CLIP,
           response: {
             content: [
               {
@@ -60,7 +62,7 @@ export const parallelToolCallHistory = [
       },
       {
         functionResponse: {
-          name: "ppal-create-clip",
+          name: PPAL_CREATE_CLIP,
           response: {
             content: [
               {
@@ -105,7 +107,7 @@ export const expected = [
       },
       {
         type: "tool",
-        name: "ppal-create-clip",
+        name: PPAL_CREATE_CLIP,
         args: {
           name: "Empty Clip Drums",
           length: "1:0",
@@ -117,7 +119,7 @@ export const expected = [
       },
       {
         type: "tool",
-        name: "ppal-create-clip",
+        name: PPAL_CREATE_CLIP,
         args: {
           view: "session",
           sceneIndex: 0,

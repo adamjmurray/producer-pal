@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-
 // Mock the StdioHttpBridge class
 const mockBridge = {
   start: vi.fn(() => ({ catch: vi.fn() })),

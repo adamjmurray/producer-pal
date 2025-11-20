@@ -1,10 +1,17 @@
-import type { Provider } from "../../types/settings.js";
+import type { Provider } from "../../types/settings";
 
 interface ProviderSelectorProps {
   provider: Provider;
   setProvider: (provider: Provider) => void;
 }
 
+/**
+ * Dropdown selector for AI provider
+ * @param {ProviderSelectorProps} root0 - Component props
+ * @param {Provider} root0.provider - Current provider
+ * @param {(provider: Provider) => void} root0.setProvider - Provider setter callback
+ * @returns {JSX.Element} - React component
+ */
 export function ProviderSelector({
   provider,
   setProvider,

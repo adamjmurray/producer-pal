@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
 // Mock MCP SDK components
 const mockClient = {
   connect: vi.fn(),

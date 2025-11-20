@@ -1,10 +1,10 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/preact";
-import type { UIMessage } from "../../types/messages.js";
-import { ChatScreen } from "./ChatScreen.jsx";
+import { describe, expect, it, vi } from "vitest";
+import type { UIMessage } from "../../types/messages";
+import { ChatScreen } from "./ChatScreen";
 
 describe("ChatScreen", () => {
   const mockHandleSend = vi.fn();

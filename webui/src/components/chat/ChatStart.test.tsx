@@ -1,9 +1,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { ChatStart } from "./ChatStart.jsx";
+import { describe, expect, it, vi } from "vitest";
+import { ChatStart } from "./ChatStart";
 
 describe("ChatStart", () => {
   describe("when mcpStatus is connected", () => {

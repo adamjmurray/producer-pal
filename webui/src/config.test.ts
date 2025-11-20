@@ -4,7 +4,7 @@ import {
   getModelName,
   getThinkingBudget,
   toolNames,
-} from "./config.js";
+} from "./config";
 
 describe("config", () => {
   describe("SYSTEM_INSTRUCTION", () => {

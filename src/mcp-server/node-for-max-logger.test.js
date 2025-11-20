@@ -44,4 +44,12 @@ describe("Node for Max Logger", () => {
       );
     });
   });
+
+  describe("info", () => {
+    it("should not post when verbose is false (default)", () => {
+      logger.info("test info");
+
+      expect(Max.post).not.toHaveBeenCalled();
+    });
+  });
 });

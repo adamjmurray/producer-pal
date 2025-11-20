@@ -1,9 +1,10 @@
 /**
  * @vitest-environment happy-dom
+ * @returns {any} - Hook return value
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/preact";
-import { useTheme } from "./use-theme.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useTheme } from "./use-theme";
 
 describe("useTheme", () => {
   let matchMediaMock: ReturnType<typeof vi.fn>;

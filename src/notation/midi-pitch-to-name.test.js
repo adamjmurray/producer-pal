@@ -2,7 +2,7 @@ import {
   midiPitchToName,
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
-} from "./midi-pitch-to-name";
+} from "./midi-pitch-to-name.js";
 
 describe("midiPitchToName", () => {
   it("converts valid midi pitch numbers to notation-syntax-compatible strings", () => {

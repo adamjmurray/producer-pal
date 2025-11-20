@@ -25,10 +25,10 @@ import {
  */
 /**
  * Read information about a specific device by ID
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} args.deviceId - Device ID to read
  * @param {Array} args.include - Array of data to include in the response
- * @returns {Object} Device information
+ * @returns {object} Device information
  */
 export function readDevice({ deviceId, include = ["chains"] }) {
   const device = new LiveAPI(`id ${deviceId}`);

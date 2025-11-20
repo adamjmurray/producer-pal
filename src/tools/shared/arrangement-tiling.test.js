@@ -310,6 +310,57 @@ describe("adjustClipPreRoll", () => {
     // Pre-roll is 8 beats, new end = 192, temp clip length = 8
     expect(liveApiCall).toHaveBeenNthCalledWith(1, "create_midi_clip", 192, 8);
   });
+
+  it("adjusts audio clip with pre-roll using session view workflow", () => {
+    const clip = new LiveAPI("id 100");
+
+    mockLiveApiGet({
+      "id 100": {
+        start_marker: 2,
+        loop_start: 6,
+        end_time: 100,
+      },
+      live_set: {
+        scenes: ["id", "500"],
+      },
+      "id 500": {
+        is_empty: 1,
+      },
+      "live_set tracks 0 clip_slots 0": {},
+      "live_set tracks 0 clip_slots 0 clip": {},
+    });
+
+    const track = new LiveAPI("live_set tracks 0");
+
+    // Mock return values in sequence:
+    // 1. create_audio_clip (return value not used)
+    // 2. duplicate_clip_to_arrangement (creates temp clip with id 800)
+    liveApiCall
+      .mockReturnValueOnce(undefined) // create_audio_clip
+      .mockReturnValueOnce(["id", "800"]); // duplicate_clip_to_arrangement
+
+    adjustClipPreRoll(clip, track, false, mockContext);
+
+    // Verify start_marker set to loop_start
+    expect(clip.set).toHaveBeenCalledWith("start_marker", 6);
+
+    // Verify audio clip creation in session slot (only takes file path)
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "create_audio_clip",
+      "/tmp/test-silence.wav",
+    );
+
+    // Verify duplicate to arrangement at newClipEnd (96 = 100 - 4)
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      expect.stringContaining("clip_slots"),
+      96,
+    );
+
+    // Verify cleanup: delete session clip and temp arrangement clip
+    expect(liveApiCall).toHaveBeenCalledWith("delete_clip");
+    expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 800");
+  });
 });
 
 describe("createPartialTile", () => {
@@ -334,24 +385,26 @@ describe("createPartialTile", () => {
 
     const track = new LiveAPI("live_set tracks 0");
 
-    // Mock createShortenedClipInHolding
+    // Mock createShortenedClipInHolding - clip needs to be longer than target for temp clip creation
     liveApiCall.mockReturnValueOnce(["id", "200"]);
     mockLiveApiGet({
       "id 200": {
-        end_time: 1000 + 8,
+        end_time: 1000 + 10, // Longer than target length of 8
         start_marker: 1,
         loop_start: 4,
       },
     });
     liveApiCall.mockReturnValueOnce(["id", "300"]);
+    liveApiCall.mockReturnValueOnce(undefined); // delete temp clip
 
     // Mock moveClipFromHolding
     liveApiCall.mockReturnValueOnce(["id", "400"]);
+    liveApiCall.mockReturnValueOnce(undefined); // delete holding clip
 
-    createPartialTile(sourceClip, track, 500, 8, 1000, true, false);
+    createPartialTile(sourceClip, track, 500, 8, 1000, true, {}, false);
 
-    // Should only have 5 calls: duplicate to holding, temp for shorten, delete temp, move, cleanup
-    // No pre-roll adjustment calls
+    // Should have 5 calls: duplicate to holding, create temp, delete temp, move to target, delete holding
+    // No pre-roll adjustment calls (since adjustPreRoll is false)
     expect(liveApiCall).toHaveBeenCalledTimes(5);
   });
 });

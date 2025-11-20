@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { GeminiClient } from "../chat/gemini-client.js";
+import { GeminiClient } from "../chat/gemini-client";
 
 type McpStatus = "connected" | "connecting" | "error";
 
@@ -9,6 +9,10 @@ interface UseMcpConnectionReturn {
   checkMcpConnection: () => Promise<void>;
 }
 
+/**
+ *
+ * @returns {any} - Hook return value
+ */
 export function useMcpConnection(): UseMcpConnectionReturn {
   const [mcpStatus, setMcpStatus] = useState<McpStatus>("connecting");
   const [mcpError, setMcpError] = useState<string | null>(null);

@@ -1,9 +1,9 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/preact";
-import { AssistantError } from "./AssistantError.jsx";
+import { describe, expect, it } from "vitest";
+import { AssistantError } from "./AssistantError";
 
 describe("AssistantError", () => {
   describe("basic rendering", () => {

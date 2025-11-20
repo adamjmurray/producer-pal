@@ -4,8 +4,8 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "../../test/mock-live-api";
-import { updateScene } from "./update-scene";
+} from "../../test/mock-live-api.js";
+import { updateScene } from "./update-scene.js";
 
 describe("updateScene", () => {
   beforeEach(() => {

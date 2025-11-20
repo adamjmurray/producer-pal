@@ -30,7 +30,7 @@ export function validateIdType(id, expectedType, toolName) {
  * @param {Array<string>} ids - Array of IDs to validate
  * @param {string} expectedType - Expected Live API type (case-insensitive)
  * @param {string} toolName - Name of calling tool for error messages
- * @param {Object} [options={}] - Validation options
+ * @param {object} [options={}] - Validation options
  * @param {boolean} [options.skipInvalid=false] - If true, log warnings and skip invalid IDs; if false, throw on first error
  * @returns {Array<LiveAPI>} Array of valid LiveAPI instances (may be empty if skipInvalid=true and all IDs are invalid)
  * @throws {Error} Only if skipInvalid=false and any ID is invalid

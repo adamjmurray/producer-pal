@@ -5,8 +5,8 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../test/mock-live-api";
-import { readScene } from "./read-scene";
+} from "../../test/mock-live-api.js";
+import { readScene } from "./read-scene.js";
 
 describe("readScene", () => {
   it("returns scene information when a valid scene exists", () => {

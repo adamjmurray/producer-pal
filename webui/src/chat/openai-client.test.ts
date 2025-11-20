@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { extractReasoningFromDelta } from "./openai-client.js";
 import type OpenAI from "openai";
+import { describe, expect, it } from "vitest";
+import { extractReasoningFromDelta } from "./openai-client";
 
 describe("extractReasoningFromDelta", () => {
   it("should return empty string for regular content (not reasoning)", () => {

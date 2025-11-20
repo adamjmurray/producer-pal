@@ -1,10 +1,10 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/preact";
-import type { UIPart } from "../../../types/messages.js";
-import { AssistantMessage } from "./AssistantMessage.jsx";
+import { describe, expect, it } from "vitest";
+import type { UIPart } from "../../../types/messages";
+import { AssistantMessage } from "./AssistantMessage";
 
 describe("AssistantMessage", () => {
   describe("basic rendering", () => {

@@ -1,3 +1,7 @@
+/**
+ *
+ * @returns {JSX.Element} - React component
+ */
 export function ActivityIndicator() {
   return (
     <div className="flex justify-center py-2">
@@ -6,6 +10,10 @@ export function ActivityIndicator() {
   );
 }
 
+/**
+ *
+ * @returns {JSX.Element} - React component
+ */
 function SineWave() {
   const width = 400;
   const height = 40;
@@ -90,6 +98,14 @@ function SineWave() {
   );
 }
 
+/**
+ * Generates an SVG path data string for a sine wave
+ * @param {number} width - Width of the wave in pixels
+ * @param {number} amplitude - Height of wave peaks
+ * @param {number} frequency - Number of wave cycles
+ * @param {number} points - Number of points to sample
+ * @returns {JSX.Element} - React component
+ */
 function generateSineWavePath(
   width: number,
   amplitude: number,
