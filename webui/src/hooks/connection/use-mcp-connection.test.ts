@@ -10,7 +10,7 @@ import { useMcpConnection } from "./use-mcp-connection";
 
 // Mock GeminiClient
 // @ts-expect-error - Mock factory doesn't need full class structure
-vi.mock(import("../chat/gemini-client.js"), () => ({
+vi.mock(import("../../chat/gemini-client.js"), () => ({
   GeminiClient: {
     testConnection: vi.fn(),
   },
