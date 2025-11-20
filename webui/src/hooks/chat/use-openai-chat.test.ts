@@ -4,34 +4,45 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import { useGeminiChat } from "./use-gemini-chat";
+import { useOpenAIChat } from "../chat/use-openai-chat";
 
-// Mock GeminiClient
-vi.mock("../chat/gemini-client.js", () => ({
-  GeminiClient: class MockGeminiClient {
-    initialize = vi.fn();
-    sendMessage = vi.fn();
+// Mock OpenAI
+vi.mock("openai", () => ({
+  default: class MockOpenAI {
+    chat = {
+      completions: {
+        create: vi.fn(),
+      },
+    };
   },
-}));
-
-// Mock formatter
-vi.mock("../chat/gemini-formatter.js", () => ({
-  formatGeminiMessages: vi.fn((messages) => messages),
 }));
 
 // Mock config
 vi.mock("../config.js", () => ({
-  getThinkingBudget: vi.fn(() => ({ mode: "auto" })),
   SYSTEM_INSTRUCTION: "Test instruction",
 }));
 
-describe("useGeminiChat", () => {
+// Mock MCP SDK
+vi.mock("@modelcontextprotocol/sdk/client/index.js", () => ({
+  Client: class MockClient {
+    connect = vi.fn();
+    close = vi.fn();
+    listTools = vi.fn(() => ({ tools: [] }));
+    callTool = vi.fn();
+  },
+}));
+
+vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
+  StreamableHTTPClientTransport: vi.fn(),
+}));
+
+describe("useOpenAIChat", () => {
   const defaultProps = {
     apiKey: "test-key",
-    model: "gemini-2.5-flash",
-    thinking: "Auto",
+    model: "gpt-4",
+    thinking: "Low",
     temperature: 1.0,
-    showThoughts: false,
+    baseUrl: "https://api.openai.com/v1",
     enabledTools: {},
     mcpStatus: "connected" as const,
     mcpError: null,
@@ -39,7 +50,7 @@ describe("useGeminiChat", () => {
   };
 
   it("initializes with empty messages", () => {
-    const { result } = renderHook(() => useGeminiChat(defaultProps));
+    const { result } = renderHook(() => useOpenAIChat(defaultProps));
     expect(result.current.messages).toEqual([]);
     expect(result.current.isAssistantResponding).toBe(false);
     expect(result.current.activeModel).toBeNull();
@@ -48,7 +59,7 @@ describe("useGeminiChat", () => {
   });
 
   it("clears conversation when clearConversation is called", async () => {
-    const { result } = renderHook(() => useGeminiChat(defaultProps));
+    const { result } = renderHook(() => useOpenAIChat(defaultProps));
 
     await act(() => {
       result.current.clearConversation();
@@ -61,7 +72,7 @@ describe("useGeminiChat", () => {
   });
 
   it("stopResponse sets isAssistantResponding to false", async () => {
-    const { result } = renderHook(() => useGeminiChat(defaultProps));
+    const { result } = renderHook(() => useOpenAIChat(defaultProps));
 
     await act(() => {
       result.current.stopResponse();

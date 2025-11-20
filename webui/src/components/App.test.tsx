@@ -25,11 +25,11 @@ vi.mock("../hooks/use-openai-chat.js", () => ({
 }));
 
 // Import mocked modules to access them in tests
-import { useGeminiChat } from "../hooks/use-gemini-chat";
-import { useMcpConnection } from "../hooks/use-mcp-connection";
-import { useOpenAIChat } from "../hooks/use-openai-chat";
-import { useSettings } from "../hooks/use-settings";
-import { useTheme } from "../hooks/use-theme";
+import { useGeminiChat } from "../hooks/chat/use-gemini-chat";
+import { useMcpConnection } from "../hooks/connection/use-mcp-connection";
+import { useOpenAIChat } from "../hooks/chat/use-openai-chat";
+import { useSettings } from "../hooks/settings/use-settings";
+import { useTheme } from "../hooks/theme/use-theme";
 import { App } from "./App";
 
 describe("App", () => {

@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "preact/hooks";
-import { useGeminiChat } from "../hooks/use-gemini-chat";
-import { useMcpConnection } from "../hooks/use-mcp-connection";
-import { useOpenAIChat } from "../hooks/use-openai-chat";
-import { useSettings } from "../hooks/use-settings";
-import { useTheme } from "../hooks/use-theme";
+import { useGeminiChat } from "../hooks/chat/use-gemini-chat";
+import { useMcpConnection } from "../hooks/connection/use-mcp-connection";
+import { useOpenAIChat } from "../hooks/chat/use-openai-chat";
+import { useSettings } from "../hooks/settings/use-settings";
+import { useTheme } from "../hooks/theme/use-theme";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 
