@@ -131,7 +131,8 @@ See `dev-docs/Architecture.md` for detailed system design and
   - Use `console.error()` to see output in CLI tool results (appears as WARNING)
   - `console.log()` does NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
-  and linting issues), then `npm run check` (validates all checks pass). This
+  and linting issues), then `npm run check` (validates all checks pass), then
+  `npm run build` (verifies all production artifacts compile successfully). This
   saves time and tokens by pre-emptively fixing likely errors before validation.
 
 ## Project Constraints
