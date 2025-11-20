@@ -1,7 +1,7 @@
 import type { Chat } from "@google/genai/web";
 import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { describe, expect, it, vi } from "vitest";
-import { GeminiClient } from "./gemini-client.js";
+import { GeminiClient } from "./gemini-client";
 
 // Mock the Google GenAI SDK
 vi.mock("@google/genai/web", () => ({

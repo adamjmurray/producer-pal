@@ -1,8 +1,8 @@
-import type { UIPart } from "../../../types/messages.js";
-import { AssistantError } from "./AssistantError.jsx";
-import { AssistantText } from "./AssistantText.jsx";
-import { AssistantThought } from "./AssistantThought.jsx";
-import { AssistantToolCall } from "./AssistantToolCall.jsx";
+import type { UIPart } from "../../../types/messages";
+import { AssistantError } from "./AssistantError";
+import { AssistantText } from "./AssistantText";
+import { AssistantThought } from "./AssistantThought";
+import { AssistantToolCall } from "./AssistantToolCall";
 
 interface AssistantMessageProps {
   parts: UIPart[];

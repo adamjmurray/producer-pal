@@ -1,9 +1,9 @@
-import type { Provider } from "../../types/settings.js";
-import { ConnectionTab } from "./ConnectionTab.jsx";
-import { RandomnessSlider } from "./RandomnessSlider.jsx";
-import { SettingsTabs } from "./SettingsTabs.jsx";
-import { ThinkingSettings } from "./ThinkingSettings.jsx";
-import { ToolToggles } from "./ToolToggles.jsx";
+import type { Provider } from "../../types/settings";
+import { ConnectionTab } from "./ConnectionTab";
+import { RandomnessSlider } from "./RandomnessSlider";
+import { SettingsTabs } from "./SettingsTabs";
+import { ThinkingSettings } from "./ThinkingSettings";
+import { ToolToggles } from "./ToolToggles";
 
 interface SettingsScreenProps {
   provider: Provider;

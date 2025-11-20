@@ -3,8 +3,8 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import type { UIPart } from "../../../types/messages.js";
-import { AssistantMessage } from "./AssistantMessage.jsx";
+import type { UIPart } from "../../../types/messages";
+import { AssistantMessage } from "./AssistantMessage";
 
 describe("AssistantMessage", () => {
   describe("basic rendering", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { duplicate } from "./duplicate";
+import { duplicate } from "./duplicate.js";
 import {
   children,
   liveApiCall,

@@ -4,7 +4,7 @@
  */
 import { renderHook, act } from "@testing-library/preact";
 import { beforeEach, describe, expect, it } from "vitest";
-import { useSettings } from "./use-settings.js";
+import { useSettings } from "./use-settings";
 
 describe("useSettings", () => {
   beforeEach(() => {

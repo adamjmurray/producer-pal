@@ -4,9 +4,9 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "../../test/mock-live-api";
-import { MONITORING_STATE } from "../constants";
-import { updateTrack } from "./update-track";
+} from "../../test/mock-live-api.js";
+import { MONITORING_STATE } from "../constants.js";
+import { updateTrack } from "./update-track.js";
 
 describe("updateTrack", () => {
   beforeEach(() => {

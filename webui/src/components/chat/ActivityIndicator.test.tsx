@@ -3,7 +3,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { ActivityIndicator } from "./ActivityIndicator.jsx";
+import { ActivityIndicator } from "./ActivityIndicator";
 
 describe("ActivityIndicator", () => {
   it("renders without errors", () => {

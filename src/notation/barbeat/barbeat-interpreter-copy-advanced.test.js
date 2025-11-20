@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { interpretNotation } from "./barbeat-interpreter";
+import { interpretNotation } from "./barbeat-interpreter.js";
 
 describe("bar|beat interpretNotation() - advanced bar copy", () => {
   describe("bar copy", () => {
