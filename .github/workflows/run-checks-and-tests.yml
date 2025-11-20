@@ -38,8 +38,12 @@ jobs:
           if ! diff -q src/notation/barbeat/barbeat-parser.js barbeat-parser-backup.js > /dev/null; then
             echo "Error: The checked-in bbs parser does not match the generated parser."
             echo "Please run 'npm run parser:build' and commit the changes."
+            rm barbeat-parser-backup.js
             exit 1
           fi
+
+          # Clean up backup file
+          rm barbeat-parser-backup.js
 
       - name: Lint
         run: npm run lint
@@ -47,10 +51,8 @@ jobs:
       - name: Type check
         run: npm run typecheck
 
-      # Always fails in CI
-      # TODO: figure out why, try to re-enable
-      # - name: Check formatting
-      #   run: npm run format:check
+      - name: Check formatting
+        run: npm run format:check
 
       - name: Run tests with coverage
         id: tests
@@ -64,6 +66,42 @@ jobs:
         with:
           vite-config-path: "./config/vite.config.mjs"
           file-coverage-mode: "all"
+
+  build-verification:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all production artifacts
+        run: npm run build
+
+      - name: Verify all build artifacts exist
+        run: |
+          # Verify Max for Live device artifacts
+          test -f max-for-live-device/live-api-adapter.js || { echo "Missing: live-api-adapter.js"; exit 1; }
+          test -f max-for-live-device/mcp-server.mjs || { echo "Missing: mcp-server.mjs"; exit 1; }
+          test -f max-for-live-device/chat-ui.html || { echo "Missing: chat-ui.html"; exit 1; }
+
+          # Verify portal artifacts
+          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
+          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
+          test -f npm/producer-pal-portal.js || { echo "Missing: npm/producer-pal-portal.js"; exit 1; }
+
+          # Verify Claude Desktop extension
+          test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
+
+          echo "All build artifacts verified successfully!"
 
   playwright-tests:
     runs-on: ubuntu-latest

@@ -4,6 +4,76 @@ import { parseTimeSignature } from "../shared/utils.js";
 import { captureScene } from "./capture-scene.js";
 
 /**
+ * Creates new scenes at the specified index or captures currently playing clips
+ * @param {object} args - The scene parameters
+ * @param {number} [args.sceneIndex] - Scene index (0-based) where to insert new scenes. Required when capture=false, optional when capture=true
+ * @param {number} [args.count=1] - Number of scenes to create (ignored when capture=true)
+ * @param {boolean} [args.capture=false] - Capture currently playing Session clips instead of creating empty scenes
+ * @param {string} [args.name] - Base name for the scenes
+ * @param {string} [args.color] - Color for the scenes (CSS format: hex)
+ * @param {number|null} [args.tempo] - Tempo in BPM for the scenes. Pass -1 to disable.
+ * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
+ * @param {boolean} [args.switchView=false] - Automatically switch to session view
+ * @param {object} _context - Internal context object (unused)
+ * @returns {object | Array<object>} Single scene object when count=1, array when count>1
+ */
+export function createScene(
+  {
+    sceneIndex,
+    count = 1,
+    capture = false,
+    name,
+    color,
+    tempo,
+    timeSignature,
+    switchView,
+  } = {},
+  _context = {},
+) {
+  // Handle capture mode
+  if (capture) {
+    const result = captureScene({ sceneIndex, name });
+    applyCaptureProperties(result, { color, tempo, timeSignature });
+
+    if (switchView) {
+      select({ view: "session" });
+    }
+
+    return result;
+  }
+
+  // Create mode
+  validateCreateSceneArgs(sceneIndex, count);
+
+  const liveSet = new LiveAPI("live_set");
+  ensureSceneCountForIndex(liveSet, sceneIndex);
+
+  const createdScenes = [];
+  let currentIndex = sceneIndex;
+
+  for (let i = 0; i < count; i++) {
+    const sceneResult = createSingleScene(
+      liveSet,
+      currentIndex,
+      i,
+      count,
+      name,
+      color,
+      tempo,
+      timeSignature,
+    );
+    createdScenes.push(sceneResult);
+    currentIndex++;
+  }
+
+  if (switchView) {
+    select({ view: "session" });
+  }
+
+  return count === 1 ? createdScenes[0] : createdScenes;
+}
+
+/**
  * Applies scene properties (color, tempo, timeSignature) to a scene
  * @param {object} scene - The LiveAPI scene object
  * @param {object} props - Properties to apply
@@ -152,74 +222,4 @@ function createSingleScene(
     id: scene.id,
     sceneIndex,
   };
-}
-
-/**
- * Creates new scenes at the specified index or captures currently playing clips
- * @param {object} args - The scene parameters
- * @param {number} [args.sceneIndex] - Scene index (0-based) where to insert new scenes. Required when capture=false, optional when capture=true
- * @param {number} [args.count=1] - Number of scenes to create (ignored when capture=true)
- * @param {boolean} [args.capture=false] - Capture currently playing Session clips instead of creating empty scenes
- * @param {string} [args.name] - Base name for the scenes
- * @param {string} [args.color] - Color for the scenes (CSS format: hex)
- * @param {number|null} [args.tempo] - Tempo in BPM for the scenes. Pass -1 to disable.
- * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
- * @param {boolean} [args.switchView=false] - Automatically switch to session view
- * @param {object} _context - Internal context object (unused)
- * @returns {object | Array<object>} Single scene object when count=1, array when count>1
- */
-export function createScene(
-  {
-    sceneIndex,
-    count = 1,
-    capture = false,
-    name,
-    color,
-    tempo,
-    timeSignature,
-    switchView,
-  } = {},
-  _context = {},
-) {
-  // Handle capture mode
-  if (capture) {
-    const result = captureScene({ sceneIndex, name });
-    applyCaptureProperties(result, { color, tempo, timeSignature });
-
-    if (switchView) {
-      select({ view: "session" });
-    }
-
-    return result;
-  }
-
-  // Create mode
-  validateCreateSceneArgs(sceneIndex, count);
-
-  const liveSet = new LiveAPI("live_set");
-  ensureSceneCountForIndex(liveSet, sceneIndex);
-
-  const createdScenes = [];
-  let currentIndex = sceneIndex;
-
-  for (let i = 0; i < count; i++) {
-    const sceneResult = createSingleScene(
-      liveSet,
-      currentIndex,
-      i,
-      count,
-      name,
-      color,
-      tempo,
-      timeSignature,
-    );
-    createdScenes.push(sceneResult);
-    currentIndex++;
-  }
-
-  if (switchView) {
-    select({ view: "session" });
-  }
-
-  return count === 1 ? createdScenes[0] : createdScenes;
 }
