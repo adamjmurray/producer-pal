@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { DEVICE_TYPES } from "../constants.js";
-import { defineTool } from "../shared/define-tool.js";
+import { defineTool } from "../shared/tool-framework/define-tool.js";
 
 /**
  * HISTORICAL NOTE (Sept 2025):

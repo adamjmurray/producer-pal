@@ -1,6 +1,6 @@
 import { LIVE_API_VIEW_NAMES } from "../constants.js";
-import { validateIdType } from "../shared/id-validation.js";
 import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
+import { validateIdType } from "../shared/validation/id-validation.js";
 
 const MASTER_TRACK_PATH = "live_set master_track";
 
