@@ -1,5 +1,5 @@
 import logoSvg from "../../../assets/producer-pal-logo.svg";
-import { getModelName } from "../../../config";
+import { getModelName } from "../../../lib/config";
 import type { Provider } from "../../../types/settings";
 
 interface ChatHeaderProps {

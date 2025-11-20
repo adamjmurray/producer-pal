@@ -1,4 +1,4 @@
-import { TOOLS } from "../../../constants/tools";
+import { TOOLS } from "../../../lib/constants/tools";
 
 interface ToolTogglesProps {
   enabledTools: Record<string, boolean>;
