@@ -4,13 +4,13 @@ import { validateIdType } from "../../shared/validation/id-validation.js";
 import {
   duplicateClipSlot,
   duplicateClipToArrangement,
-} from "./duplicate-helpers.js";
+} from "./helpers/duplicate-helpers.js";
 import {
   duplicateTrack,
   duplicateScene,
   calculateSceneLength,
   duplicateSceneToArrangement,
-} from "./duplicate-track-scene-helpers.js";
+} from "./helpers/duplicate-track-scene-helpers.js";
 
 /**
  * Duplicates an object based on its type.

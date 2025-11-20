@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiType,
 } from "../../test/mock-live-api.js";
-import { transformClips } from "./transform-clips.js";
+import { transformClips } from "../transform-clips.js";
 
 describe("transformClips - basic", () => {
   it("should throw error when clipIds and arrangementTrackId are missing", () => {

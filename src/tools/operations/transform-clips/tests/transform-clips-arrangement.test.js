@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiType,
 } from "../../test/mock-live-api.js";
-import { transformClips } from "./transform-clips.js";
+import { transformClips } from "../transform-clips.js";
 
 describe("transformClips - arrangement", () => {
   it("should accept arrangementTrackId with arrangementStart/Length instead of clipIds", () => {

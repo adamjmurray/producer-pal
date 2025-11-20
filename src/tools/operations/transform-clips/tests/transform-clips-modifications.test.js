@@ -7,7 +7,7 @@ import {
   liveApiSet,
   liveApiType,
 } from "../../test/mock-live-api.js";
-import { transformClips } from "./transform-clips.js";
+import { transformClips } from "../transform-clips.js";
 
 describe("transformClips - modifications", () => {
   it("should apply velocity modifications to MIDI clip notes", () => {

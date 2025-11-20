@@ -9,7 +9,7 @@ import {
   applyParameterTransforms,
   randomInRange,
   shuffleArray,
-} from "./transform-clips-helpers.js";
+} from "./helpers/transform-clips-helpers.js";
 
 // Re-export helpers for backward compatibility with tests
 export { createSeededRNG, randomInRange, shuffleArray };
