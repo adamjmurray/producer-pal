@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, fireEvent } from "@testing-library/preact";
+import { describe, expect, it, vi } from "vitest";
 import type { Provider } from "../../types/settings.js";
 import { ProviderSelector } from "./ProviderSelector.jsx";
 

@@ -68,7 +68,10 @@ export function updateLiveSet(
 
       result.scale = `${scaleRoot} ${scaleName}`;
     }
-    (result.$meta ??= []).push(
+    if (!result.$meta) {
+      result.$meta = [];
+    }
+    result.$meta.push(
       "Scale applied to selected clips and defaults for new clips.",
     );
   }

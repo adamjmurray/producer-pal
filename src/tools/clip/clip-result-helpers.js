@@ -1,8 +1,8 @@
-import * as console from "../../shared/v8-max-console.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/barbeat-time.js";
+import * as console from "../../shared/v8-max-console.js";
 
 /**
  * Parse song time signature from live_set

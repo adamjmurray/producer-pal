@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
+import type { GeminiMessage, OpenAIMessage } from "../types/messages.js";
 import {
   handleMessageStream,
   createGeminiErrorMessage,
   createOpenAIErrorMessage,
   validateMcpConnection,
 } from "./streaming-helpers.js";
-import type { GeminiMessage, OpenAIMessage } from "../types/messages.js";
 
 describe("streaming-helpers", () => {
   describe("handleMessageStream", () => {

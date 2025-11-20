@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
 import fs from "node:fs";
+import { describe, it, expect } from "vitest";
 import { ensureSilenceWav, SILENCE_WAV } from "./silent-wav-generator.js";
 
 describe("silent-wav-generator", () => {

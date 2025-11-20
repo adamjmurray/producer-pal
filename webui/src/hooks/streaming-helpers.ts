@@ -1,10 +1,10 @@
+import { formatGeminiMessages } from "../chat/gemini-formatter.js";
+import { formatOpenAIMessages } from "../chat/openai-formatter.js";
 import type {
   GeminiMessage,
   OpenAIMessage,
   UIMessage,
 } from "../types/messages.js";
-import { formatGeminiMessages } from "../chat/gemini-formatter.js";
-import { formatOpenAIMessages } from "../chat/openai-formatter.js";
 
 /**
  * Generic streaming handler for chat messages.

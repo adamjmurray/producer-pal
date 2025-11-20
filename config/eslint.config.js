@@ -25,6 +25,24 @@ const baseRules = {
   "import/no-useless-path-segments": "error", // No unnecessary .. in imports
   "import/no-relative-packages": "error", // Don't use relative paths to node_modules
   "import/no-extraneous-dependencies": "error", // Catch dependencies used but not declared
+  "import/order": [
+    "error",
+    {
+      groups: [
+        "builtin", // Node.js built-in modules
+        "external", // npm packages
+        "internal", // Aliased modules
+        "parent", // ../
+        "sibling", // ./
+        "index", // ./index
+      ],
+      "newlines-between": "never", // No blank lines between groups
+      alphabetize: {
+        order: "asc",
+        caseInsensitive: true,
+      },
+    },
+  ],
 
   // Debug & Development
   "no-debugger": "error", // No debugger statements in production
@@ -113,6 +131,27 @@ const sonarCoreRules = {
   "sonarjs/no-element-overwrite": "error", // likely bug
   "sonarjs/no-redundant-assignments": "error", // pointless/buggy reassign
   "sonarjs/no-invariant-returns": "error", // every branch returns same thing
+  "sonarjs/no-identical-expressions": "error", // x === x, a && a bugs
+  "sonarjs/no-identical-conditions": "error", // duplicate if conditions
+  "sonarjs/non-existent-operator": "error", // =+ instead of += typos
+  "sonarjs/no-collection-size-mischeck": "error", // array.length < 0
+  "sonarjs/no-use-of-empty-return-value": "error", // using void function results
+  "sonarjs/no-nested-assignment": "error", // if (x = y) bugs
+  "sonarjs/no-all-duplicated-branches": "error", // all branches identical
+  "sonarjs/no-array-delete": "error", // delete array[i] creates holes
+  "sonarjs/array-callback-without-return": "error", // map/filter without return
+
+  // Async/Promise
+  "sonarjs/no-try-promise": "error", // wrong async error handling
+  "sonarjs/no-unthrown-error": "error", // new Error() not thrown
+
+  // Security
+  "sonarjs/no-hardcoded-passwords": "error", // password literals
+  "sonarjs/no-hardcoded-secrets": "error", // API keys/tokens
+
+  // Test quality
+  "sonarjs/assertions-in-tests": "error", // tests need assertions
+  "sonarjs/no-exclusive-tests": "error", // no .only() in commits
 };
 
 const jsOnlyRules = {
@@ -311,6 +350,7 @@ export default [
       "max-lines-per-function": "off",
       complexity: ["error", 30],
       "sonarjs/no-duplicate-string": "off",
+      "import/order": "off", // Test files need imports after vi.mock() calls
     },
   },
   {

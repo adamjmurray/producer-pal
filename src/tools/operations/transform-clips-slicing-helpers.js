@@ -1,11 +1,11 @@
 import { barBeatDurationToAbletonBeats } from "../../notation/barbeat/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
+import { MAX_SLICES } from "../constants.js";
 import {
   createShortenedClipInHolding,
   moveClipFromHolding,
   tileClipToRange,
 } from "../shared/arrangement-tiling.js";
-import { MAX_SLICES } from "../constants.js";
 
 const HOLDING_AREA_START = 40000;
 

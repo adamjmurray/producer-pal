@@ -1,5 +1,5 @@
-import { useState } from "preact/hooks";
 import type { VNode } from "preact";
+import { useState } from "preact/hooks";
 
 export type TabId = "connection" | "behavior" | "tools" | "appearance";
 

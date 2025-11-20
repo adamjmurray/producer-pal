@@ -1,12 +1,12 @@
 import { validateIdTypes } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
-import { processSingleClipUpdate } from "./update-clip-helpers.js";
+import { handleArrangementLengthOperation } from "./arrangement-operations.js";
 import {
   validateAndParseArrangementParams,
   buildClipResultObject,
   emitArrangementWarnings,
 } from "./clip-result-helpers.js";
-import { handleArrangementLengthOperation } from "./arrangement-operations.js";
+import { processSingleClipUpdate } from "./update-clip-helpers.js";
 
 /**
  * Updates properties of existing clips

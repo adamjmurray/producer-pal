@@ -6,20 +6,20 @@ import * as console from "../../shared/v8-max-console.js";
 import { validateIdType } from "../shared/id-validation.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 import {
-  prepareSliceParams,
-  performSlicing,
-} from "./transform-clips-slicing-helpers.js";
-import {
-  performShuffling,
-  shuffleArray,
-} from "./transform-clips-shuffling-helpers.js";
-import {
   hasAudioTransformParams,
   hasMidiTransformParams,
   applyAudioTransformIfNeeded,
   applyMidiTransformIfNeeded,
   applyParameterTransforms,
 } from "./transform-clips-params-helpers.js";
+import {
+  performShuffling,
+  shuffleArray,
+} from "./transform-clips-shuffling-helpers.js";
+import {
+  prepareSliceParams,
+  performSlicing,
+} from "./transform-clips-slicing-helpers.js";
 
 // Re-export for backward compatibility
 export {

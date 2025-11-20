@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import { readdirSync, statSync } from "fs";
 import { join, basename, extname } from "path";
+import { describe, it, expect } from "vitest";
 
 /**
  * Recursively get all files in a directory
@@ -91,6 +91,7 @@ describe("File naming conventions", () => {
         .join("\n");
       throw new Error(`File naming violations found:\n${message}`);
     }
+    expect(violations).toHaveLength(0);
   });
 
   it("all src files should only use dots for known suffixes and extensions", () => {
@@ -124,5 +125,6 @@ describe("File naming conventions", () => {
           `  - name.config.js (use name-config.js)`,
       );
     }
+    expect(violations).toHaveLength(0);
   });
 });

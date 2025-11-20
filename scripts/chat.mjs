@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
+import { createInterface } from "node:readline";
+import { inspect } from "node:util";
 import { GoogleGenAI, mcpToTool } from "@google/genai";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { Command } from "commander";
-import { createInterface } from "node:readline";
-import { inspect } from "node:util";
 
 const debugSeparator = "\n" + "-".repeat(80);
 

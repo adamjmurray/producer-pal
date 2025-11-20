@@ -2,11 +2,11 @@
  * @vitest-environment happy-dom
  * @returns {any} - Hook return value
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, waitFor } from "@testing-library/preact";
-import { useMcpConnection } from "./use-mcp-connection.js";
-import { GeminiClient } from "../chat/gemini-client.js";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
+import { GeminiClient } from "../chat/gemini-client.js";
+import { useMcpConnection } from "./use-mcp-connection.js";
 
 // Mock GeminiClient
 // @ts-expect-error - Mock factory doesn't need full class structure

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
 import { execSync } from "child_process";
 import { readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { getDisplayName } from "@modelcontextprotocol/sdk/shared/metadataUtils.js";
 import { createMcpServer } from "../src/mcp-server/create-mcp-server.js";
 
 const BUNDLE_FILENAME = "Producer_Pal.mcpb";

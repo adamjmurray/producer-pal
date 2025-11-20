@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import path from "node:path";
 import os from "node:os";
+import path from "node:path";
 
 const SILENCE_WAV = path.join(os.tmpdir(), "ppal-silence.wav");
 

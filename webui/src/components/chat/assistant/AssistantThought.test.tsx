@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/preact";
+import { describe, expect, it } from "vitest";
 import { AssistantThought } from "./AssistantThought.jsx";
 
 describe("AssistantThought", () => {

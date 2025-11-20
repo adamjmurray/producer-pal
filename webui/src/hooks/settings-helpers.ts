@@ -1,5 +1,5 @@
-import type { Provider } from "../types/settings.js";
 import { DEFAULT_ENABLED_TOOLS, TOOLS } from "../constants/tools.js";
+import type { Provider } from "../types/settings.js";
 
 export interface ProviderSettings {
   apiKey: string;

@@ -1,13 +1,13 @@
 // Adapter for communication between Node.js MCP server and Max v8 environment
 
-import Max from "max-api";
 import crypto from "node:crypto";
+import Max from "max-api";
 import {
   formatErrorResponse,
   MAX_ERROR_DELIMITER,
 } from "../shared/mcp-response-utils.js";
-import * as console from "./node-for-max-logger.js";
 import { ensureSilenceWav } from "../shared/silent-wav-generator.js";
+import * as console from "./node-for-max-logger.js";
 
 // Generate silent WAV on module load
 const silenceWavPath = ensureSilenceWav();

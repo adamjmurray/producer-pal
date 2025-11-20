@@ -1,7 +1,7 @@
 import type { GeminiClientConfig } from "../chat/gemini-client.js";
 import type { OpenAIClientConfig } from "../chat/openai-client.js";
-import type { GeminiMessage, OpenAIMessage } from "../types/messages.js";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "../config.js";
+import type { GeminiMessage, OpenAIMessage } from "../types/messages.js";
 
 /**
  * Builds Gemini client configuration from settings
