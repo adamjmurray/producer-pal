@@ -1,48 +1,67 @@
+// String constants for include options
+const DRUM_CHAINS = "drum-chains";
+const DRUM_MAPS = "drum-maps";
+const CLIP_NOTES = "clip-notes";
+const RACK_CHAINS = "rack-chains";
+const MIDI_EFFECTS = "midi-effects";
+const INSTRUMENTS = "instruments";
+const AUDIO_EFFECTS = "audio-effects";
+const SESSION_CLIPS = "session-clips";
+const ARRANGEMENT_CLIPS = "arrangement-clips";
+const REGULAR_TRACKS = "regular-tracks";
+const RETURN_TRACKS = "return-tracks";
+const MASTER_TRACK = "master-track";
+const WARP_MARKERS = "warp-markers";
+const AVAILABLE_ROUTINGS = "available-routings";
+const COLOR = "color";
+const CLIPS = "clips";
+const AUDIO_INFO = "audio-info";
+
 /**
  * All available include options mapped by tool type
  */
 const ALL_INCLUDE_OPTIONS = {
   song: [
-    "drum-chains",
-    "drum-maps",
-    "clip-notes",
-    "rack-chains",
+    DRUM_CHAINS,
+    DRUM_MAPS,
+    CLIP_NOTES,
+    RACK_CHAINS,
     "scenes",
-    "midi-effects",
-    "instruments",
-    "audio-effects",
+    MIDI_EFFECTS,
+    INSTRUMENTS,
+    AUDIO_EFFECTS,
     "routings",
-    "session-clips",
-    "arrangement-clips",
-    "regular-tracks",
-    "return-tracks",
-    "master-track",
+    SESSION_CLIPS,
+    ARRANGEMENT_CLIPS,
+    REGULAR_TRACKS,
+    RETURN_TRACKS,
+    MASTER_TRACK,
     "all-tracks",
     "all-devices",
     "all-clips",
-    "color",
-    "warp-markers",
+    COLOR,
+    WARP_MARKERS,
   ],
   track: [
-    "drum-chains",
-    "drum-maps",
-    "clip-notes",
-    "rack-chains",
-    "midi-effects",
-    "instruments",
-    "audio-effects",
+    DRUM_CHAINS,
+    DRUM_MAPS,
+    CLIP_NOTES,
+    RACK_CHAINS,
+    MIDI_EFFECTS,
+    INSTRUMENTS,
+    AUDIO_EFFECTS,
     "routings",
-    "available-routings",
-    "session-clips",
-    "arrangement-clips",
+    AVAILABLE_ROUTINGS,
+    SESSION_CLIPS,
+    ARRANGEMENT_CLIPS,
     "all-devices",
     "all-routings",
     "all-clips",
-    "color",
-    "warp-markers",
+    COLOR,
+    WARP_MARKERS,
   ],
-  scene: ["clips", "clip-notes", "color", "warp-markers"],
-  clip: ["clip-notes", "audio-info", "color", "warp-markers"],
+  scene: [CLIPS, CLIP_NOTES, COLOR, WARP_MARKERS],
+  clip: [CLIP_NOTES, AUDIO_INFO, COLOR, WARP_MARKERS],
 };
 
 /**
@@ -58,8 +77,8 @@ const SHORTCUT_MAPPINGS = {
 /**
  * Parse include array format and return boolean flags for each option
  * @param {string[]} includeArray - Array of kebab-case include options
- * @param {Object} defaults - Default values for each parameter
- * @returns {Object} Object with boolean include* properties
+ * @param {object} defaults - Default values for each parameter
+ * @returns {object} Object with boolean include* properties
  */
 export function parseIncludeArray(includeArray, defaults = {}) {
   // If no include array is provided (undefined), use defaults
@@ -117,89 +136,89 @@ export function parseIncludeArray(includeArray, defaults = {}) {
   }
 
   const result = {
-    includeDrumChains: includeSet.has("drum-chains"),
-    includeDrumMaps: includeSet.has("drum-maps"),
-    includeClipNotes: includeSet.has("clip-notes"),
-    includeRackChains: includeSet.has("rack-chains"),
+    includeDrumChains: includeSet.has(DRUM_CHAINS),
+    includeDrumMaps: includeSet.has(DRUM_MAPS),
+    includeClipNotes: includeSet.has(CLIP_NOTES),
+    includeRackChains: includeSet.has(RACK_CHAINS),
     includeScenes: hasScenes,
-    includeMidiEffects: includeSet.has("midi-effects"),
-    includeInstruments: includeSet.has("instruments"),
-    includeAudioEffects: includeSet.has("audio-effects"),
+    includeMidiEffects: includeSet.has(MIDI_EFFECTS),
+    includeInstruments: includeSet.has(INSTRUMENTS),
+    includeAudioEffects: includeSet.has(AUDIO_EFFECTS),
     includeRoutings: includeSet.has("routings"),
-    includeAvailableRoutings: includeSet.has("available-routings"),
-    includeSessionClips: includeSet.has("session-clips"),
-    includeArrangementClips: includeSet.has("arrangement-clips"),
-    includeClips: includeSet.has("clips"),
-    includeRegularTracks: includeSet.has("regular-tracks"),
-    includeReturnTracks: includeSet.has("return-tracks"),
-    includeMasterTrack: includeSet.has("master-track"),
-    includeColor: includeSet.has("color"),
-    includeWarpMarkers: includeSet.has("warp-markers"),
+    includeAvailableRoutings: includeSet.has(AVAILABLE_ROUTINGS),
+    includeSessionClips: includeSet.has(SESSION_CLIPS),
+    includeArrangementClips: includeSet.has(ARRANGEMENT_CLIPS),
+    includeClips: includeSet.has(CLIPS),
+    includeRegularTracks: includeSet.has(REGULAR_TRACKS),
+    includeReturnTracks: includeSet.has(RETURN_TRACKS),
+    includeMasterTrack: includeSet.has(MASTER_TRACK),
+    includeColor: includeSet.has(COLOR),
+    includeWarpMarkers: includeSet.has(WARP_MARKERS),
   };
   return result;
 }
 
 /**
  * Convert include flags back to an array format
- * @param {Object} includeFlags - Object with boolean include* properties
+ * @param {object} includeFlags - Object with boolean include* properties
  * @returns {string[]} Array of include options
  */
 export function includeArrayFromFlags(includeFlags) {
   const includes = [];
 
   if (includeFlags.includeDrumChains) {
-    includes.push("drum-chains");
+    includes.push(DRUM_CHAINS);
   }
   if (includeFlags.includeDrumMaps) {
-    includes.push("drum-maps");
+    includes.push(DRUM_MAPS);
   }
   if (includeFlags.includeClipNotes) {
-    includes.push("clip-notes");
+    includes.push(CLIP_NOTES);
   }
   if (includeFlags.includeRackChains) {
-    includes.push("rack-chains");
+    includes.push(RACK_CHAINS);
   }
   if (includeFlags.includeScenes) {
     includes.push("scenes");
   }
   if (includeFlags.includeMidiEffects) {
-    includes.push("midi-effects");
+    includes.push(MIDI_EFFECTS);
   }
   if (includeFlags.includeInstruments) {
-    includes.push("instruments");
+    includes.push(INSTRUMENTS);
   }
   if (includeFlags.includeAudioEffects) {
-    includes.push("audio-effects");
+    includes.push(AUDIO_EFFECTS);
   }
   if (includeFlags.includeRoutings) {
     includes.push("routings");
   }
   if (includeFlags.includeAvailableRoutings) {
-    includes.push("available-routings");
+    includes.push(AVAILABLE_ROUTINGS);
   }
   if (includeFlags.includeSessionClips) {
-    includes.push("session-clips");
+    includes.push(SESSION_CLIPS);
   }
   if (includeFlags.includeArrangementClips) {
-    includes.push("arrangement-clips");
+    includes.push(ARRANGEMENT_CLIPS);
   }
   if (includeFlags.includeClips) {
-    includes.push("clips");
+    includes.push(CLIPS);
   }
   if (includeFlags.includeRegularTracks) {
-    includes.push("regular-tracks");
+    includes.push(REGULAR_TRACKS);
   }
   if (includeFlags.includeReturnTracks) {
-    includes.push("return-tracks");
+    includes.push(RETURN_TRACKS);
   }
   if (includeFlags.includeMasterTrack) {
-    includes.push("master-track");
+    includes.push(MASTER_TRACK);
   }
   if (includeFlags.includeColor) {
-    includes.push("color");
+    includes.push(COLOR);
   }
   if (includeFlags.includeWarpMarkers) {
-    includes.push("warp-markers");
+    includes.push(WARP_MARKERS);
   }
 
   return includes;
@@ -268,7 +287,7 @@ export const READ_CLIP_DEFAULTS = {
 /**
  * Expand shortcuts and '*' in include array to concrete options
  * @param {string[]} includeArray - Array of include options that may contain '*' or shortcuts
- * @param {Object} defaults - Default values to determine tool type from structure
+ * @param {object} defaults - Default values to determine tool type from structure
  * @returns {string[]} Expanded array with shortcuts and '*' replaced by concrete options
  */
 function expandWildcardIncludes(includeArray, defaults) {
@@ -288,18 +307,20 @@ function expandWildcardIncludes(includeArray, defaults) {
   }
 
   // Determine tool type from defaults structure to get appropriate options
-  let toolType = "song"; // default fallback
-  if (defaults.includeRegularTracks !== undefined) {
-    toolType = "song";
-  } else if (defaults.includeSessionClips !== undefined) {
-    toolType = "track";
-  } else if (defaults.includeClips !== undefined) {
-    toolType = "scene";
-  } else if (
+  let toolType;
+  if (
     Object.keys(defaults).length === 1 &&
     defaults.includeClipNotes !== undefined
   ) {
     toolType = "clip";
+  } else if (defaults.includeClips !== undefined) {
+    toolType = "scene";
+  } else if (defaults.includeRegularTracks !== undefined) {
+    toolType = "song";
+  } else if (defaults.includeSessionClips !== undefined) {
+    toolType = "track";
+  } else {
+    toolType = "song"; // fallback
   }
 
   const allOptions = ALL_INCLUDE_OPTIONS[toolType] || [];

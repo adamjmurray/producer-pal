@@ -9,6 +9,17 @@ interface ThinkingSettingsProps {
   setShowThoughts: (show: boolean) => void;
 }
 
+/**
+ * Settings for thinking/reasoning modes
+ * @param {ThinkingSettingsProps} root0 - Component props
+ * @param {Provider} root0.provider - Current provider
+ * @param {string} root0.model - Current model
+ * @param {string} root0.thinking - Thinking level
+ * @param {(thinking: string) => void} root0.setThinking - Thinking setter callback
+ * @param {boolean} root0.showThoughts - Whether to show thoughts
+ * @param {(show: boolean) => void} root0.setShowThoughts - Show thoughts setter callback
+ * @returns {JSX.Element} - React component
+ */
 export function ThinkingSettings({
   provider,
   model: _model,

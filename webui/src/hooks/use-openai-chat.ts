@@ -1,40 +1,13 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import {
-  OpenAIClient,
-  type OpenAIClientConfig,
-} from "../chat/openai-client.js";
+import { OpenAIClient } from "../chat/openai-client.js";
 import { formatOpenAIMessages } from "../chat/openai-formatter.js";
-import { SYSTEM_INSTRUCTION } from "../config.js";
 import type { OpenAIMessage, UIMessage } from "../types/messages.js";
-
-function historyWithError(
-  chatHistory: OpenAIMessage[],
-  error: unknown,
-): UIMessage[] {
-  console.error(error);
-  let errorMessage = `${error}`;
-  if (!errorMessage.startsWith("Error")) {
-    errorMessage = `Error: ${errorMessage}`;
-  }
-
-  // Format existing chat history as UI messages, then append error message
-  const formattedHistory = formatOpenAIMessages(chatHistory);
-
-  // Create error message with proper error part (not text part)
-  const errorMessage_ui: UIMessage = {
-    role: "model",
-    parts: [
-      {
-        type: "error",
-        content: errorMessage,
-        isError: true,
-      },
-    ],
-    rawHistoryIndex: chatHistory.length,
-  };
-
-  return [...formattedHistory, errorMessage_ui];
-}
+import { buildOpenAIConfig } from "./config-builders.js";
+import {
+  createOpenAIErrorMessage,
+  handleMessageStream,
+  validateMcpConnection,
+} from "./streaming-helpers.js";
 
 interface UseOpenAIChatProps {
   apiKey: string;
@@ -63,39 +36,24 @@ interface UseOpenAIChatReturn {
   stopResponse: () => void;
 }
 
-/**
- * Check if we're using the actual OpenAI API (not OpenAI-compatible providers like Groq/Mistral).
- * reasoning_effort is only supported by OpenAI's API.
- */
-function isOpenAIProvider(baseUrl?: string): boolean {
-  // If no baseUrl, OpenAIClient defaults to OpenAI
-  if (!baseUrl) return true;
-  // Check if it's the OpenAI API URL
-  return baseUrl === "https://api.openai.com/v1";
-}
+// Hook orchestrates multiple pieces of state and callbacks for chat functionality
 
 /**
- * Maps Gemini thinking setting to OpenAI reasoning_effort parameter.
- * Note: Most OpenAI models don't support reasoning_effort (only o1/o3 series).
+ * Hook for managing OpenAI chat state and message handling
+ *
+ * @param {UseOpenAIChatProps} root0 - Chat configuration
+ * @param {string} root0.apiKey - OpenAI API key
+ * @param {string} root0.model - OpenAI model name
+ * @param {string} root0.thinking - Reasoning effort level
+ * @param {number} root0.temperature - Temperature for response randomness
+ * @param {string} [root0.baseUrl] - Custom base URL for OpenAI-compatible APIs
+ * @param {Record<string, boolean>} root0.enabledTools - Map of enabled MCP tools
+ * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
+ * @param {string | null} root0.mcpError - MCP connection error if any
+ * @param {() => Promise<void>} root0.checkMcpConnection - Function to verify MCP connection
+ * @returns {UseOpenAIChatReturn} Chat state and handlers
  */
-function mapThinkingToReasoningEffort(
-  thinking: string,
-): "low" | "medium" | "high" | undefined {
-  switch (thinking) {
-    case "Low":
-      return "low";
-    case "High":
-    case "Ultra":
-      return "high";
-    case "Auto":
-    case "Medium":
-      return "medium";
-    default:
-      // "Off" or specific budgets - OpenAI doesn't support granular control
-      return undefined;
-  }
-}
-
+// eslint-disable-next-line max-lines-per-function
 export function useOpenAIChat({
   apiKey,
   model,
@@ -135,36 +93,19 @@ export function useOpenAIChat({
       chatHistory?: OpenAIMessage[],
       overrides?: { thinking?: string; temperature?: number },
     ) => {
-      // Auto-retry MCP connection if it failed
-      if (mcpStatus === "error") {
-        await checkMcpConnection();
-        // Note: mcpStatus is a prop and won't update within this function
-        // The parent needs to re-render for status changes to be reflected
-        throw new Error(`MCP connection failed: ${mcpError}`);
-      }
+      await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
       const effectiveThinking = overrides?.thinking ?? thinking;
       const effectiveTemperature = overrides?.temperature ?? temperature;
 
-      const config: OpenAIClientConfig = {
+      const config = buildOpenAIConfig(
         model,
-        temperature: effectiveTemperature,
-        systemInstruction: SYSTEM_INSTRUCTION,
+        effectiveTemperature,
+        effectiveThinking,
         baseUrl,
         enabledTools,
-      };
-
-      if (chatHistory) {
-        config.chatHistory = chatHistory;
-      }
-
-      // Only include reasoning_effort when using actual OpenAI API (not Groq/Mistral/etc)
-      if (isOpenAIProvider(baseUrl)) {
-        const reasoningEffort = mapThinkingToReasoningEffort(effectiveThinking);
-        if (reasoningEffort) {
-          config.reasoningEffort = reasoningEffort;
-        }
-      }
+        chatHistory,
+      );
 
       openaiRef.current = new OpenAIClient(apiKey, config);
       await openaiRef.current.initialize();
@@ -174,11 +115,11 @@ export function useOpenAIChat({
     },
     [
       mcpStatus,
-      checkMcpConnection,
       mcpError,
-      thinking,
+      checkMcpConnection,
       model,
       temperature,
+      thinking,
       baseUrl,
       enabledTools,
       apiKey,
@@ -190,9 +131,8 @@ export function useOpenAIChat({
       message: string,
       options?: { thinking?: string; temperature?: number },
     ) => {
-      if (!message.trim()) return;
-
       const userMessage = message.trim();
+      if (!userMessage) return;
 
       if (!apiKey) {
         const userMessageEntry: OpenAIMessage = {
@@ -200,7 +140,7 @@ export function useOpenAIChat({
           content: userMessage,
         };
         setMessages(
-          historyWithError(
+          createOpenAIErrorMessage(
             [userMessageEntry],
             "No API key configured. Please add your API key in Settings.",
           ),
@@ -208,7 +148,6 @@ export function useOpenAIChat({
         return;
       }
       setIsAssistantResponding(true);
-
       try {
         if (!openaiRef.current) {
           await initializeChat(undefined, options);
@@ -226,20 +165,10 @@ export function useOpenAIChat({
           controller.signal,
         );
 
-        for await (const chatHistory of stream) {
-          // console.log(
-          //   "useOpenAIChat() received chunk, now history is",
-          //   JSON.stringify(chatHistory, null, 2),
-          // );
-          setMessages(formatOpenAIMessages(chatHistory));
-        }
+        await handleMessageStream(stream, formatOpenAIMessages, setMessages);
       } catch (error) {
-        // Ignore abort errors (expected when user cancels)
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
         setMessages(
-          historyWithError(openaiRef.current?.chatHistory ?? [], error),
+          createOpenAIErrorMessage(openaiRef.current?.chatHistory ?? [], error),
         );
       } finally {
         abortControllerRef.current = null;
@@ -286,15 +215,11 @@ export function useOpenAIChat({
           controller.signal,
         );
 
-        for await (const chatHistory of stream) {
-          setMessages(formatOpenAIMessages(chatHistory));
-        }
+        await handleMessageStream(stream, formatOpenAIMessages, setMessages);
       } catch (error) {
-        // Ignore abort errors (expected when user cancels)
-        if (error instanceof Error && error.name === "AbortError") {
-          return;
-        }
-        setMessages(historyWithError(openaiRef.current.chatHistory, error));
+        setMessages(
+          createOpenAIErrorMessage(openaiRef.current.chatHistory, error),
+        );
       } finally {
         abortControllerRef.current = null;
         setIsAssistantResponding(false);

@@ -2,6 +2,12 @@ interface RetryButtonProps {
   onClick: () => void;
 }
 
+/**
+ * Button to retry from last user message
+ * @param {RetryButtonProps} root0 - Component props
+ * @param {() => void} root0.onClick - Click handler callback
+ * @returns {JSX.Element} - React component
+ */
 export function RetryButton({ onClick }: RetryButtonProps) {
   return (
     <button

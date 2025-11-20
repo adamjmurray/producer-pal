@@ -1,10 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import { fireEvent, render } from "@testing-library/preact";
-import { App } from "./App.jsx";
-
+import { describe, expect, it, vi, beforeEach } from "vitest";
 // Mock all the custom hooks
 vi.mock("../hooks/use-settings.js", () => ({
   useSettings: vi.fn(),
@@ -27,11 +25,12 @@ vi.mock("../hooks/use-openai-chat.js", () => ({
 }));
 
 // Import mocked modules to access them in tests
+import { useGeminiChat } from "../hooks/use-gemini-chat.js";
+import { useMcpConnection } from "../hooks/use-mcp-connection.js";
+import { useOpenAIChat } from "../hooks/use-openai-chat.js";
 import { useSettings } from "../hooks/use-settings.js";
 import { useTheme } from "../hooks/use-theme.js";
-import { useMcpConnection } from "../hooks/use-mcp-connection.js";
-import { useGeminiChat } from "../hooks/use-gemini-chat.js";
-import { useOpenAIChat } from "../hooks/use-openai-chat.js";
+import { App } from "./App.jsx";
 
 describe("App", () => {
   const mockChatHook = {

@@ -5,14 +5,12 @@ import {
   liveApiPath,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
+import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 import { connect } from "./connect.js";
-
 // Mock the getHostTrackIndex function
 vi.mock(import("../shared/get-host-track-index.js"), () => ({
   getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
 }));
-
-import { getHostTrackIndex } from "../shared/get-host-track-index.js";
 
 describe("connect", () => {
   it("includes project notes when context is provided and enabled", () => {

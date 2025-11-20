@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { duplicate } from "./duplicate";
 import {
   children,
   liveApiCall,
@@ -7,7 +8,6 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "./duplicate-test-helpers.js";
-import { duplicate } from "./duplicate";
 
 // Mock updateClip to avoid complex internal logic
 vi.mock(import("../clip/update-clip.js"), () => ({
@@ -292,11 +292,7 @@ describe("duplicate - switchView functionality", () => {
       return this._path;
     });
 
-    liveApiCall.mockImplementation(function (method) {
-      if (method === "duplicate_clip_slot") {
-        // Mock the clip slot duplication result
-        return null;
-      }
+    liveApiCall.mockImplementation(function () {
       return null;
     });
 

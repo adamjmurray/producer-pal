@@ -62,7 +62,7 @@ Gb1 2|1.5,2.5,3.5,4.5 # hats on bar 2, off-beats
 
 /**
  * Generate initialization instructions based on context
- * @param {Object} context - The userContext from main.js
+ * @param {object} context - The userContext from main.js
  * @returns {string} Instructions for completing Producer Pal initialization
  */
 export function buildInstructions(context) {

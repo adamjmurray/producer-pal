@@ -10,6 +10,14 @@ interface MessageListProps {
   handleRetry: (messageIndex: number) => Promise<void>;
 }
 
+/**
+ * List of chat messages with auto-scroll
+ * @param {MessageListProps} root0 - Component props
+ * @param {UIMessage[]} root0.messages - Chat messages to display
+ * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
+ * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
+ * @returns {JSX.Element} - React component
+ */
 export function MessageList({
   messages,
   isAssistantResponding,
@@ -81,10 +89,20 @@ export function MessageList({
   );
 }
 
+/**
+ * Checks if message has content to display
+ * @param {UIMessage} message - Message to check
+ * @returns {JSX.Element} - React component
+ */
 function hasContent(message: UIMessage): boolean {
   return message.parts.length > 0;
 }
 
+/**
+ * Formats user message content as string
+ * @param {UIMessage} message - User message to format
+ * @returns {JSX.Element} - React component
+ */
 function formatUserContent(message: UIMessage): string {
   return message.parts
     .map((part) => {

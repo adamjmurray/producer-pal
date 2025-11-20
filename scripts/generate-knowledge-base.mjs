@@ -22,10 +22,21 @@ const IGNORE_PATTERNS = [
 
 const FLAT_SEP = "--";
 
+/**
+ * Converts filesystem path separators to flat separator for file naming
+ * @param {string} pathStr - The path string to flatten
+ * @returns {string} - Flattened path string
+ */
 function flattenPath(pathStr) {
   return pathStr.replace(/[/\\]/g, FLAT_SEP);
 }
 
+/**
+ * Adds items to a named group in the groups map
+ * @param {Map} groups - Map of group names to arrays of items
+ * @param {string} groupName - Name of the group to add to
+ * @param {...any} item - Items to add to the group
+ */
 function addToGroup(groups, groupName, ...item) {
   if (!groups.has(groupName)) {
     groups.set(groupName, []);
@@ -33,6 +44,12 @@ function addToGroup(groups, groupName, ...item) {
   groups.get(groupName).push(...item);
 }
 
+/**
+ * Computes the group name for a file based on item configuration
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} filePath - Absolute path to the file
+ * @returns {string} - Computed group name
+ */
 function computeGroupName(item, filePath) {
   const itemGroup =
     typeof item.group === "function"
@@ -46,6 +63,9 @@ function computeGroupName(item, filePath) {
   return itemGroup || item.targetDirName || path.basename(item.src) || "misc";
 }
 
+/**
+ *
+ */
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
@@ -58,6 +78,11 @@ async function cleanAndCreateOutputDir() {
 
 const codeExts = [".js", ".mjs", ".ts", ".jsx", ".tsx"];
 
+/**
+ * Copies a file, prepending path comment for code files
+ * @param {string} sourcePath - Source file path
+ * @param {string} targetPath - Target file path
+ */
 async function copyFile(sourcePath, targetPath) {
   const ext = path.extname(sourcePath);
 
@@ -140,6 +165,11 @@ const itemsToCopy = [
   },
 
   // Individual files
+  {
+    src: ".claude/skills/refactoring/SKILL.md",
+    flatName: "claude-refactoring-SKILL.md",
+    group: "config",
+  },
   { src: ".gitignore", flatName: "gitignore", group: "config" },
   { src: "AGENTS.md", group: "config" },
   { src: "CLAUDE.md", group: "config" },
@@ -158,6 +188,57 @@ const itemsToCopy = [
   { src: "claude-desktop-extension/package.json", group: "config" },
 ];
 
+/**
+ * Processes directory copying with flat file naming
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source directory path
+ * @param {Set} excludeGroups - Set of group names to exclude
+ */
+async function processCopyDirectory(item, sourcePath, excludeGroups) {
+  const files = await findAllFiles(sourcePath, item.exclude || []);
+  const dirName = item.targetDirName || path.basename(item.src);
+
+  for (const filePath of files) {
+    // Check if this file's group should be excluded
+    const groupName = computeGroupName(item, filePath);
+    if (excludeGroups.has(groupName)) {
+      continue;
+    }
+
+    const relativePath = path.relative(sourcePath, filePath);
+    const flatName = dirName + FLAT_SEP + flattenPath(relativePath);
+    const targetPath = path.join(outputDir, flatName);
+    await copyFile(filePath, targetPath);
+    console.log(
+      `  ${path.relative(projectRoot, filePath)} → ${path.relative(projectRoot, targetPath)}`,
+    );
+  }
+}
+
+/**
+ * Processes single file copying with flat file naming
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source file path
+ * @param {Set} excludeGroups - Set of group names to exclude
+ */
+async function processCopyFile(item, sourcePath, excludeGroups) {
+  // Check if this file's group should be excluded
+  const groupName = computeGroupName(item, sourcePath);
+  if (excludeGroups.has(groupName)) {
+    return;
+  }
+
+  // Copy single file
+  const targetName = item.flatName || flattenPath(item.src);
+  const targetPath = path.join(outputDir, targetName);
+  await copyFile(sourcePath, targetPath);
+  console.log(`  ${item.src} → ${targetName}`);
+}
+
+/**
+ * Copies all configured directories and files with flat naming
+ * @param {Set} excludeGroups - Set of group names to exclude
+ */
 async function copyDirectoriesAndFiles(excludeGroups) {
   console.log("Copying files...");
 
@@ -169,37 +250,9 @@ async function copyDirectoriesAndFiles(excludeGroups) {
 
       if (item.isDir && stat.isDirectory()) {
         // Copy all files from directory with automatic prefix
-        const files = await findAllFiles(sourcePath, item.exclude || []);
-
-        const dirName = item.targetDirName || path.basename(item.src);
-
-        for (const filePath of files) {
-          // Check if this file's group should be excluded
-          const groupName = computeGroupName(item, filePath);
-          if (excludeGroups.has(groupName)) {
-            continue;
-          }
-
-          const relativePath = path.relative(sourcePath, filePath);
-          const flatName = dirName + FLAT_SEP + flattenPath(relativePath);
-          const targetPath = path.join(outputDir, flatName);
-          await copyFile(filePath, targetPath);
-          console.log(
-            `  ${path.relative(projectRoot, filePath)} → ${path.relative(projectRoot, targetPath)}`,
-          );
-        }
+        await processCopyDirectory(item, sourcePath, excludeGroups);
       } else if (stat.isFile()) {
-        // Check if this file's group should be excluded
-        const groupName = computeGroupName(item, sourcePath);
-        if (excludeGroups.has(groupName)) {
-          continue;
-        }
-
-        // Copy single file
-        const targetName = item.flatName || flattenPath(item.src);
-        const targetPath = path.join(outputDir, targetName);
-        await copyFile(sourcePath, targetPath);
-        console.log(`  ${item.src} → ${targetName}`);
+        await processCopyFile(item, sourcePath, excludeGroups);
       }
     } catch (_error) {
       console.log(`  Skipping ${item.src} (not found)`);
@@ -207,6 +260,13 @@ async function copyDirectoriesAndFiles(excludeGroups) {
   }
 }
 
+/**
+ * Recursively finds all files in a directory, excluding specified paths
+ * @param {string} dir - Directory to search
+ * @param {string[]} excludePaths - Array of relative paths to exclude
+ * @param {string} baseDir - Base directory for computing relative paths
+ * @returns {Promise<string[]>} - Array of file paths
+ */
 async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   const files = [];
   const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -241,57 +301,61 @@ async function findAllFiles(dir, excludePaths = [], baseDir = dir) {
   return files;
 }
 
-async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
-  console.log("Concatenating files into groups...");
+/**
+ * Processes directory for concatenation mode, grouping files
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source directory path
+ * @param {Map} fileGroups - Map of group names to file arrays
+ */
+async function processConcatenateDirectory(item, sourcePath, fileGroups) {
+  const files = await findAllFiles(sourcePath, item.exclude || []);
+  const dirName = item.targetDirName || path.basename(item.src);
 
-  const fileGroups = new Map(); // Map of output filename -> array of source files
-
-  // Process each item to group files appropriately
-  for (const item of itemsToCopy) {
-    const sourcePath = path.join(projectRoot, item.src);
-
-    try {
-      const stat = await fs.stat(sourcePath);
-
-      if (item.isDir && stat.isDirectory()) {
-        const files = await findAllFiles(sourcePath, item.exclude || []);
-        const dirName = item.targetDirName || path.basename(item.src);
-
-        if (typeof item.group === "function") {
-          // Dynamic grouping - call function for each file
-          for (const filePath of files) {
-            const relativePath = path.relative(projectRoot, filePath);
-            const groupName =
-              item.group({
-                config: item,
-                file: filePath,
-                relativePath,
-              }) || dirName;
-            addToGroup(fileGroups, groupName, filePath);
-          }
-        } else {
-          // Static grouping - use string or default
-          const groupName = item.group || dirName;
-          addToGroup(fileGroups, groupName, ...files);
-        }
-      } else if (stat.isFile()) {
-        const relativePath = path.relative(projectRoot, sourcePath);
-        const groupName =
-          (typeof item.group === "function"
-            ? item.group({
-                config: item,
-                file: sourcePath,
-                relativePath,
-              })
-            : item.group) || "misc";
-        addToGroup(fileGroups, groupName, sourcePath);
-      }
-    } catch (_error) {
-      console.log(`  Skipping ${item.src} (not found)`);
+  if (typeof item.group === "function") {
+    // Dynamic grouping - call function for each file
+    for (const filePath of files) {
+      const relativePath = path.relative(projectRoot, filePath);
+      const groupName =
+        item.group({
+          config: item,
+          file: filePath,
+          relativePath,
+        }) || dirName;
+      addToGroup(fileGroups, groupName, filePath);
     }
+  } else {
+    // Static grouping - use string or default
+    const groupName = item.group || dirName;
+    addToGroup(fileGroups, groupName, ...files);
   }
+}
 
-  // Now write the concatenated files
+/**
+ * Processes single file for concatenation mode, adding to group
+ * @param {object} item - Configuration item from itemsToCopy
+ * @param {string} sourcePath - Source file path
+ * @param {Map} fileGroups - Map of group names to file arrays
+ */
+async function processConcatenateFile(item, sourcePath, fileGroups) {
+  const relativePath = path.relative(projectRoot, sourcePath);
+  const groupName =
+    (typeof item.group === "function"
+      ? item.group({
+          config: item,
+          file: sourcePath,
+          relativePath,
+        })
+      : item.group) || "misc";
+  addToGroup(fileGroups, groupName, sourcePath);
+}
+
+/**
+ * Writes concatenated files for each group
+ * @param {Map} fileGroups - Map of group names to file arrays
+ * @param {Set} excludeGroups - Set of group names to exclude
+ */
+async function writeGroupFiles(fileGroups, excludeGroups) {
+  // Write the concatenated files
   for (const [groupName, sourceFiles] of fileGroups) {
     if (sourceFiles.length === 0) continue;
 
@@ -338,6 +402,38 @@ async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
   }
 }
 
+/**
+ * Concatenates all configured directories and files by group
+ * @param {Set} excludeGroups - Set of group names to exclude
+ */
+async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
+  console.log("Concatenating files into groups...");
+
+  const fileGroups = new Map(); // Map of output filename -> array of source files
+
+  // Process each item to group files appropriately
+  for (const item of itemsToCopy) {
+    const sourcePath = path.join(projectRoot, item.src);
+
+    try {
+      const stat = await fs.stat(sourcePath);
+
+      if (item.isDir && stat.isDirectory()) {
+        await processConcatenateDirectory(item, sourcePath, fileGroups);
+      } else if (stat.isFile()) {
+        await processConcatenateFile(item, sourcePath, fileGroups);
+      }
+    } catch (_error) {
+      console.log(`  Skipping ${item.src} (not found)`);
+    }
+  }
+
+  await writeGroupFiles(fileGroups, excludeGroups);
+}
+
+/**
+ *
+ */
 async function main() {
   try {
     // Parse command line arguments

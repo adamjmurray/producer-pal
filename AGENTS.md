@@ -27,6 +27,8 @@ npm run ui:build # Production build
 npm run docs:dev     # Development server with hot reload
 npm run docs:build   # Build static site
 npm run docs:preview # Preview production build
+# When editing docs, use clean URLs: /chat-ui not /chat-ui.html (no trailing slash)
+# Page files named after folder: docs/guide.md not docs/guide/index.md (except top-level docs/index.md)
 ```
 
 ## Architecture
@@ -138,6 +140,32 @@ See `dev-docs/Architecture.md` for detailed system design and
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution
+
+## Refactoring & Code Quality
+
+See `.claude/skills/refactoring/SKILL.md` for comprehensive refactoring
+guidelines.
+
+Key ESLint limits to respect:
+
+- `max-lines-per-function`: 150 (ignoring blank/comment lines)
+  - allowed exceptions: the main useHook() function in webui hooks can be
+    excluded from this rule via
+    `eslint-disable-next-line max-lines-per-function` comments (do not disable
+    for the whole file)
+- `max-depth`: 4
+- `complexity`: 20
+
+When ESLint reports violations, consult the refactoring skill for strategies.
+
+### DRY (Don't Repeat Yourself)
+
+Rules:
+
+- No duplicate function bodies (caught by ESLint)
+- Extract repeated logic with too many identical lines
+- Shared constants in one place
+- Similar patterns suggest missing abstraction
 
 ## Documentation
 

@@ -263,15 +263,7 @@ describe("view", () => {
         this.setProperty = vi.fn((property, value) =>
           this.set(property, value),
         );
-        if (
-          path.startsWith("live_set tracks") ||
-          path.startsWith("live_set return_tracks") ||
-          path.startsWith("live_set master_track")
-        ) {
-          this._id = "id track_id_123";
-        } else {
-          this._id = "id track_id_123";
-        }
+        this._id = "id track_id_123";
         Object.defineProperty(this, "id", {
           get: function () {
             return liveApiId.apply(this);
@@ -325,11 +317,7 @@ describe("view", () => {
         this.setProperty = vi.fn((property, value) =>
           this.set(property, value),
         );
-        if (path.startsWith("live_set scenes")) {
-          this._id = "id scene_id_456";
-        } else {
-          this._id = "id scene_id_456";
-        }
+        this._id = "id scene_id_456";
         Object.defineProperty(this, "id", {
           get: function () {
             return liveApiId.apply(this);
@@ -486,7 +474,13 @@ describe("view", () => {
             get: vi.fn().mockReturnValue(null), // No selected device
           };
         }
-        return {};
+        // Default fallback for any other LiveAPI object
+        return {
+          exists: vi.fn().mockReturnValue(true),
+          call: liveApiCall,
+          get: vi.fn(),
+          set: liveApiSet,
+        };
       });
 
       const result = select({ instrument: true });

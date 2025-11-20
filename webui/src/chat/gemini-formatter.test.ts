@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { formatGeminiMessages } from "./gemini-formatter.js";
 import {
   expected,
   history,
@@ -25,8 +26,6 @@ import {
   expectedWithToolError,
   historyWithToolError,
 } from "./test-cases/gemini-formatter/tool-call-error-test-case.js";
-
-import { formatGeminiMessages } from "./gemini-formatter.js";
 
 describe("formatGeminiMessages", () => {
   it("merges consecutive model messages and adds functionResponses to functionCalls ", () => {

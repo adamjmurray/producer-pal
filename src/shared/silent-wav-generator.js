@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import path from "node:path";
 import os from "node:os";
+import path from "node:path";
 
 const SILENCE_WAV = path.join(os.tmpdir(), "ppal-silence.wav");
 
@@ -35,6 +35,8 @@ export { SILENCE_WAV };
 /**
  * Creates a silent WAV file (0.1 second, 44.1kHz, 16-bit mono)
  * File size: ~8.8KB
+ *
+ * @param {string} filePath - Path where the WAV file will be created
  */
 function createSilentWav(filePath) {
   const sampleRate = 44100;

@@ -1,8 +1,9 @@
 /**
  * @vitest-environment happy-dom
+ * @returns {any} - Hook return value
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/preact";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTheme } from "./use-theme.js";
 
 describe("useTheme", () => {

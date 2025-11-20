@@ -2,6 +2,30 @@ import { LIVE_API_VIEW_NAMES } from "../constants.js";
 import { validateIdType } from "../shared/id-validation.js";
 import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
 
+const MASTER_TRACK_PATH = "live_set master_track";
+
+/**
+ * Build track path string based on category and index
+ *
+ * @param {string} category - Track category ('regular', 'return', or 'master')
+ * @param {number} trackIndex - Track index (0-based)
+ * @returns {string|null} Track path string or null if invalid category
+ */
+function buildTrackPath(category, trackIndex) {
+  const finalCategory = category || "regular";
+
+  if (finalCategory === "regular") {
+    return `live_set tracks ${trackIndex}`;
+  }
+  if (finalCategory === "return") {
+    return `live_set return_tracks ${trackIndex}`;
+  }
+  if (finalCategory === "master") {
+    return MASTER_TRACK_PATH;
+  }
+  return null;
+}
+
 /**
  * Reads or updates the view state and selection in Ableton Live.
  *
@@ -15,7 +39,7 @@ import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
  * 3) Context strongly suggests the user would benefit from seeing the result.
  * When in doubt, don't change views.
  *
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {string} [args.view] - Main view to switch to ('session' or 'arrangement')
  * @param {string} [args.trackId] - Track ID to select
  * @param {string} [args.category] - Track category ('regular', 'return', or 'master')
@@ -25,11 +49,12 @@ import { fromLiveApiView, toLiveApiView } from "../shared/utils.js";
  * @param {string|null} [args.clipId] - Clip ID to select (null to deselect all clips)
  * @param {string} [args.deviceId] - Device ID to select
  * @param {boolean} [args.instrument] - Select the track's instrument
- * @param {Object} [args.clipSlot] - Clip slot to highlight {trackIndex, sceneIndex}
+ * @param {object} [args.clipSlot] - Clip slot to highlight {trackIndex, sceneIndex}
  * @param {string} [args.detailView] - Detail view to show ('clip', 'device', or 'none')
  * @param {boolean} [args.showLoop] - Show loop view for selected clip
  * @param {boolean} [args.showBrowser] - Show browser view
- * @returns {Object} Current view state with selection information
+ * @param {object} _context - Context from main (unused)
+ * @returns {object} Current view state with selection information
  */
 export function select(
   {
@@ -157,6 +182,19 @@ export function select(
   return readViewState();
 }
 
+/**
+ * Validate selection parameters for conflicts
+ *
+ * @param {object} root0 - Parameters object
+ * @param {string} root0.trackId - Track ID
+ * @param {string} root0.category - Track category
+ * @param {number} root0.trackIndex - Track index
+ * @param {string} root0.sceneId - Scene ID
+ * @param {number} root0.sceneIndex - Scene index
+ * @param {string} root0.deviceId - Device ID
+ * @param {boolean} root0.instrument - Instrument selection flag
+ * @param {object} root0.clipSlot - Clip slot coordinates
+ */
 function validateParameters({
   trackId,
   category,
@@ -181,16 +219,7 @@ function validateParameters({
 
   // Cross-validation for track ID vs index (requires Live API calls)
   if (trackId != null && trackIndex != null) {
-    const finalCategory = category || "regular";
-    let trackPath;
-    if (finalCategory === "regular") {
-      trackPath = `live_set tracks ${trackIndex}`;
-    } else if (finalCategory === "return") {
-      trackPath = `live_set return_tracks ${trackIndex}`;
-    } else if (finalCategory === "master") {
-      trackPath = "live_set master_track";
-    }
-
+    const trackPath = buildTrackPath(category, trackIndex);
     if (trackPath) {
       const trackAPI = new LiveAPI(trackPath);
       if (trackAPI.exists() && trackAPI.id !== trackId) {
@@ -208,6 +237,16 @@ function validateParameters({
   }
 }
 
+/**
+ * Update track selection in Live
+ *
+ * @param {object} root0 - Selection parameters
+ * @param {object} root0.songView - LiveAPI instance for live_set view
+ * @param {string} root0.trackId - Track ID to select
+ * @param {string} root0.category - Track category
+ * @param {number} root0.trackIndex - Track index
+ * @returns {object} Selection result with track info
+ */
 function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   const result = {};
 
@@ -229,15 +268,7 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   } else if (category != null || trackIndex != null) {
     // Select by category/index
     const finalCategory = category || "regular";
-    let trackPath;
-
-    if (finalCategory === "regular") {
-      trackPath = `live_set tracks ${trackIndex}`;
-    } else if (finalCategory === "return") {
-      trackPath = `live_set return_tracks ${trackIndex}`;
-    } else if (finalCategory === "master") {
-      trackPath = "live_set master_track";
-    }
+    const trackPath = buildTrackPath(category, trackIndex);
 
     if (trackPath) {
       trackAPI = new LiveAPI(trackPath);
@@ -256,6 +287,15 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
   return result;
 }
 
+/**
+ * Update scene selection in Live
+ *
+ * @param {object} root0 - Selection parameters
+ * @param {object} root0.songView - LiveAPI instance for live_set view
+ * @param {string} root0.sceneId - Scene ID to select
+ * @param {number} root0.sceneIndex - Scene index
+ * @returns {object} Selection result with scene info
+ */
 function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   const result = {};
 
@@ -281,6 +321,14 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   return result;
 }
 
+/**
+ * Update device selection in Live
+ *
+ * @param {object} root0 - Selection parameters
+ * @param {string} root0.deviceId - Device ID to select
+ * @param {boolean} root0.instrument - Whether to select instrument
+ * @param {object} root0.trackSelectionResult - Previous track selection result
+ */
 function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   if (deviceId != null) {
     // Select specific device by ID and validate it's a device
@@ -294,26 +342,21 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
     songView.call("select_device", deviceIdForApi);
   } else if (instrument === true) {
     // Select instrument on the currently selected or specified track
-    let trackPath = null;
+    let trackPath = buildTrackPath(
+      trackSelectionResult.selectedCategory,
+      trackSelectionResult.selectedTrackIndex,
+    );
 
-    if (trackSelectionResult.selectedCategory === "regular") {
-      trackPath = `live_set tracks ${trackSelectionResult.selectedTrackIndex}`;
-    } else if (trackSelectionResult.selectedCategory === "return") {
-      trackPath = `live_set return_tracks ${trackSelectionResult.selectedTrackIndex}`;
-    } else if (trackSelectionResult.selectedCategory === "master") {
-      trackPath = "live_set master_track";
-    } else {
+    if (!trackPath) {
       // Use currently selected track
       const selectedTrackAPI = new LiveAPI("live_set view selected_track");
       if (selectedTrackAPI.exists()) {
         const category = selectedTrackAPI.category;
-        if (category === "regular") {
-          trackPath = `live_set tracks ${selectedTrackAPI.trackIndex}`;
-        } else if (category === "return") {
-          trackPath = `live_set return_tracks ${selectedTrackAPI.returnTrackIndex}`;
-        } else if (category === "master") {
-          trackPath = "live_set master_track";
-        }
+        const trackIndex =
+          category === "return"
+            ? selectedTrackAPI.returnTrackIndex
+            : selectedTrackAPI.trackIndex;
+        trackPath = buildTrackPath(category, trackIndex);
       }
     }
 
@@ -327,6 +370,13 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
   }
 }
 
+/**
+ * Update highlighted clip slot in Live
+ *
+ * @param {object} root0 - Selection parameters
+ * @param {object} root0.songView - LiveAPI instance for live_set view
+ * @param {object} root0.clipSlot - Clip slot coordinates {trackIndex, sceneIndex}
+ */
 function updateHighlightedClipSlot({ songView, clipSlot }) {
   if (clipSlot != null) {
     // Set by indices
@@ -352,6 +402,8 @@ function updateHighlightedClipSlot({ songView, clipSlot }) {
  * 2) After creating/modifying objects the user specifically asked to work on,
  * 3) Context strongly suggests the user would benefit from seeing the result.
  * When in doubt, don't change views.
+ *
+ * @returns {object} Current view state with all selection information
  */
 function readViewState() {
   const appView = new LiveAPI("live_app view");

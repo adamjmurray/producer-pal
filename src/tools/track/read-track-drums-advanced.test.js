@@ -5,8 +5,8 @@ import {
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
-import { readTrack } from "./read-track.js";
 import { mockTrackProperties } from "./read-track-test-helpers.js";
+import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
   describe("drumChains", () => {
@@ -170,7 +170,7 @@ describe("readTrack", () => {
         },
       });
 
-      readTrack({
+      const result = readTrack({
         trackIndex: 0,
         include: [
           "clip-notes",
@@ -181,6 +181,10 @@ describe("readTrack", () => {
           "drum-chains",
         ],
       });
+
+      // Verify the track was read successfully
+      expect(result.id).toBe("track1");
+      expect(result.instrument).toBeDefined();
 
       // drumChains only included when drum-chains is requested
       // expect(result.instrument.drumChains).toEqual([

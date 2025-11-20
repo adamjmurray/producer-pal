@@ -24,6 +24,7 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: "v8",
+      ignoreEmptyLines: true,
       reporter: [
         ["text", { file: "coverage-summary.txt" }],
         "text", // Also display in console
@@ -70,6 +71,14 @@ export default defineConfig({
         "src/test/mock-chat-ui-html.js",
       ],
       reportOnFailure: true,
+
+      // do not let test coverage drop:
+      thresholds: {
+        statements: 89.2, // TODO: try to get to 90
+        branches: 83.7, // TODO: try to get to 85
+        functions: 89.5, // TODO: try to get to 90
+        lines: 89.8, // TODO: try to get to 90
+      },
     },
   },
 });

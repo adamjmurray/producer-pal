@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
-  cleanupInternalDrumChains,
-  getDrumMap,
-  getDeviceType,
-} from "./device-reader.js";
-import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "../constants.js";
+import {
+  cleanupInternalDrumChains,
+  getDrumMap,
+  getDeviceType,
+} from "./device-reader.js";
 
 describe("device-reader", () => {
   describe("getDeviceType", () => {

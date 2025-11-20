@@ -13,6 +13,11 @@ interface ChatHeaderProps {
   onClearConversation: () => void;
 }
 
+/**
+ * Gets display name for provider
+ * @param {Provider} provider - Provider identifier
+ * @returns {JSX.Element} - React component
+ */
 function getProviderName(provider: Provider): string {
   switch (provider) {
     case "gemini":
@@ -32,6 +37,19 @@ function getProviderName(provider: Provider): string {
   }
 }
 
+/**
+ * Header component for chat UI
+ * @param {ChatHeaderProps} root0 - Component props
+ * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
+ * @param {string | null} root0.activeModel - Active model identifier
+ * @param {string | null} root0.activeThinking - Active thinking mode
+ * @param {number | null} root0.activeTemperature - Active temperature setting
+ * @param {Provider | null} root0.activeProvider - Active provider
+ * @param {boolean} root0.hasMessages - Whether conversation has messages
+ * @param {() => void} root0.onOpenSettings - Callback to open settings
+ * @param {() => void} root0.onClearConversation - Callback to clear conversation
+ * @returns {JSX.Element} - React component
+ */
 export function ChatHeader({
   mcpStatus,
   activeModel,

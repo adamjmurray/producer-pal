@@ -311,7 +311,9 @@ describe("MCP Express App", () => {
         expect(result.content[0].text).toContain(errorMessage);
       } finally {
         // Always restore the original mock
-        Max.outlet = originalOutlet;
+        if (Max.outlet) {
+          Max.outlet = originalOutlet;
+        }
       }
     });
   });

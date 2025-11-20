@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/preact";
+import { describe, expect, it, vi } from "vitest";
 import { ModelSelector } from "./ModelSelector.jsx";
 
 describe("ModelSelector", () => {

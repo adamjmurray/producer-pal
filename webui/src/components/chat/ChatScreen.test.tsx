@@ -1,8 +1,8 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/preact";
+import { describe, expect, it, vi } from "vitest";
 import type { UIMessage } from "../../types/messages.js";
 import { ChatScreen } from "./ChatScreen.jsx";
 
