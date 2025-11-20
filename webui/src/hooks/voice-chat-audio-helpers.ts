@@ -65,11 +65,7 @@ export async function playAudioChunk(
 
     // Determine when to start this chunk
     // If we're behind schedule (nextPlayTime < currentTime), catch up immediately
-    // If we're too far ahead (>100ms), reset to avoid awkward gaps from network delays
-    const nextPlayTime = nextPlayTimeRef.current ?? 0;
-    const timeDiff = nextPlayTime - ctx.currentTime;
-    const startTime =
-      timeDiff > 0.1 ? ctx.currentTime : Math.max(ctx.currentTime, nextPlayTime);
+    const startTime = Math.max(ctx.currentTime, nextPlayTimeRef.current ?? 0);
     const endTime = startTime + chunkDuration;
 
     // Update next play time for the next chunk
