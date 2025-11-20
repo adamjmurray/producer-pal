@@ -3,8 +3,8 @@ import {
   tileClipToRange,
 } from "../shared/arrangement-tiling.js";
 import {
-  getActualContentEnd,
   getActualAudioEnd,
+  getActualContentEnd,
   revealUnwarpedAudioContent,
 } from "./update-clip-helpers.js";
 
@@ -157,9 +157,10 @@ function handleUnloopedLengthening({
       // Set markers on revealed clip using looping workaround
       const newStartMarker = visibleContentEnd;
       const newEndMarker = newStartMarker + remainingToReveal;
-      revealedClip.set("looping", 1);
+      revealedClip.set("looping", 1); // looping needs to be enabled to set the following:
       revealedClip.set("end_marker", newEndMarker);
       revealedClip.set("start_marker", newStartMarker);
+      // eslint-disable-next-line sonarjs/no-element-overwrite
       revealedClip.set("looping", 0);
       updatedClips.push({ id: clip.id });
       updatedClips.push({ id: revealedClip.id });
@@ -220,11 +221,12 @@ function handleUnloopedLengthening({
         currentEndTime,
       );
       revealedClip = LiveAPI.from(duplicateResult);
-      revealedClip.set("looping", 1);
+      revealedClip.set("looping", 1); // looping needs to be enabled to set the following:
       revealedClip.set("loop_end", newEndMarker);
       revealedClip.set("loop_start", newStartMarker);
       revealedClip.set("end_marker", newEndMarker);
       revealedClip.set("start_marker", newStartMarker);
+      // eslint-disable-next-line sonarjs/no-element-overwrite
       revealedClip.set("looping", 0);
     } else {
       // Unwarped clips: use session holding area workaround

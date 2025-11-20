@@ -307,18 +307,20 @@ function expandWildcardIncludes(includeArray, defaults) {
   }
 
   // Determine tool type from defaults structure to get appropriate options
-  let toolType = "song"; // default fallback
-  if (defaults.includeRegularTracks !== undefined) {
-    toolType = "song";
-  } else if (defaults.includeSessionClips !== undefined) {
-    toolType = "track";
-  } else if (defaults.includeClips !== undefined) {
-    toolType = "scene";
-  } else if (
+  let toolType;
+  if (
     Object.keys(defaults).length === 1 &&
     defaults.includeClipNotes !== undefined
   ) {
     toolType = "clip";
+  } else if (defaults.includeClips !== undefined) {
+    toolType = "scene";
+  } else if (defaults.includeRegularTracks !== undefined) {
+    toolType = "song";
+  } else if (defaults.includeSessionClips !== undefined) {
+    toolType = "track";
+  } else {
+    toolType = "song"; // fallback
   }
 
   const allOptions = ALL_INCLUDE_OPTIONS[toolType] || [];

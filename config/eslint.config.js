@@ -102,6 +102,19 @@ const jsdocRules = {
   "jsdoc/check-types": "error",
 };
 
+const sonarCoreRules = {
+  // Code quality
+  "sonarjs/no-duplicate-string": ["error", { threshold: 3 }],
+  "sonarjs/no-identical-functions": "error",
+  "sonarjs/cognitive-complexity": ["error", 20],
+
+  // Bug detectors:
+  "sonarjs/no-duplicated-branches": "error", // real bug smell
+  "sonarjs/no-element-overwrite": "error", // likely bug
+  "sonarjs/no-redundant-assignments": "error", // pointless/buggy reassign
+  "sonarjs/no-invariant-returns": "error", // every branch returns same thing
+};
+
 const jsOnlyRules = {
   "no-unused-vars": [
     // Unused variables (allow _prefixed to signal intentional)
@@ -124,10 +137,6 @@ const jsOnlyRules = {
 
   // Variable Shadowing (TS has type-aware version)
   "no-shadow": "error", // Prevents var x shadowing outer x
-
-  "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
-  "sonarjs/no-identical-functions": "error", // Duplicate function bodies
-  "sonarjs/cognitive-complexity": ["error", 20], // Similar to complexity but different metric
 };
 
 const tsOnlyRules = {
@@ -153,9 +162,7 @@ const tsOnlyRules = {
   "@typescript-eslint/dot-notation": "error", // Use obj.key not obj['key'] (type-aware)
   "@typescript-eslint/no-implied-eval": "error", // Prevents eval-like patterns (type-aware)
   "@typescript-eslint/no-shadow": "error", // Prevents shadowing (type-aware)
-  "sonarjs/no-duplicate-string": ["error", { threshold: 3 }], // String repeated 3+ times
-  "sonarjs/no-identical-functions": "error", // Duplicate function bodies
-  "sonarjs/cognitive-complexity": ["error", 20], // Similar to complexity but different metric
+
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative
   "jsdoc/check-types": "off", // Don't validate redundant JSDoc types
@@ -197,9 +204,8 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      // TODO: enable a subset of this:
-      // ...sonarjs.configs.recommended.rules,
       ...baseRules,
+      ...sonarCoreRules,
       ...jsOnlyRules,
       ...jsdocRules,
     },
@@ -208,7 +214,6 @@ export default [
   // All TypeScript files (any directory)
   {
     files: ["{src,scripts,webui}/**/*.{ts,tsx}"],
-    ...sonarjs.configs.recommended,
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -233,9 +238,8 @@ export default [
     rules: {
       ...js.configs.recommended.rules,
       ...tsPlugin.configs.recommended.rules,
-      // TODO: enable a subset of this:
-      // ...sonarjs.configs.recommended.rules,
       ...baseRules,
+      ...sonarCoreRules,
       ...jsdocRules, // JSDoc required for TS (but not type annotations)
       ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
     },

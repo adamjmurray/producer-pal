@@ -1,11 +1,11 @@
+import { VERSION } from "../../shared/version.js";
 import { readClip } from "../clip/read-clip.js";
 import { STATE } from "../constants.js";
 import { cleanupInternalDrumChains } from "../shared/device-reader.js";
 import {
-  processCurrentRouting,
   processAvailableRouting,
+  processCurrentRouting,
 } from "./track-routing-helpers.js";
-import { VERSION } from "../../shared/version.js";
 
 /**
  * Read minimal track information for auto-inclusion when clips are requested.
@@ -35,18 +35,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
   };
 
   // Session clips - only for regular tracks
-  if (includeFlags.includeSessionClips) {
-    result.sessionClips = track
-      .getChildIds("clip_slots")
-      .map((_clipSlotId, sceneIndex) =>
-        readClip({
-          trackIndex,
-          sceneIndex,
-        }),
-      )
-      .filter((clip) => clip.id != null);
-  } else if (includeFlags.includeAllClips) {
-    // When all-clips is requested, we need to check if there are session clips
+  if (includeFlags.includeSessionClips || includeFlags.includeAllClips) {
     result.sessionClips = track
       .getChildIds("clip_slots")
       .map((_clipSlotId, sceneIndex) =>

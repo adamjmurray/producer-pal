@@ -236,17 +236,11 @@ if (typeof LiveAPI !== "undefined") {
         let numeratorProp, denominatorProp;
 
         switch (objectType) {
-          case "LiveSet":
-          case "Clip":
-            numeratorProp = "signature_numerator";
-            denominatorProp = "signature_denominator";
-            break;
           case "Scene":
             numeratorProp = "time_signature_numerator";
             denominatorProp = "time_signature_denominator";
             break;
           default:
-            // For unknown types, try the more common LiveSet/Clip pattern first
             numeratorProp = "signature_numerator";
             denominatorProp = "signature_denominator";
             break;
