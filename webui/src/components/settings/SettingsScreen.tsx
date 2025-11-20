@@ -1,8 +1,8 @@
 import type { Provider } from "../../types/settings.js";
+import { AppearanceTab } from "./AppearanceTab.jsx";
+import { BehaviorTab } from "./BehaviorTab.jsx";
 import { ConnectionTab } from "./ConnectionTab.jsx";
-import { RandomnessSlider } from "./RandomnessSlider.jsx";
 import { SettingsTabs } from "./SettingsTabs.jsx";
-import { ThinkingSettings } from "./ThinkingSettings.jsx";
 import { ToolToggles } from "./ToolToggles.jsx";
 
 interface SettingsScreenProps {
@@ -148,38 +148,17 @@ export function SettingsScreen({
 
               {/* Behavior Tab */}
               {activeTab === "behavior" && (
-                <div>
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={resetBehaviorToDefaults}
-                      className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-                    >
-                      Reset to defaults
-                    </button>
-                  </div>
-                  <div className="space-y-4">
-                    <ThinkingSettings
-                      provider={provider}
-                      model={model}
-                      thinking={thinking}
-                      setThinking={setThinking}
-                      showThoughts={showThoughts}
-                      setShowThoughts={setShowThoughts}
-                    />
-                    <div className="mt-8">
-                      <RandomnessSlider
-                        temperature={temperature}
-                        setTemperature={setTemperature}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-300 dark:border-gray-600">
-                      These are default values for new conversations. You can
-                      adjust thinking and randomness for individual messages
-                      during chat.
-                    </p>
-                  </div>
-                </div>
+                <BehaviorTab
+                  provider={provider}
+                  model={model}
+                  thinking={thinking}
+                  setThinking={setThinking}
+                  temperature={temperature}
+                  setTemperature={setTemperature}
+                  showThoughts={showThoughts}
+                  setShowThoughts={setShowThoughts}
+                  resetBehaviorToDefaults={resetBehaviorToDefaults}
+                />
               )}
 
               {/* Tools Tab */}
@@ -194,23 +173,7 @@ export function SettingsScreen({
 
               {/* Appearance Tab */}
               {activeTab === "appearance" && (
-                <div>
-                  <label htmlFor="theme-select" className="block text-sm mb-2">
-                    Theme
-                  </label>
-                  <select
-                    id="theme-select"
-                    value={theme}
-                    onChange={(e) =>
-                      setTheme((e.target as HTMLSelectElement).value)
-                    }
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-                  >
-                    <option value="system">System</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                  </select>
-                </div>
+                <AppearanceTab theme={theme} setTheme={setTheme} />
               )}
             </div>
           )}

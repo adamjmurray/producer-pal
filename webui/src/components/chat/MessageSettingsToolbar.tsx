@@ -13,10 +13,29 @@ interface MessageSettingsToolbarProps {
   onResetToDefaults: () => void;
 }
 
+/**
+ * Check if model is an OpenAI o1 or o3 reasoning model
+ * @param {string} model - Model identifier
+ * @returns {boolean} True if model is o1 or o3-mini
+ */
 function isO1OrO3Model(model: string): boolean {
   return model === "o1" || model === "o3-mini";
 }
 
+/**
+ * Toolbar for per-message thinking and randomness settings
+ * @param {MessageSettingsToolbarProps} root0 - Component props
+ * @param {Provider} root0.provider - Selected provider
+ * @param {string} root0.model - Selected model
+ * @param {string} root0.defaultThinking - Default thinking mode
+ * @param {number} root0.defaultTemperature - Default temperature
+ * @param {string} root0.thinking - Current thinking mode
+ * @param {number} root0.temperature - Current temperature
+ * @param {Function} root0.onThinkingChange - Callback for thinking change
+ * @param {Function} root0.onTemperatureChange - Callback for temperature change
+ * @param {Function} root0.onResetToDefaults - Callback to reset to defaults
+ * @returns {JSX.Element} Settings toolbar component
+ */
 export function MessageSettingsToolbar({
   provider,
   model,
