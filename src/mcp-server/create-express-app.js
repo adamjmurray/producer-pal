@@ -1,5 +1,5 @@
-import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp";
-import { ErrorCode } from "@modelcontextprotocol/sdk/types";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
