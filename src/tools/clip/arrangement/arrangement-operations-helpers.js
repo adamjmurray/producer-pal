@@ -1,7 +1,7 @@
 import {
   createAudioClipInSession,
   tileClipToRange,
-} from "../../../shared/arrangement/arrangement-tiling.js";
+} from "../../shared/arrangement/arrangement-tiling.js";
 import {
   getActualAudioEnd,
   revealUnwarpedAudioContent,
