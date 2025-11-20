@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import { GeminiClient } from "../chat/gemini-client";
-import { formatGeminiMessages } from "../chat/gemini-formatter";
-import type { GeminiMessage, UIMessage } from "../types/messages";
+import { GeminiClient } from "../../chat/gemini-client";
+import { formatGeminiMessages } from "../../chat/gemini-formatter";
+import type { GeminiMessage, UIMessage } from "../../types/messages";
 import { buildGeminiConfig } from "./config-builders";
 import {
   createGeminiErrorMessage,

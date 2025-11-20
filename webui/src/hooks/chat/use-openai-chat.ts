@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import { OpenAIClient } from "../chat/openai-client";
-import { formatOpenAIMessages } from "../chat/openai-formatter";
-import type { OpenAIMessage, UIMessage } from "../types/messages";
+import { OpenAIClient } from "../../chat/openai-client";
+import { formatOpenAIMessages } from "../../chat/openai-formatter";
+import type { OpenAIMessage, UIMessage } from "../../types/messages";
 import { buildOpenAIConfig } from "./config-builders";
 import {
   createOpenAIErrorMessage,

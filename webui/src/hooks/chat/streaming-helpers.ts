@@ -1,10 +1,10 @@
-import { formatGeminiMessages } from "../chat/gemini-formatter";
-import { formatOpenAIMessages } from "../chat/openai-formatter";
+import { formatGeminiMessages } from "../../chat/gemini-formatter";
+import { formatOpenAIMessages } from "../../chat/openai-formatter";
 import type {
   GeminiMessage,
   OpenAIMessage,
   UIMessage,
-} from "../types/messages";
+} from "../../types/messages";
 
 /**
  * Generic streaming handler for chat messages.
