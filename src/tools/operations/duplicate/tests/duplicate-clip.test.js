@@ -8,7 +8,7 @@ import {
 } from "../helpers/duplicate-test-helpers.js";
 
 // Mock updateClip to avoid complex internal logic
-vi.mock(import("../clip/update-clip.js"), () => ({
+vi.mock(import("../../../clip/update/update-clip.js"), () => ({
   updateClip: vi.fn(({ ids }) => {
     // Return array format to simulate tiled clips
     return [{ id: ids }];
@@ -16,7 +16,7 @@ vi.mock(import("../clip/update-clip.js"), () => ({
 }));
 
 // Mock arrangement-tiling helpers
-vi.mock(import("../shared/arrangement/arrangement-tiling.js"), () => ({
+vi.mock(import("../../../shared/arrangement/arrangement-tiling.js"), () => ({
   createShortenedClipInHolding: vi.fn(() => ({
     holdingClipId: "holding_clip_id",
   })),

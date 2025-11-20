@@ -53,11 +53,11 @@ export const moveClipFromHoldingMock = vi.fn(
  *
  */
 export function setupMocks() {
-  vi.mock(import("../clip/update-clip.js"), () => ({
+  vi.mock(import("../../../clip/update/update-clip.js"), () => ({
     updateClip: updateClipMock,
   }));
 
-  vi.mock(import("../shared/arrangement/arrangement-tiling.js"), () => ({
+  vi.mock(import("../../../shared/arrangement/arrangement-tiling.js"), () => ({
     createShortenedClipInHolding: createShortenedClipInHoldingMock,
     moveClipFromHolding: moveClipFromHoldingMock,
   }));
