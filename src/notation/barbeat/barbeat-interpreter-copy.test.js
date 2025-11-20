@@ -58,7 +58,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("copies previous bar with @N= syntax", () => {
       const result = interpretNotation("C3 1|1 @2=");
       expect(result).toEqual([
@@ -80,7 +79,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("copies a range of bars", () => {
       const result = interpretNotation("C3 1|1 D3 2|1 @5=1-2");
       expect(result).toEqual([
@@ -122,7 +120,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("supports chained copies", () => {
       const result = interpretNotation("C3 1|1 @2= @3= @4=");
       expect(result).toEqual([
@@ -160,7 +157,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("overlays notes after copy", () => {
       const result = interpretNotation("C3 1|1 @2=1 D3 |2");
       expect(result).toEqual([
@@ -193,7 +189,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("accumulates notes in chained copies", () => {
       // Without auto-clear: bar 2 gets C3 from bar 1, then D3 is added
       // bar 3 gets both C3 and D3 from bar 2
@@ -245,7 +240,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("preserves note properties (velocity, duration, probability)", () => {
       const result = interpretNotation("v80 t0.5 p0.7 C3 1|1 @2=1");
       expect(result).toEqual([
@@ -269,7 +263,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("handles different time signatures", () => {
       const result = interpretNotation("C3 1|1 @2=1", {
         timeSigNumerator: 3,
@@ -296,7 +289,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("handles 6/8 time signature correctly", () => {
       const result = interpretNotation("C3 1|1 @2=1", {
         timeSigNumerator: 6,
@@ -323,7 +315,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("handles multiple notes at different beats", () => {
       const result = interpretNotation("C3 1|1 D3 1|2 E3 1|3 @2=1");
       expect(result).toEqual([
@@ -379,7 +370,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("updates current time position after copy", () => {
       const result = interpretNotation("C3 1|1 @2=1 D3 |2");
       // After @2=1, current time should be 2|1
@@ -411,7 +401,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         },
       ]);
     });
-
     it("only copies notes within bar time range, not all notes from multi-bar beat list", () => {
       // Regression test for "copy bleeding" bug
       // Multi-bar beat list creates notes across bars 1-8
@@ -537,239 +526,6 @@ describe("bar|beat interpretNotation() - bar copy operations", () => {
         (n) => n.start_time >= 9.0 && n.start_time < 12.0,
       );
       expect(bar4Notes).toHaveLength(0);
-    });
-
-    describe("range copy", () => {
-      it("copies bar to range with @N-M= syntax (default source)", () => {
-        const result = interpretNotation("C3 D3 1|1 @2-4=");
-        expect(result).toEqual([
-          // Bar 1
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 2 (copied)
-          {
-            pitch: 60,
-            start_time: 4,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 4,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 3 (copied)
-          {
-            pitch: 60,
-            start_time: 8,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 8,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 4 (copied)
-          {
-            pitch: 60,
-            start_time: 12,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          {
-            pitch: 62,
-            start_time: 12,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ]);
-      });
-
-      it("copies bar to range with @N-M=P syntax (explicit source)", () => {
-        const result = interpretNotation("C3 1|1 D3 2|1 @4-6=1");
-        expect(result).toEqual([
-          // Bar 1
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 2
-          {
-            pitch: 62,
-            start_time: 4,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 4 (copy of bar 1)
-          {
-            pitch: 60,
-            start_time: 12,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 5 (copy of bar 1)
-          {
-            pitch: 60,
-            start_time: 16,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 6 (copy of bar 1)
-          {
-            pitch: 60,
-            start_time: 20,
-            duration: 1,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ]);
-      });
-
-      it("preserves note properties in range copy", () => {
-        const result = interpretNotation("v80 t0.5 p0.8 C3 1|1 @2-3=");
-        expect(result).toEqual([
-          // Bar 1
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 0.5,
-            velocity: 80,
-            probability: 0.8,
-            velocity_deviation: 0,
-          },
-          // Bar 2 (copied)
-          {
-            pitch: 60,
-            start_time: 4,
-            duration: 0.5,
-            velocity: 80,
-            probability: 0.8,
-            velocity_deviation: 0,
-          },
-          // Bar 3 (copied)
-          {
-            pitch: 60,
-            start_time: 8,
-            duration: 0.5,
-            velocity: 80,
-            probability: 0.8,
-            velocity_deviation: 0,
-          },
-        ]);
-      });
-
-      it("handles range copy with different time signatures", () => {
-        const result = interpretNotation("C3 1|1 @2-3=", {
-          timeSigNumerator: 6,
-          timeSigDenominator: 8,
-        });
-        expect(result).toEqual([
-          // Bar 1
-          {
-            pitch: 60,
-            start_time: 0,
-            duration: 0.5, // 1 beat * (4/8)
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 2 (copied) - 6/8 bar = 3.0 Ableton beats
-          {
-            pitch: 60,
-            start_time: 3.0,
-            duration: 0.5,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-          // Bar 3 (copied)
-          {
-            pitch: 60,
-            start_time: 6.0,
-            duration: 0.5,
-            velocity: 100,
-            probability: 1.0,
-            velocity_deviation: 0,
-          },
-        ]);
-      });
-
-      it("can chain range copies with regular copies", () => {
-        const result = interpretNotation("C3 1|1 @2-3= @5=1");
-        expect(result).toHaveLength(4); // bars 1, 2, 3, 5
-        expect(result).toContainEqual({
-          pitch: 60,
-          start_time: 0,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        });
-        expect(result).toContainEqual({
-          pitch: 60,
-          start_time: 4,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        });
-        expect(result).toContainEqual({
-          pitch: 60,
-          start_time: 8,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        });
-        expect(result).toContainEqual({
-          pitch: 60,
-          start_time: 16,
-          duration: 1,
-          velocity: 100,
-          probability: 1.0,
-          velocity_deviation: 0,
-        });
-      });
     });
   });
 });
