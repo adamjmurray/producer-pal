@@ -406,13 +406,14 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
+      "**/*-test-case.ts", // Test data fixtures
       "src/tools/shared/gain-lookup-table.js", // Auto-generated data
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 345,
+          max: 325,
           skipBlankLines: true,
           skipComments: true,
         },
@@ -425,6 +426,7 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
+      "**/*-test-case.ts", // Test data fixtures
     ],
     rules: {
       "max-lines": [

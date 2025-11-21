@@ -1,9 +1,11 @@
-const PPAL_CONNECT = "ppal-connect";
-const PPAL_READ_LIVE_SET = "ppal-read-live-set";
-const PPAL_CREATE_CLIP = "ppal-create-clip";
-const PPAL_CREATE_TRACK = "ppal-create-track";
-const DRUM_LOOP_NAME = "4-Bar Drum Loop";
-const DRUM_LOOP_NOTES = "\nv100 C1 1|1,3 D1 |2,4\nv90 F#1 1|1x16@0.5\n";
+import {
+  PPAL_CONNECT,
+  PPAL_READ_LIVE_SET,
+  PPAL_CREATE_CLIP,
+  PPAL_CREATE_TRACK,
+  DRUM_LOOP_NAME,
+  DRUM_LOOP_NOTES,
+} from "./tool-call-error-constants";
 
 export const historyWithToolError = [
   {

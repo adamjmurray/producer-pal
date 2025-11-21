@@ -1,0 +1,121 @@
+/**
+ * Validates basic input parameters for duplication
+ * @param {string} type - Type of object to duplicate
+ * @param {string} id - ID of the object to duplicate
+ * @param {number} count - Number of duplicates to create
+ */
+export function validateBasicInputs(type, id, count) {
+  if (!type) {
+    throw new Error("duplicate failed: type is required");
+  }
+
+  const validTypes = ["track", "scene", "clip"];
+  if (!validTypes.includes(type)) {
+    throw new Error(
+      `duplicate failed: type must be one of ${validTypes.join(", ")}`,
+    );
+  }
+
+  if (!id) {
+    throw new Error("duplicate failed: id is required");
+  }
+
+  if (count < 1) {
+    throw new Error("duplicate failed: count must be at least 1");
+  }
+}
+
+/**
+ * Validates and configures route to source parameters
+ * @param {string} type - Type of object being duplicated
+ * @param {boolean} routeToSource - Whether to route to source track
+ * @param {boolean} withoutClips - Whether to exclude clips
+ * @param {boolean} withoutDevices - Whether to exclude devices
+ * @returns {object} Configured withoutClips and withoutDevices values
+ */
+export function validateAndConfigureRouteToSource(
+  type,
+  routeToSource,
+  withoutClips,
+  withoutDevices,
+) {
+  if (!routeToSource) {
+    return { withoutClips, withoutDevices };
+  }
+  if (type !== "track") {
+    throw new Error(
+      "duplicate failed: routeToSource is only supported for type 'track'",
+    );
+  }
+
+  // Emit warnings if user provided conflicting parameters
+  if (withoutClips === false) {
+    console.error(
+      "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
+    );
+  }
+  if (withoutDevices === false) {
+    console.error(
+      "Warning: routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
+    );
+  }
+
+  return { withoutClips: true, withoutDevices: true };
+}
+
+/**
+ * Validates clip-specific parameters
+ * @param {string} type - Type of object being duplicated
+ * @param {string} destination - Destination for clip duplication
+ * @param {number} toTrackIndex - Destination track index
+ * @param {number} toSceneIndex - Destination scene index
+ */
+export function validateClipParameters(
+  type,
+  destination,
+  toTrackIndex,
+  toSceneIndex,
+) {
+  if (type !== "clip") {
+    return;
+  }
+
+  if (!destination) {
+    throw new Error(
+      "duplicate failed: destination is required for type 'clip'",
+    );
+  }
+
+  if (!["session", "arrangement"].includes(destination)) {
+    throw new Error(
+      "duplicate failed: destination must be 'session' or 'arrangement'",
+    );
+  }
+
+  // Validate session clip destination parameters
+  if (destination === "session") {
+    if (toTrackIndex == null) {
+      throw new Error(
+        "duplicate failed: toTrackIndex is required for session clips",
+      );
+    }
+    if (toSceneIndex == null) {
+      throw new Error(
+        "duplicate failed: toSceneIndex is required for session clips",
+      );
+    }
+  }
+}
+
+/**
+ * Validates arrangement-specific parameters
+ * @param {string} destination - Destination for duplication
+ * @param {string} arrangementStart - Start time in bar|beat format
+ */
+export function validateArrangementParameters(destination, arrangementStart) {
+  if (destination === "arrangement" && arrangementStart == null) {
+    throw new Error(
+      "duplicate failed: arrangementStart is required when destination is 'arrangement'",
+    );
+  }
+}
