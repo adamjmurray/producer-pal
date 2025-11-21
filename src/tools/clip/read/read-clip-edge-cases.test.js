@@ -274,7 +274,7 @@ describe("readClip", () => {
     const resultExplicit = readClip({
       trackIndex: 0,
       sceneIndex: 0,
-      include: ["clip-notes", "audio-info", "color", "warp-markers"],
+      include: ["clip-notes", "color", "warp-markers"],
     });
 
     // Results should be identical

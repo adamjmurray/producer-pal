@@ -15,7 +15,6 @@ const WARP_MARKERS = "warp-markers";
 const AVAILABLE_ROUTINGS = "available-routings";
 const COLOR = "color";
 const CLIPS = "clips";
-const AUDIO_INFO = "audio-info";
 
 /**
  * All available include options mapped by tool type
@@ -61,7 +60,7 @@ const ALL_INCLUDE_OPTIONS = {
     WARP_MARKERS,
   ],
   scene: [CLIPS, CLIP_NOTES, COLOR, WARP_MARKERS],
-  clip: [CLIP_NOTES, AUDIO_INFO, COLOR, WARP_MARKERS],
+  clip: [CLIP_NOTES, COLOR, WARP_MARKERS],
 };
 
 /**
