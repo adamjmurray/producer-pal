@@ -83,7 +83,10 @@ interface UseChatReturn {
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (
+    message: string,
+    options?: { thinking?: string; temperature?: number },
+  ) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
@@ -136,12 +139,19 @@ export function useChat<
   }, []);
 
   const initializeChat = useCallback(
-    async (chatHistory?: TMessage[]) => {
+    async (
+      chatHistory?: TMessage[],
+      overrides?: { thinking?: string; temperature?: number },
+    ) => {
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
+
+      const effectiveThinking = overrides?.thinking ?? thinking;
+      const effectiveTemperature = overrides?.temperature ?? temperature;
+
       const config = adapter.buildConfig(
         model,
-        temperature,
-        thinking,
+        effectiveTemperature,
+        effectiveThinking,
         enabledTools,
         chatHistory,
         extraParams,
@@ -150,8 +160,8 @@ export function useChat<
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
       setActiveModel(model);
-      setActiveThinking(thinking);
-      setActiveTemperature(temperature);
+      setActiveThinking(effectiveThinking);
+      setActiveTemperature(effectiveTemperature);
     },
     [
       mcpStatus,
@@ -168,7 +178,10 @@ export function useChat<
   );
 
   const handleSend = useCallback(
-    async (message: string) => {
+    async (
+      message: string,
+      options?: { thinking?: string; temperature?: number },
+    ) => {
       const userMessage = message.trim();
       if (!userMessage) return;
 
@@ -187,7 +200,7 @@ export function useChat<
       setIsAssistantResponding(true);
       try {
         if (!clientRef.current) {
-          await initializeChat();
+          await initializeChat(undefined, options);
         }
 
         if (!clientRef.current) {

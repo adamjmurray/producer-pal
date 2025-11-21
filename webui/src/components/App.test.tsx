@@ -390,6 +390,42 @@ describe("App", () => {
       expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
     });
 
+    it("uses default port 1234 for lmstudio when port not specified", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "lmstudio",
+        port: undefined,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:1234/v1");
+    });
+
+    it("uses default port 11434 for ollama when port not specified", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "ollama",
+        port: undefined,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
+    });
+
+    it("uses 'not-needed' apiKey for lmstudio when apiKey is empty", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "lmstudio",
+        apiKey: "",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].apiKey).toBe("not-needed");
+    });
+
     it("uses provider-specific baseUrl for openai provider", () => {
       (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
         ...mockSettingsHook,
