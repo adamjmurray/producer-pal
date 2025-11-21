@@ -52,9 +52,10 @@ describe("ModelSelector", () => {
     );
 
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
-    expect(options[0]!.value).toBe("gemini-2.5-pro");
-    expect(options[1]!.value).toBe("gemini-2.5-flash");
-    expect(options[2]!.value).toBe("gemini-2.5-flash-lite");
+    expect(options[0]!.value).toBe("gemini-3-pro-preview");
+    expect(options[1]!.value).toBe("gemini-2.5-pro");
+    expect(options[2]!.value).toBe("gemini-2.5-flash");
+    expect(options[3]!.value).toBe("gemini-2.5-flash-lite");
   });
 
   it("triggers setModel callback on change", () => {
@@ -100,7 +101,10 @@ describe("ModelSelector", () => {
         />,
       );
       expect(
-        screen.getByRole("option", { name: /GPT-5 \(most/ }),
+        screen.getByRole("option", { name: /GPT-5\.1 \(most capable\)/ }),
+      ).toBeDefined();
+      expect(
+        screen.getByRole("option", { name: /GPT-5 \(previous version\)/ }),
       ).toBeDefined();
       expect(screen.getByRole("option", { name: /GPT-5 Mini/ })).toBeDefined();
     });
