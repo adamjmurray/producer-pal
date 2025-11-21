@@ -31,32 +31,38 @@ export function handleUnloopedLengthening({
 }) {
   const updatedClips = [];
   const spaceNeeded = arrangementLengthBeats - currentArrangementLength;
+  // For MIDI clips, determine actual content extent by examining notes
   if (!isAudioClip) {
     const actualContentEnd = getActualContentEnd(clip);
     const visibleContentEnd = clipStartMarker + currentArrangementLength;
     const EPSILON = 0.001;
     if (actualContentEnd - visibleContentEnd > EPSILON) {
+      // Hidden content exists - reveal it
       const revealLength = Math.min(
         actualContentEnd - clipStartMarker,
         arrangementLengthBeats,
       );
       const remainingToReveal = revealLength - currentArrangementLength;
+      // Set end_marker to actual content end
       clip.set("end_marker", actualContentEnd);
+      // Duplicate to reveal hidden content
       const duplicateResult = track.call(
         "duplicate_clip_to_arrangement",
         `id ${clip.id}`,
         currentEndTime,
       );
       const revealedClip = LiveAPI.from(duplicateResult);
+      // Set markers on revealed clip using looping workaround
       const newStartMarker = visibleContentEnd;
       const newEndMarker = newStartMarker + remainingToReveal;
-      revealedClip.set("looping", 1);
+      revealedClip.set("looping", 1); // looping needs to be enabled to set the following:
       revealedClip.set("end_marker", newEndMarker);
       revealedClip.set("start_marker", newStartMarker);
       // eslint-disable-next-line sonarjs/no-element-overwrite
       revealedClip.set("looping", 0);
       updatedClips.push({ id: clip.id });
       updatedClips.push({ id: revealedClip.id });
+      // Create empty MIDI clips for remaining space if needed
       const remainingSpace = arrangementLengthBeats - revealLength;
       if (remainingSpace > 0) {
         const emptyStartTime = currentStartTime + revealLength;
@@ -70,6 +76,7 @@ export function handleUnloopedLengthening({
       }
       return updatedClips;
     }
+    // No hidden content - create empty MIDI clip for space
     const emptyClipResult = track.call(
       "create_midi_clip",
       currentEndTime,
@@ -80,6 +87,7 @@ export function handleUnloopedLengthening({
     updatedClips.push({ id: emptyClip.id });
     return updatedClips;
   }
+  // Audio clip handling
   const actualAudioEnd = getActualAudioEnd(clip);
   const isWarped = clip.getProperty("warping") === 1;
   let clipStartMarkerBeats;
@@ -93,6 +101,7 @@ export function handleUnloopedLengthening({
   const visibleContentEnd = clipStartMarkerBeats + currentArrangementLength;
   const EPSILON = isWarped ? 0.1 : 1.0;
   if (actualAudioEnd - visibleContentEnd > EPSILON) {
+    // Hidden content exists - reveal it
     const revealLength = Math.min(
       actualAudioEnd - clipStartMarkerBeats,
       arrangementLengthBeats,
@@ -102,6 +111,7 @@ export function handleUnloopedLengthening({
     const newEndMarker = newStartMarker + remainingToReveal;
     let revealedClip;
     if (isWarped) {
+      // Warped clips: use looping workaround
       clip.set("end_marker", actualAudioEnd);
       const duplicateResult = track.call(
         "duplicate_clip_to_arrangement",
@@ -109,7 +119,7 @@ export function handleUnloopedLengthening({
         currentEndTime,
       );
       revealedClip = LiveAPI.from(duplicateResult);
-      revealedClip.set("looping", 1);
+      revealedClip.set("looping", 1); // looping needs to be enabled to set the following:
       revealedClip.set("loop_end", newEndMarker);
       revealedClip.set("loop_start", newStartMarker);
       revealedClip.set("end_marker", newEndMarker);
@@ -117,6 +127,7 @@ export function handleUnloopedLengthening({
       // eslint-disable-next-line sonarjs/no-element-overwrite
       revealedClip.set("looping", 0);
     } else {
+      // Unwarped clips: use session holding area workaround
       revealedClip = revealUnwarpedAudioContent(
         clip,
         track,
@@ -130,6 +141,7 @@ export function handleUnloopedLengthening({
     updatedClips.push({ id: revealedClip.id });
     return updatedClips;
   }
+  // No hidden content - keep original clip
   updatedClips.push({ id: clip.id });
   return updatedClips;
 }

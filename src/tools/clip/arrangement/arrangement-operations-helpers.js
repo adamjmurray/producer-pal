@@ -31,9 +31,12 @@ export function handleArrangementLengthening({
   const clipLoopEnd = clip.getProperty("loop_end");
   const clipStartMarker = clip.getProperty("start_marker");
   const clipEndMarker = clip.getProperty("end_marker");
+  // For unlooped clips, use end_marker - start_marker (actual playback length)
+  // For looped clips, use loop region
   const clipLength = isLooping
     ? clipLoopEnd - clipLoopStart
     : clipEndMarker - clipStartMarker;
+  // Get track for clip operations
   const trackIndex = clip.trackIndex;
   if (trackIndex == null) {
     throw new Error(
@@ -41,6 +44,7 @@ export function handleArrangementLengthening({
     );
   }
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  // Handle unlooped clips separately from looped clips
   if (!isLooping) {
     return handleUnloopedLengthening({
       clip,
@@ -54,7 +58,9 @@ export function handleArrangementLengthening({
       context,
     });
   }
+  // Branch: expose hidden content vs tiling (looped clips only)
   if (arrangementLengthBeats < clipLength) {
+    // Expose hidden content by tiling with start_marker offsets
     const currentOffset = clipStartMarker - clipLoopStart;
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
     const tiledClips = tileClipToRange(
@@ -131,6 +137,7 @@ function createLoopeClipTiles({
   context,
 }) {
   const updatedClips = [];
+  // If clip not showing full content, tile with start_marker offsets
   if (currentArrangementLength < totalContentLength) {
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
     const tiledClips = tileClipToRange(
@@ -149,9 +156,11 @@ function createLoopeClipTiles({
     updatedClips.push(...tiledClips);
     return updatedClips;
   }
+  // If current arrangement length > total content length, shorten first then tile
   if (currentArrangementLength > totalContentLength) {
     let newEndTime = currentStartTime + totalContentLength;
     const tempClipLength = currentEndTime - newEndTime;
+    // Validation
     if (newEndTime + tempClipLength !== currentEndTime) {
       throw new Error(
         `Shortening validation failed: calculation error in temp clip bounds`,
@@ -196,6 +205,7 @@ function createLoopeClipTiles({
     updatedClips.push(...tiledClips);
     return updatedClips;
   }
+  // Tile the properly-sized clip
   const firstTileLength = currentEndTime - currentStartTime;
   const remainingSpace = arrangementLengthBeats - firstTileLength;
   const tiledClips = tileClipToRange(
@@ -230,6 +240,7 @@ export function handleArrangementShortening({
 }) {
   const newEndTime = currentStartTime + arrangementLengthBeats;
   const tempClipLength = currentEndTime - newEndTime;
+  // Validation
   if (newEndTime + tempClipLength !== currentEndTime) {
     throw new Error(
       `Internal error: temp clip boundary calculation failed for clip ${clip.id}`,
@@ -243,6 +254,7 @@ export function handleArrangementShortening({
     );
   }
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  // Create temporary clip to truncate
   if (isAudioClip) {
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,
@@ -255,6 +267,7 @@ export function handleArrangementShortening({
       newEndTime,
     );
     const tempClip = LiveAPI.from(tempResult);
+    // Re-apply warping and looping to arrangement clip
     tempClip.set("warping", 1);
     tempClip.set("looping", 1);
     tempClip.set("loop_end", tempClipLength);
