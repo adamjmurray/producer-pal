@@ -89,7 +89,7 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 141,
+      max: 120,
       skipBlankLines: true,
       skipComments: true,
     },
