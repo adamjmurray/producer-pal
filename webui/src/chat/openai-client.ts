@@ -302,8 +302,10 @@ export class OpenAIClient {
     let reasoningText = ""; // Accumulate reasoning separately
 
     for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta;
-      if (!delta) continue;
+      const choice = chunk.choices[0];
+      if (!choice) continue;
+
+      const delta = choice.delta;
 
       // Process delta chunks
       this.processContentDelta(delta, currentMessage);
@@ -315,6 +317,7 @@ export class OpenAIClient {
         currentMessage,
         toolCallsMap,
         reasoningText,
+        choice.finish_reason,
       );
       this.updateChatHistoryWithMessage(messageToAdd);
 
@@ -400,17 +403,23 @@ export class OpenAIClient {
    * @param {OpenAIAssistantMessageWithReasoning} currentMessage - Current message being built
    * @param {Map<number, OpenAIToolCall>} toolCallsMap - Map of accumulated tool calls
    * @param {string} reasoningText - Accumulated reasoning text
+   * @param {string | null} finishReason - Finish reason from the stream chunk
    * @returns {object} - Complete assistant message with all parts
+   * @internal - Exported for testing only
    */
-  private buildStreamMessage(
+  buildStreamMessage(
     currentMessage: OpenAIAssistantMessageWithReasoning,
     toolCallsMap: Map<number, OpenAIToolCall>,
     reasoningText: string,
+    finishReason: string | null,
   ): OpenAIAssistantMessageWithReasoning {
     const messageToAdd: OpenAIAssistantMessageWithReasoning = {
       ...currentMessage,
+      // Only include tool_calls when finish_reason indicates completion
       tool_calls:
-        toolCallsMap.size > 0 ? Array.from(toolCallsMap.values()) : undefined,
+        finishReason === "tool_calls" && toolCallsMap.size > 0
+          ? Array.from(toolCallsMap.values())
+          : undefined,
     };
 
     if (reasoningText) {
