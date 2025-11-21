@@ -11,13 +11,13 @@ import { getActualContentEnd } from "../update/helpers/update-clip-helpers.js";
 /**
  * Handle lengthening of arrangement clips via tiling or content exposure
  * @param {object} root0 - Parameters object
- * @param {object} root0.clip - The LiveAPI clip object to lengthen
- * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
- * @param {number} root0.arrangementLengthBeats - Target length in beats
- * @param {number} root0.currentArrangementLength - Current length in beats
- * @param {number} root0.currentStartTime - Current start time in beats
- * @param {number} root0.currentEndTime - Current end time in beats
- * @param {object} root0.context - Tool execution context with holding area info
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentArrangementLength
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0.context
  * @returns {Array<object>} - Array of updated clip info
  */
 export function handleArrangementLengthening({
@@ -35,12 +35,9 @@ export function handleArrangementLengthening({
   const clipLoopEnd = clip.getProperty("loop_end");
   const clipStartMarker = clip.getProperty("start_marker");
   const clipEndMarker = clip.getProperty("end_marker");
-  // For unlooped clips, use end_marker - start_marker (actual playback length)
-  // For looped clips, use loop region
   const clipLength = isLooping
     ? clipLoopEnd - clipLoopStart
     : clipEndMarker - clipStartMarker;
-  // Get track for clip operations
   const trackIndex = clip.trackIndex;
   if (trackIndex == null) {
     throw new Error(
@@ -48,7 +45,6 @@ export function handleArrangementLengthening({
     );
   }
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  // Handle unlooped clips separately from looped clips
   if (!isLooping) {
     return handleUnloopedLengthening({
       clip,
@@ -62,9 +58,7 @@ export function handleArrangementLengthening({
       context,
     });
   }
-  // Branch: expose hidden content vs tiling (looped clips only)
   if (arrangementLengthBeats < clipLength) {
-    // Expose hidden content by tiling with start_marker offsets
     const currentOffset = clipStartMarker - clipLoopStart;
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
     const tiledClips = tileClipToRange(
@@ -83,7 +77,6 @@ export function handleArrangementLengthening({
     updatedClips.push({ id: clip.id });
     updatedClips.push(...tiledClips);
   } else {
-    // Lengthening via tiling
     const currentOffset = clipStartMarker - clipLoopStart;
     const totalContentLength = clipLoopEnd - clipStartMarker;
     const tiledClips = createLoopeClipTiles({
@@ -106,18 +99,19 @@ export function handleArrangementLengthening({
   }
   return updatedClips;
 }
+
 /**
  * Handle unlooped clip lengthening
  * @param {object} root0 - Parameters object
- * @param {object} root0.clip - The LiveAPI clip object
- * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
- * @param {number} root0.arrangementLengthBeats - Target length in beats
- * @param {number} root0.currentArrangementLength - Current length in beats
- * @param {number} root0.currentStartTime - Current start time in beats
- * @param {number} root0.currentEndTime - Current end time in beats
- * @param {number} root0.clipStartMarker - Clip start marker position
- * @param {object} root0.track - The LiveAPI track object
- * @param {object} root0.context - Tool execution context
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentArrangementLength
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0.clipStartMarker
+ * @param root0.track
+ * @param root0.context
  * @returns {Array<object>} - Array of updated clip info
  */
 function handleUnloopedLengthening({
@@ -133,38 +127,30 @@ function handleUnloopedLengthening({
 }) {
   const updatedClips = [];
   const spaceNeeded = arrangementLengthBeats - currentArrangementLength;
-  // For MIDI clips, determine actual content extent by examining notes
   if (!isAudioClip) {
     const actualContentEnd = getActualContentEnd(clip);
     const visibleContentEnd = clipStartMarker + currentArrangementLength;
-    const EPSILON = 0.001;
-    if (actualContentEnd - visibleContentEnd > EPSILON) {
-      // Hidden content exists - reveal it
+    if (actualContentEnd - visibleContentEnd > 0.001) {
       const revealLength = Math.min(
         actualContentEnd - clipStartMarker,
         arrangementLengthBeats,
       );
       const remainingToReveal = revealLength - currentArrangementLength;
-      // Set end_marker to actual content end
       clip.set("end_marker", actualContentEnd);
-      // Duplicate to reveal hidden content
       const duplicateResult = track.call(
         "duplicate_clip_to_arrangement",
         `id ${clip.id}`,
         currentEndTime,
       );
       const revealedClip = LiveAPI.from(duplicateResult);
-      // Set markers on revealed clip using looping workaround
       const newStartMarker = visibleContentEnd;
       const newEndMarker = newStartMarker + remainingToReveal;
-      revealedClip.set("looping", 1); // looping needs to be enabled to set the following:
+      revealedClip.set("looping", 1);
       revealedClip.set("end_marker", newEndMarker);
       revealedClip.set("start_marker", newStartMarker);
-      // eslint-disable-next-line sonarjs/no-element-overwrite
-      revealedClip.set("looping", 0);
+      revealedClip.set("looping", 0); // eslint-disable-line sonarjs/no-element-overwrite
       updatedClips.push({ id: clip.id });
       updatedClips.push({ id: revealedClip.id });
-      // Create empty MIDI clips for remaining space if needed
       const remainingSpace = arrangementLengthBeats - revealLength;
       if (remainingSpace > 0) {
         const emptyStartTime = currentStartTime + revealLength;
@@ -178,7 +164,6 @@ function handleUnloopedLengthening({
       }
       return updatedClips;
     }
-    // No hidden content - create empty MIDI clip for space
     const emptyClipResult = track.call(
       "create_midi_clip",
       currentEndTime,
@@ -189,7 +174,6 @@ function handleUnloopedLengthening({
     updatedClips.push({ id: emptyClip.id });
     return updatedClips;
   }
-  // Audio clip handling
   const actualAudioEnd = getActualAudioEnd(clip);
   const isWarped = clip.getProperty("warping") === 1;
   let clipStartMarkerBeats;
@@ -201,9 +185,7 @@ function handleUnloopedLengthening({
     clipStartMarkerBeats = clipStartMarker * (tempo / 60);
   }
   const visibleContentEnd = clipStartMarkerBeats + currentArrangementLength;
-  const EPSILON = isWarped ? 0.1 : 1.0;
-  if (actualAudioEnd - visibleContentEnd > EPSILON) {
-    // Hidden content exists - reveal it
+  if (actualAudioEnd - visibleContentEnd > (isWarped ? 0.1 : 1.0)) {
     const revealLength = Math.min(
       actualAudioEnd - clipStartMarkerBeats,
       arrangementLengthBeats,
@@ -213,7 +195,6 @@ function handleUnloopedLengthening({
     const newEndMarker = newStartMarker + remainingToReveal;
     let revealedClip;
     if (isWarped) {
-      // Warped clips: use looping workaround
       clip.set("end_marker", actualAudioEnd);
       const duplicateResult = track.call(
         "duplicate_clip_to_arrangement",
@@ -221,15 +202,13 @@ function handleUnloopedLengthening({
         currentEndTime,
       );
       revealedClip = LiveAPI.from(duplicateResult);
-      revealedClip.set("looping", 1); // looping needs to be enabled to set the following:
+      revealedClip.set("looping", 1);
       revealedClip.set("loop_end", newEndMarker);
       revealedClip.set("loop_start", newStartMarker);
       revealedClip.set("end_marker", newEndMarker);
       revealedClip.set("start_marker", newStartMarker);
-      // eslint-disable-next-line sonarjs/no-element-overwrite
-      revealedClip.set("looping", 0);
+      revealedClip.set("looping", 0); // eslint-disable-line sonarjs/no-element-overwrite
     } else {
-      // Unwarped clips: use session holding area workaround
       revealedClip = revealUnwarpedAudioContent(
         clip,
         track,
@@ -243,26 +222,26 @@ function handleUnloopedLengthening({
     updatedClips.push({ id: revealedClip.id });
     return updatedClips;
   }
-  // No hidden content - keep original clip
   updatedClips.push({ id: clip.id });
   return updatedClips;
 }
+
 /**
  * Create tiles for looped clips
  * @param {object} root0 - Parameters object
- * @param {object} root0.clip - The LiveAPI clip object
- * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
- * @param {number} root0.arrangementLengthBeats - Target length in beats
- * @param {number} root0.currentArrangementLength - Current length in beats
- * @param {number} root0.currentStartTime - Current start time in beats
- * @param {number} root0.currentEndTime - Current end time in beats
- * @param {number} root0._clipLoopStart - Clip loop start position (unused)
- * @param {number} root0._clipLoopEnd - Clip loop end position (unused)
- * @param {number} root0._clipStartMarker - Clip start marker (unused)
- * @param {number} root0.totalContentLength - Total content length in beats
- * @param {number} root0.currentOffset - Current offset from loop start
- * @param {object} root0.track - The LiveAPI track object
- * @param {object} root0.context - Tool execution context
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentArrangementLength
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0._clipLoopStart
+ * @param root0._clipLoopEnd
+ * @param root0._clipStartMarker
+ * @param root0.totalContentLength
+ * @param root0.currentOffset
+ * @param root0.track
+ * @param root0.context
  * @returns {Array<object>} - Array of tiled clip info
  */
 function createLoopeClipTiles({
@@ -281,7 +260,6 @@ function createLoopeClipTiles({
   context,
 }) {
   const updatedClips = [];
-  // If clip not showing full content, tile with start_marker offsets
   if (currentArrangementLength < totalContentLength) {
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
     const tiledClips = tileClipToRange(
@@ -300,17 +278,14 @@ function createLoopeClipTiles({
     updatedClips.push(...tiledClips);
     return updatedClips;
   }
-  // If current arrangement length > total content length, shorten first then tile
   if (currentArrangementLength > totalContentLength) {
     let newEndTime = currentStartTime + totalContentLength;
     const tempClipLength = currentEndTime - newEndTime;
-    // Validation
     if (newEndTime + tempClipLength !== currentEndTime) {
       throw new Error(
         `Shortening validation failed: calculation error in temp clip bounds`,
       );
     }
-    // Create temp clip to truncate
     if (isAudioClip) {
       const { clip: sessionClip, slot } = createAudioClipInSession(
         track,
@@ -349,7 +324,6 @@ function createLoopeClipTiles({
     updatedClips.push(...tiledClips);
     return updatedClips;
   }
-  // Tile the properly-sized clip
   const firstTileLength = currentEndTime - currentStartTime;
   const remainingSpace = arrangementLengthBeats - firstTileLength;
   const tiledClips = tileClipToRange(
@@ -364,15 +338,16 @@ function createLoopeClipTiles({
   updatedClips.push(...tiledClips);
   return updatedClips;
 }
+
 /**
  * Handle arrangement clip shortening
  * @param {object} root0 - Parameters object
- * @param {object} root0.clip - The LiveAPI clip object to shorten
- * @param {boolean} root0.isAudioClip - Whether the clip is an audio clip
- * @param {number} root0.arrangementLengthBeats - Target length in beats
- * @param {number} root0.currentStartTime - Current start time in beats
- * @param {number} root0.currentEndTime - Current end time in beats
- * @param {object} root0.context - Tool execution context
+ * @param root0.clip
+ * @param root0.isAudioClip
+ * @param root0.arrangementLengthBeats
+ * @param root0.currentStartTime
+ * @param root0.currentEndTime
+ * @param root0.context
  */
 export function handleArrangementShortening({
   clip,
@@ -384,13 +359,11 @@ export function handleArrangementShortening({
 }) {
   const newEndTime = currentStartTime + arrangementLengthBeats;
   const tempClipLength = currentEndTime - newEndTime;
-  // Validation
   if (newEndTime + tempClipLength !== currentEndTime) {
     throw new Error(
       `Internal error: temp clip boundary calculation failed for clip ${clip.id}`,
     );
   }
-  // Get track
   const trackIndex = clip.trackIndex;
   if (trackIndex == null) {
     throw new Error(
@@ -398,7 +371,6 @@ export function handleArrangementShortening({
     );
   }
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  // Create temporary clip to truncate
   if (isAudioClip) {
     const { clip: sessionClip, slot } = createAudioClipInSession(
       track,
@@ -411,7 +383,6 @@ export function handleArrangementShortening({
       newEndTime,
     );
     const tempClip = LiveAPI.from(tempResult);
-    // Re-apply warping and looping to arrangement clip
     tempClip.set("warping", 1);
     tempClip.set("looping", 1);
     tempClip.set("loop_end", tempClipLength);

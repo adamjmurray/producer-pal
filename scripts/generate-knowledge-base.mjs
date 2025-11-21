@@ -64,15 +64,13 @@ function computeGroupName(item, filePath) {
 }
 
 /**
- *
+ * Cleans and recreates the output directory
  */
 async function cleanAndCreateOutputDir() {
   try {
     await fs.rm(outputDir, { recursive: true, force: true });
     console.log(`Removed existing outputDir: ${outputDir}`);
-  } catch (_error) {
-    // Directory doesn't exist, which is fine
-  }
+  } catch (_error) {}
   await fs.mkdir(outputDir, { recursive: true });
 }
 
@@ -378,9 +376,7 @@ async function writeGroupFiles(fileGroups, excludeGroups) {
         concatenatedContent += "\n\n";
       }
 
-      concatenatedContent += `// ========================================\n`;
-      concatenatedContent += `// FILE: ${relativePath}\n`;
-      concatenatedContent += `// ----------------------------------------\n`;
+      concatenatedContent += `// ========================================\n// FILE: ${relativePath}\n// ----------------------------------------\n`;
       concatenatedContent += fileContent;
 
       fileCount++;
@@ -432,15 +428,12 @@ async function copyDirectoriesAndFilesConcatenated(excludeGroups) {
 }
 
 /**
- *
+ * Main entry point for generating knowledge base files
  */
 async function main() {
   try {
-    // Parse command line arguments
     const args = process.argv.slice(2);
     const isConcatMode = args.includes("--concat");
-
-    // Parse --exclude-groups argument
     const excludeGroupsArg = args.find((arg) =>
       arg.startsWith("--exclude-groups="),
     );
@@ -454,11 +447,9 @@ async function main() {
         )
       : new Set();
 
-    if (isConcatMode) {
-      console.log("Generating knowledge base files in CONCAT mode...");
-    } else {
-      console.log("Generating knowledge base files...");
-    }
+    console.log(
+      `Generating knowledge base files${isConcatMode ? " in CONCAT mode" : ""}...`,
+    );
 
     if (excludeGroups.size > 0) {
       console.log(`Excluding groups: ${Array.from(excludeGroups).join(", ")}`);
@@ -475,7 +466,6 @@ async function main() {
     console.log(
       `\nComplete! Knowledge base files ${isConcatMode ? "concatenated" : "copied"} to: ${path.relative(projectRoot, outputDir)}`,
     );
-
     const files = await fs.readdir(outputDir);
     console.log(`Total files: ${files.length}`);
   } catch (error) {

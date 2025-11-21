@@ -8,11 +8,7 @@ const DRUM_LOOP_NOTES = "\nv100 C1 1|1,3 D1 |2,4\nv90 F#1 1|1x16@0.5\n";
 export const historyWithToolError = [
   {
     role: "user",
-    parts: [
-      {
-        text: "Create a simple 4-bar drum loop in the first scene",
-      },
-    ],
+    parts: [{ text: "Create a simple 4-bar drum loop in the first scene" }],
   },
   {
     role: "model",
@@ -22,10 +18,7 @@ export const historyWithToolError = [
         thought: true,
       },
       {
-        functionCall: {
-          name: PPAL_CONNECT,
-          args: {},
-        },
+        functionCall: { name: PPAL_CONNECT, args: {} },
         thoughtSignature:
           "CikB0e2Kb6ncCad8uBgCdatlWUUHXopPrGefNX20L1Lrp1ctqBiEUN8llgpaAdHtim9gAlMcR3L7iETUUZTfM8VfmcYDh0k7HFYa84lKWi4D8a/UTEb+Jw1PtCgroCXEO0RoSOBwxDBUMnoDG5DOZYugQuONC0mVHer3WBSRgc9rYm3nRhfqCtMBAdHtim/3xZFymTOmMM8UmLB4TQrtxatmDBL9Bln27ejB4A8yY3I8Y8oWsI+1r/bmOX44mK+M5kAIBMlhTGE6yPwIiMDjvkxSb55+hPtajYI1saNiyFpFBG9pz38n0Ef6hjvAXfYvKT1m4hUE0zuqj/dqF87loTY4OJrNn9up4sjvXS2c+Dal+IeJFdiMSQO5x+zZh+AlgFvqlUHWLBaCBRCk963Z4r8JFdp+xQ+/WtrLby5T5NgKYf4yG8ChUCLrRq2dPpNdWqaS/f8rVLUK/AmlGQrQAQHR7YpvFAjFCgGUa3wyWDIdH+aooBdZEbF+RvQ+LSAZFcxRS2aEXpnaVZgrQOXa3RQAqpCGIlT0HsAeUfWfUGTfpO5Z0vG24B1nwwjfMVy2Q6WOT1pSrWf4p5gbB5n479wnasQwWZ2XHhTM7MXJFKPL9NY+d7kxUr7+FfGahMDLo8f3oY5fZW31mwRIfHDF2ofNRsO7uLJUre2vKzlyFUx9SIBsiXAEa6Pfk3QuqjvHvx7Vb/He+C+ObwVK0FyMqn5pOm2XKW8fVugxMOuvm3EKvwEB0e2Kb/UGPvFF23AFoeF20lm99iR9UrUHSdDe3MbWpUkq3UOXadPfnEDKLEnF2N63siBzb5cZG/OLBuTFn3IHFVBSVTPxh6873wMr1m5ybw0GFj3LQL96gJbEPbl/CoMjWOS6cLYIe5hAD67kByjF2mBEvxHwsVTzpCQFWLzfOSYuVZ06T5uCldOiQIEHgx8T6JmRCtDf9PF6dwAv4LuwuvkpTMpvOdQq3VG84StpGPOTu+2LguXOjuh2CZZ6gwqrAQHR7YpvXAoh2p1/8jYmzCJLFoi9XNou9jnWtJh8q4FJiAwwMmXNFBTMjAGHbcHT84fF7H7cVmGhthzHOYqWxZzIAQi4U0RP13gJUeRHw+P7WpFDHrq1XBW/mxEJYBM5Uk06tjijaHOGs1qsurPtAyagNVGg26ZnghCvMgOefk01ttyX7mr1ckfN15AHCoJKI/LOzpLQFaZnfE/lupfoAaR8Cji6sZCgC6nROw==",
       },
