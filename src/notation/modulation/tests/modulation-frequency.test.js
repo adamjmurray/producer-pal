@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseFrequency } from "./modulation-frequency.js";
+import { parseFrequency } from "../modulation-frequency.js";
 
 describe("Modulation Period Parser", () => {
   describe("beat-only periods in 4/4", () => {

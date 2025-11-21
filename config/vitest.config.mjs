@@ -51,8 +51,9 @@ export default defineConfig({
         "**/*.css",
         "**/*.svg",
 
-        // peggy grammars
+        // peggy grammars and generated parsers
         "**/*.peggy",
+        "**/*-parser.js",
 
         // test helper functions
         "**/*-test-helpers.js",

@@ -1,7 +1,7 @@
 import * as console from "../../shared/v8-max-console.js";
 import { abletonBeatsToBarBeat } from "../barbeat/time/barbeat-time.js";
 import { evaluateModulationAST } from "./modulation-evaluator-helpers.js";
-import * as parser from "./modulation-parser.js";
+import * as parser from "./parser/modulation-parser.js";
 
 /**
  * Apply modulations to a list of notes in-place

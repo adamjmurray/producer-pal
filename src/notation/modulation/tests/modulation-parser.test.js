@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import * as parser from "./modulation-parser.js";
+import * as parser from "../modulation-parser.js";
 
 describe("Modulation Parser", () => {
   describe("basic structure", () => {

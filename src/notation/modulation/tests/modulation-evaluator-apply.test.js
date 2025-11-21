@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyModulations } from "./modulation-evaluator.js";
+import { applyModulations } from "../modulation-evaluator.js";
 
 describe("applyModulations", () => {
   describe("basic functionality", () => {
