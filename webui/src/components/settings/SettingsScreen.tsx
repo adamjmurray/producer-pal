@@ -1,8 +1,9 @@
 import type { Provider } from "../../types/settings";
+import { AppearanceTab } from "./AppearanceTab";
+import { BehaviorTab } from "./BehaviorTab";
 import { ConnectionTab } from "./ConnectionTab";
-import { RandomnessSlider } from "./controls/RandomnessSlider";
-import { ThinkingSettings } from "./controls/ThinkingSettings";
 import { ToolToggles } from "./controls/ToolToggles";
+import { SettingsFooter } from "./SettingsFooter";
 import { SettingsTabs } from "./SettingsTabs";
 
 interface SettingsScreenProps {
@@ -148,33 +149,17 @@ export function SettingsScreen({
 
               {/* Behavior Tab */}
               {activeTab === "behavior" && (
-                <div>
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={resetBehaviorToDefaults}
-                      className="px-3 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-                    >
-                      Reset to defaults
-                    </button>
-                  </div>
-                  <div className="space-y-4">
-                    <ThinkingSettings
-                      provider={provider}
-                      model={model}
-                      thinking={thinking}
-                      setThinking={setThinking}
-                      showThoughts={showThoughts}
-                      setShowThoughts={setShowThoughts}
-                    />
-                    <div className="mt-8">
-                      <RandomnessSlider
-                        temperature={temperature}
-                        setTemperature={setTemperature}
-                      />
-                    </div>
-                  </div>
-                </div>
+                <BehaviorTab
+                  provider={provider}
+                  model={model}
+                  thinking={thinking}
+                  setThinking={setThinking}
+                  temperature={temperature}
+                  setTemperature={setTemperature}
+                  showThoughts={showThoughts}
+                  setShowThoughts={setShowThoughts}
+                  resetBehaviorToDefaults={resetBehaviorToDefaults}
+                />
               )}
 
               {/* Tools Tab */}
@@ -189,48 +174,16 @@ export function SettingsScreen({
 
               {/* Appearance Tab */}
               {activeTab === "appearance" && (
-                <div>
-                  <label htmlFor="theme-select" className="block text-sm mb-2">
-                    Theme
-                  </label>
-                  <select
-                    id="theme-select"
-                    value={theme}
-                    onChange={(e) =>
-                      setTheme((e.target as HTMLSelectElement).value)
-                    }
-                    className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
-                  >
-                    <option value="system">System</option>
-                    <option value="light">Light</option>
-                    <option value="dark">Dark</option>
-                  </select>
-                </div>
+                <AppearanceTab theme={theme} setTheme={setTheme} />
               )}
             </div>
           )}
         </SettingsTabs>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
-          {settingsConfigured
-            ? "Note: Settings changes apply to new conversations."
-            : "Settings will be stored in this web browser."}
-        </p>
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={saveSettings}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-          >
-            Save
-          </button>
-          {settingsConfigured && (
-            <button
-              onClick={cancelSettings}
-              className="px-4 py-2 bg-gray-600 text-white rounded"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
+        <SettingsFooter
+          settingsConfigured={settingsConfigured}
+          saveSettings={saveSettings}
+          cancelSettings={cancelSettings}
+        />
       </div>
     </div>
   );
