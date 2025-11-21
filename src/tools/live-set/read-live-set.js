@@ -7,14 +7,16 @@ import {
   includeArrayFromFlags,
   parseIncludeArray,
   READ_SONG_DEFAULTS,
-} from "../shared/include-params.js";
-import { readTrack, readTrackGeneric } from "../track/read-track.js";
+} from "../shared/tool-framework/include-params.js";
+import { readTrackMinimal } from "../track/read/read-track-helpers.js";
+import { readTrack, readTrackGeneric } from "../track/read/read-track.js";
 
 /**
  * Read comprehensive information about the Live Set
- * @param {Object} args - The parameters
+ * @param {object} args - The parameters
  * @param {Array<string>} [args.include] - Array of data to include in the response
- * @returns {Object} Live Set information including tracks, scenes, tempo, time signature, and scale
+ * @param {object} _context - Internal context object (unused)
+ * @returns {object} Live Set information including tracks, scenes, tempo, time signature, and scale
  */
 export function readLiveSet(args = {}, _context = {}) {
   const includeFlags = parseIncludeArray(args.include, READ_SONG_DEFAULTS);
@@ -53,6 +55,18 @@ export function readLiveSet(args = {}, _context = {}) {
       readTrack({
         trackIndex,
         include: includeArray,
+      }),
+    );
+  } else if (
+    includeFlags.includeSessionClips ||
+    includeFlags.includeArrangementClips ||
+    includeFlags.includeAllClips
+  ) {
+    // Auto-include minimal track info when clips are requested without explicit track inclusion
+    result.tracks = trackIds.map((_trackId, trackIndex) =>
+      readTrackMinimal({
+        trackIndex,
+        includeFlags,
       }),
     );
   }

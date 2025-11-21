@@ -46,24 +46,13 @@ Create MIDI clips using the bar|beat notation syntax:
   - After \`@2=1\`, your current v/t/p settings remain unchanged
 
 ## Audio Clips
+Audio clip properties are always included in \`ppal-read-clip\` results: \`filename\`,
+\`gainDb\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`.
 
-Audio clips support gain and pitch adjustment:
-
-**Reading Audio Clips:**
-- By default, \`ppal-read-clip\` returns audio properties: \`filename\`, \`gain\`, \`gainDisplay\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`
-- Use \`include: []\` to omit audio properties
-- \`pitchShift\` is in semitones (e.g., -2.5 = down 2.5 semitones)
-
-**Updating Audio Clips:**
-- \`gain\`: 0-1 range (0.5 ≈ -6dB, 0.7 ≈ +12dB)
-- \`pitchShift\`: -48 to +48 semitones, supports decimals
-- These parameters are ignored for MIDI clips (no error)
-
-**Example:**
-
-Audio clip with audio-info (default): \`{ id: "id 456", type: "audio", name: "Kick", gain: 0.7, gainDisplay: "12.0 dB", filename: "kick.wav", pitchShift: -2.5, sampleLength: 44100, sampleRate: 44100 }\`
-
-Update audio clip: \`ppal-update-clip ids="id 456" gain=0.5 pitchShift=-3\`
+**Understanding audio parameters:**
+- \`gainDb\`: Decibels (0 dB = unity, -6 dB = half volume, +12 dB = 4x volume)
+- \`pitchShift\`: Semitones (e.g., -2.5 = down 2.5 semitones)
+- These parameters are ignored when updating MIDI clips (no error)
 
 ## Examples
 
@@ -191,17 +180,33 @@ C3 4|1                       // this C3 is NOT deleted (v80 still active)
 
 \`arrangementStart\` moves clips in the timeline. \`arrangementLength\` expands or reduces visible playback region.
 
-**Lengthening clips:** Producer Pal duplicates and tiles the clip to fill the requested length
+Note: Any operation that moves a clip causes the clip ID to change. 
+Most operations return the new IDs.
+Re-read the Set or Track to see the new IDs.
+
+#### Lengthening Clips
+
+Producer Pal duplicates and tiles the clip to fill the requested length
 (creates multiple clips in arrangement). This differs from Live's native behavior but achieves
 the same playback result.
 
-**Slicing technique:** Reduce \`arrangementLength\` to desired slice size, then expand back to original length. 
-Each slice becomes independently editable (gain, pitch, deletion). Especially useful for audio clips.
+#### Moving Multiple Clips in Arrangement
+
+When moving multiple clips to new arrangement positions (e.g., "move all clips forward by 1 bar"):
+
+1. **Process clips in reverse order** - start with the clip that has the latest \`arrangementStart\` time and work backwards
+2. This prevents earlier clips from overwriting later clips during sequential \`ppal-update-clip\` calls
+3. Sort clips by \`arrangementStart\` descending before updating
+
+Example sequence (move three clips forward one bar):
+- Clip at bar 5 → move to bar 6 (call update-clip)
+- Clip at bar 4 → move to bar 5 (call update-clip)
+- Clip at bar 3 → move to bar 4 (call update-clip)
 `;
 
 /**
  * Generate initialization instructions based on context
- * @param {Object} context - The userContext from main.js
+ * @param {object} context - The userContext from main.js
  * @returns {string} Instructions for completing Producer Pal initialization
  */
 export function buildInstructions(context) {

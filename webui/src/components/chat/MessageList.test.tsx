@@ -1,13 +1,13 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen } from "@testing-library/preact";
+import { fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { UIMessage } from "../../types/messages.js";
-import { MessageList } from "./MessageList.jsx";
+import type { UIMessage } from "../../types/messages";
+import { MessageList } from "./MessageList";
 
 // Mock child components
-vi.mock("./ActivityIndicator.jsx", () => ({
+vi.mock("./controls/ActivityIndicator.jsx", () => ({
   ActivityIndicator: () => (
     <div data-testid="activity-indicator">Loading...</div>
   ),
@@ -345,6 +345,143 @@ describe("MessageList", () => {
       // The messagesEndRef div should exist
       const divs = container.querySelectorAll("div");
       expect(divs.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe("retry functionality", () => {
+    it("shows retry button for model messages when not responding", () => {
+      const messages = [
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "Hello" }],
+          rawHistoryIndex: 0,
+        },
+        {
+          role: "model" as const,
+          parts: [{ type: "text" as const, content: "Hi there" }],
+          rawHistoryIndex: 1,
+        },
+      ];
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
+
+      const retryButton = screen.getByTitle("Retry from your last message");
+      expect(retryButton).toBeDefined();
+    });
+
+    it("hides retry button when assistant is responding", () => {
+      const messages = [
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "Hello" }],
+          rawHistoryIndex: 0,
+        },
+        {
+          role: "model" as const,
+          parts: [{ type: "text" as const, content: "Hi there" }],
+          rawHistoryIndex: 1,
+        },
+      ];
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={true}
+          handleRetry={handleRetry}
+        />,
+      );
+
+      const retryButton = screen.queryByTitle("Retry from your last message");
+      expect(retryButton).toBeNull();
+    });
+
+    it("calls handleRetry with previous user message index when clicked", () => {
+      const handleRetryMock = vi.fn();
+      const messages = [
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "First question" }],
+          rawHistoryIndex: 0,
+        },
+        {
+          role: "model" as const,
+          parts: [{ type: "text" as const, content: "First answer" }],
+          rawHistoryIndex: 1,
+        },
+      ];
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetryMock}
+        />,
+      );
+
+      const retryButton = screen.getByTitle("Retry from your last message");
+      fireEvent.click(retryButton);
+
+      expect(handleRetryMock).toHaveBeenCalledOnce();
+      expect(handleRetryMock).toHaveBeenCalledWith(0);
+    });
+
+    it("does not show retry button when there is no previous user message", () => {
+      const messages = [
+        {
+          role: "model" as const,
+          parts: [{ type: "text" as const, content: "Hello" }],
+          rawHistoryIndex: 0,
+        },
+      ];
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetry}
+        />,
+      );
+
+      const retryButton = screen.queryByTitle("Retry from your last message");
+      expect(retryButton).toBeNull();
+    });
+
+    it("finds correct user message index for retry when empty messages exist", () => {
+      const handleRetryMock = vi.fn();
+      const messages: UIMessage[] = [
+        {
+          role: "user" as const,
+          parts: [], // Empty message - should be filtered out
+          rawHistoryIndex: 0,
+        },
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "Hello" }],
+          rawHistoryIndex: 1,
+        },
+        {
+          role: "model" as const,
+          parts: [{ type: "text" as const, content: "Response" }],
+          rawHistoryIndex: 2,
+        },
+      ];
+
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetryMock}
+        />,
+      );
+
+      const retryButton = screen.getByTitle("Retry from your last message");
+      fireEvent.click(retryButton);
+
+      // Should use originalIdx=1 (the non-empty user message), not filtered idx=0
+      expect(handleRetryMock).toHaveBeenCalledOnce();
+      expect(handleRetryMock).toHaveBeenCalledWith(1);
     });
   });
 });

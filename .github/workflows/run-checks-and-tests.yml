@@ -1,0 +1,156 @@
+# .github/workflows/run-tests.yml
+name: "Run Test Suite"
+
+on: push
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks-and-unit-tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to checkout and write comments on commits
+      contents: write
+      # Required to put a comment into the pull-request
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - run: npm ci
+
+      - name: Check parser is up-to-date
+        run: |
+          # Create a backup of the current parsers
+          cp src/notation/barbeat/parser/barbeat-parser.js barbeat-parser-backup.js
+
+          # Regenerate the parser
+          npm run parser:build
+
+          # Compare the newly generated parsers with the checked-in versions
+          if ! diff -q src/notation/barbeat/parser/barbeat-parser.js barbeat-parser-backup.js > /dev/null; then
+            echo "Error: The checked-in bbs parser does not match the generated parser."
+            echo "Please run 'npm run parser:build' and commit the changes."
+            rm barbeat-parser-backup.js
+            exit 1
+          fi
+
+          # Clean up backup file
+          rm barbeat-parser-backup.js
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run typecheck
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run tests with coverage
+        id: tests
+        if: success()
+        run: FORCE_COLOR=3 npm run test:coverage
+
+      - name: "Report Coverage"
+        # Runs only if tests step ran (whether it passed or failed), not if it was skipped
+        if: steps.tests.outcome == 'success' || steps.tests.outcome == 'failure'
+        uses: davelosert/vitest-coverage-report-action@v2
+        with:
+          vite-config-path: "./config/vite.config.mjs"
+          file-coverage-mode: "all"
+
+  build-verification:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all production artifacts
+        run: npm run build
+
+      - name: Verify all build artifacts exist
+        run: |
+          # Verify Max for Live device artifacts
+          test -f max-for-live-device/live-api-adapter.js || { echo "Missing: live-api-adapter.js"; exit 1; }
+          test -f max-for-live-device/mcp-server.mjs || { echo "Missing: mcp-server.mjs"; exit 1; }
+          test -f max-for-live-device/chat-ui.html || { echo "Missing: chat-ui.html"; exit 1; }
+
+          # Verify portal artifacts
+          test -f release/producer-pal-portal.js || { echo "Missing: release/producer-pal-portal.js"; exit 1; }
+          test -f claude-desktop-extension/producer-pal-portal.js || { echo "Missing: claude-desktop-extension/producer-pal-portal.js"; exit 1; }
+          test -f npm/producer-pal-portal.js || { echo "Missing: npm/producer-pal-portal.js"; exit 1; }
+
+          # Verify Claude Desktop extension
+          test -f claude-desktop-extension/Producer_Pal.mcpb || { echo "Missing: Producer_Pal.mcpb"; exit 1; }
+
+          echo "All build artifacts verified successfully!"
+
+  playwright-tests:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22.x"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get Playwright version
+        id: playwright-version
+        run:
+          echo "PLAYWRIGHT_VERSION=$(node -e
+          "console.log(require('./package-lock.json').packages['node_modules/@playwright/test'].version)")"
+          >> $GITHUB_ENV
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ env.PLAYWRIGHT_VERSION }}
+
+      - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+
+      - name: Build documentation site
+        run: npm run docs:build
+
+      - name: Test documentation site with Playwright
+        run: npx playwright test -c config/playwright.config.mjs
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v5
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30

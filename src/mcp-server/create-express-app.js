@@ -3,9 +3,9 @@ import { ErrorCode } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import Max from "max-api";
 import chatUiHtml from "virtual:chat-ui-html";
-import { createMcpServer } from "./create-mcp-server";
+import { createMcpServer } from "./create-mcp-server.js";
 import { callLiveApi } from "./max-api-adapter.js";
-import * as console from "./node-for-max-logger";
+import * as console from "./node-for-max-logger.js";
 
 let chatUIEnabled = true; // default
 Max.addHandler(
@@ -41,6 +41,10 @@ const internalError = (message) => ({
   id: null,
 });
 
+/**
+ * Creates and configures an Express application for the MCP server
+ * @returns {object} - Configured Express app
+ */
 export function createExpressApp() {
   const app = express();
 

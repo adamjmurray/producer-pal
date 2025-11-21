@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { extractReasoningFromDelta } from "./openai-client.js";
 import type OpenAI from "openai";
+import { describe, expect, it } from "vitest";
+import {
+  extractReasoningFromDelta,
+  OpenAIClient,
+  type OpenAIAssistantMessageWithReasoning,
+} from "./openai-client";
+import type { OpenAIToolCall } from "../types/messages";
 
 describe("extractReasoningFromDelta", () => {
   it("should return empty string for regular content (not reasoning)", () => {
@@ -161,5 +166,267 @@ describe("extractReasoningFromDelta", () => {
 
     const result = extractReasoningFromDelta(delta);
     expect(result).toBe("Reasoning text when content is empty");
+  });
+});
+
+describe("OpenAIClient.buildStreamMessage", () => {
+  let client: OpenAIClient;
+
+  // Helper to create a client instance for testing
+  function createTestClient(): OpenAIClient {
+    return new OpenAIClient("test-key", {
+      model: "gpt-4",
+      chatHistory: [],
+    });
+  }
+
+  it("should not include tool_calls when finish_reason is null (streaming in progress)", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "Thinking...",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>([
+      [
+        0,
+        {
+          id: "call_123",
+          type: "function",
+          function: {
+            name: "search",
+            arguments: '{"query": "incomplete',
+          },
+        },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      null, // finish_reason is null during streaming
+    );
+
+    expect(result.tool_calls).toBeUndefined();
+    expect(result.content).toBe("Thinking...");
+  });
+
+  it("should not include tool_calls when finish_reason is 'stop'", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "Here's the answer",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>([
+      [
+        0,
+        {
+          id: "call_123",
+          type: "function",
+          function: {
+            name: "search",
+            arguments: '{"query": "test"}',
+          },
+        },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      "stop",
+    );
+
+    expect(result.tool_calls).toBeUndefined();
+    expect(result.content).toBe("Here's the answer");
+  });
+
+  it("should include tool_calls when finish_reason is 'tool_calls'", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>([
+      [
+        0,
+        {
+          id: "call_123",
+          type: "function",
+          function: {
+            name: "search",
+            arguments: '{"query": "test"}',
+          },
+        },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      "tool_calls", // finish_reason indicates tool calls are complete
+    );
+
+    expect(result.tool_calls).toBeDefined();
+    expect(result.tool_calls).toHaveLength(1);
+    const toolCall = result.tool_calls?.[0];
+    expect(toolCall?.id).toBe("call_123");
+    if (toolCall?.type === "function") {
+      expect(toolCall.function.name).toBe("search");
+      expect(toolCall.function.arguments).toBe('{"query": "test"}');
+    }
+  });
+
+  it("should include multiple tool_calls when finish_reason is 'tool_calls'", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>([
+      [
+        0,
+        {
+          id: "call_1",
+          type: "function",
+          function: {
+            name: "search",
+            arguments: '{"query": "foo"}',
+          },
+        },
+      ],
+      [
+        1,
+        {
+          id: "call_2",
+          type: "function",
+          function: {
+            name: "calculate",
+            arguments: '{"expression": "2+2"}',
+          },
+        },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      "tool_calls",
+    );
+
+    expect(result.tool_calls).toBeDefined();
+    expect(result.tool_calls).toHaveLength(2);
+  });
+
+  it("should not include tool_calls when finish_reason is 'tool_calls' but map is empty", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "Response",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>();
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      "tool_calls",
+    );
+
+    expect(result.tool_calls).toBeUndefined();
+  });
+
+  it("should include reasoning_details when reasoning text is provided", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "Answer",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>();
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "Thinking about this carefully...",
+      "stop",
+    );
+
+    expect(result.reasoning_details).toBeDefined();
+    expect(result.reasoning_details).toHaveLength(1);
+    const reasoning = result.reasoning_details?.[0];
+    expect(reasoning?.type).toBe("reasoning.text");
+    expect(reasoning?.text).toBe("Thinking about this carefully...");
+    expect(reasoning?.index).toBe(0);
+  });
+
+  it("should not include reasoning_details when reasoning text is empty", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "Answer",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>();
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      "stop",
+    );
+
+    expect(result.reasoning_details).toBeUndefined();
+  });
+
+  it("should include both tool_calls and reasoning when both are present", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>([
+      [
+        0,
+        {
+          id: "call_xyz",
+          type: "function",
+          function: {
+            name: "analyze",
+            arguments: '{"data": "test"}',
+          },
+        },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "I need to analyze this data...",
+      "tool_calls",
+    );
+
+    expect(result.tool_calls).toBeDefined();
+    expect(result.tool_calls).toHaveLength(1);
+    expect(result.reasoning_details).toBeDefined();
+    const reasoning = result.reasoning_details?.[0];
+    expect(reasoning?.text).toBe("I need to analyze this data...");
   });
 });

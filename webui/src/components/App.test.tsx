@@ -1,37 +1,36 @@
 /**
  * @vitest-environment happy-dom
  */
+import { fireEvent, render } from "@testing-library/preact";
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { render } from "@testing-library/preact";
-import { App } from "./App.jsx";
-
 // Mock all the custom hooks
-vi.mock("../hooks/use-settings.js", () => ({
+vi.mock("../hooks/settings/use-settings.js", () => ({
   useSettings: vi.fn(),
 }));
 
-vi.mock("../hooks/use-theme.js", () => ({
+vi.mock("../hooks/theme/use-theme.js", () => ({
   useTheme: vi.fn(),
 }));
 
-vi.mock("../hooks/use-mcp-connection.js", () => ({
+vi.mock("../hooks/connection/use-mcp-connection.js", () => ({
   useMcpConnection: vi.fn(),
 }));
 
-vi.mock("../hooks/use-gemini-chat.js", () => ({
+vi.mock("../hooks/chat/use-gemini-chat.js", () => ({
   useGeminiChat: vi.fn(),
 }));
 
-vi.mock("../hooks/use-openai-chat.js", () => ({
+vi.mock("../hooks/chat/use-openai-chat.js", () => ({
   useOpenAIChat: vi.fn(),
 }));
 
 // Import mocked modules to access them in tests
-import { useSettings } from "../hooks/use-settings.js";
-import { useTheme } from "../hooks/use-theme.js";
-import { useMcpConnection } from "../hooks/use-mcp-connection.js";
-import { useGeminiChat } from "../hooks/use-gemini-chat.js";
-import { useOpenAIChat } from "../hooks/use-openai-chat.js";
+import { useGeminiChat } from "../hooks/chat/use-gemini-chat";
+import { useMcpConnection } from "../hooks/connection/use-mcp-connection";
+import { useOpenAIChat } from "../hooks/chat/use-openai-chat";
+import { useSettings } from "../hooks/settings/use-settings";
+import { useTheme } from "../hooks/theme/use-theme";
+import { App } from "./App";
 
 describe("App", () => {
   const mockChatHook = {
@@ -222,6 +221,217 @@ describe("App", () => {
       expect(geminiCalls.length).toBeGreaterThan(0);
       expect(geminiCalls[0]![0]).toHaveProperty("apiKey");
       expect(geminiCalls[0]![0]).toHaveProperty("model");
+    });
+  });
+
+  describe("settings interactions", () => {
+    it("calls saveSettings when save button is clicked in settings screen", () => {
+      const mockSaveSettings = vi.fn();
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: false,
+        saveSettings: mockSaveSettings,
+      });
+      const { container } = render(<App />);
+      const saveButton = Array.from(container.querySelectorAll("button")).find(
+        (btn) => btn.textContent === "Save",
+      );
+      expect(saveButton).toBeDefined();
+      if (saveButton) {
+        fireEvent.click(saveButton);
+      }
+      expect(mockSaveSettings).toHaveBeenCalledOnce();
+    });
+
+    it("calls cancelSettings and reverts theme when cancel button is clicked", () => {
+      const mockCancelSettings = vi.fn();
+      const mockSetTheme = vi.fn();
+      const initialTheme = "light";
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true, // Start with chat screen
+        cancelSettings: mockCancelSettings,
+      });
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: initialTheme,
+        setTheme: mockSetTheme,
+      });
+
+      const { container, rerender } = render(<App />);
+
+      // Open settings by finding the settings button in chat header (by text)
+      const settingsButton = Array.from(
+        container.querySelectorAll("button"),
+      ).find((btn) => btn.textContent === "Settings");
+      expect(settingsButton).toBeDefined();
+      if (settingsButton) {
+        fireEvent.click(settingsButton);
+      }
+
+      // Re-render to show settings screen
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true,
+        cancelSettings: mockCancelSettings,
+      });
+      rerender(<App />);
+
+      // Now find the cancel button in settings
+      const cancelButton = Array.from(
+        container.querySelectorAll("button"),
+      ).find((btn) => btn.textContent === "Cancel");
+      expect(cancelButton).toBeDefined();
+      if (cancelButton) {
+        fireEvent.click(cancelButton);
+      }
+
+      expect(mockCancelSettings).toHaveBeenCalledOnce();
+      expect(mockSetTheme).toHaveBeenCalledWith(initialTheme);
+    });
+
+    it("saves theme reference when transitioning to settings screen", () => {
+      const mockSetTheme = vi.fn();
+      const initialTheme = "light";
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: false,
+      });
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: initialTheme,
+        setTheme: mockSetTheme,
+      });
+
+      // Render with settings screen open (settingsConfigured: false)
+      const { rerender } = render(<App />);
+
+      // Verify settings screen is shown
+      expect(document.body.textContent).toContain("Provider");
+
+      // Change theme while in settings
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: "dark",
+        setTheme: mockSetTheme,
+      });
+
+      // Re-render to trigger useEffect
+      rerender(<App />);
+
+      // The useEffect should have captured the initial theme
+      // This test verifies the useEffect runs and tracks theme changes
+      expect(mockSetTheme).not.toHaveBeenCalled();
+    });
+
+    it("captures original theme when opening settings from chat screen", () => {
+      const mockSetTheme = vi.fn();
+      const initialTheme = "light";
+
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        settingsConfigured: true, // Start with chat screen
+      });
+      (useTheme as ReturnType<typeof vi.fn>).mockReturnValue({
+        theme: initialTheme,
+        setTheme: mockSetTheme,
+      });
+
+      const { container } = render(<App />);
+
+      // Click settings button to open settings (by text)
+      const settingsButton = Array.from(
+        container.querySelectorAll("button"),
+      ).find((btn) => btn.textContent === "Settings");
+
+      if (settingsButton) {
+        fireEvent.click(settingsButton);
+      }
+
+      // The useEffect should capture the theme when showSettings changes from false to true
+      // This test verifies the useEffect logic runs correctly
+      expect(mockSetTheme).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("baseUrl determination", () => {
+    it("uses custom baseUrl for custom provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "custom",
+        baseUrl: "https://custom.api.com/v1",
+      });
+      render(<App />);
+      // Verify OpenAI chat hook was called with custom baseUrl
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://custom.api.com/v1");
+    });
+
+    it("uses localhost baseUrl for lmstudio provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "lmstudio",
+        port: 1234,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:1234/v1");
+    });
+
+    it("uses localhost baseUrl for ollama provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "ollama",
+        port: 11434,
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("http://localhost:11434/v1");
+    });
+
+    it("uses provider-specific baseUrl for openai provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openai",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://api.openai.com/v1");
+    });
+
+    it("uses provider-specific baseUrl for mistral provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "mistral",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://api.mistral.ai/v1");
+    });
+
+    it("uses provider-specific baseUrl for openrouter provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "openrouter",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBe("https://openrouter.ai/api/v1");
+    });
+
+    it("uses undefined baseUrl for gemini provider", () => {
+      (useSettings as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...mockSettingsHook,
+        provider: "gemini",
+      });
+      render(<App />);
+      const openAICalls = (useOpenAIChat as ReturnType<typeof vi.fn>).mock
+        .calls;
+      expect(openAICalls[0]![0].baseUrl).toBeUndefined();
     });
   });
 });

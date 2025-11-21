@@ -1,32 +1,31 @@
 import { describe, expect, it } from "vitest";
+import { formatGeminiMessages } from "./gemini-formatter";
 import {
   expected,
   history,
-} from "./test-cases/gemini-formatter/basic-test-case.js";
+} from "./test-cases/gemini-formatter/basic-test-case";
 import {
   expectedWithError,
   expectedWithErrorNoModel,
   historyWithError,
   historyWithErrorNoModel,
-} from "./test-cases/gemini-formatter/error-test-cases.js";
+} from "./test-cases/gemini-formatter/error-test-cases";
 import {
   expectedEndingInThought,
   historyEndingInThought,
-} from "./test-cases/gemini-formatter/history-ending-in-thought-test-case.js";
+} from "./test-cases/gemini-formatter/history-ending-in-thought-test-case";
 import {
   expected as expectedParallelToolCalls,
   parallelToolCallHistory,
-} from "./test-cases/gemini-formatter/parallel-tool-calls-test-case.js";
+} from "./test-cases/gemini-formatter/parallel-tool-calls-test-case";
 import {
   expectedNonThoughtTextWithSignature,
   historyNonThoughtTextWithSignature,
-} from "./test-cases/gemini-formatter/thought-signatures-test-case.js";
+} from "./test-cases/gemini-formatter/thought-signatures-test-case";
 import {
   expectedWithToolError,
   historyWithToolError,
-} from "./test-cases/gemini-formatter/tool-call-error-test-case.js";
-
-import { formatGeminiMessages } from "./gemini-formatter.js";
+} from "./test-cases/gemini-formatter/tool-call-error-test-case";
 
 describe("formatGeminiMessages", () => {
   it("merges consecutive model messages and adds functionResponses to functionCalls ", () => {

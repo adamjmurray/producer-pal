@@ -1,5 +1,5 @@
-import { toolNames } from "../../../config.js";
-import { truncateString } from "../../../utils/truncate-string.js";
+import { toolNames } from "../../../lib/config";
+import { truncateString } from "../../../lib/utils/truncate-string";
 
 interface AssistantToolCallProps {
   name: string;
@@ -8,6 +8,15 @@ interface AssistantToolCallProps {
   isError?: boolean;
 }
 
+/**
+ * Displays tool call with args and result
+ * @param {AssistantToolCallProps} root0 - Component props
+ * @param {string} root0.name - Tool name
+ * @param {Record<string, unknown>} root0.args - Tool arguments
+ * @param {string | null} root0.result - Tool result or null if pending
+ * @param {boolean} [root0.isError] - Whether tool call failed
+ * @returns {JSX.Element} - React component
+ */
 export function AssistantToolCall({
   name,
   args,
@@ -44,6 +53,12 @@ export function AssistantToolCall({
   );
 }
 
+/**
+ * Formats and displays full tool result with JSON formatting
+ * @param {object} root0 - Component props
+ * @param {string} root0.result - Tool result to format
+ * @returns {JSX.Element} - React component
+ */
 function FullResultDetails({ result }: { result: string }) {
   const s = `${result}`;
   let formatted: string | null = null;

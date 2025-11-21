@@ -14,7 +14,7 @@ describe("MCP Express App", () => {
     process.env.ENABLE_RAW_LIVE_API = "true";
 
     // Import and start the server first
-    const { createExpressApp } = await import("./create-express-app");
+    const { createExpressApp } = await import("./create-express-app.js");
 
     const app = createExpressApp({ timeoutMs: 100 }); // Use a short timeout to avoid hanging tests
     const port = await new Promise((resolve) => {
@@ -92,6 +92,7 @@ describe("MCP Express App", () => {
         "ppal-create-clip",
         "ppal-read-clip",
         "ppal-update-clip",
+        "ppal-transform-clips",
         // "ppal-read-device",
         "ppal-playback",
         "ppal-select",
@@ -310,7 +311,9 @@ describe("MCP Express App", () => {
         expect(result.content[0].text).toContain(errorMessage);
       } finally {
         // Always restore the original mock
-        Max.outlet = originalOutlet;
+        if (Max.outlet) {
+          Max.outlet = originalOutlet;
+        }
       }
     });
   });
@@ -382,11 +385,49 @@ describe("MCP Express App", () => {
 
   describe("Configuration Options", () => {
     it("should create app successfully without configuration options", async () => {
-      const { createExpressApp } = await import("./create-express-app");
+      const { createExpressApp } = await import("./create-express-app.js");
       const app = createExpressApp();
 
       expect(app).toBeDefined();
       // The app should be created successfully without any configuration
+    });
+  });
+
+  describe("CORS", () => {
+    it("should handle OPTIONS preflight requests", async () => {
+      const response = await fetch(serverUrl, {
+        method: "OPTIONS",
+        headers: {
+          "Access-Control-Request-Method": "POST",
+          "Access-Control-Request-Headers": "content-type",
+        },
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("access-control-allow-origin")).toBe("*");
+      expect(response.headers.get("access-control-allow-methods")).toContain(
+        "POST",
+      );
+      expect(response.headers.get("access-control-allow-headers")).toBe("*");
+    });
+  });
+
+  describe("Chat UI", () => {
+    let chatUrl;
+
+    beforeAll(() => {
+      chatUrl = serverUrl.replace("/mcp", "/chat");
+    });
+
+    it("should serve chat UI when enabled", async () => {
+      // Chat UI is enabled by default
+      const response = await fetch(chatUrl);
+
+      expect(response.status).toBe(200);
+      expect(response.headers.get("content-type")).toContain("html");
+      const html = await response.text();
+      expect(html).toBeDefined();
+      expect(html.length).toBeGreaterThan(0);
     });
   });
 });

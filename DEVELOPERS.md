@@ -158,6 +158,12 @@ npm run docs:preview # Preview production build
 The site automatically deploys to https://producer-pal.org when changes are
 pushed to the main branch.
 
+**Clean URLs**: The site uses VitePress clean URLs (`cleanUrls: true`). When
+linking to pages within the docs, use clean URL format without trailing slashes
+(e.g., `/installation/chat-ui` instead of `/installation/chat-ui.html`). Page
+files are named after their folder (e.g., `docs/installation.md` instead of
+`docs/installation/index.md`), except for the top-level `docs/index.md`.
+
 See `dev-docs/Documentation-Site.md` for deployment details, configuration, and
 content guidelines.
 

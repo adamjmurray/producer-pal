@@ -1,5 +1,5 @@
 // Entry point for the tool implementations with direct Live API access
-import "./live-api-extensions";
+import "./live-api-extensions.js";
 
 import { toCompactJSLiteral } from "../shared/compact-serializer.js";
 import {
@@ -8,25 +8,26 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
-} from "../shared/mcp-response-utils";
-import * as console from "../shared/v8-max-console";
-import { VERSION } from "../shared/version";
-import { createClip } from "../tools/clip/create-clip";
-import { readClip } from "../tools/clip/read-clip";
-import { updateClip } from "../tools/clip/update-clip";
+} from "../shared/mcp-response-utils.js";
+import * as console from "../shared/v8-max-console.js";
+import { VERSION } from "../shared/version.js";
+import { createClip } from "../tools/clip/create/create-clip.js";
+import { readClip } from "../tools/clip/read/read-clip.js";
+import { updateClip } from "../tools/clip/update/update-clip.js";
 import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
 import { select } from "../tools/control/select.js";
-import { readLiveSet } from "../tools/live-set/read-live-set";
-import { updateLiveSet } from "../tools/live-set/update-live-set";
-import { deleteObject } from "../tools/operations/delete";
-import { duplicate } from "../tools/operations/duplicate";
-import { createScene } from "../tools/scene/create-scene";
-import { readScene } from "../tools/scene/read-scene";
-import { updateScene } from "../tools/scene/update-scene";
-import { createTrack } from "../tools/track/create-track";
-import { readTrack } from "../tools/track/read-track";
-import { updateTrack } from "../tools/track/update-track";
+import { readLiveSet } from "../tools/live-set/read-live-set.js";
+import { updateLiveSet } from "../tools/live-set/update-live-set.js";
+import { deleteObject } from "../tools/operations/delete/delete.js";
+import { duplicate } from "../tools/operations/duplicate/duplicate.js";
+import { transformClips } from "../tools/operations/transform-clips/transform-clips.js";
+import { createScene } from "../tools/scene/create-scene.js";
+import { readScene } from "../tools/scene/read-scene.js";
+import { updateScene } from "../tools/scene/update-scene.js";
+import { createTrack } from "../tools/track/create/create-track.js";
+import { readTrack } from "../tools/track/read/read-track.js";
+import { updateTrack } from "../tools/track/update/update-track.js";
 import { connect } from "../tools/workflow/connect.js";
 import { memory } from "../tools/workflow/memory.js";
 
@@ -58,6 +59,7 @@ const tools = {
   "ppal-create-clip": (args) => createClip(args, context),
   "ppal-read-clip": (args) => readClip(args, context),
   "ppal-update-clip": (args) => updateClip(args, context),
+  "ppal-transform-clips": (args) => transformClips(args, context),
   "ppal-playback": (args) => playback(args, context),
   "ppal-select": (args) => select(args, context),
   "ppal-delete": (args) => deleteObject(args, context),
@@ -69,6 +71,13 @@ if (process.env.ENABLE_RAW_LIVE_API === "true") {
   tools["ppal-raw-live-api"] = (args) => rawLiveApi(args, context);
 }
 
+/**
+ * Call a tool by name with the given arguments
+ *
+ * @param {string} toolName - Name of the tool to call
+ * @param {object} args - Arguments to pass to the tool
+ * @returns {object} Tool execution result
+ */
 function callTool(toolName, args) {
   const tool = tools[toolName];
   if (!tool) {
@@ -78,30 +87,67 @@ function callTool(toolName, args) {
 }
 
 let isCompactOutputEnabled = true;
+/**
+ * Enable or disable compact output format
+ *
+ * @param {boolean} enabled - Whether to enable compact output
+ */
 export function compactOutput(enabled) {
   isCompactOutputEnabled = Boolean(enabled);
 }
 
+/**
+ * Enable or disable small model mode
+ *
+ * @param {boolean} enabled - Whether to enable small model mode
+ */
 export function smallModelMode(enabled) {
   context.smallModelMode = Boolean(enabled);
 }
 
+/**
+ * Enable or disable project notes feature
+ *
+ * @param {boolean} enabled - Whether to enable project notes
+ */
 export function projectNotesEnabled(enabled) {
   context.projectNotes.enabled = Boolean(enabled);
 }
 
+/**
+ * Set whether project notes are writable
+ *
+ * @param {boolean} writable - Whether project notes should be writable
+ */
 export function projectNotesWritable(writable) {
   context.projectNotes.writable = Boolean(writable);
 }
 
+/**
+ * Set the project notes content
+ *
+ * @param {string} _text - Unused parameter
+ * @param {string} content - Project notes content
+ */
 export function projectNotes(_text, content) {
   context.projectNotes.content = content ?? "";
 }
 
+/**
+ * Set the holding area start position in beats
+ *
+ * @param {number} beats - Start position in beats
+ */
 export function holdingAreaStartBeats(beats) {
   context.holdingAreaStartBeats = Number(beats) || 40000;
 }
 
+/**
+ * Send a response back to the MCP server
+ *
+ * @param {string} requestId - Request identifier
+ * @param {object} result - Result object to send
+ */
 function sendResponse(requestId, result) {
   const jsonString = JSON.stringify(result);
 
@@ -134,6 +180,14 @@ function sendResponse(requestId, result) {
 }
 
 // Handle messages from Node for Max
+/**
+ * Handle MCP request from Node for Max
+ *
+ * @param {string} requestId - Request identifier
+ * @param {string} tool - Tool name to execute
+ * @param {string} argsJSON - JSON string of arguments
+ * @param {string} contextJSON - JSON string of context
+ */
 export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
   let result;
   try {

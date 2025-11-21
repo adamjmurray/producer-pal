@@ -4,6 +4,12 @@ interface AssistantTextProps {
   content: string;
 }
 
+/**
+ * Renders assistant text content with markdown
+ * @param {AssistantTextProps} root0 - Component props
+ * @param {string} root0.content - Markdown content to render
+ * @returns {JSX.Element} - React component
+ */
 export function AssistantText({ content }: AssistantTextProps) {
   return (
     <div

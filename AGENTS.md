@@ -27,6 +27,8 @@ npm run ui:build # Production build
 npm run docs:dev     # Development server with hot reload
 npm run docs:build   # Build static site
 npm run docs:preview # Preview production build
+# When editing docs, use clean URLs: /chat-ui not /chat-ui.html (no trailing slash)
+# Page files named after folder: docs/guide.md not docs/guide/index.md (except top-level docs/index.md)
 ```
 
 ## Architecture
@@ -50,7 +52,18 @@ See `dev-docs/Architecture.md` for detailed system design and
 - **File naming**: React components use PascalCase (e.g., `ChatHeader.tsx`). All
   other files use kebab-case (e.g., `use-gemini-chat.ts`, `live-api-adapter.js`)
 
-- **Import extensions**: Always include `.js` in imports
+- **Function organization**: In files that export functions, the first exported
+  function should be the main function named after the file (e.g.,
+  `updateClip()` in `update-clip.js`, `readTrack()` in `read-track.js`). All
+  helper functions (both internal and exported) must be placed below the main
+  exported function(s). This improves code readability and makes it immediately
+  clear what the primary purpose of each file is.
+
+- **Import extensions**: Code in `src/` and `scripts/` directories runs
+  unbundled in Node.js and must ALWAYS include `.js` file extensions in relative
+  imports (e.g., `import foo from './bar.js'`), as required by the Node.js ESM
+  loader. Code in `webui/` is bundled and must NEVER use file extensions in
+  relative imports (e.g., `import foo from './bar'`).
 
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
@@ -81,6 +94,20 @@ See `dev-docs/Architecture.md` for detailed system design and
   colocated with source files (e.g., `ChatHeader.tsx` has `ChatHeader.test.tsx`
   in the same directory).
 
+- **File organization and size limits**:
+  - Max 600 lines per file for source files (enforced by ESLint)
+  - Max 800 lines per file for test files (enforced by ESLint)
+  - When a file approaches the limit, extract helpers to `{feature}-helpers.js`
+    in the same directory (e.g., `update-clip-helpers.js`)
+  - Helper files group related utility functions by feature/domain (e.g., audio
+    operations, content analysis, clip duplication)
+  - If a helper file exceeds 600 lines, split by feature group:
+    `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
+    `update-clip-midi-helpers.js`)
+  - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
+    `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
+  - Test helpers use `{feature}-test-helpers.js` for shared test utilities
+
 ## TypeScript (WebUI Only)
 
 **Scope:** TypeScript is ONLY used in `webui/` directory.
@@ -108,7 +135,8 @@ See `dev-docs/Architecture.md` for detailed system design and
   - Use `console.error()` to see output in CLI tool results (appears as WARNING)
   - `console.log()` does NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
-  and linting issues), then `npm run check` (validates all checks pass). This
+  and linting issues), then `npm run check` (validates all checks pass), then
+  `npm run build` (verifies all production artifacts compile successfully). This
   saves time and tokens by pre-emptively fixing likely errors before validation.
 
 ## Project Constraints
@@ -117,6 +145,35 @@ See `dev-docs/Architecture.md` for detailed system design and
 - Three rollup bundles: MCP server (Node.js), V8 code (Max), and MCP
   stdio-to-http "portal"
 - Dependencies bundled for distribution
+
+## Refactoring & Code Quality
+
+See `.claude/skills/refactoring/SKILL.md` for comprehensive refactoring
+guidelines.
+
+Key ESLint limits to respect:
+
+- `max-lines-per-function`: 120 (ignoring blank/comment lines)
+  - allowed exceptions: the main useHook() function in webui hooks can be
+    excluded from this rule via
+    `eslint-disable-next-line max-lines-per-function` comments (do not disable
+    for the whole file)
+- `max-lines` per file:
+  - 325 for non-test files (ignoring blank/comment lines)
+  - 750 for test files (total lines including blank/comment)
+- `max-depth`: 4
+- `complexity`: 20
+
+When ESLint reports violations, consult the refactoring skill for strategies.
+
+### DRY (Don't Repeat Yourself)
+
+Rules:
+
+- No duplicate function bodies (caught by ESLint)
+- Extract repeated logic with too many identical lines
+- Shared constants in one place
+- Similar patterns suggest missing abstraction
 
 ## Documentation
 

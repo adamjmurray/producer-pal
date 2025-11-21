@@ -24,6 +24,7 @@ export default defineConfig({
     restoreMocks: true,
     coverage: {
       provider: "v8",
+      ignoreEmptyLines: true,
       reporter: [
         ["text", { file: "coverage-summary.txt" }],
         "text", // Also display in console
@@ -53,6 +54,10 @@ export default defineConfig({
         // peggy grammars
         "**/*.peggy",
 
+        // test helper functions
+        "**/*-test-helpers.js",
+        "**/*-test-helpers.ts",
+
         // ignore the bundle entry scripts:
         "src/live-api-adapter/live-api-adapter.js",
         "src/mcp-server/mcp-server.js",
@@ -63,13 +68,20 @@ export default defineConfig({
 
         // ignore loggers:
         "src/portal/file-logger.js",
-        "src/shared/v8-max-console.js",
 
         // ignore other hard-to-test files:
         "src/test/mock-task.js",
         "src/test/mock-chat-ui-html.js",
       ],
       reportOnFailure: true,
+
+      // Do not let test coverage drop:
+      thresholds: {
+        statements: 89.3, // TODO: try to get to 90
+        branches: 83.4, // TODO: try to get to 85
+        functions: 90, // Keep above 90
+        lines: 89.8, // TODO: try to get to 90
+      },
     },
   },
 });

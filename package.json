@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
@@ -11,7 +11,7 @@
   "author": "Adam Murray",
   "license": "MIT License",
   "engines": {
-    "node": "^24.0.0"
+    "node": "^22.0.0"
   },
   "keywords": [
     "music",
@@ -29,9 +29,9 @@
     "test:coverage": "npm run test:setup && vitest run --coverage -c config/vitest.config.mjs --reporter=dot --silent",
     "test:setup": "npm run parser:build",
     "coverage": "npm run test:coverage",
-    "check": "npm run lint && npm run typecheck && npm run format:check && npm test",
+    "check": "npm run lint && npm run typecheck && npm run format:check && npm run test:coverage",
     "fix": "npm run format && npm run lint:fix",
-    "parser:build": "peggy --format es --output src/notation/barbeat/barbeat-parser.js src/notation/barbeat/barbeat-grammar.peggy",
+    "parser:build": "peggy --format es --output src/notation/barbeat/parser/barbeat-parser.js src/notation/barbeat/parser/barbeat-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write .",
     "format:check": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --check .",
@@ -56,20 +56,25 @@
     "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs"
+    "docs:preview": "vitepress preview docs",
+    "docs:test": "npm run docs:build && playwright test -c config/playwright.config.mjs",
+    "docs:test:ui": "npm run docs:build && playwright test -c config/playwright.config.mjs --ui",
+    "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.config.mjs --headed"
   },
   "dependencies": {
-    "@google/genai": "^1.29.1",
+    "@google/genai": "^1.30.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.1.0",
-    "marked": "^17.0.0",
-    "openai": "^6.9.0",
-    "preact": "^10.19.0",
-    "zod": "^3.25.76"
+    "marked": "^17.0.1",
+    "openai": "^6.9.1",
+    "preact": "^10.27.2",
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.25.0"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.0.1",
+    "@playwright/test": "^1.56.1",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
@@ -81,22 +86,27 @@
     "@types/express": "^5.0.5",
     "@types/max-api": "^2.0.3",
     "@types/node": "^24.10.1",
-    "@typescript-eslint/eslint-plugin": "^8.46.4",
-    "@typescript-eslint/parser": "^8.46.4",
-    "@vitest/coverage-v8": "^4.0.9",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "@vitest/coverage-v8": "^4.0.12",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
     "eslint": "^9.39.1",
+    "eslint-import-resolver-node": "^0.3.9",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsdoc": "^61.4.0",
     "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-sonarjs": "^3.0.5",
     "happy-dom": "^20.0.10",
     "peggy": "^5.0.6",
     "prettier": "^3.6.2",
-    "rollup": "^4.53.2",
+    "rollup": "^4.53.3",
     "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.9.3",
-    "vite": "^7.2.2",
+    "vite": "^7.2.4",
     "vite-plugin-singlefile": "^2.3.0",
-    "vitepress": "^1.6.1",
-    "vitest": "^4.0.9"
+    "vitepress": "^1.6.4",
+    "vitest": "^4.0.12"
   }
 }

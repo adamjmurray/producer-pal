@@ -5,7 +5,7 @@ import { captureScene } from "./capture-scene.js";
 
 /**
  * Creates new scenes at the specified index or captures currently playing clips
- * @param {Object} args - The scene parameters
+ * @param {object} args - The scene parameters
  * @param {number} [args.sceneIndex] - Scene index (0-based) where to insert new scenes. Required when capture=false, optional when capture=true
  * @param {number} [args.count=1] - Number of scenes to create (ignored when capture=true)
  * @param {boolean} [args.capture=false] - Capture currently playing Session clips instead of creating empty scenes
@@ -14,7 +14,8 @@ import { captureScene } from "./capture-scene.js";
  * @param {number|null} [args.tempo] - Tempo in BPM for the scenes. Pass -1 to disable.
  * @param {string|null} [args.timeSignature] - Time signature in format "4/4". Pass "disabled" to disable.
  * @param {boolean} [args.switchView=false] - Automatically switch to session view
- * @returns {Object|Array<Object>} Single scene object when count=1, array when count>1
+ * @param {object} _context - Internal context object (unused)
+ * @returns {object | Array<object>} Single scene object when count=1, array when count>1
  */
 export function createScene(
   {
@@ -31,38 +32,9 @@ export function createScene(
 ) {
   // Handle capture mode
   if (capture) {
-    // For capture mode, delegate to captureScene
-    // Only name is supported from the capture-scene parameters
     const result = captureScene({ sceneIndex, name });
+    applyCaptureProperties(result, { color, tempo, timeSignature });
 
-    // Apply additional properties if provided (color, tempo, timeSignature)
-    if (color != null || tempo != null || timeSignature != null) {
-      const scene = new LiveAPI(`live_set scenes ${result.sceneIndex}`);
-
-      if (color != null) {
-        scene.setColor(color);
-      }
-
-      // Handle tempo - explicit -1 disables, non-null enables
-      if (tempo === -1) {
-        scene.set("tempo_enabled", false);
-      } else if (tempo != null) {
-        scene.set("tempo", tempo);
-        scene.set("tempo_enabled", true);
-      }
-
-      // Handle time signature - explicit "disabled" disables, non-null enables
-      if (timeSignature === "disabled") {
-        scene.set("time_signature_enabled", false);
-      } else if (timeSignature != null) {
-        const parsed = parseTimeSignature(timeSignature);
-        scene.set("time_signature_numerator", parsed.numerator);
-        scene.set("time_signature_denominator", parsed.denominator);
-        scene.set("time_signature_enabled", true);
-      }
-    }
-
-    // Handle view switching if requested
     if (switchView) {
       select({ view: "session" });
     }
@@ -70,7 +42,107 @@ export function createScene(
     return result;
   }
 
-  // Original create mode validation
+  // Create mode
+  validateCreateSceneArgs(sceneIndex, count);
+
+  const liveSet = new LiveAPI("live_set");
+  ensureSceneCountForIndex(liveSet, sceneIndex);
+
+  const createdScenes = [];
+  let currentIndex = sceneIndex;
+
+  for (let i = 0; i < count; i++) {
+    const sceneResult = createSingleScene(
+      liveSet,
+      currentIndex,
+      i,
+      count,
+      name,
+      color,
+      tempo,
+      timeSignature,
+    );
+    createdScenes.push(sceneResult);
+    currentIndex++;
+  }
+
+  if (switchView) {
+    select({ view: "session" });
+  }
+
+  return count === 1 ? createdScenes[0] : createdScenes;
+}
+
+/**
+ * Applies scene properties (color, tempo, timeSignature) to a scene
+ * @param {object} scene - The LiveAPI scene object
+ * @param {object} props - Properties to apply
+ * @param {string} [props.color] - Color for the scene (CSS format: hex)
+ * @param {number|null} [props.tempo] - Tempo in BPM
+ * @param {string|null} [props.timeSignature] - Time signature in format "4/4"
+ */
+function applySceneProperties(scene, { color, tempo, timeSignature }) {
+  if (color != null) {
+    scene.setColor(color);
+  }
+
+  applyTempoProperty(scene, tempo);
+  applyTimeSignatureProperty(scene, timeSignature);
+}
+
+/**
+ * Applies tempo property to a scene
+ * @param {object} scene - The LiveAPI scene object
+ * @param {number|null} tempo - Tempo in BPM. -1 disables, other values enable
+ */
+function applyTempoProperty(scene, tempo) {
+  if (tempo === -1) {
+    scene.set("tempo_enabled", false);
+  } else if (tempo != null) {
+    scene.set("tempo", tempo);
+    scene.set("tempo_enabled", true);
+  }
+}
+
+/**
+ * Applies time signature property to a scene
+ * @param {object} scene - The LiveAPI scene object
+ * @param {string|null} timeSignature - Time signature. "disabled" disables, other values enable
+ */
+function applyTimeSignatureProperty(scene, timeSignature) {
+  if (timeSignature === "disabled") {
+    scene.set("time_signature_enabled", false);
+  } else if (timeSignature != null) {
+    const parsed = parseTimeSignature(timeSignature);
+    scene.set("time_signature_numerator", parsed.numerator);
+    scene.set("time_signature_denominator", parsed.denominator);
+    scene.set("time_signature_enabled", true);
+  }
+}
+
+/**
+ * Builds the scene name based on index and count
+ * @param {string|null} name - Base name for the scene
+ * @param {number} index - 0-based index of the scene being created
+ * @param {number} count - Total count of scenes being created
+ * @returns {string|undefined} The computed scene name
+ */
+function buildSceneName(name, index, count) {
+  if (name == null) {
+    return undefined;
+  }
+  if (count === 1 || index === 0) {
+    return name;
+  }
+  return `${name} ${index + 1}`;
+}
+
+/**
+ * Validates arguments for create scene mode
+ * @param {number} sceneIndex - The scene index
+ * @param {number} count - The number of scenes to create
+ */
+function validateCreateSceneArgs(sceneIndex, count) {
   if (sceneIndex == null) {
     throw new Error("createScene failed: sceneIndex is required");
   }
@@ -79,83 +151,75 @@ export function createScene(
     throw new Error("createScene failed: count must be at least 1");
   }
 
-  const liveSet = new LiveAPI("live_set");
-
   if (sceneIndex + count > MAX_AUTO_CREATED_SCENES) {
     throw new Error(
       `createScene failed: creating ${count} scenes at index ${sceneIndex} would exceed the maximum allowed scenes (${MAX_AUTO_CREATED_SCENES})`,
     );
   }
+}
 
-  // Ensure we have enough scenes to insert at the specified index
+/**
+ * Ensures enough scenes exist to insert at the specified index
+ * @param {object} liveSet - The LiveAPI live_set object
+ * @param {number} sceneIndex - The target scene index
+ */
+function ensureSceneCountForIndex(liveSet, sceneIndex) {
   const currentSceneCount = liveSet.getChildIds("scenes").length;
   if (sceneIndex > currentSceneCount) {
     const scenesToPad = sceneIndex - currentSceneCount;
     for (let i = 0; i < scenesToPad; i++) {
-      liveSet.call("create_scene", -1); // -1 means append at the end
+      liveSet.call("create_scene", -1);
     }
   }
+}
 
-  const createdScenes = [];
-  let currentIndex = sceneIndex;
+/**
+ * Applies scene properties in capture mode
+ * @param {object} result - The capture result object
+ * @param {object} props - Properties to apply
+ */
+function applyCaptureProperties(result, props) {
+  const { color, tempo, timeSignature } = props;
+  if (color != null || tempo != null || timeSignature != null) {
+    const scene = new LiveAPI(`live_set scenes ${result.sceneIndex}`);
+    applySceneProperties(scene, { color, tempo, timeSignature });
+  }
+}
 
-  for (let i = 0; i < count; i++) {
-    // Create scene at the specified index (Live API will shift existing scenes down)
-    liveSet.call("create_scene", currentIndex);
-    const scene = new LiveAPI(`live_set scenes ${currentIndex}`);
+/**
+ * Creates a single scene with the specified properties
+ * @param {object} liveSet - The LiveAPI live_set object
+ * @param {number} sceneIndex - The scene index
+ * @param {number} creationIndex - 0-based index in the creation sequence
+ * @param {number} count - Total count of scenes being created
+ * @param {string|null} name - Base name for the scene
+ * @param {string|null} color - Color for the scene
+ * @param {number|null} tempo - Tempo for the scene
+ * @param {string|null} timeSignature - Time signature for the scene
+ * @returns {object} The created scene object
+ */
+function createSingleScene(
+  liveSet,
+  sceneIndex,
+  creationIndex,
+  count,
+  name,
+  color,
+  tempo,
+  timeSignature,
+) {
+  liveSet.call("create_scene", sceneIndex);
+  const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
-    // Build the scene name
-    const sceneName =
-      name != null
-        ? count === 1
-          ? name
-          : i === 0
-            ? name
-            : `${name} ${i + 1}`
-        : undefined;
-
-    // Set properties if provided
-    if (sceneName != null) {
-      scene.set("name", sceneName);
-    }
-
-    if (color != null) {
-      scene.setColor(color);
-    }
-
-    // Handle tempo - explicit -1 disables, non-null enables
-    if (tempo === -1) {
-      scene.set("tempo_enabled", false);
-    } else if (tempo != null) {
-      scene.set("tempo", tempo);
-      scene.set("tempo_enabled", true);
-    }
-
-    // Handle time signature - explicit "disabled" disables, non-null enables
-    if (timeSignature === "disabled") {
-      scene.set("time_signature_enabled", false);
-    } else if (timeSignature != null) {
-      const parsed = parseTimeSignature(timeSignature);
-      scene.set("time_signature_numerator", parsed.numerator);
-      scene.set("time_signature_denominator", parsed.denominator);
-      scene.set("time_signature_enabled", true);
-    }
-
-    // Build optimistic result object
-    createdScenes.push({
-      id: scene.id,
-      sceneIndex: currentIndex,
-    });
-
-    // For subsequent scenes, increment the index since scenes shift down
-    currentIndex++;
+  const sceneName = buildSceneName(name, creationIndex, count);
+  if (sceneName != null) {
+    scene.set("name", sceneName);
   }
 
-  // Handle view switching if requested
-  if (switchView) {
-    select({ view: "session" });
-  }
+  applySceneProperties(scene, { color, tempo, timeSignature });
 
-  // Return single object if count=1, array if count>1
-  return count === 1 ? createdScenes[0] : createdScenes;
+  return {
+    id: scene.id,
+    sceneIndex,
+  };
 }

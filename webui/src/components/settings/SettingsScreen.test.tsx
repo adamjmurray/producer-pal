@@ -1,18 +1,135 @@
 /**
  * @vitest-environment happy-dom
  */
-import { describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/preact";
-import { SettingsScreen } from "./SettingsScreen.jsx";
+import { describe, expect, it, vi } from "vitest";
+import { SettingsScreen } from "./SettingsScreen";
 
 // Mock child components
-vi.mock("./ModelSelector.jsx", () => ({
-  ModelSelector: ({ model }: { model: string }) => (
-    <div data-testid="model-selector">{model}</div>
-  ),
-}));
+vi.mock(import("./ConnectionTab"), () => {
+  const API_KEY_URLS: Record<string, string | undefined> = {
+    gemini: "https://aistudio.google.com/apikey",
+    openai: "https://platform.openai.com/api-keys",
+    mistral: "https://console.mistral.ai/home?workspace_dialog=apiKeys",
+    openrouter: "https://openrouter.ai/settings/keys",
+  };
 
-vi.mock("./ThinkingSettings.jsx", () => ({
+  const MODEL_DOCS_URLS: Record<string, string | undefined> = {
+    gemini: "https://ai.google.dev/gemini-api/docs/models",
+    openai: "https://platform.openai.com/docs/models",
+    mistral: "https://docs.mistral.ai/getting-started/models",
+    openrouter: "https://openrouter.ai/models",
+    lmstudio: "https://lmstudio.ai/models",
+    ollama: "https://ollama.com/search",
+  };
+
+  return {
+    ConnectionTab: ({
+      provider,
+      apiKey,
+      setApiKey,
+      model,
+      port,
+      setPort,
+      baseUrl,
+      setBaseUrl,
+      providerLabel,
+    }: {
+      provider: string;
+      apiKey: string;
+      setApiKey: (key: string) => void;
+      model: string;
+      port?: number | null;
+      setPort?: (port: number) => void;
+      baseUrl?: string | null;
+      setBaseUrl?: (url: string) => void;
+      providerLabel: string;
+    }) => (
+      <div>
+        {/* Provider selector mock */}
+        <div>
+          <label className="block text-sm mb-2">Provider</label>
+          <select>
+            <option value={provider}>{providerLabel}</option>
+          </select>
+        </div>
+
+        {/* API Key for non-local providers */}
+        {provider !== "lmstudio" && provider !== "ollama" && (
+          <div>
+            <label>{providerLabel} API Key</label>
+            <input
+              type="password"
+              placeholder={`Enter your ${providerLabel} API key`}
+              value={apiKey}
+              onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
+            />
+            {API_KEY_URLS[provider] && (
+              <p>
+                <a
+                  href={API_KEY_URLS[provider]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {providerLabel} API keys
+                </a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Port for local providers */}
+        {(provider === "lmstudio" || provider === "ollama") && setPort && (
+          <div>
+            <label>Port</label>
+            <input
+              type="text"
+              placeholder={provider === "lmstudio" ? "1234" : "11434"}
+              value={port?.toString() ?? ""}
+              onChange={(e) => {
+                const value = (e.target as HTMLInputElement).value;
+                const numValue = parseInt(value, 10);
+                if (!isNaN(numValue)) {
+                  setPort(numValue);
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {/* Base URL for custom provider */}
+        {provider === "custom" && setBaseUrl && (
+          <div>
+            <label>Base URL</label>
+            <input
+              type="text"
+              placeholder="https://api.example.com/v1"
+              value={baseUrl ?? ""}
+              onChange={(e) => setBaseUrl((e.target as HTMLInputElement).value)}
+            />
+          </div>
+        )}
+
+        {/* Model selector mock */}
+        <div data-testid="model-selector">{model}</div>
+        {/* Model docs link - only for providers with docs */}
+        {MODEL_DOCS_URLS[provider] && (
+          <p>
+            <a
+              href={MODEL_DOCS_URLS[provider]}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {providerLabel} models
+            </a>
+          </p>
+        )}
+      </div>
+    ),
+  };
+});
+
+vi.mock(import("./controls/ThinkingSettings"), () => ({
   ThinkingSettings: ({
     provider,
     model,
@@ -28,13 +145,13 @@ vi.mock("./ThinkingSettings.jsx", () => ({
   ),
 }));
 
-vi.mock("./RandomnessSlider.jsx", () => ({
+vi.mock(import("./controls/RandomnessSlider"), () => ({
   RandomnessSlider: ({ temperature }: { temperature: number }) => (
     <div data-testid="randomness-slider">{temperature}</div>
   ),
 }));
 
-vi.mock("./ToolToggles.jsx", () => ({
+vi.mock(import("./controls/ToolToggles"), () => ({
   ToolToggles: () => <div data-testid="tool-toggles">Tool Toggles</div>,
 }));
 
@@ -380,6 +497,81 @@ describe("SettingsScreen", () => {
         />,
       );
       expect(screen.queryByText(/Get a.*API key/)).toBeNull();
+    });
+  });
+
+  describe("input handlers", () => {
+    it("calls setApiKey when API key input changes", () => {
+      const setApiKey = vi.fn();
+      render(<SettingsScreen {...defaultProps} setApiKey={setApiKey} />);
+      const input = screen.getByPlaceholderText(/Enter your Gemini API key/i);
+      fireEvent.change(input, { target: { value: "new-api-key" } });
+      expect(setApiKey).toHaveBeenCalledWith("new-api-key");
+    });
+
+    it("calls setPort when port input changes for lmstudio", () => {
+      const setPort = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="lmstudio"
+          port={1234}
+          setPort={setPort}
+        />,
+      );
+      const input = screen.getByPlaceholderText("1234");
+      fireEvent.change(input, { target: { value: "5678" } });
+      expect(setPort).toHaveBeenCalledWith(5678);
+    });
+
+    it("calls setPort when port input changes for ollama", () => {
+      const setPort = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="ollama"
+          port={11434}
+          setPort={setPort}
+        />,
+      );
+      const input = screen.getByPlaceholderText("11434");
+      fireEvent.change(input, { target: { value: "8080" } });
+      expect(setPort).toHaveBeenCalledWith(8080);
+    });
+
+    it("calls setBaseUrl when base URL input changes for custom provider", () => {
+      const setBaseUrl = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          provider="custom"
+          baseUrl=""
+          setBaseUrl={setBaseUrl}
+        />,
+      );
+      const input = screen.getByPlaceholderText("https://api.example.com/v1");
+      fireEvent.change(input, { target: { value: "https://custom.api/v1" } });
+      expect(setBaseUrl).toHaveBeenCalledWith("https://custom.api/v1");
+    });
+  });
+
+  describe("reset behavior button", () => {
+    it("calls resetBehaviorToDefaults when clicked", () => {
+      const resetBehaviorToDefaults = vi.fn();
+      render(
+        <SettingsScreen
+          {...defaultProps}
+          resetBehaviorToDefaults={resetBehaviorToDefaults}
+        />,
+      );
+      // Click on Behavior tab
+      const behaviorTab = screen.getByRole("button", { name: "Behavior" });
+      fireEvent.click(behaviorTab);
+      const resetButton = screen.getByRole("button", {
+        name: "Reset to defaults",
+      });
+      fireEvent.click(resetButton);
+      expect(resetBehaviorToDefaults).toHaveBeenCalledOnce();
     });
   });
 

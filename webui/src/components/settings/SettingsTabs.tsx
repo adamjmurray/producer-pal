@@ -1,5 +1,5 @@
-import { useState } from "preact/hooks";
 import type { VNode } from "preact";
+import { useState } from "preact/hooks";
 
 export type TabId = "connection" | "behavior" | "tools" | "appearance";
 
@@ -19,6 +19,12 @@ const tabs: Tab[] = [
   { id: "appearance", label: "Appearance" },
 ];
 
+/**
+ * Tabbed navigation for settings sections
+ * @param {SettingsTabsProps} root0 - Component props
+ * @param {(activeTab: TabId) => VNode} root0.children - Render function for tab content
+ * @returns {JSX.Element} - React component
+ */
 export function SettingsTabs({ children }: SettingsTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>("connection");
 

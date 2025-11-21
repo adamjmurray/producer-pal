@@ -1,0 +1,15 @@
+[build]
+  command = "npm run docs:build"
+  publish = "docs/.vitepress/dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF docs/"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+[context.branch-deploy]
+  command = "npm run docs:build"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

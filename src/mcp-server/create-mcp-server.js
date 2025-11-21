@@ -1,25 +1,33 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { VERSION } from "../shared/version.js";
-import { toolDefCreateClip } from "../tools/clip/create-clip.def.js";
-import { toolDefReadClip } from "../tools/clip/read-clip.def.js";
-import { toolDefUpdateClip } from "../tools/clip/update-clip.def.js";
+import { toolDefCreateClip } from "../tools/clip/create/create-clip.def.js";
+import { toolDefReadClip } from "../tools/clip/read/read-clip.def.js";
+import { toolDefUpdateClip } from "../tools/clip/update/update-clip.def.js";
 // import { toolDefReadDevice } from "./tool-def-read-device.js";  // UNUSED - see read-device.js for why
 import { toolDefPlayback } from "../tools/control/playback.def.js";
 import { toolDefRawLiveApi } from "../tools/control/raw-live-api.def.js";
 import { toolDefSelect } from "../tools/control/select.def.js";
 import { toolDefReadLiveSet } from "../tools/live-set/read-live-set.def.js";
 import { toolDefUpdateLiveSet } from "../tools/live-set/update-live-set.def.js";
-import { toolDefDelete } from "../tools/operations/delete.def.js";
-import { toolDefDuplicate } from "../tools/operations/duplicate.def.js";
+import { toolDefDelete } from "../tools/operations/delete/delete.def.js";
+import { toolDefDuplicate } from "../tools/operations/duplicate/duplicate.def.js";
+import { toolDefTransformClips } from "../tools/operations/transform-clips/transform-clips.def.js";
 import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
 import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
 import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
-import { toolDefCreateTrack } from "../tools/track/create-track.def.js";
-import { toolDefReadTrack } from "../tools/track/read-track.def.js";
-import { toolDefUpdateTrack } from "../tools/track/update-track.def.js";
+import { toolDefCreateTrack } from "../tools/track/create/create-track.def.js";
+import { toolDefReadTrack } from "../tools/track/read/read-track.def.js";
+import { toolDefUpdateTrack } from "../tools/track/update/update-track.def.js";
 import { toolDefConnect } from "../tools/workflow/connect.def.js";
 import { toolDefMemory } from "../tools/workflow/memory.def.js";
 
+/**
+ * Create and configure an MCP server instance
+ *
+ * @param {Function} callLiveApi - Function to call Live API
+ * @param {object} options - Configuration options
+ * @returns {McpServer} Configured MCP server instance
+ */
 export function createMcpServer(callLiveApi, options = {}) {
   const { smallModelMode = false } = options;
 
@@ -46,6 +54,7 @@ export function createMcpServer(callLiveApi, options = {}) {
   addTool(toolDefCreateClip);
   addTool(toolDefReadClip);
   addTool(toolDefUpdateClip);
+  addTool(toolDefTransformClips);
 
   // Commented out Sept 2025 - never used, keeps context window smaller
   // See src/tools/read-device.js for historical context

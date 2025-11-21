@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "preact/hooks";
-import { useGeminiChat } from "../hooks/use-gemini-chat.js";
-import { useMcpConnection } from "../hooks/use-mcp-connection.js";
-import { useOpenAIChat } from "../hooks/use-openai-chat.js";
-import { useSettings } from "../hooks/use-settings.js";
-import { useTheme } from "../hooks/use-theme.js";
-import { ChatScreen } from "./chat/ChatScreen.jsx";
-import { SettingsScreen } from "./settings/SettingsScreen.jsx";
+import { useGeminiChat } from "../hooks/chat/use-gemini-chat";
+import { useOpenAIChat } from "../hooks/chat/use-openai-chat";
+import { useMcpConnection } from "../hooks/connection/use-mcp-connection";
+import { useSettings } from "../hooks/settings/use-settings";
+import { useTheme } from "../hooks/theme/use-theme";
+import { ChatScreen } from "./chat/ChatScreen";
+import { SettingsScreen } from "./settings/SettingsScreen";
 
 // Base URLs for each provider
 const PROVIDER_BASE_URLS = {
@@ -14,6 +14,10 @@ const PROVIDER_BASE_URLS = {
   openrouter: "https://openrouter.ai/api/v1",
 } as const;
 
+/**
+ *
+ * @returns {JSX.Element} - React component
+ */
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
