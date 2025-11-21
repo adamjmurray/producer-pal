@@ -4,7 +4,7 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "./ChatInput";
-import type { Provider } from "../../types/settings";
+import type { Provider } from "../../../types/settings";
 
 const defaultProps = {
   provider: "gemini" as Provider,
