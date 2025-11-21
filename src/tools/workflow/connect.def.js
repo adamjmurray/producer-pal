@@ -1,4 +1,4 @@
-import { defineTool } from "../shared/define-tool.js";
+import { defineTool } from "../shared/tool-framework/define-tool.js";
 
 export const toolDefConnect = defineTool("ppal-connect", {
   title: "Connect to Ableton",

@@ -1,9 +1,9 @@
 import { useState } from "preact/hooks";
 import type { UIMessage } from "../../types/messages";
 import type { Provider } from "../../types/settings";
-import { ChatHeader } from "./ChatHeader";
-import { ChatInput } from "./ChatInput";
 import { ChatStart } from "./ChatStart";
+import { ChatHeader } from "./controls/ChatHeader";
+import { ChatInput } from "./controls/ChatInput";
 import { MessageList } from "./MessageList";
 
 interface ChatScreenProps {

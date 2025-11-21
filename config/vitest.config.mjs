@@ -54,6 +54,10 @@ export default defineConfig({
         // peggy grammars
         "**/*.peggy",
 
+        // test helper functions
+        "**/*-test-helpers.js",
+        "**/*-test-helpers.ts",
+
         // ignore the bundle entry scripts:
         "src/live-api-adapter/live-api-adapter.js",
         "src/mcp-server/mcp-server.js",
@@ -64,7 +68,6 @@ export default defineConfig({
 
         // ignore loggers:
         "src/portal/file-logger.js",
-        "src/shared/v8-max-console.js",
 
         // ignore other hard-to-test files:
         "src/test/mock-task.js",
@@ -72,12 +75,12 @@ export default defineConfig({
       ],
       reportOnFailure: true,
 
-      // do not let test coverage drop:
+      // Do not let test coverage drop:
       thresholds: {
-        statements: 85.4,
-        branches: 80.8,
-        functions: 86.0,
-        lines: 86.0,
+        statements: 87.2,
+        branches: 81.5,
+        functions: 87.9,
+        lines: 87.7,
       },
     },
   },

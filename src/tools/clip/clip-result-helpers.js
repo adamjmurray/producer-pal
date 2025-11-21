@@ -1,7 +1,7 @@
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time.js";
+} from "../../notation/barbeat/time/barbeat-time.js";
 import * as console from "../../shared/v8-max-console.js";
 
 /**

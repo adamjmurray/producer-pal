@@ -1,10 +1,174 @@
 import {
   abletonBeatsToBarBeat,
   barBeatToAbletonBeats,
-} from "../../notation/barbeat/barbeat-time.js";
-import { validateIdType, validateIdTypes } from "../shared/id-validation.js";
+} from "../../notation/barbeat/time/barbeat-time.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
+import {
+  validateIdType,
+  validateIdTypes,
+} from "../shared/validation/id-validation.js";
 import { select } from "./select.js";
+
+/**
+ * Unified control for all playback functionality in both Arrangement and Session views.
+ * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
+ * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
+ * @param {object} args - The parameters
+ * @param {string} args.action - Action to perform
+ * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
+ * @param {boolean} [args.loop] - Enable/disable arrangement loop
+ * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
+ * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
+ * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
+ * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
+ * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
+ * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
+ * @param {object} _context - Context from main (unused)
+ * @returns {object} Result with transport state
+ */
+export function playback(
+  {
+    action,
+    startTime,
+    loop,
+    loopStart,
+    loopEnd,
+    autoFollow = true,
+    sceneId,
+    clipIds,
+    switchView,
+  } = {},
+  _context = {},
+) {
+  if (!action) {
+    throw new Error("playback failed: action is required");
+  }
+  const liveSet = new LiveAPI("live_set");
+
+  // Get song time signature for bar|beat conversions
+  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
+  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
+  // Convert bar|beat inputs to Ableton beats
+  let startTimeBeats, loopStartBeats, loopEndBeats;
+
+  if (startTime != null) {
+    startTimeBeats = barBeatToAbletonBeats(
+      startTime,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+    liveSet.set("start_time", startTimeBeats);
+  }
+  if (loop != null) {
+    liveSet.set("loop", loop);
+  }
+  if (loopStart != null) {
+    loopStartBeats = barBeatToAbletonBeats(
+      loopStart,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+    liveSet.set("loop_start", loopStartBeats);
+  }
+  if (loopEnd != null) {
+    loopEndBeats = barBeatToAbletonBeats(
+      loopEnd,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+    // Live API uses loop_length, not loop_end, so we need to calculate the length
+    const actualLoopStartBeats =
+      loopStartBeats ?? liveSet.getProperty("loop_start");
+    const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
+    liveSet.set("loop_length", loopLengthBeats);
+  }
+
+  // Default result values that will be overridden by specific actions
+  // (for optimistic results to avoid a sleep() for playback state updates)
+  let isPlaying = liveSet.getProperty("is_playing") > 0;
+  let currentTimeBeats = liveSet.getProperty("current_song_time");
+
+  const playbackState = handlePlaybackAction(
+    action,
+    liveSet,
+    {
+      startTime,
+      startTimeBeats,
+      autoFollow,
+      sceneId,
+      clipIds,
+    },
+    { isPlaying, currentTimeBeats },
+  );
+
+  isPlaying = playbackState.isPlaying;
+  currentTimeBeats = playbackState.currentTimeBeats;
+
+  // Convert beats back to bar|beat for the response
+  const currentTime = abletonBeatsToBarBeat(
+    currentTimeBeats,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
+
+  // Get current loop state and convert to bar|beat
+  const currentLoopStartBeats = liveSet.getProperty("loop_start");
+  const currentLoopLengthBeats = liveSet.getProperty("loop_length");
+  const currentLoopStart = abletonBeatsToBarBeat(
+    currentLoopStartBeats,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
+  const currentLoopEnd = abletonBeatsToBarBeat(
+    currentLoopStartBeats + currentLoopLengthBeats,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
+
+  // Handle view switching if requested
+  if (switchView) {
+    let targetView = null;
+    if (action === "play-arrangement") {
+      targetView = "arrangement";
+    } else if (action === "play-scene" || action === "play-session-clips") {
+      targetView = "session";
+    }
+
+    if (targetView) {
+      select({ view: targetView });
+    }
+  }
+
+  // Get tracks that are currently following the arrangement
+  const trackIds = liveSet.getChildIds("tracks");
+  const arrangementFollowerTrackIds = trackIds
+    .filter((trackId) => {
+      const track = LiveAPI.from(trackId);
+      return track.exists() && track.getProperty("back_to_arranger") === 0;
+    })
+    .map((trackId) => trackId.replace("id ", ""))
+    .join(",");
+
+  // Build result object conditionally
+  const result = {
+    playing: isPlaying,
+    currentTime,
+  };
+
+  // Only include arrangementLoop if loop is enabled
+  const loopEnabled = loop ?? liveSet.getProperty("loop") > 0;
+  if (loopEnabled) {
+    result.arrangementLoop = {
+      start: loopStart ?? currentLoopStart,
+      end: loopEnd ?? currentLoopEnd,
+    };
+  }
+
+  result.arrangementFollowerTrackIds = arrangementFollowerTrackIds;
+
+  return result;
+}
 
 /**
  * Handle playing the arrangement view
@@ -213,165 +377,4 @@ function handlePlaybackAction(action, liveSet, params, state) {
     default:
       throw new Error(`playback failed: unknown action "${action}"`);
   }
-}
-
-/**
- * Unified control for all playback functionality in both Arrangement and Session views.
- * IMPORTANT: Tracks can either follow the Arrangement timeline or play Session clips independently.
- * When Session clips are launched, those tracks stop following the Arrangement until explicitly told to return.
- * @param {object} args - The parameters
- * @param {string} args.action - Action to perform
- * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
- * @param {boolean} [args.loop] - Enable/disable arrangement loop
- * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
- * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
- * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
- * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
- * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
- * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
- * @param {object} _context - Context from main (unused)
- * @returns {object} Result with transport state
- */
-export function playback(
-  {
-    action,
-    startTime,
-    loop,
-    loopStart,
-    loopEnd,
-    autoFollow = true,
-    sceneId,
-    clipIds,
-    switchView,
-  } = {},
-  _context = {},
-) {
-  if (!action) {
-    throw new Error("playback failed: action is required");
-  }
-  const liveSet = new LiveAPI("live_set");
-
-  // Get song time signature for bar|beat conversions
-  const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
-  const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
-
-  // Convert bar|beat inputs to Ableton beats
-  let startTimeBeats, loopStartBeats, loopEndBeats;
-
-  if (startTime != null) {
-    startTimeBeats = barBeatToAbletonBeats(
-      startTime,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-    liveSet.set("start_time", startTimeBeats);
-  }
-  if (loop != null) {
-    liveSet.set("loop", loop);
-  }
-  if (loopStart != null) {
-    loopStartBeats = barBeatToAbletonBeats(
-      loopStart,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-    liveSet.set("loop_start", loopStartBeats);
-  }
-  if (loopEnd != null) {
-    loopEndBeats = barBeatToAbletonBeats(
-      loopEnd,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-    // Live API uses loop_length, not loop_end, so we need to calculate the length
-    const actualLoopStartBeats =
-      loopStartBeats ?? liveSet.getProperty("loop_start");
-    const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
-    liveSet.set("loop_length", loopLengthBeats);
-  }
-
-  // Default result values that will be overridden by specific actions
-  // (for optimistic results to avoid a sleep() for playback state updates)
-  let isPlaying = liveSet.getProperty("is_playing") > 0;
-  let currentTimeBeats = liveSet.getProperty("current_song_time");
-
-  const playbackState = handlePlaybackAction(
-    action,
-    liveSet,
-    {
-      startTime,
-      startTimeBeats,
-      autoFollow,
-      sceneId,
-      clipIds,
-    },
-    { isPlaying, currentTimeBeats },
-  );
-
-  isPlaying = playbackState.isPlaying;
-  currentTimeBeats = playbackState.currentTimeBeats;
-
-  // Convert beats back to bar|beat for the response
-  const currentTime = abletonBeatsToBarBeat(
-    currentTimeBeats,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  // Get current loop state and convert to bar|beat
-  const currentLoopStartBeats = liveSet.getProperty("loop_start");
-  const currentLoopLengthBeats = liveSet.getProperty("loop_length");
-  const currentLoopStart = abletonBeatsToBarBeat(
-    currentLoopStartBeats,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-  const currentLoopEnd = abletonBeatsToBarBeat(
-    currentLoopStartBeats + currentLoopLengthBeats,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-  );
-
-  // Handle view switching if requested
-  if (switchView) {
-    let targetView = null;
-    if (action === "play-arrangement") {
-      targetView = "arrangement";
-    } else if (action === "play-scene" || action === "play-session-clips") {
-      targetView = "session";
-    }
-
-    if (targetView) {
-      select({ view: targetView });
-    }
-  }
-
-  // Get tracks that are currently following the arrangement
-  const trackIds = liveSet.getChildIds("tracks");
-  const arrangementFollowerTrackIds = trackIds
-    .filter((trackId) => {
-      const track = LiveAPI.from(trackId);
-      return track.exists() && track.getProperty("back_to_arranger") === 0;
-    })
-    .map((trackId) => trackId.replace("id ", ""))
-    .join(",");
-
-  // Build result object conditionally
-  const result = {
-    playing: isPlaying,
-    currentTime,
-  };
-
-  // Only include arrangementLoop if loop is enabled
-  const loopEnabled = loop ?? liveSet.getProperty("loop") > 0;
-  if (loopEnabled) {
-    result.arrangementLoop = {
-      start: loopStart ?? currentLoopStart,
-      end: loopEnd ?? currentLoopEnd,
-    };
-  }
-
-  result.arrangementFollowerTrackIds = arrangementFollowerTrackIds;
-
-  return result;
 }

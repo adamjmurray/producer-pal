@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "preact/hooks";
 import type { UIMessage } from "../../types/messages";
-import { ActivityIndicator } from "./ActivityIndicator";
 import { AssistantMessage } from "./assistant/AssistantMessage";
-import { RetryButton } from "./RetryButton";
+import { ActivityIndicator } from "./controls/ActivityIndicator";
+import { RetryButton } from "./controls/RetryButton";
 
 interface MessageListProps {
   messages: UIMessage[];
@@ -42,16 +42,21 @@ export function MessageList({
 
   return (
     <div className="p-4 space-y-4">
-      {messages.filter(hasContent).map((message, idx) => {
+      {messages.map((message, originalIdx) => {
+        // Skip messages without content
+        if (!hasContent(message)) {
+          return null;
+        }
+
         const canRetry = message.role === "model" && !isAssistantResponding;
 
         const previousUserMessageIdx = canRetry
-          ? findPreviousUserMessageIndex(idx)
+          ? findPreviousUserMessageIndex(originalIdx)
           : -1;
 
         return (
           <div
-            key={idx}
+            key={originalIdx}
             className={message.role === "model" ? "flex items-end gap-2" : ""}
           >
             <div
