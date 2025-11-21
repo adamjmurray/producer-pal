@@ -1,9 +1,9 @@
-import { readClip } from "../clip/read-clip.js";
-import { validateIdType } from "../shared/id-validation.js";
+import { readClip } from "../clip/read/read-clip.js";
 import {
   parseIncludeArray,
   READ_SCENE_DEFAULTS,
-} from "../shared/include-params.js";
+} from "../shared/tool-framework/include-params.js";
+import { validateIdType } from "../shared/validation/id-validation.js";
 
 /**
  * Read comprehensive information about a scene

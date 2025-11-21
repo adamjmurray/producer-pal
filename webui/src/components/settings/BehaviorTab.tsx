@@ -1,6 +1,6 @@
 import type { Provider } from "../../types/settings";
-import { RandomnessSlider } from "./RandomnessSlider";
-import { ThinkingSettings } from "./ThinkingSettings";
+import { RandomnessSlider } from "./controls/RandomnessSlider";
+import { ThinkingSettings } from "./controls/ThinkingSettings";
 
 interface BehaviorTabProps {
   provider: Provider;
@@ -15,8 +15,8 @@ interface BehaviorTabProps {
 }
 
 /**
- * Behavior tab for chat settings
- * @param {BehaviorTabProps} root0 - Component props
+ * Behavior tab component for settings
+ * @param {object} root0 - Component props
  * @param {Provider} root0.provider - Selected provider
  * @param {string} root0.model - Selected model
  * @param {string} root0.thinking - Thinking mode setting

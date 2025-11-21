@@ -2,8 +2,9 @@ import type { Provider } from "../../types/settings";
 import { AppearanceTab } from "./AppearanceTab";
 import { BehaviorTab } from "./BehaviorTab";
 import { ConnectionTab } from "./ConnectionTab";
+import { ToolToggles } from "./controls/ToolToggles";
+import { SettingsFooter } from "./SettingsFooter";
 import { SettingsTabs } from "./SettingsTabs";
-import { ToolToggles } from "./ToolToggles";
 
 interface SettingsScreenProps {
   provider: Provider;
@@ -178,27 +179,11 @@ export function SettingsScreen({
             </div>
           )}
         </SettingsTabs>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-6">
-          {settingsConfigured
-            ? "Note: Settings changes apply to new conversations."
-            : "Settings will be stored in this web browser."}
-        </p>
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={saveSettings}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-          >
-            Save
-          </button>
-          {settingsConfigured && (
-            <button
-              onClick={cancelSettings}
-              className="px-4 py-2 bg-gray-600 text-white rounded"
-            >
-              Cancel
-            </button>
-          )}
-        </div>
+        <SettingsFooter
+          settingsConfigured={settingsConfigured}
+          saveSettings={saveSettings}
+          cancelSettings={cancelSettings}
+        />
       </div>
     </div>
   );

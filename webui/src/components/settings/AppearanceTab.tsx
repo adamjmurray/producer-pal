@@ -4,8 +4,8 @@ interface AppearanceTabProps {
 }
 
 /**
- * Appearance tab for chat settings
- * @param {AppearanceTabProps} root0 - Component props
+ * Appearance tab component for settings
+ * @param {object} root0 - Component props
  * @param {string} root0.theme - UI theme setting
  * @param {Function} root0.setTheme - Function to update theme
  * @returns {JSX.Element} Appearance tab component
