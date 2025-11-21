@@ -5,28 +5,6 @@ import { validateIdType } from "../shared/validation/id-validation.js";
 const MASTER_TRACK_PATH = "live_set master_track";
 
 /**
- * Build track path string based on category and index
- *
- * @param {string} category - Track category ('regular', 'return', or 'master')
- * @param {number} trackIndex - Track index (0-based)
- * @returns {string|null} Track path string or null if invalid category
- */
-function buildTrackPath(category, trackIndex) {
-  const finalCategory = category || "regular";
-
-  if (finalCategory === "regular") {
-    return `live_set tracks ${trackIndex}`;
-  }
-  if (finalCategory === "return") {
-    return `live_set return_tracks ${trackIndex}`;
-  }
-  if (finalCategory === "master") {
-    return MASTER_TRACK_PATH;
-  }
-  return null;
-}
-
-/**
  * Reads or updates the view state and selection in Ableton Live.
  *
  * When called with no arguments (or empty object), returns the current view state.
@@ -180,6 +158,28 @@ export function select(
 
   // Get current view state after applying updates
   return readViewState();
+}
+
+/**
+ * Build track path string based on category and index
+ *
+ * @param {string} category - Track category ('regular', 'return', or 'master')
+ * @param {number} trackIndex - Track index (0-based)
+ * @returns {string|null} Track path string or null if invalid category
+ */
+function buildTrackPath(category, trackIndex) {
+  const finalCategory = category || "regular";
+
+  if (finalCategory === "regular") {
+    return `live_set tracks ${trackIndex}`;
+  }
+  if (finalCategory === "return") {
+    return `live_set return_tracks ${trackIndex}`;
+  }
+  if (finalCategory === "master") {
+    return MASTER_TRACK_PATH;
+  }
+  return null;
 }
 
 /**

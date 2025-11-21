@@ -9,134 +9,6 @@ import {
 } from "./create-clip-helpers.js";
 
 /**
- * Validates createClip parameters
- * @param {string} view - View type (session or arrangement)
- * @param {number} trackIndex - Track index
- * @param {number} sceneIndex - Scene index for session view
- * @param {string} arrangementStart - Arrangement start for arrangement view
- * @param {number} count - Number of clips to create
- */
-function validateCreateClipParams(
-  view,
-  trackIndex,
-  sceneIndex,
-  arrangementStart,
-  count,
-) {
-  if (!view) {
-    throw new Error("createClip failed: view parameter is required");
-  }
-
-  if (trackIndex == null) {
-    throw new Error("createClip failed: trackIndex is required");
-  }
-
-  if (view === "session" && sceneIndex == null) {
-    throw new Error(
-      "createClip failed: sceneIndex is required when view is 'Session'",
-    );
-  }
-
-  if (view === "arrangement" && arrangementStart == null) {
-    throw new Error(
-      "createClip failed: arrangementStart is required when view is 'Arrangement'",
-    );
-  }
-
-  if (count < 1) {
-    throw new Error("createClip failed: count must be at least 1");
-  }
-}
-
-/**
- * Calculates the clip length based on notes and parameters
- * @param {number} endBeats - End position in beats
- * @param {Array} notes - Array of MIDI notes
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @returns {number} - Calculated clip length in beats
- */
-function calculateClipLength(
-  endBeats,
-  notes,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
-  if (endBeats != null) {
-    // Use calculated end position
-    return endBeats;
-  } else if (notes.length > 0) {
-    // Find the latest note start time (not end time)
-    const lastNoteStartTimeAbletonBeats = Math.max(
-      ...notes.map((note) => note.start_time),
-    );
-
-    // Calculate Ableton beats per bar for this time signature
-    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
-      timeSigNumerator,
-      timeSigDenominator,
-    );
-
-    // Round up to the next full bar, ensuring at least 1 bar
-    // Add a small epsilon to handle the case where note starts exactly at bar boundary
-    return (
-      Math.ceil((lastNoteStartTimeAbletonBeats + 0.0001) / abletonBeatsPerBar) *
-      abletonBeatsPerBar
-    );
-  }
-  // Empty clip, use 1 bar minimum
-  const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
-    timeSigNumerator,
-    timeSigDenominator,
-  );
-  return abletonBeatsPerBar;
-}
-
-/**
- * Handles automatic playback for session clips
- * @param {string} auto - Auto playback mode (play-scene or play-clip)
- * @param {string} view - View type
- * @param {number} sceneIndex - Scene index
- * @param {number} count - Number of clips
- * @param {number} trackIndex - Track index
- */
-function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
-  if (!auto || view !== "session") {
-    return;
-  }
-
-  switch (auto) {
-    case "play-scene": {
-      // Launch the entire scene for synchronization
-      const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
-      if (!scene.exists()) {
-        throw new Error(
-          `createClip auto="play-scene" failed: scene at sceneIndex=${sceneIndex} does not exist`,
-        );
-      }
-      scene.call("fire");
-      break;
-    }
-
-    case "play-clip":
-      // Fire individual clips (original autoplay behavior)
-      for (let i = 0; i < count; i++) {
-        const currentSceneIndex = sceneIndex + i;
-        const clipSlot = new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
-        );
-        clipSlot.call("fire");
-      }
-      break;
-
-    default:
-      throw new Error(
-        `createClip failed: unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
-      );
-  }
-}
-
-/**
  * Creates MIDI clips in Session or Arrangement view
  * @param {object} args - The clip parameters
  * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
@@ -276,4 +148,132 @@ export function createClip(
 
   // Return single object if count=1, array if count>1
   return count === 1 ? createdClips[0] : createdClips;
+}
+
+/**
+ * Validates createClip parameters
+ * @param {string} view - View type (session or arrangement)
+ * @param {number} trackIndex - Track index
+ * @param {number} sceneIndex - Scene index for session view
+ * @param {string} arrangementStart - Arrangement start for arrangement view
+ * @param {number} count - Number of clips to create
+ */
+function validateCreateClipParams(
+  view,
+  trackIndex,
+  sceneIndex,
+  arrangementStart,
+  count,
+) {
+  if (!view) {
+    throw new Error("createClip failed: view parameter is required");
+  }
+
+  if (trackIndex == null) {
+    throw new Error("createClip failed: trackIndex is required");
+  }
+
+  if (view === "session" && sceneIndex == null) {
+    throw new Error(
+      "createClip failed: sceneIndex is required when view is 'Session'",
+    );
+  }
+
+  if (view === "arrangement" && arrangementStart == null) {
+    throw new Error(
+      "createClip failed: arrangementStart is required when view is 'Arrangement'",
+    );
+  }
+
+  if (count < 1) {
+    throw new Error("createClip failed: count must be at least 1");
+  }
+}
+
+/**
+ * Calculates the clip length based on notes and parameters
+ * @param {number} endBeats - End position in beats
+ * @param {Array} notes - Array of MIDI notes
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} - Calculated clip length in beats
+ */
+function calculateClipLength(
+  endBeats,
+  notes,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  if (endBeats != null) {
+    // Use calculated end position
+    return endBeats;
+  } else if (notes.length > 0) {
+    // Find the latest note start time (not end time)
+    const lastNoteStartTimeAbletonBeats = Math.max(
+      ...notes.map((note) => note.start_time),
+    );
+
+    // Calculate Ableton beats per bar for this time signature
+    const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+
+    // Round up to the next full bar, ensuring at least 1 bar
+    // Add a small epsilon to handle the case where note starts exactly at bar boundary
+    return (
+      Math.ceil((lastNoteStartTimeAbletonBeats + 0.0001) / abletonBeatsPerBar) *
+      abletonBeatsPerBar
+    );
+  }
+  // Empty clip, use 1 bar minimum
+  const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+  return abletonBeatsPerBar;
+}
+
+/**
+ * Handles automatic playback for session clips
+ * @param {string} auto - Auto playback mode (play-scene or play-clip)
+ * @param {string} view - View type
+ * @param {number} sceneIndex - Scene index
+ * @param {number} count - Number of clips
+ * @param {number} trackIndex - Track index
+ */
+function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
+  if (!auto || view !== "session") {
+    return;
+  }
+
+  switch (auto) {
+    case "play-scene": {
+      // Launch the entire scene for synchronization
+      const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+      if (!scene.exists()) {
+        throw new Error(
+          `createClip auto="play-scene" failed: scene at sceneIndex=${sceneIndex} does not exist`,
+        );
+      }
+      scene.call("fire");
+      break;
+    }
+
+    case "play-clip":
+      // Fire individual clips (original autoplay behavior)
+      for (let i = 0; i < count; i++) {
+        const currentSceneIndex = sceneIndex + i;
+        const clipSlot = new LiveAPI(
+          `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
+        );
+        clipSlot.call("fire");
+      }
+      break;
+
+    default:
+      throw new Error(
+        `createClip failed: unknown auto value "${auto}". Expected "play-scene" or "play-clip"`,
+      );
+  }
 }

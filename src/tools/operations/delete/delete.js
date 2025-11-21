@@ -3,6 +3,61 @@ import { parseCommaSeparatedIds } from "../../shared/utils.js";
 import { validateIdTypes } from "../../shared/validation/id-validation.js";
 
 /**
+ * Deletes objects by ids
+ * @param {object} args - The parameters
+ * @param {string} args.ids - ID or comma-separated list of IDs to delete
+ * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
+ * @param {object} _context - Internal context object (unused)
+ * @returns {object | Array<object>} Result object(s) with success information
+ */
+export function deleteObject({ ids, type } = {}, _context = {}) {
+  if (!ids) {
+    throw new Error("delete failed: ids is required");
+  }
+  if (!type) {
+    throw new Error("delete failed: type is required");
+  }
+  if (!["track", "scene", "clip"].includes(type)) {
+    throw new Error(
+      `delete failed: type must be one of "track", "scene", or "clip"`,
+    );
+  }
+
+  // Parse comma-separated string into array
+  const objectIds = parseCommaSeparatedIds(ids);
+
+  const deletedObjects = [];
+
+  // Validate all objects exist and are the correct type before deleting any
+  const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
+    skipInvalid: true,
+  }).map((object) => ({ id: object.id, object }));
+
+  // Now delete all objects (in reverse order for tracks/scenes to maintain indices)
+  if (type === "track" || type === "scene") {
+    // Sort by index in descending order to delete from highest to lowest index
+    objectsToDelete.sort((a, b) => {
+      const pathRegex =
+        type === "track" ? /live_set tracks (\d+)/ : /live_set scenes (\d+)/;
+      const indexA = Number(a.object.path.match(pathRegex)?.[1]);
+      const indexB = Number(b.object.path.match(pathRegex)?.[1]);
+      return indexB - indexA; // Descending order
+    });
+  }
+
+  for (const { id, object } of objectsToDelete) {
+    deleteObjectByType(type, id, object);
+    deletedObjects.push({ id, type, deleted: true });
+  }
+
+  // Return single object if one valid result, array for multiple results or empty array for none
+  if (deletedObjects.length === 0) {
+    return [];
+  }
+  return deletedObjects.length === 1 ? deletedObjects[0] : deletedObjects;
+}
+
+/**
  * Deletes a track by its index
  * @param {string} id - The object ID
  * @param {object} object - The object to delete
@@ -72,59 +127,4 @@ function deleteObjectByType(type, id, object) {
   } else if (type === "clip") {
     deleteClipObject(id, object);
   }
-}
-
-/**
- * Deletes objects by ids
- * @param {object} args - The parameters
- * @param {string} args.ids - ID or comma-separated list of IDs to delete
- * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
- * @param {object} _context - Internal context object (unused)
- * @returns {object | Array<object>} Result object(s) with success information
- */
-export function deleteObject({ ids, type } = {}, _context = {}) {
-  if (!ids) {
-    throw new Error("delete failed: ids is required");
-  }
-  if (!type) {
-    throw new Error("delete failed: type is required");
-  }
-  if (!["track", "scene", "clip"].includes(type)) {
-    throw new Error(
-      `delete failed: type must be one of "track", "scene", or "clip"`,
-    );
-  }
-
-  // Parse comma-separated string into array
-  const objectIds = parseCommaSeparatedIds(ids);
-
-  const deletedObjects = [];
-
-  // Validate all objects exist and are the correct type before deleting any
-  const objectsToDelete = validateIdTypes(objectIds, type, "delete", {
-    skipInvalid: true,
-  }).map((object) => ({ id: object.id, object }));
-
-  // Now delete all objects (in reverse order for tracks/scenes to maintain indices)
-  if (type === "track" || type === "scene") {
-    // Sort by index in descending order to delete from highest to lowest index
-    objectsToDelete.sort((a, b) => {
-      const pathRegex =
-        type === "track" ? /live_set tracks (\d+)/ : /live_set scenes (\d+)/;
-      const indexA = Number(a.object.path.match(pathRegex)?.[1]);
-      const indexB = Number(b.object.path.match(pathRegex)?.[1]);
-      return indexB - indexA; // Descending order
-    });
-  }
-
-  for (const { id, object } of objectsToDelete) {
-    deleteObjectByType(type, id, object);
-    deletedObjects.push({ id, type, deleted: true });
-  }
-
-  // Return single object if one valid result, array for multiple results or empty array for none
-  if (deletedObjects.length === 0) {
-    return [];
-  }
-  return deletedObjects.length === 1 ? deletedObjects[0] : deletedObjects;
 }
