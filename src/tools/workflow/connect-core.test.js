@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { VERSION } from "../../shared/version.js";
 import {
   children,
   liveApiCall,
@@ -9,6 +10,7 @@ import {
 import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
 import { getHostTrackIndex } from "../shared/arrangement/get-host-track-index.js";
 import { connect } from "./connect.js";
+
 // Mock the getHostTrackIndex function
 vi.mock(import("../shared/arrangement/get-host-track-index.js"), () => ({
   getHostTrackIndex: vi.fn(() => 1), // Default to track index 1
@@ -73,7 +75,7 @@ describe("connect", () => {
 
     expect(result).toEqual({
       connected: true,
-      producerPalVersion: "1.2.1",
+      producerPalVersion: VERSION,
       abletonLiveVersion: "12.3",
       liveSet: {
         name: "Test Project",
@@ -83,7 +85,7 @@ describe("connect", () => {
         timeSignature: "4/4",
       },
       messagesForUser: expect.stringContaining(
-        "Producer Pal 1.2.1 connected to Ableton Live 12.3",
+        `Producer Pal ${VERSION} connected to Ableton Live 12.3`,
       ),
       $skills: expect.stringContaining("Producer Pal Skills"),
       $instructions: expect.stringContaining(
