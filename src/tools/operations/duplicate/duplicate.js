@@ -5,6 +5,7 @@ import {
   validateBasicInputs,
   validateAndConfigureRouteToSource,
   validateClipParameters,
+  validateDestinationParameter,
   validateArrangementParameters,
 } from "./duplicate-validation-helpers.js";
 import {
@@ -76,6 +77,9 @@ export function duplicate(
 
   // Validate clip-specific parameters
   validateClipParameters(type, destination, toTrackIndex, toSceneIndex);
+
+  // Validate destination parameter compatibility with type
+  validateDestinationParameter(type, destination);
 
   // Validate arrangement parameters
   validateArrangementParameters(destination, arrangementStart);

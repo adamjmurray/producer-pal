@@ -108,6 +108,23 @@ export function validateClipParameters(
 }
 
 /**
+ * Validates destination parameter compatibility with object type
+ * @param {string} type - Type of object being duplicated
+ * @param {string} destination - Destination for duplication
+ */
+export function validateDestinationParameter(type, destination) {
+  if (destination == null) {
+    return; // destination is optional for tracks and scenes
+  }
+
+  if (type === "track" && destination === "arrangement") {
+    throw new Error(
+      "duplicate failed: tracks cannot be duplicated to arrangement (use destination='session' or omit destination parameter)",
+    );
+  }
+}
+
+/**
  * Validates arrangement-specific parameters
  * @param {string} destination - Destination for duplication
  * @param {string} arrangementStart - Start time in bar|beat format

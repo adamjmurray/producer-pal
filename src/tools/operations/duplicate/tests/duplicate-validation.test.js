@@ -71,6 +71,32 @@ describe("duplicate - input validation", () => {
       'duplicate failed: id "nonexistent" does not exist',
     );
   });
+
+  it("should throw an error when type is 'track' and destination is 'arrangement'", () => {
+    liveApiPath.mockReturnValue("live_set tracks 0");
+    expect(() =>
+      duplicate({
+        type: "track",
+        id: "track1",
+        destination: "arrangement",
+        arrangementStart: "1|1|1",
+      }),
+    ).toThrow(
+      "duplicate failed: tracks cannot be duplicated to arrangement (use destination='session' or omit destination parameter)",
+    );
+  });
+
+  it("should allow type 'track' with destination 'session'", () => {
+    liveApiPath.mockReturnValue("live_set tracks 0");
+    expect(() =>
+      duplicate({ type: "track", id: "track1", destination: "session" }),
+    ).not.toThrow();
+  });
+
+  it("should allow type 'track' without destination parameter", () => {
+    liveApiPath.mockReturnValue("live_set tracks 0");
+    expect(() => duplicate({ type: "track", id: "track1" })).not.toThrow();
+  });
 });
 
 describe("duplicate - return format", () => {
