@@ -52,10 +52,7 @@ export function duplicate(
     holdingAreaStartBeats: 40000,
   },
 ) {
-  // Validate basic inputs
   validateBasicInputs(type, id, count);
-
-  // Auto-configure for routing back to source
   const routeToSourceConfig = validateAndConfigureRouteToSource(
     type,
     routeToSource,
@@ -64,20 +61,13 @@ export function duplicate(
   );
   withoutClips = routeToSourceConfig.withoutClips;
   withoutDevices = routeToSourceConfig.withoutDevices;
-
-  // Validate the ID exists and matches the expected type
   const object = validateIdType(id, type, "duplicate");
-
-  // Validate clip-specific parameters
   validateClipParameters(type, destination, toTrackIndex, toSceneIndex);
-
-  // Validate arrangement parameters
   validateArrangementParameters(destination, arrangementStart);
 
   const createdObjects = [];
 
   for (let i = 0; i < count; i++) {
-    // Build the object name for this duplicate
     const objectName = generateObjectName(name, count, i);
 
     const newObjectMetadata = performDuplication(
@@ -101,11 +91,7 @@ export function duplicate(
 
     createdObjects.push(newObjectMetadata);
   }
-
-  // Handle view switching if requested
   switchViewIfRequested(switchView, destination, type);
-
-  // Return appropriate format based on count
   if (count === 1) {
     return createdObjects[0];
   }
@@ -156,14 +142,11 @@ function validateAndConfigureRouteToSource(
   if (!routeToSource) {
     return { withoutClips, withoutDevices };
   }
-
   if (type !== "track") {
     throw new Error(
       "duplicate failed: routeToSource is only supported for type 'track'",
     );
   }
-
-  // Emit warnings if user provided conflicting parameters
   if (withoutClips === false) {
     console.error(
       "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
@@ -201,8 +184,6 @@ function validateClipParameters(type, destination, toTrackIndex, toSceneIndex) {
       "duplicate failed: destination must be 'session' or 'arrangement'",
     );
   }
-
-  // Validate session clip destination parameters
   if (destination === "session") {
     if (toTrackIndex == null) {
       throw new Error(

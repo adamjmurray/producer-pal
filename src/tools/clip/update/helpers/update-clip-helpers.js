@@ -7,19 +7,9 @@ import {
 import * as console from "../../../../shared/v8-max-console.js";
 import { MAX_CLIP_BEATS } from "../../../constants.js";
 import {
-  getActualAudioEnd,
-  revealUnwarpedAudioContent,
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.js";
-
-// Re-export audio helpers for existing imports
-export {
-  getActualAudioEnd,
-  revealUnwarpedAudioContent,
-  setAudioParameters,
-  handleWarpMarkerOperation,
-};
 
 /**
  * Get the actual content end position by examining all notes in a clip.
