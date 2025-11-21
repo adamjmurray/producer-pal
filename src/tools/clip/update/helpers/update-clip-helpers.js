@@ -1,9 +1,11 @@
+/* eslint-disable max-lines */
 import { formatNotation } from "../../../../notation/barbeat/barbeat-format-notation.js";
 import { interpretNotation } from "../../../../notation/barbeat/interpreter/barbeat-interpreter.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "../../../../notation/barbeat/time/barbeat-time.js";
+import { applyModulations } from "../../../../notation/modulation/modulation-evaluator.js";
 import * as console from "../../../../shared/v8-max-console.js";
 import { MAX_CLIP_BEATS } from "../../../constants.js";
 import {
@@ -204,6 +206,7 @@ export function buildClipPropertiesToSet({
  * Handle note updates (merge or replace)
  * @param {LiveAPI} clip - The clip to update
  * @param {string} notationString - The notation string to apply
+ * @param {string} modulationString - Modulation expressions to apply to notes
  * @param {string} noteUpdateMode - 'merge' or 'replace'
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -212,6 +215,7 @@ export function buildClipPropertiesToSet({
 export function handleNoteUpdates(
   clip,
   notationString,
+  modulationString,
   noteUpdateMode,
   timeSigNumerator,
   timeSigDenominator,
@@ -238,6 +242,13 @@ export function handleNoteUpdates(
     timeSigNumerator,
     timeSigDenominator,
   });
+  // Apply modulations to notes if provided
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
   if (notes.length > 0) {
@@ -328,6 +339,7 @@ export function processSingleClipUpdate(params) {
   const {
     clip,
     notationString,
+    modulationString,
     noteUpdateMode,
     name,
     color,
@@ -417,6 +429,7 @@ export function processSingleClipUpdate(params) {
   finalNoteCount = handleNoteUpdates(
     clip,
     notationString,
+    modulationString,
     noteUpdateMode,
     timeSigNumerator,
     timeSigDenominator,

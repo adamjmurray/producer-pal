@@ -1,10 +1,12 @@
 import { interpretNotation } from "../../../notation/barbeat/interpreter/barbeat-interpreter.js";
 import { timeSigToAbletonBeatsPerBar } from "../../../notation/barbeat/time/barbeat-time.js";
+import { applyModulations } from "../../../notation/modulation/modulation-evaluator.js";
 import { select } from "../../control/select.js";
 import { parseTimeSignature } from "../../shared/utils.js";
 import {
   buildClipName,
   convertTimingParameters,
+  determineClipTimeSignature,
   processClipIteration,
 } from "./create-clip-helpers.js";
 
@@ -17,6 +19,7 @@ import {
  * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
  * @param {string} [args.notes] - Musical notation string
+ * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -37,6 +40,7 @@ export function createClip(
     arrangementStart = null,
     count = 1,
     notes: notationString = null,
+    modulations: modulationString = null,
     name = null,
     color = null,
     timeSignature = null,
@@ -65,16 +69,13 @@ export function createClip(
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
   // Determine clip time signature
-  let timeSigNumerator, timeSigDenominator;
-  if (timeSignature != null) {
-    const parsed = parseTimeSignature(timeSignature);
-    timeSigNumerator = parsed.numerator;
-    timeSigDenominator = parsed.denominator;
-  } else {
-    // Use song time signature as default for clips
-    timeSigNumerator = songTimeSigNumerator;
-    timeSigDenominator = songTimeSigDenominator;
-  }
+  const { numerator: timeSigNumerator, denominator: timeSigDenominator } =
+    determineClipTimeSignature(
+      timeSignature,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+      parseTimeSignature,
+    );
 
   // Convert timing parameters to Ableton beats
   const { arrangementStartBeats, startBeats, firstStartBeats, endBeats } =
@@ -98,6 +99,14 @@ export function createClip(
           timeSigDenominator,
         })
       : [];
+
+  // Apply modulations to notes if provided
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
   // Determine clip length - assume clips start at 1.1 (beat 0)
   const clipLength = calculateClipLength(
