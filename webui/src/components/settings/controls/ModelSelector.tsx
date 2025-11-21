@@ -8,6 +8,7 @@ interface ModelSelectorProps {
 }
 
 const GEMINI_MODELS = [
+  { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (preview)" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (most advanced)" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (fast & intelligent)" },
   {
@@ -18,7 +19,8 @@ const GEMINI_MODELS = [
 ];
 
 const OPENAI_MODELS = [
-  { value: "gpt-5-2025-08-07", label: "GPT-5 (most capable)" },
+  { value: "gpt-5.1-2025-11-13", label: "GPT-5.1 (most capable)" },
+  { value: "gpt-5-2025-08-07", label: "GPT-5 (previous version)" },
   { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini (fast & affordable)" },
   { value: "gpt-5-nano-2025-08-07", label: "GPT-5 Nano (ultra fast)" },
   { value: "OTHER", label: "Other..." },
