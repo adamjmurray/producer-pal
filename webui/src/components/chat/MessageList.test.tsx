@@ -447,5 +447,41 @@ describe("MessageList", () => {
       const retryButton = screen.queryByTitle("Retry from your last message");
       expect(retryButton).toBeNull();
     });
+
+    it("finds correct user message index for retry when empty messages exist", () => {
+      const handleRetryMock = vi.fn();
+      const messages: UIMessage[] = [
+        {
+          role: "user" as const,
+          parts: [], // Empty message - should be filtered out
+          rawHistoryIndex: 0,
+        },
+        {
+          role: "user" as const,
+          parts: [{ type: "text" as const, content: "Hello" }],
+          rawHistoryIndex: 1,
+        },
+        {
+          role: "model" as const,
+          parts: [{ type: "text" as const, content: "Response" }],
+          rawHistoryIndex: 2,
+        },
+      ];
+
+      render(
+        <MessageList
+          messages={messages}
+          isAssistantResponding={false}
+          handleRetry={handleRetryMock}
+        />,
+      );
+
+      const retryButton = screen.getByTitle("Retry from your last message");
+      fireEvent.click(retryButton);
+
+      // Should use originalIdx=1 (the non-empty user message), not filtered idx=0
+      expect(handleRetryMock).toHaveBeenCalledOnce();
+      expect(handleRetryMock).toHaveBeenCalledWith(1);
+    });
   });
 });
