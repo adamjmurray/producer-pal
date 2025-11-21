@@ -1,3 +1,4 @@
+/* eslint-disable max-lines */
 import { formatNotation } from "../../../../notation/barbeat/barbeat-format-notation.js";
 import { interpretNotation } from "../../../../notation/barbeat/interpreter/barbeat-interpreter.js";
 import {

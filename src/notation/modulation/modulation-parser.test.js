@@ -7,7 +7,6 @@ describe("Modulation Parser", () => {
       expect(parser.parse("")).toStrictEqual([]);
       expect(parser.parse("  \t ")).toStrictEqual([]);
     });
-
     it("parses single parameter assignment with += operator", () => {
       const result = parser.parse("velocity += 10");
       expect(result).toStrictEqual([
@@ -20,7 +19,6 @@ describe("Modulation Parser", () => {
         },
       ]);
     });
-
     it("parses single parameter assignment with = operator", () => {
       const result = parser.parse("velocity = 10");
       expect(result).toStrictEqual([
@@ -33,7 +31,6 @@ describe("Modulation Parser", () => {
         },
       ]);
     });
-
     it("parses multiple parameter assignments", () => {
       const result = parser.parse("velocity += 10\ntiming += 0.05");
       expect(result).toStrictEqual([
