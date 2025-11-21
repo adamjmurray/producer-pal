@@ -59,7 +59,11 @@ See `dev-docs/Architecture.md` for detailed system design and
   exported function(s). This improves code readability and makes it immediately
   clear what the primary purpose of each file is.
 
-- **Import extensions**: Always include `.js` in imports
+- **Import extensions**: Code in `src/` and `scripts/` directories runs
+  unbundled in Node.js and must ALWAYS include `.js` file extensions in relative
+  imports (e.g., `import foo from './bar.js'`), as required by the Node.js ESM
+  loader. Code in `webui/` is bundled and must NEVER use file extensions in
+  relative imports (e.g., `import foo from './bar'`).
 
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
@@ -100,9 +104,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   - If a helper file exceeds 600 lines, split by feature group:
     `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
     `update-clip-midi-helpers.js`)
-  - Test files split using dot notation: `{feature}.{area}.test.js` (e.g.,
-    `update-clip.audio-arrangement.test.js`, `duplicate.validation.test.js`)
-  - Test helpers use `{feature}.test-helpers.js` for shared test utilities
+  - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
+    `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
+  - Test helpers use `{feature}-test-helpers.js` for shared test utilities
 
 ## TypeScript (WebUI Only)
 
@@ -131,7 +135,8 @@ See `dev-docs/Architecture.md` for detailed system design and
   - Use `console.error()` to see output in CLI tool results (appears as WARNING)
   - `console.log()` does NOT appear in CLI output
 - Before claiming you are done: ALWAYS run `npm run fix` (auto-fixes formatting
-  and linting issues), then `npm run check` (validates all checks pass). This
+  and linting issues), then `npm run check` (validates all checks pass), then
+  `npm run build` (verifies all production artifacts compile successfully). This
   saves time and tokens by pre-emptively fixing likely errors before validation.
 
 ## Project Constraints
@@ -148,11 +153,14 @@ guidelines.
 
 Key ESLint limits to respect:
 
-- `max-lines-per-function`: 150 (ignoring blank/comment lines)
+- `max-lines-per-function`: 120 (ignoring blank/comment lines)
   - allowed exceptions: the main useHook() function in webui hooks can be
     excluded from this rule via
     `eslint-disable-next-line max-lines-per-function` comments (do not disable
     for the whole file)
+- `max-lines` per file:
+  - 325 for non-test files (ignoring blank/comment lines)
+  - 750 for test files (total lines including blank/comment)
 - `max-depth`: 4
 - `complexity`: 20
 

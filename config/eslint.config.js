@@ -89,7 +89,7 @@ const baseRules = {
   "max-lines-per-function": [
     "error",
     {
-      max: 141,
+      max: 120,
       skipBlankLines: true,
       skipComments: true,
     },
@@ -221,7 +221,7 @@ export default [
       "max-for-live-device/**",
       "node_modules/**",
       "release/**",
-      "src/notation/barbeat/barbeat-parser.js", // Generated parser
+      "src/notation/barbeat/parser/barbeat-parser.js", // Generated parser
       "src/notation/modulation/modulation-parser.js", // Generated parser
       "**/*.d.ts", // TypeScript declaration files
     ],
@@ -343,6 +343,38 @@ export default [
     },
   },
 
+  // Require extensions for src and scripts (unbundled Node.js execution)
+  {
+    files: ["{src,scripts}/**/*.{js,mjs}"],
+    rules: {
+      // Node.js ESM requires explicit file extensions for relative imports.
+      // See: https://nodejs.org/api/esm.html#import-specifiers
+      "import/extensions": [
+        "error",
+        "always",
+        {
+          js: "always",
+          ignorePackages: true,
+        },
+      ],
+    },
+  },
+
+  // No extensions for webui (bundled code)
+  {
+    files: ["webui/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "ImportDeclaration[source.value=/^\\..*\\.(jsx?|tsx?)$/]",
+          message:
+            "Do not use file extensions in relative imports (bundlers handle resolution)",
+        },
+      ],
+    },
+  },
+
   // Test files - relax some rules
   {
     files: ["**/*.test.{js,ts,tsx}"],
@@ -375,13 +407,14 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
+      "**/*-test-case.ts", // Test data fixtures
       "src/tools/shared/gain-lookup-table.js", // Auto-generated data
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 345,
+          max: 325,
           skipBlankLines: true,
           skipComments: true,
         },
@@ -394,12 +427,13 @@ export default [
       "**/*.test-helpers.js",
       "**/*.test.ts",
       "**/*.test.tsx",
+      "**/*-test-case.ts", // Test data fixtures
     ],
     rules: {
       "max-lines": [
         "error",
         {
-          max: 800,
+          max: 750,
         },
       ],
     },

@@ -3,8 +3,8 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
-import type { UIMessage } from "../../types/messages.js";
-import { ChatScreen } from "./ChatScreen.jsx";
+import type { UIMessage } from "../../types/messages";
+import { ChatScreen } from "./ChatScreen";
 
 describe("ChatScreen", () => {
   const mockHandleSend = vi.fn();

@@ -1,7 +1,7 @@
 import {
   cleanupInternalDrumChains,
   readDevice as readDeviceShared,
-} from "../shared/device-reader.js";
+} from "../shared/device/device-reader.js";
 
 /**
  * Read information about a specific device by ID.

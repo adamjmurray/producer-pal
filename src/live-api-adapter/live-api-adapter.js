@@ -1,5 +1,5 @@
 // Entry point for the tool implementations with direct Live API access
-import "./live-api-extensions";
+import "./live-api-extensions.js";
 
 import { toCompactJSLiteral } from "../shared/compact-serializer.js";
 import {
@@ -8,26 +8,26 @@ import {
   MAX_CHUNK_SIZE,
   MAX_CHUNKS,
   MAX_ERROR_DELIMITER,
-} from "../shared/mcp-response-utils";
-import * as console from "../shared/v8-max-console";
-import { VERSION } from "../shared/version";
-import { createClip } from "../tools/clip/create-clip";
-import { readClip } from "../tools/clip/read-clip";
-import { updateClip } from "../tools/clip/update-clip";
+} from "../shared/mcp-response-utils.js";
+import * as console from "../shared/v8-max-console.js";
+import { VERSION } from "../shared/version.js";
+import { createClip } from "../tools/clip/create/create-clip.js";
+import { readClip } from "../tools/clip/read/read-clip.js";
+import { updateClip } from "../tools/clip/update/update-clip.js";
 import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
 import { select } from "../tools/control/select.js";
-import { readLiveSet } from "../tools/live-set/read-live-set";
-import { updateLiveSet } from "../tools/live-set/update-live-set";
-import { deleteObject } from "../tools/operations/delete";
-import { duplicate } from "../tools/operations/duplicate";
-import { transformClips } from "../tools/operations/transform-clips.js";
-import { createScene } from "../tools/scene/create-scene";
-import { readScene } from "../tools/scene/read-scene";
-import { updateScene } from "../tools/scene/update-scene";
-import { createTrack } from "../tools/track/create-track";
-import { readTrack } from "../tools/track/read-track";
-import { updateTrack } from "../tools/track/update-track";
+import { readLiveSet } from "../tools/live-set/read-live-set.js";
+import { updateLiveSet } from "../tools/live-set/update-live-set.js";
+import { deleteObject } from "../tools/operations/delete/delete.js";
+import { duplicate } from "../tools/operations/duplicate/duplicate.js";
+import { transformClips } from "../tools/operations/transform-clips/transform-clips.js";
+import { createScene } from "../tools/scene/create-scene.js";
+import { readScene } from "../tools/scene/read-scene.js";
+import { updateScene } from "../tools/scene/update-scene.js";
+import { createTrack } from "../tools/track/create/create-track.js";
+import { readTrack } from "../tools/track/read/read-track.js";
+import { updateTrack } from "../tools/track/update/update-track.js";
 import { connect } from "../tools/workflow/connect.js";
 import { memory } from "../tools/workflow/memory.js";
 

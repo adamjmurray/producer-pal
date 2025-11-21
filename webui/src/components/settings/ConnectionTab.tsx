@@ -1,6 +1,6 @@
-import type { Provider } from "../../types/settings.js";
-import { ModelSelector } from "./ModelSelector";
-import { ProviderSelector } from "./ProviderSelector";
+import type { Provider } from "../../types/settings";
+import { ModelSelector } from "./controls/ModelSelector";
+import { ProviderSelector } from "./controls/ProviderSelector";
 
 const API_KEY_URLS: Record<string, string | undefined> = {
   gemini: "https://aistudio.google.com/apikey",

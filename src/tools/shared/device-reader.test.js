@@ -9,7 +9,7 @@ import {
   cleanupInternalDrumChains,
   getDrumMap,
   getDeviceType,
-} from "./device-reader.js";
+} from "./device/device-reader.js";
 
 describe("device-reader", () => {
   describe("getDeviceType", () => {

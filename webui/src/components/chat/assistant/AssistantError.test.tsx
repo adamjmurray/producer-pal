@@ -3,7 +3,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import { AssistantError } from "./AssistantError.jsx";
+import { AssistantError } from "./AssistantError";
 
 describe("AssistantError", () => {
   describe("basic rendering", () => {

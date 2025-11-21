@@ -1,9 +1,9 @@
-import type { UIMessage } from "../../types/messages.js";
-import type { Provider } from "../../types/settings.js";
-import { ChatHeader } from "./ChatHeader.jsx";
-import { ChatInput } from "./ChatInput.jsx";
-import { ChatStart } from "./ChatStart.jsx";
-import { MessageList } from "./MessageList.jsx";
+import type { UIMessage } from "../../types/messages";
+import type { Provider } from "../../types/settings";
+import { ChatStart } from "./ChatStart";
+import { ChatHeader } from "./controls/ChatHeader";
+import { ChatInput } from "./controls/ChatInput";
+import { MessageList } from "./MessageList";
 
 interface ChatScreenProps {
   messages: UIMessage[];

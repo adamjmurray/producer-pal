@@ -1,5 +1,5 @@
-import { toolNames } from "../../../config.js";
-import { truncateString } from "../../../utils/truncate-string.js";
+import { toolNames } from "../../../lib/config";
+import { truncateString } from "../../../lib/utils/truncate-string";
 
 interface AssistantToolCallProps {
   name: string;
