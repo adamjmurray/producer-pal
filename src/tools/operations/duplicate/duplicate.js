@@ -156,7 +156,6 @@ function validateAndConfigureRouteToSource(
   if (!routeToSource) {
     return { withoutClips, withoutDevices };
   }
-
   if (type !== "track") {
     throw new Error(
       "duplicate failed: routeToSource is only supported for type 'track'",
