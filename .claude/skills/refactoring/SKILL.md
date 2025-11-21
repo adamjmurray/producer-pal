@@ -8,8 +8,8 @@ description: Code refactoring principles for Producer Pal - when to extract func
 ## Automatic Triggers
 
 Apply these guidelines when:
-- ESLint reports `max-lines-per-function`, `max-depth`, or `complexity` violations
-- Function exceeds 100 lines
+- ESLint reports `max-lines-per-function`, `max-lines`, `max-depth`, or `complexity` violations
+- Function exceeds 120 lines of code (not blank, not comment lines)
 - Nesting depth exceeds 4 levels
 - User requests refactoring or code cleanup
 - Code review reveals duplication or complexity
@@ -19,7 +19,7 @@ Apply these guidelines when:
 ### When to Extract Functions
 
 **Always extract when:**
-- Function >100 lines
+- Function >120 lines of code (not blank, not comment lines)
 - Nesting depth >4 levels
 - Logic repeated 2+ times (DRY)
 - Complex conditional that needs a name
