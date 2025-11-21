@@ -165,6 +165,7 @@ export function useSettings(): UseSettingsReturn {
       setThinking: createSetter("thinking"),
       setTemperature: createSetter("temperature"),
       setShowThoughts: createSetter("showThoughts"),
+      setVoice: createSetter("voice"),
     };
   }, [provider, providerStateSetters]);
   const {
@@ -175,6 +176,7 @@ export function useSettings(): UseSettingsReturn {
     setThinking,
     setTemperature,
     setShowThoughts,
+    setVoice,
   } = setters;
   // Custom setProvider that normalizes thinking value when switching providers
   const setProvider = useCallback(
@@ -204,7 +206,8 @@ export function useSettings(): UseSettingsReturn {
     setTemperature(1.0);
     setThinking(DEFAULT_SETTINGS[provider].thinking);
     setShowThoughts(true);
-  }, [provider, setTemperature, setThinking, setShowThoughts]);
+    setVoice(DEFAULT_SETTINGS[provider].voice);
+  }, [provider, setTemperature, setThinking, setShowThoughts, setVoice]);
   const isCustom = provider === "custom";
   const isLocal = provider === "lmstudio" || provider === "ollama";
 
@@ -225,6 +228,8 @@ export function useSettings(): UseSettingsReturn {
     setTemperature,
     showThoughts: currentSettings.showThoughts,
     setShowThoughts,
+    voice: currentSettings.voice,
+    setVoice,
     saveSettings,
     cancelSettings,
     hasApiKey,

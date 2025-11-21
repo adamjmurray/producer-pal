@@ -1,6 +1,7 @@
 import type { Provider } from "../../types/settings";
 import { RandomnessSlider } from "./controls/RandomnessSlider";
 import { ThinkingSettings } from "./controls/ThinkingSettings";
+import { VoiceSelector } from "./controls/VoiceSelector";
 
 interface BehaviorTabProps {
   provider: Provider;
@@ -11,6 +12,8 @@ interface BehaviorTabProps {
   setTemperature: (temp: number) => void;
   showThoughts: boolean;
   setShowThoughts: (show: boolean) => void;
+  voice: string;
+  setVoice: (voice: string) => void;
   resetBehaviorToDefaults: () => void;
 }
 
@@ -25,6 +28,8 @@ interface BehaviorTabProps {
  * @param {Function} root0.setTemperature - Function to update temperature
  * @param {boolean} root0.showThoughts - Whether to show thought blocks
  * @param {Function} root0.setShowThoughts - Function to toggle thought display
+ * @param {string} root0.voice - Voice selection for Gemini voice chat
+ * @param {Function} root0.setVoice - Function to update voice
  * @param {Function} root0.resetBehaviorToDefaults - Function to reset behavior settings
  * @returns {JSX.Element} Behavior tab component
  */
@@ -37,6 +42,8 @@ export function BehaviorTab({
   setTemperature,
   showThoughts,
   setShowThoughts,
+  voice,
+  setVoice,
   resetBehaviorToDefaults,
 }: BehaviorTabProps) {
   return (
@@ -65,6 +72,11 @@ export function BehaviorTab({
             setTemperature={setTemperature}
           />
         </div>
+        {provider === "gemini" && (
+          <div className="mt-8">
+            <VoiceSelector voice={voice} setVoice={setVoice} />
+          </div>
+        )}
       </div>
     </div>
   );
