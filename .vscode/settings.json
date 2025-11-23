@@ -7,7 +7,8 @@
     "ppal",
     "Streamable",
     "unquotedpath",
-    "Wavetable"
+    "Wavetable",
+    "webui"
   ],
   "prettier.configPath": "config/prettier.config.mjs",
   "prettier.ignorePath": "config/.prettierignore"

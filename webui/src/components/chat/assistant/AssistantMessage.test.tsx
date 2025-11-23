@@ -3,7 +3,7 @@
  */
 import { render } from "@testing-library/preact";
 import { describe, expect, it } from "vitest";
-import type { UIPart } from "../../../types/messages";
+import type { UIPart } from "@/types/messages";
 import { AssistantMessage } from "./AssistantMessage";
 
 describe("AssistantMessage", () => {

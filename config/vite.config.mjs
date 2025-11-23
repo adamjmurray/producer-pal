@@ -1,10 +1,12 @@
 import preact from "@preact/preset-vite";
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = process.cwd();
 const licensePath = join(rootDir, "LICENSE");
 const licenseText = readFileSync(licensePath, "utf-8");
@@ -14,6 +16,11 @@ export default defineConfig({
     "import.meta.env.ENABLE_RAW_LIVE_API": JSON.stringify(
       process.env.ENABLE_RAW_LIVE_API === "true",
     ),
+  },
+  resolve: {
+    alias: {
+      "@": resolve(__dirname, "../webui/src"),
+    },
   },
   plugins: [
     preact(),

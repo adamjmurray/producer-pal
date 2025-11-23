@@ -1,4 +1,4 @@
-import type { UIMessage } from "../../types/messages";
+import type { UIMessage } from "@/types/messages";
 import { geminiAdapter } from "./gemini-adapter";
 import { useChat } from "./use-chat";
 

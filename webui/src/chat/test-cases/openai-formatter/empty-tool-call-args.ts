@@ -1,4 +1,4 @@
-import type { OpenAIMessage } from "../../../types/messages";
+import type { OpenAIMessage } from "@/types/messages";
 
 export const historyWithEmptyToolCallArgs: OpenAIMessage[] = [
   {

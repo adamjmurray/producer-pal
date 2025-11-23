@@ -1,10 +1,7 @@
-import {
-  GeminiClient,
-  type GeminiClientConfig,
-} from "../../chat/gemini-client";
-import { formatGeminiMessages } from "../../chat/gemini-formatter";
-import type { GeminiMessage } from "../../types/messages";
-import { buildGeminiConfig } from "../settings/config-builders";
+import { GeminiClient, type GeminiClientConfig } from "@/chat/gemini-client";
+import { formatGeminiMessages } from "@/chat/gemini-formatter";
+import { buildGeminiConfig } from "@/hooks/settings/config-builders";
+import type { GeminiMessage } from "@/types/messages";
 import { createGeminiErrorMessage } from "./streaming-helpers";
 import type { ChatAdapter } from "./use-chat";
 

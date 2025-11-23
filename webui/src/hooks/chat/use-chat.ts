@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "preact/hooks";
-import type { UIMessage } from "../../types/messages";
+import type { UIMessage } from "@/types/messages";
 import {
   handleMessageStream,
   validateMcpConnection,
