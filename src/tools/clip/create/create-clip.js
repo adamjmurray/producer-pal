@@ -6,7 +6,7 @@ import {
   buildClipName,
   convertTimingParameters,
   processClipIteration,
-} from "./create-clip-helpers.js";
+} from "./helpers/create-clip-helpers.js";
 
 /**
  * Creates MIDI clips in Session or Arrangement view

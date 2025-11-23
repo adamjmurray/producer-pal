@@ -1,11 +1,11 @@
-import { VERSION } from "../../../shared/version.js";
-import { readClip } from "../../clip/read/read-clip.js";
-import { STATE } from "../../constants.js";
-import { cleanupInternalDrumChains } from "../../shared/device/device-reader.js";
+import { VERSION } from "../../../../shared/version.js";
+import { readClip } from "../../../clip/read/read-clip.js";
+import { STATE } from "../../../constants.js";
+import { cleanupInternalDrumChains } from "../../../shared/device/device-reader.js";
 import {
   processAvailableRouting,
   processCurrentRouting,
-} from "../helpers/track-routing-helpers.js";
+} from "../../helpers/track-routing-helpers.js";
 
 /**
  * Read minimal track information for auto-inclusion when clips are requested.

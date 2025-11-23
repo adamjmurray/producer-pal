@@ -104,6 +104,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   - If a helper file exceeds 600 lines, split by feature group:
     `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
     `update-clip-midi-helpers.js`)
+  - When a directory accumulates multiple helper files (2+), move them to a
+    `helpers/` subdirectory while keeping the main source file in the parent
+    directory
   - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
     `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
   - Test helpers use `{feature}-test-helpers.js` for shared test utilities

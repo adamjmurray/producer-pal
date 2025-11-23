@@ -2,7 +2,7 @@ import * as console from "../../../shared/v8-max-console.js";
 import {
   handleArrangementLengthening,
   handleArrangementShortening,
-} from "./arrangement-operations-helpers.js";
+} from "./helpers/arrangement-operations-helpers.js";
 
 /**
  * Handle arrangement length changes (lengthening via tiling/exposure or shortening)

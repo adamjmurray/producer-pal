@@ -17,7 +17,7 @@ import {
   addStateIfNotDefault,
   addRoutingInfo,
   addProducerPalHostInfo,
-} from "./read-track-helpers.js";
+} from "./helpers/read-track-helpers.js";
 
 /**
  * Read comprehensive information about a track

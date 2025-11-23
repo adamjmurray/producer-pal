@@ -1,5 +1,5 @@
-import { midiPitchToName } from "../../notation/midi-pitch-to-name.js";
-import { DEVICE_TYPE, STATE } from "../constants.js";
+import { midiPitchToName } from "../../../../notation/midi-pitch-to-name.js";
+import { DEVICE_TYPE, STATE } from "../../../constants.js";
 
 /**
  * Check if device className is redundant (matches the rack type name)

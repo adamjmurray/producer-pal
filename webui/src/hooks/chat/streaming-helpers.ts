@@ -1,5 +1,6 @@
 import { formatGeminiMessages } from "../../chat/gemini-formatter";
 import { formatOpenAIMessages } from "../../chat/openai-formatter";
+import { normalizeErrorMessage } from "../../lib/error-formatters";
 import type {
   GeminiMessage,
   OpenAIMessage,
@@ -43,11 +44,7 @@ export function createGeminiErrorMessage(
   error: unknown,
   chatHistory: GeminiMessage[],
 ): UIMessage[] {
-  console.error(error);
-  let errorMessage = `${error}`;
-  if (!errorMessage.startsWith("Error")) {
-    errorMessage = `Error: ${errorMessage}`;
-  }
+  const errorMessage = normalizeErrorMessage(error);
 
   const errorEntry: GeminiMessage = {
     role: "error",
@@ -67,11 +64,7 @@ export function createOpenAIErrorMessage(
   chatHistory: OpenAIMessage[],
   error: unknown,
 ): UIMessage[] {
-  console.error(error);
-  let errorMessage = `${error}`;
-  if (!errorMessage.startsWith("Error")) {
-    errorMessage = `Error: ${errorMessage}`;
-  }
+  const errorMessage = normalizeErrorMessage(error);
 
   const formattedHistory = formatOpenAIMessages(chatHistory);
 

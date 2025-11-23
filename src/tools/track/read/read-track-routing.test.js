@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { liveApiId, mockLiveApiGet } from "../../../test/mock-live-api.js";
-import { mockTrackProperties } from "./read-track-test-helpers.js";
+import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {

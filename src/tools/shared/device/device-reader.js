@@ -10,7 +10,7 @@ import {
   processDrumChains,
   processRegularChains,
   processReturnChains,
-} from "../device-reader-helpers.js";
+} from "./helpers/device-reader-helpers.js";
 
 /**
  * Determine device type from Live API properties

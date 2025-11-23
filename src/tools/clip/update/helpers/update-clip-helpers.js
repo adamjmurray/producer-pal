@@ -41,18 +41,6 @@ export function getActualContentEnd(clip) {
 // Audio-specific helper functions are now in update-clip-audio-helpers.js
 
 /**
- * Parse and get song time signature from live_set
- * @returns {{numerator: number, denominator: number}} Time signature components
- */
-export function parseSongTimeSignature() {
-  const liveSet = new LiveAPI("live_set");
-  return {
-    numerator: liveSet.getProperty("signature_numerator"),
-    denominator: liveSet.getProperty("signature_denominator"),
-  };
-}
-
-/**
  * Calculate beat positions from bar|beat notation
  * @param {object} args - Calculation arguments
  * @param {string} [args.start] - Start position in bar|beat notation

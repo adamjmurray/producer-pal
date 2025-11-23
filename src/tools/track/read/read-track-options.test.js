@@ -11,7 +11,7 @@ import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
 } from "../../constants.js";
-import { mockTrackProperties } from "./read-track-test-helpers.js";
+import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
