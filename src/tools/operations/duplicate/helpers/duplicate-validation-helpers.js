@@ -1,3 +1,5 @@
+import * as console from "../../../../shared/v8-max-console.js";
+
 /**
  * Validates basic input parameters for duplication
  * @param {string} type - Type of object to duplicate

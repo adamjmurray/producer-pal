@@ -1,3 +1,4 @@
+import * as console from "../../../shared/v8-max-console.js";
 import { validateIdTypes } from "../../shared/validation/id-validation.js";
 import {
   parseTransposeValues,
