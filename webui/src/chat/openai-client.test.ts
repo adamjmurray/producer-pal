@@ -5,7 +5,7 @@ import {
   OpenAIClient,
   type OpenAIAssistantMessageWithReasoning,
 } from "./openai-client";
-import type { OpenAIToolCall } from "@/types/messages";
+import type { OpenAIToolCall } from "#webui/types/messages";
 
 describe("extractReasoningFromDelta", () => {
   it("should return empty string for regular content (not reasoning)", () => {

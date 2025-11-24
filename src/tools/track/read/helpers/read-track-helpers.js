@@ -1,7 +1,7 @@
-import { VERSION } from "#~/shared/version.js";
-import { readClip } from "#~/tools/clip/read/read-clip.js";
-import { STATE } from "#~/tools/constants.js";
-import { cleanupInternalDrumChains } from "#~/tools/shared/device/device-reader.js";
+import { VERSION } from "#src/shared/version.js";
+import { readClip } from "#src/tools/clip/read/read-clip.js";
+import { STATE } from "#src/tools/constants.js";
+import { cleanupInternalDrumChains } from "#src/tools/shared/device/device-reader.js";
 import {
   processAvailableRouting,
   processCurrentRouting,

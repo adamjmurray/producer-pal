@@ -1,5 +1,5 @@
 import { render } from "preact";
-import { App } from "@/components/App";
+import { App } from "#webui/components/App";
 import "./main.css";
 
 const appElement = document.getElementById("app");

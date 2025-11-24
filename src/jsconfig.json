@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "#~/*": ["./*"]
+      "@src/*": ["./*"]
     },
     "checkJs": false,
     "module": "ES2022",

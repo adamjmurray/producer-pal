@@ -1,5 +1,5 @@
-import * as console from "#~/shared/v8-max-console.js";
-import { validateIdTypes } from "#~/tools/shared/validation/id-validation.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
   parseTransposeValues,
   getClipIds,

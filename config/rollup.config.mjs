@@ -50,7 +50,7 @@ export default [
     },
     plugins: [
       alias({
-        entries: [{ find: "#~", replacement: join(rootDir, "src") }],
+        entries: [{ find: "#src", replacement: join(rootDir, "src") }],
       }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
@@ -77,7 +77,7 @@ export default [
       // and
       // (!) "this" has been rewritten to "undefined" in node_modules/zod
       alias({
-        entries: [{ find: "#~", replacement: join(rootDir, "src") }],
+        entries: [{ find: "#src", replacement: join(rootDir, "src") }],
       }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
@@ -114,7 +114,7 @@ export default [
     ],
     plugins: [
       alias({
-        entries: [{ find: "#~", replacement: join(rootDir, "src") }],
+        entries: [{ find: "#src", replacement: join(rootDir, "src") }],
       }),
       resolve({
         preferBuiltins: true,

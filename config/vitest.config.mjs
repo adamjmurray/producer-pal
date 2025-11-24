@@ -9,8 +9,8 @@ export default defineConfig({
   plugins: [preact()],
   resolve: {
     alias: {
-      "@": join(__dirname, "../webui/src"),
-      "#~": join(__dirname, "../src"),
+      "#webui": join(__dirname, "../webui/src"),
+      "#src": join(__dirname, "../src"),
       "virtual:chat-ui-html": join(
         __dirname,
         "../src/test/mock-chat-ui-html.js",

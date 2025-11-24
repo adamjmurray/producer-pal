@@ -1,9 +1,9 @@
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "#~/notation/barbeat/time/barbeat-time.js";
-import * as console from "#~/shared/v8-max-console.js";
-import { parseSongTimeSignature } from "#~/tools/shared/live-set-helpers.js";
+} from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
 
 /**
  * Validate and parse arrangement parameters

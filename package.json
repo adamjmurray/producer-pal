@@ -9,7 +9,8 @@
   },
   "type": "module",
   "imports": {
-    "#~/*": "./src/*"
+    "#webui/*": "./webui/src/*",
+    "#src/*": "./src/*"
   },
   "author": "Adam Murray",
   "license": "MIT License",

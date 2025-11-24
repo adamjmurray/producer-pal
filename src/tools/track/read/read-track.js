@@ -1,16 +1,16 @@
-import * as console from "#~/shared/v8-max-console.js";
-import { readClip } from "#~/tools/clip/read/read-clip.js";
-import { DEVICE_TYPE } from "#~/tools/constants.js";
-import { getHostTrackIndex } from "#~/tools/shared/arrangement/get-host-track-index.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { readClip } from "#src/tools/clip/read/read-clip.js";
+import { DEVICE_TYPE } from "#src/tools/constants.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
   getDrumMap,
   readDevice,
-} from "#~/tools/shared/device/device-reader.js";
+} from "#src/tools/shared/device/device-reader.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
-} from "#~/tools/shared/tool-framework/include-params.js";
-import { validateIdType } from "#~/tools/shared/validation/id-validation.js";
+} from "#src/tools/shared/tool-framework/include-params.js";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import {
   addCategoryIndex,
   addOptionalBooleanProperties,

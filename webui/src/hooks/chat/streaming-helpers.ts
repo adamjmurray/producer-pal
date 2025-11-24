@@ -1,7 +1,11 @@
-import { formatGeminiMessages } from "@/chat/gemini-formatter";
-import { formatOpenAIMessages } from "@/chat/openai-formatter";
-import { normalizeErrorMessage } from "@/lib/error-formatters";
-import type { GeminiMessage, OpenAIMessage, UIMessage } from "@/types/messages";
+import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
+import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
+import { normalizeErrorMessage } from "#webui/lib/error-formatters";
+import type {
+  GeminiMessage,
+  OpenAIMessage,
+  UIMessage,
+} from "#webui/types/messages";
 
 /**
  * Generic streaming handler for chat messages.

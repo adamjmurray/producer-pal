@@ -2,7 +2,7 @@ import { GoogleGenAI, FunctionCallingConfigMode } from "@google/genai/web";
 import type { Chat, ThinkingConfig, Tool, Part } from "@google/genai/web";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { GeminiMessage } from "@/types/messages";
+import type { GeminiMessage } from "#webui/types/messages";
 
 // Configuration for GeminiClient
 export interface GeminiClientConfig {

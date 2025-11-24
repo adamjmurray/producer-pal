@@ -242,10 +242,10 @@ export default [
       "import/resolver": {
         alias: {
           map: [
-            ["@", "./webui/src"],
-            ["#~", "./src"],
+            ["#webui", "./webui/src"],
+            ["#src", "./src"],
           ],
-          extensions: [".js", ".mjs"],
+          extensions: [".js", ".mjs", ".ts", ".tsx"],
         },
         node: true,
       },

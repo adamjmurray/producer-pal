@@ -19,7 +19,7 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": resolve(__dirname, "../webui/src"),
+      "#webui": resolve(__dirname, "../webui/src"),
     },
   },
   plugins: [

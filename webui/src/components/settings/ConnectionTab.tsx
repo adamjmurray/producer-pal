@@ -1,4 +1,4 @@
-import type { Provider } from "@/types/settings";
+import type { Provider } from "#webui/types/settings";
 import { ModelSelector } from "./controls/ModelSelector";
 import { ProviderSelector } from "./controls/ProviderSelector";
 

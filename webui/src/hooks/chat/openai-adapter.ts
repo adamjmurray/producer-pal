@@ -1,7 +1,10 @@
-import { OpenAIClient, type OpenAIClientConfig } from "@/chat/openai-client";
-import { formatOpenAIMessages } from "@/chat/openai-formatter";
-import { buildOpenAIConfig } from "@/hooks/settings/config-builders";
-import type { OpenAIMessage } from "@/types/messages";
+import {
+  OpenAIClient,
+  type OpenAIClientConfig,
+} from "#webui/chat/openai-client";
+import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
+import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
+import type { OpenAIMessage } from "#webui/types/messages";
 import { createOpenAIErrorMessage } from "./streaming-helpers";
 import type { ChatAdapter } from "./use-chat";
 

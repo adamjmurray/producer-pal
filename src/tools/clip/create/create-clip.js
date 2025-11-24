@@ -1,7 +1,7 @@
-import { interpretNotation } from "#~/notation/barbeat/interpreter/barbeat-interpreter.js";
-import { timeSigToAbletonBeatsPerBar } from "#~/notation/barbeat/time/barbeat-time.js";
-import { select } from "#~/tools/control/select.js";
-import { parseTimeSignature } from "#~/tools/shared/utils.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.js";
+import { select } from "#src/tools/control/select.js";
+import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
   buildClipName,
   convertTimingParameters,

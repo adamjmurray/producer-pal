@@ -8,7 +8,10 @@
     "Streamable",
     "unquotedpath",
     "Wavetable",
-    "webui"
+    "webui",
+    "sonarjs",
+    "mischeck",
+    "unthrown"
   ],
   "prettier.configPath": "config/prettier.config.mjs",
   "prettier.ignorePath": "config/.prettierignore"
