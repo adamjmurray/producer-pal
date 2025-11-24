@@ -239,7 +239,16 @@ export default [
       jsdoc,
     },
     settings: {
-      "import/resolver": { node: true },
+      "import/resolver": {
+        alias: {
+          map: [
+            ["@", "./webui/src"],
+            ["#~", "./src"],
+          ],
+          extensions: [".js", ".mjs"],
+        },
+        node: true,
+      },
     },
     rules: {
       ...js.configs.recommended.rules,

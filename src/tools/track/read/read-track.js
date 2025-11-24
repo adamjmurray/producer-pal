@@ -1,22 +1,25 @@
-import * as console from "../../../shared/v8-max-console.js";
-import { readClip } from "../../clip/read/read-clip.js";
-import { DEVICE_TYPE } from "../../constants.js";
-import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
-import { getDrumMap, readDevice } from "../../shared/device/device-reader.js";
+import * as console from "#~/shared/v8-max-console.js";
+import { readClip } from "#~/tools/clip/read/read-clip.js";
+import { DEVICE_TYPE } from "#~/tools/constants.js";
+import { getHostTrackIndex } from "#~/tools/shared/arrangement/get-host-track-index.js";
+import {
+  getDrumMap,
+  readDevice,
+} from "#~/tools/shared/device/device-reader.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
-} from "../../shared/tool-framework/include-params.js";
-import { validateIdType } from "../../shared/validation/id-validation.js";
+} from "#~/tools/shared/tool-framework/include-params.js";
+import { validateIdType } from "#~/tools/shared/validation/id-validation.js";
 import {
-  handleNonExistentTrack,
-  addOptionalBooleanProperties,
   addCategoryIndex,
-  cleanupDeviceChains,
+  addOptionalBooleanProperties,
+  addProducerPalHostInfo,
+  addRoutingInfo,
   addSlotIndices,
   addStateIfNotDefault,
-  addRoutingInfo,
-  addProducerPalHostInfo,
+  cleanupDeviceChains,
+  handleNonExistentTrack,
 } from "./helpers/read-track-helpers.js";
 
 /**

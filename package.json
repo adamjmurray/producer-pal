@@ -8,6 +8,9 @@
     "url": "git+https://github.com/adamjmurray/producer-pal.git"
   },
   "type": "module",
+  "imports": {
+    "#~/*": "./src/*"
+  },
   "author": "Adam Murray",
   "license": "MIT License",
   "engines": {
@@ -76,6 +79,7 @@
     "@anthropic-ai/mcpb": "^2.0.1",
     "@playwright/test": "^1.56.1",
     "@preact/preset-vite": "^2.10.2",
+    "@rollup/plugin-alias": "^6.0.0",
     "@rollup/plugin-commonjs": "^29.0.0",
     "@rollup/plugin-json": "^6.1.0",
     "@rollup/plugin-node-resolve": "^16.0.3",
@@ -92,6 +96,7 @@
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
     "eslint": "^9.39.1",
+    "eslint-import-resolver-alias": "^1.1.2",
     "eslint-import-resolver-node": "^0.3.9",
     "eslint-import-resolver-typescript": "^4.4.4",
     "eslint-plugin-import": "^2.32.0",

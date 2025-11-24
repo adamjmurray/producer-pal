@@ -4,9 +4,9 @@ import {
   barBeatToAbletonBeats,
   barBeatToBeats,
   beatsToBarBeat,
-} from "../../../../notation/barbeat/time/barbeat-time.js";
-import * as console from "../../../../shared/v8-max-console.js";
-import { MAX_AUTO_CREATED_SCENES } from "../../../constants.js";
+} from "#~/notation/barbeat/time/barbeat-time.js";
+import * as console from "#~/shared/v8-max-console.js";
+import { MAX_AUTO_CREATED_SCENES } from "#~/tools/constants.js";
 
 /**
  * Builds a clip name based on count and iteration index

@@ -1,3 +1,4 @@
+import alias from "@rollup/plugin-alias";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import resolve from "@rollup/plugin-node-resolve";
@@ -48,6 +49,9 @@ export default [
       format: "es",
     },
     plugins: [
+      alias({
+        entries: [{ find: "#~", replacement: join(rootDir, "src") }],
+      }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
           process.env.ENABLE_RAW_LIVE_API,
@@ -72,6 +76,9 @@ export default [
       // (!) Circular dependencies in node_modules/zod-to-json-schema
       // and
       // (!) "this" has been rewritten to "undefined" in node_modules/zod
+      alias({
+        entries: [{ find: "#~", replacement: join(rootDir, "src") }],
+      }),
       replace({
         "process.env.ENABLE_RAW_LIVE_API": JSON.stringify(
           process.env.ENABLE_RAW_LIVE_API,
@@ -106,6 +113,9 @@ export default [
       },
     ],
     plugins: [
+      alias({
+        entries: [{ find: "#~", replacement: join(rootDir, "src") }],
+      }),
       resolve({
         preferBuiltins: true,
         browser: false,

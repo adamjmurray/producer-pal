@@ -10,6 +10,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": join(__dirname, "../webui/src"),
+      "#~": join(__dirname, "../src"),
       "virtual:chat-ui-html": join(
         __dirname,
         "../src/test/mock-chat-ui-html.js",

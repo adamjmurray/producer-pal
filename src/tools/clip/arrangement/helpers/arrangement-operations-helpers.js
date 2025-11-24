@@ -1,7 +1,7 @@
 import {
   createAudioClipInSession,
   tileClipToRange,
-} from "../../../shared/arrangement/arrangement-tiling.js";
+} from "#~/tools/shared/arrangement/arrangement-tiling.js";
 import { handleUnloopedLengthening } from "./arrangement-unlooped-helpers.js";
 
 /**

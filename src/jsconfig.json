@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "#~/*": ["./*"]
+    },
+    "checkJs": false,
+    "module": "ES2022",
+    "target": "ES2022"
+  },
+  "exclude": ["node_modules", "dist", "**/*.test.js"]
+}

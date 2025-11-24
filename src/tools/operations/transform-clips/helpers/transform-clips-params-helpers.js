@@ -1,4 +1,4 @@
-import * as console from "../../../../shared/v8-max-console.js";
+import * as console from "#~/shared/v8-max-console.js";
 import { applyAudioParams, applyMidiParams } from "./transform-clips-params.js";
 
 /**
