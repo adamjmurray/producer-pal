@@ -65,6 +65,13 @@ See `dev-docs/Architecture.md` for detailed system design and
   loader. Code in `webui/` is bundled and must NEVER use file extensions in
   relative imports (e.g., `import foo from './bar'`).
 
+- **Path aliases**: Use `#src/` for src imports (e.g.,
+  `import foo from '#src/shared/utils.js'`) and `#webui/` for webui imports
+  (e.g., `import { App } from '#webui/components/App'`). Both use Node.js
+  package subpath imports configured in package.json `"imports"` field. The `#`
+  prefix is required by Node.js for unbundled execution (build scripts, CLI
+  tools). Never use relative paths like `../../` when a path alias is available.
+
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
