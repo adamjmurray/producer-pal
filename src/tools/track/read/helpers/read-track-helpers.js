@@ -257,3 +257,49 @@ export function addProducerPalHostInfo(result, isProducerPalHost) {
     result.producerPalVersion = VERSION;
   }
 }
+
+/**
+ * Read mixer device properties (gain and panning)
+ * @param {LiveAPI} track - Track object
+ * @returns {object} Object with gain and pan properties, or empty if mixer doesn't exist
+ */
+export function readMixerProperties(track) {
+  const mixer = new LiveAPI(track.path + " mixer_device");
+
+  if (!mixer.exists()) {
+    return {};
+  }
+
+  const result = {};
+
+  // Read gain
+  const volume = new LiveAPI(mixer.path + " volume");
+  if (volume.exists()) {
+    result.gainDb = volume.getProperty("display_value");
+  }
+
+  // Read panning mode
+  const panningMode = mixer.getProperty("panning_mode");
+  const isSplitMode = panningMode === 1;
+  result.panningMode = isSplitMode ? "split" : "stereo";
+
+  // Read panning based on mode
+  if (isSplitMode) {
+    const leftSplit = new LiveAPI(mixer.path + " left_split_stereo");
+    const rightSplit = new LiveAPI(mixer.path + " right_split_stereo");
+
+    if (leftSplit.exists()) {
+      result.leftPan = leftSplit.getProperty("value");
+    }
+    if (rightSplit.exists()) {
+      result.rightPan = rightSplit.getProperty("value");
+    }
+  } else {
+    const panning = new LiveAPI(mixer.path + " panning");
+    if (panning.exists()) {
+      result.pan = panning.getProperty("value");
+    }
+  }
+
+  return result;
+}

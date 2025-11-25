@@ -61,7 +61,10 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", 0);
+    expect(result).toHaveProperty("panningMode", "stereo");
     expect(result).toHaveProperty("pan", 0);
+    expect(result).not.toHaveProperty("leftPan");
+    expect(result).not.toHaveProperty("rightPan");
   });
 
   it("includes non-zero gain and panning values", () => {
@@ -98,6 +101,7 @@ describe("readTrack - mixer properties", () => {
     const result = readTrack({ trackIndex: 0, include: ["mixer"] });
 
     expect(result).toHaveProperty("gainDb", -6.5);
+    expect(result).toHaveProperty("panningMode", "stereo");
     expect(result).toHaveProperty("pan", 0.5);
   });
 
@@ -323,5 +327,107 @@ describe("readTrack - mixer properties", () => {
 
     expect(result).toHaveProperty("gainDb", 2);
     expect(result).toHaveProperty("pan", -0.25);
+  });
+
+  it("returns split panning mode with leftPan and rightPan", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 0 mixer_device":
+          return "mixer_1";
+        case "live_set tracks 0 mixer_device volume":
+          return "volume_param_1";
+        case "live_set tracks 0 mixer_device left_split_stereo":
+          return "left_split_param_1";
+        case "live_set tracks 0 mixer_device right_split_stereo":
+          return "right_split_param_1";
+        default:
+          return "id 0";
+      }
+    });
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: [],
+        devices: [],
+        mixer_device: children("mixer_1"),
+      },
+      mixer_1: {
+        volume: children("volume_param_1"),
+        panning_mode: 1, // Split mode
+        left_split_stereo: children("left_split_param_1"),
+        right_split_stereo: children("right_split_param_1"),
+      },
+      volume_param_1: {
+        display_value: -3,
+      },
+      left_split_param_1: {
+        value: -1, // Full left
+      },
+      right_split_param_1: {
+        value: 1, // Full right
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", -3);
+    expect(result).toHaveProperty("panningMode", "split");
+    expect(result).toHaveProperty("leftPan", -1);
+    expect(result).toHaveProperty("rightPan", 1);
+    expect(result).not.toHaveProperty("pan");
+  });
+
+  it("returns split panning mode with non-default values", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this.path) {
+        case "live_set tracks 0":
+          return "track1";
+        case "live_set tracks 0 mixer_device":
+          return "mixer_1";
+        case "live_set tracks 0 mixer_device volume":
+          return "volume_param_1";
+        case "live_set tracks 0 mixer_device left_split_stereo":
+          return "left_split_param_1";
+        case "live_set tracks 0 mixer_device right_split_stereo":
+          return "right_split_param_1";
+        default:
+          return "id 0";
+      }
+    });
+    mockLiveApiGet({
+      Track: {
+        has_midi_input: 1,
+        name: "Test Track",
+        clip_slots: [],
+        devices: [],
+        mixer_device: children("mixer_1"),
+      },
+      mixer_1: {
+        volume: children("volume_param_1"),
+        panning_mode: 1, // Split mode
+        left_split_stereo: children("left_split_param_1"),
+        right_split_stereo: children("right_split_param_1"),
+      },
+      volume_param_1: {
+        display_value: 0,
+      },
+      left_split_param_1: {
+        value: 0.25,
+      },
+      right_split_param_1: {
+        value: -0.5,
+      },
+    });
+
+    const result = readTrack({ trackIndex: 0, include: ["mixer"] });
+
+    expect(result).toHaveProperty("gainDb", 0);
+    expect(result).toHaveProperty("panningMode", "split");
+    expect(result).toHaveProperty("leftPan", 0.25);
+    expect(result).toHaveProperty("rightPan", -0.5);
+    expect(result).not.toHaveProperty("pan");
   });
 });

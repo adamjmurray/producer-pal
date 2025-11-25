@@ -295,6 +295,9 @@ function getPropertyByType(type, prop, _path) {
     case "MixerDevice":
       if (prop === "volume") return children("volume_param_1");
       if (prop === "panning") return children("panning_param_1");
+      if (prop === "panning_mode") return [0]; // Default to stereo mode
+      if (prop === "left_split_stereo") return children("left_split_param_1");
+      if (prop === "right_split_stereo") return children("right_split_param_1");
       return null;
     case "DeviceParameter":
       if (prop === "display_value") return [0]; // Default 0 dB for volume

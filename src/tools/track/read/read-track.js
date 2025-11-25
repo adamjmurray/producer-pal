@@ -20,6 +20,7 @@ import {
   addStateIfNotDefault,
   cleanupDeviceChains,
   handleNonExistentTrack,
+  readMixerProperties,
 } from "./helpers/read-track-helpers.js";
 
 /**
@@ -305,34 +306,6 @@ export function readTrackGeneric({
     includeAvailableRoutings,
   );
   addProducerPalHostInfo(result, isProducerPalHost);
-  return result;
-}
-
-/**
- * Read mixer device properties (gain and panning)
- * @param {LiveAPI} track - Track object
- * @returns {object} Object with gain and pan properties, or empty if mixer doesn't exist
- */
-function readMixerProperties(track) {
-  const mixer = new LiveAPI(track.path + " mixer_device");
-
-  if (!mixer.exists()) {
-    return {};
-  }
-
-  const volume = new LiveAPI(mixer.path + " volume");
-  const panning = new LiveAPI(mixer.path + " panning");
-
-  const result = {};
-
-  if (volume.exists()) {
-    result.gainDb = volume.getProperty("display_value");
-  }
-
-  if (panning.exists()) {
-    result.pan = panning.getProperty("value");
-  }
-
   return result;
 }
 

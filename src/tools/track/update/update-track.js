@@ -1,3 +1,4 @@
+import * as console from "#src/shared/v8-max-console.js";
 import {
   LIVE_API_MONITORING_STATE_AUTO,
   LIVE_API_MONITORING_STATE_IN,
@@ -77,19 +78,79 @@ function applyMonitoringState(track, monitoringState) {
 }
 
 /**
+ * Apply stereo panning and warn about invalid params
+ * @param {LiveAPI} mixer - Mixer device object
+ * @param {number} pan - Pan value
+ * @param {number} leftPan - Left pan value
+ * @param {number} rightPan - Right pan value
+ */
+function applyStereoPan(mixer, pan, leftPan, rightPan) {
+  if (pan != null) {
+    const panning = new LiveAPI(mixer.path + " panning");
+    if (panning.exists()) {
+      panning.set("value", pan);
+    }
+  }
+
+  if (leftPan != null || rightPan != null) {
+    console.error(
+      "updateTrack: leftPan and rightPan have no effect in stereo panning mode. " +
+        "Set panningMode to 'split' or use 'pan' instead.",
+    );
+  }
+}
+
+/**
+ * Apply split panning and warn about invalid params
+ * @param {LiveAPI} mixer - Mixer device object
+ * @param {number} pan - Pan value
+ * @param {number} leftPan - Left pan value
+ * @param {number} rightPan - Right pan value
+ */
+function applySplitPan(mixer, pan, leftPan, rightPan) {
+  if (leftPan != null) {
+    const leftSplit = new LiveAPI(mixer.path + " left_split_stereo");
+    if (leftSplit.exists()) {
+      leftSplit.set("value", leftPan);
+    }
+  }
+
+  if (rightPan != null) {
+    const rightSplit = new LiveAPI(mixer.path + " right_split_stereo");
+    if (rightSplit.exists()) {
+      rightSplit.set("value", rightPan);
+    }
+  }
+
+  if (pan != null) {
+    console.error(
+      "updateTrack: pan has no effect in split panning mode. " +
+        "Set panningMode to 'stereo' or use leftPan/rightPan instead.",
+    );
+  }
+}
+
+/**
  * Apply mixer properties (gain and panning) to a track
  * @param {LiveAPI} track - Track object
  * @param {object} params - Mixer properties
  * @param {number} params.gainDb - Track gain in dB (-70 to 6)
- * @param {number} params.pan - Pan position (-1 to 1)
+ * @param {number} params.pan - Pan position in stereo mode (-1 to 1)
+ * @param {string} params.panningMode - Panning mode ("stereo" or "split")
+ * @param {number} params.leftPan - Left channel pan in split mode (-1 to 1)
+ * @param {number} params.rightPan - Right channel pan in split mode (-1 to 1)
  */
-function applyMixerProperties(track, { gainDb, pan }) {
+function applyMixerProperties(
+  track,
+  { gainDb, pan, panningMode, leftPan, rightPan },
+) {
   const mixer = new LiveAPI(track.path + " mixer_device");
 
   if (!mixer.exists()) {
     return;
   }
 
+  // Handle gain (independent of panning mode)
   if (gainDb != null) {
     const volume = new LiveAPI(mixer.path + " volume");
     if (volume.exists()) {
@@ -97,11 +158,25 @@ function applyMixerProperties(track, { gainDb, pan }) {
     }
   }
 
-  if (pan != null) {
-    const panning = new LiveAPI(mixer.path + " panning");
-    if (panning.exists()) {
-      panning.set("value", pan);
-    }
+  // Get current panning mode
+  const currentMode = mixer.getProperty("panning_mode");
+  const currentIsSplit = currentMode === 1;
+
+  // Set new panning mode if provided
+  if (panningMode != null) {
+    const newMode = panningMode === "split" ? 1 : 0;
+    mixer.set("panning_mode", newMode);
+  }
+
+  // Determine effective mode for validation
+  const effectiveMode =
+    panningMode != null ? panningMode : currentIsSplit ? "split" : "stereo";
+
+  // Handle panning based on effective mode
+  if (effectiveMode === "stereo") {
+    applyStereoPan(mixer, pan, leftPan, rightPan);
+  } else {
+    applySplitPan(mixer, pan, leftPan, rightPan);
   }
 }
 
@@ -112,7 +187,10 @@ function applyMixerProperties(track, { gainDb, pan }) {
  * @param {string} [args.name] - Optional track name
  * @param {string} [args.color] - Optional track color (CSS format: hex)
  * @param {number} [args.gainDb] - Optional track gain in dB (-70 to 6)
- * @param {number} [args.pan] - Optional pan position (-1 to 1)
+ * @param {number} [args.pan] - Optional pan position in stereo mode (-1 to 1)
+ * @param {string} [args.panningMode] - Optional panning mode ('stereo' or 'split')
+ * @param {number} [args.leftPan] - Optional left channel pan in split mode (-1 to 1)
+ * @param {number} [args.rightPan] - Optional right channel pan in split mode (-1 to 1)
  * @param {boolean} [args.mute] - Optional mute state
  * @param {boolean} [args.solo] - Optional solo state
  * @param {boolean} [args.arm] - Optional arm state
@@ -132,6 +210,9 @@ export function updateTrack(
     color,
     gainDb,
     pan,
+    panningMode,
+    leftPan,
+    rightPan,
     mute,
     solo,
     arm,
@@ -173,8 +254,20 @@ export function updateTrack(
     }
 
     // Handle mixer properties
-    if (gainDb != null || pan != null) {
-      applyMixerProperties(track, { gainDb, pan });
+    if (
+      gainDb != null ||
+      pan != null ||
+      panningMode != null ||
+      leftPan != null ||
+      rightPan != null
+    ) {
+      applyMixerProperties(track, {
+        gainDb,
+        pan,
+        panningMode,
+        leftPan,
+        rightPan,
+      });
     }
 
     // Handle routing properties

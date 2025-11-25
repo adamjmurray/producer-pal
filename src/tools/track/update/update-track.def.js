@@ -20,6 +20,22 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .max(1)
       .optional()
       .describe("pan: -1 (left) to 1 (right)"),
+    panningMode: z
+      .enum(["stereo", "split"])
+      .optional()
+      .describe("panning mode: stereo or split"),
+    leftPan: z
+      .number()
+      .min(-1)
+      .max(1)
+      .optional()
+      .describe("left channel pan in split mode (-1 to 1)"),
+    rightPan: z
+      .number()
+      .min(-1)
+      .max(1)
+      .optional()
+      .describe("right channel pan in split mode (-1 to 1)"),
     mute: z.boolean().optional().describe("muted?"),
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),

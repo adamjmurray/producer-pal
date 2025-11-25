@@ -1,11 +1,13 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   liveApiId,
   liveApiPath,
   liveApiSet,
+  mockLiveApiGet,
 } from "../../../test/mock-live-api.js";
 import { updateTrack } from "./update-track.js";
 import "../../../live-api-adapter/live-api-extensions.js";
+import * as console from "#src/shared/v8-max-console.js";
 
 describe("updateTrack - mixer properties", () => {
   beforeEach(() => {
@@ -252,5 +254,165 @@ describe("updateTrack - mixer properties", () => {
     // Should not attempt to set mixer properties when mixer doesn't exist
     expect(liveApiSet).not.toHaveBeenCalledWith("display_value", -6);
     expect(liveApiSet).not.toHaveBeenCalledWith("value", 0.5);
+  });
+
+  it("should set panning mode to split", () => {
+    updateTrack({
+      ids: "123",
+      panningMode: "split",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "mixer_1" }),
+      "panning_mode",
+      1,
+    );
+  });
+
+  it("should set panning mode to stereo", () => {
+    updateTrack({
+      ids: "123",
+      panningMode: "stereo",
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "mixer_1" }),
+      "panning_mode",
+      0,
+    );
+  });
+
+  it("should update leftPan and rightPan in split mode", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "id 123":
+          return "123";
+        case "live_set tracks 0 mixer_device":
+          return "mixer_1";
+        case "live_set tracks 0 mixer_device left_split_stereo":
+          return "left_split_param_1";
+        case "live_set tracks 0 mixer_device right_split_stereo":
+          return "right_split_param_1";
+        default:
+          return this._id;
+      }
+    });
+
+    mockLiveApiGet({
+      mixer_1: {
+        panning_mode: 1, // Split mode
+      },
+    });
+
+    updateTrack({
+      ids: "123",
+      leftPan: -0.75,
+      rightPan: 0.5,
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "left_split_param_1" }),
+      "value",
+      -0.75,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "right_split_param_1" }),
+      "value",
+      0.5,
+    );
+  });
+
+  it("should warn when setting pan in split mode", () => {
+    const errorSpy = vi.spyOn(console, "error");
+
+    mockLiveApiGet({
+      mixer_1: {
+        panning_mode: 1, // Split mode
+      },
+    });
+
+    updateTrack({
+      ids: "123",
+      pan: 0.5,
+    });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("pan has no effect in split panning mode"),
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it("should warn when setting leftPan/rightPan in stereo mode", () => {
+    const errorSpy = vi.spyOn(console, "error");
+
+    mockLiveApiGet({
+      mixer_1: {
+        panning_mode: 0, // Stereo mode
+      },
+    });
+
+    updateTrack({
+      ids: "123",
+      leftPan: -0.5,
+      rightPan: 0.5,
+    });
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining(
+        "leftPan and rightPan have no effect in stereo panning mode",
+      ),
+    );
+
+    errorSpy.mockRestore();
+  });
+
+  it("should switch mode and update panning in one call", () => {
+    liveApiId.mockImplementation(function () {
+      switch (this._path) {
+        case "id 123":
+          return "123";
+        case "live_set tracks 0 mixer_device":
+          return "mixer_1";
+        case "live_set tracks 0 mixer_device left_split_stereo":
+          return "left_split_param_1";
+        case "live_set tracks 0 mixer_device right_split_stereo":
+          return "right_split_param_1";
+        default:
+          return this._id;
+      }
+    });
+
+    mockLiveApiGet({
+      mixer_1: {
+        panning_mode: 0, // Start in stereo mode
+      },
+    });
+
+    updateTrack({
+      ids: "123",
+      panningMode: "split",
+      leftPan: -1,
+      rightPan: 1,
+    });
+
+    // Should set mode first
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "mixer_1" }),
+      "panning_mode",
+      1,
+    );
+
+    // Then apply split panning
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "left_split_param_1" }),
+      "value",
+      -1,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "right_split_param_1" }),
+      "value",
+      1,
+    );
   });
 });
