@@ -113,6 +113,6 @@
     "vite": "^7.2.4",
     "vite-plugin-singlefile": "^2.3.0",
     "vitepress": "^1.6.4",
-    "vitest": "^4.0.13"
+    "vitest": "^4.0.14"
   }
 }
