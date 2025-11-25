@@ -29,9 +29,10 @@ const baseRules = {
     "error",
     {
       groups: [
+        "internal", // Aliased modules
         "builtin", // Node.js built-in modules
         "external", // npm packages
-        "internal", // Aliased modules
+
         "parent", // ../
         "sibling", // ./
         "index", // ./index

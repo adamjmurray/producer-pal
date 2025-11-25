@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "preact/hooks";
 import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
 import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
+import { useState, useEffect, useRef } from "preact/hooks";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 
@@ -114,6 +114,8 @@ export function App() {
         setTemperature={settings.setTemperature}
         showThoughts={settings.showThoughts}
         setShowThoughts={settings.setShowThoughts}
+        voice={settings.voice}
+        setVoice={settings.setVoice}
         theme={theme}
         setTheme={setTheme}
         enabledTools={settings.enabledTools}
@@ -144,6 +146,13 @@ export function App() {
       onOpenSettings={() => setShowSettings(true)}
       onClearConversation={chat.clearConversation}
       onStop={chat.stopResponse}
+      apiKey={settings.apiKey}
+      model={settings.model}
+      temperature={settings.temperature}
+      voice={settings.voice}
+      mcpUrl="http://localhost:3350/mcp"
+      enabledTools={settings.enabledTools}
+      enableVoice={settings.provider === "gemini"}
     />
   );
 }

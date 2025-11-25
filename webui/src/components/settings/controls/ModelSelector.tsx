@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { Provider } from "#webui/types/settings";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 
 interface ModelSelectorProps {
   provider: Provider;

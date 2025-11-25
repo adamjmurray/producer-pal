@@ -1,9 +1,19 @@
 import { useState } from "preact/hooks";
+import type { UIMessage } from "../../../types/messages";
+import { VoiceInput } from "../VoiceInput";
 
 interface ChatInputProps {
   handleSend: (message: string) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
+  onVoiceMessages?: (messages: UIMessage[]) => void;
+  apiKey?: string;
+  model?: string;
+  temperature?: number;
+  voice?: string;
+  mcpUrl?: string;
+  enabledTools?: Record<string, boolean>;
+  enableVoice?: boolean;
 }
 
 /**
@@ -12,12 +22,21 @@ interface ChatInputProps {
  * @param {(message: string) => Promise<void>} root0.handleSend - Callback to send message
  * @param {boolean} root0.isAssistantResponding - Whether assistant is currently responding
  * @param {() => void} root0.onStop - Callback to stop assistant response
+ * @param {(messages: UIMessage[]) => void} [root0.onVoiceMessages] - Callback for voice messages
  * @returns {JSX.Element} - React component
  */
 export function ChatInput({
   handleSend,
   isAssistantResponding,
   onStop,
+  onVoiceMessages,
+  apiKey = "",
+  model = "models/gemini-2.0-flash-exp",
+  temperature = 1.0,
+  voice,
+  mcpUrl,
+  enabledTools,
+  enableVoice = false,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
 
@@ -36,6 +55,10 @@ export function ChatInput({
     setInput("");
   };
 
+  const handleVoiceMessagesUpdate = (messages: UIMessage[]): void => {
+    onVoiceMessages?.(messages);
+  };
+
   return (
     <div className="border-t border-gray-300 dark:border-gray-700 p-4">
       <div className="flex gap-3">
@@ -48,6 +71,18 @@ export function ChatInput({
           rows={2}
         />
         <div className="flex flex-col gap-2">
+          {enableVoice && apiKey && (
+            <VoiceInput
+              apiKey={apiKey}
+              model={model}
+              temperature={temperature}
+              voice={voice}
+              mcpUrl={mcpUrl}
+              enabledTools={enabledTools}
+              onMessagesUpdate={handleVoiceMessagesUpdate}
+              disabled={isAssistantResponding}
+            />
+          )}
           <button
             onClick={onStop}
             disabled={!isAssistantResponding}

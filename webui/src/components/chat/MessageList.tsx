@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "preact/hooks";
 import type { UIMessage } from "#webui/types/messages";
+import { useEffect, useRef } from "preact/hooks";
 import { AssistantMessage } from "./assistant/AssistantMessage";
 import { ActivityIndicator } from "./controls/ActivityIndicator";
 import { RetryButton } from "./controls/RetryButton";

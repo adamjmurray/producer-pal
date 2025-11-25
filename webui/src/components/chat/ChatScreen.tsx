@@ -1,5 +1,6 @@
 import type { UIMessage } from "#webui/types/messages";
 import type { Provider } from "#webui/types/settings";
+import { useState } from "preact/hooks";
 import { ChatStart } from "./ChatStart";
 import { ChatHeader } from "./controls/ChatHeader";
 import { ChatInput } from "./controls/ChatInput";
@@ -20,6 +21,13 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onClearConversation: () => void;
   onStop: () => void;
+  apiKey?: string;
+  model?: string;
+  temperature?: number;
+  voice?: string;
+  mcpUrl?: string;
+  enabledTools?: Record<string, boolean>;
+  enableVoice?: boolean;
 }
 
 /**
@@ -56,7 +64,24 @@ export function ChatScreen({
   onOpenSettings,
   onClearConversation,
   onStop,
+  apiKey,
+  model,
+  temperature,
+  voice,
+  mcpUrl,
+  enabledTools,
+  enableVoice = false,
 }: ChatScreenProps) {
+  const [voiceMessages, setVoiceMessages] = useState<UIMessage[]>([]);
+
+  const handleVoiceMessages = (newVoiceMessages: UIMessage[]) => {
+    setVoiceMessages(newVoiceMessages);
+  };
+
+  // Use voice messages if available, otherwise use regular messages
+  const displayMessages = voiceMessages.length > 0 ? voiceMessages : messages;
+  const hasAnyMessages = displayMessages.length > 0;
+
   return (
     <div className="flex flex-col h-screen">
       <ChatHeader
@@ -65,13 +90,13 @@ export function ChatScreen({
         activeThinking={activeThinking}
         activeTemperature={activeTemperature}
         activeProvider={activeProvider}
-        hasMessages={messages.length > 0}
+        hasMessages={hasAnyMessages}
         onOpenSettings={onOpenSettings}
         onClearConversation={onClearConversation}
       />
 
       <div class="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
+        {!hasAnyMessages ? (
           <ChatStart
             mcpStatus={mcpStatus}
             mcpError={mcpError}
@@ -80,7 +105,7 @@ export function ChatScreen({
           />
         ) : (
           <MessageList
-            messages={messages}
+            messages={displayMessages}
             isAssistantResponding={isAssistantResponding}
             handleRetry={handleRetry}
           />
@@ -91,6 +116,14 @@ export function ChatScreen({
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
         onStop={onStop}
+        onVoiceMessages={handleVoiceMessages}
+        apiKey={apiKey}
+        model={model}
+        temperature={temperature}
+        voice={voice}
+        mcpUrl={mcpUrl}
+        enabledTools={enabledTools}
+        enableVoice={enableVoice}
       />
     </div>
   );
