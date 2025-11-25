@@ -74,6 +74,15 @@ export default defineConfig({
         // ignore other hard-to-test files:
         "src/test/mock-task.js",
         "src/test/mock-chat-ui-html.js",
+
+        // voice chat files rely on browser APIs (AudioContext, AudioWorklet, MediaDevices)
+        // that aren't available in the Node.js test environment:
+        "webui/src/hooks/audio-recorder.ts",
+        "webui/src/hooks/audio-streamer.ts",
+        "webui/src/hooks/audio-worklet-sources.ts",
+        "webui/src/hooks/use-voice-chat.ts",
+        "webui/src/hooks/voice-chat-mcp-helpers.ts",
+        "webui/src/hooks/voice-chat-message-handler.ts",
       ],
       reportOnFailure: true,
 

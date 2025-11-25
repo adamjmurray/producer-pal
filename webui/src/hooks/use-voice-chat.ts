@@ -4,15 +4,19 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { useCallback, useRef, useState } from "preact/hooks";
 import type { UIMessage, UIPart } from "../types/messages";
-import {
-  playAudioChunk as playAudio,
-  processAudioInput,
-} from "./voice-chat-audio-helpers";
+import { AudioRecorder } from "./audio-recorder";
+import { AudioStreamer } from "./audio-streamer";
 import {
   closeMcpClient,
   handleToolCall as handleMcpToolCall,
 } from "./voice-chat-mcp-helpers";
 import { createMessageHandler } from "./voice-chat-message-handler";
+
+const DEBUG = localStorage.getItem("voice-debug") === "true";
+
+function log(...args: unknown[]): void {
+  if (DEBUG) console.log("[VoiceChat]", performance.now().toFixed(1), ...args);
+}
 
 export interface VoiceChatState {
   isConnected: boolean;
@@ -45,15 +49,17 @@ export function useVoiceChat(
   const [error, setError] = useState<string | null>(null);
   const [messages, setMessages] = useState<UIMessage[]>([]);
 
+  // Core refs
   const sessionRef = useRef<Session | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const mediaStreamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const playbackAudioContextRef = useRef<AudioContext | null>(null);
-  const currentAudioSourceRef = useRef<AudioBufferSourceNode | null>(null);
   const isConnectedRef = useRef(false);
-  const nextPlayTimeRef = useRef(0);
+
+  // Audio handling refs - using proper classes now
+  const streamerRef = useRef<AudioStreamer | null>(null);
+  const recorderRef = useRef<AudioRecorder | null>(null);
+  const playbackContextRef = useRef<AudioContext | null>(null);
+
+  // Message tracking refs
   const currentUserMessageRef = useRef<string>("");
   const currentAssistantMessageRef = useRef<string>("");
 
@@ -64,11 +70,9 @@ export function useVoiceChat(
       sessionRef.current,
     );
 
-    // Add tool calls to the current assistant message
     if (results.length > 0) {
       setMessages((prev) => {
         const updated = [...prev];
-        // Find or create the last assistant message
         let lastMessage = updated[updated.length - 1];
 
         if (lastMessage?.role !== "model") {
@@ -80,7 +84,6 @@ export function useVoiceChat(
           updated.push(lastMessage);
         }
 
-        // Add tool parts
         for (const result of results) {
           const toolPart: UIPart = {
             type: "tool",
@@ -97,15 +100,6 @@ export function useVoiceChat(
     }
   }, []);
 
-  const playAudioChunk = useCallback(async (base64Audio: string) => {
-    await playAudio(
-      base64Audio,
-      playbackAudioContextRef,
-      currentAudioSourceRef,
-      nextPlayTimeRef,
-    );
-  }, []);
-
   const connect = useCallback(async () => {
     if (!apiKey) {
       setError("API key is required");
@@ -113,7 +107,7 @@ export function useVoiceChat(
     }
 
     try {
-      console.log("Connecting to Live API and MCP server...");
+      log("Connecting to Live API and MCP server...");
       const ai = new GoogleGenAI({ apiKey });
       const model = "gemini-2.5-flash-native-audio-preview-09-2025";
 
@@ -132,7 +126,7 @@ export function useVoiceChat(
         ? toolsResult.tools.filter((tool) => enabledTools[tool.name] !== false)
         : toolsResult.tools;
 
-      console.log(`Loaded ${filteredTools.length} MCP tools for voice chat`);
+      log(`Loaded ${filteredTools.length} MCP tools for voice chat`);
 
       // Convert to Gemini format
       const tools =
@@ -173,23 +167,21 @@ export function useVoiceChat(
         config,
         callbacks: {
           onopen: () => {
-            console.log("WebSocket opened");
+            log("WebSocket opened");
             setIsConnected(true);
             isConnectedRef.current = true;
             setError(null);
           },
           onmessage: createMessageHandler(
             {
-              currentAudioSourceRef,
-              nextPlayTimeRef,
               currentUserMessageRef,
               currentAssistantMessageRef,
+              streamerRef,
             },
             {
               setMessages,
               handleToolCall: (toolCall) =>
                 void handleToolCall(toolCall as LiveServerToolCall),
-              playAudioChunk: (data) => void playAudioChunk(data),
             },
           ),
           onerror: (e) => {
@@ -199,14 +191,14 @@ export function useVoiceChat(
             isConnectedRef.current = false;
           },
           onclose: (event) => {
-            console.log(`WebSocket closed (code: ${event.code})`);
+            log(`WebSocket closed (code: ${event.code})`);
             setIsConnected(false);
             isConnectedRef.current = false;
           },
         },
       });
 
-      console.log("Connected successfully");
+      log("Connected successfully");
       sessionRef.current = session;
     } catch (err) {
       const errorMessage =
@@ -218,7 +210,7 @@ export function useVoiceChat(
       // eslint-disable-next-line require-atomic-updates -- Cleanup after error is safe
       mcpClientRef.current = null;
     }
-  }, [apiKey, voiceName, mcpUrl, enabledTools, playAudioChunk, handleToolCall]);
+  }, [apiKey, voiceName, mcpUrl, enabledTools, handleToolCall]);
 
   const startStreaming = useCallback(async () => {
     try {
@@ -227,69 +219,45 @@ export function useVoiceChat(
         return;
       }
 
-      console.log("Starting audio streaming...");
-      nextPlayTimeRef.current = 0;
+      log("Starting audio streaming...");
 
-      if (!playbackAudioContextRef.current) {
-        playbackAudioContextRef.current = new AudioContext({
-          sampleRate: 24000,
-        });
+      // Create playback AudioContext at 24kHz for output
+      if (!playbackContextRef.current) {
+        playbackContextRef.current = new AudioContext({ sampleRate: 24000 });
 
-        if (playbackAudioContextRef.current.state === "suspended") {
-          await playbackAudioContextRef.current.resume();
+        if (playbackContextRef.current.state === "suspended") {
+          await playbackContextRef.current.resume();
         }
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          channelCount: 1,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+      // Create AudioStreamer for playback
+      streamerRef.current = new AudioStreamer(playbackContextRef.current);
+      await streamerRef.current.resume();
+
+      // Create AudioRecorder for input (worklet resamples to 16kHz)
+      recorderRef.current = new AudioRecorder();
+      recorderRef.current.setCallbacks({
+        onData: (base64Audio) => {
+          if (!isConnectedRef.current) return;
+
+          try {
+            sessionRef.current?.sendRealtimeInput({
+              audio: {
+                data: base64Audio,
+                mimeType: "audio/pcm;rate=16000",
+              },
+            });
+          } catch (err) {
+            console.error("Error sending audio:", err);
+          }
         },
       });
 
-      console.log("Microphone access granted");
-      mediaStreamRef.current = stream;
-
-      const audioContext = new AudioContext();
-      audioContextRef.current = audioContext;
-
-      if (audioContext.state === "suspended") {
-        await audioContext.resume();
-      }
-
-      const source = audioContext.createMediaStreamSource(stream);
-      const processor = audioContext.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
-
-      processor.onaudioprocess = (e) => {
-        if (!isConnectedRef.current) return;
-
-        const inputData = e.inputBuffer.getChannelData(0);
-        const base64Data = processAudioInput(
-          inputData,
-          audioContext.sampleRate,
-        );
-
-        try {
-          sessionRef.current?.sendRealtimeInput({
-            audio: {
-              data: base64Data,
-              mimeType: "audio/pcm;rate=16000",
-            },
-          });
-        } catch (err) {
-          console.error("Error sending audio:", err);
-        }
-      };
-
-      source.connect(processor);
-      processor.connect(audioContext.destination);
+      await recorderRef.current.start();
 
       setIsStreaming(true);
       setError(null);
-      console.log("Audio streaming started");
+      log("Audio streaming started");
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "Failed to start streaming";
@@ -300,35 +268,27 @@ export function useVoiceChat(
   }, []);
 
   const stopStreaming = useCallback(() => {
-    console.log("Stopping audio streaming...");
+    log("Stopping audio streaming...");
 
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
+    // Stop recorder
+    if (recorderRef.current) {
+      recorderRef.current.stop();
+      recorderRef.current = null;
     }
 
-    if (audioContextRef.current) {
-      void audioContextRef.current.close();
-      audioContextRef.current = null;
+    // Stop streamer with fade-out
+    if (streamerRef.current) {
+      streamerRef.current.stop();
+      streamerRef.current = null;
     }
 
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
+    // Close playback context
+    if (playbackContextRef.current) {
+      void playbackContextRef.current.close();
+      playbackContextRef.current = null;
     }
 
-    if (currentAudioSourceRef.current) {
-      currentAudioSourceRef.current.stop();
-      currentAudioSourceRef.current = null;
-    }
-
-    nextPlayTimeRef.current = 0;
-
-    if (playbackAudioContextRef.current) {
-      void playbackAudioContextRef.current.close();
-      playbackAudioContextRef.current = null;
-    }
-
+    // Notify server of stream end
     try {
       sessionRef.current?.sendRealtimeInput({ audioStreamEnd: true });
     } catch (err) {
@@ -337,6 +297,7 @@ export function useVoiceChat(
 
     setIsStreaming(false);
 
+    // Close session and MCP client
     isConnectedRef.current = false;
     try {
       sessionRef.current?.close();
