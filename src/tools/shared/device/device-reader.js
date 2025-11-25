@@ -1,16 +1,16 @@
-import * as console from "../../../shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.js";
 import {
   DEVICE_TYPE,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 import {
   isRedundantDeviceClassName,
   processDrumChains,
   processRegularChains,
   processReturnChains,
-} from "../device-reader-helpers.js";
+} from "./helpers/device-reader-helpers.js";
 
 /**
  * Determine device type from Live API properties

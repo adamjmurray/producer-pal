@@ -4,6 +4,10 @@
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "#webui/*": ["src/*"]
+    },
     "jsx": "react-jsx",
     "jsxImportSource": "preact",
     "allowJs": false,

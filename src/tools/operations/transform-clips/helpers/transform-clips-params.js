@@ -1,4 +1,4 @@
-import { dbToLiveGain, liveGainToDb } from "../../../shared/gain-utils.js";
+import { dbToLiveGain, liveGainToDb } from "#src/tools/shared/gain-utils.js";
 
 /**
  * Generates a random number within a range

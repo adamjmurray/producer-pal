@@ -1,4 +1,4 @@
-import type { Provider } from "../../types/settings";
+import type { Provider } from "#webui/types/settings";
 import { AppearanceTab } from "./AppearanceTab";
 import { BehaviorTab } from "./BehaviorTab";
 import { ConnectionTab } from "./ConnectionTab";

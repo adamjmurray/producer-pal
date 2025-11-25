@@ -1,15 +1,20 @@
-import { validateIdTypes } from "../../shared/validation/id-validation.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
   parseTransposeValues,
   getClipIds,
+  createSeededRNG,
+  randomInRange,
+} from "./helpers/transform-clips-helpers.js";
+import { applyParameterTransforms } from "./helpers/transform-clips-params-helpers.js";
+import {
+  performShuffling,
+  shuffleArray,
+} from "./helpers/transform-clips-shuffling-helpers.js";
+import {
   prepareSliceParams,
   performSlicing,
-  performShuffling,
-  createSeededRNG,
-  applyParameterTransforms,
-  randomInRange,
-  shuffleArray,
-} from "./helpers/transform-clips-helpers.js";
+} from "./helpers/transform-clips-slicing-helpers.js";
 
 // Re-export helpers for backward compatibility with tests
 export { createSeededRNG, randomInRange, shuffleArray };

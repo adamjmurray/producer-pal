@@ -15,6 +15,7 @@ const WARP_MARKERS = "warp-markers";
 const AVAILABLE_ROUTINGS = "available-routings";
 const COLOR = "color";
 const CLIPS = "clips";
+const MIXER = "mixer";
 
 /**
  * All available include options mapped by tool type
@@ -40,6 +41,7 @@ const ALL_INCLUDE_OPTIONS = {
     "all-clips",
     COLOR,
     WARP_MARKERS,
+    MIXER,
   ],
   track: [
     DRUM_CHAINS,
@@ -58,6 +60,7 @@ const ALL_INCLUDE_OPTIONS = {
     "all-clips",
     COLOR,
     WARP_MARKERS,
+    MIXER,
   ],
   scene: [CLIPS, CLIP_NOTES, COLOR, WARP_MARKERS],
   clip: [CLIP_NOTES, COLOR, WARP_MARKERS],
@@ -101,6 +104,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeMasterTrack: Boolean(defaults.includeMasterTrack),
       includeColor: Boolean(defaults.includeColor),
       includeWarpMarkers: Boolean(defaults.includeWarpMarkers),
+      includeMixer: Boolean(defaults.includeMixer),
     };
   }
 
@@ -131,6 +135,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeMasterTrack: false,
       includeColor: false,
       includeWarpMarkers: false,
+      includeMixer: false,
     };
   }
 
@@ -153,6 +158,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeMasterTrack: includeSet.has(MASTER_TRACK),
     includeColor: includeSet.has(COLOR),
     includeWarpMarkers: includeSet.has(WARP_MARKERS),
+    includeMixer: includeSet.has(MIXER),
   };
   return result;
 }
@@ -219,6 +225,9 @@ export function includeArrayFromFlags(includeFlags) {
   if (includeFlags.includeWarpMarkers) {
     includes.push(WARP_MARKERS);
   }
+  if (includeFlags.includeMixer) {
+    includes.push(MIXER);
+  }
 
   return includes;
 }
@@ -243,6 +252,7 @@ export const READ_SONG_DEFAULTS = {
   includeMasterTrack: false,
   includeColor: false,
   includeWarpMarkers: false,
+  includeMixer: false,
 };
 
 /**
@@ -262,6 +272,7 @@ export const READ_TRACK_DEFAULTS = {
   includeArrangementClips: true,
   includeColor: false,
   includeWarpMarkers: false,
+  includeMixer: false,
 };
 
 /**

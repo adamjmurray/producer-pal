@@ -1,13 +1,6 @@
-import { barBeatToAbletonBeats } from "../../../notation/barbeat/time/barbeat-time.js";
-import { select } from "../../control/select.js";
-import { validateIdType } from "../../shared/validation/id-validation.js";
-import {
-  validateBasicInputs,
-  validateAndConfigureRouteToSource,
-  validateClipParameters,
-  validateDestinationParameter,
-  validateArrangementParameters,
-} from "./duplicate-validation-helpers.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import { select } from "#src/tools/control/select.js";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import {
   duplicateClipSlot,
   duplicateClipToArrangement,
@@ -18,6 +11,13 @@ import {
   calculateSceneLength,
   duplicateSceneToArrangement,
 } from "./helpers/duplicate-track-scene-helpers.js";
+import {
+  validateBasicInputs,
+  validateAndConfigureRouteToSource,
+  validateClipParameters,
+  validateDestinationParameter,
+  validateArrangementParameters,
+} from "./helpers/duplicate-validation-helpers.js";
 
 /**
  * Duplicates an object based on its type.

@@ -29,9 +29,10 @@ const baseRules = {
     "error",
     {
       groups: [
+        "internal", // Aliased modules
         "builtin", // Node.js built-in modules
         "external", // npm packages
-        "internal", // Aliased modules
+
         "parent", // ../
         "sibling", // ./
         "index", // ./index
@@ -239,7 +240,16 @@ export default [
       jsdoc,
     },
     settings: {
-      "import/resolver": { node: true },
+      "import/resolver": {
+        alias: {
+          map: [
+            ["#webui", "./webui/src"],
+            ["#src", "./src"],
+          ],
+          extensions: [".js", ".mjs", ".ts", ".tsx"],
+        },
+        node: true,
+      },
     },
     rules: {
       ...js.configs.recommended.rules,

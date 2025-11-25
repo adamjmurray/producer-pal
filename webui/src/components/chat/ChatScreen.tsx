@@ -1,6 +1,6 @@
+import type { UIMessage } from "#webui/types/messages";
+import type { Provider } from "#webui/types/settings";
 import { useState } from "preact/hooks";
-import type { UIMessage } from "../../types/messages";
-import type { Provider } from "../../types/settings";
 import { ChatStart } from "./ChatStart";
 import { ChatHeader } from "./controls/ChatHeader";
 import { ChatInput } from "./controls/ChatInput";

@@ -1,5 +1,5 @@
+import type { UIMessage } from "#webui/types/messages";
 import { useCallback, useRef, useState } from "preact/hooks";
-import type { UIMessage } from "../../types/messages";
 import {
   handleMessageStream,
   validateMcpConnection,

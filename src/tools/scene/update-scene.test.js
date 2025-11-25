@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiSet,
   liveApiType,
 } from "../../test/mock-live-api.js";
 import { updateScene } from "./update-scene.js";
+import "../../live-api-adapter/live-api-extensions.js";
 
 describe("updateScene", () => {
   beforeEach(() => {
@@ -269,5 +271,67 @@ describe("updateScene", () => {
 
     expect(liveApiSet).toHaveBeenCalledTimes(3); // Only 3 valid IDs
     expect(result).toEqual([{ id: "123" }, { id: "456" }, { id: "789" }]);
+  });
+
+  describe("color quantization verification", () => {
+    it("should emit warning when color is quantized by Live", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      // Mock getProperty to return quantized color (different from input)
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "color") {
+          return [16725558]; // #FF3636 (quantized from #FF0000)
+        }
+        return null;
+      });
+
+      updateScene({
+        ids: "123",
+        color: "#FF0000",
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Note: Requested scene color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should not emit warning when color matches exactly", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      // Mock getProperty to return exact color (same as input)
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "color") {
+          return [16711680]; // #FF0000 (exact match)
+        }
+        return null;
+      });
+
+      updateScene({
+        ids: "123",
+        color: "#FF0000",
+      });
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should not verify color if color parameter is not provided", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      updateScene({
+        ids: "123",
+        name: "No color update",
+      });
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
   });
 });

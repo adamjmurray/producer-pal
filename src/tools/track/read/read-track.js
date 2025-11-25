@@ -1,23 +1,27 @@
-import * as console from "../../../shared/v8-max-console.js";
-import { readClip } from "../../clip/read/read-clip.js";
-import { DEVICE_TYPE } from "../../constants.js";
-import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
-import { getDrumMap, readDevice } from "../../shared/device/device-reader.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { readClip } from "#src/tools/clip/read/read-clip.js";
+import { DEVICE_TYPE } from "#src/tools/constants.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import {
+  getDrumMap,
+  readDevice,
+} from "#src/tools/shared/device/device-reader.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
-} from "../../shared/tool-framework/include-params.js";
-import { validateIdType } from "../../shared/validation/id-validation.js";
+} from "#src/tools/shared/tool-framework/include-params.js";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import {
-  handleNonExistentTrack,
-  addOptionalBooleanProperties,
   addCategoryIndex,
-  cleanupDeviceChains,
+  addOptionalBooleanProperties,
+  addProducerPalHostInfo,
+  addRoutingInfo,
   addSlotIndices,
   addStateIfNotDefault,
-  addRoutingInfo,
-  addProducerPalHostInfo,
-} from "./read-track-helpers.js";
+  cleanupDeviceChains,
+  handleNonExistentTrack,
+  readMixerProperties,
+} from "./helpers/read-track-helpers.js";
 
 /**
  * Read comprehensive information about a track
@@ -222,6 +226,7 @@ export function readTrackGeneric({
     includeSessionClips,
     includeArrangementClips,
     includeColor,
+    includeMixer,
   } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
   if (!track.exists()) {
     return handleNonExistentTrack(category, trackIndex);
@@ -242,6 +247,10 @@ export function readTrackGeneric({
     arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
   addOptionalBooleanProperties(result, track, canBeArmed);
+  // Add mixer properties if requested
+  if (includeMixer) {
+    Object.assign(result, readMixerProperties(track));
+  }
   if (groupId) {
     result.groupId = `${groupId}`;
   }

@@ -1,5 +1,5 @@
+import { formatErrorResponse } from "#src/shared/mcp-response-utils.js";
 import { z } from "zod";
-import { formatErrorResponse } from "../../../shared/mcp-response-utils.js";
 import { filterSchemaForSmallModel } from "./filter-schema.js";
 
 /**

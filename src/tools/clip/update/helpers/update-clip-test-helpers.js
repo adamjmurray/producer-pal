@@ -2,7 +2,7 @@ import {
   liveApiCall,
   liveApiId,
   liveApiPath,
-} from "../../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 
 /**
  * Shared mock context for update-clip tests

@@ -1,11 +1,11 @@
-import { VERSION } from "../../../shared/version.js";
-import { readClip } from "../../clip/read/read-clip.js";
-import { STATE } from "../../constants.js";
-import { cleanupInternalDrumChains } from "../../shared/device/device-reader.js";
+import { VERSION } from "#src/shared/version.js";
+import { readClip } from "#src/tools/clip/read/read-clip.js";
+import { STATE } from "#src/tools/constants.js";
+import { cleanupInternalDrumChains } from "#src/tools/shared/device/device-reader.js";
 import {
   processAvailableRouting,
   processCurrentRouting,
-} from "../helpers/track-routing-helpers.js";
+} from "../../helpers/track-routing-helpers.js";
 
 /**
  * Read minimal track information for auto-inclusion when clips are requested.
@@ -256,4 +256,50 @@ export function addProducerPalHostInfo(result, isProducerPalHost) {
     result.hasProducerPalDevice = true;
     result.producerPalVersion = VERSION;
   }
+}
+
+/**
+ * Read mixer device properties (gain and panning)
+ * @param {LiveAPI} track - Track object
+ * @returns {object} Object with gain and pan properties, or empty if mixer doesn't exist
+ */
+export function readMixerProperties(track) {
+  const mixer = new LiveAPI(track.path + " mixer_device");
+
+  if (!mixer.exists()) {
+    return {};
+  }
+
+  const result = {};
+
+  // Read gain
+  const volume = new LiveAPI(mixer.path + " volume");
+  if (volume.exists()) {
+    result.gainDb = volume.getProperty("display_value");
+  }
+
+  // Read panning mode
+  const panningMode = mixer.getProperty("panning_mode");
+  const isSplitMode = panningMode === 1;
+  result.panningMode = isSplitMode ? "split" : "stereo";
+
+  // Read panning based on mode
+  if (isSplitMode) {
+    const leftSplit = new LiveAPI(mixer.path + " left_split_stereo");
+    const rightSplit = new LiveAPI(mixer.path + " right_split_stereo");
+
+    if (leftSplit.exists()) {
+      result.leftPan = leftSplit.getProperty("value");
+    }
+    if (rightSplit.exists()) {
+      result.rightPan = rightSplit.getProperty("value");
+    }
+  } else {
+    const panning = new LiveAPI(mixer.path + " panning");
+    if (panning.exists()) {
+      result.pan = panning.getProperty("value");
+    }
+  }
+
+  return result;
 }

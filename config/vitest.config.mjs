@@ -9,6 +9,8 @@ export default defineConfig({
   plugins: [preact()],
   resolve: {
     alias: {
+      "#webui": join(__dirname, "../webui/src"),
+      "#src": join(__dirname, "../src"),
       "virtual:chat-ui-html": join(
         __dirname,
         "../src/test/mock-chat-ui-html.js",
@@ -77,10 +79,10 @@ export default defineConfig({
 
       // Do not let test coverage drop:
       thresholds: {
-        statements: 87.2,
-        branches: 81.5,
-        functions: 87.9,
-        lines: 87.7,
+        statements: 87.4, // TODO: get to 90
+        branches: 81.7, // TODO: get to 85
+        functions: 88.5, // TODO: get to 90
+        lines: 87.9, // TODO: get to 90
       },
     },
   },

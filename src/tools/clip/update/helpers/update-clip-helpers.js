@@ -1,11 +1,12 @@
-import { formatNotation } from "../../../../notation/barbeat/barbeat-format-notation.js";
-import { interpretNotation } from "../../../../notation/barbeat/interpreter/barbeat-interpreter.js";
+import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "../../../../notation/barbeat/time/barbeat-time.js";
-import * as console from "../../../../shared/v8-max-console.js";
-import { MAX_CLIP_BEATS } from "../../../constants.js";
+} from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { MAX_CLIP_BEATS } from "#src/tools/constants.js";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
 import {
   setAudioParameters,
   handleWarpMarkerOperation,
@@ -39,18 +40,6 @@ export function getActualContentEnd(clip) {
 }
 
 // Audio-specific helper functions are now in update-clip-audio-helpers.js
-
-/**
- * Parse and get song time signature from live_set
- * @returns {{numerator: number, denominator: number}} Time signature components
- */
-export function parseSongTimeSignature() {
-  const liveSet = new LiveAPI("live_set");
-  return {
-    numerator: liveSet.getProperty("signature_numerator"),
-    denominator: liveSet.getProperty("signature_denominator"),
-  };
-}
 
 /**
  * Calculate beat positions from bar|beat notation
@@ -406,6 +395,11 @@ export function processSingleClipUpdate(params) {
   });
 
   clip.setAll(propsToSet);
+
+  // Verify color quantization if color was set
+  if (color != null) {
+    verifyColorQuantization(clip, color);
+  }
 
   // Audio-specific parameters
   const isAudioClip = clip.getProperty("is_audio_clip") > 0;

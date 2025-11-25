@@ -1,5 +1,5 @@
+import { GeminiClient } from "#webui/chat/gemini-client";
 import { useCallback, useEffect, useState } from "preact/hooks";
-import { GeminiClient } from "../../chat/gemini-client";
 
 type McpStatus = "connected" | "connecting" | "error";
 

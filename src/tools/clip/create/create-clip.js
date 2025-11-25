@@ -1,12 +1,12 @@
-import { interpretNotation } from "../../../notation/barbeat/interpreter/barbeat-interpreter.js";
-import { timeSigToAbletonBeatsPerBar } from "../../../notation/barbeat/time/barbeat-time.js";
-import { select } from "../../control/select.js";
-import { parseTimeSignature } from "../../shared/utils.js";
+import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
+import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.js";
+import { select } from "#src/tools/control/select.js";
+import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
   buildClipName,
   convertTimingParameters,
   processClipIteration,
-} from "./create-clip-helpers.js";
+} from "./helpers/create-clip-helpers.js";
 
 /**
  * Creates MIDI clips in Session or Arrangement view
