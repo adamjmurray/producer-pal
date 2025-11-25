@@ -260,7 +260,7 @@ export default [
     },
   },
 
-  // All TypeScript files (any directory except voice - voice has its own config)
+  // All TypeScript files (any directory)
   {
     files: ["{src,scripts,webui}/**/*.{ts,tsx}"],
     languageOptions: {
