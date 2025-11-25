@@ -78,7 +78,7 @@
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.0.1",
-    "@playwright/test": "^1.56.1",
+    "@playwright/test": "^1.57.0",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-alias": "^6.0.0",
     "@rollup/plugin-commonjs": "^29.0.0",
