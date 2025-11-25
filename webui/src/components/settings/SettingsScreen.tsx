@@ -33,6 +33,8 @@ interface SettingsScreenProps {
   saveSettings: () => void;
   cancelSettings: () => void;
   settingsConfigured: boolean;
+  voiceEnabled: boolean;
+  setVoiceEnabled: (enabled: boolean) => void;
 }
 
 /**
@@ -88,6 +90,8 @@ function getProviderLabel(provider: string): string {
  * @param {Function} root0.saveSettings - Function to save settings
  * @param {Function} root0.cancelSettings - Function to cancel settings changes
  * @param {boolean} root0.settingsConfigured - Whether settings have been configured
+ * @param {boolean} root0.voiceEnabled - Whether voice chat is enabled
+ * @param {Function} root0.setVoiceEnabled - Function to toggle voice chat
  * @returns {JSX.Element} Settings screen component
  */
 export function SettingsScreen({
@@ -117,6 +121,8 @@ export function SettingsScreen({
   saveSettings,
   cancelSettings,
   settingsConfigured,
+  voiceEnabled,
+  setVoiceEnabled,
 }: SettingsScreenProps) {
   const providerLabel = getProviderLabel(provider);
 
@@ -144,6 +150,8 @@ export function SettingsScreen({
                   model={model}
                   setModel={setModel}
                   providerLabel={providerLabel}
+                  voiceEnabled={voiceEnabled}
+                  setVoiceEnabled={setVoiceEnabled}
                 />
               )}
 

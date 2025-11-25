@@ -1,7 +1,7 @@
+import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import OpenAI from "openai";
-import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
 
 const MCP_NOT_INITIALIZED_ERROR =
   "MCP client not initialized. Call initialize() first.";
@@ -131,7 +131,7 @@ export class OpenAIClient {
         },
       }),
     });
-    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp";
+    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp"; // TODO: support alternate ports (we never pass this in via config)
     this.config = config;
     this.mcpClient = null;
     this.chatHistory = config.chatHistory ?? [];

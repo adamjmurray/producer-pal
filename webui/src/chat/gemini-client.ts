@@ -1,8 +1,8 @@
-import { GoogleGenAI, FunctionCallingConfigMode } from "@google/genai/web";
-import type { Chat, ThinkingConfig, Tool, Part } from "@google/genai/web";
+import type { GeminiMessage } from "#webui/types/messages";
+import type { Chat, Part, ThinkingConfig, Tool } from "@google/genai/web";
+import { FunctionCallingConfigMode, GoogleGenAI } from "@google/genai/web";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { GeminiMessage } from "#webui/types/messages";
 
 // Configuration for GeminiClient
 export interface GeminiClientConfig {
@@ -55,7 +55,7 @@ export class GeminiClient {
    */
   constructor(apiKey: string, config: GeminiClientConfig = {}) {
     this.ai = new GoogleGenAI({ apiKey });
-    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp";
+    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp"; // TODO: support alternate ports (we never pass this in via config)
     this.config = config;
     this.chat = null;
     this.mcpClient = null;

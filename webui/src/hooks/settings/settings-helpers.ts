@@ -343,3 +343,21 @@ export function buildAllProviderSettings(
  * @returns {any} - Hook return value
  */
 export type ProviderSettingsApplier = (settings: AllProviderSettings) => void;
+
+const VOICE_ENABLED_KEY = "producer_pal_voice_enabled";
+
+/**
+ * Loads voice enabled setting from localStorage
+ * @returns {boolean} Voice enabled state
+ */
+export function loadVoiceEnabled(): boolean {
+  return localStorage.getItem(VOICE_ENABLED_KEY) === "true";
+}
+
+/**
+ * Saves voice enabled setting to localStorage
+ * @param {boolean} enabled - Voice enabled state
+ */
+export function saveVoiceEnabled(enabled: boolean): void {
+  localStorage.setItem(VOICE_ENABLED_KEY, enabled ? "true" : "false");
+}

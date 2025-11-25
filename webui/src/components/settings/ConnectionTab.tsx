@@ -30,6 +30,8 @@ interface ConnectionTabProps {
   model: string;
   setModel: (model: string) => void;
   providerLabel: string;
+  voiceEnabled: boolean;
+  setVoiceEnabled: (enabled: boolean) => void;
 }
 
 /**
@@ -46,6 +48,8 @@ interface ConnectionTabProps {
  * @param {string} root0.model - Current model
  * @param {(model: string) => void} root0.setModel - Model setter callback
  * @param {string} root0.providerLabel - Display name for provider
+ * @param {boolean} root0.voiceEnabled - Whether voice chat is enabled
+ * @param {(enabled: boolean) => void} root0.setVoiceEnabled - Voice enabled setter callback
  * @returns {JSX.Element} - React component
  */
 export function ConnectionTab({
@@ -60,6 +64,8 @@ export function ConnectionTab({
   model,
   setModel,
   providerLabel,
+  voiceEnabled,
+  setVoiceEnabled,
 }: ConnectionTabProps) {
   return (
     <>
@@ -146,6 +152,26 @@ export function ConnectionTab({
             {providerLabel} models
           </a>
         </p>
+      )}
+
+      {/* Voice Chat (OpenAI only) */}
+      {provider === "openai" && (
+        <div className="pt-2">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={voiceEnabled}
+              onChange={(e) =>
+                setVoiceEnabled((e.target as HTMLInputElement).checked)
+              }
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600"
+            />
+            <span className="text-sm">Enable voice chat</span>
+          </label>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+            Uses OpenAI Realtime API for voice interaction
+          </p>
+        </div>
       )}
     </>
   );

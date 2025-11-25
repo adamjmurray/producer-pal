@@ -87,4 +87,7 @@ export interface UseSettingsReturn {
   disableAllTools: () => void;
   resetBehaviorToDefaults: () => void;
   isToolEnabled: (toolId: string) => boolean;
+  // Voice chat settings (OpenAI only)
+  voiceEnabled: boolean;
+  setVoiceEnabled: (enabled: boolean) => void;
 }

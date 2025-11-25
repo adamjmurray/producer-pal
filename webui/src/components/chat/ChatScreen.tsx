@@ -1,3 +1,4 @@
+import type { VoiceStatus } from "#webui/hooks/voice/use-voice-chat";
 import type { UIMessage } from "#webui/types/messages";
 import type { Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
@@ -20,6 +21,11 @@ interface ChatScreenProps {
   onOpenSettings: () => void;
   onClearConversation: () => void;
   onStop: () => void;
+  // Voice chat props (optional)
+  voiceEnabled?: boolean;
+  voiceStatus?: VoiceStatus;
+  onVoiceConnect?: () => void;
+  onVoiceDisconnect?: () => void;
 }
 
 /**
@@ -39,6 +45,10 @@ interface ChatScreenProps {
  * @param {() => void} root0.onOpenSettings - Open settings callback
  * @param {() => void} root0.onClearConversation - Clear conversation callback
  * @param {() => void} root0.onStop - Stop response callback
+ * @param {boolean} root0.voiceEnabled - Whether voice chat is enabled
+ * @param {VoiceStatus} root0.voiceStatus - Current voice connection status
+ * @param {() => void} root0.onVoiceConnect - Callback to start voice session
+ * @param {() => void} root0.onVoiceDisconnect - Callback to end voice session
  * @returns {JSX.Element} - React component
  */
 export function ChatScreen({
@@ -56,6 +66,10 @@ export function ChatScreen({
   onOpenSettings,
   onClearConversation,
   onStop,
+  voiceEnabled,
+  voiceStatus,
+  onVoiceConnect,
+  onVoiceDisconnect,
 }: ChatScreenProps) {
   return (
     <div className="flex flex-col h-screen">
@@ -91,6 +105,10 @@ export function ChatScreen({
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
         onStop={onStop}
+        voiceEnabled={voiceEnabled}
+        voiceStatus={voiceStatus}
+        onVoiceConnect={onVoiceConnect}
+        onVoiceDisconnect={onVoiceDisconnect}
       />
     </div>
   );

@@ -179,6 +179,8 @@ describe("SettingsScreen", () => {
     saveSettings: vi.fn(),
     cancelSettings: vi.fn(),
     settingsConfigured: false,
+    voiceEnabled: false,
+    setVoiceEnabled: vi.fn(),
   };
 
   describe("basic rendering", () => {
