@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiSet,
@@ -7,6 +8,7 @@ import {
 } from "../../../test/mock-live-api.js";
 import { MONITORING_STATE } from "../../constants.js";
 import { updateTrack } from "./update-track.js";
+import "../../../live-api-adapter/live-api-extensions.js";
 
 describe("updateTrack", () => {
   beforeEach(() => {
@@ -477,6 +479,98 @@ describe("updateTrack", () => {
       );
 
       expect(result).toEqual({ id: "123" });
+    });
+  });
+
+  describe("color quantization verification", () => {
+    it("should emit warning when color is quantized by Live", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      // Mock getProperty to return quantized color (different from input)
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "color") {
+          return [16725558]; // #FF3636 (quantized from #FF0000)
+        }
+        return null;
+      });
+
+      updateTrack({
+        ids: "123",
+        color: "#FF0000",
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Note: Requested track color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should not emit warning when color matches exactly", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      // Mock getProperty to return exact color (same as input)
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "color") {
+          return [16711680]; // #FF0000 (exact match)
+        }
+        return null;
+      });
+
+      updateTrack({
+        ids: "123",
+        color: "#FF0000",
+      });
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should emit warning for each track when updating multiple tracks", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      // Mock getProperty to return quantized color
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "color") {
+          return [1768495]; // #1AFC2F (quantized from #00FF00)
+        }
+        return null;
+      });
+
+      updateTrack({
+        ids: "123,456",
+        color: "#00FF00",
+      });
+
+      expect(consoleSpy).toHaveBeenCalledTimes(2);
+      expect(consoleSpy).toHaveBeenNthCalledWith(
+        1,
+        "Note: Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+      );
+      expect(consoleSpy).toHaveBeenNthCalledWith(
+        2,
+        "Note: Requested track color #00FF00 was mapped to nearest palette color #1AFC2F. Live uses a fixed color palette.",
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should not verify color if color parameter is not provided", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      updateTrack({
+        ids: "123",
+        name: "No color update",
+      });
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
     });
   });
 });

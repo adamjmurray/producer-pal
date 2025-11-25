@@ -6,6 +6,7 @@ import {
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.js";
+import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
 import {
   setAudioParameters,
   handleWarpMarkerOperation,
@@ -394,6 +395,11 @@ export function processSingleClipUpdate(params) {
   });
 
   clip.setAll(propsToSet);
+
+  // Verify color quantization if color was set
+  if (color != null) {
+    verifyColorQuantization(clip, color);
+  }
 
   // Audio-specific parameters
   const isAudioClip = clip.getProperty("is_audio_clip") > 0;

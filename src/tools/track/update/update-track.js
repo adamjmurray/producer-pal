@@ -4,17 +4,18 @@ import {
   LIVE_API_MONITORING_STATE_OFF,
   MONITORING_STATE,
 } from "../../constants.js";
+import { verifyColorQuantization } from "../../shared/color-verification-helpers.js";
 import { parseCommaSeparatedIds } from "../../shared/utils.js";
 import { validateIdTypes } from "../../shared/validation/id-validation.js";
 
 /**
  * Apply routing properties to a track
  * @param {LiveAPI} track - Track object
- * @param {object} root0 - Routing properties
- * @param {string} root0.inputRoutingTypeId - Input routing type ID
- * @param {string} root0.inputRoutingChannelId - Input routing channel ID
- * @param {string} root0.outputRoutingTypeId - Output routing type ID
- * @param {string} root0.outputRoutingChannelId - Output routing channel ID
+ * @param {object} params - Routing properties
+ * @param {string} params.inputRoutingTypeId - Input routing type ID
+ * @param {string} params.inputRoutingChannelId - Input routing channel ID
+ * @param {string} params.outputRoutingTypeId - Output routing type ID
+ * @param {string} params.outputRoutingChannelId - Output routing channel ID
  */
 function applyRoutingProperties(
   track,
@@ -132,6 +133,11 @@ export function updateTrack(
       solo,
       arm,
     });
+
+    // Verify color quantization if color was set
+    if (color != null) {
+      verifyColorQuantization(track, color);
+    }
 
     // Handle routing properties
     applyRoutingProperties(track, {
