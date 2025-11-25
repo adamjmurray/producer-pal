@@ -13,6 +13,13 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
     ids: z.string().describe("comma-separated track ID(s) to update"),
     name: z.string().optional().describe("name, ideally unique"),
     color: z.string().optional().describe("#RRGGBB"),
+    gainDb: z.number().min(-70).max(6).optional().describe("track gain in dB"),
+    pan: z
+      .number()
+      .min(-1)
+      .max(1)
+      .optional()
+      .describe("pan: -1 (left) to 1 (right)"),
     mute: z.boolean().optional().describe("muted?"),
     solo: z.boolean().optional().describe("soloed?"),
     arm: z.boolean().optional().describe("record armed?"),

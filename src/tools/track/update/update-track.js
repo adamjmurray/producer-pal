@@ -77,11 +77,42 @@ function applyMonitoringState(track, monitoringState) {
 }
 
 /**
+ * Apply mixer properties (gain and panning) to a track
+ * @param {LiveAPI} track - Track object
+ * @param {object} params - Mixer properties
+ * @param {number} params.gainDb - Track gain in dB (-70 to 6)
+ * @param {number} params.pan - Pan position (-1 to 1)
+ */
+function applyMixerProperties(track, { gainDb, pan }) {
+  const mixer = new LiveAPI(track.path + " mixer_device");
+
+  if (!mixer.exists()) {
+    return;
+  }
+
+  if (gainDb != null) {
+    const volume = new LiveAPI(mixer.path + " volume");
+    if (volume.exists()) {
+      volume.set("display_value", gainDb);
+    }
+  }
+
+  if (pan != null) {
+    const panning = new LiveAPI(mixer.path + " panning");
+    if (panning.exists()) {
+      panning.set("value", pan);
+    }
+  }
+}
+
+/**
  * Updates properties of existing tracks
  * @param {object} args - The track parameters
  * @param {string} args.ids - Track ID or comma-separated list of track IDs to update
  * @param {string} [args.name] - Optional track name
  * @param {string} [args.color] - Optional track color (CSS format: hex)
+ * @param {number} [args.gainDb] - Optional track gain in dB (-70 to 6)
+ * @param {number} [args.pan] - Optional pan position (-1 to 1)
  * @param {boolean} [args.mute] - Optional mute state
  * @param {boolean} [args.solo] - Optional solo state
  * @param {boolean} [args.arm] - Optional arm state
@@ -99,6 +130,8 @@ export function updateTrack(
     ids,
     name,
     color,
+    gainDb,
+    pan,
     mute,
     solo,
     arm,
@@ -137,6 +170,11 @@ export function updateTrack(
     // Verify color quantization if color was set
     if (color != null) {
       verifyColorQuantization(track, color);
+    }
+
+    // Handle mixer properties
+    if (gainDb != null || pan != null) {
+      applyMixerProperties(track, { gainDb, pan });
     }
 
     // Handle routing properties

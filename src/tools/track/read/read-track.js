@@ -225,6 +225,7 @@ export function readTrackGeneric({
     includeSessionClips,
     includeArrangementClips,
     includeColor,
+    includeMixer,
   } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
   if (!track.exists()) {
     return handleNonExistentTrack(category, trackIndex);
@@ -245,6 +246,10 @@ export function readTrackGeneric({
     arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
   addOptionalBooleanProperties(result, track, canBeArmed);
+  // Add mixer properties if requested
+  if (includeMixer) {
+    Object.assign(result, readMixerProperties(track));
+  }
   if (groupId) {
     result.groupId = `${groupId}`;
   }
@@ -300,6 +305,34 @@ export function readTrackGeneric({
     includeAvailableRoutings,
   );
   addProducerPalHostInfo(result, isProducerPalHost);
+  return result;
+}
+
+/**
+ * Read mixer device properties (gain and panning)
+ * @param {LiveAPI} track - Track object
+ * @returns {object} Object with gain and pan properties, or empty if mixer doesn't exist
+ */
+function readMixerProperties(track) {
+  const mixer = new LiveAPI(track.path + " mixer_device");
+
+  if (!mixer.exists()) {
+    return {};
+  }
+
+  const volume = new LiveAPI(mixer.path + " volume");
+  const panning = new LiveAPI(mixer.path + " panning");
+
+  const result = {};
+
+  if (volume.exists()) {
+    result.gainDb = volume.getProperty("display_value");
+  }
+
+  if (panning.exists()) {
+    result.pan = panning.getProperty("value");
+  }
+
   return result;
 }
 

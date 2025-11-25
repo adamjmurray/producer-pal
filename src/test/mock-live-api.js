@@ -171,6 +171,8 @@ function getTrackProperty(prop) {
     case "clip_slots":
     case "devices":
       return [];
+    case "mixer_device":
+      return children("mixer_1");
     case "name":
       return ["Test Track"];
     case "color":
@@ -273,9 +275,10 @@ function getClipProperty(prop) {
  * Get mock property value based on Live API object type
  * @param {string} type - Live API object type (LiveSet, Track, Scene, etc.)
  * @param {string} prop - Property name to retrieve
+ * @param {string} _path - Object path (currently unused but kept for API consistency)
  * @returns {*} - Mock property value
  */
-function getPropertyByType(type, prop) {
+function getPropertyByType(type, prop, _path) {
   switch (type) {
     case "LiveSet":
       return getLiveSetProperty(prop);
@@ -289,6 +292,14 @@ function getPropertyByType(type, prop) {
       return getClipSlotProperty(prop);
     case "Clip":
       return getClipProperty(prop);
+    case "MixerDevice":
+      if (prop === "volume") return children("volume_param_1");
+      if (prop === "panning") return children("panning_param_1");
+      return null;
+    case "DeviceParameter":
+      if (prop === "display_value") return [0]; // Default 0 dB for volume
+      if (prop === "value") return [0]; // Default center pan
+      return null;
     default:
       return null;
   }
@@ -317,7 +328,7 @@ export function mockLiveApiGet(overrides = {}) {
         return Array.isArray(override) ? override : [override];
       }
     }
-    const result = getPropertyByType(this.type, prop);
+    const result = getPropertyByType(this.type, prop, this.path);
     return result ?? [0];
   });
 }

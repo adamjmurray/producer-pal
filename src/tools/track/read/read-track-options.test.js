@@ -21,6 +21,12 @@ describe("readTrack", () => {
         switch (this._path) {
           case "live_set tracks 0":
             return "track1";
+          case "live_set tracks 0 mixer_device":
+            return "mixer_1";
+          case "live_set tracks 0 mixer_device volume":
+            return "volume_param_1";
+          case "live_set tracks 0 mixer_device panning":
+            return "panning_param_1";
           case "live_set tracks 0 devices 0":
             return "synth1";
           case "live_set tracks 0 devices 1":
@@ -81,6 +87,16 @@ describe("readTrack", () => {
           ],
           current_monitoring_state: [1],
         }),
+        MixerDevice: {
+          volume: children("volume_param_1"),
+          panning: children("panning_param_1"),
+        },
+        volume_param_1: {
+          display_value: 0,
+        },
+        panning_param_1: {
+          value: 0,
+        },
         synth1: {
           name: "Analog",
           class_name: "UltraAnalog",
@@ -131,6 +147,7 @@ describe("readTrack", () => {
           "all-routings",
           "color",
           "warp-markers",
+          "mixer",
         ],
       });
 
