@@ -52,6 +52,7 @@ interface SupervisorContext {
   mcpClient: Client;
   history: RealtimeItem[];
   onSupervisorActivity?: (activities: SupervisorActivityPart[]) => void;
+  onSupervisorTextDelta?: (delta: string, snapshot: string) => void;
 }
 
 /* istanbul ignore next -- @preserve integration function requiring live MCP connection */
@@ -96,6 +97,54 @@ async function callResponsesApi(
   });
 }
 
+interface StreamCallbacks {
+  onTextDelta?: (delta: string, snapshot: string) => void;
+}
+
+/* istanbul ignore next -- @preserve integration function requiring live OpenAI API */
+/**
+ * Calls the OpenAI Responses API with streaming enabled
+ * @param {OpenAI} openai - OpenAI client instance
+ * @param {string} model - Model identifier
+ * @param {OpenAI.Responses.ResponseCreateParams["input"]} input - Request input
+ * @param {OpenAI.Responses.Tool[]} tools - Available tools
+ * @param {StreamCallbacks} callbacks - Callbacks for streaming events
+ * @returns {Promise<OpenAI.Responses.Response>} Final API response
+ */
+async function callResponsesApiStreaming(
+  openai: OpenAI,
+  model: string,
+  input: OpenAI.Responses.ResponseCreateParams["input"],
+  tools: OpenAI.Responses.Tool[],
+  callbacks?: StreamCallbacks,
+): Promise<OpenAI.Responses.Response> {
+  const stream = await openai.responses.create({
+    model,
+    input,
+    tools: tools.length > 0 ? tools : undefined,
+    parallel_tool_calls: false,
+    stream: true,
+  });
+
+  let finalResponse: OpenAI.Responses.Response | undefined;
+  let accumulatedText = "";
+
+  for await (const event of stream) {
+    if (event.type === "response.output_text.delta") {
+      accumulatedText += event.delta;
+      callbacks?.onTextDelta?.(event.delta, accumulatedText);
+    }
+    if (event.type === "response.completed") {
+      finalResponse = event.response;
+    }
+  }
+
+  if (!finalResponse) {
+    throw new Error("Stream ended without response.completed event");
+  }
+  return finalResponse;
+}
+
 /* istanbul ignore next -- @preserve integration function requiring live MCP+OpenAI */
 /**
  * Executes MCP tools called by the supervisor and returns the final text response
@@ -105,6 +154,8 @@ async function callResponsesApi(
  * @param {OpenAI.Responses.ResponseCreateParams["input"]} input - Request input
  * @param {OpenAI.Responses.Tool[]} tools - Available tools
  * @param {OpenAI.Responses.Response} initialResponse - First API response
+ * @param {(activity: SupervisorActivityPart) => void} onActivity - Callback for incremental activity updates
+ * @param {(delta: string, snapshot: string) => void} onTextDelta - Callback for streaming text
  * @param {number} maxIterations - Max tool call iterations
  * @returns {Promise<SupervisorResponse>} Final text response and activity history
  */
@@ -115,6 +166,8 @@ async function handleToolCallLoop(
   input: OpenAI.Responses.ResponseCreateParams["input"],
   tools: OpenAI.Responses.Tool[],
   initialResponse: OpenAI.Responses.Response,
+  onActivity?: (activity: SupervisorActivityPart) => void,
+  onTextDelta?: (delta: string, snapshot: string) => void,
   maxIterations = 10,
 ): Promise<SupervisorResponse> {
   let currentResponse = initialResponse;
@@ -151,10 +204,12 @@ async function handleToolCallLoop(
       // Add supervisor's text response to activities as a "thought" so it's visually distinct
       // from the voice agent's spoken response
       if (finalText) {
-        activities.push({
+        const thoughtActivity: SupervisorActivityPart = {
           type: "thought",
           content: finalText,
-        });
+        };
+        activities.push(thoughtActivity);
+        onActivity?.(thoughtActivity);
       }
 
       return {
@@ -174,6 +229,9 @@ async function handleToolCallLoop(
         args,
         result: null,
       };
+
+      // Emit tool call immediately (shows "calling tool..." state)
+      onActivity?.(activity);
 
       let result: unknown;
       try {
@@ -196,8 +254,9 @@ async function handleToolCallLoop(
         activity.isError = true;
       }
 
-      // Add completed activity to list
+      // Add completed activity to list and emit with result
       activities.push(activity);
+      onActivity?.(activity);
 
       // Add tool call and result to input for next iteration
       (input as OpenAI.Responses.ResponseInputItem[]).push(
@@ -215,8 +274,18 @@ async function handleToolCallLoop(
       );
     }
 
-    // Continue with updated input
-    currentResponse = await callResponsesApi(openai, model, input, tools);
+    // Continue with updated input - use streaming if callback provided
+    if (onTextDelta) {
+      currentResponse = await callResponsesApiStreaming(
+        openai,
+        model,
+        input,
+        tools,
+        { onTextDelta },
+      );
+    } else {
+      currentResponse = await callResponsesApi(openai, model, input, tools);
+    }
   }
 
   return {
@@ -298,6 +367,24 @@ ${relevantContextFromLastUserMessage}
       // Call the Responses API
       const response = await callResponsesApi(openai, model, input, tools);
 
+      // Create incremental activity callback that accumulates and forwards to hook
+      const allActivities: SupervisorActivityPart[] = [];
+      const onActivity = (activity: SupervisorActivityPart) => {
+        // Find existing activity by name (update) or add new
+        const existingIndex = allActivities.findIndex(
+          (a) => a.name === activity.name && a.type === "tool",
+        );
+        if (existingIndex >= 0) {
+          // Update existing activity with result
+          allActivities[existingIndex] = activity;
+        } else {
+          // Add new activity
+          allActivities.push(activity);
+        }
+        // Notify hook with current state (creates incremental updates)
+        context.onSupervisorActivity?.([...allActivities]);
+      };
+
       // Handle tool calls if any
       const { finalText, activity } = await handleToolCallLoop(
         openai,
@@ -306,15 +393,18 @@ ${relevantContextFromLastUserMessage}
         input,
         tools,
         response,
+        onActivity,
+        context.onSupervisorTextDelta,
       );
 
-      // Notify hook of supervisor activities
+      // Notify hook of final supervisor activities
       console.log(
         "[Supervisor] Activities captured:",
         JSON.stringify(activity, null, 2),
       );
       console.log("[Supervisor] Final text:", finalText);
 
+      // Final notification with all activities (in case callback wasn't available earlier)
       if (context.onSupervisorActivity) {
         context.onSupervisorActivity(activity);
       }

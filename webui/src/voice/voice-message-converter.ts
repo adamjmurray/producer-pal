@@ -220,11 +220,13 @@ interface SupervisorActivitiesWithTimestamp {
  * Converts a history of RealtimeItems to UIMessages
  * @param {RealtimeItem[]} history - The voice session history
  * @param {Map<number, SupervisorActivitiesWithTimestamp>} supervisorActivities - Optional supervisor activities per message with timestamps
+ * @param {string} streamingText - Optional streaming text from supervisor (shown while streaming)
  * @returns {UIMessage[]} Array of UI messages for display
  */
 export function convertRealtimeHistoryToUIMessages(
   history: RealtimeItem[],
   supervisorActivities?: Map<number, SupervisorActivitiesWithTimestamp>,
+  streamingText?: string,
 ): UIMessage[] {
   console.log("[Message Converter] Converting history:", {
     historyLength: history.length,
@@ -235,6 +237,7 @@ export function convertRealtimeHistoryToUIMessages(
   });
 
   const messages: UIMessage[] = [];
+  const processedSupervisorIndices = new Set<number>();
 
   for (let i = 0; i < history.length; i++) {
     const item = history[i];
@@ -249,6 +252,7 @@ export function convertRealtimeHistoryToUIMessages(
       // Check if this message index has supervisor activities
       const supervisorData = supervisorActivities?.get(i);
       if (supervisorData) {
+        processedSupervisorIndices.add(i);
         console.log(
           "[Message Converter] Found supervisor activities for index:",
           i,
@@ -284,6 +288,49 @@ export function convertRealtimeHistoryToUIMessages(
       // Push the voice agent's spoken response as a separate message bubble
       messages.push(uiMessage);
     }
+  }
+
+  // Add any supervisor activities that weren't matched to existing messages
+  // This ensures they appear immediately even if voice response hasn't arrived
+  if (supervisorActivities) {
+    for (const [targetIndex, data] of supervisorActivities.entries()) {
+      // Skip if already processed or if data is missing (defensive check for untyped Maps)
+      if (
+        processedSupervisorIndices.has(targetIndex) ||
+        !(data as SupervisorActivitiesWithTimestamp | undefined)?.activities
+      ) {
+        continue;
+      }
+      const baseTimestamp = targetIndex * 1000;
+      console.log(
+        "[Message Converter] Adding unmatched supervisor activities for index:",
+        targetIndex,
+      );
+      const supervisorParts = convertSupervisorActivityToParts(data.activities);
+      const supervisorMessage: UIMessage = {
+        role: "model",
+        parts: supervisorParts,
+        rawHistoryIndex: targetIndex,
+        timestamp: baseTimestamp - 500,
+      };
+      messages.push(supervisorMessage);
+    }
+  }
+
+  // Add streaming text as a partial thought message if present
+  // This shows the supervisor's response character-by-character as it streams
+  if (streamingText && streamingText.length > 0) {
+    console.log(
+      "[Message Converter] Adding streaming text:",
+      streamingText.substring(0, 50),
+    );
+    const streamingMessage: UIMessage = {
+      role: "model",
+      parts: [{ type: "thought", content: streamingText }],
+      rawHistoryIndex: history.length,
+      timestamp: Date.now(),
+    };
+    messages.push(streamingMessage);
   }
 
   // Sort messages by timestamp to ensure correct order

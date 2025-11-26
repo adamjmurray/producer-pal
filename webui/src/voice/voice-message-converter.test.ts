@@ -461,6 +461,97 @@ describe("voice-message-converter", () => {
         content: "Response",
       });
     });
+
+    it("should show unmatched supervisor activities immediately", () => {
+      // History doesn't have a message at index 1 yet, but supervisor already completed
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_text", text: "Hello" }],
+        } as unknown as RealtimeItem,
+      ];
+      // Supervisor activities targeting index 1 (no history item exists yet)
+      const supervisorActivities = new Map([
+        [
+          1,
+          createSupervisorData(
+            [
+              {
+                type: "tool" as const,
+                name: "ppal_connect",
+                args: {},
+                result: "Connected",
+              },
+            ],
+            1,
+          ),
+        ],
+      ]);
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        supervisorActivities,
+      );
+      // Should have user message + unmatched supervisor bubble
+      expect(result).toHaveLength(2);
+      expect(result[1]?.role).toBe("model");
+      expect(result[1]?.parts[0]).toEqual({
+        type: "tool",
+        name: "ppal_connect",
+        args: {},
+        result: "Connected",
+        isError: undefined,
+      });
+    });
+
+    it("should add streaming text as thought message", () => {
+      const history: RealtimeItem[] = [];
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        undefined,
+        "Streaming response...",
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]?.role).toBe("model");
+      expect(result[0]?.parts[0]).toEqual({
+        type: "thought",
+        content: "Streaming response...",
+      });
+    });
+
+    it("should not add streaming text when empty", () => {
+      const history: RealtimeItem[] = [];
+      const result = convertRealtimeHistoryToUIMessages(history, undefined, "");
+      expect(result).toHaveLength(0);
+    });
+
+    it("should add streaming text alongside other messages", () => {
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "user",
+          status: "completed",
+          content: [{ type: "input_text", text: "Hello" }],
+        } as unknown as RealtimeItem,
+      ];
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        undefined,
+        "Thinking...",
+      );
+      expect(result).toHaveLength(2);
+      // First is user message
+      expect(result[0]?.role).toBe("user");
+      // Second is streaming thought (sorted by timestamp - Date.now() is later)
+      expect(result[1]?.role).toBe("model");
+      expect(result[1]?.parts[0]).toEqual({
+        type: "thought",
+        content: "Thinking...",
+      });
+    });
   });
 
   describe("createToolPart", () => {

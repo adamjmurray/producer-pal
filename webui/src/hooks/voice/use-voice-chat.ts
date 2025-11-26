@@ -107,6 +107,7 @@ export function useVoiceChat({
   const [supervisorActivities, setSupervisorActivities] = useState<
     Map<number, SupervisorActivitiesWithTimestamp>
   >(new Map());
+  const [streamingText, setStreamingText] = useState<string>("");
 
   const sessionRef = useRef<RealtimeSession | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
@@ -218,6 +219,14 @@ export function useVoiceChat({
               });
               return next;
             });
+            // Clear streaming text when activities are finalized (contains thought)
+            const hasThought = activities.some((a) => a.type === "thought");
+            if (hasThought) {
+              setStreamingText("");
+            }
+          },
+          onSupervisorTextDelta: (_delta: string, snapshot: string) => {
+            setStreamingText(snapshot);
           },
         },
       });
@@ -277,6 +286,7 @@ export function useVoiceChat({
     setStatus("disconnected");
     setHistory([]);
     setSupervisorActivities(new Map());
+    setStreamingText("");
   }, []);
 
   /* istanbul ignore next -- @preserve requires live session */
@@ -289,6 +299,7 @@ export function useVoiceChat({
   const voiceMessages = convertRealtimeHistoryToUIMessages(
     history,
     supervisorActivities,
+    streamingText,
   );
 
   return {
