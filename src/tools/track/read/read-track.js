@@ -30,7 +30,7 @@ import {
  * @returns {object} Track information
  */
 export function readTrack(args = {}, _context = {}) {
-  const { trackIndex, trackId, category = "regular" } = args;
+  const { trackIndex, trackId, category = "regular", returnTrackNames } = args;
   // Validate parameters
   if (trackId == null && trackIndex == null && category !== "master") {
     throw new Error("Either trackId or trackIndex must be provided");
@@ -65,6 +65,7 @@ export function readTrack(args = {}, _context = {}) {
     trackIndex: resolvedCategory === "master" ? null : resolvedTrackIndex,
     category: resolvedCategory,
     include: args.include,
+    returnTrackNames,
   });
 }
 
@@ -206,6 +207,7 @@ function processDevices(categorizedDevices, config) {
  * @param {number|null} args.trackIndex - Track index (null for master track)
  * @param {string} [args.category="regular"] - Track category: "regular", "return", or "master"
  * @param {Array<string>} [args.include] - Array of data to include in the response
+ * @param {Array<string>} [args.returnTrackNames] - Array of return track names for sends
  * @returns {object} Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
@@ -213,6 +215,7 @@ export function readTrackGeneric({
   trackIndex,
   category = "regular",
   include,
+  returnTrackNames,
 }) {
   const {
     includeDrumChains,
@@ -249,7 +252,7 @@ export function readTrackGeneric({
   addOptionalBooleanProperties(result, track, canBeArmed);
   // Add mixer properties if requested
   if (includeMixer) {
-    Object.assign(result, readMixerProperties(track));
+    Object.assign(result, readMixerProperties(track, returnTrackNames));
   }
   if (groupId) {
     result.groupId = `${groupId}`;

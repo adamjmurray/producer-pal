@@ -1,3 +1,4 @@
+import * as console from "#src/shared/v8-max-console.js";
 import { VERSION } from "#src/shared/version.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 import { STATE } from "#src/tools/constants.js";
@@ -259,11 +260,12 @@ export function addProducerPalHostInfo(result, isProducerPalHost) {
 }
 
 /**
- * Read mixer device properties (gain and panning)
+ * Read mixer device properties (gain, panning, and sends)
  * @param {LiveAPI} track - Track object
- * @returns {object} Object with gain and pan properties, or empty if mixer doesn't exist
+ * @param {Array<string>} [returnTrackNames] - Array of return track names for sends
+ * @returns {object} Object with gain, pan, and sends properties, or empty if mixer doesn't exist
  */
-export function readMixerProperties(track) {
+export function readMixerProperties(track, returnTrackNames) {
   const mixer = new LiveAPI(track.path + " mixer_device");
 
   if (!mixer.exists()) {
@@ -299,6 +301,33 @@ export function readMixerProperties(track) {
     if (panning.exists()) {
       result.pan = panning.getProperty("value");
     }
+  }
+
+  // Read sends
+  const sends = mixer.getChildren("sends");
+  if (sends.length > 0) {
+    // Fetch return track names if not provided
+    let names = returnTrackNames;
+    if (!names) {
+      const liveSet = new LiveAPI("live_set");
+      const returnTrackIds = liveSet.getChildIds("return_tracks");
+      names = returnTrackIds.map((_, idx) => {
+        const rt = new LiveAPI(`live_set return_tracks ${idx}`);
+        return rt.getProperty("name");
+      });
+    }
+
+    // Warn if send count doesn't match return track count
+    if (sends.length !== names.length) {
+      console.error(
+        `Send count (${sends.length}) doesn't match return track count (${names.length})`,
+      );
+    }
+
+    result.sends = sends.map((send, i) => ({
+      gainDb: send.getProperty("display_value"),
+      return: names[i] ?? `Return ${i + 1}`,
+    }));
   }
 
   return result;
