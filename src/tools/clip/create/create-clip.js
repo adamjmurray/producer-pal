@@ -9,14 +9,15 @@ import {
 } from "./helpers/create-clip-helpers.js";
 
 /**
- * Creates MIDI clips in Session or Arrangement view
+ * Creates MIDI or audio clips in Session or Arrangement view
  * @param {object} args - The clip parameters
  * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
  * @param {number} args.trackIndex - Track index (0-based)
  * @param {number} [args.sceneIndex] - The scene/clip slot index (0-based), required for Session view
  * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
  * @param {number} [args.count=1] - Number of clips to create
- * @param {string} [args.notes] - Musical notation string
+ * @param {string} [args.notes] - Musical notation string (MIDI clips only)
+ * @param {string} [args.sampleFile] - Absolute path to audio file (audio clips only)
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
@@ -37,6 +38,7 @@ export function createClip(
     arrangementStart = null,
     count = 1,
     notes: notationString = null,
+    sampleFile = null,
     name = null,
     color = null,
     timeSignature = null,
@@ -56,6 +58,8 @@ export function createClip(
     sceneIndex,
     arrangementStart,
     count,
+    notationString,
+    sampleFile,
   );
 
   const liveSet = new LiveAPI("live_set");
@@ -90,24 +94,103 @@ export function createClip(
       songTimeSigDenominator,
     );
 
-  // Parse notation into notes
-  const notes =
-    notationString != null
-      ? interpretNotation(notationString, {
-          timeSigNumerator,
-          timeSigDenominator,
-        })
-      : [];
-
-  // Determine clip length - assume clips start at 1.1 (beat 0)
-  const clipLength = calculateClipLength(
+  // Parse notation and determine clip length
+  const { notes, clipLength: initialClipLength } = prepareClipData(
+    sampleFile,
+    notationString,
     endBeats,
-    notes,
     timeSigNumerator,
     timeSigDenominator,
   );
 
+  // Create clips
+  const createdClips = createClips(
+    count,
+    name,
+    view,
+    trackIndex,
+    sceneIndex,
+    arrangementStartBeats,
+    initialClipLength,
+    liveSet,
+    startBeats,
+    endBeats,
+    firstStartBeats,
+    looping,
+    color,
+    timeSigNumerator,
+    timeSigDenominator,
+    notationString,
+    notes,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+    arrangementStart,
+    length,
+    sampleFile,
+  );
+
+  // Handle automatic playback and view switching
+  handleAutoPlayback(auto, view, sceneIndex, count, trackIndex);
+  if (switchView) {
+    select({ view });
+  }
+
+  // Return single object if count=1, array if count>1
+  return count === 1 ? createdClips[0] : createdClips;
+}
+
+/**
+ * Creates clips by iterating count times
+ * @param {number} count - Number of clips to create
+ * @param {string} name - Base clip name
+ * @param {string} view - View type
+ * @param {number} trackIndex - Track index
+ * @param {number} sceneIndex - Scene index
+ * @param {number} arrangementStartBeats - Arrangement start in beats
+ * @param {number} initialClipLength - Initial clip length
+ * @param {LiveAPI} liveSet - LiveAPI liveSet object
+ * @param {number} startBeats - Loop start in beats
+ * @param {number} endBeats - Loop end in beats
+ * @param {number} firstStartBeats - First playback start in beats
+ * @param {boolean} looping - Whether the clip is looping
+ * @param {string} color - Clip color
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @param {string} notationString - Original notation string
+ * @param {Array} notes - Array of MIDI notes
+ * @param {number} songTimeSigNumerator - Song time signature numerator
+ * @param {number} songTimeSigDenominator - Song time signature denominator
+ * @param {string} arrangementStart - Arrangement start in bar|beat format
+ * @param {string} length - Original length parameter
+ * @param {string} sampleFile - Audio file path
+ * @returns {Array} - Array of created clips
+ */
+function createClips(
+  count,
+  name,
+  view,
+  trackIndex,
+  sceneIndex,
+  arrangementStartBeats,
+  initialClipLength,
+  liveSet,
+  startBeats,
+  endBeats,
+  firstStartBeats,
+  looping,
+  color,
+  timeSigNumerator,
+  timeSigDenominator,
+  notationString,
+  notes,
+  songTimeSigNumerator,
+  songTimeSigDenominator,
+  arrangementStart,
+  length,
+  sampleFile,
+) {
   const createdClips = [];
+  let clipLength = initialClipLength;
 
   for (let i = 0; i < count; i++) {
     const clipName = buildClipName(name, count, i);
@@ -134,20 +217,62 @@ export function createClip(
       songTimeSigDenominator,
       arrangementStart,
       length,
+      sampleFile,
     );
     createdClips.push(clipResult);
+
+    // For audio clips with count > 1, get the actual length from the first clip
+    if (sampleFile && count > 1 && i === 0) {
+      const firstClip = new LiveAPI(clipResult.id);
+      clipLength = firstClip.getProperty("length");
+    }
   }
 
-  // Handle automatic playback for Session clips
-  handleAutoPlayback(auto, view, sceneIndex, count, trackIndex);
+  return createdClips;
+}
 
-  // Handle view switching if requested
-  if (switchView) {
-    select({ view });
+/**
+ * Prepares clip data (notes and initial length) based on clip type
+ * @param {string} sampleFile - Audio file path (if audio clip)
+ * @param {string} notationString - MIDI notation string (if MIDI clip)
+ * @param {number} endBeats - End position in beats
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {object} - Object with notes array and clipLength
+ */
+function prepareClipData(
+  sampleFile,
+  notationString,
+  endBeats,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  // Parse notation into notes (MIDI clips only)
+  const notes =
+    notationString != null
+      ? interpretNotation(notationString, {
+          timeSigNumerator,
+          timeSigDenominator,
+        })
+      : [];
+
+  // Determine clip length
+  let clipLength;
+  if (sampleFile) {
+    // For audio clips, we'll get the length from the first created clip
+    // Use 1 as a placeholder for now
+    clipLength = 1;
+  } else {
+    // MIDI clips: calculate based on notes and parameters
+    clipLength = calculateClipLength(
+      endBeats,
+      notes,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
   }
 
-  // Return single object if count=1, array if count>1
-  return count === 1 ? createdClips[0] : createdClips;
+  return { notes, clipLength };
 }
 
 /**
@@ -157,6 +282,8 @@ export function createClip(
  * @param {number} sceneIndex - Scene index for session view
  * @param {string} arrangementStart - Arrangement start for arrangement view
  * @param {number} count - Number of clips to create
+ * @param {string} notes - MIDI notes notation string
+ * @param {string} sampleFile - Audio file path
  */
 function validateCreateClipParams(
   view,
@@ -164,6 +291,8 @@ function validateCreateClipParams(
   sceneIndex,
   arrangementStart,
   count,
+  notes,
+  sampleFile,
 ) {
   if (!view) {
     throw new Error("createClip failed: view parameter is required");
@@ -187,6 +316,13 @@ function validateCreateClipParams(
 
   if (count < 1) {
     throw new Error("createClip failed: count must be at least 1");
+  }
+
+  // Cannot specify both sampleFile and notes
+  if (sampleFile && notes) {
+    throw new Error(
+      "createClip failed: cannot specify both sampleFile and notes - audio clips cannot contain MIDI notes",
+    );
   }
 }
 

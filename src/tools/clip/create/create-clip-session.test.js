@@ -64,7 +64,7 @@ describe("createClip - session view", () => {
         path: "live_set tracks 0 clip_slots 0 clip",
       }),
       "looping",
-      true,
+      1, // Live API uses 1 for true
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({

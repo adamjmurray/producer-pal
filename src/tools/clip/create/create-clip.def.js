@@ -3,7 +3,10 @@ import { defineTool } from "../../shared/tool-framework/define-tool.js";
 
 export const toolDefCreateClip = defineTool("ppal-create-clip", {
   title: "Create Clip",
-  description: "Create MIDI clip(s)",
+  description:
+    "Create MIDI or audio clip(s).\n" +
+    "For audio: use sampleFile (absolute path), otherwise omit sampleFile to create a MIDI clip. " +
+    "Cannot use both notes and sampleFile.",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -60,8 +63,12 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .string()
       .optional()
       .describe(
-        "MIDI in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s)",
+        "MIDI in bar|beat notation: [bar|beat] [v0-127] [t<dur>] [p0-1] note(s) - MIDI clips only",
       ),
+    sampleFile: z
+      .string()
+      .optional()
+      .describe("absolute path to audio file - audio clips only"),
     auto: z
       .enum(["play-scene", "play-clip"])
       .optional()

@@ -37,29 +37,45 @@ Studio, Ollama, and more.
 
 ## In Progress
 
-### 1.2.x - More Audio Clips & Improved Clip Handling + Track Mixer Support
+### 1.2.2 - More Audio Clips & Improved Clip Handling + Track Mixer Support
 
-- Support for reading and writing track gain and panning
+- Mixer support: reading and writing track gain and panning
 - Ability to scan a folder for audio files and create audio clips from those
   files
-- Improve handling of clip (and track and scene) colors by being explicit about
-  how Ableton maps arbitrary RGB to a limited color palette
+- Better handling for Live's color palette by warning when an arbitrary RGB
+  color (set on a Track, Scene, or Clip) is mapped to a different value in the
+  palette
 
 ## Planned
+
+### 1.x - Miscellaneous Improvements
+
+- Read and write mixer send amounts
 
 ### 1.3 - Voice Interaction
 
 Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
 
 - Google Gemini
-- Maybe: OpenAI
+- Maybe: OpenAI (so far, this works best during prototyping, but costs money per
+  interaction i.e. it is not covered by a flat-rate subscription plan)
 - Local/other options?
+
+This might get deferred in favor or working on device support and MIDI
+modulation, because Live 12.3 is out with better device support in the Live API.
 
 ### 1.4 - Modulation
 
-- Apply ramps and curves to MIDI velocity and other properties
+Replace or extend the `ppal-transform-clips` tool with more flexible modulation
+features:
+
+- Apply ramps and curves to MIDI velocity, audio gain and other properties
 - Randomize velocity and timing
 - Shuffle and groove support
+
+This is destructive modulation applied by modifying clip properties and the
+notes inside MIDI clips. It is not live modulations such as Max for Live LFOs,
+however, that could possibly be supported too via device control features.
 
 ### 1.5 - Device Control
 

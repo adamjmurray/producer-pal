@@ -186,10 +186,11 @@ describe("createClip - advanced features", () => {
       firstStart: "1|2",
     });
 
+    // start "1|3" converts to 2 beats (bar 1, beat 3)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "start_marker",
-      1,
+      2,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),

@@ -1,12 +1,17 @@
 import {
-  abletonBeatsToBarBeatDuration,
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-  barBeatToBeats,
-  beatsToBarBeat,
 } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
+import {
+  createAudioArrangementClip,
+  createAudioSessionClip,
+} from "./create-clip-audio-helpers.js";
+import {
+  buildClipProperties,
+  buildClipResult,
+} from "./create-clip-result-helpers.js";
 
 /**
  * Builds a clip name based on count and iteration index
@@ -184,145 +189,6 @@ function createArrangementClip(
 }
 
 /**
- * Builds the properties object to set on a clip
- * @param {number} startBeats - Loop start position in beats
- * @param {number} endBeats - Loop end position in beats
- * @param {number} firstStartBeats - First playback start position in beats
- * @param {boolean} looping - Whether the clip is looping
- * @param {string} clipName - Clip name
- * @param {string} color - Clip color in hex format
- * @param {number} timeSigNumerator - Time signature numerator
- * @param {number} timeSigDenominator - Time signature denominator
- * @returns {object} - Clip properties to set
- */
-function buildClipProperties(
-  startBeats,
-  endBeats,
-  firstStartBeats,
-  looping,
-  clipName,
-  color,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
-  // Determine start_marker value
-  let startMarkerBeats = null;
-  if (firstStartBeats != null && looping !== false) {
-    // firstStart takes precedence for looping clips
-    startMarkerBeats = firstStartBeats;
-  } else if (startBeats != null) {
-    // Use start as start_marker
-    startMarkerBeats = startBeats;
-  }
-
-  // Set properties based on looping state
-  const propsToSet = {
-    name: clipName,
-    color: color,
-    signature_numerator: timeSigNumerator,
-    signature_denominator: timeSigDenominator,
-    start_marker: startMarkerBeats,
-    looping: looping,
-  };
-
-  // Set loop properties for looping clips
-  if (looping === true || looping == null) {
-    if (startBeats != null) {
-      propsToSet.loop_start = startBeats;
-    }
-    if (endBeats != null) {
-      propsToSet.loop_end = endBeats;
-    }
-  }
-
-  // Set end_marker for non-looping clips
-  if (looping === false) {
-    if (endBeats != null) {
-      propsToSet.end_marker = endBeats;
-    }
-  }
-
-  return propsToSet;
-}
-
-/**
- * Builds the result object for a created clip
- * @param {object} clip - LiveAPI clip object
- * @param {number} trackIndex - Track index
- * @param {string} view - View type (session or arrangement)
- * @param {number} sceneIndex - Scene index for session clips
- * @param {number} i - Current iteration index
- * @param {string} arrangementStart - Arrangement start in bar|beat format
- * @param {number} songTimeSigNumerator - Song time signature numerator
- * @param {number} songTimeSigDenominator - Song time signature denominator
- * @param {number} clipLength - Clip length in beats
- * @param {string} notationString - Original notation string
- * @param {Array} notes - Array of MIDI notes
- * @param {string} length - Original length parameter
- * @param {number} timeSigNumerator - Clip time signature numerator
- * @param {number} timeSigDenominator - Clip time signature denominator
- * @returns {object} - Clip result object
- */
-function buildClipResult(
-  clip,
-  trackIndex,
-  view,
-  sceneIndex,
-  i,
-  arrangementStart,
-  songTimeSigNumerator,
-  songTimeSigDenominator,
-  clipLength,
-  notationString,
-  notes,
-  length,
-  timeSigNumerator,
-  timeSigDenominator,
-) {
-  const clipResult = {
-    id: clip.id,
-    trackIndex,
-  };
-
-  // Add view-specific properties
-  if (view === "session") {
-    clipResult.sceneIndex = sceneIndex;
-  } else if (i === 0) {
-    // Calculate bar|beat position for this clip
-    clipResult.arrangementStart = arrangementStart;
-  } else {
-    // Convert clipLength back to bar|beat format and add to original position
-    const clipLengthInMusicalBeats = clipLength * (songTimeSigDenominator / 4);
-    const totalOffsetBeats = i * clipLengthInMusicalBeats;
-    const originalBeats = barBeatToBeats(
-      arrangementStart,
-      songTimeSigNumerator,
-    );
-    const newPositionBeats = originalBeats + totalOffsetBeats;
-    clipResult.arrangementStart = beatsToBarBeat(
-      newPositionBeats,
-      songTimeSigNumerator,
-    );
-  }
-
-  // Only include noteCount if notes were provided
-  if (notationString != null) {
-    clipResult.noteCount = notes.length;
-
-    // Include calculated length if it wasn't provided as input parameter
-    if (length == null) {
-      clipResult.length = abletonBeatsToBarBeatDuration(
-        clipLength,
-        timeSigNumerator,
-        timeSigDenominator,
-      );
-    }
-  }
-
-  return clipResult;
-}
-
-/**
  * Processes one iteration of clip creation
  * @param {number} i - Current iteration index
  * @param {string} view - View type (session or arrangement)
@@ -345,6 +211,7 @@ function buildClipResult(
  * @param {number} songTimeSigDenominator - Song time signature denominator
  * @param {string} arrangementStart - Arrangement start in bar|beat format
  * @param {string} length - Original length parameter
+ * @param {string} sampleFile - Audio file path (for audio clips)
  * @returns {object} - Clip result for this iteration
  */
 export function processClipIteration(
@@ -369,48 +236,85 @@ export function processClipIteration(
   songTimeSigDenominator,
   arrangementStart,
   length,
+  sampleFile,
 ) {
   let clip;
   let currentSceneIndex;
 
-  if (view === "session") {
-    const result = createSessionClip(
-      trackIndex,
-      sceneIndex,
-      clipLength,
-      liveSet,
-      i,
-      MAX_AUTO_CREATED_SCENES,
-    );
-    clip = result.clip;
-    currentSceneIndex = result.sceneIndex;
+  if (sampleFile) {
+    // Audio clip creation
+    if (view === "session") {
+      const result = createAudioSessionClip(
+        trackIndex,
+        sceneIndex,
+        sampleFile,
+        liveSet,
+        i,
+        MAX_AUTO_CREATED_SCENES,
+      );
+      clip = result.clip;
+      currentSceneIndex = result.sceneIndex;
+    } else {
+      // Arrangement view
+      const result = createAudioArrangementClip(
+        trackIndex,
+        arrangementStartBeats,
+        sampleFile,
+        clipLength,
+        i,
+      );
+      clip = result.clip;
+    }
+
+    // For audio clips: only set name and color (no looping, timing, or notes)
+    const propsToSet = {};
+    if (clipName) propsToSet.name = clipName;
+    if (color != null) propsToSet.color = color;
+
+    if (Object.keys(propsToSet).length > 0) {
+      clip.setAll(propsToSet);
+    }
   } else {
-    // Arrangement view
-    const result = createArrangementClip(
-      trackIndex,
-      arrangementStartBeats,
-      clipLength,
-      i,
+    // MIDI clip creation
+    if (view === "session") {
+      const result = createSessionClip(
+        trackIndex,
+        sceneIndex,
+        clipLength,
+        liveSet,
+        i,
+        MAX_AUTO_CREATED_SCENES,
+      );
+      clip = result.clip;
+      currentSceneIndex = result.sceneIndex;
+    } else {
+      // Arrangement view
+      const result = createArrangementClip(
+        trackIndex,
+        arrangementStartBeats,
+        clipLength,
+        i,
+      );
+      clip = result.clip;
+    }
+
+    const propsToSet = buildClipProperties(
+      startBeats,
+      endBeats,
+      firstStartBeats,
+      looping,
+      clipName,
+      color,
+      timeSigNumerator,
+      timeSigDenominator,
     );
-    clip = result.clip;
-  }
 
-  const propsToSet = buildClipProperties(
-    startBeats,
-    endBeats,
-    firstStartBeats,
-    looping,
-    clipName,
-    color,
-    timeSigNumerator,
-    timeSigDenominator,
-  );
+    clip.setAll(propsToSet);
 
-  clip.setAll(propsToSet);
-
-  // v0 notes already filtered by applyV0Deletions in interpretNotation
-  if (notes.length > 0) {
-    clip.call("add_new_notes", { notes });
+    // v0 notes already filtered by applyV0Deletions in interpretNotation
+    if (notes.length > 0) {
+      clip.call("add_new_notes", { notes });
+    }
   }
 
   const clipResult = buildClipResult(
@@ -428,6 +332,7 @@ export function processClipIteration(
     length,
     timeSigNumerator,
     timeSigDenominator,
+    sampleFile,
   );
 
   return clipResult;
