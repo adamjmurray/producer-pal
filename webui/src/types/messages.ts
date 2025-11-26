@@ -53,6 +53,7 @@ export interface UIMessage {
   role: "user" | "model";
   parts: UIPart[];
   rawHistoryIndex: number; // Maps back to the original index in the raw chat history (used for retry)
+  timestamp?: number; // Optional timestamp for sorting voice messages
 }
 
 // Formatter Interface

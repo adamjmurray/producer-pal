@@ -4,6 +4,8 @@ import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
+import { useVoiceChat } from "#webui/hooks/voice/use-voice-chat";
+import { mergeTextAndVoiceMessages } from "#webui/voice/voice-message-converter";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 
@@ -15,9 +17,10 @@ const PROVIDER_BASE_URLS = {
 } as const;
 
 /**
- *
+ * Main application component
  * @returns {JSX.Element} - React component
  */
+// eslint-disable-next-line max-lines-per-function
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
@@ -66,6 +69,12 @@ export function App() {
 
   // Route to appropriate chat based on provider
   const chat = settings.provider === "gemini" ? geminiChat : openaiChat;
+
+  // Voice chat (OpenAI only)
+  const voiceChat = useVoiceChat({
+    apiKey: settings.apiKey,
+    model: settings.model,
+  });
 
   const [showSettings, setShowSettings] = useState(
     !settings.settingsConfigured,
@@ -124,13 +133,21 @@ export function App() {
         saveSettings={handleSaveSettings}
         cancelSettings={handleCancelSettings}
         settingsConfigured={settings.settingsConfigured}
+        voiceEnabled={settings.voiceEnabled}
+        setVoiceEnabled={settings.setVoiceEnabled}
       />
     );
   }
 
+  // Merge text chat messages with voice messages
+  const allMessages = mergeTextAndVoiceMessages(
+    chat.messages,
+    voiceChat.voiceMessages,
+  );
+
   return (
     <ChatScreen
-      messages={chat.messages}
+      messages={allMessages}
       isAssistantResponding={chat.isAssistantResponding}
       handleSend={chat.handleSend}
       handleRetry={chat.handleRetry}
@@ -144,6 +161,10 @@ export function App() {
       onOpenSettings={() => setShowSettings(true)}
       onClearConversation={chat.clearConversation}
       onStop={chat.stopResponse}
+      voiceEnabled={settings.provider === "openai" && settings.voiceEnabled}
+      voiceStatus={voiceChat.status}
+      onVoiceConnect={() => void voiceChat.connect()}
+      onVoiceDisconnect={voiceChat.disconnect}
     />
   );
 }

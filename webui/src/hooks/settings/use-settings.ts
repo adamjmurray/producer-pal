@@ -9,9 +9,11 @@ import {
   loadAllProviderSettings,
   loadCurrentProvider,
   loadEnabledTools,
+  loadVoiceEnabled,
   normalizeThinkingForOpenAI,
   type ProviderSettings,
   saveCurrentSettings,
+  saveVoiceEnabled,
 } from "./settings-helpers";
 
 type ProviderStateSetters = Record<
@@ -52,6 +54,8 @@ export function useSettings(): UseSettingsReturn {
   );
   const [enabledTools, setEnabledToolsState] =
     useState<Record<string, boolean>>(loadEnabledTools);
+  const [voiceEnabled, setVoiceEnabledState] =
+    useState<boolean>(loadVoiceEnabled);
   const [geminiSettings, setGeminiSettings] = useState<ProviderSettings>(
     DEFAULT_SETTINGS.gemini,
   );
@@ -125,10 +129,12 @@ export function useSettings(): UseSettingsReturn {
       customSettings,
     );
     saveCurrentSettings(provider, enabledTools, allSettings);
+    saveVoiceEnabled(voiceEnabled);
     setSettingsConfigured(true);
   }, [
     provider,
     enabledTools,
+    voiceEnabled,
     geminiSettings,
     openaiSettings,
     mistralSettings,
@@ -141,6 +147,7 @@ export function useSettings(): UseSettingsReturn {
   const cancelSettings = useCallback(() => {
     setProviderState(loadCurrentProvider());
     setEnabledToolsState(loadEnabledTools());
+    setVoiceEnabledState(loadVoiceEnabled());
     applyLoadedSettings(loadAllProviderSettings());
   }, [applyLoadedSettings]);
 
@@ -235,5 +242,7 @@ export function useSettings(): UseSettingsReturn {
     disableAllTools: toolsUtils.disableAll,
     resetBehaviorToDefaults,
     isToolEnabled: toolsUtils.isEnabled,
+    voiceEnabled,
+    setVoiceEnabled: setVoiceEnabledState,
   };
 }

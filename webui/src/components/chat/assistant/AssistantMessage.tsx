@@ -20,6 +20,24 @@ export function AssistantMessage({
   parts,
   isResponding,
 }: AssistantMessageProps) {
+  console.log("[AssistantMessage] Rendering with parts:", parts.length);
+  console.log(
+    "[AssistantMessage] Part types:",
+    parts.map((p) => p.type),
+  );
+  parts.forEach((part, i) => {
+    if (part.type === "text") {
+      console.log(
+        `[AssistantMessage] Text part ${i} length:`,
+        part.content.length,
+      );
+      console.log(
+        `[AssistantMessage] Text part ${i} preview:`,
+        part.content.substring(0, 80),
+      );
+    }
+  });
+
   return (
     <div className="flex flex-col gap-3 py-2">
       {parts.map((part, i) => {
