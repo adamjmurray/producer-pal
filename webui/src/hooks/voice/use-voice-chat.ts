@@ -1,7 +1,3 @@
-import type { UIMessage } from "#webui/types/messages";
-import { createSupervisorTool } from "#webui/voice/supervisor-tool";
-import { createVoiceAgent } from "#webui/voice/voice-agent-config";
-import { convertRealtimeHistoryToUIMessages } from "#webui/voice/voice-message-converter";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import {
@@ -10,6 +6,25 @@ import {
   type RealtimeItem,
 } from "@openai/agents/realtime";
 import { useCallback, useEffect, useRef, useState } from "preact/hooks";
+import type { UIMessage } from "#webui/types/messages";
+import { createSupervisorTool } from "#webui/voice/supervisor-tool";
+import { createVoiceAgent } from "#webui/voice/voice-agent-config";
+import { convertRealtimeHistoryToUIMessages } from "#webui/voice/voice-message-converter";
+
+interface SupervisorActivityPart {
+  type: "thought" | "tool" | "text";
+  content?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+  result?: string | null;
+  isError?: boolean;
+}
+
+interface SupervisorActivitiesWithTimestamp {
+  activities: SupervisorActivityPart[];
+  timestamp: number;
+  targetHistoryIndex: number;
+}
 
 export type VoiceStatus = "disconnected" | "connecting" | "connected";
 
@@ -47,7 +62,7 @@ async function getEphemeralKey(apiKey: string): Promise<string> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-realtime-preview-2025-06-03",
+      model: "gpt-realtime",
       voice: "sage",
     }),
   });
@@ -81,6 +96,7 @@ async function createMcpClient(): Promise<Client> {
  * @param {UseVoiceChatProps} props - Configuration props
  * @returns {UseVoiceChatReturn} Voice chat state and controls
  */
+// eslint-disable-next-line max-lines-per-function -- Main hook function allowed to exceed limit
 export function useVoiceChat({
   apiKey,
   model,
@@ -88,10 +104,14 @@ export function useVoiceChat({
   const [status, setStatus] = useState<VoiceStatus>("disconnected");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RealtimeItem[]>([]);
+  const [supervisorActivities, setSupervisorActivities] = useState<
+    Map<number, SupervisorActivitiesWithTimestamp>
+  >(new Map());
 
   const sessionRef = useRef<RealtimeSession | null>(null);
   const mcpClientRef = useRef<Client | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const historyRef = useRef<RealtimeItem[]>([]);
 
   /* istanbul ignore next -- @preserve lifecycle effect for browser audio */
   // Create audio element on mount
@@ -102,6 +122,11 @@ export function useVoiceChat({
       audioRef.current = null;
     };
   }, []);
+
+  // Keep historyRef in sync with history state for use in closures
+  useEffect(() => {
+    historyRef.current = history;
+  }, [history]);
 
   /* istanbul ignore next -- @preserve cleanup effect for unmount */
   // Cleanup on unmount
@@ -149,7 +174,7 @@ export function useVoiceChat({
         transport: new OpenAIRealtimeWebRTC({
           audioElement: audioRef.current ?? undefined,
         }),
-        model: "gpt-4o-realtime-preview-2025-06-03",
+        model: "gpt-realtime",
         config: {
           inputAudioTranscription: {
             model: "gpt-4o-mini-transcribe",
@@ -161,17 +186,56 @@ export function useVoiceChat({
           model,
           mcpClient,
           get history() {
-            return history;
+            return historyRef.current;
+          },
+          onSupervisorActivity: (activities: SupervisorActivityPart[]) => {
+            console.log(
+              "[Voice Chat] onSupervisorActivity called with:",
+              activities,
+            );
+            // Store activities with timestamp for proper ordering
+            // Use historyRef to get the current history length (avoid stale closure)
+            const timestamp = Date.now();
+            const currentHistory = historyRef.current;
+            // Target the next assistant message that will be added after the supervisor returns
+            // The history at this point has: user, assistant initial, function_call
+            // The final assistant response will be added next
+            const targetIndex = currentHistory.length;
+            console.log(
+              "[Voice Chat] Storing supervisor activities with timestamp:",
+              timestamp,
+              "target index:",
+              targetIndex,
+              "current history length:",
+              currentHistory.length,
+            );
+            setSupervisorActivities((prevActivities) => {
+              const next = new Map(prevActivities);
+              next.set(targetIndex, {
+                activities,
+                timestamp,
+                targetHistoryIndex: targetIndex,
+              });
+              return next;
+            });
           },
         },
       });
 
       // Set up event listeners
       sessionRef.current.on("history_updated", (items: RealtimeItem[]) => {
+        console.log("[Voice Chat] history_updated:", items.length, "items");
         setHistory([...items]);
       });
 
       sessionRef.current.on("history_added", (item: RealtimeItem) => {
+        // Access optional properties safely for debug logging
+        const itemAny = item as Record<string, unknown>;
+        console.log("[Voice Chat] history_added:", {
+          type: item.type,
+          role: itemAny.role,
+        });
+
         setHistory((prev) => [...prev, item]);
       });
 
@@ -198,7 +262,7 @@ export function useVoiceChat({
         mcpClientRef.current = null;
       }
     }
-  }, [apiKey, model, history]);
+  }, [apiKey, model]);
 
   /* istanbul ignore next -- @preserve requires live session */
   const disconnect = useCallback(() => {
@@ -212,6 +276,7 @@ export function useVoiceChat({
     }
     setStatus("disconnected");
     setHistory([]);
+    setSupervisorActivities(new Map());
   }, []);
 
   /* istanbul ignore next -- @preserve requires live session */
@@ -221,7 +286,10 @@ export function useVoiceChat({
   }, []);
 
   // Convert realtime history to UI messages
-  const voiceMessages = convertRealtimeHistoryToUIMessages(history);
+  const voiceMessages = convertRealtimeHistoryToUIMessages(
+    history,
+    supervisorActivities,
+  );
 
   return {
     status,

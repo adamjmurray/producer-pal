@@ -8,6 +8,38 @@ import {
 } from "./voice-message-converter";
 import type { UIMessage } from "#webui/types/messages";
 
+interface SupervisorActivityPart {
+  type: "thought" | "tool" | "text";
+  content?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+  result?: string | null;
+  isError?: boolean;
+}
+
+interface SupervisorActivitiesWithTimestamp {
+  activities: SupervisorActivityPart[];
+  timestamp: number;
+  targetHistoryIndex: number;
+}
+
+/**
+ * Helper to create supervisor activities map entry for tests
+ * @param {SupervisorActivityPart[]} activities - Supervisor activity parts
+ * @param {number} targetHistoryIndex - Target history index
+ * @returns {SupervisorActivitiesWithTimestamp} The supervisor data object
+ */
+function createSupervisorData(
+  activities: SupervisorActivityPart[],
+  targetHistoryIndex: number,
+): SupervisorActivitiesWithTimestamp {
+  return {
+    activities,
+    timestamp: Date.now(),
+    targetHistoryIndex,
+  };
+}
+
 describe("voice-message-converter", () => {
   describe("convertRealtimeItemToUIMessage", () => {
     it("should return null for non-message items", () => {
@@ -155,17 +187,279 @@ describe("voice-message-converter", () => {
         role: "user",
         parts: [{ type: "text", content: "Hello" }],
         rawHistoryIndex: 0,
+        timestamp: 0, // index 0 * 1000
       });
       expect(result[1]).toEqual({
         role: "model",
         parts: [{ type: "text", content: "Hi" }],
         rawHistoryIndex: 2,
+        timestamp: 2000, // index 2 * 1000
       });
     });
 
     it("should handle empty history", () => {
       const result = convertRealtimeHistoryToUIMessages([]);
       expect(result).toEqual([]);
+    });
+
+    it("should integrate supervisor tool call activities as separate bubble", () => {
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: "Response" }],
+        } as unknown as RealtimeItem,
+      ];
+      const supervisorActivities = new Map([
+        [
+          0,
+          createSupervisorData(
+            [
+              {
+                type: "tool" as const,
+                name: "test_tool",
+                args: { param: "value" },
+                result: "success",
+              },
+            ],
+            0,
+          ),
+        ],
+      ]);
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        supervisorActivities,
+      );
+      // Now creates 2 messages: supervisor bubble + voice response bubble
+      expect(result).toHaveLength(2);
+      // First message is supervisor activities (sorted earlier by timestamp -500)
+      expect(result[0]?.parts).toHaveLength(1);
+      expect(result[0]?.parts[0]).toEqual({
+        type: "tool",
+        name: "test_tool",
+        args: { param: "value" },
+        result: "success",
+        isError: undefined,
+      });
+      // Second message is the voice response
+      expect(result[1]?.parts).toHaveLength(1);
+      expect(result[1]?.parts[0]).toEqual({
+        type: "text",
+        content: "Response",
+      });
+    });
+
+    it("should integrate supervisor thought activities as separate bubble", () => {
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: "Response" }],
+        } as unknown as RealtimeItem,
+      ];
+      const supervisorActivities = new Map([
+        [
+          0,
+          createSupervisorData(
+            [
+              {
+                type: "thought" as const,
+                content: "Thinking...",
+              },
+            ],
+            0,
+          ),
+        ],
+      ]);
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        supervisorActivities,
+      );
+      // Now creates 2 messages: supervisor bubble + voice response bubble
+      expect(result).toHaveLength(2);
+      // First message is supervisor thought
+      expect(result[0]?.parts).toHaveLength(1);
+      expect(result[0]?.parts[0]).toEqual({
+        type: "thought",
+        content: "Thinking...",
+      });
+      // Second message is the voice response
+      expect(result[1]?.parts).toHaveLength(1);
+      expect(result[1]?.parts[0]).toEqual({
+        type: "text",
+        content: "Response",
+      });
+    });
+
+    it("should integrate multiple supervisor tool calls in same bubble", () => {
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: "Done" }],
+        } as unknown as RealtimeItem,
+      ];
+      const supervisorActivities = new Map([
+        [
+          0,
+          createSupervisorData(
+            [
+              {
+                type: "tool" as const,
+                name: "tool_one",
+                args: { a: 1 },
+                result: "result 1",
+              },
+              {
+                type: "tool" as const,
+                name: "tool_two",
+                args: { b: 2 },
+                result: "result 2",
+              },
+            ],
+            0,
+          ),
+        ],
+      ]);
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        supervisorActivities,
+      );
+      // 2 messages: supervisor bubble (with both tools) + voice response bubble
+      expect(result).toHaveLength(2);
+      // First message has both tools
+      expect(result[0]?.parts).toHaveLength(2);
+      expect(result[0]?.parts[0]?.type).toBe("tool");
+      expect(result[0]?.parts[1]?.type).toBe("tool");
+      // Second message is voice response
+      expect(result[1]?.parts).toHaveLength(1);
+      expect(result[1]?.parts[0]).toEqual({
+        type: "text",
+        content: "Done",
+      });
+    });
+
+    it("should handle tool activities with errors", () => {
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: "Error occurred" }],
+        } as unknown as RealtimeItem,
+      ];
+      const supervisorActivities = new Map([
+        [
+          0,
+          createSupervisorData(
+            [
+              {
+                type: "tool" as const,
+                name: "failing_tool",
+                args: {},
+                result: '{"error": "Tool failed"}',
+                isError: true,
+              },
+            ],
+            0,
+          ),
+        ],
+      ]);
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        supervisorActivities,
+      );
+      // First message is supervisor with error tool
+      expect(result[0]?.parts[0]).toEqual({
+        type: "tool",
+        name: "failing_tool",
+        args: {},
+        result: '{"error": "Tool failed"}',
+        isError: true,
+      });
+    });
+
+    it("should handle activities with missing optional fields", () => {
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: "Response" }],
+        } as unknown as RealtimeItem,
+      ];
+      const supervisorActivities = new Map([
+        [
+          0,
+          createSupervisorData(
+            [
+              {
+                type: "tool" as const,
+              },
+              {
+                type: "thought" as const,
+              },
+            ],
+            0,
+          ),
+        ],
+      ]);
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        supervisorActivities,
+      );
+      // First message is supervisor activities
+      expect(result[0]?.parts[0]).toEqual({
+        type: "tool",
+        name: "",
+        args: {},
+        result: null,
+        isError: undefined,
+      });
+      expect(result[0]?.parts[1]).toEqual({
+        type: "thought",
+        content: "",
+      });
+      // Second message is voice response
+      expect(result[1]?.parts[0]).toEqual({
+        type: "text",
+        content: "Response",
+      });
+    });
+
+    it("should skip supervisor activities if undefined is returned from map", () => {
+      const history: RealtimeItem[] = [
+        {
+          type: "message",
+          itemId: "1",
+          role: "assistant",
+          status: "completed",
+          content: [{ type: "output_text", text: "Response" }],
+        } as unknown as RealtimeItem,
+      ];
+      // Map has the key but get() would return undefined (edge case)
+      const supervisorActivities = new Map();
+      supervisorActivities.set(0, undefined);
+
+      const result = convertRealtimeHistoryToUIMessages(
+        history,
+        supervisorActivities,
+      );
+      // Should skip integration when activities is undefined
+      expect(result).toHaveLength(1);
+      expect(result[0]?.parts).toHaveLength(1);
+      expect(result[0]?.parts[0]).toEqual({
+        type: "text",
+        content: "Response",
+      });
     });
   });
 

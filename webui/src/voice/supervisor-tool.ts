@@ -3,6 +3,20 @@ import { tool, type RealtimeItem } from "@openai/agents/realtime";
 import OpenAI from "openai";
 import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
 
+interface SupervisorActivityPart {
+  type: "thought" | "tool" | "text";
+  content?: string;
+  name?: string;
+  args?: Record<string, unknown>;
+  result?: string | null;
+  isError?: boolean;
+}
+
+interface SupervisorResponse {
+  finalText: string;
+  activity: SupervisorActivityPart[];
+}
+
 const SUPERVISOR_INSTRUCTIONS = `You are Producer Pal's supervisor agent, providing guidance to a voice assistant that helps users compose music in Ableton Live.
 
 # Your Role
@@ -37,6 +51,7 @@ interface SupervisorContext {
   model: string;
   mcpClient: Client;
   history: RealtimeItem[];
+  onSupervisorActivity?: (activities: SupervisorActivityPart[]) => void;
 }
 
 /* istanbul ignore next -- @preserve integration function requiring live MCP connection */
@@ -91,7 +106,7 @@ async function callResponsesApi(
  * @param {OpenAI.Responses.Tool[]} tools - Available tools
  * @param {OpenAI.Responses.Response} initialResponse - First API response
  * @param {number} maxIterations - Max tool call iterations
- * @returns {Promise<string>} Final text response
+ * @returns {Promise<SupervisorResponse>} Final text response and activity history
  */
 async function handleToolCallLoop(
   openai: OpenAI,
@@ -101,9 +116,10 @@ async function handleToolCallLoop(
   tools: OpenAI.Responses.Tool[],
   initialResponse: OpenAI.Responses.Response,
   maxIterations = 10,
-): Promise<string> {
+): Promise<SupervisorResponse> {
   let currentResponse = initialResponse;
   let iteration = 0;
+  const activities: SupervisorActivityPart[] = [];
 
   while (iteration < maxIterations) {
     iteration++;
@@ -132,12 +148,32 @@ async function handleToolCallLoop(
         .map((c) => c.text)
         .join("\n");
 
-      return finalText || "I completed that action.";
+      // Add supervisor's text response to activities as a "thought" so it's visually distinct
+      // from the voice agent's spoken response
+      if (finalText) {
+        activities.push({
+          type: "thought",
+          content: finalText,
+        });
+      }
+
+      return {
+        finalText: finalText || "I completed that action.",
+        activity: activities,
+      };
     }
 
     // Execute each tool call via MCP
     for (const toolCall of functionCalls) {
       const args = JSON.parse(toolCall.arguments || "{}");
+
+      // Create activity object that will be updated with result
+      const activity: SupervisorActivityPart = {
+        type: "tool",
+        name: toolCall.name,
+        args,
+        result: null,
+      };
 
       let result: unknown;
       try {
@@ -146,12 +182,22 @@ async function handleToolCallLoop(
           arguments: args,
         });
         result = mcpResult.content;
+
+        // Update activity with result
+        activity.result = JSON.stringify(result);
       } catch (error) {
         result = {
           error: error instanceof Error ? error.message : String(error),
           isError: true,
         };
+
+        // Update activity with error result
+        activity.result = JSON.stringify(result);
+        activity.isError = true;
       }
+
+      // Add completed activity to list
+      activities.push(activity);
 
       // Add tool call and result to input for next iteration
       (input as OpenAI.Responses.ResponseInputItem[]).push(
@@ -173,7 +219,10 @@ async function handleToolCallLoop(
     currentResponse = await callResponsesApi(openai, model, input, tools);
   }
 
-  return "I wasn't able to complete that action.";
+  return {
+    finalText: "I wasn't able to complete that action.",
+    activity: activities,
+  };
 }
 
 /* istanbul ignore next -- @preserve integration tool with execute callback */
@@ -250,7 +299,7 @@ ${relevantContextFromLastUserMessage}
       const response = await callResponsesApi(openai, model, input, tools);
 
       // Handle tool calls if any
-      const finalText = await handleToolCallLoop(
+      const { finalText, activity } = await handleToolCallLoop(
         openai,
         mcpClient,
         model,
@@ -258,6 +307,17 @@ ${relevantContextFromLastUserMessage}
         tools,
         response,
       );
+
+      // Notify hook of supervisor activities
+      console.log(
+        "[Supervisor] Activities captured:",
+        JSON.stringify(activity, null, 2),
+      );
+      console.log("[Supervisor] Final text:", finalText);
+
+      if (context.onSupervisorActivity) {
+        context.onSupervisorActivity(activity);
+      }
 
       return { nextResponse: finalText };
     },
