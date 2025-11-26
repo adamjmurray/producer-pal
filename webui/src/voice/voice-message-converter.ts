@@ -37,17 +37,6 @@ function extractTextFromItem(item: RealtimeItem): string | null {
     }>;
   };
 
-  console.log("[Message Converter] extractTextFromItem:", {
-    role: messageItem.role,
-    hasContent: Boolean(messageItem.content),
-    contentIsArray: Array.isArray(messageItem.content),
-    contentLength: messageItem.content?.length ?? 0,
-  });
-  console.log(
-    "[Message Converter] Full content structure:",
-    JSON.stringify(messageItem.content, null, 2),
-  );
-
   if (!messageItem.content || !Array.isArray(messageItem.content)) {
     return null;
   }
@@ -78,35 +67,114 @@ function extractTextFromItem(item: RealtimeItem): string | null {
 }
 
 /**
+ * Builds a map of call_id to output from function_call_output items in history
+ * @param {RealtimeItem[]} history - The voice session history
+ * @returns {Map<string, string>} Map of call_id to output content
+ */
+function buildFunctionOutputMap(history: RealtimeItem[]): Map<string, string> {
+  const outputMap = new Map<string, string>();
+
+  for (const item of history) {
+    const itemType = (item as { type: string }).type;
+    if (itemType === "function_call_output") {
+      const outputItem = item as unknown as {
+        type: "function_call_output";
+        call_id?: string;
+        output?: string;
+      };
+      if (outputItem.call_id && outputItem.output) {
+        outputMap.set(outputItem.call_id, outputItem.output);
+      }
+    }
+  }
+
+  return outputMap;
+}
+
+/**
+ * Converts a function_call RealtimeItem to a UIMessage showing the tool call
+ * @param {RealtimeItem} item - The realtime item (must be function_call type)
+ * @param {number} index - The index in the history
+ * @param {Map<string, string>} outputMap - Map of call_id to output content
+ * @returns {UIMessage | null} The tool call message, or null if not displayable
+ */
+function convertFunctionCallToUIMessage(
+  item: RealtimeItem,
+  index: number,
+  outputMap: Map<string, string>,
+): UIMessage | null {
+  // Access function_call properties safely
+  const funcItem = item as {
+    type: "function_call";
+    name?: string;
+    arguments?: string;
+    call_id?: string;
+    status?: string;
+  };
+
+  // Look up result from output map
+  const result = funcItem.call_id
+    ? (outputMap.get(funcItem.call_id) ?? null)
+    : null;
+
+  // Parse arguments if available
+  let args: Record<string, unknown> = {};
+  if (funcItem.arguments) {
+    try {
+      args = JSON.parse(funcItem.arguments);
+    } catch {
+      args = { raw: funcItem.arguments };
+    }
+  }
+
+  const toolPart: UIPart = {
+    type: "tool",
+    name: funcItem.name ?? "unknown",
+    args,
+    result,
+    isError: false,
+  };
+
+  return {
+    role: "model",
+    parts: [toolPart],
+    rawHistoryIndex: index,
+  };
+}
+
+/**
  * Converts a RealtimeItem from the voice session to a UIMessage for display
  * @param {RealtimeItem} item - The realtime item to convert
  * @param {number} index - The index in the history (used for rawHistoryIndex)
+ * @param {Map<string, string>} outputMap - Map of call_id to output content for function calls
  * @returns {UIMessage | null} The converted message, or null if not displayable
  */
 export function convertRealtimeItemToUIMessage(
   item: RealtimeItem,
   index: number,
+  outputMap: Map<string, string> = new Map(),
 ): UIMessage | null {
-  // Access optional properties safely for debug logging
-  const itemAny = item as Record<string, unknown>;
-  console.log("[Message Converter] convertRealtimeItemToUIMessage called:", {
-    index,
-    type: item.type,
-    role: itemAny.role,
-    status: itemAny.status,
-  });
+  // Handle different item types - cast to string for comparison since TypeScript
+  // only knows about "message" and "function_call", but runtime may have others
+  const itemType = item.type as string;
 
-  // Only convert message items
-  if (item.type !== "message") {
-    console.log("[Message Converter] Skipping non-message item");
+  if (itemType === "function_call") {
+    // Show the realtime agent's tool calls (e.g., getNextResponseFromSupervisor)
+    return convertFunctionCallToUIMessage(item, index, outputMap);
+  }
+
+  if (itemType !== "message") {
+    // Skip function_call_output and any other types
     return null;
   }
+
+  // At this point we know it's a message item - cast for type safety
+  const messageItem = item as { type: "message"; role?: string };
 
   // Try to extract text - if content is available, show it regardless of status
   // Assistant messages remain "in_progress" during streaming, but we want to show them
   const text = extractTextFromItem(item);
   if (!text) {
-    console.log("[Message Converter] No text extracted from item");
     return null;
   }
 
@@ -118,15 +186,7 @@ export function convertRealtimeItemToUIMessage(
   ];
 
   // Determine role
-  const role = item.role === "user" ? "user" : "model";
-
-  console.log("[Message Converter] Successfully converted item:", {
-    index,
-    itemType: item.type,
-    itemRole: item.role,
-    uiRole: role,
-    text: text.substring(0, 50),
-  });
+  const role = messageItem.role === "user" ? "user" : "model";
 
   return {
     role,
@@ -166,26 +226,11 @@ export function createToolPart(
 function convertSupervisorActivityToParts(
   activities: SupervisorActivityPart[],
 ): UIPart[] {
-  console.log(
-    "[Message Converter] convertSupervisorActivityToParts called with",
-    activities.length,
-    "activities",
-  );
-
-  return activities.map((activity, index) => {
-    console.log(
-      `[Message Converter] Converting activity ${index}:`,
-      activity.type,
-    );
-
+  return activities.map((activity) => {
     if (activity.type === "thought") {
-      return {
-        type: "thought" as const,
-        content: activity.content ?? "",
-      };
+      return { type: "thought" as const, content: activity.content ?? "" };
     }
     if (activity.type === "tool") {
-      console.log(`[Message Converter] Tool activity: ${activity.name}`);
       return {
         type: "tool" as const,
         name: activity.name ?? "",
@@ -194,19 +239,7 @@ function convertSupervisorActivityToParts(
         isError: activity.isError,
       };
     }
-    // activity.type === "text"
-    console.log(
-      `[Message Converter] Text activity, content length:`,
-      activity.content?.length ?? 0,
-    );
-    console.log(
-      `[Message Converter] Text content preview:`,
-      activity.content?.substring(0, 100),
-    );
-    return {
-      type: "text" as const,
-      content: activity.content ?? "",
-    };
+    return { type: "text" as const, content: activity.content ?? "" };
   });
 }
 
@@ -228,21 +261,15 @@ export function convertRealtimeHistoryToUIMessages(
   supervisorActivities?: Map<number, SupervisorActivitiesWithTimestamp>,
   streamingText?: string,
 ): UIMessage[] {
-  console.log("[Message Converter] Converting history:", {
-    historyLength: history.length,
-    supervisorActivitiesSize: supervisorActivities?.size ?? 0,
-    supervisorActivityKeys: supervisorActivities
-      ? Array.from(supervisorActivities.keys())
-      : [],
-  });
-
+  // Build map of function call outputs first so we can attach results to function calls
+  const outputMap = buildFunctionOutputMap(history);
   const messages: UIMessage[] = [];
   const processedSupervisorIndices = new Set<number>();
 
   for (let i = 0; i < history.length; i++) {
     const item = history[i];
     if (!item) continue;
-    const uiMessage = convertRealtimeItemToUIMessage(item, i);
+    const uiMessage = convertRealtimeItemToUIMessage(item, i, outputMap);
     if (uiMessage) {
       // Use index-based timestamp for stable ordering (each index = 1 second apart)
       // Supervisor messages get timestamp - 500ms to appear before their voice response
@@ -253,36 +280,18 @@ export function convertRealtimeHistoryToUIMessages(
       const supervisorData = supervisorActivities?.get(i);
       if (supervisorData) {
         processedSupervisorIndices.add(i);
-        console.log(
-          "[Message Converter] Found supervisor activities for index:",
-          i,
-        );
-        console.log(
-          "[Message Converter] Activities detail:",
-          JSON.stringify(supervisorData.activities, null, 2),
-        );
         const supervisorParts = convertSupervisorActivityToParts(
           supervisorData.activities,
         );
-        console.log(
-          "[Message Converter] Converted supervisor parts:",
-          supervisorParts,
-        );
-
         // Create a separate message bubble for supervisor activities (tools + thought)
         // Give it a slightly earlier timestamp so it appears before the voice response
         const supervisorMessage: UIMessage = {
           role: "model",
           parts: supervisorParts,
           rawHistoryIndex: i,
-          timestamp: baseTimestamp - 500, // 500ms before voice response
+          timestamp: baseTimestamp - 500,
         };
         messages.push(supervisorMessage);
-
-        console.log(
-          "[Message Converter] Created supervisor message with parts:",
-          JSON.stringify(supervisorParts.map((p) => p.type)),
-        );
       }
 
       // Push the voice agent's spoken response as a separate message bubble
@@ -302,42 +311,28 @@ export function convertRealtimeHistoryToUIMessages(
         continue;
       }
       const baseTimestamp = targetIndex * 1000;
-      console.log(
-        "[Message Converter] Adding unmatched supervisor activities for index:",
-        targetIndex,
-      );
       const supervisorParts = convertSupervisorActivityToParts(data.activities);
-      const supervisorMessage: UIMessage = {
+      messages.push({
         role: "model",
         parts: supervisorParts,
         rawHistoryIndex: targetIndex,
         timestamp: baseTimestamp - 500,
-      };
-      messages.push(supervisorMessage);
+      });
     }
   }
 
   // Add streaming text as a partial thought message if present
-  // This shows the supervisor's response character-by-character as it streams
   if (streamingText && streamingText.length > 0) {
-    console.log(
-      "[Message Converter] Adding streaming text:",
-      streamingText.substring(0, 50),
-    );
-    const streamingMessage: UIMessage = {
+    messages.push({
       role: "model",
       parts: [{ type: "thought", content: streamingText }],
       rawHistoryIndex: history.length,
       timestamp: Date.now(),
-    };
-    messages.push(streamingMessage);
+    });
   }
 
   // Sort messages by timestamp to ensure correct order
   messages.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0));
-
-  console.log("[Message Converter] Converted messages:", messages.length);
-
   return messages;
 }
 

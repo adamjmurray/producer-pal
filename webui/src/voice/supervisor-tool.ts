@@ -2,6 +2,10 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { tool, type RealtimeItem } from "@openai/agents/realtime";
 import OpenAI from "openai";
 import { SYSTEM_INSTRUCTION } from "#webui/lib/config";
+import {
+  callResponsesApi,
+  callResponsesApiStreaming,
+} from "./supervisor-api-helpers";
 
 interface SupervisorActivityPart {
   type: "thought" | "tool" | "text";
@@ -74,90 +78,19 @@ async function getMcpToolsAsOpenAIFormat(
   }));
 }
 
-/* istanbul ignore next -- @preserve integration function requiring live OpenAI API */
+/* istanbul ignore next -- @preserve integration function */
 /**
- * Calls the OpenAI Responses API
- * @param {OpenAI} openai - OpenAI client instance
- * @param {string} model - Model identifier
- * @param {OpenAI.Responses.ResponseCreateParams["input"]} input - Request input
- * @param {OpenAI.Responses.Tool[]} tools - Available tools
- * @returns {Promise<OpenAI.Responses.Response>} API response
- */
-async function callResponsesApi(
-  openai: OpenAI,
-  model: string,
-  input: OpenAI.Responses.ResponseCreateParams["input"],
-  tools: OpenAI.Responses.Tool[],
-): Promise<OpenAI.Responses.Response> {
-  return openai.responses.create({
-    model,
-    input,
-    tools: tools.length > 0 ? tools : undefined,
-    parallel_tool_calls: false,
-  });
-}
-
-interface StreamCallbacks {
-  onTextDelta?: (delta: string, snapshot: string) => void;
-}
-
-/* istanbul ignore next -- @preserve integration function requiring live OpenAI API */
-/**
- * Calls the OpenAI Responses API with streaming enabled
- * @param {OpenAI} openai - OpenAI client instance
- * @param {string} model - Model identifier
- * @param {OpenAI.Responses.ResponseCreateParams["input"]} input - Request input
- * @param {OpenAI.Responses.Tool[]} tools - Available tools
- * @param {StreamCallbacks} callbacks - Callbacks for streaming events
- * @returns {Promise<OpenAI.Responses.Response>} Final API response
- */
-async function callResponsesApiStreaming(
-  openai: OpenAI,
-  model: string,
-  input: OpenAI.Responses.ResponseCreateParams["input"],
-  tools: OpenAI.Responses.Tool[],
-  callbacks?: StreamCallbacks,
-): Promise<OpenAI.Responses.Response> {
-  const stream = await openai.responses.create({
-    model,
-    input,
-    tools: tools.length > 0 ? tools : undefined,
-    parallel_tool_calls: false,
-    stream: true,
-  });
-
-  let finalResponse: OpenAI.Responses.Response | undefined;
-  let accumulatedText = "";
-
-  for await (const event of stream) {
-    if (event.type === "response.output_text.delta") {
-      accumulatedText += event.delta;
-      callbacks?.onTextDelta?.(event.delta, accumulatedText);
-    }
-    if (event.type === "response.completed") {
-      finalResponse = event.response;
-    }
-  }
-
-  if (!finalResponse) {
-    throw new Error("Stream ended without response.completed event");
-  }
-  return finalResponse;
-}
-
-/* istanbul ignore next -- @preserve integration function requiring live MCP+OpenAI */
-/**
- * Executes MCP tools called by the supervisor and returns the final text response
- * @param {OpenAI} openai - OpenAI client instance
+ * Executes MCP tools and returns final text response
+ * @param {OpenAI} openai - OpenAI client
  * @param {Client} mcpClient - MCP client for tool execution
- * @param {string} model - Model identifier
+ * @param {string} model - Model ID
  * @param {OpenAI.Responses.ResponseCreateParams["input"]} input - Request input
  * @param {OpenAI.Responses.Tool[]} tools - Available tools
- * @param {OpenAI.Responses.Response} initialResponse - First API response
- * @param {(activity: SupervisorActivityPart) => void} onActivity - Callback for incremental activity updates
- * @param {(delta: string, snapshot: string) => void} onTextDelta - Callback for streaming text
- * @param {number} maxIterations - Max tool call iterations
- * @returns {Promise<SupervisorResponse>} Final text response and activity history
+ * @param {OpenAI.Responses.Response} initialResponse - Initial API response
+ * @param {Function} onActivity - Activity callback
+ * @param {Function} onTextDelta - Text delta callback
+ * @param {number} maxIterations - Maximum tool call iterations
+ * @returns {Promise<SupervisorResponse>} Final text and activities
  */
 async function handleToolCallLoop(
   openai: OpenAI,
@@ -275,6 +208,7 @@ async function handleToolCallLoop(
     }
 
     // Continue with updated input - use streaming if callback provided
+    const iterLabel = `iteration-${iteration}`;
     if (onTextDelta) {
       currentResponse = await callResponsesApiStreaming(
         openai,
@@ -282,9 +216,16 @@ async function handleToolCallLoop(
         input,
         tools,
         { onTextDelta },
+        iterLabel,
       );
     } else {
-      currentResponse = await callResponsesApi(openai, model, input, tools);
+      currentResponse = await callResponsesApi(
+        openai,
+        model,
+        input,
+        tools,
+        iterLabel,
+      );
     }
   }
 
@@ -342,8 +283,9 @@ export function createSupervisorTool(): ReturnType<typeof tool> {
       // Get MCP tools in OpenAI format
       const tools = await getMcpToolsAsOpenAIFormat(mcpClient);
 
-      // Filter history to just messages
-      const filteredHistory = history.filter((item) => item.type === "message");
+      // Include all history items so supervisor sees tool call results (e.g., ppal-connect skillset)
+      // Previously filtered to just "message" items which excluded function_call and function_call_output
+      const filteredHistory = history;
 
       // Build the request input
       const input: OpenAI.Responses.ResponseInputItem[] = [
@@ -364,8 +306,20 @@ ${relevantContextFromLastUserMessage}
         },
       ];
 
-      // Call the Responses API
-      const response = await callResponsesApi(openai, model, input, tools);
+      // Log history context for debugging
+      console.log(
+        "[Supervisor] Realtime history:",
+        JSON.stringify(history, null, 2),
+      );
+
+      // Call the Responses API (detailed request/response logged inside)
+      const response = await callResponsesApi(
+        openai,
+        model,
+        input,
+        tools,
+        "initial",
+      );
 
       // Create incremental activity callback that accumulates and forwards to hook
       const allActivities: SupervisorActivityPart[] = [];

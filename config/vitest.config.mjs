@@ -74,6 +74,9 @@ export default defineConfig({
         // ignore other hard-to-test files:
         "src/test/mock-task.js",
         "src/test/mock-chat-ui-html.js",
+
+        // voice integration code (requires live OpenAI API):
+        "webui/src/voice/supervisor-api-helpers.ts",
       ],
       reportOnFailure: true,
 

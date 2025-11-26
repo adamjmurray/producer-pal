@@ -169,7 +169,9 @@ Key ESLint limits to respect:
     `eslint-disable-next-line max-lines-per-function` comments (do not disable
     for the whole file)
 - `max-lines` per file:
-  - 325 for non-test files (ignoring blank/comment lines)
+  - 325 for non-test files (ignoring blank/comment lines). **IMPORTANT**: To
+    reduce file size, extract code to helper files. Removing comments or blank
+    lines does NOT help - only removing actual code reduces the count.
   - 750 for test files (total lines including blank/comment)
 - `max-depth`: 4
 - `complexity`: 20
