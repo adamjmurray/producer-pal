@@ -112,7 +112,8 @@ create.
 - See notes in musical notation (C3, D#4, etc.)
 - Check loop settings and time signatures
 - Works with Session and Arrangement clips
-- Audio clip properties: gain, pitch shift, sample info (rate, length, filename)
+- Audio clip properties: gain, pitch shift, sample info (rate, length,
+  sampleFile)
 - Audio warp settings: mode (beats, tones, texture, repitch, complex, pro),
   enabled/disabled state, warp marker positions
 

@@ -281,8 +281,7 @@ function processAudioClip(result, clip, includeWarpMarkers) {
 
   const filePath = clip.getProperty("file_path");
   if (filePath) {
-    // Extract just filename, handle both Unix and Windows paths
-    result.filename = filePath.split(/[/\\]/).pop();
+    result.sampleFile = filePath;
   }
 
   const pitchCoarse = clip.getProperty("pitch_coarse");
