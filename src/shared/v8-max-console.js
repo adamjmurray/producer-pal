@@ -44,3 +44,9 @@ export const error = (...any) => {
     console.error(...any.map(str));
   }
 };
+
+// Max has no concept of a warning, and we use console.error()
+// to emit warnings for our MCP tools anyway (we throw errors
+// for fatal errors), so alias console.warn to Max error()
+// TODO: prefer use of this for emitting warnings moving forward.
+export const warn = error;
