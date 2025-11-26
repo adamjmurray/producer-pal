@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   children,
   liveApiCall,
@@ -6,14 +6,26 @@ import {
   liveApiSet,
   mockLiveApiGet,
 } from "../../../test/mock-live-api.js";
+import * as console from "../../../shared/v8-max-console.js";
 import { MAX_AUTO_CREATED_TRACKS } from "../../constants.js";
 import { createTrack } from "./create-track.js";
 
+vi.mock("../../../shared/v8-max-console.js", () => ({
+  log: vi.fn(),
+  error: vi.fn(),
+}));
+
 describe("createTrack", () => {
+  let returnTrackCounter = 0;
+
   beforeEach(() => {
+    returnTrackCounter = 0;
     liveApiId.mockReturnValue("track1");
     mockLiveApiGet({
-      LiveSet: { tracks: children("existing1", "existing2") },
+      LiveSet: {
+        tracks: children("existing1", "existing2"),
+        return_tracks: children("returnA", "returnB"),
+      },
     });
 
     // Mock Live API calls to return track IDs
@@ -23,6 +35,9 @@ describe("createTrack", () => {
       }
       if (method === "create_audio_track") {
         return ["id", `audio_track_${index}`];
+      }
+      if (method === "create_return_track") {
+        return ["id", `return_track_${returnTrackCounter++}`];
       }
       return null;
     });
@@ -217,13 +232,35 @@ describe("createTrack", () => {
     });
   });
 
-  it("should throw error when trackIndex is missing", () => {
-    expect(() => createTrack({})).toThrow(
-      "createTrack failed: trackIndex is required",
+  it("should append track to end when trackIndex is omitted", () => {
+    const result = createTrack({ name: "Appended Track" });
+
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_midi_track",
+      -1,
     );
-    expect(() => createTrack({ count: 2 })).toThrow(
-      "createTrack failed: trackIndex is required",
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "id midi_track_-1" }),
+      "name",
+      "Appended Track",
     );
+    // Result trackIndex should reflect actual position (count of existing tracks)
+    expect(result).toEqual({
+      id: "midi_track_-1",
+      trackIndex: 2, // existing tracks count
+    });
+  });
+
+  it("should append track to end when trackIndex is -1", () => {
+    const result = createTrack({ trackIndex: -1, name: "Appended Track" });
+
+    expect(liveApiCall).toHaveBeenCalledWithThis(
+      expect.objectContaining({ path: "live_set" }),
+      "create_midi_track",
+      -1,
+    );
+    expect(result.trackIndex).toBe(2); // existing tracks count
   });
 
   it("should throw error when count is less than 1", () => {
@@ -235,11 +272,7 @@ describe("createTrack", () => {
     );
   });
 
-  it("should throw error when type is invalid", () => {
-    expect(() => createTrack({ trackIndex: 0, type: "invalid" })).toThrow(
-      'createTrack failed: type must be "midi" or "audio"',
-    );
-  });
+  // Note: type validation is now handled by Zod schema
 
   it("should throw error when creating tracks would exceed maximum", () => {
     expect(() =>
@@ -310,6 +343,71 @@ describe("createTrack", () => {
     expect(arrayResult[1]).toEqual({
       id: "midi_track_2",
       trackIndex: 2,
+    });
+  });
+
+  describe("return tracks", () => {
+    it("should create a single return track", () => {
+      const result = createTrack({ type: "return", name: "New Return" });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_return_track",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id return_track_0" }),
+        "name",
+        "New Return",
+      );
+      // Result returnTrackIndex should reflect position (2 existing return tracks)
+      expect(result).toEqual({
+        id: "return_track_0",
+        returnTrackIndex: 2,
+      });
+    });
+
+    it("should create multiple return tracks", () => {
+      const result = createTrack({ type: "return", count: 2, name: "FX" });
+
+      expect(liveApiCall).toHaveBeenCalledTimes(2);
+      expect(liveApiCall).toHaveBeenNthCalledWithThis(
+        1,
+        expect.objectContaining({ path: "live_set" }),
+        "create_return_track",
+      );
+      expect(liveApiCall).toHaveBeenNthCalledWithThis(
+        2,
+        expect.objectContaining({ path: "live_set" }),
+        "create_return_track",
+      );
+
+      expect(result).toEqual([
+        { id: "return_track_0", returnTrackIndex: 2 },
+        { id: "return_track_1", returnTrackIndex: 3 },
+      ]);
+    });
+
+    it("should create return track with color", () => {
+      createTrack({ type: "return", name: "Reverb", color: "#0000FF" });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id return_track_0" }),
+        "color",
+        255,
+      );
+    });
+
+    it("should warn when trackIndex provided for return track", () => {
+      createTrack({ type: "return", trackIndex: 5, name: "Ignored Index" });
+
+      expect(console.error).toHaveBeenCalledWith(
+        "createTrack: trackIndex is ignored for return tracks (always added at end)",
+      );
+      // Should still create the track
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set" }),
+        "create_return_track",
+      );
     });
   });
 });
