@@ -63,5 +63,17 @@ export const toolDefUpdateTrack = defineTool("ppal-update-track", {
       .boolean()
       .optional()
       .describe("track follows the arrangement?"),
+    sendGainDb: z
+      .number()
+      .min(-70)
+      .max(0)
+      .optional()
+      .describe("send gain in dB, requires sendReturn"),
+    sendReturn: z
+      .string()
+      .optional()
+      .describe(
+        'return track: exact name (e.g., "A-Reverb") or letter (e.g., "A")',
+      ),
   },
 });

@@ -78,6 +78,66 @@ function applyMonitoringState(track, monitoringState) {
 }
 
 /**
+ * Apply send properties to a track
+ * @param {LiveAPI} track - Track object
+ * @param {number} sendGainDb - Send gain in dB (-70 to 0)
+ * @param {string} sendReturn - Return track name (exact or letter prefix)
+ */
+function applySendProperties(track, sendGainDb, sendReturn) {
+  // Validate both params provided together
+  if ((sendGainDb != null) !== (sendReturn != null)) {
+    throw new Error(
+      "updateTrack failed: sendGainDb and sendReturn must both be specified",
+    );
+  }
+  if (sendGainDb == null) {
+    return;
+  }
+
+  // Get mixer and sends
+  const mixer = new LiveAPI(track.path + " mixer_device");
+  if (!mixer.exists()) {
+    throw new Error(
+      `updateTrack failed: track ${track.id} has no mixer device`,
+    );
+  }
+  const sends = mixer.getChildren("sends");
+  if (sends.length === 0) {
+    throw new Error(`updateTrack failed: track ${track.id} has no sends`);
+  }
+
+  // Find matching send by return track name
+  // Match exact name OR letter prefix (e.g., "A" matches "A-Reverb")
+  const liveSet = new LiveAPI("live_set");
+  const returnTrackIds = liveSet.getChildIds("return_tracks");
+
+  let sendIndex = -1;
+  for (let i = 0; i < returnTrackIds.length; i++) {
+    const rt = new LiveAPI(`live_set return_tracks ${i}`);
+    const name = rt.getProperty("name");
+    // Match exact name or single-letter prefix
+    if (name === sendReturn || name.startsWith(sendReturn + "-")) {
+      sendIndex = i;
+      break;
+    }
+  }
+
+  if (sendIndex === -1) {
+    throw new Error(
+      `updateTrack failed: no return track found matching "${sendReturn}"`,
+    );
+  }
+  if (sendIndex >= sends.length) {
+    throw new Error(
+      `updateTrack failed: send ${sendIndex} doesn't exist on track ${track.id}`,
+    );
+  }
+
+  // Set the send gain
+  sends[sendIndex].set("display_value", sendGainDb);
+}
+
+/**
  * Apply stereo panning and warn about invalid params
  * @param {LiveAPI} mixer - Mixer device object
  * @param {number} pan - Pan value
@@ -200,6 +260,8 @@ function applyMixerProperties(
  * @param {string} [args.outputRoutingChannelId] - Optional output routing channel identifier
  * @param {string} [args.monitoringState] - Optional monitoring state ('in', 'auto', 'off')
  * @param {boolean} [args.arrangementFollower] - Whether the track should follow the arrangement timeline
+ * @param {number} [args.sendGainDb] - Optional send gain in dB (-70 to 0), requires sendReturn
+ * @param {string} [args.sendReturn] - Optional return track name (exact or letter prefix), requires sendGainDb
  * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Single track object or array of track objects
  */
@@ -222,6 +284,8 @@ export function updateTrack(
     outputRoutingChannelId,
     monitoringState,
     arrangementFollower,
+    sendGainDb,
+    sendReturn,
   } = {},
   _context = {},
 ) {
@@ -285,6 +349,9 @@ export function updateTrack(
 
     // Handle monitoring state
     applyMonitoringState(track, monitoringState);
+
+    // Handle send properties
+    applySendProperties(track, sendGainDb, sendReturn);
 
     // Build optimistic result object
     updatedTracks.push({

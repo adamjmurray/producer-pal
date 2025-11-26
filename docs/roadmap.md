@@ -39,7 +39,7 @@ Studio, Ollama, and more.
 
 ### 1.2.2 - More Audio Clips & Improved Clip Handling + Track Mixer Support
 
-- Mixer support: reading and writing track gain and panning
+- Mixer support: reading and writing track gain, panning, and sends
 - Ability to scan a folder for audio files and create audio clips from those
   files
 - Better handling for Live's color palette by warning when an arbitrary RGB
@@ -47,10 +47,6 @@ Studio, Ollama, and more.
   palette
 
 ## Planned
-
-### 1.x - Miscellaneous Improvements
-
-- Read and write mixer send amounts
 
 ### 1.3 - Voice Interaction
 
