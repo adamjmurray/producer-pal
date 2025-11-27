@@ -1,5 +1,6 @@
 import { beforeEach, vi } from "vitest";
 import "./expect-extensions.js";
+import { Folder, clearMockFolderStructure } from "./mock-folder.js";
 import {
   LiveAPI,
   liveApiCall,
@@ -11,6 +12,7 @@ import {
 import { Task } from "./mock-task.js";
 
 globalThis.LiveAPI = LiveAPI;
+globalThis.Folder = Folder;
 await import("../live-api-adapter/live-api-extensions.js");
 
 globalThis.Task = Task;
@@ -62,6 +64,9 @@ beforeEach(() => {
   if (Max.defaultMcpResponseHandler) {
     Max.mcpResponseHandler = Max.defaultMcpResponseHandler;
   }
+
+  // Clear mock folder structure
+  clearMockFolderStructure();
 
   // default mocking behaviors:
   mockLiveApiGet();

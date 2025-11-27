@@ -22,6 +22,7 @@ import { updateLiveSet } from "../tools/live-set/update-live-set.js";
 import { deleteObject } from "../tools/operations/delete/delete.js";
 import { duplicate } from "../tools/operations/duplicate/duplicate.js";
 import { transformClips } from "../tools/operations/transform-clips/transform-clips.js";
+import { readSamples } from "../tools/samples/read-samples.js";
 import { createScene } from "../tools/scene/create-scene.js";
 import { readScene } from "../tools/scene/read-scene.js";
 import { updateScene } from "../tools/scene/update-scene.js";
@@ -39,6 +40,7 @@ const context = {
   },
   smallModelMode: false,
   holdingAreaStartBeats: 40000,
+  sampleFolder: null,
 };
 
 /*
@@ -65,6 +67,7 @@ const tools = {
   "ppal-delete": (args) => deleteObject(args, context),
   "ppal-duplicate": (args) => duplicate(args, context),
   "ppal-memory": (args) => memory(args, context),
+  "ppal-read-samples": (args) => readSamples(args, context),
 };
 
 if (process.env.ENABLE_RAW_LIVE_API === "true") {
@@ -140,6 +143,15 @@ export function projectNotes(_text, content) {
  */
 export function holdingAreaStartBeats(beats) {
   context.holdingAreaStartBeats = Number(beats) || 40000;
+}
+
+/**
+ * Set the sample folder path
+ *
+ * @param {string} path - Sample folder path
+ */
+export function sampleFolder(path) {
+  context.sampleFolder = path || null;
 }
 
 /**

@@ -337,6 +337,7 @@ export default [
         ...globals.node,
         // Max/MSP V8 globals
         LiveAPI: "readonly",
+        Folder: "readonly",
         outlet: "readonly",
         post: "readonly",
         Dict: "readonly",

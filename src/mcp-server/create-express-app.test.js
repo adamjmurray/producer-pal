@@ -99,6 +99,7 @@ describe("MCP Express App", () => {
         "ppal-delete",
         "ppal-duplicate",
         "ppal-memory",
+        "ppal-read-samples",
         "ppal-raw-live-api",
       ]);
     });

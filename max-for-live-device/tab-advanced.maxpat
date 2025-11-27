@@ -4,154 +4,236 @@
 		"appversion" : 		{
 			"major" : 9,
 			"minor" : 0,
-			"revision" : 8,
+			"revision" : 9,
 			"architecture" : "x64",
 			"modernui" : 1
 		}
 ,
 		"classnamespace" : "box",
-		"rect" : [ 34.0, 243.0, 904.0, 716.0 ],
+		"rect" : [ 190.0, 147.0, 922.0, 716.0 ],
 		"openinpresentation" : 1,
 		"gridsize" : [ 15.0, 15.0 ],
 		"boxes" : [ 			{
 				"box" : 				{
-					"id" : "obj-75",
-					"maxclass" : "message",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 344.0, 254.0, 104.0, 22.0 ],
-					"text" : "chatUIEnabled $1"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-73",
-					"maxclass" : "newobj",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 344.0, 212.0, 61.0, 22.0 ],
-					"text" : "pipe 1000"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"annotation" : "Enable the built-in chat UI. Disabling the chat UI makes it inaccessible over the local network.",
-					"annotation_name" : "Enable Chat UI",
-					"id" : "obj-37",
-					"maxclass" : "live.toggle",
+					"id" : "obj-32",
+					"linecount" : 2,
+					"maxclass" : "comment",
 					"numinlets" : 1,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
+					"numoutlets" : 0,
+					"patching_rect" : [ 653.0, 643.0, 121.0, 33.0 ],
+					"text" : "TODO: Save the folder in the Live Set"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Remove the selected sample folder, preventing AI from scanning it. Note: If the AI has already scanned it with the read-samples tool, it will remember what it saw until you start a new conversation.",
+					"annotation_name" : "Clear Sample Folder",
+					"id" : "obj-62",
+					"maxclass" : "live.text",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
 					"parameter_enable" : 1,
-					"patching_rect" : [ 344.0, 172.5, 15.0, 15.0 ],
+					"patching_rect" : [ 749.5, 539.0, 42.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 157.0, 95.0, 15.0, 15.0 ],
+					"presentation_rect" : [ 181.0, 26.0, 42.0, 18.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
-							"parameter_annotation_name" : "Enable Chat UI",
-							"parameter_enum" : [ "off", "on" ],
-							"parameter_info" : "Enable the built-in chat UI. Disabling the chat UI makes it inaccessible over the local network.",
-							"parameter_initial" : [ 1 ],
-							"parameter_initial_enable" : 1,
-							"parameter_invisible" : 1,
-							"parameter_longname" : "live.toggle",
+							"parameter_annotation_name" : "Clear Sample Folder",
+							"parameter_enum" : [ "val1", "val2" ],
+							"parameter_info" : "Remove the selected sample folder, preventing AI from scanning it. Note: If the AI has already scanned it with the read-samples tool, it will remember what it saw until you start a new conversation.",
+							"parameter_longname" : "live.text[3]",
 							"parameter_mmax" : 1,
 							"parameter_modmode" : 0,
-							"parameter_shortname" : "live.toggle",
+							"parameter_shortname" : "live.text[2]",
 							"parameter_type" : 2
 						}
 
 					}
 ,
-					"varname" : "disable-chat-ui"
+					"text" : "clear",
+					"varname" : "live.text[3]"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"annotation" : "Select a folder to allow the AI to scan for supported audio samples (.wav, .aiff, .aif, .aifc, .flac, .ogg, .mp3, .m4a) and use them to create audio clips.",
+					"annotation_name" : "Choose Sample Folder",
+					"id" : "obj-35",
+					"maxclass" : "live.text",
+					"mode" : 0,
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "" ],
+					"parameter_enable" : 1,
+					"patching_rect" : [ 591.5, 358.0, 48.0, 18.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 128.967254638671875, 25.944584429264069, 48.0, 18.0 ],
+					"saved_attribute_attributes" : 					{
+						"valueof" : 						{
+							"parameter_annotation_name" : "Choose Sample Folder",
+							"parameter_enum" : [ "val1", "val2" ],
+							"parameter_info" : "Select a folder to allow the AI to scan for supported audio samples (.wav, .aiff, .aif, .aifc, .flac, .ogg, .mp3, .m4a) and use them to create audio clips.",
+							"parameter_longname" : "live.text[2]",
+							"parameter_mmax" : 1,
+							"parameter_modmode" : 0,
+							"parameter_shortname" : "live.text[2]",
+							"parameter_type" : 2
+						}
+
+					}
+,
+					"text" : "choose",
+					"varname" : "live.text[2]"
 				}
 
 			}
 , 			{
 				"box" : 				{
 					"angle" : 270.0,
-					"annotation" : "Enable the built-in chat UI. Disabling the chat UI makes it inaccessible over the local network.",
+					"annotation" : "Select a folder to allow the AI to scan for supported audio samples (.wav, .aiff, .aif, .aifc, .flac, .ogg, .mp3, .m4a) and use them to create audio clips.",
 					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
 					"hint" : "",
-					"id" : "obj-72",
+					"id" : "obj-86",
 					"ignoreclick" : 0,
 					"maxclass" : "panel",
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 614.0, 351.0, 128.0, 128.0 ],
+					"patching_rect" : [ 128.715365469455719, 2.267002522945404, 63.0, 83.5 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 144.0, 84.75, 106.0, 34.5 ],
+					"presentation_rect" : [ 123.0, 0.0, 126.700252115726471, 74.055415749549866 ],
 					"proportion" : 0.39,
-					"varname" : "Enable Chat UI"
+					"varname" : "Sample Folder"
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"id" : "obj-65",
+					"fontface" : 1,
+					"fontsize" : 11.0,
+					"id" : "obj-85",
+					"linecount" : 2,
 					"maxclass" : "live.comment",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 339.0, 156.5, 87.0, 18.0 ],
+					"patching_rect" : [ 294.0, 125.0, 70.0, 33.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 173.0, 93.0, 79.397429999999986, 18.0 ],
-					"text" : "Enable Chat UI",
+					"presentation_rect" : [ 129.0, 4.0, 89.0, 20.0 ],
+					"text" : "Sample Folder",
 					"textjustification" : 0
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"id" : "obj-71",
-					"linecount" : 2,
-					"maxclass" : "newobj",
-					"numinlets" : 1,
+					"id" : "obj-83",
+					"maxclass" : "message",
+					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 680.5, 37.5, 171.0, 35.0 ],
-					"text" : "sprintf \\; max launch_browser http://localhost:%d/chat"
+					"patching_rect" : [ 793.5, 580.0, 43.0, 22.0 ],
+					"text" : "(none)"
 				}
 
 			}
 , 			{
 				"box" : 				{
-					"id" : "obj-62",
-					"linecount" : 3,
+					"id" : "obj-81",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 793.5, 616.0, 72.0, 22.0 ],
+					"text" : "prepend set"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-80",
+					"maxclass" : "live.comment",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 793.5, 654.0, 61.0, 18.0 ],
+					"presentation" : 1,
+					"presentation_rect" : [ 128.0, 46.0, 122.0, 18.0 ],
+					"text" : "(none)",
+					"textjustification" : 0
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-77",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "int" ],
+					"patching_rect" : [ 835.5, 444.0, 55.0, 22.0 ],
+					"text" : "strippath"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-76",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "int" ],
+					"patching_rect" : [ 591.5, 437.0, 133.0, 22.0 ],
+					"text" : "conformpath slash boot"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-75",
 					"maxclass" : "message",
 					"numinlets" : 2,
 					"numoutlets" : 1,
 					"outlettype" : [ "" ],
-					"patching_rect" : [ 19.0, 606.0, 98.0, 49.0 ],
-					"text" : "script sendbox open-chat-ui hidden $1"
+					"patching_rect" : [ 700.5, 580.0, 81.0, 22.0 ],
+					"text" : "sampleFolder"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-71",
+					"maxclass" : "message",
+					"numinlets" : 2,
+					"numoutlets" : 1,
+					"outlettype" : [ "" ],
+					"patching_rect" : [ 591.5, 480.0, 98.0, 22.0 ],
+					"text" : "sampleFolder $1"
+				}
+
+			}
+, 			{
+				"box" : 				{
+					"id" : "obj-65",
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 0,
+					"patching_rect" : [ 591.5, 633.0, 42.0, 22.0 ],
+					"text" : "s ---v8"
 				}
 
 			}
 , 			{
 				"box" : 				{
 					"id" : "obj-4",
-					"maxclass" : "message",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 59.0, 543.0, 29.5, 22.0 ],
-					"text" : "0"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-58",
-					"maxclass" : "message",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 19.0, 543.0, 29.5, 22.0 ],
-					"text" : "1"
+					"maxclass" : "newobj",
+					"numinlets" : 1,
+					"numoutlets" : 2,
+					"outlettype" : [ "", "bang" ],
+					"patching_rect" : [ 591.5, 394.0, 90.0, 22.0 ],
+					"text" : "opendialog fold"
 				}
 
 			}
@@ -161,9 +243,9 @@
 					"maxclass" : "live.line",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 498.0, 351.0, 5.0, 100.0 ],
+					"patching_rect" : [ 553.0, 11.0, 5.0, 100.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 4.0, 55.0, 136.0, 13.0 ]
+					"presentation_rect" : [ 4.0, 55.0, 114.0, 13.0 ]
 				}
 
 			}
@@ -173,9 +255,9 @@
 					"maxclass" : "live.line",
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 508.0, 389.0, 5.0, 100.0 ],
+					"patching_rect" : [ 563.0, 49.0, 5.0, 100.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 4.0, 113.0, 136.0, 13.0 ]
+					"presentation_rect" : [ 4.0, 113.0, 114.0, 13.0 ]
 				}
 
 			}
@@ -189,7 +271,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 443.0, 68.0, 70.0, 20.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 153.0, 4.0, 53.846161000000002, 20.0 ],
+					"presentation_rect" : [ 134.0, 78.0, 53.846161000000002, 20.0 ],
 					"text" : "Debug",
 					"textjustification" : 0
 				}
@@ -280,7 +362,7 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 614.0, 404.0, 84.0, 94.0 ],
+					"patching_rect" : [ 820.0, 92.0, 19.0, 49.5 ],
 					"presentation" : 1,
 					"presentation_rect" : [ 6.0, 21.0, 61.0, 32.0 ],
 					"proportion" : 0.39,
@@ -495,54 +577,6 @@
 			}
 , 			{
 				"box" : 				{
-					"annotation" : "Open the built-in AI chat UI in a web browser.",
-					"annotation_name" : "Open Chat UI",
-					"fontsize" : 10.0,
-					"id" : "obj-32",
-					"maxclass" : "live.text",
-					"mode" : 0,
-					"numinlets" : 1,
-					"numoutlets" : 2,
-					"outlettype" : [ "", "" ],
-					"parameter_enable" : 1,
-					"patching_rect" : [ 557.5, 37.5, 83.0, 24.0 ],
-					"presentation" : 1,
-					"presentation_rect" : [ 157.0, 119.83333720266819, 80.0, 20.0 ],
-					"saved_attribute_attributes" : 					{
-						"valueof" : 						{
-							"parameter_annotation_name" : "Open Chat UI",
-							"parameter_enum" : [ "val1", "val2" ],
-							"parameter_info" : "Open the built-in AI chat UI in a web browser.",
-							"parameter_invisible" : 2,
-							"parameter_longname" : "live.text[3]",
-							"parameter_mmax" : 1,
-							"parameter_modmode" : 0,
-							"parameter_shortname" : "live.text[3]",
-							"parameter_type" : 2
-						}
-
-					}
-,
-					"text" : "Open Chat UI",
-					"varname" : "open-chat-ui"
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"id" : "obj-35",
-					"linecount" : 3,
-					"maxclass" : "message",
-					"numinlets" : 2,
-					"numoutlets" : 1,
-					"outlettype" : [ "" ],
-					"patching_rect" : [ 557.5, 88.5, 142.0, 49.0 ],
-					"text" : ";\rmax launch_browser http://localhost:3350/chat"
-				}
-
-			}
-, 			{
-				"box" : 				{
 					"annotation" : "Enable for smaller local LLMs. Simplifies features to reduce confusion.",
 					"annotation_name" : "Small Model Mode",
 					"id" : "obj-21",
@@ -587,7 +621,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 457.5, 125.0, 15.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 157.0, 32.0, 15.0, 15.0 ],
+					"presentation_rect" : [ 138.0, 102.0, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "JSON Output",
@@ -621,7 +655,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 119.5, 134.0, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 65.0, 88.0, 44.0, 15.0 ],
+					"presentation_rect" : [ 55.0, 88.0, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Timeout",
@@ -657,7 +691,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 27.0, 137.5, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 65.0, 66.0, 44.0, 15.0 ],
+					"presentation_rect" : [ 55.0, 66.0, 44.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Server Port",
@@ -692,7 +726,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 239.0, 176.0, 15.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 157.0, 58.0, 15.0, 15.0 ],
+					"presentation_rect" : [ 138.0, 125.0, 15.0, 15.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Verbose Logs",
@@ -726,9 +760,9 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 585.0, 376.0, 128.0, 128.0 ],
+					"patching_rect" : [ 791.0, 64.0, 63.0, 83.5 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 4.00000011920929, 54.33333495259285, 135.99999988079071, 28.666667520999908 ],
+					"presentation_rect" : [ 4.0, 54.0, 114.0, 29.0 ],
 					"proportion" : 0.39,
 					"varname" : "Server Port"
 				}
@@ -746,9 +780,9 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 570.0, 361.0, 128.0, 128.0 ],
+					"patching_rect" : [ 776.0, 49.0, 63.0, 83.5 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 4.00000011920929, 85.000002533197403, 135.99999988079071, 25.999997466802597 ],
+					"presentation_rect" : [ 4.0, 85.0, 114.0, 26.0 ],
 					"proportion" : 0.39,
 					"varname" : "Timeout"
 				}
@@ -766,9 +800,9 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 555.0, 346.0, 128.0, 128.0 ],
+					"patching_rect" : [ 761.0, 34.0, 63.0, 83.5 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 150.000004470348358, 52.666668236255646, 95.999995529651642, 30.333331763744354 ],
+					"presentation_rect" : [ 131.0, 119.0, 96.0, 27.5 ],
 					"proportion" : 0.39,
 					"varname" : "Verbose Logs"
 				}
@@ -786,9 +820,9 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 540.0, 331.0, 128.0, 128.0 ],
+					"patching_rect" : [ 746.0, 19.0, 63.0, 83.5 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 150.000004470348358, 25.00000074505806, 96.000002861022949, 27.99999925494194 ],
+					"presentation_rect" : [ 131.0, 94.25, 96.0, 27.25 ],
 					"proportion" : 0.39,
 					"varname" : "JSON Output"
 				}
@@ -806,9 +840,9 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 525.0, 316.0, 128.0, 128.0 ],
+					"patching_rect" : [ 731.0, 4.0, 63.0, 83.5 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 4.00000011920929, 113.333336710929871, 135.666670709848404, 33.000000983476639 ],
+					"presentation_rect" : [ 4.0, 113.0, 114.0, 33.0 ],
 					"proportion" : 0.39,
 					"varname" : "Small Model Mode"
 				}
@@ -896,7 +930,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 444.5, 104.0, 86.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 173.0, 30.0, 70.064096000000006, 18.0 ],
+					"presentation_rect" : [ 154.0, 100.0, 70.064096000000006, 18.0 ],
 					"text" : "JSON Output",
 					"textjustification" : 0
 				}
@@ -915,7 +949,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 326.0, 60.0, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 102.0, 28.0, 34.0, 18.0 ],
+					"presentation_rect" : [ 70.0, 28.0, 34.0, 18.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Stop Server",
@@ -949,7 +983,7 @@
 					"parameter_enable" : 1,
 					"patching_rect" : [ 256.0, 60.0, 44.0, 15.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 67.0, 28.0, 34.0, 18.0 ],
+					"presentation_rect" : [ 70.0, 8.0, 34.0, 18.0 ],
 					"saved_attribute_attributes" : 					{
 						"valueof" : 						{
 							"parameter_annotation_name" : "Start Server",
@@ -978,7 +1012,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 114.5, 104.0, 54.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 18.0, 87.0, 45.0, 18.0 ],
+					"presentation_rect" : [ 8.0, 87.0, 45.0, 18.0 ],
 					"text" : "Timeout",
 					"textjustification" : 2
 				}
@@ -992,7 +1026,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 28.0, 102.0, 43.0, 18.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 18.0, 64.0, 45.0, 18.0 ],
+					"presentation_rect" : [ 8.0, 64.0, 45.0, 18.0 ],
 					"text" : "Port",
 					"textjustification" : 2
 				}
@@ -1089,7 +1123,7 @@
 					"numoutlets" : 0,
 					"patching_rect" : [ 261.0, 151.0, 45.0, 29.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 172.0, 57.0, 71.39743, 18.0 ],
+					"presentation_rect" : [ 153.0, 124.0, 71.39743, 18.0 ],
 					"text" : "Verbose Logs",
 					"textjustification" : 0
 				}
@@ -1188,9 +1222,9 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 614.0, 537.0, 128.0, 128.0 ],
+					"patching_rect" : [ 624.0, 53.25, 83.0, 75.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 150.0, 4.0, 96.0, 79.0 ],
+					"presentation_rect" : [ 131.0, 78.0, 93.397429999999986, 68.0 ],
 					"proportion" : 0.39,
 					"saved_attribute_attributes" : 					{
 						"bgfillcolor" : 						{
@@ -1211,9 +1245,9 @@
 					"mode" : 0,
 					"numinlets" : 1,
 					"numoutlets" : 0,
-					"patching_rect" : [ 575.0, 505.0, 128.0, 128.0 ],
+					"patching_rect" : [ 585.0, 21.25, 83.0, 75.0 ],
 					"presentation" : 1,
-					"presentation_rect" : [ 4.0, 4.0, 136.0, 142.0 ],
+					"presentation_rect" : [ 4.0, 4.0, 114.0, 142.0 ],
 					"proportion" : 0.39,
 					"saved_attribute_attributes" : 					{
 						"bgfillcolor" : 						{
@@ -1222,26 +1256,6 @@
 
 					}
 
-				}
-
-			}
-, 			{
-				"box" : 				{
-					"angle" : 270.0,
-					"annotation" : "Open the built-in AI chat UI in a web browser.",
-					"bgcolor" : [ 0.163688058058427, 0.163688010157025, 0.163688022674427, 0.0 ],
-					"hint" : "",
-					"id" : "obj-63",
-					"ignoreclick" : 0,
-					"maxclass" : "panel",
-					"mode" : 0,
-					"numinlets" : 1,
-					"numoutlets" : 0,
-					"patching_rect" : [ 123.666670352220535, 168.000005006790161, 128.0, 128.0 ],
-					"presentation" : 1,
-					"presentation_rect" : [ 144.0, 115.5, 106.0, 34.5 ],
-					"proportion" : 0.39,
-					"varname" : "Open Chat UI"
 				}
 
 			}
@@ -1366,15 +1380,15 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-35", 0 ],
-					"source" : [ "obj-32", 0 ]
+					"destination" : [ "obj-53", 0 ],
+					"source" : [ "obj-34", 0 ]
 				}
 
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-53", 0 ],
-					"source" : [ "obj-34", 0 ]
+					"destination" : [ "obj-4", 0 ],
+					"source" : [ "obj-35", 0 ]
 				}
 
 			}
@@ -1387,14 +1401,16 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-73", 0 ],
-					"source" : [ "obj-37", 0 ]
+					"destination" : [ "obj-76", 0 ],
+					"order" : 1,
+					"source" : [ "obj-4", 0 ]
 				}
 
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-62", 0 ],
+					"destination" : [ "obj-77", 0 ],
+					"order" : 0,
 					"source" : [ "obj-4", 0 ]
 				}
 
@@ -1417,14 +1433,6 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-58", 0 ],
-					"order" : 3,
-					"source" : [ "obj-40", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
 					"destination" : [ "obj-60", 0 ],
 					"order" : 0,
 					"source" : [ "obj-40", 0 ]
@@ -1435,14 +1443,6 @@
 				"patchline" : 				{
 					"destination" : [ "obj-36", 0 ],
 					"order" : 2,
-					"source" : [ "obj-41", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-4", 0 ],
-					"order" : 3,
 					"source" : [ "obj-41", 0 ]
 				}
 
@@ -1482,14 +1482,6 @@
 				"patchline" : 				{
 					"destination" : [ "obj-47", 0 ],
 					"order" : 1,
-					"source" : [ "obj-45", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-58", 0 ],
-					"order" : 3,
 					"source" : [ "obj-45", 0 ]
 				}
 
@@ -1553,13 +1545,6 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-62", 0 ],
-					"source" : [ "obj-58", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
 					"destination" : [ "obj-55", 0 ],
 					"source" : [ "obj-59", 0 ]
 				}
@@ -1581,7 +1566,16 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-43", 0 ],
+					"destination" : [ "obj-75", 0 ],
+					"order" : 1,
+					"source" : [ "obj-62", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-83", 0 ],
+					"order" : 0,
 					"source" : [ "obj-62", 0 ]
 				}
 
@@ -1589,15 +1583,6 @@
 , 			{
 				"patchline" : 				{
 					"destination" : [ "obj-3", 0 ],
-					"order" : 1,
-					"source" : [ "obj-64", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-71", 0 ],
-					"order" : 0,
 					"source" : [ "obj-64", 0 ]
 				}
 
@@ -1625,15 +1610,8 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-35", 1 ],
+					"destination" : [ "obj-65", 0 ],
 					"source" : [ "obj-71", 0 ]
-				}
-
-			}
-, 			{
-				"patchline" : 				{
-					"destination" : [ "obj-75", 0 ],
-					"source" : [ "obj-73", 0 ]
 				}
 
 			}
@@ -1646,8 +1624,23 @@
 			}
 , 			{
 				"patchline" : 				{
-					"destination" : [ "obj-9", 0 ],
+					"destination" : [ "obj-65", 0 ],
 					"source" : [ "obj-75", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-71", 0 ],
+					"source" : [ "obj-76", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-81", 0 ],
+					"midpoints" : [ 845.0, 609.75390625, 803.0, 609.75390625 ],
+					"source" : [ "obj-77", 0 ]
 				}
 
 			}
@@ -1658,27 +1651,32 @@
 				}
 
 			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-80", 0 ],
+					"source" : [ "obj-81", 0 ]
+				}
+
+			}
+, 			{
+				"patchline" : 				{
+					"destination" : [ "obj-81", 0 ],
+					"source" : [ "obj-83", 0 ]
+				}
+
+			}
  ],
 		"parameters" : 		{
 			"obj-17" : [ "json-output", "json-output", 0 ],
 			"obj-21" : [ "small-model-mode", "small-model-mode", 0 ],
-			"obj-32" : [ "live.text[3]", "live.text[3]", 0 ],
-			"obj-37" : [ "live.toggle", "live.toggle", 0 ],
+			"obj-35" : [ "live.text[2]", "live.text[2]", 0 ],
 			"obj-55" : [ "live.button", "live.button", 0 ],
+			"obj-62" : [ "live.text[3]", "live.text[2]", 0 ],
 			"obj-64" : [ "port", "port", 0 ],
 			"obj-68" : [ "timeout", "timeout", 0 ],
 			"obj-69" : [ "live.text", "live.text", 0 ],
 			"obj-70" : [ "live.text[1]", "live.text", 0 ],
 			"obj-8" : [ "verbose-logs", "verbose-logs", 0 ],
-			"parameterbanks" : 			{
-				"0" : 				{
-					"index" : 0,
-					"name" : "",
-					"parameters" : [ "-", "-", "-", "-", "-", "-", "-", "-" ]
-				}
-
-			}
-,
 			"inherited_shortname" : 1
 		}
 ,
