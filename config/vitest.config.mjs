@@ -71,9 +71,8 @@ export default defineConfig({
         // ignore loggers:
         "src/portal/file-logger.js",
 
-        // ignore other hard-to-test files:
-        "src/test/mock-task.js",
-        "src/test/mock-chat-ui-html.js",
+        // ignore test mocks:
+        "src/test/mock-*.js",
       ],
       reportOnFailure: true,
 
