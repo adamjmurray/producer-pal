@@ -25,10 +25,24 @@ function createSingleTrack(liveSet, type, currentIndex) {
  * @param {string|undefined} baseName - Base name for the track
  * @param {number} count - Total number of tracks being created
  * @param {number} index - Current track index in the batch
+ * @param {string[]|null} parsedNames - Comma-separated names (when count > 1)
  * @returns {string|undefined} Track name
  */
-function buildTrackName(baseName, count, index) {
+function buildTrackName(baseName, count, index, parsedNames = null) {
   if (baseName == null) return undefined;
+
+  // If we have parsed names from comma-separated input
+  if (parsedNames != null) {
+    if (index < parsedNames.length) {
+      return parsedNames[index];
+    }
+    // Fall back to numbering from the last name (starting from 2)
+    const lastName = parsedNames[parsedNames.length - 1];
+    const fallbackIndex = index - parsedNames.length + 2;
+    return `${lastName} ${fallbackIndex}`;
+  }
+
+  // Original behavior when no comma-separated names
   if (count === 1) return baseName;
   if (index === 0) return baseName;
   return `${baseName} ${index + 1}`;
@@ -120,12 +134,18 @@ export function createTrack(
   const createdTracks = [];
   let currentIndex = effectiveTrackIndex;
 
+  // Parse comma-separated names when count > 1
+  const parsedNames =
+    count > 1 && name != null && name.includes(",")
+      ? name.split(",").map((n) => n.trim())
+      : null;
+
   for (let i = 0; i < count; i++) {
     const trackId = createSingleTrack(liveSet, type, currentIndex);
     const track = new LiveAPI(`id ${trackId}`);
 
     track.setAll({
-      name: buildTrackName(name, count, i),
+      name: buildTrackName(name, count, i, parsedNames),
       color,
       mute,
       solo,

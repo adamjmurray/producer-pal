@@ -15,36 +15,21 @@ Expanded features and support for multiple AI platforms.
 Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
 Studio, Ollama, and more.
 
-### 1.2 - Audio Clips & Improved Clip Handling
+### 1.2 - Audio clip support, mixer support, enhanced track/clip management
 
-#### 1.2.0
-
-- Read and write audio-specific clip properties: gain, pitch, warp mode, warp
-  markers
-- Change clips' arrangement start time and arrangement length
-- Duplicate (session or arrangement) clips to arbitrary arrangement positions
-  and lengths (e.g. looping clips loop to fill up extra space)
-- Duplicate session clips to arbitrary clip slots
-
-#### 1.2.1
-
-- Added an experimental tool `ppal-transform-clips` that can:
-  - slice up arrangement clips
-  - randomly reorder arrangement clips
-  - randomize various clip parameters
-- Use dB units when reading and writing audio clip gain (instead of the
-  normalized 0-1 range that has no relation to meaningful dB values)
-
-## In Progress
-
-### 1.2.2 - More Audio Clips & Improved Clip Handling + Track Mixer Support
-
-- Mixer support: reading and writing track gain, panning, and sends
-- Ability to scan a folder for audio files and create audio clips from those
-  files
-- Better handling for Live's color palette by warning when an arbitrary RGB
-  color (set on a Track, Scene, or Clip) is mapped to a different value in the
-  palette
+- Create audio clips
+- A new `read-samples` tool can scan a folder (if you choose to allow it) for
+  audio files and create audio clips from those samples
+- Read and write audio clip properties: gain, pitch, warp mode, warp markers
+- Read and write track mixer properties for gain, panning (including standard
+  stereo panning and split L/R panning modes), and sends
+- Change clip arrangement start time and arrangement length
+- Create multiple tracks at once with independent names
+- Create or duplicate clips to multiple arbitrary arrangement positions and clip
+  slots (e.g. for quickly laying out audio clips in the arrangement)
+- Added an experimental tool `ppal-transform-clips` that can, slice up
+  arrangement clips, randomly reorder slices, and randomize various parameters
+  across multiple clips
 
 ## Planned
 

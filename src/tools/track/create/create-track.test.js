@@ -410,4 +410,159 @@ describe("createTrack", () => {
       );
     });
   });
+
+  describe("comma-separated names", () => {
+    it("should use comma-separated names for each track when count matches", () => {
+      const result = createTrack({
+        trackIndex: 0,
+        count: 3,
+        name: "kick,snare,hat",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "name",
+        "kick",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "name",
+        "snare",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_2" }),
+        "name",
+        "hat",
+      );
+      expect(result).toHaveLength(3);
+    });
+
+    it("should fall back to numbered naming when count exceeds names", () => {
+      const result = createTrack({
+        trackIndex: 0,
+        count: 4,
+        name: "kick,snare,hat",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "name",
+        "kick",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "name",
+        "snare",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_2" }),
+        "name",
+        "hat",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_3" }),
+        "name",
+        "hat 2",
+      );
+      expect(result).toHaveLength(4);
+    });
+
+    it("should ignore extra names when count is less than names", () => {
+      const result = createTrack({
+        trackIndex: 0,
+        count: 2,
+        name: "kick,snare,hat",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "name",
+        "kick",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "name",
+        "snare",
+      );
+      expect(result).toHaveLength(2);
+    });
+
+    it("should preserve commas in name when count is 1", () => {
+      const result = createTrack({
+        trackIndex: 0,
+        count: 1,
+        name: "kick,snare",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "name",
+        "kick,snare",
+      );
+      expect(result).toEqual({
+        id: "midi_track_0",
+        trackIndex: 0,
+      });
+    });
+
+    it("should trim whitespace around comma-separated names", () => {
+      createTrack({
+        trackIndex: 0,
+        count: 3,
+        name: " kick , snare , hat ",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "name",
+        "kick",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "name",
+        "snare",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_2" }),
+        "name",
+        "hat",
+      );
+    });
+
+    it("should continue numbering from 2 when falling back", () => {
+      createTrack({
+        trackIndex: 0,
+        count: 5,
+        name: "kick,snare,hat",
+      });
+
+      // First 3 tracks use the provided names
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "name",
+        "kick",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "name",
+        "snare",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_2" }),
+        "name",
+        "hat",
+      );
+      // Subsequent tracks use "hat 2", "hat 3" (starting from 2)
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_3" }),
+        "name",
+        "hat 2",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_4" }),
+        "name",
+        "hat 3",
+      );
+    });
+  });
 });
