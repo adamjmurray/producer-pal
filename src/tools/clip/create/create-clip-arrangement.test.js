@@ -11,11 +11,8 @@ describe("createClip - arrangement view", () => {
   it("should create a single clip in arrangement", () => {
     mockLiveApiGet({
       Track: { exists: () => true },
-      LiveSet: { signature_numerator: 4 },
-      Clip: {
-        signature_numerator: 4,
-        signature_denominator: 4,
-      },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      arrangement_clip: { length: 4 }, // 1 bar in 4/4 = 4 beats
     });
 
     liveApiCall.mockImplementation((method, ..._args) => {
@@ -61,9 +58,11 @@ describe("createClip - arrangement view", () => {
     });
   });
 
-  it("should create arrangement clips with exact lengths and positions", () => {
+  it("should create arrangement clips at specified positions", () => {
     mockLiveApiGet({
       Track: { exists: () => true },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+      arrangement_clip: { length: 4 }, // 1 bar in 4/4 = 4 beats
     });
 
     liveApiCall.mockImplementation((method, ..._args) => {
@@ -83,31 +82,30 @@ describe("createClip - arrangement view", () => {
     const result = createClip({
       view: "arrangement",
       trackIndex: 0,
-      arrangementStart: "3|1",
-      count: 3,
+      arrangementStart: "3|1,4|1,5|1", // Three explicit positions
       name: "Sequence",
       notes: "C3 1|1 D3 1|2",
     });
 
-    // Clips should be created with exact length (4 beats = 1 bar in 4/4) at correct positions
+    // Clips should be created with exact length (4 beats = 1 bar in 4/4) at specified positions
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0" }),
       "create_midi_clip",
       8,
       4,
-    ); // 8 + (0 * 4)
+    ); // 3|1 = 8 beats
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0" }),
       "create_midi_clip",
       12,
       4,
-    ); // 8 + (1 * 4)
+    ); // 4|1 = 12 beats
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0" }),
       "create_midi_clip",
       16,
       4,
-    ); // 8 + (2 * 4)
+    ); // 5|1 = 16 beats
 
     expect(result).toEqual([
       {

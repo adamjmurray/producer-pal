@@ -19,24 +19,21 @@ export const toolDefCreateClip = defineTool("ppal-create-clip", {
       .min(0)
       .describe("0-based track index for session clips"),
     sceneIndex: z
-      .number()
-      .int()
-      .min(0)
+      .string()
       .optional()
-      .describe("0-based scene index for session clips"),
+      .describe(
+        "scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')",
+      ),
     arrangementStart: z
       .string()
       .optional()
-      .describe("start bar|beat position for arrangement clips"),
-    count: z
-      .number()
-      .int()
-      .min(1)
-      .default(1)
       .describe(
-        "number of copies (session fills successive slots, arrangement places back-to-back)",
+        "bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')",
       ),
-    name: z.string().optional().describe("cip name (appended with counts > 1)"),
+    name: z
+      .string()
+      .optional()
+      .describe("clip name (numbered suffix for multiple clips)"),
     color: z.string().optional().describe("#RRGGBB"),
     timeSignature: z
       .string()

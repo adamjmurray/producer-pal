@@ -1,10 +1,15 @@
 import { interpretNotation } from "#src/notation/barbeat/interpreter/barbeat-interpreter.js";
-import { timeSigToAbletonBeatsPerBar } from "#src/notation/barbeat/time/barbeat-time.js";
+import {
+  barBeatToAbletonBeats,
+  timeSigToAbletonBeatsPerBar,
+} from "#src/notation/barbeat/time/barbeat-time.js";
 import { select } from "#src/tools/control/select.js";
 import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
   buildClipName,
   convertTimingParameters,
+  parseArrangementStartList,
+  parseSceneIndexList,
   processClipIteration,
 } from "./helpers/create-clip-helpers.js";
 
@@ -13,9 +18,8 @@ import {
  * @param {object} args - The clip parameters
  * @param {string} args.view - View for the clip ('Session' or 'Arrangement')
  * @param {number} args.trackIndex - Track index (0-based)
- * @param {number} [args.sceneIndex] - The scene/clip slot index (0-based), required for Session view
- * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
- * @param {number} [args.count=1] - Number of clips to create
+ * @param {string} [args.sceneIndex] - Scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')
+ * @param {string} [args.arrangementStart] - Bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')
  * @param {string} [args.notes] - Musical notation string (MIDI clips only)
  * @param {string} [args.sampleFile] - Absolute path to audio file (audio clips only)
  * @param {string} [args.name] - Base name for the clips
@@ -25,10 +29,10 @@ import {
  * @param {string} [args.length] - Clip length in bar:beat duration format (e.g., '4:0' = 4 bars). end = start + length
  * @param {string} [args.firstStart] - Bar|beat position for initial playback start (only needed when different from start)
  * @param {boolean} [args.looping] - Enable looping for the clip
- * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only. Puts tracks into non-following state.
+ * @param {string} [args.auto] - Automatic playback action: "play-scene" (launch entire scene) or "play-clip" (play individual clips). Session only.
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on the clip view parameter
  * @param {object} _context - Internal context object (unused)
- * @returns {object | Array<object>} Single clip object when count=1, array when count>1
+ * @returns {object | Array<object>} Single clip object when one position, array when multiple positions
  */
 export function createClip(
   {
@@ -36,7 +40,6 @@ export function createClip(
     trackIndex,
     sceneIndex = null,
     arrangementStart = null,
-    count = 1,
     notes: notationString = null,
     sampleFile = null,
     name = null,
@@ -51,13 +54,16 @@ export function createClip(
   } = {},
   _context = {},
 ) {
+  // Parse position lists
+  const sceneIndices = parseSceneIndexList(sceneIndex);
+  const arrangementStarts = parseArrangementStartList(arrangementStart);
+
   // Validate parameters
   validateCreateClipParams(
     view,
     trackIndex,
-    sceneIndex,
-    arrangementStart,
-    count,
+    sceneIndices,
+    arrangementStarts,
     notationString,
     sampleFile,
   );
@@ -80,19 +86,18 @@ export function createClip(
     timeSigDenominator = songTimeSigDenominator;
   }
 
-  // Convert timing parameters to Ableton beats
-  const { arrangementStartBeats, startBeats, firstStartBeats, endBeats } =
-    convertTimingParameters(
-      arrangementStart,
-      start,
-      firstStart,
-      length,
-      looping,
-      timeSigNumerator,
-      timeSigDenominator,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
+  // Convert timing parameters to Ableton beats (excluding arrangementStart, done per-position)
+  const { startBeats, firstStartBeats, endBeats } = convertTimingParameters(
+    null, // arrangementStart converted per-position
+    start,
+    firstStart,
+    length,
+    looping,
+    timeSigNumerator,
+    timeSigDenominator,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 
   // Parse notation and determine clip length
   const { notes, clipLength: initialClipLength } = prepareClipData(
@@ -105,12 +110,11 @@ export function createClip(
 
   // Create clips
   const createdClips = createClips(
-    count,
-    name,
     view,
     trackIndex,
-    sceneIndex,
-    arrangementStartBeats,
+    sceneIndices,
+    arrangementStarts,
+    name,
     initialClipLength,
     liveSet,
     startBeats,
@@ -124,29 +128,27 @@ export function createClip(
     notes,
     songTimeSigNumerator,
     songTimeSigDenominator,
-    arrangementStart,
     length,
     sampleFile,
   );
 
   // Handle automatic playback and view switching
-  handleAutoPlayback(auto, view, sceneIndex, count, trackIndex);
+  handleAutoPlayback(auto, view, sceneIndices, trackIndex);
   if (switchView) {
     select({ view });
   }
 
-  // Return single object if count=1, array if count>1
-  return count === 1 ? createdClips[0] : createdClips;
+  // Return single object if one position, array if multiple
+  return createdClips.length === 1 ? createdClips[0] : createdClips;
 }
 
 /**
- * Creates clips by iterating count times
- * @param {number} count - Number of clips to create
- * @param {string} name - Base clip name
+ * Creates clips by iterating over positions
  * @param {string} view - View type
  * @param {number} trackIndex - Track index
- * @param {number} sceneIndex - Scene index
- * @param {number} arrangementStartBeats - Arrangement start in beats
+ * @param {number[]} sceneIndices - Array of scene indices (session view)
+ * @param {string[]} arrangementStarts - Array of bar|beat positions (arrangement view)
+ * @param {string} name - Base clip name
  * @param {number} initialClipLength - Initial clip length
  * @param {LiveAPI} liveSet - LiveAPI liveSet object
  * @param {number} startBeats - Loop start in beats
@@ -160,18 +162,16 @@ export function createClip(
  * @param {Array} notes - Array of MIDI notes
  * @param {number} songTimeSigNumerator - Song time signature numerator
  * @param {number} songTimeSigDenominator - Song time signature denominator
- * @param {string} arrangementStart - Arrangement start in bar|beat format
  * @param {string} length - Original length parameter
  * @param {string} sampleFile - Audio file path
  * @returns {Array} - Array of created clips
  */
 function createClips(
-  count,
-  name,
   view,
   trackIndex,
-  sceneIndex,
-  arrangementStartBeats,
+  sceneIndices,
+  arrangementStarts,
+  name,
   initialClipLength,
   liveSet,
   startBeats,
@@ -185,22 +185,39 @@ function createClips(
   notes,
   songTimeSigNumerator,
   songTimeSigDenominator,
-  arrangementStart,
   length,
   sampleFile,
 ) {
   const createdClips = [];
+  const positions = view === "session" ? sceneIndices : arrangementStarts;
+  const count = positions.length;
   let clipLength = initialClipLength;
 
   for (let i = 0; i < count; i++) {
     const clipName = buildClipName(name, count, i);
 
+    // Get position for this iteration
+    let currentSceneIndex = null;
+    let currentArrangementStartBeats = null;
+    let currentArrangementStart = null;
+
+    if (view === "session") {
+      currentSceneIndex = sceneIndices[i];
+    } else {
+      currentArrangementStart = arrangementStarts[i];
+      currentArrangementStartBeats = barBeatToAbletonBeats(
+        currentArrangementStart,
+        songTimeSigNumerator,
+        songTimeSigDenominator,
+      );
+    }
+
     const clipResult = processClipIteration(
-      i,
       view,
       trackIndex,
-      sceneIndex,
-      arrangementStartBeats,
+      currentSceneIndex,
+      currentArrangementStartBeats,
+      currentArrangementStart,
       clipLength,
       liveSet,
       startBeats,
@@ -213,15 +230,12 @@ function createClips(
       timeSigDenominator,
       notationString,
       notes,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-      arrangementStart,
       length,
       sampleFile,
     );
     createdClips.push(clipResult);
 
-    // For audio clips with count > 1, get the actual length from the first clip
+    // For audio clips with multiple positions, get actual length from first clip
     if (sampleFile && count > 1 && i === 0) {
       const firstClip = new LiveAPI(clipResult.id);
       clipLength = firstClip.getProperty("length");
@@ -279,18 +293,16 @@ function prepareClipData(
  * Validates createClip parameters
  * @param {string} view - View type (session or arrangement)
  * @param {number} trackIndex - Track index
- * @param {number} sceneIndex - Scene index for session view
- * @param {string} arrangementStart - Arrangement start for arrangement view
- * @param {number} count - Number of clips to create
+ * @param {number[]} sceneIndices - Parsed scene indices for session view
+ * @param {string[]} arrangementStarts - Parsed arrangement starts for arrangement view
  * @param {string} notes - MIDI notes notation string
  * @param {string} sampleFile - Audio file path
  */
 function validateCreateClipParams(
   view,
   trackIndex,
-  sceneIndex,
-  arrangementStart,
-  count,
+  sceneIndices,
+  arrangementStarts,
   notes,
   sampleFile,
 ) {
@@ -302,20 +314,16 @@ function validateCreateClipParams(
     throw new Error("createClip failed: trackIndex is required");
   }
 
-  if (view === "session" && sceneIndex == null) {
+  if (view === "session" && sceneIndices.length === 0) {
     throw new Error(
-      "createClip failed: sceneIndex is required when view is 'Session'",
+      "createClip failed: sceneIndex is required when view is 'session'",
     );
   }
 
-  if (view === "arrangement" && arrangementStart == null) {
+  if (view === "arrangement" && arrangementStarts.length === 0) {
     throw new Error(
-      "createClip failed: arrangementStart is required when view is 'Arrangement'",
+      "createClip failed: arrangementStart is required when view is 'arrangement'",
     );
-  }
-
-  if (count < 1) {
-    throw new Error("createClip failed: count must be at least 1");
   }
 
   // Cannot specify both sampleFile and notes
@@ -374,22 +382,22 @@ function calculateClipLength(
  * Handles automatic playback for session clips
  * @param {string} auto - Auto playback mode (play-scene or play-clip)
  * @param {string} view - View type
- * @param {number} sceneIndex - Scene index
- * @param {number} count - Number of clips
+ * @param {number[]} sceneIndices - Array of scene indices
  * @param {number} trackIndex - Track index
  */
-function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
-  if (!auto || view !== "session") {
+function handleAutoPlayback(auto, view, sceneIndices, trackIndex) {
+  if (!auto || view !== "session" || sceneIndices.length === 0) {
     return;
   }
 
   switch (auto) {
     case "play-scene": {
-      // Launch the entire scene for synchronization
-      const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+      // Launch the first scene for synchronization
+      const firstSceneIndex = sceneIndices[0];
+      const scene = new LiveAPI(`live_set scenes ${firstSceneIndex}`);
       if (!scene.exists()) {
         throw new Error(
-          `createClip auto="play-scene" failed: scene at sceneIndex=${sceneIndex} does not exist`,
+          `createClip auto="play-scene" failed: scene at sceneIndex=${firstSceneIndex} does not exist`,
         );
       }
       scene.call("fire");
@@ -397,11 +405,10 @@ function handleAutoPlayback(auto, view, sceneIndex, count, trackIndex) {
     }
 
     case "play-clip":
-      // Fire individual clips (original autoplay behavior)
-      for (let i = 0; i < count; i++) {
-        const currentSceneIndex = sceneIndex + i;
+      // Fire individual clips at each scene index
+      for (const sceneIndex of sceneIndices) {
         const clipSlot = new LiveAPI(
-          `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
+          `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
         );
         clipSlot.call("fire");
       }

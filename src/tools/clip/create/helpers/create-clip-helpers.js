@@ -14,6 +14,45 @@ import {
 } from "./create-clip-result-helpers.js";
 
 /**
+ * Parses a comma-separated string of scene indices into an array of integers
+ * @param {string} input - Comma-separated scene indices (e.g., "0" or "0,2,5")
+ * @returns {number[]} - Array of scene indices
+ */
+export function parseSceneIndexList(input) {
+  if (input == null) {
+    return [];
+  }
+  return input
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s !== "")
+    .map((s) => {
+      const num = parseInt(s, 10);
+      if (isNaN(num) || num < 0) {
+        throw new Error(
+          `createClip failed: invalid sceneIndex "${s}" - must be a non-negative integer`,
+        );
+      }
+      return num;
+    });
+}
+
+/**
+ * Parses a comma-separated string of bar|beat positions into an array
+ * @param {string} input - Comma-separated positions (e.g., "1|1" or "1|1,2|1,3|3")
+ * @returns {string[]} - Array of bar|beat position strings
+ */
+export function parseArrangementStartList(input) {
+  if (input == null) {
+    return [];
+  }
+  return input
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s !== "");
+}
+
+/**
  * Builds a clip name based on count and iteration index
  * @param {string} name - Base clip name
  * @param {number} count - Total number of clips being created
@@ -102,10 +141,9 @@ export function convertTimingParameters(
 /**
  * Creates a session clip in a clip slot, auto-creating scenes if needed
  * @param {number} trackIndex - Track index (0-based)
- * @param {number} sceneIndex - Base scene index
+ * @param {number} sceneIndex - Target scene index (0-based)
  * @param {number} clipLength - Clip length in beats
  * @param {object} liveSet - LiveAPI live_set object
- * @param {number} i - Current iteration index
  * @param {number} maxAutoCreatedScenes - Maximum scenes allowed
  * @returns {object} - Object with clip and sceneIndex
  */
@@ -114,15 +152,12 @@ function createSessionClip(
   sceneIndex,
   clipLength,
   liveSet,
-  i,
   maxAutoCreatedScenes,
 ) {
-  const currentSceneIndex = sceneIndex + i;
-
   // Auto-create scenes if needed
-  if (currentSceneIndex >= maxAutoCreatedScenes) {
+  if (sceneIndex >= maxAutoCreatedScenes) {
     throw new Error(
-      `createClip failed: sceneIndex ${currentSceneIndex} exceeds the maximum allowed value of ${
+      `createClip failed: sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
         MAX_AUTO_CREATED_SCENES - 1
       }`,
     );
@@ -130,25 +165,25 @@ function createSessionClip(
 
   const currentSceneCount = liveSet.getChildIds("scenes").length;
 
-  if (currentSceneIndex >= currentSceneCount) {
-    const scenesToCreate = currentSceneIndex - currentSceneCount + 1;
+  if (sceneIndex >= currentSceneCount) {
+    const scenesToCreate = sceneIndex - currentSceneCount + 1;
     for (let j = 0; j < scenesToCreate; j++) {
       liveSet.call("create_scene", -1); // -1 means append at the end
     }
   }
 
   const clipSlot = new LiveAPI(
-    `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
+    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
-      `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentSceneIndex}`,
+      `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
     );
   }
   clipSlot.call("create_clip", clipLength);
   return {
     clip: new LiveAPI(`${clipSlot.path} clip`),
-    sceneIndex: currentSceneIndex,
+    sceneIndex,
   };
 }
 
@@ -157,17 +192,9 @@ function createSessionClip(
  * @param {number} trackIndex - Track index (0-based)
  * @param {number} arrangementStartBeats - Starting position in beats
  * @param {number} clipLength - Clip length in beats
- * @param {number} i - Current iteration index
  * @returns {object} - Object with clip and arrangementStartBeats
  */
-function createArrangementClip(
-  trackIndex,
-  arrangementStartBeats,
-  clipLength,
-  i,
-) {
-  const currentArrangementStartBeats = arrangementStartBeats + i * clipLength;
-
+function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
   if (!track.exists()) {
     throw new Error(
@@ -177,7 +204,7 @@ function createArrangementClip(
 
   const newClipResult = track.call(
     "create_midi_clip",
-    currentArrangementStartBeats,
+    arrangementStartBeats,
     clipLength,
   );
   const clip = LiveAPI.from(newClipResult);
@@ -185,16 +212,16 @@ function createArrangementClip(
     throw new Error("createClip failed: failed to create Arrangement clip");
   }
 
-  return { clip, arrangementStartBeats: currentArrangementStartBeats };
+  return { clip, arrangementStartBeats };
 }
 
 /**
- * Processes one iteration of clip creation
- * @param {number} i - Current iteration index
+ * Processes one clip creation at a specific position
  * @param {string} view - View type (session or arrangement)
  * @param {number} trackIndex - Track index
- * @param {number} sceneIndex - Scene index for session clips
- * @param {number} arrangementStartBeats - Arrangement start in beats
+ * @param {number} sceneIndex - Scene index for session clips (explicit position)
+ * @param {number} arrangementStartBeats - Arrangement start in beats (explicit position)
+ * @param {string} arrangementStart - Arrangement start in bar|beat format (for result)
  * @param {number} clipLength - Clip length in beats
  * @param {object} liveSet - LiveAPI live_set object
  * @param {number} startBeats - Loop start in beats
@@ -207,19 +234,16 @@ function createArrangementClip(
  * @param {number} timeSigDenominator - Clip time signature denominator
  * @param {string} notationString - Original notation string
  * @param {Array} notes - Array of MIDI notes
- * @param {number} songTimeSigNumerator - Song time signature numerator
- * @param {number} songTimeSigDenominator - Song time signature denominator
- * @param {string} arrangementStart - Arrangement start in bar|beat format
  * @param {string} length - Original length parameter
  * @param {string} sampleFile - Audio file path (for audio clips)
  * @returns {object} - Clip result for this iteration
  */
 export function processClipIteration(
-  i,
   view,
   trackIndex,
   sceneIndex,
   arrangementStartBeats,
+  arrangementStart,
   clipLength,
   liveSet,
   startBeats,
@@ -232,9 +256,6 @@ export function processClipIteration(
   timeSigDenominator,
   notationString,
   notes,
-  songTimeSigNumerator,
-  songTimeSigDenominator,
-  arrangementStart,
   length,
   sampleFile,
 ) {
@@ -249,7 +270,6 @@ export function processClipIteration(
         sceneIndex,
         sampleFile,
         liveSet,
-        i,
         MAX_AUTO_CREATED_SCENES,
       );
       clip = result.clip;
@@ -261,7 +281,6 @@ export function processClipIteration(
         arrangementStartBeats,
         sampleFile,
         clipLength,
-        i,
       );
       clip = result.clip;
     }
@@ -282,7 +301,6 @@ export function processClipIteration(
         sceneIndex,
         clipLength,
         liveSet,
-        i,
         MAX_AUTO_CREATED_SCENES,
       );
       clip = result.clip;
@@ -293,7 +311,6 @@ export function processClipIteration(
         trackIndex,
         arrangementStartBeats,
         clipLength,
-        i,
       );
       clip = result.clip;
     }
@@ -322,11 +339,7 @@ export function processClipIteration(
     trackIndex,
     view,
     currentSceneIndex,
-    i,
     arrangementStart,
-    songTimeSigNumerator,
-    songTimeSigDenominator,
-    clipLength,
     notationString,
     notes,
     length,

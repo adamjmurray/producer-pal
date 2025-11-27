@@ -32,7 +32,7 @@ describe("createClip - session view", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C3 D3 E3 1|1",
       name: "New Clip",
       color: "#FF0000",
@@ -130,7 +130,7 @@ describe("createClip - session view", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C3 1|1",
       auto: "play-scene",
     });
@@ -165,13 +165,13 @@ describe("createClip - session view", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         auto: "invalid-value",
       }),
     ).toThrow('createClip failed: unknown auto value "invalid-value"');
   });
 
-  it("should create multiple clips in successive slots", () => {
+  it("should create multiple clips at specified scene indices", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 1 clip":
@@ -195,8 +195,7 @@ describe("createClip - session view", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 1,
-      count: 3,
+      sceneIndex: "1,2,3", // Create clips at scenes 1, 2, and 3
       name: "Loop",
       color: "#00FF00",
     });
@@ -274,7 +273,7 @@ describe("createClip - session view", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 4, // Needs scenes at indices 2, 3, 4
+      sceneIndex: "4", // Needs scenes at indices 2, 3, 4
       name: "Future Clip",
     });
 
@@ -311,7 +310,7 @@ describe("createClip - session view", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         name: "This Should Fail",
       }),
     ).toThrow(
@@ -324,7 +323,7 @@ describe("createClip - session view", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: MAX_AUTO_CREATED_SCENES,
+        sceneIndex: String(MAX_AUTO_CREATED_SCENES),
         name: "This Should Fail",
       }),
     ).toThrow(/exceeds the maximum allowed value/);

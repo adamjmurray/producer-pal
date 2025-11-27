@@ -3,10 +3,9 @@ import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
 /**
  * Creates an audio clip in a session clip slot
  * @param {number} trackIndex - Track index (0-based)
- * @param {number} sceneIndex - Scene index for the clip
+ * @param {number} sceneIndex - Target scene index (0-based)
  * @param {string} sampleFile - Absolute path to audio file
  * @param {LiveAPI} liveSet - LiveAPI liveSet object
- * @param {number} i - Current iteration index
  * @param {number} maxAutoCreatedScenes - Maximum number of scenes allowed
  * @returns {object} - Object with clip and sceneIndex
  */
@@ -15,15 +14,12 @@ export function createAudioSessionClip(
   sceneIndex,
   sampleFile,
   liveSet,
-  i,
   maxAutoCreatedScenes,
 ) {
-  const currentSceneIndex = sceneIndex + i;
-
   // Auto-create scenes if needed (same logic as MIDI)
-  if (currentSceneIndex >= maxAutoCreatedScenes) {
+  if (sceneIndex >= maxAutoCreatedScenes) {
     throw new Error(
-      `createClip failed: sceneIndex ${currentSceneIndex} exceeds the maximum allowed value of ${
+      `createClip failed: sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
         MAX_AUTO_CREATED_SCENES - 1
       }`,
     );
@@ -31,19 +27,19 @@ export function createAudioSessionClip(
 
   const currentSceneCount = liveSet.getChildIds("scenes").length;
 
-  if (currentSceneIndex >= currentSceneCount) {
-    const scenesToCreate = currentSceneIndex - currentSceneCount + 1;
+  if (sceneIndex >= currentSceneCount) {
+    const scenesToCreate = sceneIndex - currentSceneCount + 1;
     for (let j = 0; j < scenesToCreate; j++) {
       liveSet.call("create_scene", -1); // -1 means append at the end
     }
   }
 
   const clipSlot = new LiveAPI(
-    `live_set tracks ${trackIndex} clip_slots ${currentSceneIndex}`,
+    `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
-      `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${currentSceneIndex}`,
+      `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
     );
   }
 
@@ -52,7 +48,7 @@ export function createAudioSessionClip(
 
   return {
     clip: new LiveAPI(`${clipSlot.path} clip`),
-    sceneIndex: currentSceneIndex,
+    sceneIndex,
   };
 }
 
@@ -61,23 +57,19 @@ export function createAudioSessionClip(
  * @param {number} trackIndex - Track index (0-based)
  * @param {number} arrangementStartBeats - Start position in Ableton beats
  * @param {string} sampleFile - Absolute path to audio file
- * @param {number} clipLength - Length of clip in Ableton beats (for calculating position of multiple clips)
- * @param {number} i - Current iteration index
+ * @param {number} _clipLength - Unused (kept for signature consistency)
  * @returns {object} - Object with clip and arrangementStartBeats
  */
 export function createAudioArrangementClip(
   trackIndex,
   arrangementStartBeats,
   sampleFile,
-  clipLength,
-  i,
+  _clipLength,
 ) {
-  const position = arrangementStartBeats + i * clipLength;
-
   // Live API limit check
-  if (position > 1576800) {
+  if (arrangementStartBeats > 1576800) {
     throw new Error(
-      `createClip failed: arrangement position ${position} exceeds maximum allowed value of 1576800`,
+      `createClip failed: arrangement position ${arrangementStartBeats} exceeds maximum allowed value of 1576800`,
     );
   }
 
@@ -89,7 +81,11 @@ export function createAudioArrangementClip(
   }
 
   // Create audio clip at position
-  const newClipResult = track.call("create_audio_clip", sampleFile, position);
+  const newClipResult = track.call(
+    "create_audio_clip",
+    sampleFile,
+    arrangementStartBeats,
+  );
   const clip = LiveAPI.from(newClipResult);
   if (!clip.exists()) {
     throw new Error(
@@ -97,5 +93,5 @@ export function createAudioArrangementClip(
     );
   }
 
-  return { clip, arrangementStartBeats: position };
+  return { clip, arrangementStartBeats };
 }

@@ -1,8 +1,4 @@
-import {
-  abletonBeatsToBarBeatDuration,
-  barBeatToBeats,
-  beatsToBarBeat,
-} from "#src/notation/barbeat/time/barbeat-time.js";
+import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbeat-time.js";
 
 /**
  * Builds the properties object to set on a clip
@@ -79,11 +75,7 @@ export function buildClipProperties(
  * @param {number} trackIndex - Track index
  * @param {string} view - View type (session or arrangement)
  * @param {number} sceneIndex - Scene index for session clips
- * @param {number} i - Current iteration index
- * @param {string} arrangementStart - Arrangement start in bar|beat format
- * @param {number} songTimeSigNumerator - Song time signature numerator
- * @param {number} songTimeSigDenominator - Song time signature denominator
- * @param {number} clipLength - Clip length in beats
+ * @param {string} arrangementStart - Arrangement start in bar|beat format (explicit position)
  * @param {string} notationString - Original notation string
  * @param {Array} notes - Array of MIDI notes
  * @param {string} length - Original length parameter
@@ -97,11 +89,7 @@ export function buildClipResult(
   trackIndex,
   view,
   sceneIndex,
-  i,
   arrangementStart,
-  songTimeSigNumerator,
-  songTimeSigDenominator,
-  clipLength,
   notationString,
   notes,
   length,
@@ -117,22 +105,8 @@ export function buildClipResult(
   // Add view-specific properties
   if (view === "session") {
     clipResult.sceneIndex = sceneIndex;
-  } else if (i === 0) {
-    // Calculate bar|beat position for this clip
-    clipResult.arrangementStart = arrangementStart;
   } else {
-    // Convert clipLength back to bar|beat format and add to original position
-    const clipLengthInMusicalBeats = clipLength * (songTimeSigDenominator / 4);
-    const totalOffsetBeats = i * clipLengthInMusicalBeats;
-    const originalBeats = barBeatToBeats(
-      arrangementStart,
-      songTimeSigNumerator,
-    );
-    const newPositionBeats = originalBeats + totalOffsetBeats;
-    clipResult.arrangementStart = beatsToBarBeat(
-      newPositionBeats,
-      songTimeSigNumerator,
-    );
+    clipResult.arrangementStart = arrangementStart;
   }
 
   // For MIDI clips: include noteCount if notes were provided
@@ -141,8 +115,9 @@ export function buildClipResult(
 
     // Include calculated length if it wasn't provided as input parameter
     if (length == null) {
+      const actualClipLength = clip.getProperty("length");
       clipResult.length = abletonBeatsToBarBeatDuration(
-        clipLength,
+        actualClipLength,
         timeSigNumerator,
         timeSigDenominator,
       );

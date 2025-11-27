@@ -20,7 +20,7 @@ describe("createClip - audio clips", () => {
         createClip({
           view: "session",
           trackIndex: 0,
-          sceneIndex: 0,
+          sceneIndex: "0",
           sampleFile: "/path/to/audio.wav",
           notes: "C3 1|1",
         }),
@@ -47,7 +47,7 @@ describe("createClip - audio clips", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         sampleFile: "/path/to/audio.wav",
       });
 
@@ -85,7 +85,7 @@ describe("createClip - audio clips", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         sampleFile: "/path/to/kick.wav",
         name: "Kick Sample",
         color: "#FF0000",
@@ -146,13 +146,12 @@ describe("createClip - audio clips", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0,1",
         sampleFile: "/path/to/loop.wav",
-        count: 2,
         name: "Loop",
       });
 
-      // Verify clips were created in successive scenes
+      // Verify clips were created at specified scenes
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0 clip_slots 0" }),
         "create_audio_clip",
@@ -198,7 +197,7 @@ describe("createClip - audio clips", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 1, // Scene doesn't exist yet
+        sceneIndex: "1", // Scene doesn't exist yet
         sampleFile: "/path/to/audio.wav",
       });
 
@@ -226,7 +225,7 @@ describe("createClip - audio clips", () => {
         createClip({
           view: "session",
           trackIndex: 0,
-          sceneIndex: MAX_AUTO_CREATED_SCENES,
+          sceneIndex: String(MAX_AUTO_CREATED_SCENES),
           sampleFile: "/path/to/audio.wav",
         }),
       ).toThrow(
@@ -243,7 +242,7 @@ describe("createClip - audio clips", () => {
         createClip({
           view: "session",
           trackIndex: 0,
-          sceneIndex: 0,
+          sceneIndex: "0",
           sampleFile: "/path/to/audio.wav",
         }),
       ).toThrow(
@@ -346,7 +345,7 @@ describe("createClip - audio clips", () => {
       });
     });
 
-    it("should create multiple audio clips back-to-back in arrangement", () => {
+    it("should create multiple audio clips at specified positions in arrangement", () => {
       let clipCounter = 0;
       liveApiCall.mockImplementation((method, ..._args) => {
         if (method === "create_audio_clip") {
@@ -383,13 +382,12 @@ describe("createClip - audio clips", () => {
       const result = createClip({
         view: "arrangement",
         trackIndex: 0,
-        arrangementStart: "1|1",
+        arrangementStart: "1|1,2|1,3|1",
         sampleFile: "/path/to/loop.wav",
-        count: 3,
         name: "Loop",
       });
 
-      // Verify clips created at successive positions
+      // Verify clips created at specified positions
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "create_audio_clip",
@@ -432,34 +430,18 @@ describe("createClip - audio clips", () => {
     });
 
     it("should throw error when arrangement position exceeds maximum", () => {
-      liveApiCall.mockImplementation((method, ..._args) => {
-        if (method === "create_audio_clip") {
-          return ["id", "arrangement_audio_clip"];
-        }
-        return null;
-      });
-
-      liveApiId.mockImplementation(function () {
-        if (this._path === "id arrangement_audio_clip") {
-          return "arrangement_audio_clip";
-        }
-        return this._id;
-      });
-
       mockLiveApiGet({
         Track: { exists: () => true },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
-        arrangement_audio_clip: { length: 4 }, // Mock by clip ID (without "id " prefix)
       });
 
-      // Position 1576801 exceeds the limit of 1576800
+      // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
       expect(() =>
         createClip({
           view: "arrangement",
           trackIndex: 0,
-          arrangementStart: "394201|1", // This translates to 1576800 beats, position 1576804 for second clip
+          arrangementStart: "394202|1",
           sampleFile: "/path/to/audio.wav",
-          count: 2,
         }),
       ).toThrow(
         "createClip failed: arrangement position 1576804 exceeds maximum allowed value of 1576800",
@@ -502,7 +484,7 @@ describe("createClip - audio clips", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         sampleFile: "/path/to/audio.wav",
       });
 
@@ -515,7 +497,7 @@ describe("createClip - audio clips", () => {
       });
     });
 
-    it("should use first clip length for subsequent clips in count > 1", () => {
+    it("should report same length for multiple clips from same sample", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 0 clip_slots 0 clip") {
           return "audio_clip_0_0";
@@ -540,9 +522,8 @@ describe("createClip - audio clips", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0,1",
         sampleFile: "/path/to/loop.wav",
-        count: 2,
       });
 
       // Both clips should have same length
@@ -580,7 +561,7 @@ describe("createClip - audio clips", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         sampleFile: "/path/to/audio.wav",
         start: "1|1",
         length: "2:0",
@@ -613,7 +594,7 @@ describe("createClip - audio clips", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         sampleFile: "/path/to/audio.wav",
         timeSignature: "3/4",
       });
