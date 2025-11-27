@@ -242,4 +242,125 @@ describe("readSamples", () => {
       expect(result.samples).toHaveLength(1000);
     });
   });
+
+  describe("search filtering", () => {
+    it("should return all samples when search is not provided", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "kick.wav", type: "file", extension: ".wav" },
+          { name: "snare.wav", type: "file", extension: ".wav" },
+        ],
+      });
+
+      const result = readSamples({}, context);
+
+      expect(result.samples).toEqual(["kick.wav", "snare.wav"]);
+    });
+
+    it("should filter samples by case-insensitive substring match on filename", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "kick.wav", type: "file", extension: ".wav" },
+          { name: "snare.wav", type: "file", extension: ".wav" },
+          { name: "Kick_808.wav", type: "file", extension: ".wav" },
+          { name: "hihat.wav", type: "file", extension: ".wav" },
+        ],
+      });
+
+      const result = readSamples({ search: "kick" }, context);
+
+      expect(result.samples).toEqual(["kick.wav", "Kick_808.wav"]);
+    });
+
+    it("should filter samples by case-insensitive substring match on folder path", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "kick.wav", type: "file", extension: ".wav" },
+          { name: "drums", type: "fold" },
+          { name: "bass", type: "fold" },
+        ],
+        "/samples/drums/": [
+          { name: "snare.wav", type: "file", extension: ".wav" },
+          { name: "hihat.wav", type: "file", extension: ".wav" },
+        ],
+        "/samples/bass/": [
+          { name: "kick.wav", type: "file", extension: ".wav" },
+        ],
+      });
+
+      const result = readSamples({ search: "drums" }, context);
+
+      expect(result.samples).toEqual(["drums/snare.wav", "drums/hihat.wav"]);
+    });
+
+    it("should return empty array when no matches found", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "kick.wav", type: "file", extension: ".wav" },
+          { name: "snare.wav", type: "file", extension: ".wav" },
+        ],
+      });
+
+      const result = readSamples({ search: "cymbal" }, context);
+
+      expect(result.samples).toEqual([]);
+    });
+
+    it("should handle search with mixed case", () => {
+      context.sampleFolder = "/samples/";
+      mockFolderStructure({
+        "/samples/": [
+          { name: "KICK.wav", type: "file", extension: ".wav" },
+          { name: "Snare.wav", type: "file", extension: ".wav" },
+          { name: "kick_808.WAV", type: "file", extension: ".WAV" },
+        ],
+      });
+
+      const result = readSamples({ search: "KiCk" }, context);
+
+      expect(result.samples).toEqual(["KICK.wav", "kick_808.WAV"]);
+    });
+
+    it("should only count matching files toward MAX_SAMPLE_FILES limit", () => {
+      context.sampleFolder = "/samples/";
+
+      // Create 1005 non-matching files and 5 matching files
+      const entries = [];
+      for (let i = 0; i < 1005; i++) {
+        entries.push({
+          name: `sample${i}.wav`,
+          type: "file",
+          extension: ".wav",
+        });
+      }
+      // Add 5 files that match "kick"
+      for (let i = 0; i < 5; i++) {
+        entries.push({
+          name: `kick${i}.wav`,
+          type: "file",
+          extension: ".wav",
+        });
+      }
+
+      mockFolderStructure({
+        "/samples/": entries,
+      });
+
+      const result = readSamples({ search: "kick" }, context);
+
+      // Should return all 5 matching files, not limited by MAX_SAMPLE_FILES
+      expect(result.samples).toHaveLength(5);
+      expect(result.samples).toEqual([
+        "kick0.wav",
+        "kick1.wav",
+        "kick2.wav",
+        "kick3.wav",
+        "kick4.wav",
+      ]);
+    });
+  });
 });

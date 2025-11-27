@@ -15,11 +15,12 @@ const AUDIO_EXTENSIONS = new Set([
 
 /**
  * List audio files from configured sample folder
- * @param {object} _args - Unused parameters
+ * @param {object} args - The parameters
+ * @param {string} [args.search] - Optional case-insensitive substring filter on relative paths
  * @param {object} context - Context containing sampleFolder path
  * @returns {{ sampleFolder: string, samples: string[] }} Sample folder and relative paths
  */
-export function readSamples(_args, context) {
+export function readSamples({ search = null } = {}, context = {}) {
   if (!context.sampleFolder) {
     throw new Error(
       "A sample folder must first be selected in the Setup tab of the Producer Pal Max for Live device",
@@ -33,7 +34,8 @@ export function readSamples(_args, context) {
 
   const samples = [];
   const limitReached = { value: false };
-  scanFolder(sampleFolder, sampleFolder, samples, limitReached);
+  const searchLower = search ? search.toLowerCase() : null;
+  scanFolder(sampleFolder, sampleFolder, samples, limitReached, searchLower);
 
   if (limitReached.value) {
     console.error(
@@ -45,7 +47,7 @@ export function readSamples(_args, context) {
 }
 
 // dirPath must end with /
-function scanFolder(dirPath, baseFolder, results, limitReached) {
+function scanFolder(dirPath, baseFolder, results, limitReached, searchLower) {
   const f = new Folder(dirPath);
   while (!f.end) {
     if (results.length >= MAX_SAMPLE_FILES) {
@@ -55,9 +57,18 @@ function scanFolder(dirPath, baseFolder, results, limitReached) {
     }
     const filepath = `${f.pathname}${f.filename}`;
     if (f.filetype === "fold") {
-      scanFolder(`${filepath}/`, baseFolder, results, limitReached);
+      scanFolder(
+        `${filepath}/`,
+        baseFolder,
+        results,
+        limitReached,
+        searchLower,
+      );
     } else if (AUDIO_EXTENSIONS.has(f.extension?.toLowerCase())) {
-      results.push(filepath.substring(baseFolder.length));
+      const relativePath = filepath.substring(baseFolder.length);
+      if (!searchLower || relativePath.toLowerCase().includes(searchLower)) {
+        results.push(relativePath);
+      }
     }
     f.next();
   }

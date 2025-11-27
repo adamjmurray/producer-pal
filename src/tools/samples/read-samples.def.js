@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { defineTool } from "../shared/tool-framework/define-tool.js";
 
 export const toolDefReadSamples = defineTool("ppal-read-samples", {
@@ -7,5 +8,10 @@ export const toolDefReadSamples = defineTool("ppal-read-samples", {
     readOnlyHint: true,
     destructiveHint: false,
   },
-  inputSchema: {},
+  inputSchema: {
+    search: z
+      .string()
+      .optional()
+      .describe("case-insensitive substring filter on relative paths"),
+  },
 });
