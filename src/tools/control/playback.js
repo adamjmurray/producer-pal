@@ -3,10 +3,7 @@ import {
   barBeatToAbletonBeats,
 } from "../../notation/barbeat/time/barbeat-time.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
-import {
-  validateIdType,
-  validateIdTypes,
-} from "../shared/validation/id-validation.js";
+import { validateIdTypes } from "../shared/validation/id-validation.js";
 import { select } from "./select.js";
 
 /**
@@ -20,7 +17,7 @@ import { select } from "./select.js";
  * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
  * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
  * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
- * @param {string} [args.sceneId] - Scene ID for Session view operations (puts tracks into non-following state)
+ * @param {number} [args.sceneIndex] - Scene index for Session view operations (puts tracks into non-following state)
  * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view for the operation
  * @param {object} _context - Context from main (unused)
@@ -34,7 +31,7 @@ export function playback(
     loopStart,
     loopEnd,
     autoFollow = true,
-    sceneId,
+    sceneIndex,
     clipIds,
     switchView,
   } = {},
@@ -96,7 +93,7 @@ export function playback(
       startTime,
       startTimeBeats,
       autoFollow,
-      sceneId,
+      sceneIndex,
       clipIds,
     },
     { isPlaying, currentTimeBeats },
@@ -208,17 +205,22 @@ function handlePlayArrangement(
 /**
  * Handle playing a scene in session view
  *
- * @param {string} sceneId - Scene ID to play
+ * @param {number} sceneIndex - Scene index to play
  * @param {object} state - Current playback state
  * @returns {object} Updated playback state
  */
-function handlePlayScene(sceneId, state) {
-  if (sceneId == null) {
+function handlePlayScene(sceneIndex, state) {
+  if (sceneIndex == null) {
     throw new Error(
-      `playback failed: sceneId is required for action "play-scene"`,
+      `playback failed: sceneIndex is required for action "play-scene"`,
     );
   }
-  const scene = validateIdType(sceneId, "scene", "playback");
+  const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+  if (!scene.exists()) {
+    throw new Error(
+      `playback failed: scene at index ${sceneIndex} does not exist`,
+    );
+  }
   scene.call("fire");
 
   return {
@@ -336,7 +338,7 @@ function handleStopSessionClips(clipIds, state) {
  * @returns {object} Updated playback state
  */
 function handlePlaybackAction(action, liveSet, params, state) {
-  const { startTime, startTimeBeats, autoFollow, sceneId, clipIds } = params;
+  const { startTime, startTimeBeats, autoFollow, sceneIndex, clipIds } = params;
 
   switch (action) {
     case "play-arrangement":
@@ -353,7 +355,7 @@ function handlePlaybackAction(action, liveSet, params, state) {
       return state;
 
     case "play-scene":
-      return handlePlayScene(sceneId, state);
+      return handlePlayScene(sceneIndex, state);
 
     case "play-session-clips":
       return handlePlaySessionClips(liveSet, clipIds, state);

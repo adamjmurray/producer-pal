@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   children,
   liveApiCall,
@@ -6,6 +6,7 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
+  LiveAPI,
   mockLiveApiGet,
 } from "../../test/mock-live-api.js";
 import { playback } from "./playback.js";
@@ -353,7 +354,7 @@ describe("transport", () => {
       if (this._path === "live_set") {
         return "LiveSet";
       }
-      if (this._path === "scene1") {
+      if (this._path === "live_set scenes 0") {
         return "Scene";
       }
       if (this._path === "id track1" || this._path === "id track2") {
@@ -364,11 +365,11 @@ describe("transport", () => {
 
     const result = playback({
       action: "play-scene",
-      sceneId: "scene1",
+      sceneIndex: 0,
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
-      expect.objectContaining({ path: "scene1" }),
+      expect.objectContaining({ path: "live_set scenes 0" }),
       "fire",
     );
     expect(result).toStrictEqual({
@@ -380,15 +381,21 @@ describe("transport", () => {
 
   it("should throw an error when required parameters are missing for play-scene", () => {
     expect(() => playback({ action: "play-scene" })).toThrow(
-      'playback failed: sceneId is required for action "play-scene"',
+      'playback failed: sceneIndex is required for action "play-scene"',
     );
   });
 
   it("should throw an error when scene doesn't exist for play-scene", () => {
-    liveApiId.mockReturnValue("id 0");
-    expect(() =>
-      playback({ action: "play-scene", sceneId: "nonexistent_scene" }),
-    ).toThrow('playback failed: id "nonexistent_scene" does not exist');
+    // Spy on LiveAPI.prototype.exists and make it return false
+    const existsSpy = vi
+      .spyOn(LiveAPI.prototype, "exists")
+      .mockReturnValue(false);
+
+    expect(() => playback({ action: "play-scene", sceneIndex: 999 })).toThrow(
+      "playback failed: scene at index 999 does not exist",
+    );
+
+    existsSpy.mockRestore();
   });
 
   it("should handle stop-session-clips action with single clip", () => {

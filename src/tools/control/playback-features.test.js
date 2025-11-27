@@ -188,7 +188,7 @@ describe("transport", () => {
         if (this._path === "live_app view") {
           return "AppView";
         }
-        if (this._path === "scene1") {
+        if (this._path === "live_set scenes 0") {
           return "Scene";
         }
         if (this._path === "id track1" || this._path === "id track2") {
@@ -199,7 +199,7 @@ describe("transport", () => {
 
       playback({
         action: "play-scene",
-        sceneId: "scene1",
+        sceneIndex: 0,
         switchView: true,
       });
 
