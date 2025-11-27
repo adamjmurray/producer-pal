@@ -565,4 +565,115 @@ describe("createTrack", () => {
       );
     });
   });
+
+  describe("comma-separated colors", () => {
+    it("should cycle through colors with modular arithmetic", () => {
+      createTrack({
+        trackIndex: 0,
+        count: 4,
+        name: "Track",
+        color: "#FF0000,#00FF00",
+      });
+
+      // Colors cycle: red, green, red, green
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "color",
+        16711680, // #FF0000
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "color",
+        65280, // #00FF00
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_2" }),
+        "color",
+        16711680, // #FF0000
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_3" }),
+        "color",
+        65280, // #00FF00
+      );
+    });
+
+    it("should use colors in order when count matches", () => {
+      createTrack({
+        trackIndex: 0,
+        count: 3,
+        name: "Track",
+        color: "#FF0000,#00FF00,#0000FF",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "color",
+        16711680, // #FF0000
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "color",
+        65280, // #00FF00
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_2" }),
+        "color",
+        255, // #0000FF
+      );
+    });
+
+    it("should ignore extra colors when count is less than colors", () => {
+      createTrack({
+        trackIndex: 0,
+        count: 2,
+        name: "Track",
+        color: "#FF0000,#00FF00,#0000FF",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "color",
+        16711680, // #FF0000
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "color",
+        65280, // #00FF00
+      );
+      // #0000FF is not used
+    });
+
+    it("should throw error when count is 1 and color contains commas", () => {
+      // When count=1, commas are not parsed, so the invalid color format throws
+      expect(() =>
+        createTrack({
+          trackIndex: 0,
+          count: 1,
+          name: "Track",
+          color: "#FF0000,#00FF00",
+        }),
+      ).toThrow('Invalid color format: must be "#RRGGBB"');
+    });
+
+    it("should trim whitespace around comma-separated colors", () => {
+      createTrack({
+        trackIndex: 0,
+        count: 2,
+        name: "Track",
+        color: " #FF0000 , #00FF00 ",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_0" }),
+        "color",
+        16711680, // #FF0000
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "id midi_track_1" }),
+        "color",
+        65280, // #00FF00
+      );
+    });
+  });
 });

@@ -24,7 +24,8 @@ Studio, Ollama, and more.
 - Read and write track mixer properties for gain, panning (including standard
   stereo panning and split L/R panning modes), and sends
 - Change clip arrangement start time and arrangement length
-- Create multiple tracks at once with independent names
+- Create return tracks
+- Create multiple tracks at once with independent names and colors
 - Create or duplicate clips to multiple arbitrary arrangement positions and clip
   slots (e.g. for quickly laying out audio clips in the arrangement)
 - Added an experimental tool `ppal-transform-clips` that can, slice up
