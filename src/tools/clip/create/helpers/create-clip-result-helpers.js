@@ -10,6 +10,7 @@ import { abletonBeatsToBarBeatDuration } from "#src/notation/barbeat/time/barbea
  * @param {string} color - Clip color in hex format
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
+ * @param {number} clipLength - Default clip length in beats (used when endBeats not specified)
  * @returns {object} - Clip properties to set
  */
 export function buildClipProperties(
@@ -21,6 +22,7 @@ export function buildClipProperties(
   color,
   timeSigNumerator,
   timeSigDenominator,
+  clipLength,
 ) {
   const propsToSet = {};
 
@@ -28,20 +30,12 @@ export function buildClipProperties(
   propsToSet.start_marker = startBeats ?? 0;
   propsToSet.loop_start = startBeats ?? 0;
 
-  // Set loop_end and end_marker based on looping
-  if (looping) {
-    // For looping clips:
-    // - loop_end marks the loop boundary
-    // - end_marker extends beyond the loop (loop_end should be <= end_marker)
-    propsToSet.loop_end = endBeats ?? 1;
-    propsToSet.end_marker = endBeats ?? 1;
-  } else {
-    // For non-looping clips:
-    // - loop_end equals loop_start (no loop)
-    // - end_marker marks the clip's playable region
-    propsToSet.loop_end = startBeats ?? 0;
-    propsToSet.end_marker = endBeats ?? 1;
-  }
+  // Set loop_end and end_marker
+  // Use clipLength as default when endBeats not specified
+  // Note: loop_end must be > loop_start (Live API constraint)
+  const effectiveEnd = endBeats ?? clipLength;
+  propsToSet.loop_end = effectiveEnd;
+  propsToSet.end_marker = effectiveEnd;
 
   // Set playing_position (firstStart) only for looping clips
   if (looping && firstStartBeats != null) {

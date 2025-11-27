@@ -305,6 +305,7 @@ export function processClipIteration(
       color,
       timeSigNumerator,
       timeSigDenominator,
+      clipLength,
     );
 
     clip.setAll(propsToSet);

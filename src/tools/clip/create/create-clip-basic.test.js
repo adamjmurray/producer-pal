@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "../../../test/mock-live-api.js";
+import {
+  liveApiCall,
+  liveApiSet,
+  mockLiveApiGet,
+} from "../../../test/mock-live-api.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - basic validation and time signatures", () => {
@@ -329,6 +333,24 @@ describe("createClip - basic validation and time signatures", () => {
       "create_clip",
       4, // 1 bar in 4/4 = 4 Ableton beats
     );
+  });
+
+  it("should set loop_end to clip length for empty clips (not 0)", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: "0",
+    });
+
+    // loop_end must be > loop_start (Live API constraint)
+    // For empty clips, loop_end should be set to clipLength (1 bar = 4 beats)
+    expect(liveApiSet).toHaveBeenCalledWith("loop_end", 4);
+    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 4);
   });
 
   it("should round up to next bar based on latest note start in 4/4", () => {
