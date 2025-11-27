@@ -129,7 +129,7 @@ export function projectNotesWritable(writable) {
 /**
  * Set the project notes content
  *
- * @param {string} _text - Unused parameter
+ * @param {string} _text - Unused parameter (needed for integration with the Max patch)
  * @param {string} content - Project notes content
  */
 export function projectNotes(_text, content) {
@@ -148,9 +148,10 @@ export function holdingAreaStartBeats(beats) {
 /**
  * Set the sample folder path
  *
+ * @param {string} _text - Unused parameter (needed for integration with the Max patch)
  * @param {string} path - Sample folder path
  */
-export function sampleFolder(path) {
+export function sampleFolder(_text, path) {
   context.sampleFolder = path || null;
 }
 
