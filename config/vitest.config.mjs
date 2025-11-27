@@ -77,10 +77,10 @@ export default defineConfig({
       ],
       reportOnFailure: true,
 
-      // Do not let test coverage drop:
+      // Do NOT let test coverage drop:
       thresholds: {
         statements: 91, /// Keep above 90
-        branches: 84.85, // TODO: try to get to 85
+        branches: 85, // Keep above 85
         functions: 92, // Keep above 90
         lines: 92, /// Keep above 90
       },
