@@ -70,7 +70,7 @@ export function validateAndConfigureRouteToSource(
  * @param {string} type - Type of object being duplicated
  * @param {string} destination - Destination for clip duplication
  * @param {number} toTrackIndex - Destination track index
- * @param {number} toSceneIndex - Destination scene index
+ * @param {string} toSceneIndex - Destination scene index(es), comma-separated
  */
 export function validateClipParameters(
   type,
@@ -101,7 +101,7 @@ export function validateClipParameters(
         "duplicate failed: toTrackIndex is required for session clips",
       );
     }
-    if (toSceneIndex == null) {
+    if (toSceneIndex == null || toSceneIndex.trim() === "") {
       throw new Error(
         "duplicate failed: toSceneIndex is required for session clips",
       );
@@ -132,7 +132,10 @@ export function validateDestinationParameter(type, destination) {
  * @param {string} arrangementStart - Start time in bar|beat format
  */
 export function validateArrangementParameters(destination, arrangementStart) {
-  if (destination === "arrangement" && arrangementStart == null) {
+  if (
+    destination === "arrangement" &&
+    (arrangementStart == null || arrangementStart.trim() === "")
+  ) {
     throw new Error(
       "duplicate failed: arrangementStart is required when destination is 'arrangement'",
     );

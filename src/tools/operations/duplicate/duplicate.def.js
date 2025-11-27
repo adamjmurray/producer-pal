@@ -13,7 +13,12 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .enum(["track", "scene", "clip"])
       .describe("type of object to duplicate"),
     id: z.string().describe("object to duplicate"),
-    count: z.number().int().min(1).default(1).describe("number of copies"),
+    count: z
+      .number()
+      .int()
+      .min(1)
+      .default(1)
+      .describe("number of copies (for tracks/scenes only, ignored for clips)"),
     destination: z
       .enum(["session", "arrangement"])
       .optional()
@@ -21,7 +26,9 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
     arrangementStart: z
       .string()
       .optional()
-      .describe("starting bar|beat position in arrangement"),
+      .describe(
+        "bar|beat position(s), comma-separated for multiple clips (e.g., '1|1' or '1|1,2|1,3|1')",
+      ),
     arrangementLength: z
       .string()
       .optional()
@@ -49,10 +56,10 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .optional()
       .describe("destination track index (for session clips)"),
     toSceneIndex: z
-      .number()
-      .int()
-      .min(0)
+      .string()
       .optional()
-      .describe("destination scene index (for session clips)"),
+      .describe(
+        "destination scene index(es), comma-separated for multiple (e.g., '1' or '1,3,5')",
+      ),
   },
 });

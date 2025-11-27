@@ -309,7 +309,7 @@ describe("duplicate - switchView functionality", () => {
       destination: "session",
       switchView: true,
       toTrackIndex: 0,
-      toSceneIndex: 1,
+      toSceneIndex: "1",
     });
 
     expect(liveApiCall).toHaveBeenCalledWith("show_view", "Session");
