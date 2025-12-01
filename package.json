@@ -65,7 +65,7 @@
     "@google/genai": "^1.30.0",
     "@modelcontextprotocol/sdk": "^1.22.0",
     "@tailwindcss/typography": "^0.5.19",
-    "express": "^5.1.0",
+    "express": "^5.2.1",
     "marked": "^17.0.1",
     "openai": "^6.9.1",
     "preact": "^10.27.2",
