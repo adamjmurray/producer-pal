@@ -1,8 +1,8 @@
 import {
   getActualAudioEnd,
   revealUnwarpedAudioContent,
-} from "../update/helpers/update-clip-audio-helpers.js";
-import { getActualContentEnd } from "../update/helpers/update-clip-helpers.js";
+} from "../../update/helpers/update-clip-audio-helpers.js";
+import { getActualContentEnd } from "../../update/helpers/update-clip-helpers.js";
 
 /**
  * Handle unlooped clip lengthening

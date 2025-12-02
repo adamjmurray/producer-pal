@@ -9,6 +9,8 @@ export default defineConfig({
   plugins: [preact()],
   resolve: {
     alias: {
+      "#webui": join(__dirname, "../webui/src"),
+      "#src": join(__dirname, "../src"),
       "virtual:chat-ui-html": join(
         __dirname,
         "../src/test/mock-chat-ui-html.js",
@@ -69,18 +71,17 @@ export default defineConfig({
         // ignore loggers:
         "src/portal/file-logger.js",
 
-        // ignore other hard-to-test files:
-        "src/test/mock-task.js",
-        "src/test/mock-chat-ui-html.js",
+        // ignore test mocks:
+        "src/test/mock-*.js",
       ],
       reportOnFailure: true,
 
-      // Do not let test coverage drop:
+      // Do NOT let test coverage drop:
       thresholds: {
-        statements: 89.3, // TODO: try to get to 90
-        branches: 83.4, // TODO: try to get to 85
-        functions: 90, // Keep above 90
-        lines: 89.8, // TODO: try to get to 90
+        statements: 92, /// Keep above 92
+        branches: 86, // Keep above 86
+        functions: 92, // Keep above 92
+        lines: 92, /// Keep above 92
       },
     },
   },

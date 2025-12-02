@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { error, log } from "./v8-max-console.js";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { error, log, warn } from "./v8-max-console.js";
 
 describe("v8-max-console", () => {
   let consoleLogSpy;
@@ -108,6 +108,39 @@ describe("v8-max-console", () => {
 
     it("logs multiple error arguments", () => {
       error("Error:", 500, { status: "failed" });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "Error:",
+        "500",
+        "{status: failed}",
+      );
+    });
+  });
+
+  describe("warn", () => {
+    it("logs error strings", () => {
+      warn("error message");
+      expect(consoleErrorSpy).toHaveBeenCalledWith("error message");
+    });
+
+    it("logs error numbers", () => {
+      warn(404);
+      expect(consoleErrorSpy).toHaveBeenCalledWith("404");
+    });
+
+    it("logs error objects", () => {
+      warn({ code: "ERR_001", message: "Something went wrong" });
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "{code: ERR_001, message: Something went wrong}",
+      );
+    });
+
+    it("logs error arrays", () => {
+      warn(["error1", "error2"]);
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[error1, error2]");
+    });
+
+    it("logs multiple error arguments", () => {
+      warn("Error:", 500, { status: "failed" });
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         "Error:",
         "500",

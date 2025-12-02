@@ -20,7 +20,7 @@ describe("createClip - advanced features", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       timeSignature: "6/8",
     });
 
@@ -50,7 +50,7 @@ describe("createClip - advanced features", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "t2 C3 1|1 t3 D3 1|3", // Last note starts at beat 2 (0-based), rounds up to 1 bar = 4 beats
     });
 
@@ -61,7 +61,7 @@ describe("createClip - advanced features", () => {
     );
   });
 
-  it("should return single object for count=1 and array for count>1", () => {
+  it("should return single object for single position and array for multiple positions", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 4 },
@@ -70,16 +70,14 @@ describe("createClip - advanced features", () => {
     const singleResult = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
-      count: 1,
+      sceneIndex: "0",
       name: "Single",
     });
 
     const arrayResult = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 1,
-      count: 2,
+      sceneIndex: "1,2",
       name: "Multiple",
     });
 
@@ -113,7 +111,7 @@ describe("createClip - advanced features", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "v100 C3 v0 D3 v80 E3 1|1", // D3 should be filtered out
     });
 
@@ -160,7 +158,7 @@ describe("createClip - advanced features", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "v0 C3 D3 E3 1|1", // All notes should be filtered out
     });
 
@@ -179,17 +177,18 @@ describe("createClip - advanced features", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       name: "Test Clip",
       notes: "C3 D3",
       start: "1|3",
       firstStart: "1|2",
     });
 
+    // start "1|3" converts to 2 beats (bar 1, beat 3)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
       "start_marker",
-      1,
+      2,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ path: "live_set tracks 0 clip_slots 0 clip" }),
@@ -208,7 +207,7 @@ describe("createClip - advanced features", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         switchView: true,
       });
 
@@ -264,7 +263,7 @@ describe("createClip - advanced features", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         switchView: false,
       });
 
@@ -283,8 +282,7 @@ describe("createClip - advanced features", () => {
       const result = createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
-        count: 2,
+        sceneIndex: "0,1",
         switchView: true,
       });
 

@@ -1,23 +1,27 @@
-import * as console from "../../../shared/v8-max-console.js";
-import { readClip } from "../../clip/read/read-clip.js";
-import { DEVICE_TYPE } from "../../constants.js";
-import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
-import { getDrumMap, readDevice } from "../../shared/device/device-reader.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { readClip } from "#src/tools/clip/read/read-clip.js";
+import { DEVICE_TYPE } from "#src/tools/constants.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import {
+  getDrumMap,
+  readDevice,
+} from "#src/tools/shared/device/device-reader.js";
 import {
   parseIncludeArray,
   READ_TRACK_DEFAULTS,
-} from "../../shared/tool-framework/include-params.js";
-import { validateIdType } from "../../shared/validation/id-validation.js";
+} from "#src/tools/shared/tool-framework/include-params.js";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import {
-  handleNonExistentTrack,
-  addOptionalBooleanProperties,
   addCategoryIndex,
-  cleanupDeviceChains,
+  addOptionalBooleanProperties,
+  addProducerPalHostInfo,
+  addRoutingInfo,
   addSlotIndices,
   addStateIfNotDefault,
-  addRoutingInfo,
-  addProducerPalHostInfo,
-} from "./read-track-helpers.js";
+  cleanupDeviceChains,
+  handleNonExistentTrack,
+  readMixerProperties,
+} from "./helpers/read-track-helpers.js";
 
 /**
  * Read comprehensive information about a track
@@ -26,7 +30,7 @@ import {
  * @returns {object} Track information
  */
 export function readTrack(args = {}, _context = {}) {
-  const { trackIndex, trackId, category = "regular" } = args;
+  const { trackIndex, trackId, category = "regular", returnTrackNames } = args;
   // Validate parameters
   if (trackId == null && trackIndex == null && category !== "master") {
     throw new Error("Either trackId or trackIndex must be provided");
@@ -61,6 +65,7 @@ export function readTrack(args = {}, _context = {}) {
     trackIndex: resolvedCategory === "master" ? null : resolvedTrackIndex,
     category: resolvedCategory,
     include: args.include,
+    returnTrackNames,
   });
 }
 
@@ -202,6 +207,7 @@ function processDevices(categorizedDevices, config) {
  * @param {number|null} args.trackIndex - Track index (null for master track)
  * @param {string} [args.category="regular"] - Track category: "regular", "return", or "master"
  * @param {Array<string>} [args.include] - Array of data to include in the response
+ * @param {Array<string>} [args.returnTrackNames] - Array of return track names for sends
  * @returns {object} Track information including clips, devices, routing, and state
  */
 export function readTrackGeneric({
@@ -209,6 +215,7 @@ export function readTrackGeneric({
   trackIndex,
   category = "regular",
   include,
+  returnTrackNames,
 }) {
   const {
     includeDrumChains,
@@ -222,6 +229,7 @@ export function readTrackGeneric({
     includeSessionClips,
     includeArrangementClips,
     includeColor,
+    includeMixer,
   } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
   if (!track.exists()) {
     return handleNonExistentTrack(category, trackIndex);
@@ -242,6 +250,10 @@ export function readTrackGeneric({
     arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
   addOptionalBooleanProperties(result, track, canBeArmed);
+  // Add mixer properties if requested
+  if (includeMixer) {
+    Object.assign(result, readMixerProperties(track, returnTrackNames));
+  }
   if (groupId) {
     result.groupId = `${groupId}`;
   }

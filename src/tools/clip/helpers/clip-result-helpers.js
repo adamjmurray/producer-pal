@@ -1,20 +1,9 @@
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "../../notation/barbeat/time/barbeat-time.js";
-import * as console from "../../shared/v8-max-console.js";
-
-/**
- * Parse song time signature from live_set
- * @returns {{numerator: number, denominator: number}} Time signature components
- */
-function parseSongTimeSignature() {
-  const liveSet = new LiveAPI("live_set");
-  return {
-    numerator: liveSet.getProperty("signature_numerator"),
-    denominator: liveSet.getProperty("signature_denominator"),
-  };
-}
+} from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { parseSongTimeSignature } from "#src/tools/shared/live-set-helpers.js";
 
 /**
  * Validate and parse arrangement parameters

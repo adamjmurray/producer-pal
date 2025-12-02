@@ -1,10 +1,12 @@
 import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
-} from "../../../../notation/barbeat/time/barbeat-time.js";
-import * as console from "../../../../shared/v8-max-console.js";
-import { parseCommaSeparatedIds } from "../../../shared/utils.js";
-import { validateIdType } from "../../../shared/validation/id-validation.js";
+} from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
+import {
+  parseCommaSeparatedIds,
+  parseCommaSeparatedIndices,
+} from "#src/tools/shared/utils.js";
 import {
   hasAudioTransformParams,
   hasMidiTransformParams,
@@ -66,29 +68,31 @@ export function parseTransposeValues(
 /**
  * Get clip IDs from direct list or arrangement track query
  * @param {string} clipIds - Comma-separated list of clip IDs
- * @param {string} arrangementTrackId - Track ID to query for arrangement clips
+ * @param {string} arrangementTrackIndex - Track index(es) to query for arrangement clips, comma-separated for multiple
  * @param {string} arrangementStart - Start position in bar|beat format
  * @param {string} arrangementLength - Length in bar:beat format
  * @returns {Array<string>} - Array of clip IDs
  */
 export function getClipIds(
   clipIds,
-  arrangementTrackId,
+  arrangementTrackIndex,
   arrangementStart,
   arrangementLength,
 ) {
   if (clipIds) {
     return parseCommaSeparatedIds(clipIds);
   }
-  if (!arrangementTrackId) {
+  if (arrangementTrackIndex == null) {
     throw new Error(
-      "transformClips failed: clipIds or arrangementTrackId is required",
+      "transformClips failed: clipIds or arrangementTrackIndex is required",
     );
   }
-  const track = validateIdType(arrangementTrackId, "track", "transformClips");
+
+  const trackIndices = parseCommaSeparatedIndices(arrangementTrackIndex);
   const liveSet = new LiveAPI("live_set");
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
   let arrangementStartBeats = 0;
   let arrangementEndBeats = Infinity;
   if (arrangementStart != null) {
@@ -109,15 +113,26 @@ export function getClipIds(
     }
     arrangementEndBeats = arrangementStartBeats + arrangementLengthBeats;
   }
-  const allClipIds = track.getChildIds("arrangement_clips");
-  return allClipIds.filter((clipId) => {
-    const clip = new LiveAPI(clipId);
-    const clipStartTime = clip.getProperty("start_time");
-    return (
-      clipStartTime >= arrangementStartBeats &&
-      clipStartTime < arrangementEndBeats
-    );
-  });
+
+  const result = [];
+  for (const trackIndex of trackIndices) {
+    const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+    if (!track.exists()) {
+      throw new Error(`transformClips failed: track ${trackIndex} not found`);
+    }
+    const trackClipIds = track.getChildIds("arrangement_clips");
+    for (const clipId of trackClipIds) {
+      const clip = new LiveAPI(clipId);
+      const clipStartTime = clip.getProperty("start_time");
+      if (
+        clipStartTime >= arrangementStartBeats &&
+        clipStartTime < arrangementEndBeats
+      ) {
+        result.push(clipId);
+      }
+    }
+  }
+  return result;
 }
 
 /**

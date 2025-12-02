@@ -1,4 +1,4 @@
-import * as console from "../../../../shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.js";
 import { validateBufferedState } from "./barbeat-interpreter-buffer-helpers.js";
 
 /**

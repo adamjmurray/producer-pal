@@ -1,15 +1,20 @@
-import { validateIdTypes } from "../../shared/validation/id-validation.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import {
   parseTransposeValues,
   getClipIds,
+  createSeededRNG,
+  randomInRange,
+} from "./helpers/transform-clips-helpers.js";
+import { applyParameterTransforms } from "./helpers/transform-clips-params-helpers.js";
+import {
+  performShuffling,
+  shuffleArray,
+} from "./helpers/transform-clips-shuffling-helpers.js";
+import {
   prepareSliceParams,
   performSlicing,
-  performShuffling,
-  createSeededRNG,
-  applyParameterTransforms,
-  randomInRange,
-  shuffleArray,
-} from "./helpers/transform-clips-helpers.js";
+} from "./helpers/transform-clips-slicing-helpers.js";
 
 // Re-export helpers for backward compatibility with tests
 export { createSeededRNG, randomInRange, shuffleArray };
@@ -17,8 +22,8 @@ export { createSeededRNG, randomInRange, shuffleArray };
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
  * @param {object} args - The parameters
- * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackId)
- * @param {string} [args.arrangementTrackId] - Track ID to query arrangement clips from (ignored if clipIds provided)
+ * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackIndex)
+ * @param {string} [args.arrangementTrackIndex] - Track index(es) to query arrangement clips from (ignored if clipIds provided)
  * @param {string} [args.arrangementStart] - Bar|beat position (e.g., '1|1.0') for range start
  * @param {string} [args.arrangementLength] - Bar:beat duration (e.g., '4:0.0') for range length
  * @param {string} [args.slice] - Bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments
@@ -41,7 +46,7 @@ export { createSeededRNG, randomInRange, shuffleArray };
 export function transformClips(
   {
     clipIds,
-    arrangementTrackId,
+    arrangementTrackIndex,
     arrangementStart,
     arrangementLength,
     slice,
@@ -73,7 +78,7 @@ export function transformClips(
   // Determine clip selection method
   const clipIdArray = getClipIds(
     clipIds,
-    arrangementTrackId,
+    arrangementTrackIndex,
     arrangementStart,
     arrangementLength,
   );

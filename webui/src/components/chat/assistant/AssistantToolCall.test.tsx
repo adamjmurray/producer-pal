@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AssistantToolCall } from "./AssistantToolCall";
 
 // Mock the config module
-vi.mock("../../../lib/config.js", () => ({
+vi.mock("#webui/lib/config", () => ({
   toolNames: {
     "ppal-read-live-set": "Read Live Set",
     "test-tool": "Test Tool",

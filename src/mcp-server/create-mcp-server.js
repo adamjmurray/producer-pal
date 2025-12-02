@@ -12,6 +12,7 @@ import { toolDefUpdateLiveSet } from "../tools/live-set/update-live-set.def.js";
 import { toolDefDelete } from "../tools/operations/delete/delete.def.js";
 import { toolDefDuplicate } from "../tools/operations/duplicate/duplicate.def.js";
 import { toolDefTransformClips } from "../tools/operations/transform-clips/transform-clips.def.js";
+import { toolDefReadSamples } from "../tools/samples/read-samples.def.js";
 import { toolDefCreateScene } from "../tools/scene/create-scene.def.js";
 import { toolDefReadScene } from "../tools/scene/read-scene.def.js";
 import { toolDefUpdateScene } from "../tools/scene/update-scene.def.js";
@@ -65,6 +66,7 @@ export function createMcpServer(callLiveApi, options = {}) {
   addTool(toolDefDelete);
   addTool(toolDefDuplicate);
   addTool(toolDefMemory);
+  addTool(toolDefReadSamples);
 
   if (process.env.ENABLE_RAW_LIVE_API === "true") {
     addTool(toolDefRawLiveApi);

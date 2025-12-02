@@ -1,23 +1,20 @@
-import { barBeatToAbletonBeats } from "../../../notation/barbeat/time/barbeat-time.js";
-import { select } from "../../control/select.js";
-import { validateIdType } from "../../shared/validation/id-validation.js";
-import {
-  validateBasicInputs,
-  validateAndConfigureRouteToSource,
-  validateClipParameters,
-  validateDestinationParameter,
-  validateArrangementParameters,
-} from "./duplicate-validation-helpers.js";
-import {
-  duplicateClipSlot,
-  duplicateClipToArrangement,
-} from "./helpers/duplicate-helpers.js";
+import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import { select } from "#src/tools/control/select.js";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
+import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
 import {
   duplicateTrack,
   duplicateScene,
   calculateSceneLength,
   duplicateSceneToArrangement,
 } from "./helpers/duplicate-track-scene-helpers.js";
+import {
+  validateBasicInputs,
+  validateAndConfigureRouteToSource,
+  validateClipParameters,
+  validateDestinationParameter,
+  validateArrangementParameters,
+} from "./helpers/duplicate-validation-helpers.js";
 
 /**
  * Duplicates an object based on its type.
@@ -35,7 +32,7 @@ import {
  * @param {boolean} [args.routeToSource] - Whether to enable MIDI layering by routing the new track to the source track
  * @param {boolean} [args.switchView=false] - Automatically switch to the appropriate view based on destination or operation type
  * @param {number} [args.toTrackIndex] - Destination track index (required for session clips)
- * @param {number} [args.toSceneIndex] - Destination scene index (required for session clips)
+ * @param {string} [args.toSceneIndex] - Destination scene index(es), comma-separated (required for session clips)
  * @param {object} [context] - Context object with holdingAreaStartBeats and silenceWavPath
  * @returns {object | Array<object>} Result object(s) with information about the duplicated object(s)
  */
@@ -84,39 +81,42 @@ export function duplicate(
   // Validate arrangement parameters
   validateArrangementParameters(destination, arrangementStart);
 
-  const createdObjects = [];
-
-  for (let i = 0; i < count; i++) {
-    // Build the object name for this duplicate
-    const objectName = generateObjectName(name, count, i);
-
-    const newObjectMetadata = performDuplication(
-      type,
-      destination,
-      object,
-      id,
-      i,
-      objectName,
-      {
-        arrangementStart,
-        arrangementLength,
-        withoutClips,
-        withoutDevices,
-        routeToSource,
-        toTrackIndex,
-        toSceneIndex,
-      },
-      context,
-    );
-
-    createdObjects.push(newObjectMetadata);
-  }
+  // For clips, use position-based iteration; for tracks/scenes, use count-based
+  const createdObjects =
+    type === "clip"
+      ? duplicateClipWithPositions(
+          destination,
+          object,
+          id,
+          name,
+          toTrackIndex,
+          toSceneIndex,
+          arrangementStart,
+          arrangementLength,
+          context,
+        )
+      : duplicateTrackOrSceneWithCount(
+          type,
+          destination,
+          object,
+          id,
+          count,
+          name,
+          {
+            arrangementStart,
+            arrangementLength,
+            withoutClips,
+            withoutDevices,
+            routeToSource,
+          },
+          context,
+        );
 
   // Handle view switching if requested
   switchViewIfRequested(switchView, destination, type);
 
-  // Return appropriate format based on count
-  if (count === 1) {
+  // Return single object or array based on results
+  if (createdObjects.length === 1) {
     return createdObjects[0];
   }
   return createdObjects;
@@ -140,6 +140,65 @@ function generateObjectName(baseName, count, index) {
     return baseName;
   }
   return `${baseName} ${index + 1}`;
+}
+
+/**
+ * Duplicates a track or scene using count-based iteration
+ * @param {string} type - Type of object (track or scene)
+ * @param {string} destination - Destination for duplication
+ * @param {object} object - Live API object to duplicate
+ * @param {string} id - ID of the object
+ * @param {number} count - Number of duplicates to create
+ * @param {string} name - Base name for duplicated objects
+ * @param {object} params - Additional parameters
+ * @param {object} context - Context object with holdingAreaStartBeats
+ * @returns {Array<object>} Array of result objects
+ */
+function duplicateTrackOrSceneWithCount(
+  type,
+  destination,
+  object,
+  id,
+  count,
+  name,
+  params,
+  context,
+) {
+  const createdObjects = [];
+  const {
+    arrangementStart,
+    arrangementLength,
+    withoutClips,
+    withoutDevices,
+    routeToSource,
+  } = params;
+
+  for (let i = 0; i < count; i++) {
+    const objectName = generateObjectName(name, count, i);
+
+    const newObjectMetadata = performDuplication(
+      type,
+      destination,
+      object,
+      id,
+      i,
+      objectName,
+      {
+        arrangementStart,
+        arrangementLength,
+        withoutClips,
+        withoutDevices,
+        routeToSource,
+        toTrackIndex: null,
+        toSceneIndex: null,
+      },
+      context,
+    );
+
+    createdObjects.push(newObjectMetadata);
+  }
+
+  return createdObjects;
 }
 
 /**
@@ -176,8 +235,7 @@ function switchViewIfRequested(switchView, destination, type) {
 }
 
 /**
- * Duplicates an object to the arrangement view
- * @param {string} type - Type of object being duplicated
+ * Duplicates a scene to the arrangement view
  * @param {object} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
@@ -188,8 +246,7 @@ function switchViewIfRequested(switchView, destination, type) {
  * @param {object} context - Context object with holdingAreaStartBeats
  * @returns {object} Metadata about the duplicated object
  */
-function duplicateToArrangement(
-  type,
+function duplicateSceneToArrangementView(
   object,
   id,
   i,
@@ -211,48 +268,32 @@ function duplicateToArrangement(
     songTimeSigDenominator,
   );
 
-  if (type === "scene") {
-    const sceneIndex = object.sceneIndex;
-    if (sceneIndex == null) {
-      throw new Error(
-        `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
-      );
-    }
-
-    // For multiple scenes, place them sequentially to avoid overlap
-    const sceneLength = calculateSceneLength(sceneIndex);
-    const actualArrangementStartBeats =
-      baseArrangementStartBeats + i * sceneLength;
-    return duplicateSceneToArrangement(
-      id,
-      actualArrangementStartBeats,
-      objectName,
-      withoutClips,
-      arrangementLength,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-      context,
-    );
-  } else if (type === "clip") {
-    // For multiple clips, place them sequentially to avoid overlap
-    const clipLength = object.getProperty("length");
-    const actualArrangementStartBeats =
-      baseArrangementStartBeats + i * clipLength;
-    return duplicateClipToArrangement(
-      id,
-      actualArrangementStartBeats,
-      objectName,
-      arrangementLength,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-      context,
+  const sceneIndex = object.sceneIndex;
+  if (sceneIndex == null) {
+    throw new Error(
+      `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
     );
   }
+
+  // For multiple scenes, place them sequentially to avoid overlap
+  const sceneLength = calculateSceneLength(sceneIndex);
+  const actualArrangementStartBeats =
+    baseArrangementStartBeats + i * sceneLength;
+  return duplicateSceneToArrangement(
+    id,
+    actualArrangementStartBeats,
+    objectName,
+    withoutClips,
+    arrangementLength,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+    context,
+  );
 }
 
 /**
- * Duplicates an object to the session view
- * @param {string} type - Type of object being duplicated
+ * Duplicates a track or scene to the session view
+ * @param {string} type - Type of object being duplicated (track or scene)
  * @param {object} object - Live API object to duplicate
  * @param {string} id - ID of the object
  * @param {number} i - Current duplicate index
@@ -260,11 +301,9 @@ function duplicateToArrangement(
  * @param {boolean} withoutClips - Whether to exclude clips
  * @param {boolean} withoutDevices - Whether to exclude devices
  * @param {boolean} routeToSource - Whether to route to source track
- * @param {number} toTrackIndex - Destination track index
- * @param {number} toSceneIndex - Destination scene index
  * @returns {object} Metadata about the duplicated object
  */
-function duplicateToSession(
+function duplicateTrackOrSceneToSession(
   type,
   object,
   id,
@@ -273,8 +312,6 @@ function duplicateToSession(
   withoutClips,
   withoutDevices,
   routeToSource,
-  toTrackIndex,
-  toSceneIndex,
 ) {
   if (type === "track") {
     // Session view operations (no bar|beat conversion needed)
@@ -303,32 +340,12 @@ function duplicateToSession(
     }
     const actualSceneIndex = sceneIndex + i;
     return duplicateScene(actualSceneIndex, objectName, withoutClips);
-  } else if (type === "clip") {
-    const trackIndex = object.trackIndex;
-    const sceneIndex = object.sceneIndex;
-    if (trackIndex == null || sceneIndex == null) {
-      // We already validated object was a clip, so if we're here, this must be an arrangement
-      // clip
-      throw new Error(
-        `unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="${id}" path="${object.path}") `,
-      );
-    }
-
-    // For session clips with count > 1, place them sequentially at the destination track
-    const actualToSceneIndex = toSceneIndex + i;
-    return duplicateClipSlot(
-      trackIndex,
-      sceneIndex,
-      toTrackIndex,
-      actualToSceneIndex,
-      objectName,
-    );
   }
 }
 
 /**
- * Performs the duplication operation
- * @param {string} type - Type of object being duplicated
+ * Performs the duplication operation for tracks or scenes
+ * @param {string} type - Type of object being duplicated (track or scene)
  * @param {string} destination - Destination for duplication
  * @param {object} object - Live API object to duplicate
  * @param {string} id - ID of the object
@@ -354,13 +371,10 @@ function performDuplication(
     withoutClips,
     withoutDevices,
     routeToSource,
-    toTrackIndex,
-    toSceneIndex,
   } = params;
 
   if (destination === "arrangement") {
-    return duplicateToArrangement(
-      type,
+    return duplicateSceneToArrangementView(
       object,
       id,
       i,
@@ -371,7 +385,7 @@ function performDuplication(
       context,
     );
   }
-  return duplicateToSession(
+  return duplicateTrackOrSceneToSession(
     type,
     object,
     id,
@@ -380,7 +394,5 @@ function performDuplication(
     withoutClips,
     withoutDevices,
     routeToSource,
-    toTrackIndex,
-    toSceneIndex,
   );
 }
