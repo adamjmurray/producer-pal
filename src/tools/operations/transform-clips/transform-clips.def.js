@@ -19,7 +19,7 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .string()
       .optional()
       .describe(
-        "track ID to query arrangement clips from (ignored if clipIds provided)",
+        "track ID(s) to query arrangement clips from, comma-separated for multiple (ignored if clipIds provided)",
       ),
     arrangementStart: z
       .string()

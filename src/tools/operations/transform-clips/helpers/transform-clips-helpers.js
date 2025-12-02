@@ -66,7 +66,7 @@ export function parseTransposeValues(
 /**
  * Get clip IDs from direct list or arrangement track query
  * @param {string} clipIds - Comma-separated list of clip IDs
- * @param {string} arrangementTrackId - Track ID to query for arrangement clips
+ * @param {string} arrangementTrackId - Track ID(s) to query for arrangement clips, comma-separated for multiple
  * @param {string} arrangementStart - Start position in bar|beat format
  * @param {string} arrangementLength - Length in bar:beat format
  * @returns {Array<string>} - Array of clip IDs
@@ -85,10 +85,12 @@ export function getClipIds(
       "transformClips failed: clipIds or arrangementTrackId is required",
     );
   }
-  const track = validateIdType(arrangementTrackId, "track", "transformClips");
+
+  const trackIds = parseCommaSeparatedIds(arrangementTrackId);
   const liveSet = new LiveAPI("live_set");
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
   let arrangementStartBeats = 0;
   let arrangementEndBeats = Infinity;
   if (arrangementStart != null) {
@@ -109,15 +111,23 @@ export function getClipIds(
     }
     arrangementEndBeats = arrangementStartBeats + arrangementLengthBeats;
   }
-  const allClipIds = track.getChildIds("arrangement_clips");
-  return allClipIds.filter((clipId) => {
-    const clip = new LiveAPI(clipId);
-    const clipStartTime = clip.getProperty("start_time");
-    return (
-      clipStartTime >= arrangementStartBeats &&
-      clipStartTime < arrangementEndBeats
-    );
-  });
+
+  const result = [];
+  for (const trackId of trackIds) {
+    const track = validateIdType(trackId, "track", "transformClips");
+    const trackClipIds = track.getChildIds("arrangement_clips");
+    for (const clipId of trackClipIds) {
+      const clip = new LiveAPI(clipId);
+      const clipStartTime = clip.getProperty("start_time");
+      if (
+        clipStartTime >= arrangementStartBeats &&
+        clipStartTime < arrangementEndBeats
+      ) {
+        result.push(clipId);
+      }
+    }
+  }
+  return result;
 }
 
 /**
