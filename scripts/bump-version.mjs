@@ -13,9 +13,6 @@ if (!["major", "minor", "patch"].includes(versionType)) {
   process.exit(1);
 }
 
-// Read old version before bumping
-const oldPkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
-
 // Bump root package.json
 console.log(`Bumping ${versionType} version...`);
 execSync(`npm version ${versionType} --no-git-tag-version`, {
