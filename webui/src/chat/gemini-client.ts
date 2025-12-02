@@ -3,6 +3,7 @@ import type { Chat, ThinkingConfig, Tool, Part } from "@google/genai/web";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import type { GeminiMessage } from "#webui/types/messages";
+import { getMcpUrl } from "#webui/utils/mcp-url";
 
 // Configuration for GeminiClient
 export interface GeminiClientConfig {
@@ -55,7 +56,7 @@ export class GeminiClient {
    */
   constructor(apiKey: string, config: GeminiClientConfig = {}) {
     this.ai = new GoogleGenAI({ apiKey });
-    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp";
+    this.mcpUrl = config.mcpUrl ?? getMcpUrl();
     this.config = config;
     this.chat = null;
     this.mcpClient = null;
@@ -69,9 +70,7 @@ export class GeminiClient {
    * @param {string} mcpUrl - MCP server URL to test
    * @throws If connection fails
    */
-  static async testConnection(
-    mcpUrl = "http://localhost:3350/mcp",
-  ): Promise<void> {
+  static async testConnection(mcpUrl = getMcpUrl()): Promise<void> {
     const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
     const client = new Client({
       name: "producer-pal-chat-ui-test",

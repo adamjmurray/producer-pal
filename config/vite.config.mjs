@@ -77,7 +77,7 @@ See https://github.com/adamjmurray/producer-pal/tree/main/licenses for third-par
     },
   ],
   root: "webui",
-  server: { port: 3355 },
+  server: { port: 5173 },
   build: {
     outDir: "../max-for-live-device",
     emptyOutDir: false,

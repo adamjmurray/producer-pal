@@ -58,7 +58,7 @@
     "ui:dev": "ENABLE_RAW_LIVE_API=true vite --config config/vite.config.mjs",
     "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json",
     "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs",
-    "docs:dev": "vitepress dev docs",
+    "docs:dev": "vitepress dev docs --port 5174",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "docs:test": "npm run docs:build && playwright test -c config/playwright.config.mjs",
