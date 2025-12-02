@@ -341,6 +341,57 @@ describe("readClip", () => {
     });
   });
 
+  it("includes sampleFile with full path for audio clips with file_path", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 0,
+        name: "Audio Sample",
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        file_path: "/Users/username/Music/Samples/kick.wav",
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+
+    expect(result.sampleFile).toBe("/Users/username/Music/Samples/kick.wav");
+    expect(result.type).toBe("audio");
+  });
+
+  it("does not include sampleFile for MIDI clips", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 1,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+
+    expect(result.sampleFile).toBeUndefined();
+    expect(result.type).toBe("midi");
+  });
+
+  it("does not include sampleFile for audio clips without file_path", () => {
+    mockLiveApiGet({
+      Clip: {
+        is_midi_clip: 0,
+        signature_numerator: 4,
+        signature_denominator: 4,
+        length: 4,
+        // No file_path property
+      },
+    });
+
+    const result = readClip({ trackIndex: 0, sceneIndex: 0 });
+
+    expect(result.sampleFile).toBeUndefined();
+    expect(result.type).toBe("audio");
+  });
+
   it("reads warp mode and warping state when warp-markers included", () => {
     mockLiveApiGet({
       Clip: {

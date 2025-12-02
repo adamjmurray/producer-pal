@@ -60,6 +60,24 @@ describe("config-builders", () => {
       expect(config.reasoningEffort).toBe("medium");
     });
 
+    it("should map Low thinking to low reasoning effort", () => {
+      const config = buildOpenAIConfig("gpt-4", 1.0, "Low", undefined, {});
+
+      expect(config.reasoningEffort).toBe("low");
+    });
+
+    it("should map High thinking to high reasoning effort", () => {
+      const config = buildOpenAIConfig("gpt-4", 1.0, "High", undefined, {});
+
+      expect(config.reasoningEffort).toBe("high");
+    });
+
+    it("should map Ultra thinking to high reasoning effort", () => {
+      const config = buildOpenAIConfig("gpt-4", 1.0, "Ultra", undefined, {});
+
+      expect(config.reasoningEffort).toBe("high");
+    });
+
     it("should not include reasoning effort for custom API", () => {
       const config = buildOpenAIConfig(
         "gpt-4",

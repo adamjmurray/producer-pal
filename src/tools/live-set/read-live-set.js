@@ -8,7 +8,7 @@ import {
   parseIncludeArray,
   READ_SONG_DEFAULTS,
 } from "../shared/tool-framework/include-params.js";
-import { readTrackMinimal } from "../track/read/read-track-helpers.js";
+import { readTrackMinimal } from "../track/read/helpers/read-track-helpers.js";
 import { readTrack, readTrackGeneric } from "../track/read/read-track.js";
 
 /**
@@ -25,6 +25,12 @@ export function readLiveSet(args = {}, _context = {}) {
   const trackIds = liveSet.getChildIds("tracks");
   const returnTrackIds = liveSet.getChildIds("return_tracks");
   const sceneIds = liveSet.getChildIds("scenes");
+
+  // Compute return track names once for efficiency (used for sends in mixer data)
+  const returnTrackNames = returnTrackIds.map((_, idx) => {
+    const rt = new LiveAPI(`live_set return_tracks ${idx}`);
+    return rt.getProperty("name");
+  });
 
   const liveSetName = liveSet.getProperty("name");
   const result = {
@@ -55,6 +61,7 @@ export function readLiveSet(args = {}, _context = {}) {
       readTrack({
         trackIndex,
         include: includeArray,
+        returnTrackNames,
       }),
     );
   } else if (
@@ -82,6 +89,7 @@ export function readLiveSet(args = {}, _context = {}) {
           trackIndex: returnTrackIndex,
           category: "return",
           include: includeArray,
+          returnTrackNames,
         });
       },
     );
@@ -94,6 +102,7 @@ export function readLiveSet(args = {}, _context = {}) {
       trackIndex: null,
       category: "master",
       include: includeArray,
+      returnTrackNames,
     });
   }
 

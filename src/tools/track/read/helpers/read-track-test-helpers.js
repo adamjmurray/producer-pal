@@ -1,6 +1,7 @@
 /**
  * Test helper functions for read-track tests
  */
+import { children } from "#src/test/mock-live-api.js";
 
 /**
  * Creates a mock track object with default properties
@@ -21,5 +22,6 @@ export const mockTrackProperties = (overrides = {}) => ({
   fired_slot_index: -1,
   clip_slots: [],
   devices: [],
+  mixer_device: children("mixer_1"),
   ...overrides,
 });

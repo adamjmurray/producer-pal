@@ -8,12 +8,8 @@ import {
 import { transformClips } from "../transform-clips.js";
 
 describe("transformClips - arrangement", () => {
-  it("should accept arrangementTrackId with arrangementStart/Length instead of clipIds", () => {
-    const arrangementTrackId = "id 1";
+  it("should accept arrangementTrackIndex with arrangementStart/Length instead of clipIds", () => {
     liveApiId.mockImplementation(function () {
-      if (this._path === "id 1") {
-        return arrangementTrackId;
-      }
       if (this._path === "id clip_1") {
         return "clip_1";
       }
@@ -23,9 +19,6 @@ describe("transformClips - arrangement", () => {
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
-      if (this._id === arrangementTrackId) {
-        return "live_set tracks 0";
-      }
       if (this._id === "clip_1") {
         return "live_set tracks 0 arrangement_clips 0";
       }
@@ -35,10 +28,7 @@ describe("transformClips - arrangement", () => {
       return this._path;
     });
     liveApiType.mockImplementation(function () {
-      if (
-        this._id === arrangementTrackId ||
-        this._path === arrangementTrackId
-      ) {
+      if (this._path === "live_set tracks 0") {
         return "Track";
       }
       if (["clip_1", "clip_2"].includes(this._id)) {
@@ -54,11 +44,7 @@ describe("transformClips - arrangement", () => {
           return [4];
         }
       }
-      if (
-        (this._id === arrangementTrackId ||
-          this._path === arrangementTrackId) &&
-        prop === "arrangement_clips"
-      ) {
+      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
         return ["id", "clip_1", "id", "clip_2"];
       }
       if (this._id === "clip_1") {
@@ -99,7 +85,7 @@ describe("transformClips - arrangement", () => {
     });
 
     const result = transformClips({
-      arrangementTrackId,
+      arrangementTrackIndex: "0",
       arrangementStart: "1|1.0",
       arrangementLength: "4:0.0",
       seed: 12345,
@@ -110,7 +96,7 @@ describe("transformClips - arrangement", () => {
     expect(result.clipIds).toEqual(["clip_1", "clip_2"]);
   });
 
-  it("should prioritize clipIds over arrangementTrackId when both provided", () => {
+  it("should prioritize clipIds over arrangementTrackIndex when both provided", () => {
     const clipId = "clip_1";
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
@@ -149,7 +135,7 @@ describe("transformClips - arrangement", () => {
 
     const result = transformClips({
       clipIds: clipId,
-      arrangementTrackId: "id 1", // Should be ignored
+      arrangementTrackIndex: "0", // Should be ignored
       arrangementStart: "1|1.0",
       arrangementLength: "4:0.0",
       seed: 12345,
@@ -159,11 +145,7 @@ describe("transformClips - arrangement", () => {
   });
 
   it("should filter clips by start_time in arrangement range", () => {
-    const arrangementTrackId = "id 1";
     liveApiId.mockImplementation(function () {
-      if (this._path === "id 1") {
-        return arrangementTrackId;
-      }
       if (this._path === "id clip_1") {
         return "clip_1";
       }
@@ -176,9 +158,6 @@ describe("transformClips - arrangement", () => {
       return this._id;
     });
     liveApiPath.mockImplementation(function () {
-      if (this._id === arrangementTrackId) {
-        return "live_set tracks 0";
-      }
       if (this._id === "clip_1") {
         return "live_set tracks 0 arrangement_clips 0";
       }
@@ -191,10 +170,7 @@ describe("transformClips - arrangement", () => {
       return this._path;
     });
     liveApiType.mockImplementation(function () {
-      if (
-        this._id === arrangementTrackId ||
-        this._path === arrangementTrackId
-      ) {
+      if (this._path === "live_set tracks 0") {
         return "Track";
       }
       if (["clip_1", "clip_2", "clip_3"].includes(this._id)) {
@@ -210,11 +186,7 @@ describe("transformClips - arrangement", () => {
           return [4];
         }
       }
-      if (
-        (this._id === arrangementTrackId ||
-          this._path === arrangementTrackId) &&
-        prop === "arrangement_clips"
-      ) {
+      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
         return ["id", "clip_1", "id", "clip_2", "id", "clip_3"];
       }
       if (this._id === "clip_1") {
@@ -272,7 +244,7 @@ describe("transformClips - arrangement", () => {
     });
 
     const result = transformClips({
-      arrangementTrackId,
+      arrangementTrackIndex: "0",
       arrangementStart: "1|1.0",
       arrangementLength: "4:0.0",
       seed: 12345,
@@ -283,24 +255,8 @@ describe("transformClips - arrangement", () => {
   });
 
   it("should warn when no clips found in arrangement range", () => {
-    const arrangementTrackId = "id 1";
-    liveApiId.mockImplementation(function () {
-      if (this._path === "id 1") {
-        return arrangementTrackId;
-      }
-      return this._id;
-    });
-    liveApiPath.mockImplementation(function () {
-      if (this._id === arrangementTrackId) {
-        return "live_set tracks 0";
-      }
-      return this._path;
-    });
     liveApiType.mockImplementation(function () {
-      if (
-        this._id === arrangementTrackId ||
-        this._path === arrangementTrackId
-      ) {
+      if (this._path === "live_set tracks 0") {
         return "Track";
       }
     });
@@ -313,11 +269,7 @@ describe("transformClips - arrangement", () => {
           return [4];
         }
       }
-      if (
-        (this._id === arrangementTrackId ||
-          this._path === arrangementTrackId) &&
-        prop === "arrangement_clips"
-      ) {
+      if (this._path === "live_set tracks 0" && prop === "arrangement_clips") {
         return []; // No clips
       }
       return [0];
@@ -326,7 +278,7 @@ describe("transformClips - arrangement", () => {
     const consoleErrorSpy = vi.spyOn(console, "error");
 
     const result = transformClips({
-      arrangementTrackId,
+      arrangementTrackIndex: "0",
       arrangementStart: "1|1.0",
       arrangementLength: "4:0.0",
       seed: 12345,

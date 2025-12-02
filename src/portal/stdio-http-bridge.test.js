@@ -68,8 +68,10 @@ vi.mock(import("../mcp-server/create-mcp-server.js"), () => ({
   createMcpServer: vi.fn(() => mockMcpServer),
 }));
 
-vi.mock(import("zod-to-json-schema"), () => ({
-  zodToJsonSchema: vi.fn(() => ({ type: "object", properties: {} })),
+vi.mock(import("zod"), () => ({
+  z: {
+    toJSONSchema: vi.fn((schema) => schema), // Pass through for testing
+  },
 }));
 
 vi.mock(import("./file-logger.js"), () => ({

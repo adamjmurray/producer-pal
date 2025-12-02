@@ -1,8 +1,8 @@
-import { formatNotation } from "../../../notation/barbeat/barbeat-format-notation.js";
+import { formatNotation } from "#src/notation/barbeat/barbeat-format-notation.js";
 import {
   abletonBeatsToBarBeat,
   abletonBeatsToBarBeatDuration,
-} from "../../../notation/barbeat/time/barbeat-time.js";
+} from "#src/notation/barbeat/time/barbeat-time.js";
 import {
   LIVE_API_WARP_MODE_BEATS,
   LIVE_API_WARP_MODE_COMPLEX,
@@ -12,13 +12,13 @@ import {
   LIVE_API_WARP_MODE_TEXTURE,
   LIVE_API_WARP_MODE_TONES,
   WARP_MODE,
-} from "../../constants.js";
-import { liveGainToDb } from "../../shared/gain-utils.js";
+} from "#src/tools/constants.js";
+import { liveGainToDb } from "#src/tools/shared/gain-utils.js";
 import {
   parseIncludeArray,
   READ_CLIP_DEFAULTS,
-} from "../../shared/tool-framework/include-params.js";
-import { validateIdType } from "../../shared/validation/id-validation.js";
+} from "#src/tools/shared/tool-framework/include-params.js";
+import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 
 /**
  * Read a MIDI or audio clip from Ableton Live
@@ -281,8 +281,7 @@ function processAudioClip(result, clip, includeWarpMarkers) {
 
   const filePath = clip.getProperty("file_path");
   if (filePath) {
-    // Extract just filename, handle both Unix and Windows paths
-    result.filename = filePath.split(/[/\\]/).pop();
+    result.sampleFile = filePath;
   }
 
   const pitchCoarse = clip.getProperty("pitch_coarse");

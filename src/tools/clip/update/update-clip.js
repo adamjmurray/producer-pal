@@ -8,7 +8,7 @@ import {
   validateAndParseArrangementParams,
   buildClipResultObject,
   emitArrangementWarnings,
-} from "../clip-result-helpers.js";
+} from "../helpers/clip-result-helpers.js";
 import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
 
 /**
@@ -16,6 +16,7 @@ import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
  * @param {object} args - The clip parameters
  * @param {string} args.ids - Clip ID or comma-separated list of clip IDs to update
  * @param {string} [args.notes] - Musical notation string
+ * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
  * @param {string} [args.noteUpdateMode="merge"] - How to handle existing notes: 'replace' or 'merge'
  * @param {string} [args.name] - Optional clip name
  * @param {string} [args.color] - Optional clip color (CSS format: hex)
@@ -41,6 +42,7 @@ export function updateClip(
   {
     ids,
     notes: notationString,
+    modulations: modulationString,
     noteUpdateMode = "merge",
     name,
     color,
@@ -89,6 +91,7 @@ export function updateClip(
     processSingleClipUpdate({
       clip,
       notationString,
+      modulationString,
       noteUpdateMode,
       name,
       color,

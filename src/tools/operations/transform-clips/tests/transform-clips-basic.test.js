@@ -8,12 +8,12 @@ import {
 import { transformClips } from "../transform-clips.js";
 
 describe("transformClips - basic", () => {
-  it("should throw error when clipIds and arrangementTrackId are missing", () => {
+  it("should throw error when clipIds and arrangementTrackIndex are missing", () => {
     expect(() => transformClips()).toThrow(
-      "transformClips failed: clipIds or arrangementTrackId is required",
+      "transformClips failed: clipIds or arrangementTrackIndex is required",
     );
     expect(() => transformClips({})).toThrow(
-      "transformClips failed: clipIds or arrangementTrackId is required",
+      "transformClips failed: clipIds or arrangementTrackIndex is required",
     );
   });
 

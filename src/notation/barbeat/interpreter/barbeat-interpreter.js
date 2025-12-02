@@ -1,4 +1,4 @@
-import * as console from "../../../shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.js";
 import { applyV0Deletions } from "../barbeat-apply-v0-deletions.js";
 import {
   DEFAULT_BEATS_PER_BAR,

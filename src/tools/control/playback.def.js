@@ -44,7 +44,12 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("comma-separated ID(s) for clip operations"),
-    sceneId: z.string().optional().describe("for play-scene"),
+    sceneIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("0-based scene index for play-scene"),
     switchView: z
       .boolean()
       .optional()

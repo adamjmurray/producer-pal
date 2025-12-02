@@ -1,4 +1,4 @@
-import { TOOLS } from "../../../lib/constants/tools";
+import { TOOLS } from "#webui/lib/constants/tools";
 
 interface ToolTogglesProps {
   enabledTools: Record<string, boolean>;

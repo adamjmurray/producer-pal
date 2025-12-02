@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   liveApiCall,
+  liveApiGet,
   liveApiId,
   liveApiSet,
   mockLiveApiGet,
 } from "../../../../test/mock-live-api.js";
 import { setupMocks } from "../helpers/update-clip-test-helpers.js";
 import { updateClip } from "../update-clip.js";
+import "../../../../live-api-adapter/live-api-extensions.js";
 
 describe("updateClip - Properties and ID handling", () => {
   beforeEach(() => {
@@ -197,5 +199,94 @@ describe("updateClip - Properties and ID handling", () => {
     );
 
     expect(result).toEqual([{ id: "123" }, { id: "456" }]);
+  });
+
+  describe("color quantization verification", () => {
+    it("should emit warning when color is quantized by Live", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+        },
+      });
+
+      // Mock getProperty to return quantized color (different from input)
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "color") {
+          return [16725558]; // #FF3636 (quantized from #FF0000)
+        }
+        if (prop === "is_arrangement_clip") return [0];
+        if (prop === "is_midi_clip") return [1];
+        if (prop === "is_audio_clip") return [0];
+        return null;
+      });
+
+      updateClip({
+        ids: "123",
+        color: "#FF0000",
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Note: Requested clip color #FF0000 was mapped to nearest palette color #FF3636. Live uses a fixed color palette.",
+      );
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should not emit warning when color matches exactly", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+        },
+      });
+
+      // Mock getProperty to return exact color (same as input)
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "color") {
+          return [16711680]; // #FF0000 (exact match)
+        }
+        if (prop === "is_arrangement_clip") return [0];
+        if (prop === "is_midi_clip") return [1];
+        if (prop === "is_audio_clip") return [0];
+        return null;
+      });
+
+      updateClip({
+        ids: "123",
+        color: "#FF0000",
+      });
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should not verify color if color parameter is not provided", async () => {
+      const consoleModule = await import("#src/shared/v8-max-console.js");
+      const consoleSpy = vi.spyOn(consoleModule, "error");
+
+      mockLiveApiGet({
+        123: {
+          is_arrangement_clip: 0,
+          is_midi_clip: 1,
+        },
+      });
+
+      updateClip({
+        ids: "123",
+        name: "No color update",
+      });
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+
+      consoleSpy.mockRestore();
+    });
   });
 });

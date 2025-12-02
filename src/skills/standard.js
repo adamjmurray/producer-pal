@@ -46,7 +46,7 @@ Create MIDI clips using the bar|beat notation syntax:
   - After \`@2=1\`, your current v/t/p settings remain unchanged
 
 ## Audio Clips
-Audio clip properties are always included in \`ppal-read-clip\` results: \`filename\`,
+Audio clip properties are always included in \`ppal-read-clip\` results: \`sampleFile\`,
 \`gainDb\`, \`pitchShift\`, \`sampleLength\`, \`sampleRate\`.
 
 **Understanding audio parameters:**

@@ -32,7 +32,7 @@ describe("createClip - session view", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C3 D3 E3 1|1",
       name: "New Clip",
       color: "#FF0000",
@@ -64,7 +64,7 @@ describe("createClip - session view", () => {
         path: "live_set tracks 0 clip_slots 0 clip",
       }),
       "looping",
-      true,
+      1, // Live API uses 1 for true
     );
     expect(liveApiCall).toHaveBeenCalledWithThis(
       expect.objectContaining({
@@ -130,7 +130,7 @@ describe("createClip - session view", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C3 1|1",
       auto: "play-scene",
     });
@@ -165,13 +165,13 @@ describe("createClip - session view", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         auto: "invalid-value",
       }),
     ).toThrow('createClip failed: unknown auto value "invalid-value"');
   });
 
-  it("should create multiple clips in successive slots", () => {
+  it("should create multiple clips at specified scene indices", () => {
     liveApiId.mockImplementation(function () {
       switch (this._path) {
         case "live_set tracks 0 clip_slots 1 clip":
@@ -195,8 +195,7 @@ describe("createClip - session view", () => {
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 1,
-      count: 3,
+      sceneIndex: "1,2,3", // Create clips at scenes 1, 2, and 3
       name: "Loop",
       color: "#00FF00",
     });
@@ -274,7 +273,7 @@ describe("createClip - session view", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 4, // Needs scenes at indices 2, 3, 4
+      sceneIndex: "4", // Needs scenes at indices 2, 3, 4
       name: "Future Clip",
     });
 
@@ -302,31 +301,38 @@ describe("createClip - session view", () => {
     ); // 1 bar in 4/4
   });
 
-  it("should throw error if clip already exists in session view clip slot", () => {
+  it("should emit warning and return empty array if clip already exists", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: { signature_numerator: 4 },
     });
-    expect(() =>
-      createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: 0,
-        name: "This Should Fail",
-      }),
-    ).toThrow(
-      "createClip failed: a clip already exists at track 0, clip slot 0",
-    );
+
+    // Runtime errors during clip creation are now warnings, not fatal errors
+    const result = createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: "0",
+      name: "This Should Fail",
+    });
+
+    // Should return empty array (no clips created)
+    expect(result).toEqual([]);
   });
 
-  it("should throw error if sceneIndex exceeds maximum allowed scenes", () => {
-    expect(() =>
-      createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: MAX_AUTO_CREATED_SCENES,
-        name: "This Should Fail",
-      }),
-    ).toThrow(/exceeds the maximum allowed value/);
+  it("should emit warning and return empty array if sceneIndex exceeds maximum", () => {
+    mockLiveApiGet({
+      LiveSet: { signature_numerator: 4 },
+    });
+
+    // Runtime errors during clip creation are now warnings, not fatal errors
+    const result = createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: String(MAX_AUTO_CREATED_SCENES),
+      name: "This Should Fail",
+    });
+
+    // Should return empty array (no clips created)
+    expect(result).toEqual([]);
   });
 });

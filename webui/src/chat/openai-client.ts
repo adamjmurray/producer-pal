@@ -1,7 +1,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import OpenAI from "openai";
-import type { OpenAIMessage, OpenAIToolCall } from "../types/messages";
+import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
+import { getMcpUrl } from "#webui/utils/mcp-url";
 
 const MCP_NOT_INITIALIZED_ERROR =
   "MCP client not initialized. Call initialize() first.";
@@ -131,7 +132,7 @@ export class OpenAIClient {
         },
       }),
     });
-    this.mcpUrl = config.mcpUrl ?? "http://localhost:3350/mcp";
+    this.mcpUrl = config.mcpUrl ?? getMcpUrl();
     this.config = config;
     this.mcpClient = null;
     this.chatHistory = config.chatHistory ?? [];
@@ -151,12 +152,10 @@ export class OpenAIClient {
 
   /**
    * Tests connection to the MCP server without creating a client instance.
-   * @param {string} [mcpUrl="http://localhost:3350/mcp"] - MCP server URL to test
+   * @param {string} [mcpUrl] - MCP server URL to test (defaults to current origin)
    * @throws If connection fails
    */
-  static async testConnection(
-    mcpUrl = "http://localhost:3350/mcp",
-  ): Promise<void> {
+  static async testConnection(mcpUrl = getMcpUrl()): Promise<void> {
     const transport = new StreamableHTTPClientTransport(new URL(mcpUrl));
     const client = new Client({
       name: "producer-pal-chat-ui-test",

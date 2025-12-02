@@ -99,6 +99,7 @@ describe("MCP Express App", () => {
         "ppal-delete",
         "ppal-duplicate",
         "ppal-memory",
+        "ppal-read-samples",
         "ppal-raw-live-api",
       ]);
     });
@@ -169,7 +170,7 @@ describe("MCP Express App", () => {
         (tool) => tool.name === "ppal-create-clip",
       );
       expect(createClipTool).toBeDefined();
-      expect(createClipTool.description).toContain("Create MIDI clip(s)");
+      expect(createClipTool.description).toContain("Create MIDI or audio");
       expect(createClipTool.inputSchema.properties.view).toBeDefined();
       expect(createClipTool.inputSchema.properties.trackIndex).toBeDefined();
     });
