@@ -130,14 +130,9 @@ typically overkill and will hit usage limits faster.
 
 ## Limitations
 
-Producer Pal is focused on generating and manipulating MIDI clips.
-
-It cannot (yet) manage devices (instruments or effects) in your tracks. You must
-add and adjust all devices yourself. Note that it can duplicate tracks,
-including all the track's devices.
-
-It cannot work with audio clips beyond some general features like deleting and
-duplicating clips (it cannot add new audio clips or create audio from scratch).
+Producer Pal cannot (yet) manage devices (instruments or effects) in your
+tracks. You must add and adjust all devices yourself. Note that it can duplicate
+tracks, including all the track's devices.
 
 Drum Racks work in nested structures, but tracks with multiple Drum Racks only
 use the first one's drum map. Use one Drum Rack per track for predictable
