@@ -13,6 +13,19 @@ export default defineConfig({
 
   cleanUrls: true,
 
+  transformPageData(pageData) {
+    const path = pageData.relativePath
+      .replace(/\.md$/, "")
+      .replace(/\/index$/, "")
+      .replace(/^index$/, "");
+    const canonicalUrl = `https://producer-pal.org/${path}`;
+    pageData.frontmatter.head ??= [];
+    pageData.frontmatter.head.push([
+      "link",
+      { rel: "canonical", href: canonicalUrl },
+    ]);
+  },
+
   head: [["link", { rel: "icon", href: "/producer-pal-logo.svg" }]],
 
   themeConfig: {
