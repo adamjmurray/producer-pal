@@ -301,31 +301,38 @@ describe("createClip - session view", () => {
     ); // 1 bar in 4/4
   });
 
-  it("should throw error if clip already exists in session view clip slot", () => {
+  it("should emit warning and return empty array if clip already exists", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 1 },
       LiveSet: { signature_numerator: 4 },
     });
-    expect(() =>
-      createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: "0",
-        name: "This Should Fail",
-      }),
-    ).toThrow(
-      "createClip failed: a clip already exists at track 0, clip slot 0",
-    );
+
+    // Runtime errors during clip creation are now warnings, not fatal errors
+    const result = createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: "0",
+      name: "This Should Fail",
+    });
+
+    // Should return empty array (no clips created)
+    expect(result).toEqual([]);
   });
 
-  it("should throw error if sceneIndex exceeds maximum allowed scenes", () => {
-    expect(() =>
-      createClip({
-        view: "session",
-        trackIndex: 0,
-        sceneIndex: String(MAX_AUTO_CREATED_SCENES),
-        name: "This Should Fail",
-      }),
-    ).toThrow(/exceeds the maximum allowed value/);
+  it("should emit warning and return empty array if sceneIndex exceeds maximum", () => {
+    mockLiveApiGet({
+      LiveSet: { signature_numerator: 4 },
+    });
+
+    // Runtime errors during clip creation are now warnings, not fatal errors
+    const result = createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: String(MAX_AUTO_CREATED_SCENES),
+      name: "This Should Fail",
+    });
+
+    // Should return empty array (no clips created)
+    expect(result).toEqual([]);
   });
 });

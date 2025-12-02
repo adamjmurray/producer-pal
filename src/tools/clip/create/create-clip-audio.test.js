@@ -216,38 +216,40 @@ describe("createClip - audio clips", () => {
       );
     });
 
-    it("should throw error when scene index exceeds maximum", () => {
+    it("should emit warning and return empty array when scene index exceeds maximum", () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 0 },
+        LiveSet: { signature_numerator: 4 },
       });
 
-      expect(() =>
-        createClip({
-          view: "session",
-          trackIndex: 0,
-          sceneIndex: String(MAX_AUTO_CREATED_SCENES),
-          sampleFile: "/path/to/audio.wav",
-        }),
-      ).toThrow(
-        `createClip failed: sceneIndex ${MAX_AUTO_CREATED_SCENES} exceeds the maximum allowed value of ${MAX_AUTO_CREATED_SCENES - 1}`,
-      );
+      // Runtime errors during clip creation are now warnings, not fatal errors
+      const result = createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: String(MAX_AUTO_CREATED_SCENES),
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toEqual([]);
     });
 
-    it("should throw error when clip already exists at location", () => {
+    it("should emit warning and return empty array when clip already exists", () => {
       mockLiveApiGet({
         ClipSlot: { has_clip: 1 }, // Clip already exists
+        LiveSet: { signature_numerator: 4 },
       });
 
-      expect(() =>
-        createClip({
-          view: "session",
-          trackIndex: 0,
-          sceneIndex: "0",
-          sampleFile: "/path/to/audio.wav",
-        }),
-      ).toThrow(
-        "createClip failed: a clip already exists at track 0, clip slot 0",
-      );
+      // Runtime errors during clip creation are now warnings, not fatal errors
+      const result = createClip({
+        view: "session",
+        trackIndex: 0,
+        sceneIndex: "0",
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toEqual([]);
     });
   });
 
@@ -429,23 +431,23 @@ describe("createClip - audio clips", () => {
       ]);
     });
 
-    it("should throw error when arrangement position exceeds maximum", () => {
+    it("should emit warning and return empty array when arrangement position exceeds maximum", () => {
       mockLiveApiGet({
         Track: { exists: () => true },
         LiveSet: { signature_numerator: 4, signature_denominator: 4 },
       });
 
       // Position 394202|1 = 1,576,804 beats which exceeds the limit of 1,576,800
-      expect(() =>
-        createClip({
-          view: "arrangement",
-          trackIndex: 0,
-          arrangementStart: "394202|1",
-          sampleFile: "/path/to/audio.wav",
-        }),
-      ).toThrow(
-        "createClip failed: arrangement position 1576804 exceeds maximum allowed value of 1576800",
-      );
+      // Runtime errors during clip creation are now warnings, not fatal errors
+      const result = createClip({
+        view: "arrangement",
+        trackIndex: 0,
+        arrangementStart: "394202|1",
+        sampleFile: "/path/to/audio.wav",
+      });
+
+      // Should return empty array (no clips created)
+      expect(result).toEqual([]);
     });
 
     it("should throw error when track does not exist", () => {
@@ -463,7 +465,7 @@ describe("createClip - audio clips", () => {
           arrangementStart: "1|1",
           sampleFile: "/path/to/audio.wav",
         }),
-      ).toThrow("createClip failed: track with index 99 does not exist");
+      ).toThrow("createClip failed: track 99 does not exist");
     });
   });
 

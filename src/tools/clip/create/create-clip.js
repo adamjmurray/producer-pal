@@ -3,6 +3,7 @@ import {
   barBeatToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
 import { select } from "#src/tools/control/select.js";
 import { parseTimeSignature } from "#src/tools/shared/utils.js";
 import {
@@ -67,6 +68,12 @@ export function createClip(
     notationString,
     sampleFile,
   );
+
+  // Validate track exists (fatal - affects all clips)
+  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+  if (!track.exists()) {
+    throw new Error(`createClip failed: track ${trackIndex} does not exist`);
+  }
 
   const liveSet = new LiveAPI("live_set");
 
@@ -212,33 +219,44 @@ function createClips(
       );
     }
 
-    const clipResult = processClipIteration(
-      view,
-      trackIndex,
-      currentSceneIndex,
-      currentArrangementStartBeats,
-      currentArrangementStart,
-      clipLength,
-      liveSet,
-      startBeats,
-      endBeats,
-      firstStartBeats,
-      looping,
-      clipName,
-      color,
-      timeSigNumerator,
-      timeSigDenominator,
-      notationString,
-      notes,
-      length,
-      sampleFile,
-    );
-    createdClips.push(clipResult);
+    try {
+      const clipResult = processClipIteration(
+        view,
+        trackIndex,
+        currentSceneIndex,
+        currentArrangementStartBeats,
+        currentArrangementStart,
+        clipLength,
+        liveSet,
+        startBeats,
+        endBeats,
+        firstStartBeats,
+        looping,
+        clipName,
+        color,
+        timeSigNumerator,
+        timeSigDenominator,
+        notationString,
+        notes,
+        length,
+        sampleFile,
+      );
+      createdClips.push(clipResult);
 
-    // For audio clips with multiple positions, get actual length from first clip
-    if (sampleFile && count > 1 && i === 0) {
-      const firstClip = new LiveAPI(clipResult.id);
-      clipLength = firstClip.getProperty("length");
+      // For audio clips, get actual length from first successful clip
+      if (sampleFile && createdClips.length === 1) {
+        const firstClip = new LiveAPI(clipResult.id);
+        clipLength = firstClip.getProperty("length");
+      }
+    } catch (error) {
+      // Emit warning with position info
+      const position =
+        view === "session"
+          ? `trackIndex=${trackIndex}, sceneIndex=${currentSceneIndex}`
+          : `trackIndex=${trackIndex}, arrangementStart=${currentArrangementStart}`;
+      console.error(
+        `Warning: Failed to create clip at ${position}: ${error.message}`,
+      );
     }
   }
 

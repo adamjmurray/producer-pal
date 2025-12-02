@@ -1,4 +1,7 @@
-import { MAX_AUTO_CREATED_SCENES } from "#src/tools/constants.js";
+import {
+  MAX_ARRANGEMENT_POSITION_BEATS,
+  MAX_AUTO_CREATED_SCENES,
+} from "#src/tools/constants.js";
 
 /**
  * Creates an audio clip in a session clip slot
@@ -19,7 +22,7 @@ export function createAudioSessionClip(
   // Auto-create scenes if needed (same logic as MIDI)
   if (sceneIndex >= maxAutoCreatedScenes) {
     throw new Error(
-      `createClip failed: sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
+      `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
         MAX_AUTO_CREATED_SCENES - 1
       }`,
     );
@@ -39,7 +42,7 @@ export function createAudioSessionClip(
   );
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
-      `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
+      `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
     );
   }
 
@@ -67,18 +70,13 @@ export function createAudioArrangementClip(
   _clipLength,
 ) {
   // Live API limit check
-  if (arrangementStartBeats > 1576800) {
+  if (arrangementStartBeats > MAX_ARRANGEMENT_POSITION_BEATS) {
     throw new Error(
-      `createClip failed: arrangement position ${arrangementStartBeats} exceeds maximum allowed value of 1576800`,
+      `arrangement position ${arrangementStartBeats} exceeds maximum allowed value of ${MAX_ARRANGEMENT_POSITION_BEATS}`,
     );
   }
 
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  if (!track.exists()) {
-    throw new Error(
-      `createClip failed: track with index ${trackIndex} does not exist`,
-    );
-  }
 
   // Create audio clip at position
   const newClipResult = track.call(
@@ -88,9 +86,7 @@ export function createAudioArrangementClip(
   );
   const clip = LiveAPI.from(newClipResult);
   if (!clip.exists()) {
-    throw new Error(
-      "createClip failed: failed to create audio Arrangement clip",
-    );
+    throw new Error("failed to create audio Arrangement clip");
   }
 
   return { clip, arrangementStartBeats };

@@ -138,7 +138,7 @@ function createSessionClip(
   // Auto-create scenes if needed
   if (sceneIndex >= maxAutoCreatedScenes) {
     throw new Error(
-      `createClip failed: sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
+      `sceneIndex ${sceneIndex} exceeds the maximum allowed value of ${
         MAX_AUTO_CREATED_SCENES - 1
       }`,
     );
@@ -158,7 +158,7 @@ function createSessionClip(
   );
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
-      `createClip failed: a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
+      `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
     );
   }
   clipSlot.call("create_clip", clipLength);
@@ -177,12 +177,6 @@ function createSessionClip(
  */
 function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  if (!track.exists()) {
-    throw new Error(
-      `createClip failed: track with index ${trackIndex} does not exist`,
-    );
-  }
-
   const newClipResult = track.call(
     "create_midi_clip",
     arrangementStartBeats,
@@ -190,7 +184,7 @@ function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
   );
   const clip = LiveAPI.from(newClipResult);
   if (!clip.exists()) {
-    throw new Error("createClip failed: failed to create Arrangement clip");
+    throw new Error("failed to create Arrangement clip");
   }
 
   return { clip, arrangementStartBeats };
