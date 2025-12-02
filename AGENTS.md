@@ -65,6 +65,13 @@ See `dev-docs/Architecture.md` for detailed system design and
   loader. Code in `webui/` is bundled and must NEVER use file extensions in
   relative imports (e.g., `import foo from './bar'`).
 
+- **Path aliases**: Use `#src/` for src imports (e.g.,
+  `import foo from '#src/shared/utils.js'`) and `#webui/` for webui imports
+  (e.g., `import { App } from '#webui/components/App'`). Both use Node.js
+  package subpath imports configured in package.json `"imports"` field. The `#`
+  prefix is required by Node.js for unbundled execution (build scripts, CLI
+  tools). Never use relative paths like `../../` when a path alias is available.
+
 - **Testing builds**: Always use `npm run build:all` for development (includes
   debugging tools like `ppal-raw-live-api`)
 
@@ -104,6 +111,9 @@ See `dev-docs/Architecture.md` for detailed system design and
   - If a helper file exceeds 600 lines, split by feature group:
     `{feature}-{group}-helpers.js` (e.g., `update-clip-audio-helpers.js`,
     `update-clip-midi-helpers.js`)
+  - When a directory accumulates multiple helper files (2+), move them to a
+    `helpers/` subdirectory while keeping the main source file in the parent
+    directory
   - Test files split using dot notation: `{feature}-{area}.test.js` (e.g.,
     `update-clip-audio-arrangement.test.js`, `duplicate-validation.test.js`)
   - Test helpers use `{feature}-test-helpers.js` for shared test utilities

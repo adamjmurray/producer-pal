@@ -31,6 +31,7 @@ describe("parseIncludeArray", () => {
       includeMasterTrack: false,
       includeColor: false,
       includeWarpMarkers: false,
+      includeMixer: false,
     });
   });
 
@@ -56,6 +57,7 @@ describe("parseIncludeArray", () => {
       includeMasterTrack: false,
       includeColor: false,
       includeWarpMarkers: false,
+      includeMixer: false,
     });
   });
 

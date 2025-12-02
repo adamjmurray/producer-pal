@@ -1,6 +1,6 @@
-import { abletonBeatsToBarBeat } from "../../../../notation/barbeat/time/barbeat-time.js";
-import * as console from "../../../../shared/v8-max-console.js";
-import { getHostTrackIndex } from "../../../shared/arrangement/get-host-track-index.js";
+import { abletonBeatsToBarBeat } from "#src/notation/barbeat/time/barbeat-time.js";
+import * as console from "#src/shared/v8-max-console.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
 import {
   getMinimalClipInfo,
   createClipsForLength,

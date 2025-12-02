@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "preact/hooks";
-import type { Provider, UseSettingsReturn } from "../../types/settings";
+import type { Provider, UseSettingsReturn } from "#webui/types/settings";
 import {
   buildAllProviderSettings,
   checkHasApiKey,

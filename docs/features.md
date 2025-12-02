@@ -78,7 +78,7 @@ create.
 
 ### Create Track (`ppal-create-track`)
 
-- Add MIDI or audio tracks
+- Add MIDI, audio, or return tracks
 - Position tracks exactly where you want
 - Set initial mute/solo/arm states
 
@@ -88,6 +88,7 @@ create.
 - View all clips in Session and Arrangement
 - See devices, routing options, and drum pad mappings
 - Check track states (muted, soloed, armed)
+- View mixer properties: gain, pan, panning mode, and send levels
 
 ### Update Track (`ppal-update-track`)
 
@@ -95,6 +96,9 @@ create.
 - Control mute/solo/arm states
 - Configure input/output routing
 - Set monitoring modes
+- Adjust track gain (volume) and panning
+- Configure stereo or split panning mode
+- Set send levels to return tracks
 - Bulk update multiple tracks
 
 ## Clip Creation & Editing
@@ -112,7 +116,8 @@ create.
 - See notes in musical notation (C3, D#4, etc.)
 - Check loop settings and time signatures
 - Works with Session and Arrangement clips
-- Audio clip properties: gain, pitch shift, sample info (rate, length, filename)
+- Audio clip properties: gain, pitch shift, sample info (rate, length,
+  sampleFile)
 - Audio warp settings: mode (beats, tones, texture, repitch, complex, pro),
   enabled/disabled state, warp marker positions
 
@@ -124,8 +129,8 @@ create.
 - Adjust loop settings
 - Update or merge note patterns
 - Bulk edit multiple clips
-- Audio clip modifications: gain (0-1), pitch shift (-48 to +48 semitones,
-  supports decimals), warping on/off, warp mode
+- Audio clip modifications: gain (-70 to +24 dB), pitch shift (-48 to +48
+  semitones, supports decimals), warping on/off, warp mode
 - Warp marker operations: add markers at specific beat/sample positions, move
   markers by beat distance, remove markers
 - Arrangement clip positioning: move clips to different bar|beat positions in
@@ -169,6 +174,16 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 - Remove tracks, scenes, or clips
 - Bulk delete multiple objects
+
+### Transform Clips (`ppal-transform-clips`)
+
+- Slice clips into repeating segments at specified intervals
+- Shuffle arrangement clip positions randomly
+- Randomize audio clip gain offsets
+- Randomize transpose for audio and MIDI clips
+- Randomize MIDI note velocity and duration
+- Adjust velocity range and probability offsets
+- Use seed values for reproducible randomization
 
 ## Selection State and View Control
 

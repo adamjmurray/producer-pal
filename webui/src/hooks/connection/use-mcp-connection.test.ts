@@ -53,6 +53,16 @@ describe("useMcpConnection", () => {
     });
   });
 
+  it("sets error to 'Unknown error' when rejection is not an Error instance", async () => {
+    mockTestConnection.mockRejectedValue("string error");
+    const { result } = renderHook(() => useMcpConnection());
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe("error");
+      expect(result.current.mcpError).toBe("Unknown error");
+    });
+  });
+
   it("allows manual reconnection via checkMcpConnection", async () => {
     mockTestConnection.mockRejectedValue(new Error("Initial fail"));
     const { result } = renderHook(() => useMcpConnection());

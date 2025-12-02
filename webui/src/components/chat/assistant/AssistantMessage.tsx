@@ -1,4 +1,4 @@
-import type { UIPart } from "../../../types/messages";
+import type { UIPart } from "#webui/types/messages";
 import { AssistantError } from "./AssistantError";
 import { AssistantText } from "./AssistantText";
 import { AssistantThought } from "./AssistantThought";

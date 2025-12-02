@@ -94,6 +94,16 @@ describe("ToolToggles", () => {
       expect(checkbox.checked).toBe(false);
     });
 
+    it("checkbox defaults to checked when tool is not in enabledTools", () => {
+      // Pass empty object - tools not in enabledTools should default to enabled (true)
+      render(<ToolToggles {...defaultProps} enabledTools={{}} />);
+
+      const checkbox = screen.getByLabelText(
+        "Connect to Ableton Live",
+      ) as HTMLInputElement;
+      expect(checkbox.checked).toBe(true);
+    });
+
     it("calls setEnabledTools when checkbox is toggled", () => {
       const setEnabledTools = vi.fn();
       render(

@@ -1,3 +1,4 @@
+import { verifyColorQuantization } from "../shared/color-verification-helpers.js";
 import { parseCommaSeparatedIds, parseTimeSignature } from "../shared/utils.js";
 import { validateIdTypes } from "../shared/validation/id-validation.js";
 
@@ -38,6 +39,7 @@ export function updateScene(
 
     if (color != null) {
       scene.setColor(color);
+      verifyColorQuantization(scene, color);
     }
 
     // Handle tempo - explicit -1 disables, non-null enables

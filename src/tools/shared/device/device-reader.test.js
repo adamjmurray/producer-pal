@@ -4,12 +4,12 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "../constants.js";
+} from "#src/tools/constants.js";
 import {
   cleanupInternalDrumChains,
   getDrumMap,
   getDeviceType,
-} from "./device/device-reader.js";
+} from "./device-reader.js";
 
 describe("device-reader", () => {
   describe("getDeviceType", () => {

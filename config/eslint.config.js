@@ -240,7 +240,16 @@ export default [
       jsdoc,
     },
     settings: {
-      "import/resolver": { node: true },
+      "import/resolver": {
+        alias: {
+          map: [
+            ["#webui", "./webui/src"],
+            ["#src", "./src"],
+          ],
+          extensions: [".js", ".mjs", ".ts", ".tsx"],
+        },
+        node: true,
+      },
     },
     rules: {
       ...js.configs.recommended.rules,
@@ -329,6 +338,7 @@ export default [
         ...globals.node,
         // Max/MSP V8 globals
         LiveAPI: "readonly",
+        Folder: "readonly",
         outlet: "readonly",
         post: "readonly",
         Dict: "readonly",

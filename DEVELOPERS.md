@@ -512,7 +512,7 @@ cd ..
 - Published files (defined in `npm/package.json` `files` array):
   - `producer-pal-portal.js` (bundled portal script with shebang)
   - `LICENSE` (MIT license)
-  - `licenses/` (only portal dependencies: MCP SDK, zod, zod-to-json-schema)
+  - `licenses/` (only portal dependencies: MCP SDK, zod)
   - `README.md` (npm-specific documentation)
   - `producer-pal-logo.svg` (logo for npm page)
 - Build artifacts in `npm/` are gitignored (never committed)

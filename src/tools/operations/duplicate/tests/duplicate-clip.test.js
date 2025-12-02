@@ -86,7 +86,7 @@ describe("duplicate - clip duplication", () => {
         id: "clip1",
         destination: "session",
         toTrackIndex: 0,
-        toSceneIndex: 1,
+        toSceneIndex: "1",
       });
 
       expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -104,7 +104,7 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("should duplicate multiple clips to session view with auto-incrementing names", () => {
+    it("should duplicate multiple clips to session view with comma-separated toSceneIndex", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
@@ -116,10 +116,9 @@ describe("duplicate - clip duplication", () => {
         type: "clip",
         id: "clip1",
         destination: "session",
-        count: 2,
         name: "Custom Clip",
         toTrackIndex: 0,
-        toSceneIndex: 1,
+        toSceneIndex: "1,2",
       });
 
       expect(result).toStrictEqual([
@@ -185,7 +184,7 @@ describe("duplicate - clip duplication", () => {
           id: "arrangementClip1",
           destination: "session",
           toTrackIndex: 1,
-          toSceneIndex: 2,
+          toSceneIndex: "2",
         }),
       ).toThrow(
         'unsupported duplicate operation: cannot duplicate arrangement clips to the session (source clip id="arrangementClip1" path="live_set tracks 0 arrangement_clips 0") ',
@@ -262,7 +261,7 @@ describe("duplicate - clip duplication", () => {
       });
     });
 
-    it("should duplicate multiple clips to arrangement view at sequential positions", () => {
+    it("should duplicate multiple clips to arrangement view with comma-separated positions", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") {
           return "live_set tracks 0 clip_slots 0 clip";
@@ -292,7 +291,6 @@ describe("duplicate - clip duplication", () => {
       });
 
       mockLiveApiGet({
-        Clip: { length: 4 }, // Mock clip length of 4 beats
         "live_set tracks 0 arrangement_clips 0": {
           is_arrangement_clip: 1,
           start_time: 8,
@@ -311,8 +309,7 @@ describe("duplicate - clip duplication", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementStart: "3|1",
-        count: 3,
+        arrangementStart: "3|1,4|1,5|1",
         name: "Custom Clip",
       });
 
@@ -334,7 +331,7 @@ describe("duplicate - clip duplication", () => {
         },
       ]);
 
-      // Clips should be placed at sequential positions
+      // Clips should be placed at explicit positions
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "duplicate_clip_to_arrangement",

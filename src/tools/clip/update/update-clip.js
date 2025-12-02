@@ -8,7 +8,7 @@ import {
   validateAndParseArrangementParams,
   buildClipResultObject,
   emitArrangementWarnings,
-} from "../clip-result-helpers.js";
+} from "../helpers/clip-result-helpers.js";
 import { processSingleClipUpdate } from "./helpers/update-clip-helpers.js";
 
 /**

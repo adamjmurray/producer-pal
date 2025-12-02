@@ -6,7 +6,7 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import { createMcpServer } from "../mcp-server/create-mcp-server.js";
 import { formatErrorResponse } from "../shared/mcp-response-utils.js";
 import { logger } from "./file-logger.js";
@@ -42,7 +42,7 @@ export class StdioHttpBridge {
         title: toolInfo.title,
         description: toolInfo.description,
         inputSchema: toolInfo.inputSchema
-          ? zodToJsonSchema(toolInfo.inputSchema)
+          ? z.toJSONSchema(toolInfo.inputSchema)
           : {
               type: "object",
               properties: {},

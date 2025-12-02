@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { liveApiCall, mockLiveApiGet } from "../../../test/mock-live-api.js";
+import {
+  liveApiCall,
+  liveApiSet,
+  mockLiveApiGet,
+} from "../../../test/mock-live-api.js";
 import { createClip } from "./create-clip.js";
 
 describe("createClip - basic validation and time signatures", () => {
@@ -11,22 +15,21 @@ describe("createClip - basic validation and time signatures", () => {
       "createClip failed: trackIndex is required",
     );
     expect(() => createClip({ view: "session", trackIndex: 0 })).toThrow(
-      "createClip failed: sceneIndex is required when view is 'Session'",
+      "createClip failed: sceneIndex is required when view is 'session'",
     );
     expect(() => createClip({ view: "arrangement", trackIndex: 0 })).toThrow(
-      "createClip failed: arrangementStart is required when view is 'Arrangement'",
+      "createClip failed: arrangementStart is required when view is 'arrangement'",
     );
   });
 
-  it("should throw error when count is less than 1", () => {
+  it("should throw error for invalid sceneIndex format", () => {
     expect(() =>
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
-        count: 0,
+        sceneIndex: "invalid",
       }),
-    ).toThrow("createClip failed: count must be at least 1");
+    ).toThrow('createClip failed: invalid sceneIndex "invalid"');
   });
 
   it("should validate time signature early when provided", () => {
@@ -34,7 +37,7 @@ describe("createClip - basic validation and time signatures", () => {
       createClip({
         view: "session",
         trackIndex: 0,
-        sceneIndex: 0,
+        sceneIndex: "0",
         timeSignature: "invalid",
       }),
     ).toThrow("Time signature must be in format");
@@ -44,12 +47,13 @@ describe("createClip - basic validation and time signatures", () => {
     mockLiveApiGet({
       ClipSlot: { has_clip: 0 },
       LiveSet: { signature_numerator: 3, signature_denominator: 4 },
+      Clip: { length: 6 }, // 2 bars in 3/4 time = 6 beats
     });
 
     const result = createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar from song
     });
 
@@ -96,7 +100,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       timeSignature: "3/4",
       notes: "C3 1|1 D3 2|1", // Should parse with 3 beats per bar
     });
@@ -135,7 +139,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       timeSignature: "6/8",
       notes: "C3 1|1 D3 2|1",
     });
@@ -176,7 +180,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       length: "1:3",
       looping: false,
     });
@@ -197,7 +201,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       length: "2:0",
       looping: true,
     });
@@ -218,7 +222,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "t2 C3 1|1 t1.5 D3 1|4", // Last note starts at beat 3 (0-based), rounds up to 1 bar = 4 beats
     });
 
@@ -238,7 +242,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "t2 C3 1|1 t1.5 D3 1|2", // Last note starts at beat 1 (0.5 Ableton beats), rounds up to 1 bar
     });
 
@@ -282,7 +286,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -301,7 +305,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
     });
 
     expect(liveApiCall).toHaveBeenCalledWithThis(
@@ -320,7 +324,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "",
     });
 
@@ -329,6 +333,24 @@ describe("createClip - basic validation and time signatures", () => {
       "create_clip",
       4, // 1 bar in 4/4 = 4 Ableton beats
     );
+  });
+
+  it("should set loop_end to clip length for empty clips (not 0)", () => {
+    mockLiveApiGet({
+      ClipSlot: { has_clip: 0 },
+      LiveSet: { signature_numerator: 4, signature_denominator: 4 },
+    });
+
+    createClip({
+      view: "session",
+      trackIndex: 0,
+      sceneIndex: "0",
+    });
+
+    // loop_end must be > loop_start (Live API constraint)
+    // For empty clips, loop_end should be set to clipLength (1 bar = 4 beats)
+    expect(liveApiSet).toHaveBeenCalledWith("loop_end", 4);
+    expect(liveApiSet).toHaveBeenCalledWith("end_marker", 4);
   });
 
   it("should round up to next bar based on latest note start in 4/4", () => {
@@ -340,7 +362,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C4 1|4.5", // Note starts at beat 3.5 (0-based), which is in bar 1, rounds up to 1 bar
     });
 
@@ -360,7 +382,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C4 1|5.5", // Note starts at beat 4.5 in musical beats (2.25 Ableton beats), rounds up to 1 bar
     });
 
@@ -380,7 +402,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C4 2|1", // Note starts at bar 2, beat 1 (beat 4 in 0-based), rounds up to 2 bars
     });
 
@@ -403,7 +425,7 @@ describe("createClip - basic validation and time signatures", () => {
     createClip({
       view: "session",
       trackIndex: 0,
-      sceneIndex: 0,
+      sceneIndex: "0",
       notes: "C4 1|1",
       firstStart: "1|2",
       looping: false,
