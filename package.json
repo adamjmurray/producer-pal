@@ -35,7 +35,7 @@
     "coverage": "npm run test:coverage",
     "check": "npm run lint && npm run typecheck && npm run format:check && npm run test:coverage",
     "fix": "npm run format && npm run lint:fix",
-    "parser:build": "peggy --format es --output src/notation/barbeat/parser/barbeat-parser.js src/notation/barbeat/parser/barbeat-grammar.peggy",
+    "parser:build": "peggy --format es --output src/notation/barbeat/parser/barbeat-parser.js src/notation/barbeat/parser/barbeat-grammar.peggy && peggy --format es --output src/notation/modulation/parser/modulation-parser.js src/notation/modulation/parser/modulation-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write .",
     "format:check": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --check .",
