@@ -91,9 +91,9 @@
     "@types/express": "^5.0.6",
     "@types/max-api": "^2.0.3",
     "@types/node": "^24.10.1",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
-    "@vitest/coverage-v8": "^4.0.14",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
+    "@vitest/coverage-v8": "^4.0.15",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
     "eslint": "^9.39.1",
@@ -113,6 +113,6 @@
     "vite": "^7.2.6",
     "vite-plugin-singlefile": "^2.3.0",
     "vitepress": "^1.6.4",
-    "vitest": "^4.0.14"
+    "vitest": "^4.0.15"
   }
 }
