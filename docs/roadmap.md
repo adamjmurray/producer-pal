@@ -34,17 +34,17 @@ Studio, Ollama, and more.
 
 ## Planned
 
-### 1.3 - Voice Interaction
+### 1.3 - Device Control
 
-Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
-
-- Google Gemini
-- Maybe: OpenAI (so far, this works best during prototyping, but costs money per
-  interaction i.e. it is not covered by a flat-rate subscription plan)
-- Local/other options?
-
-This might get deferred in favor or working on device support and MIDI
-modulation, because Live 12.3 is out with better device support in the Live API.
+- Add device
+- Delete device
+- Read/write synth and effect parameters
+- A/B comparison of device parameters
+- Rack macro variation management
+  - Select macro variation
+  - Save macro variation
+  - Delete macro variation
+  - Randomize macros
 
 ### 1.4 - Modulation
 
@@ -59,20 +59,14 @@ This is destructive modulation applied by modifying clip properties and the
 notes inside MIDI clips. It is not live modulations such as Max for Live LFOs,
 however, that could possibly be supported too via device control features.
 
-### 1.5 - Device Control
+### 1.5 - Voice Interaction
 
-Requires Live 12.3 to be released for add/delete device capabilities in the Live
-API
+Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
 
-- Add device
-- Delete device
-- Read/write synth and effect parameters
-- A/B comparison of device parameters
-- Rack macro variation management
-  - Select macro variation
-  - Save macro variation
-  - Delete macro variation
-  - Randomize macros
+- Google Gemini
+- Maybe: OpenAI (so far, this works best during prototyping, but costs money per
+  interaction i.e. it is not covered by a flat-rate subscription plan)
+- Local/other options?
 
 ### 1.6 - Code Execution
 
