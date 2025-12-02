@@ -22,8 +22,8 @@ export { createSeededRNG, randomInRange, shuffleArray };
 /**
  * Transforms multiple clips by shuffling positions and/or randomizing parameters
  * @param {object} args - The parameters
- * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackId)
- * @param {string} [args.arrangementTrackId] - Track ID to query arrangement clips from (ignored if clipIds provided)
+ * @param {string} [args.clipIds] - Comma-separated clip IDs (takes priority over arrangementTrackIndex)
+ * @param {string} [args.arrangementTrackIndex] - Track index(es) to query arrangement clips from (ignored if clipIds provided)
  * @param {string} [args.arrangementStart] - Bar|beat position (e.g., '1|1.0') for range start
  * @param {string} [args.arrangementLength] - Bar:beat duration (e.g., '4:0.0') for range length
  * @param {string} [args.slice] - Bar:beat slice size (e.g., '1:0.0') - tiles clips into repeating segments
@@ -46,7 +46,7 @@ export { createSeededRNG, randomInRange, shuffleArray };
 export function transformClips(
   {
     clipIds,
-    arrangementTrackId,
+    arrangementTrackIndex,
     arrangementStart,
     arrangementLength,
     slice,
@@ -78,7 +78,7 @@ export function transformClips(
   // Determine clip selection method
   const clipIdArray = getClipIds(
     clipIds,
-    arrangementTrackId,
+    arrangementTrackIndex,
     arrangementStart,
     arrangementLength,
   );

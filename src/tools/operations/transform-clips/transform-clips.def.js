@@ -15,11 +15,11 @@ export const toolDefTransformClips = defineTool("ppal-transform-clips", {
       .string()
       .optional()
       .describe("comma-separated clip IDs to transform"),
-    arrangementTrackId: z
+    arrangementTrackIndex: z
       .string()
       .optional()
       .describe(
-        "track ID(s) to query arrangement clips from, comma-separated for multiple (ignored if clipIds provided)",
+        "track index(es) to query arrangement clips from, comma-separated for multiple (ignored if clipIds provided)",
       ),
     arrangementStart: z
       .string()
