@@ -67,14 +67,13 @@
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
-    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@modelcontextprotocol/sdk": "^1.24.0",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
     "marked": "^17.0.1",
     "openai": "^6.9.1",
     "preact": "^10.28.0",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.0"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@anthropic-ai/mcpb": "^2.0.1",
