@@ -79,7 +79,7 @@ import { dbToLiveGain } from "#src/tools/shared/gain-utils.js";
  * @param {object} _context - Context object with paths (unused)
  * @returns {object} The revealed clip in arrangement
  */
-export function revealUnwarpedAudioContent(
+function revealUnwarpedAudioContent(
   sourceClip,
   track,
   newStartMarker,
@@ -146,6 +146,58 @@ export function revealUnwarpedAudioContent(
   tempSlot.call("delete_clip");
 
   return revealedClip;
+}
+
+/**
+ * Reveals audio content at a target position with specific markers.
+ * Handles both warped (looping workaround) and unwarped (session holding area) clips.
+ * @param {object} sourceClip - The source clip to duplicate from
+ * @param {object} track - The track to work with
+ * @param {number} newStartMarker - Start marker for revealed content
+ * @param {number} newEndMarker - End marker for revealed content
+ * @param {number} targetPosition - Where to place revealed clip in arrangement
+ * @param {object} _context - Context object
+ * @returns {object} The revealed clip in arrangement
+ */
+export function revealAudioContentAtPosition(
+  sourceClip,
+  track,
+  newStartMarker,
+  newEndMarker,
+  targetPosition,
+  _context,
+) {
+  const isWarped = sourceClip.getProperty("warping") === 1;
+
+  if (isWarped) {
+    // Warped: duplicate and use looping workaround
+    const duplicateResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClip.id}`,
+      targetPosition,
+    );
+    const revealedClip = LiveAPI.from(duplicateResult);
+
+    revealedClip.set("looping", 1);
+    revealedClip.set("loop_end", newEndMarker);
+    revealedClip.set("loop_start", newStartMarker);
+    revealedClip.set("end_marker", newEndMarker);
+    revealedClip.set("start_marker", newStartMarker);
+    // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
+    revealedClip.set("looping", 0);
+
+    return revealedClip;
+  }
+
+  // Unwarped: use session holding area workaround
+  return revealUnwarpedAudioContent(
+    sourceClip,
+    track,
+    newStartMarker,
+    newEndMarker,
+    targetPosition,
+    _context,
+  );
 }
 
 /**

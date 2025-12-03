@@ -1,4 +1,4 @@
-import { revealUnwarpedAudioContent } from "../../update/helpers/update-clip-audio-helpers.js";
+import { revealAudioContentAtPosition } from "../../update/helpers/update-clip-audio-helpers.js";
 import { getActualContentEnd } from "../../update/helpers/update-clip-helpers.js";
 
 /**
@@ -117,40 +117,23 @@ export function handleUnloopedLengthening({
   const targetEndMarker = clipStartMarkerBeats + arrangementLengthBeats;
 
   // Always attempt to reveal - calculate based on requested length
-
   const remainingToReveal = arrangementLengthBeats - currentArrangementLength;
   const newStartMarker = visibleContentEnd;
   const newEndMarker = newStartMarker + remainingToReveal;
-  let revealedClip;
+
+  // For warped clips, extend source clip's end_marker so duplicate inherits extended content bounds
   if (isWarped) {
-    // Warped clips: use looping workaround
     clip.set("end_marker", targetEndMarker);
-
-    const duplicateResult = track.call(
-      "duplicate_clip_to_arrangement",
-      `id ${clip.id}`,
-      currentEndTime,
-    );
-
-    revealedClip = LiveAPI.from(duplicateResult);
-    revealedClip.set("looping", 1); // looping needs to be enabled to set the following:
-    revealedClip.set("loop_end", newEndMarker);
-    revealedClip.set("loop_start", newStartMarker);
-    revealedClip.set("end_marker", newEndMarker);
-    revealedClip.set("start_marker", newStartMarker);
-    // eslint-disable-next-line sonarjs/no-element-overwrite
-    revealedClip.set("looping", 0);
-  } else {
-    // Unwarped clips: use session holding area workaround
-    revealedClip = revealUnwarpedAudioContent(
-      clip,
-      track,
-      newStartMarker,
-      newEndMarker,
-      currentEndTime,
-      context,
-    );
   }
+
+  const revealedClip = revealAudioContentAtPosition(
+    clip,
+    track,
+    newStartMarker,
+    newEndMarker,
+    currentEndTime,
+    context,
+  );
 
   updatedClips.push({ id: clip.id });
   updatedClips.push({ id: revealedClip.id });
