@@ -116,26 +116,33 @@ export function revealUnwarpedAudioContent(
   revealedClip.set("warping", 0);
   revealedClip.set("looping", 0);
 
-  // Shorten the clip to only show the revealed portion
+  // Shorten the clip to only show the revealed portion (if needed)
   const revealedClipEndTime = revealedClip.getProperty("end_time");
   const targetLengthBeats = newEndMarker - newStartMarker;
+  const expectedEndTime = targetPosition + targetLengthBeats;
+  const EPSILON = 0.001;
 
-  const { clip: tempShortenerClip, slot: tempShortenerSlot } =
-    createAudioClipInSession(
-      track,
-      targetLengthBeats,
-      sourceClip.getProperty("file_path"),
+  // Only shorten if the revealed clip is longer than expected
+  // (placing a shortener at the exact boundary would damage adjacent clips)
+  if (revealedClipEndTime > expectedEndTime + EPSILON) {
+    const { clip: tempShortenerClip, slot: tempShortenerSlot } =
+      createAudioClipInSession(
+        track,
+        targetLengthBeats,
+        sourceClip.getProperty("file_path"),
+      );
+
+    const tempShortenerResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${tempShortenerClip.id}`,
+      revealedClipEndTime,
     );
 
-  const tempShortenerResult = track.call(
-    "duplicate_clip_to_arrangement",
-    `id ${tempShortenerClip.id}`,
-    revealedClipEndTime,
-  );
+    const tempShortener = LiveAPI.from(tempShortenerResult);
+    tempShortenerSlot.call("delete_clip");
+    track.call("delete_clip", `id ${tempShortener.id}`);
+  }
 
-  const tempShortener = LiveAPI.from(tempShortenerResult);
-  tempShortenerSlot.call("delete_clip");
-  track.call("delete_clip", `id ${tempShortener.id}`);
   tempSlot.call("delete_clip");
 
   return revealedClip;
