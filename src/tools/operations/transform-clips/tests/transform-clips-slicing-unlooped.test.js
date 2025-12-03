@@ -258,10 +258,11 @@ describe("transformClips - slicing unlooped clips", () => {
     expect(emptyClipCall).toBeDefined();
   });
 
-  it("should slice unlooped audio clips without creating fill clips", () => {
+  it("should slice unlooped warped audio clips and reveal hidden content", () => {
     const clipId = "clip_1";
     let callCount = 0;
-    let createMidiClipCallCount = 0;
+    const duplicateCalls = [];
+    const setCalls = [];
 
     liveApiId.mockImplementation(function () {
       if (this._path === "id clip_1") {
@@ -273,7 +274,11 @@ describe("transformClips - slicing unlooped clips", () => {
       if (this._id === clipId) {
         return "live_set tracks 0 arrangement_clips 0";
       }
-      if (this._id?.startsWith("holding_") || this._id?.startsWith("moved_")) {
+      if (
+        this._id?.startsWith("holding_") ||
+        this._id?.startsWith("moved_") ||
+        this._id?.startsWith("slice_")
+      ) {
         return "live_set tracks 0 arrangement_clips 1";
       }
       return this._path;
@@ -305,16 +310,30 @@ describe("transformClips - slicing unlooped clips", () => {
         if (prop === "looping") {
           return [0]; // Not looped
         }
+        if (prop === "warping") {
+          return [1]; // Warped
+        }
         if (prop === "start_time") {
           return [0.0];
         }
         if (prop === "end_time") {
           return [16.0]; // 4 bars long
         }
+        if (prop === "start_marker") {
+          return [0.0];
+        }
       }
       if (this._id?.startsWith("holding_")) {
         if (prop === "end_time") {
           return [40000 + 4]; // Holding area + slice length (no temp clip needed)
+        }
+      }
+      if (this._id?.startsWith("moved_") || this._id?.startsWith("slice_")) {
+        if (prop === "start_marker") {
+          return [0.0];
+        }
+        if (prop === "warping") {
+          return [1];
         }
       }
       if (this._path === "live_set tracks 0") {
@@ -325,35 +344,56 @@ describe("transformClips - slicing unlooped clips", () => {
       return [0];
     });
 
-    liveApiCall.mockImplementation(function (method) {
+    liveApiCall.mockImplementation(function (method, ...args) {
       if (method === "duplicate_clip_to_arrangement") {
         callCount++;
+        duplicateCalls.push({ position: args[1] });
         if (callCount === 1) {
           return ["id", "holding_1"];
         }
-        return ["id", "moved_1"];
+        if (callCount === 2) {
+          return ["id", "moved_1"];
+        }
+        return ["id", `slice_${callCount}`];
       }
       if (method === "create_midi_clip") {
-        createMidiClipCallCount++;
         return ["id", "temp_1"];
       }
       return undefined;
     });
 
+    liveApiSet.mockImplementation(function (prop, value) {
+      setCalls.push({ id: this._id, prop, value });
+    });
+
     transformClips({
       clipIds: clipId,
-      slice: "1:0.0",
+      slice: "1:0.0", // 1 bar = 4 beats slice
       seed: 12345,
     });
 
-    // Should duplicate to holding area and back
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.any(String),
-      expect.any(Number),
-    );
+    // Should have 5 duplicate calls: holding, move back, and 3 reveal slices (at 4, 8, 12)
+    expect(duplicateCalls.length).toBe(5);
 
-    // Should NOT create any MIDI clips (audio clips leave empty space)
-    expect(createMidiClipCallCount).toBe(0);
+    // Slices should be at positions 4, 8, 12
+    expect(duplicateCalls[2].position).toBe(4);
+    expect(duplicateCalls[3].position).toBe(8);
+    expect(duplicateCalls[4].position).toBe(12);
+
+    // Should use looping workaround: set looping=1, then set markers, then looping=0
+    const loopingEnableCalls = setCalls.filter(
+      (c) => c.prop === "looping" && c.value === 1,
+    );
+    const loopingDisableCalls = setCalls.filter(
+      (c) => c.prop === "looping" && c.value === 0,
+    );
+    expect(loopingEnableCalls.length).toBeGreaterThanOrEqual(3);
+    expect(loopingDisableCalls.length).toBeGreaterThanOrEqual(3);
+
+    // Should set start_marker and end_marker for the revealed slices
+    const startMarkerCalls = setCalls.filter((c) => c.prop === "start_marker");
+    const endMarkerCalls = setCalls.filter((c) => c.prop === "end_marker");
+    expect(startMarkerCalls.length).toBeGreaterThanOrEqual(3);
+    expect(endMarkerCalls.length).toBeGreaterThanOrEqual(3);
   });
 });

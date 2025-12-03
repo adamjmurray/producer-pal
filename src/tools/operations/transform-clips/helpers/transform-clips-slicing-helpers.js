@@ -1,5 +1,6 @@
 import { barBeatDurationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
+import { revealUnwarpedAudioContent } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 import { getActualContentEnd } from "#src/tools/clip/update/helpers/update-clip-helpers.js";
 import { MAX_SLICES } from "#src/tools/constants.js";
 import {
@@ -56,6 +57,70 @@ function sliceUnloopedMidiContent(
     } else {
       // Beyond actual content - create empty MIDI clip
       track.call("create_midi_clip", currentSlicePosition, sliceLengthNeeded);
+    }
+
+    currentSlicePosition += sliceBeats;
+    currentContentOffset += sliceBeats;
+  }
+}
+
+/**
+ * Reveal hidden content in unlooped audio clips by duplicating and setting markers
+ * @param {LiveAPI} sourceClip - The source clip to duplicate from
+ * @param {LiveAPI} track - The track containing the clip
+ * @param {number} sliceBeats - Slice duration in beats
+ * @param {number} currentStartTime - Start time of the original clip
+ * @param {number} currentEndTime - End time of the original clip
+ * @param {object} _context - Internal context object
+ */
+function sliceUnloopedAudioContent(
+  sourceClip,
+  track,
+  sliceBeats,
+  currentStartTime,
+  currentEndTime,
+  _context,
+) {
+  const clipStartMarker = sourceClip.getProperty("start_marker");
+  const isWarped = sourceClip.getProperty("warping") === 1;
+
+  let currentSlicePosition = currentStartTime + sliceBeats;
+  let currentContentOffset = sliceBeats;
+
+  while (currentSlicePosition < currentEndTime - 0.001) {
+    const sliceLengthNeeded = Math.min(
+      sliceBeats,
+      currentEndTime - currentSlicePosition,
+    );
+    const sliceContentStart = clipStartMarker + currentContentOffset;
+    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
+
+    if (isWarped) {
+      // Warped: duplicate and use looping workaround
+      const duplicateResult = track.call(
+        "duplicate_clip_to_arrangement",
+        `id ${sourceClip.id}`,
+        currentSlicePosition,
+      );
+      const sliceClip = LiveAPI.from(duplicateResult);
+
+      sliceClip.set("looping", 1);
+      sliceClip.set("loop_end", sliceContentEnd);
+      sliceClip.set("loop_start", sliceContentStart);
+      sliceClip.set("end_marker", sliceContentEnd);
+      sliceClip.set("start_marker", sliceContentStart);
+      // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
+      sliceClip.set("looping", 0);
+    } else {
+      // Unwarped: use session holding area workaround
+      revealUnwarpedAudioContent(
+        sourceClip,
+        track,
+        sliceContentStart,
+        sliceContentEnd,
+        currentSlicePosition,
+        _context,
+      );
     }
 
     currentSlicePosition += sliceBeats;
@@ -191,8 +256,17 @@ export function performSlicing(
           currentStartTime,
           currentEndTime,
         );
+      } else {
+        // Unlooped audio clips: reveal hidden content for each slice position
+        sliceUnloopedAudioContent(
+          movedClip,
+          track,
+          sliceBeats,
+          currentStartTime,
+          currentEndTime,
+          _context,
+        );
       }
-      // Unlooped audio clips: leave remaining space empty (no action needed)
     }
     // Track total slices created
     totalSlicesCreated += sliceCount;
