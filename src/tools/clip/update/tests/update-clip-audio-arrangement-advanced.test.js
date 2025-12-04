@@ -415,3 +415,133 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 });
+
+describe("Unlooped audio clips - move + lengthen combination", () => {
+  it("should lengthen relative to new position when move and lengthen are combined", () => {
+    // This test verifies the order of operations:
+    // 1. Move happens FIRST (clip goes to new position)
+    // 2. Lengthen happens SECOND (tile placed relative to NEW position, not old)
+    const trackIndex = 0;
+    const clipId = "900";
+    const movedClipId = "901";
+    const revealedClipId = "902";
+
+    liveApiPath.mockImplementation(function () {
+      if (
+        this._id === clipId ||
+        this._id === movedClipId ||
+        this._id === revealedClipId
+      ) {
+        return `live_set tracks ${trackIndex} arrangement_clips 0`;
+      }
+      if (this._path === "live_set") {
+        return "live_set";
+      }
+      if (this._path === `live_set tracks ${trackIndex}`) {
+        return `live_set tracks ${trackIndex}`;
+      }
+      return this._path;
+    });
+
+    const mockContext = {
+      holdingAreaStartBeats: 1000,
+      silenceWavPath: "/path/to/silence.wav",
+    };
+
+    // Original clip at position 0-4 (4 beats), warped, unlooped
+    // Has hidden content (can extend to 8 beats)
+    mockLiveApiGet({
+      [clipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        warping: 1,
+        start_time: 0.0,
+        end_time: 4.0,
+        start_marker: 0.0,
+        end_marker: 4.0,
+        loop_start: 0.0,
+        loop_end: 4.0,
+        name: "Audio for move+lengthen",
+        trackIndex,
+      },
+      // Moved clip - now at position 8-12
+      [movedClipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        warping: 1,
+        start_time: 8.0, // Moved to position 8
+        end_time: 12.0, // Still 4 beats long
+        start_marker: 0.0,
+        end_marker: 4.0,
+        loop_start: 0.0,
+        loop_end: 4.0,
+        name: "Audio for move+lengthen",
+        trackIndex,
+      },
+      // Revealed clip - should be at position 12-16 (after moved clip)
+      [revealedClipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        start_time: 12.0,
+        end_time: 16.0,
+        start_marker: 4.0,
+        end_marker: 8.0,
+        trackIndex,
+      },
+    });
+
+    let duplicateCallCount = 0;
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (method === "duplicate_clip_to_arrangement") {
+        duplicateCallCount++;
+        if (duplicateCallCount === 1) {
+          // First duplicate is the move operation
+          return ["id", movedClipId];
+        }
+        // Second duplicate is the lengthen operation (revealing hidden content)
+        return ["id", revealedClipId];
+      }
+      if (method === "delete_clip") {
+        return 1;
+      }
+      return 1;
+    });
+
+    const result = updateClip(
+      {
+        ids: clipId,
+        arrangementStart: "3|1", // Move to position 8 (3|1 in 4/4 = 8 beats)
+        arrangementLength: "2:0", // Extend to 8 beats total
+      },
+      mockContext,
+    );
+
+    // Verify move happened first: duplicate to position 8
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      `id ${clipId}`,
+      8.0, // New position (3|1 = 8 beats)
+    );
+
+    // Verify original clip was deleted after move
+    expect(liveApiCall).toHaveBeenCalledWith("delete_clip", `id ${clipId}`);
+
+    // CRITICAL: Verify lengthen used NEW position
+    // The revealed clip should be placed at position 12 (after moved clip at 8-12)
+    // NOT at position 4 (which would be the old end position)
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      `id ${movedClipId}`,
+      12.0, // This is moved_clip.end_time, NOT original clip end (4.0)
+    );
+
+    // Should return moved clip + revealed clip
+    expect(result).toEqual([{ id: movedClipId }, { id: revealedClipId }]);
+  });
+});

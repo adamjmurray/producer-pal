@@ -368,11 +368,64 @@ export function processSingleClipUpdate(params) {
     );
   }
 
-  // Handle arrangementLength
+  // Handle arrangement operations (move FIRST, then length)
+  handleArrangementOperations({
+    clip,
+    isAudioClip,
+    arrangementStartBeats,
+    arrangementLengthBeats,
+    tracksWithMovedClips,
+    context,
+    updatedClips,
+    finalNoteCount,
+    handleArrangementLengthOperation,
+    buildClipResultObject,
+  });
+}
+
+/**
+ * Handle arrangement start and length operations in correct order
+ * @param {object} args - Operation arguments
+ * @param {LiveAPI} args.clip - The clip to operate on
+ * @param {boolean} args.isAudioClip - Whether the clip is audio
+ * @param {number} args.arrangementStartBeats - Target start position in beats
+ * @param {number} args.arrangementLengthBeats - Target length in beats
+ * @param {Map} args.tracksWithMovedClips - Map of tracks with moved clips
+ * @param {object} args.context - Tool execution context
+ * @param {Array} args.updatedClips - Array to collect updated clips
+ * @param {number} args.finalNoteCount - Final note count for result
+ * @param {Function} args.handleArrangementLengthOperation - Length handler
+ * @param {Function} args.buildClipResultObject - Result builder
+ */
+function handleArrangementOperations({
+  clip,
+  isAudioClip,
+  arrangementStartBeats,
+  arrangementLengthBeats,
+  tracksWithMovedClips,
+  context,
+  updatedClips,
+  finalNoteCount,
+  handleArrangementLengthOperation,
+  buildClipResultObject,
+}) {
+  // Move FIRST so lengthening uses the new position
+  let finalClipId = clip.id;
+  let currentClip = clip;
+  if (arrangementStartBeats != null) {
+    finalClipId = handleArrangementStartOperation({
+      clip,
+      arrangementStartBeats,
+      tracksWithMovedClips,
+    });
+    currentClip = LiveAPI.from(`id ${finalClipId}`);
+  }
+
+  // Handle arrangementLength SECOND
   let hasArrangementLengthResults = false;
   if (arrangementLengthBeats != null) {
     const results = handleArrangementLengthOperation({
-      clip,
+      clip: currentClip,
       isAudioClip,
       arrangementLengthBeats,
       context,
@@ -383,17 +436,6 @@ export function processSingleClipUpdate(params) {
     }
   }
 
-  // Handle arrangementStart
-  let finalClipId = clip.id;
-  if (arrangementStartBeats != null) {
-    finalClipId = handleArrangementStartOperation({
-      clip,
-      arrangementStartBeats,
-      tracksWithMovedClips,
-    });
-  }
-
-  // Build result object if arrangementLength didn't return results
   if (!hasArrangementLengthResults) {
     updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
   }
