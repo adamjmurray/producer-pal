@@ -13,7 +13,8 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     const trackIndex = 0;
     const clipId = "800";
     let tileCount = 0;
-    const tileIds = ["801", "802", "803", "804"];
+    // 5 IDs needed: 3 full tiles (direct) + 1 partial tile (holding + move = 2 calls)
+    const tileIds = ["801", "802", "803", "804", "805"];
 
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId || tileIds.includes(this._id)) {
@@ -105,15 +106,17 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     );
 
     // Should create 4 tiles: 3-6, 6-9, 9-12, 12-14
-    expect(tileCount).toBe(4);
+    // 5 duplicate_clip_to_arrangement calls: 3 direct + 2 for partial (holding + move)
+    expect(tileCount).toBe(5);
 
     // Should return original + all tiles
+    // Note: 804 is consumed by holding area, 805 is the final partial tile
     expect(result).toEqual([
       { id: clipId },
       { id: "801" },
       { id: "802" },
       { id: "803" },
-      { id: "804" },
+      { id: "805" },
     ]);
   });
 
@@ -217,7 +220,8 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     const trackIndex = 0;
     const clipId = "820";
     let tileCount = 0;
-    const tileIds = ["821", "822", "823", "824"];
+    // 5 IDs needed: 3 full tiles (direct) + 1 partial tile (holding + move = 2 calls)
+    const tileIds = ["821", "822", "823", "824", "825"];
 
     liveApiPath.mockImplementation(function () {
       if (this._id === clipId || tileIds.includes(this._id)) {
@@ -309,10 +313,13 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     );
 
     // Should create 4 tiles: 4-7, 7-10, 10-13, 13-15
-    expect(tileCount).toBe(4);
+    // 5 duplicate_clip_to_arrangement calls: 3 direct + 2 for partial (holding + move)
+    expect(tileCount).toBe(5);
 
     // Should return original + all tiles
+    // Note: 824 is consumed by holding area, 825 is the final partial tile
     expect(result.length).toBe(5);
     expect(result[0]).toEqual({ id: clipId });
+    expect(result[4]).toEqual({ id: "825" });
   });
 });
