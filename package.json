@@ -66,7 +66,7 @@
     "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.config.mjs --headed"
   },
   "dependencies": {
-    "@google/genai": "^1.30.0",
+    "@google/genai": "^1.31.0",
     "@modelcontextprotocol/sdk": "^1.24.2",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
