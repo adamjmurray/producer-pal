@@ -1,7 +1,6 @@
 import { barBeatDurationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
-import { getActualContentEnd } from "#src/tools/clip/update/helpers/update-clip-helpers.js";
 import { MAX_SLICES } from "#src/tools/constants.js";
 import {
   createShortenedClipInHolding,
@@ -12,7 +11,8 @@ import {
 const HOLDING_AREA_START = 40000;
 
 /**
- * Reveal hidden content in unlooped MIDI clips by duplicating and setting markers
+ * Slice unlooped MIDI clips by duplicating and setting markers for each slice.
+ * Any slices beyond actual note content will simply be empty.
  * @param {LiveAPI} sourceClip - The source clip to duplicate from
  * @param {LiveAPI} track - The track containing the clip
  * @param {number} sliceBeats - Slice duration in beats
@@ -27,7 +27,6 @@ function sliceUnloopedMidiContent(
   currentEndTime,
 ) {
   const clipStartMarker = sourceClip.getProperty("start_marker");
-  const actualContentEnd = getActualContentEnd(sourceClip);
 
   let currentSlicePosition = currentStartTime + sliceBeats;
   let currentContentOffset = sliceBeats;
@@ -40,24 +39,19 @@ function sliceUnloopedMidiContent(
     const sliceContentStart = clipStartMarker + currentContentOffset;
     const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
 
-    if (sliceContentStart < actualContentEnd) {
-      // Duplicate the clip and reveal hidden content using looping workaround
-      const duplicateResult = track.call(
-        "duplicate_clip_to_arrangement",
-        `id ${sourceClip.id}`,
-        currentSlicePosition,
-      );
-      const sliceClip = LiveAPI.from(duplicateResult);
+    // Duplicate the clip and set markers using looping workaround
+    const duplicateResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClip.id}`,
+      currentSlicePosition,
+    );
+    const sliceClip = LiveAPI.from(duplicateResult);
 
-      sliceClip.set("looping", 1);
-      sliceClip.set("end_marker", sliceContentEnd);
-      sliceClip.set("start_marker", sliceContentStart);
-      // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
-      sliceClip.set("looping", 0);
-    } else {
-      // Beyond actual content - create empty MIDI clip
-      track.call("create_midi_clip", currentSlicePosition, sliceLengthNeeded);
-    }
+    sliceClip.set("looping", 1);
+    sliceClip.set("end_marker", sliceContentEnd);
+    sliceClip.set("start_marker", sliceContentStart);
+    // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
+    sliceClip.set("looping", 0);
 
     currentSlicePosition += sliceBeats;
     currentContentOffset += sliceBeats;

@@ -15,35 +15,6 @@ import {
 } from "./update-clip-audio-helpers.js";
 
 /**
- * Get the actual content end position by examining all notes in a clip.
- * This is needed for unlooped clips where end_marker is unreliable.
- * @param {LiveAPI} clip - The clip to analyze
- * @returns {number} The end position of the last note in beats, or 0 if no notes
- */
-export function getActualContentEnd(clip) {
-  try {
-    // For unlooped clips, check ALL notes using MAX_CLIP_BEATS
-    const notesDictionary = clip.call(
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      MAX_CLIP_BEATS,
-    );
-    const notes = JSON.parse(notesDictionary).notes;
-    if (!notes || notes.length === 0) return 0;
-    return Math.max(...notes.map((note) => note.start_time + note.duration));
-  } catch (error) {
-    console.error(
-      `Warning: Failed to get notes for clip ${clip.id}: ${error.message}`,
-    );
-    return 0;
-  }
-}
-
-// Audio-specific helper functions are now in update-clip-audio-helpers.js
-
-/**
  * Calculate beat positions from bar|beat notation
  * @param {object} args - Calculation arguments
  * @param {string} [args.start] - Start position in bar|beat notation
