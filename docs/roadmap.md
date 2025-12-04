@@ -15,7 +15,7 @@ Expanded features and support for multiple AI platforms.
 Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
 Studio, Ollama, and more.
 
-### 1.2 - Audio clip support, mixer support, enhanced track/clip management
+### 1.2 - Audio clip and mixer support enhanced track/clip management
 
 - Create audio clips
 - A new `read-samples` tool can scan a folder (if you choose to allow it) for
@@ -32,7 +32,7 @@ Studio, Ollama, and more.
   arrangement clips, randomly reorder slices, and randomize various parameters
   across multiple clips
 
-## Planned
+## In Progress
 
 ### 1.3 - Device Control
 
@@ -45,6 +45,8 @@ Studio, Ollama, and more.
   - Save macro variation
   - Delete macro variation
   - Randomize macros
+
+## Planned
 
 ### 1.4 - Modulation
 

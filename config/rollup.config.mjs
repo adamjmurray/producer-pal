@@ -148,7 +148,6 @@ export default [
             src: [
               join(thirdPartyLicensesFolder, "mcp-typescript-sdk-license"),
               join(thirdPartyLicensesFolder, "zod-license"),
-              join(thirdPartyLicensesFolder, "zod-to-json-schema-license"),
               join(thirdPartyLicensesFolder, "README.md"),
             ],
             dest: "npm/licenses",

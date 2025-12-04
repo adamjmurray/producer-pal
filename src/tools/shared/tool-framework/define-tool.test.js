@@ -51,9 +51,11 @@ describe("defineTool", () => {
       isError: true,
     });
 
-    expect(result.content[0].text).toContain("requiredParam: Required");
     expect(result.content[0].text).toContain(
-      "optionalParam: Expected number, received string",
+      "requiredParam: Invalid input: expected string, received undefined",
+    );
+    expect(result.content[0].text).toContain(
+      "optionalParam: Invalid input: expected number, received string",
     );
   });
 

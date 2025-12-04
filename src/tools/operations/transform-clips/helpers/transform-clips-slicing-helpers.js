@@ -1,5 +1,6 @@
 import { barBeatDurationToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import * as console from "#src/shared/v8-max-console.js";
+import { revealAudioContentAtPosition } from "#src/tools/clip/update/helpers/update-clip-audio-helpers.js";
 import { MAX_SLICES } from "#src/tools/constants.js";
 import {
   createShortenedClipInHolding,
@@ -8,6 +9,98 @@ import {
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
 const HOLDING_AREA_START = 40000;
+
+/**
+ * Slice unlooped MIDI clips by duplicating and setting markers for each slice.
+ * Any slices beyond actual note content will simply be empty.
+ * @param {LiveAPI} sourceClip - The source clip to duplicate from
+ * @param {LiveAPI} track - The track containing the clip
+ * @param {number} sliceBeats - Slice duration in beats
+ * @param {number} currentStartTime - Start time of the original clip
+ * @param {number} currentEndTime - End time of the original clip
+ */
+function sliceUnloopedMidiContent(
+  sourceClip,
+  track,
+  sliceBeats,
+  currentStartTime,
+  currentEndTime,
+) {
+  const clipStartMarker = sourceClip.getProperty("start_marker");
+
+  let currentSlicePosition = currentStartTime + sliceBeats;
+  let currentContentOffset = sliceBeats;
+
+  while (currentSlicePosition < currentEndTime - 0.001) {
+    const sliceLengthNeeded = Math.min(
+      sliceBeats,
+      currentEndTime - currentSlicePosition,
+    );
+    const sliceContentStart = clipStartMarker + currentContentOffset;
+    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
+
+    // Duplicate the clip and set markers using looping workaround
+    const duplicateResult = track.call(
+      "duplicate_clip_to_arrangement",
+      `id ${sourceClip.id}`,
+      currentSlicePosition,
+    );
+    const sliceClip = LiveAPI.from(duplicateResult);
+
+    sliceClip.set("looping", 1);
+    sliceClip.set("end_marker", sliceContentEnd);
+    sliceClip.set("start_marker", sliceContentStart);
+    // eslint-disable-next-line sonarjs/no-element-overwrite -- looping workaround pattern
+    sliceClip.set("looping", 0);
+
+    currentSlicePosition += sliceBeats;
+    currentContentOffset += sliceBeats;
+  }
+}
+
+/**
+ * Reveal hidden content in unlooped audio clips by duplicating and setting markers
+ * @param {LiveAPI} sourceClip - The source clip to duplicate from
+ * @param {LiveAPI} track - The track containing the clip
+ * @param {number} sliceBeats - Slice duration in beats
+ * @param {number} currentStartTime - Start time of the original clip
+ * @param {number} currentEndTime - End time of the original clip
+ * @param {object} _context - Internal context object
+ */
+function sliceUnloopedAudioContent(
+  sourceClip,
+  track,
+  sliceBeats,
+  currentStartTime,
+  currentEndTime,
+  _context,
+) {
+  const clipStartMarker = sourceClip.getProperty("start_marker");
+
+  let currentSlicePosition = currentStartTime + sliceBeats;
+  let currentContentOffset = sliceBeats;
+
+  while (currentSlicePosition < currentEndTime - 0.001) {
+    const sliceLengthNeeded = Math.min(
+      sliceBeats,
+      currentEndTime - currentSlicePosition,
+    );
+    const sliceContentStart = clipStartMarker + currentContentOffset;
+    const sliceContentEnd = sliceContentStart + sliceLengthNeeded;
+
+    revealAudioContentAtPosition(
+      sourceClip,
+      track,
+      sliceContentStart,
+      sliceContentEnd,
+      currentSlicePosition,
+      _context,
+    );
+
+    currentSlicePosition += sliceBeats;
+    currentContentOffset += sliceBeats;
+  }
+}
 
 /**
  * Prepare slice parameters by converting to Ableton beats
@@ -65,14 +158,6 @@ export function performSlicing(
   for (const clip of arrangementClips) {
     const isMidiClip = clip.getProperty("is_midi_clip") === 1;
     const isLooping = clip.getProperty("looping") > 0;
-    // Only slice looped clips (tiling requires looping)
-    if (!isLooping) {
-      if (!warnings.has("slice-unlooped")) {
-        console.error("Warning: slice only applies to looped clips");
-        warnings.add("slice-unlooped");
-      }
-      continue;
-    }
     // Get current clip arrangement length
     const currentStartTime = clip.getProperty("start_time");
     const currentEndTime = clip.getProperty("end_time");
@@ -122,18 +207,40 @@ export function performSlicing(
       track,
       currentStartTime,
     );
-    // Tile to fill original length
+    // Fill remaining space after the first slice
     const remainingLength = currentArrangementLength - sliceBeats;
     if (remainingLength > 0) {
-      tileClipToRange(
-        movedClip,
-        track,
-        currentStartTime + sliceBeats,
-        remainingLength,
-        holdingAreaStart,
-        _context,
-        { adjustPreRoll: true, tileLength: sliceBeats },
-      );
+      if (isLooping) {
+        // Looped clips: tile to fill with repeated content
+        tileClipToRange(
+          movedClip,
+          track,
+          currentStartTime + sliceBeats,
+          remainingLength,
+          holdingAreaStart,
+          _context,
+          { adjustPreRoll: true, tileLength: sliceBeats },
+        );
+      } else if (isMidiClip) {
+        // Unlooped MIDI clips: reveal hidden content for each slice position
+        sliceUnloopedMidiContent(
+          movedClip,
+          track,
+          sliceBeats,
+          currentStartTime,
+          currentEndTime,
+        );
+      } else {
+        // Unlooped audio clips: reveal hidden content for each slice position
+        sliceUnloopedAudioContent(
+          movedClip,
+          track,
+          sliceBeats,
+          currentStartTime,
+          currentEndTime,
+          _context,
+        );
+      }
     }
     // Track total slices created
     totalSlicesCreated += sliceCount;

@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
@@ -35,7 +35,7 @@
     "coverage": "npm run test:coverage",
     "check": "npm run lint && npm run typecheck && npm run format:check && npm run test:coverage",
     "fix": "npm run format && npm run lint:fix",
-    "parser:build": "peggy --format es --output src/notation/barbeat/parser/barbeat-parser.js src/notation/barbeat/parser/barbeat-grammar.peggy",
+    "parser:build": "peggy --format es --output src/notation/barbeat/parser/barbeat-parser.js src/notation/barbeat/parser/barbeat-grammar.peggy && peggy --format es --output src/notation/modulation/parser/modulation-parser.js src/notation/modulation/parser/modulation-grammar.peggy",
     "parser:watch": "chokidar 'src/**/*.peggy' -c 'npm run parser:build'",
     "format": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --write .",
     "format:check": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --check .",
@@ -66,18 +66,17 @@
     "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.config.mjs --headed"
   },
   "dependencies": {
-    "@google/genai": "^1.30.0",
-    "@modelcontextprotocol/sdk": "^1.22.0",
+    "@google/genai": "^1.31.0",
+    "@modelcontextprotocol/sdk": "^1.24.3",
     "@tailwindcss/typography": "^0.5.19",
     "express": "^5.2.1",
     "marked": "^17.0.1",
-    "openai": "^6.9.1",
+    "openai": "^6.10.0",
     "preact": "^10.28.0",
-    "zod": "^3.25.76",
-    "zod-to-json-schema": "^3.25.0"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@anthropic-ai/mcpb": "^2.0.1",
+    "@anthropic-ai/mcpb": "^2.1.2",
     "@playwright/test": "^1.57.0",
     "@preact/preset-vite": "^2.10.2",
     "@rollup/plugin-alias": "^6.0.0",
@@ -91,9 +90,9 @@
     "@types/express": "^5.0.6",
     "@types/max-api": "^2.0.3",
     "@types/node": "^24.10.1",
-    "@typescript-eslint/eslint-plugin": "^8.48.0",
-    "@typescript-eslint/parser": "^8.48.0",
-    "@vitest/coverage-v8": "^4.0.14",
+    "@typescript-eslint/eslint-plugin": "^8.48.1",
+    "@typescript-eslint/parser": "^8.48.1",
+    "@vitest/coverage-v8": "^4.0.15",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
     "eslint": "^9.39.1",
@@ -106,13 +105,13 @@
     "eslint-plugin-sonarjs": "^3.0.5",
     "happy-dom": "^20.0.11",
     "peggy": "^5.0.6",
-    "prettier": "^3.7.3",
+    "prettier": "^3.7.4",
     "rollup": "^4.53.3",
     "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.9.3",
     "vite": "^7.2.6",
     "vite-plugin-singlefile": "^2.3.0",
     "vitepress": "^1.6.4",
-    "vitest": "^4.0.14"
+    "vitest": "^4.0.15"
   }
 }

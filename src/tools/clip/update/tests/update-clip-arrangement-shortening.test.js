@@ -210,15 +210,17 @@ describe("updateClip - arrangementLength (shortening only)", () => {
     expect(result).toEqual({ id: "789" });
   });
 
-  it("should allow both arrangementLength and arrangementStart (resize then move)", () => {
+  it("should allow both arrangementLength and arrangementStart (move then resize)", () => {
+    // Order of operations: move FIRST, then resize
+    // This ensures lengthening operations use the new position for tile placement
     const trackIndex = 0;
-    const newClipId = "999";
+    const movedClipId = "999";
 
     liveApiPath.mockImplementation(function () {
       if (this._id === "789") {
         return "live_set tracks 0 arrangement_clips 0";
       }
-      if (this._id === newClipId) {
+      if (this._id === movedClipId) {
         return "live_set tracks 0 arrangement_clips 1";
       }
       if (this._path === "live_set") {
@@ -235,7 +237,7 @@ describe("updateClip - arrangementLength (shortening only)", () => {
         return "789";
       }
       if (this._path === "id 999") {
-        return newClipId;
+        return movedClipId;
       }
       return this._id;
     });
@@ -245,54 +247,55 @@ describe("updateClip - arrangementLength (shortening only)", () => {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
         start_time: 0.0,
-        end_time: 16.0, // 4 bars
+        end_time: 16.0, // 4 bars at original position
         signature_numerator: 4,
         signature_denominator: 4,
         trackIndex,
       },
-      999: {
+      [movedClipId]: {
         is_arrangement_clip: 1,
         is_midi_clip: 1,
-        start_time: 32.0, // New position at bar 9
-        end_time: 40.0,
+        start_time: 32.0, // Moved to bar 9
+        end_time: 48.0, // Still 4 bars long (16 beats)
         signature_numerator: 4,
         signature_denominator: 4,
         trackIndex,
       },
     });
 
-    // Mock duplicate_clip_to_arrangement to return new clip
+    // Mock duplicate_clip_to_arrangement to return moved clip
     liveApiCall.mockImplementation(function (method, ..._args) {
       if (method === "duplicate_clip_to_arrangement") {
-        return `id ${newClipId}`;
+        return `id ${movedClipId}`;
       }
       return undefined;
     });
 
     const result = updateClip({
       ids: "789",
-      arrangementLength: "2:0", // Shorten to 2 bars first
-      arrangementStart: "9|1", // Then move to bar 9
+      arrangementLength: "2:0", // Shorten to 2 bars
+      arrangementStart: "9|1", // Move to bar 9
     });
 
-    // Should first create temp clip to shorten
-    expect(liveApiCall).toHaveBeenCalledWith(
-      "create_midi_clip",
-      8.0, // newEndTime (2 bars)
-      8.0, // tempClipLength
-    );
-
-    // Should then duplicate to new position
+    // Should FIRST duplicate to new position (move operation)
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       "id 789",
       32.0, // bar 9 in 4/4 = 32 beats
     );
 
-    // Should delete original
+    // Should delete original after move
     expect(liveApiCall).toHaveBeenCalledWith("delete_clip", "id 789");
 
-    expect(result).toEqual({ id: newClipId });
+    // Should THEN create temp clip to shorten (at moved position)
+    // Shortening from 32-48 to 32-40 means temp clip at position 40
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "create_midi_clip",
+      40.0, // newEndTime = 32 + 8 (2 bars)
+      8.0, // tempClipLength = 48 - 40 = 8
+    );
+
+    expect(result).toEqual({ id: movedClipId });
   });
 
   it("should call createAudioClipInSession with correct arguments when shortening audio clip", () => {

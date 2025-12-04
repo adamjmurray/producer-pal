@@ -3,6 +3,7 @@ import {
   barBeatToAbletonBeats,
   timeSigToAbletonBeatsPerBar,
 } from "#src/notation/barbeat/time/barbeat-time.js";
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { select } from "#src/tools/control/select.js";
 import { parseTimeSignature } from "#src/tools/shared/utils.js";
@@ -22,6 +23,7 @@ import {
  * @param {string} [args.sceneIndex] - Scene index(es), comma-separated for multiple (e.g., '0' or '0,2,5')
  * @param {string} [args.arrangementStart] - Bar|beat position(s), comma-separated for multiple (e.g., '1|1' or '1|1,2|1,3|3')
  * @param {string} [args.notes] - Musical notation string (MIDI clips only)
+ * @param {string} [args.modulations] - Modulation expressions (parameter: expression per line)
  * @param {string} [args.sampleFile] - Absolute path to audio file (audio clips only)
  * @param {string} [args.name] - Base name for the clips
  * @param {string} [args.color] - Color in #RRGGBB hex format
@@ -42,6 +44,7 @@ export function createClip(
     sceneIndex = null,
     arrangementStart = null,
     notes: notationString = null,
+    modulations: modulationString = null,
     sampleFile = null,
     name = null,
     color = null,
@@ -81,14 +84,13 @@ export function createClip(
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-  // Determine clip time signature
+  // Determine clip time signature (custom or from song)
   let timeSigNumerator, timeSigDenominator;
   if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
     timeSigNumerator = parsed.numerator;
     timeSigDenominator = parsed.denominator;
   } else {
-    // Use song time signature as default for clips
     timeSigNumerator = songTimeSigNumerator;
     timeSigDenominator = songTimeSigDenominator;
   }
@@ -110,6 +112,7 @@ export function createClip(
   const { notes, clipLength: initialClipLength } = prepareClipData(
     sampleFile,
     notationString,
+    modulationString,
     endBeats,
     timeSigNumerator,
     timeSigDenominator,
@@ -267,6 +270,7 @@ function createClips(
  * Prepares clip data (notes and initial length) based on clip type
  * @param {string} sampleFile - Audio file path (if audio clip)
  * @param {string} notationString - MIDI notation string (if MIDI clip)
+ * @param {string} modulationString - Modulation expressions to apply to notes
  * @param {number} endBeats - End position in beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -275,6 +279,7 @@ function createClips(
 function prepareClipData(
   sampleFile,
   notationString,
+  modulationString,
   endBeats,
   timeSigNumerator,
   timeSigDenominator,
@@ -287,6 +292,14 @@ function prepareClipData(
           timeSigDenominator,
         })
       : [];
+
+  // Apply modulations to notes if provided
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
 
   // Determine clip length
   let clipLength;

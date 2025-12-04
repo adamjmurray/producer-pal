@@ -169,6 +169,81 @@ describe("extractReasoningFromDelta", () => {
   });
 });
 
+describe("OpenAIClient constructor", () => {
+  it("initializes with default chat history when not provided", () => {
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+    });
+    expect(client.chatHistory).toEqual([]);
+  });
+
+  it("uses provided chat history", () => {
+    const history = [{ role: "user" as const, content: "Hello" }];
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+      chatHistory: history,
+    });
+    expect(client.chatHistory).toEqual(history);
+  });
+
+  it("adds system message when provided and history is empty", () => {
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+      systemInstruction: "You are a helpful assistant.",
+    });
+    expect(client.chatHistory).toHaveLength(1);
+    expect(client.chatHistory[0]).toEqual({
+      role: "system",
+      content: "You are a helpful assistant.",
+    });
+  });
+
+  it("does not add system message when history already has messages", () => {
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+      systemInstruction: "You are a helpful assistant.",
+      chatHistory: [{ role: "user", content: "Hello" }],
+    });
+    // Should not add system message since history is not empty
+    expect(client.chatHistory).toHaveLength(1);
+    expect(client.chatHistory[0]?.role).toBe("user");
+  });
+
+  it("stores config correctly", () => {
+    const config = {
+      model: "gpt-4",
+      temperature: 0.7,
+      reasoningEffort: "high" as const,
+    };
+    const client = new OpenAIClient("test-key", config);
+    expect(client.config.model).toBe("gpt-4");
+    expect(client.config.temperature).toBe(0.7);
+    expect(client.config.reasoningEffort).toBe("high");
+  });
+
+  it("initializes mcpClient as null", () => {
+    const client = new OpenAIClient("test-key", { model: "gpt-4" });
+    expect(client.mcpClient).toBeNull();
+  });
+
+  it("configures OpenAI client with custom baseUrl", () => {
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+      baseUrl: "https://api.mistral.ai/v1",
+    });
+    // The client should be created (we can't easily inspect internal state,
+    // but we can verify it doesn't throw)
+    expect(client.ai).toBeDefined();
+  });
+
+  it("uses default OpenAI baseUrl when not provided", () => {
+    const client = new OpenAIClient("test-key", {
+      model: "gpt-4",
+    });
+    expect(client.ai).toBeDefined();
+  });
+});
+
 describe("OpenAIClient.buildStreamMessage", () => {
   let client: OpenAIClient;
 

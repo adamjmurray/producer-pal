@@ -4,42 +4,15 @@ import {
   barBeatDurationToAbletonBeats,
   barBeatToAbletonBeats,
 } from "#src/notation/barbeat/time/barbeat-time.js";
+import { applyModulations } from "#src/notation/modulation/modulation-evaluator.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { MAX_CLIP_BEATS } from "#src/tools/constants.js";
 import { verifyColorQuantization } from "#src/tools/shared/color-verification-helpers.js";
+import { handleArrangementStartOperation } from "./update-clip-arrangement-helpers.js";
 import {
   setAudioParameters,
   handleWarpMarkerOperation,
 } from "./update-clip-audio-helpers.js";
-
-/**
- * Get the actual content end position by examining all notes in a clip.
- * This is needed for unlooped clips where end_marker is unreliable.
- * @param {LiveAPI} clip - The clip to analyze
- * @returns {number} The end position of the last note in beats, or 0 if no notes
- */
-export function getActualContentEnd(clip) {
-  try {
-    // For unlooped clips, check ALL notes using MAX_CLIP_BEATS
-    const notesDictionary = clip.call(
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      MAX_CLIP_BEATS,
-    );
-    const notes = JSON.parse(notesDictionary).notes;
-    if (!notes || notes.length === 0) return 0;
-    return Math.max(...notes.map((note) => note.start_time + note.duration));
-  } catch (error) {
-    console.error(
-      `Warning: Failed to get notes for clip ${clip.id}: ${error.message}`,
-    );
-    return 0;
-  }
-}
-
-// Audio-specific helper functions are now in update-clip-audio-helpers.js
 
 /**
  * Calculate beat positions from bar|beat notation
@@ -193,6 +166,7 @@ export function buildClipPropertiesToSet({
  * Handle note updates (merge or replace)
  * @param {LiveAPI} clip - The clip to update
  * @param {string} notationString - The notation string to apply
+ * @param {string} modulationString - Modulation expressions to apply to notes
  * @param {string} noteUpdateMode - 'merge' or 'replace'
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
@@ -201,6 +175,7 @@ export function buildClipPropertiesToSet({
 export function handleNoteUpdates(
   clip,
   notationString,
+  modulationString,
   noteUpdateMode,
   timeSigNumerator,
   timeSigDenominator,
@@ -227,6 +202,13 @@ export function handleNoteUpdates(
     timeSigNumerator,
     timeSigDenominator,
   });
+  // Apply modulations to notes if provided
+  applyModulations(
+    notes,
+    modulationString,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
   if (notes.length > 0) {
@@ -238,49 +220,6 @@ export function handleNoteUpdates(
     clip.call("get_notes_extended", 0, 128, 0, lengthBeats),
   );
   return actualNotesResult?.notes?.length || 0;
-}
-
-/**
- * Handle moving arrangement clips to a new position
- * @param {object} args - Operation arguments
- * @param {LiveAPI} args.clip - The clip to move
- * @param {number} args.arrangementStartBeats - New position in beats
- * @param {Map} args.tracksWithMovedClips - Track of clips moved per track
- * @returns {string} The new clip ID after move
- */
-export function handleArrangementStartOperation({
-  clip,
-  arrangementStartBeats,
-  tracksWithMovedClips,
-}) {
-  const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
-  if (!isArrangementClip) {
-    console.error(
-      `Warning: arrangementStart parameter ignored for session clip (id ${clip.id})`,
-    );
-    return clip.id;
-  }
-  // Get track and duplicate clip to new position
-  const trackIndex = clip.trackIndex;
-  if (trackIndex == null) {
-    throw new Error(
-      `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
-    );
-  }
-  const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-  // Track clips being moved to same track
-  const moveCount = (tracksWithMovedClips.get(trackIndex) || 0) + 1;
-  tracksWithMovedClips.set(trackIndex, moveCount);
-  const newClipResult = track.call(
-    "duplicate_clip_to_arrangement",
-    `id ${clip.id}`,
-    arrangementStartBeats,
-  );
-  const newClip = LiveAPI.from(newClipResult);
-  // Delete original clip
-  track.call("delete_clip", `id ${clip.id}`);
-  // Return the new clip ID
-  return newClip.id;
 }
 
 /**
@@ -317,6 +256,7 @@ export function processSingleClipUpdate(params) {
   const {
     clip,
     notationString,
+    modulationString,
     noteUpdateMode,
     name,
     color,
@@ -411,6 +351,7 @@ export function processSingleClipUpdate(params) {
   finalNoteCount = handleNoteUpdates(
     clip,
     notationString,
+    modulationString,
     noteUpdateMode,
     timeSigNumerator,
     timeSigDenominator,
@@ -427,11 +368,64 @@ export function processSingleClipUpdate(params) {
     );
   }
 
-  // Handle arrangementLength
+  // Handle arrangement operations (move FIRST, then length)
+  handleArrangementOperations({
+    clip,
+    isAudioClip,
+    arrangementStartBeats,
+    arrangementLengthBeats,
+    tracksWithMovedClips,
+    context,
+    updatedClips,
+    finalNoteCount,
+    handleArrangementLengthOperation,
+    buildClipResultObject,
+  });
+}
+
+/**
+ * Handle arrangement start and length operations in correct order
+ * @param {object} args - Operation arguments
+ * @param {LiveAPI} args.clip - The clip to operate on
+ * @param {boolean} args.isAudioClip - Whether the clip is audio
+ * @param {number} args.arrangementStartBeats - Target start position in beats
+ * @param {number} args.arrangementLengthBeats - Target length in beats
+ * @param {Map} args.tracksWithMovedClips - Map of tracks with moved clips
+ * @param {object} args.context - Tool execution context
+ * @param {Array} args.updatedClips - Array to collect updated clips
+ * @param {number} args.finalNoteCount - Final note count for result
+ * @param {Function} args.handleArrangementLengthOperation - Length handler
+ * @param {Function} args.buildClipResultObject - Result builder
+ */
+function handleArrangementOperations({
+  clip,
+  isAudioClip,
+  arrangementStartBeats,
+  arrangementLengthBeats,
+  tracksWithMovedClips,
+  context,
+  updatedClips,
+  finalNoteCount,
+  handleArrangementLengthOperation,
+  buildClipResultObject,
+}) {
+  // Move FIRST so lengthening uses the new position
+  let finalClipId = clip.id;
+  let currentClip = clip;
+  if (arrangementStartBeats != null) {
+    finalClipId = handleArrangementStartOperation({
+      clip,
+      arrangementStartBeats,
+      tracksWithMovedClips,
+    });
+    currentClip = LiveAPI.from(`id ${finalClipId}`);
+  }
+
+  // Handle arrangementLength SECOND
   let hasArrangementLengthResults = false;
   if (arrangementLengthBeats != null) {
     const results = handleArrangementLengthOperation({
-      clip,
+      clip: currentClip,
       isAudioClip,
       arrangementLengthBeats,
       context,
@@ -442,17 +436,6 @@ export function processSingleClipUpdate(params) {
     }
   }
 
-  // Handle arrangementStart
-  let finalClipId = clip.id;
-  if (arrangementStartBeats != null) {
-    finalClipId = handleArrangementStartOperation({
-      clip,
-      arrangementStartBeats,
-      tracksWithMovedClips,
-    });
-  }
-
-  // Build result object if arrangementLength didn't return results
   if (!hasArrangementLengthResults) {
     updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
   }

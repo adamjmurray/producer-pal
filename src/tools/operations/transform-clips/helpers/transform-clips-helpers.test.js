@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createSeededRNG, randomInRange } from "./transform-clips-helpers.js";
-import { shuffleArray } from "./transform-clips-shuffling-helpers.js";
+import {
+  calculateShufflePositions,
+  shuffleArray,
+} from "./transform-clips-shuffling-helpers.js";
 
 describe("transform-clips helpers", () => {
   describe("createSeededRNG", () => {
@@ -160,6 +163,83 @@ describe("transform-clips helpers", () => {
 
       expect(shuffled).toHaveLength(6);
       expect(shuffled.sort()).toEqual([1, 1, 2, 2, 3, 3]);
+    });
+  });
+
+  describe("calculateShufflePositions", () => {
+    it("handles back-to-back clips with same length", () => {
+      // A(1bar)@0, B(1bar)@1, C(1bar)@2 - no gaps
+      const clips = [
+        { startTime: 0, length: 1 },
+        { startTime: 1, length: 1 },
+        { startTime: 2, length: 1 },
+      ];
+      // Shuffle to: C, A, B (indices 2, 0, 1)
+      const positions = calculateShufflePositions(clips, [2, 0, 1]);
+      // All same length, so positions stay [0, 1, 2]
+      expect(positions).toEqual([0, 1, 2]);
+    });
+
+    it("handles back-to-back clips with different lengths", () => {
+      // A(1bar)@0, B(1bar)@1, C(2bars)@2 - no gaps
+      const clips = [
+        { startTime: 0, length: 1 },
+        { startTime: 1, length: 1 },
+        { startTime: 2, length: 2 },
+      ];
+      // Shuffle to: C, A, B (indices 2, 0, 1)
+      const positions = calculateShufflePositions(clips, [2, 0, 1]);
+      // C(2)@0, A(1)@2, B(1)@3
+      expect(positions).toEqual([0, 2, 3]);
+    });
+
+    it("preserves gaps between clips", () => {
+      // A(1bar)@0, B(1bar)@4, C(2bars)@8 - gaps of 3 each
+      const clips = [
+        { startTime: 0, length: 1 },
+        { startTime: 4, length: 1 },
+        { startTime: 8, length: 2 },
+      ];
+      // Shuffle to: C, A, B (indices 2, 0, 1)
+      const positions = calculateShufflePositions(clips, [2, 0, 1]);
+      // C(2)@0 ends@2, +gap3 → A(1)@5 ends@6, +gap3 → B(1)@9
+      expect(positions).toEqual([0, 5, 9]);
+    });
+
+    it("preserves mixed gap pattern", () => {
+      // A(1bar)@0, B(2bars)@3, C(1bar)@5 - gaps of 2 then 0
+      const clips = [
+        { startTime: 0, length: 1 },
+        { startTime: 3, length: 2 },
+        { startTime: 5, length: 1 },
+      ];
+      // Shuffle to: B, C, A (indices 1, 2, 0)
+      const positions = calculateShufflePositions(clips, [1, 2, 0]);
+      // B(2)@0 ends@2, +gap2 → C(1)@4 ends@5, +gap0 → A(1)@5
+      expect(positions).toEqual([0, 4, 5]);
+    });
+
+    it("handles no shuffle (same order)", () => {
+      const clips = [
+        { startTime: 0, length: 1 },
+        { startTime: 4, length: 2 },
+        { startTime: 8, length: 1 },
+      ];
+      // Same order: indices 0, 1, 2
+      const positions = calculateShufflePositions(clips, [0, 1, 2]);
+      // Should return original positions
+      expect(positions).toEqual([0, 4, 8]);
+    });
+
+    it("handles two clips", () => {
+      const clips = [
+        { startTime: 0, length: 2 },
+        { startTime: 4, length: 1 },
+      ];
+      // Swap: indices 1, 0
+      const positions = calculateShufflePositions(clips, [1, 0]);
+      // B(1)@0 ends@1, +gap2 → A(2)@3
+      expect(positions).toEqual([0, 3]);
     });
   });
 });
