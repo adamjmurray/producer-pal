@@ -390,8 +390,9 @@ function readParameter(paramApi) {
   }
 
   if (isQuantized) {
-    // For quantized params: include allowedValues, omit min/max
-    param.allowedValues = paramApi.get("value_items");
+    // For quantized params: include allowedValues map (index -> displayValue), omit min/max
+    const valueItems = paramApi.get("value_items");
+    param.allowedValues = Object.fromEntries(valueItems.map((v, i) => [i, v]));
   } else {
     // For non-quantized params: include min/max/defaultValue
     param.min = paramApi.getProperty("min");

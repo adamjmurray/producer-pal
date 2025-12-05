@@ -177,7 +177,7 @@ describe("readDevice params include option", () => {
       value: 1,
       displayValue: "On",
       // state/automation omitted when default, min/max omitted for quantized
-      allowedValues: ["Off", "On"],
+      allowedValues: { 0: "Off", 1: "On" },
     });
   });
 
