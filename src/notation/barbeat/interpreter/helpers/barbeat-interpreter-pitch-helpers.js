@@ -22,6 +22,7 @@ export function expandRepeatPattern(
     );
   }
   const positions = [];
+
   // Convert starting position to absolute beats (0-based)
   const startBeats = (currentBar - 1) * beatsPerBar + (start - 1);
   for (let i = 0; i < times; i++) {

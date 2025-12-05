@@ -179,6 +179,7 @@ export function SettingsScreen({
             </div>
           )}
         </SettingsTabs>
+
         <SettingsFooter
           settingsConfigured={settingsConfigured}
           saveSettings={saveSettings}
