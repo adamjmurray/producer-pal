@@ -9,12 +9,16 @@ export const toolDefCreateDevice = defineTool("ppal-create-device", {
     destructiveHint: true,
   },
   inputSchema: {
+    trackCategory: z
+      .enum(["regular", "return", "master"])
+      .default("regular")
+      .describe("regular/return tracks use trackIndex, master has no index"),
     trackIndex: z
       .number()
       .int()
       .min(0)
       .optional()
-      .describe("0-based track index (required when creating a device)"),
+      .describe("0-based track index (required for regular/return tracks)"),
     deviceName: z
       .string()
       .optional()
