@@ -6,12 +6,12 @@ import {
 } from "../../test/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 
-describe("readDevice params include option", () => {
+describe("readDevice param-values include option", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("should include parameters when params is requested", () => {
+  it("should include full parameters when param-values is requested", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "id device-123") return "device-123";
       if (this._path === "id param-1") return "param-1";
@@ -79,7 +79,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     expect(result).toEqual({
@@ -168,7 +168,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     expect(result.parameters[0]).toEqual({
@@ -245,7 +245,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     expect(result.parameters[0].name).toBe("My Custom Param");
@@ -316,7 +316,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     expect(result.parameters[0].enabled).toBe(false);
@@ -386,7 +386,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     expect(result.parameters[0].state).toBe("disabled");
@@ -458,7 +458,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     // displayValue should be omitted since "12" === String(12)
@@ -530,7 +530,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     // state and automation should be omitted when they have default values
@@ -602,7 +602,7 @@ describe("readDevice params include option", () => {
 
     const result = readDevice({
       deviceId: "device-123",
-      include: ["params"],
+      include: ["param-values"],
     });
 
     // min and max should be omitted for quantized parameters
@@ -611,3 +611,119 @@ describe("readDevice params include option", () => {
     expect(result.parameters[0]).toHaveProperty("allowedValues");
   });
 });
+
+describe("readDevice params include option (lightweight)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should return only id and name for params include", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id device-123") return "device-123";
+      if (this._path === "id param-1") return "param-1";
+      return "0";
+    });
+
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._path === "id device-123") {
+        switch (prop) {
+          case "name":
+            return ["Operator"];
+          case "class_display_name":
+            return ["Operator"];
+          case "type":
+            return [1];
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          case "parameters":
+            return ["id", "param-1"];
+          default:
+            return [];
+        }
+      }
+      if (this._path === "id param-1") {
+        switch (prop) {
+          case "name":
+            return ["Volume"];
+          case "original_name":
+            return ["Volume"];
+          default:
+            return [];
+        }
+      }
+      return [];
+    });
+
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["params"],
+    });
+
+    expect(result.parameters).toEqual([
+      {
+        id: "param-1",
+        name: "Volume",
+      },
+    ]);
+  });
+
+  it("should include originalName in lightweight when different from name", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id device-123") return "device-123";
+      if (this._path === "id param-1") return "param-1";
+      return "0";
+    });
+
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._path === "id device-123") {
+        switch (prop) {
+          case "name":
+            return ["Operator"];
+          case "class_display_name":
+            return ["Operator"];
+          case "type":
+            return [1];
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          case "parameters":
+            return ["id", "param-1"];
+          default:
+            return [];
+        }
+      }
+      if (this._path === "id param-1") {
+        switch (prop) {
+          case "name":
+            return ["My Custom Name"];
+          case "original_name":
+            return ["Macro 1"];
+          default:
+            return [];
+        }
+      }
+      return [];
+    });
+
+    const result = readDevice({
+      deviceId: "device-123",
+      include: ["params"],
+    });
+
+    expect(result.parameters).toEqual([
+      {
+        id: "param-1",
+        name: "My Custom Name",
+        originalName: "Macro 1",
+      },
+    ]);
+  });
+});
+// paramSearch tests are in read-device-param-search.test.js

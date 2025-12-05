@@ -131,6 +131,8 @@ export function readDevice(device, options = {}) {
     includeChains = true,
     includeDrumChains = false,
     includeParams = false,
+    includeParamValues = false,
+    paramSearch,
     depth = 0,
     maxDepth = 4,
   } = options;
@@ -189,7 +191,10 @@ export function readDevice(device, options = {}) {
     }
   }
   if (includeParams) {
-    deviceInfo.parameters = readDeviceParameters(device);
+    deviceInfo.parameters = readDeviceParameters(device, {
+      includeValues: includeParamValues,
+      search: paramSearch,
+    });
   }
   return deviceInfo;
 }

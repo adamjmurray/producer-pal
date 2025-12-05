@@ -346,7 +346,28 @@ const AUTOMATION_STATE_MAP = {
 };
 
 /**
- * Read a single device parameter
+ * Read basic parameter info (id and name only)
+ * @param {object} paramApi - LiveAPI parameter object
+ * @returns {object} Parameter info object with id and name
+ */
+function readParameterBasic(paramApi) {
+  const name = paramApi.getProperty("name");
+  const originalName = paramApi.getProperty("original_name");
+
+  const param = {
+    id: paramApi.id,
+    name,
+  };
+
+  if (originalName !== name) {
+    param.originalName = originalName;
+  }
+
+  return param;
+}
+
+/**
+ * Read a single device parameter with full details
  * @param {object} paramApi - LiveAPI parameter object
  * @returns {object} Parameter info object
  */
@@ -406,9 +427,23 @@ function readParameter(paramApi) {
 /**
  * Read all parameters for a device
  * @param {object} device - LiveAPI device object
+ * @param {object} options - Reading options
+ * @param {boolean} options.includeValues - Include full values/metadata
+ * @param {string} options.search - Filter by name substring (case-insensitive)
  * @returns {Array} Array of parameter info objects
  */
-export function readDeviceParameters(device) {
-  const parameters = device.getChildren("parameters");
-  return parameters.map(readParameter);
+export function readDeviceParameters(device, options = {}) {
+  const { includeValues = false, search } = options;
+
+  let parameters = device.getChildren("parameters");
+
+  // Filter by search string if provided
+  if (search) {
+    const searchLower = search.toLowerCase().trim();
+    parameters = parameters.filter((p) =>
+      p.getProperty("name").toLowerCase().includes(searchLower),
+    );
+  }
+
+  return parameters.map(includeValues ? readParameter : readParameterBasic);
 }
