@@ -39,6 +39,7 @@ export function calculateBeatPositions({
   let endBeats = null;
   let firstStartBeats = null;
   let startMarkerBeats = null;
+
   // Convert start to beats if provided
   if (start != null) {
     startBeats = barBeatToAbletonBeats(
@@ -47,6 +48,7 @@ export function calculateBeatPositions({
       timeSigDenominator,
     );
   }
+
   // Calculate end from start + length
   if (length != null) {
     const lengthBeats = barBeatDurationToAbletonBeats(
@@ -54,6 +56,7 @@ export function calculateBeatPositions({
       timeSigNumerator,
       timeSigDenominator,
     );
+
     // If start not provided, read current value from clip
     if (startBeats == null) {
       if (isLooping) {
@@ -63,6 +66,7 @@ export function calculateBeatPositions({
         const currentEndMarker = clip.getProperty("end_marker");
         const currentStartMarker = clip.getProperty("start_marker");
         startBeats = currentEndMarker - lengthBeats;
+
         // Sanity check: warn if derived start doesn't match start_marker
         if (
           Math.abs(startBeats - currentStartMarker) > 0.001 &&
@@ -74,8 +78,10 @@ export function calculateBeatPositions({
         }
       }
     }
+
     endBeats = startBeats + lengthBeats;
   }
+
   // Handle firstStart for looping clips
   if (firstStart != null && isLooping) {
     firstStartBeats = barBeatToAbletonBeats(
@@ -84,6 +90,7 @@ export function calculateBeatPositions({
       timeSigDenominator,
     );
   }
+
   // Determine start_marker value
   if (firstStartBeats != null) {
     // firstStart takes precedence
@@ -95,6 +102,7 @@ export function calculateBeatPositions({
     // For looping clips without firstStart, start_marker = start
     startMarkerBeats = startBeats;
   }
+
   return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
 }
 
@@ -131,6 +139,7 @@ export function buildClipPropertiesToSet({
     isLooping && startBeats != null && endBeats != null
       ? startBeats > currentLoopEnd
       : false;
+
   const propsToSet = {
     name: name,
     color: color,
@@ -139,6 +148,7 @@ export function buildClipPropertiesToSet({
     start_marker: startMarkerBeats,
     looping: looping,
   };
+
   // Set loop properties for looping clips (order matters!)
   if (isLooping || looping == null) {
     if (setEndFirst && endBeats != null && looping !== false) {
@@ -153,12 +163,14 @@ export function buildClipPropertiesToSet({
       propsToSet.loop_end = endBeats;
     }
   }
+
   // Set end_marker for non-looping clips
   if (!isLooping || looping === false) {
     if (endBeats != null) {
       propsToSet.end_marker = endBeats;
     }
   }
+
   return propsToSet;
 }
 
@@ -183,13 +195,16 @@ export function handleNoteUpdates(
   if (notationString == null) {
     return null;
   }
+
   let combinedNotationString = notationString;
+
   if (noteUpdateMode === "merge") {
     // In merge mode, prepend existing notes as bar|beat notation
     const existingNotesResult = JSON.parse(
       clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
     );
     const existingNotes = existingNotesResult?.notes || [];
+
     if (existingNotes.length > 0) {
       const existingNotationString = formatNotation(existingNotes, {
         timeSigNumerator,
@@ -198,10 +213,12 @@ export function handleNoteUpdates(
       combinedNotationString = `${existingNotationString} ${notationString}`;
     }
   }
+
   const notes = interpretNotation(combinedNotationString, {
     timeSigNumerator,
     timeSigDenominator,
   });
+
   // Apply modulations to notes if provided
   applyModulations(
     notes,
@@ -209,16 +226,19 @@ export function handleNoteUpdates(
     timeSigNumerator,
     timeSigDenominator,
   );
+
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
   if (notes.length > 0) {
     clip.call("add_new_notes", { notes });
   }
+
   // Query actual note count within playback region
   const lengthBeats = clip.getProperty("length");
   const actualNotesResult = JSON.parse(
     clip.call("get_notes_extended", 0, 128, 0, lengthBeats),
   );
+
   return actualNotesResult?.notes?.length || 0;
 }
 
@@ -412,6 +432,7 @@ function handleArrangementOperations({
   // Move FIRST so lengthening uses the new position
   let finalClipId = clip.id;
   let currentClip = clip;
+
   if (arrangementStartBeats != null) {
     finalClipId = handleArrangementStartOperation({
       clip,
@@ -423,6 +444,7 @@ function handleArrangementOperations({
 
   // Handle arrangementLength SECOND
   let hasArrangementLengthResults = false;
+
   if (arrangementLengthBeats != null) {
     const results = handleArrangementLengthOperation({
       clip: currentClip,
@@ -430,6 +452,7 @@ function handleArrangementOperations({
       arrangementLengthBeats,
       context,
     });
+
     if (results.length > 0) {
       updatedClips.push(...results);
       hasArrangementLengthResults = true;

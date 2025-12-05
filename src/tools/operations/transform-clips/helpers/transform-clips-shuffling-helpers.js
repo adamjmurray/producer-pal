@@ -17,13 +17,16 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
     }
     return;
   }
+
   if (arrangementClips.length <= 1) {
     return;
   }
+
   // Sort clips by start_time to establish original order
   const sortedClips = [...arrangementClips].sort(
     (a, b) => a.getProperty("start_time") - b.getProperty("start_time"),
   );
+
   // Calculate gaps between consecutive clips (preserves original spacing pattern)
   const gaps = [];
   for (let i = 0; i < sortedClips.length - 1; i++) {
@@ -33,8 +36,10 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
     const nextStart = sortedClips[i + 1].getProperty("start_time");
     gaps.push(nextStart - clipEnd);
   }
+
   // Shuffle clip order (not positions)
   const shuffledClips = shuffleArray(sortedClips, rng);
+
   // Calculate new positions: place sequentially with preserved gaps
   const startPosition = sortedClips[0].getProperty("start_time");
   let currentPos = startPosition;
@@ -44,9 +49,11 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
     if (i < gaps.length) currentPos += gaps[i];
     return pos;
   });
+
   // Move all clips to holding area first
   // Store trackIndex before entering loop (all arrangement clips are on same track)
   const trackIndexForShuffle = arrangementClips[0].trackIndex;
+
   const holdingPositions = shuffledClips.map((clip, index) => {
     const trackIndex = clip.trackIndex;
     const track = new LiveAPI(`live_set tracks ${trackIndex}`);
@@ -76,6 +83,7 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
   const track = new LiveAPI(`live_set tracks ${trackIndexForShuffle}`);
   const freshClipIds = track.getChildIds("arrangement_clips");
   const freshClips = freshClipIds.map((id) => LiveAPI.from(id));
+
   // Replace all stale clips with fresh ones
   clips.length = 0;
   clips.push(...freshClips);
@@ -89,10 +97,12 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
  */
 export function shuffleArray(array, rng) {
   const shuffled = [...array];
+
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
+
   return shuffled;
 }
 
@@ -110,9 +120,11 @@ export function calculateShufflePositions(sortedClipInfo, shuffledIndices) {
     const nextStart = sortedClipInfo[i + 1].startTime;
     gaps.push(nextStart - clipEnd);
   }
+
   // Calculate new positions: place sequentially with preserved gaps
   const startPosition = sortedClipInfo[0].startTime;
   let currentPos = startPosition;
+
   return shuffledIndices.map((origIndex, i) => {
     const pos = currentPos;
     currentPos += sortedClipInfo[origIndex].length;

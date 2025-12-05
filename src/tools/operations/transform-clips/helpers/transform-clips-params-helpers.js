@@ -72,6 +72,7 @@ export function hasMidiTransformParams(
  */
 export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
   const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+
   if (!isAudioClip) {
     if (!warnings.has("audio-params-midi-clip")) {
       console.error("Warning: audio parameters ignored for MIDI clips");
@@ -79,6 +80,7 @@ export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
     }
     return;
   }
+
   applyAudioParams(clip, audioParams, rng);
 }
 
@@ -91,6 +93,7 @@ export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
  */
 export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
   const isMidiClip = clip.getProperty("is_midi_clip") === 1;
+
   if (!isMidiClip) {
     if (!warnings.has("midi-params-audio-clip")) {
       console.error("Warning: MIDI parameters ignored for audio clips");
@@ -98,6 +101,7 @@ export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
     }
     return;
   }
+
   applyMidiParams(clip, midiParams, rng);
 }
 
@@ -146,6 +150,7 @@ export function applyParameterTransforms(
     transposeMax,
     transposeValues,
   );
+
   const hasMidiParams = hasMidiTransformParams(
     velocityMin,
     velocityMax,
@@ -173,6 +178,7 @@ export function applyParameterTransforms(
         warnings,
       );
     }
+
     if (hasMidiParams) {
       applyMidiTransformIfNeeded(
         clip,

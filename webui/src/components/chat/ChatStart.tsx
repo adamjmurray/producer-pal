@@ -35,6 +35,7 @@ export function ChatStart({
           </button>
         </>
       )}
+
       {mcpStatus === "error" && (
         <>
           <h1 className="font-bold text-red-600 dark:text-red-400">

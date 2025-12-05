@@ -19,6 +19,7 @@ export function applyV0Deletions(notes) {
           Math.abs(existingNote.start_time - note.start_time) >= 0.001,
       );
     }
+
     // Regular note - add to results
     return [...result, note];
   }, []);

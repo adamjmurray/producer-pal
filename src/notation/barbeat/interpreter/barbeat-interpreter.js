@@ -33,6 +33,7 @@ function processVelocityUpdate(element, state) {
   if (state.pitchGroupStarted && state.currentPitches.length > 0) {
     state.stateChangedSinceLastPitch = true;
   }
+
   if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
     for (const pitchState of state.currentPitches) {
       pitchState.velocity = element.velocity;
@@ -40,6 +41,7 @@ function processVelocityUpdate(element, state) {
     }
     state.stateChangedAfterEmission = true;
   }
+
   if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
     state.stateChangedAfterEmission = true;
   }
@@ -54,9 +56,11 @@ function processVelocityRangeUpdate(element, state) {
   state.currentVelocityMin = element.velocityMin;
   state.currentVelocityMax = element.velocityMax;
   state.currentVelocity = null;
+
   if (state.pitchGroupStarted && state.currentPitches.length > 0) {
     state.stateChangedSinceLastPitch = true;
   }
+
   if (!state.pitchGroupStarted && state.currentPitches.length > 0) {
     for (const pitchState of state.currentPitches) {
       pitchState.velocity = element.velocityMin;
@@ -64,6 +68,7 @@ function processVelocityRangeUpdate(element, state) {
     }
     state.stateChangedAfterEmission = true;
   }
+
   if (!state.pitchGroupStarted && state.currentPitches.length === 0) {
     state.stateChangedAfterEmission = true;
   }
@@ -104,6 +109,7 @@ function processDurationUpdate(
     state.stateChangedAfterEmission = true;
   }
 }
+
 /**
  * Process a probability update
  * @param {object} element - AST element with probability property
@@ -124,6 +130,7 @@ function processProbabilityUpdate(element, state) {
     state.stateChangedAfterEmission = true;
   }
 }
+
 /**
  * Process a pitch element
  * @param {object} element - AST element with pitch property
@@ -136,6 +143,7 @@ function processPitchElement(element, state) {
     state.pitchesEmitted = false;
     state.stateChangedAfterEmission = false;
   }
+
   let velocity, velocityDeviation;
   if (state.currentVelocityMin !== null && state.currentVelocityMax !== null) {
     velocity = state.currentVelocityMin;
@@ -153,6 +161,7 @@ function processPitchElement(element, state) {
   });
   state.stateChangedSinceLastPitch = false;
 }
+
 /**
  * Reset pitch buffer state
  * @param {object} state - Interpreter state object
@@ -325,11 +334,13 @@ export function interpretNotation(barBeatExpression, options = {}) {
   }
   const beatsPerBar =
     timeSigNumerator ?? beatsPerBarOption ?? DEFAULT_BEATS_PER_BAR;
+
   try {
     const ast = parser.parse(barBeatExpression);
     // Bar copy tracking: Map bar number -> array of note metadata
     const notesByBar = new Map();
     const events = [];
+
     // Create state object for easier passing to helper functions
     const state = {
       currentTime: DEFAULT_TIME,
@@ -345,6 +356,7 @@ export function interpretNotation(barBeatExpression, options = {}) {
       stateChangedSinceLastPitch: false,
       stateChangedAfterEmission: false,
     };
+
     for (const element of ast) {
       processElementInLoop(
         element,
@@ -356,12 +368,14 @@ export function interpretNotation(barBeatExpression, options = {}) {
         events,
       );
     }
+
     // Warn if pitches buffered but never emitted
     if (state.currentPitches.length > 0 && !state.pitchesEmitted) {
       console.error(
         `Warning: ${state.currentPitches.length} pitch(es) buffered but no time position to emit them`,
       );
     }
+
     // Apply v0 deletions as final post-processing step
     return applyV0Deletions(events);
   } catch (error) {

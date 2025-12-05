@@ -26,24 +26,30 @@ export function handleArrangementLengthening({
   context,
 }) {
   const updatedClips = [];
+
   const isLooping = clip.getProperty("looping") > 0;
   const clipLoopStart = clip.getProperty("loop_start");
   const clipLoopEnd = clip.getProperty("loop_end");
   const clipStartMarker = clip.getProperty("start_marker");
   const clipEndMarker = clip.getProperty("end_marker");
+
   // For unlooped clips, use end_marker - start_marker (actual playback length)
   // For looped clips, use loop region
   const clipLength = isLooping
     ? clipLoopEnd - clipLoopStart
     : clipEndMarker - clipStartMarker;
+
   // Get track for clip operations
   const trackIndex = clip.trackIndex;
+
   if (trackIndex == null) {
     throw new Error(
       `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
     );
   }
+
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
   // Handle unlooped clips separately from looped clips
   if (!isLooping) {
     return handleUnloopedLengthening({
@@ -58,6 +64,7 @@ export function handleArrangementLengthening({
       context,
     });
   }
+
   // Branch: expose hidden content vs tiling (looped clips only)
   if (arrangementLengthBeats < clipLength) {
     // Expose hidden content by tiling with start_marker offsets
@@ -100,6 +107,7 @@ export function handleArrangementLengthening({
     updatedClips.push({ id: clip.id });
     updatedClips.push(...tiledClips);
   }
+
   return updatedClips;
 }
 
@@ -137,6 +145,7 @@ function createLoopeClipTiles({
   context,
 }) {
   const updatedClips = [];
+
   // If clip not showing full content, tile with start_marker offsets
   if (currentArrangementLength < totalContentLength) {
     const remainingLength = arrangementLengthBeats - currentArrangementLength;
@@ -156,16 +165,19 @@ function createLoopeClipTiles({
     updatedClips.push(...tiledClips);
     return updatedClips;
   }
+
   // If current arrangement length > total content length, shorten first then tile
   if (currentArrangementLength > totalContentLength) {
     let newEndTime = currentStartTime + totalContentLength;
     const tempClipLength = currentEndTime - newEndTime;
+
     // Validation
     if (newEndTime + tempClipLength !== currentEndTime) {
       throw new Error(
         `Shortening validation failed: calculation error in temp clip bounds`,
       );
     }
+
     // Create temp clip to truncate
     if (isAudioClip) {
       const { clip: sessionClip, slot } = createAudioClipInSession(
@@ -190,6 +202,7 @@ function createLoopeClipTiles({
       const tempClip = LiveAPI.from(tempClipPath);
       track.call("delete_clip", `id ${tempClip.id}`);
     }
+
     newEndTime = currentStartTime + totalContentLength;
     const firstTileLength = newEndTime - currentStartTime;
     const remainingSpace = arrangementLengthBeats - firstTileLength;
@@ -205,6 +218,7 @@ function createLoopeClipTiles({
     updatedClips.push(...tiledClips);
     return updatedClips;
   }
+
   // Tile the properly-sized clip
   const firstTileLength = currentEndTime - currentStartTime;
   const remainingSpace = arrangementLengthBeats - firstTileLength;
@@ -220,6 +234,7 @@ function createLoopeClipTiles({
   updatedClips.push(...tiledClips);
   return updatedClips;
 }
+
 /**
  * Handle arrangement clip shortening
  * @param {object} root0 - Parameters object
@@ -240,20 +255,25 @@ export function handleArrangementShortening({
 }) {
   const newEndTime = currentStartTime + arrangementLengthBeats;
   const tempClipLength = currentEndTime - newEndTime;
+
   // Validation
   if (newEndTime + tempClipLength !== currentEndTime) {
     throw new Error(
       `Internal error: temp clip boundary calculation failed for clip ${clip.id}`,
     );
   }
+
   // Get track
   const trackIndex = clip.trackIndex;
+
   if (trackIndex == null) {
     throw new Error(
       `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
     );
   }
+
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
   // Create temporary clip to truncate
   if (isAudioClip) {
     const { clip: sessionClip, slot } = createAudioClipInSession(
