@@ -10,6 +10,7 @@ import {
   processDrumChains,
   processRegularChains,
   processReturnChains,
+  readDeviceParameters,
 } from "./helpers/device-reader-helpers.js";
 
 /**
@@ -120,6 +121,7 @@ export function getDrumMap(devices) {
  * @param {object} options - Options for reading device
  * @param {boolean} options.includeChains - Include chains in rack devices
  * @param {boolean} options.includeDrumChains - Include drum pad chains and return chains
+ * @param {boolean} options.includeParams - Include device parameters
  * @param {number} options.depth - Current recursion depth
  * @param {number} options.maxDepth - Maximum recursion depth
  * @returns {object} Device object with nested structure
@@ -128,6 +130,7 @@ export function readDevice(device, options = {}) {
   const {
     includeChains = true,
     includeDrumChains = false,
+    includeParams = false,
     depth = 0,
     maxDepth = 4,
   } = options;
@@ -184,6 +187,9 @@ export function readDevice(device, options = {}) {
         readDevice,
       );
     }
+  }
+  if (includeParams) {
+    deviceInfo.parameters = readDeviceParameters(device);
   }
   return deviceInfo;
 }

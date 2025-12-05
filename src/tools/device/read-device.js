@@ -20,10 +20,12 @@ export function readDevice({ deviceId, include = ["chains"] }) {
   const includeChains = include.includes("*") || include.includes("chains");
   const includeDrumChains =
     include.includes("*") || include.includes("drum-chains");
+  const includeParams = include.includes("*") || include.includes("params");
 
   const deviceInfo = readDeviceShared(device, {
     includeChains,
     includeDrumChains,
+    includeParams,
   });
 
   // Clean up internal _processedDrumChains property

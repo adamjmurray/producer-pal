@@ -330,3 +330,65 @@ export function processReturnChains(
     return returnChainInfo;
   });
 }
+
+// Parameter state mapping (0=active, 1=inactive, 2=disabled)
+const PARAM_STATE_MAP = {
+  0: "active",
+  1: "inactive",
+  2: "disabled",
+};
+
+// Automation state mapping (0=none, 1=active, 2=overridden)
+const AUTOMATION_STATE_MAP = {
+  0: "none",
+  1: "active",
+  2: "overridden",
+};
+
+/**
+ * Read a single device parameter
+ * @param {object} paramApi - LiveAPI parameter object
+ * @returns {object} Parameter info object
+ */
+function readParameter(paramApi) {
+  const name = paramApi.getProperty("name");
+  const originalName = paramApi.getProperty("original_name");
+  const value = paramApi.getProperty("value");
+  const isQuantized = paramApi.getProperty("is_quantized") > 0;
+
+  const param = {
+    id: paramApi.id,
+    name,
+    value,
+    displayValue: paramApi.call("str_for_value", value),
+    state: PARAM_STATE_MAP[paramApi.getProperty("state")],
+    automation: AUTOMATION_STATE_MAP[paramApi.getProperty("automation_state")],
+    min: paramApi.getProperty("min"),
+    max: paramApi.getProperty("max"),
+  };
+
+  // Conditional properties
+  if (originalName !== name) {
+    param.originalName = originalName;
+  }
+  if (!paramApi.getProperty("is_enabled")) {
+    param.enabled = false;
+  }
+  if (isQuantized) {
+    param.allowedValues = paramApi.get("value_items");
+  } else {
+    param.defaultValue = paramApi.getProperty("default_value");
+  }
+
+  return param;
+}
+
+/**
+ * Read all parameters for a device
+ * @param {object} device - LiveAPI device object
+ * @returns {Array} Array of parameter info objects
+ */
+export function readDeviceParameters(device) {
+  const parameters = device.getChildren("parameters");
+  return parameters.map(readParameter);
+}
