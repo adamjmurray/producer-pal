@@ -3,11 +3,11 @@ import { VERSION } from "../shared/version.js";
 import { toolDefCreateClip } from "../tools/clip/create/create-clip.def.js";
 import { toolDefReadClip } from "../tools/clip/read/read-clip.def.js";
 import { toolDefUpdateClip } from "../tools/clip/update/update-clip.def.js";
-// import { toolDefReadDevice } from "./tool-def-read-device.js";  // UNUSED - see read-device.js for why
 import { toolDefPlayback } from "../tools/control/playback.def.js";
 import { toolDefRawLiveApi } from "../tools/control/raw-live-api.def.js";
 import { toolDefSelect } from "../tools/control/select.def.js";
 import { toolDefCreateDevice } from "../tools/device/create/create-device.def.js";
+import { toolDefReadDevice } from "../tools/device/read-device.def.js";
 import { toolDefReadLiveSet } from "../tools/live-set/read-live-set.def.js";
 import { toolDefUpdateLiveSet } from "../tools/live-set/update-live-set.def.js";
 import { toolDefDelete } from "../tools/operations/delete/delete.def.js";
@@ -59,9 +59,7 @@ export function createMcpServer(callLiveApi, options = {}) {
   addTool(toolDefTransformClips);
 
   addTool(toolDefCreateDevice);
-  // Commented out Sept 2025 - never used, keeps context window smaller
-  // See src/tools/read-device.js for historical context
-  // addTool(toolDefReadDevice);
+  addTool(toolDefReadDevice);
 
   addTool(toolDefPlayback);
   addTool(toolDefSelect);

@@ -67,9 +67,6 @@ export default defineConfig({
         "src/mcp-server/mcp-server.js",
         "src/portal/producer-pal-portal.js",
 
-        // ignore disabled tool definitions:
-        "src/tools/device/read-device.def.js",
-
         // ignore loggers:
         "src/portal/file-logger.js",
 

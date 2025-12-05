@@ -18,6 +18,7 @@ import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
 import { select } from "../tools/control/select.js";
 import { createDevice } from "../tools/device/create/create-device.js";
+import { readDevice } from "../tools/device/read-device.js";
 import { readLiveSet } from "../tools/live-set/read-live-set.js";
 import { updateLiveSet } from "../tools/live-set/update-live-set.js";
 import { deleteObject } from "../tools/operations/delete/delete.js";
@@ -64,6 +65,7 @@ const tools = {
   "ppal-update-clip": (args) => updateClip(args, context),
   "ppal-transform-clips": (args) => transformClips(args, context),
   "ppal-create-device": (args) => createDevice(args, context),
+  "ppal-read-device": (args) => readDevice(args, context),
   "ppal-playback": (args) => playback(args, context),
   "ppal-select": (args) => select(args, context),
   "ppal-delete": (args) => deleteObject(args, context),
