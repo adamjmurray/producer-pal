@@ -140,6 +140,7 @@ export function readDevice(device, options = {}) {
   const userDisplayName = device.getProperty("name");
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
   const deviceInfo = {
+    id: device.id,
     type: isRedundant ? deviceType : `${deviceType}: ${className}`,
   };
   if (userDisplayName !== className) {

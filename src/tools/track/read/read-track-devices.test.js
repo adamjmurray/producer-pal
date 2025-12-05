@@ -82,12 +82,14 @@ describe("readTrack", () => {
       });
 
       expect(result.instrument).toEqual({
+        id: "device1",
         type: "instrument: Analog",
         name: "Custom Analog",
       });
 
       expect(result.audioEffects).toEqual([
         {
+          id: "device2",
           type: "audio-effect: Reverb",
           name: "Custom Reverb",
         },
@@ -95,6 +97,7 @@ describe("readTrack", () => {
 
       expect(result.midiEffects).toEqual([
         {
+          id: "device3",
           type: "midi-effect: Note Length",
           name: "Custom Note Length",
           deactivated: true,
@@ -128,6 +131,7 @@ describe("readTrack", () => {
 
       const result = readTrack({ trackIndex: 0 });
       expect(result.instrument).toEqual({
+        id: "device1",
         name: "My Drums",
         type: "drum-rack",
         // drumChains: [], // Only included when drum-chains is requested
@@ -180,6 +184,7 @@ describe("readTrack", () => {
       });
 
       expect(result.instrument).toEqual({
+        id: "device1",
         type: "drum-rack",
         name: "My Drums",
         // drumChains: [], // Only included when drum-chains is requested
@@ -187,6 +192,7 @@ describe("readTrack", () => {
 
       expect(result.audioEffects).toHaveLength(1);
       expect(result.audioEffects[0]).toEqual({
+        id: "device2",
         type: "audio-effect: Reverb",
       });
     });
@@ -247,6 +253,7 @@ describe("readTrack", () => {
       });
 
       expect(result.instrument).toEqual({
+        id: "rack1",
         type: "instrument-rack",
         name: "My Custom Rack",
         chains: [
@@ -254,6 +261,7 @@ describe("readTrack", () => {
             name: "Piano",
             devices: [
               {
+                id: "nested_device1",
                 type: "instrument: Operator",
                 name: "Lead Synth",
               },
@@ -327,6 +335,7 @@ describe("readTrack", () => {
 
       expect(result.audioEffects).toHaveLength(1);
       expect(result.audioEffects[0]).toEqual({
+        id: "fx_rack1",
         type: "audio-effect-rack",
         name: "Master FX",
         chains: [
@@ -334,6 +343,7 @@ describe("readTrack", () => {
             name: "Filter Chain",
             devices: [
               {
+                id: "nested_effect1",
                 type: "audio-effect: Auto Filter",
                 name: "Sweep Filter",
               },
@@ -422,6 +432,7 @@ describe("readTrack", () => {
       });
 
       expect(result.instrument).toEqual({
+        id: "outer_rack",
         type: "instrument-rack",
         name: "Master FX",
         chains: [
@@ -429,6 +440,7 @@ describe("readTrack", () => {
             name: "Wet",
             devices: [
               {
+                id: "inner_rack",
                 type: "audio-effect-rack",
                 name: "Reverb Chain",
                 chains: [
@@ -437,6 +449,7 @@ describe("readTrack", () => {
                     state: "soloed",
                     devices: [
                       {
+                        id: "deep_device",
                         type: "audio-effect: Reverb",
                         name: "Big Hall",
                       },
