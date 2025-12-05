@@ -72,8 +72,8 @@ export function connect(_params = {}, context = {}) {
   }
   if (!foundAnyInstrument) {
     messages.push(`No instruments found.
-To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, plugins, etc).
-I can't add instruments but can compose MIDI patterns once they're there.`);
+To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, etc).
+Ask me to add an instrument, or add one yourself and I can compose MIDI patterns.`);
   }
 
   if (context?.smallModelMode) {
