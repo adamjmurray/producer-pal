@@ -355,17 +355,31 @@ function readParameter(paramApi) {
   const originalName = paramApi.getProperty("original_name");
   const value = paramApi.getProperty("value");
   const isQuantized = paramApi.getProperty("is_quantized") > 0;
+  const displayValue = paramApi.call("str_for_value", value);
+  const state = PARAM_STATE_MAP[paramApi.getProperty("state")];
+  const automation =
+    AUTOMATION_STATE_MAP[paramApi.getProperty("automation_state")];
 
   const param = {
     id: paramApi.id,
     name,
     value,
-    displayValue: paramApi.call("str_for_value", value),
-    state: PARAM_STATE_MAP[paramApi.getProperty("state")],
-    automation: AUTOMATION_STATE_MAP[paramApi.getProperty("automation_state")],
-    min: paramApi.getProperty("min"),
-    max: paramApi.getProperty("max"),
   };
+
+  // Only include displayValue when different from value
+  if (String(displayValue) !== String(value)) {
+    param.displayValue = displayValue;
+  }
+
+  // Only include state when not "active" (the default)
+  if (state !== "active") {
+    param.state = state;
+  }
+
+  // Only include automation when not "none" (the default)
+  if (automation !== "none") {
+    param.automation = automation;
+  }
 
   // Conditional properties
   if (originalName !== name) {
@@ -374,9 +388,14 @@ function readParameter(paramApi) {
   if (!paramApi.getProperty("is_enabled")) {
     param.enabled = false;
   }
+
   if (isQuantized) {
+    // For quantized params: include allowedValues, omit min/max
     param.allowedValues = paramApi.get("value_items");
   } else {
+    // For non-quantized params: include min/max/defaultValue
+    param.min = paramApi.getProperty("min");
+    param.max = paramApi.getProperty("max");
     param.defaultValue = paramApi.getProperty("default_value");
   }
 
