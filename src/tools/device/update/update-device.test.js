@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiSet,
@@ -21,6 +22,8 @@ describe("updateDevice", () => {
           return "789";
         case "id 790":
           return "790";
+        case "id 791":
+          return "791";
         case "live_set tracks 0 devices 0 view":
           return "view-123";
         case "live_set tracks 0 devices 1 view":
@@ -274,5 +277,85 @@ describe("updateDevice", () => {
         paramDisplayValues: "not valid json",
       }),
     ).toThrow();
+  });
+
+  describe("quantized params", () => {
+    beforeEach(() => {
+      // getProperty calls get()[0], so we return arrays
+      liveApiGet.mockImplementation(function (prop) {
+        if (this._path === "id 791") {
+          if (prop === "is_quantized") return [1];
+          if (prop === "value_items") return ["Repitch", "Fade", "Jump"];
+        }
+        if (this._path === "id 789" && prop === "is_quantized") {
+          return [0];
+        }
+        return [0];
+      });
+    });
+
+    it("should convert string value to index for quantized param", () => {
+      const result = updateDevice({
+        ids: "123",
+        paramDisplayValues: '{"791": "Fade"}',
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 791" }),
+        "value",
+        1,
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should log error for invalid string value on quantized param", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateDevice({
+        ids: "123",
+        paramDisplayValues: '{"791": "InvalidValue"}',
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'updateDevice: "InvalidValue" is not a valid value for param "791". ' +
+          "Valid values: Repitch, Fade, Jump",
+      );
+      expect(liveApiSet).not.toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 791" }),
+        "value",
+        expect.anything(),
+      );
+      expect(result).toEqual({ id: "123" });
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should use display_value for continuous param with string", () => {
+      updateDevice({
+        ids: "123",
+        paramDisplayValues: '{"789": "-6 dB"}',
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 789" }),
+        "display_value",
+        "-6 dB",
+      );
+    });
+
+    it("should use display_value for numeric value on quantized param", () => {
+      updateDevice({
+        ids: "123",
+        paramDisplayValues: '{"791": 2}',
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 791" }),
+        "display_value",
+        2,
+      );
+    });
   });
 });

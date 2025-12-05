@@ -77,10 +77,27 @@ function setParamDisplayValues(paramDisplayValuesJson) {
   const displayValues = JSON.parse(paramDisplayValuesJson);
   for (const [paramId, displayValue] of Object.entries(displayValues)) {
     const param = LiveAPI.from(paramId);
-    if (param.exists()) {
-      param.set("display_value", displayValue);
-    } else {
+    if (!param.exists()) {
       console.error(`updateDevice: param id "${paramId}" does not exist`);
+      continue;
+    }
+
+    const isQuantized = param.getProperty("is_quantized") > 0;
+    if (isQuantized && typeof displayValue === "string") {
+      // For quantized params with string value, find the numeric index
+      const valueItems = param.get("value_items");
+      const index = valueItems.indexOf(displayValue);
+      if (index === -1) {
+        console.error(
+          `updateDevice: "${displayValue}" is not a valid value for param "${paramId}". ` +
+            `Valid values: ${valueItems.join(", ")}`,
+        );
+        continue;
+      }
+      param.set("value", index);
+    } else {
+      // For continuous params or numeric values, use display_value
+      param.set("display_value", displayValue);
     }
   }
 }
