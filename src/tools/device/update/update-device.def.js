@@ -12,5 +12,10 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     ids: z.string().describe("comma-separated device ID(s) to update"),
     name: z.string().optional().describe("device display name"),
     collapsed: z.boolean().optional().describe("collapse/expand device view"),
+    params: z.string().optional().describe('JSON: {"paramId": value, ...}'),
+    paramDisplayValues: z
+      .string()
+      .optional()
+      .describe('JSON: {"paramId": "displayStr", ...}'),
   },
 });

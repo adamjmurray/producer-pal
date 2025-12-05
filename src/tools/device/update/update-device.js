@@ -7,9 +7,17 @@ import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
  * @param {string} args.ids - Comma-separated device ID(s)
  * @param {string} [args.name] - Device display name
  * @param {boolean} [args.collapsed] - Collapse/expand device view
+ * @param {string} [args.params] - JSON: {"paramId": value, ...}
+ * @param {string} [args.paramDisplayValues] - JSON: {"paramId": "displayStr", ...}
  * @returns {object|Array} Updated device info(s)
  */
-export function updateDevice({ ids, name, collapsed }) {
+export function updateDevice({
+  ids,
+  name,
+  collapsed,
+  params,
+  paramDisplayValues,
+}) {
   const deviceIds = parseCommaSeparatedIds(ids);
   const updatedDevices = [];
 
@@ -21,17 +29,20 @@ export function updateDevice({ ids, name, collapsed }) {
       continue;
     }
 
-    // Update name if provided
     if (name != null) {
       device.set("name", name);
     }
 
-    // Update collapsed state if provided
     if (collapsed != null) {
-      const deviceView = new LiveAPI(`${device.path} view`);
-      if (deviceView.exists()) {
-        deviceView.set("is_collapsed", collapsed ? 1 : 0);
-      }
+      updateCollapsedState(device, collapsed);
+    }
+
+    if (params != null) {
+      setParamValues(params);
+    }
+
+    if (paramDisplayValues != null) {
+      setParamDisplayValues(paramDisplayValues);
     }
 
     updatedDevices.push({ id: device.id });
@@ -41,4 +52,35 @@ export function updateDevice({ ids, name, collapsed }) {
     return [];
   }
   return updatedDevices.length === 1 ? updatedDevices[0] : updatedDevices;
+}
+
+function updateCollapsedState(device, collapsed) {
+  const deviceView = new LiveAPI(`${device.path} view`);
+  if (deviceView.exists()) {
+    deviceView.set("is_collapsed", collapsed ? 1 : 0);
+  }
+}
+
+function setParamValues(paramsJson) {
+  const paramValues = JSON.parse(paramsJson);
+  for (const [paramId, value] of Object.entries(paramValues)) {
+    const param = LiveAPI.from(paramId);
+    if (param.exists()) {
+      param.set("value", value);
+    } else {
+      console.error(`updateDevice: param id "${paramId}" does not exist`);
+    }
+  }
+}
+
+function setParamDisplayValues(paramDisplayValuesJson) {
+  const displayValues = JSON.parse(paramDisplayValuesJson);
+  for (const [paramId, displayValue] of Object.entries(displayValues)) {
+    const param = LiveAPI.from(paramId);
+    if (param.exists()) {
+      param.set("display_value", displayValue);
+    } else {
+      console.error(`updateDevice: param id "${paramId}" does not exist`);
+    }
+  }
 }

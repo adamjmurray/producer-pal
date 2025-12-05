@@ -17,6 +17,10 @@ describe("updateDevice", () => {
           return "123";
         case "id 456":
           return "456";
+        case "id 789":
+          return "789";
+        case "id 790":
+          return "790";
         case "live_set tracks 0 devices 0 view":
           return "view-123";
         case "live_set tracks 0 devices 1 view":
@@ -169,5 +173,106 @@ describe("updateDevice", () => {
 
     expect(liveApiSet).not.toHaveBeenCalled();
     expect(result).toEqual({ id: "123" });
+  });
+
+  it("should set a single param value", () => {
+    const result = updateDevice({
+      ids: "123",
+      params: '{"789": 0.5}',
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "789" }),
+      "value",
+      0.5,
+    );
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should set multiple param values", () => {
+    const result = updateDevice({
+      ids: "123",
+      params: '{"789": 0.5, "790": 1.0}',
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "789" }),
+      "value",
+      0.5,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "790" }),
+      "value",
+      1.0,
+    );
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should set param display value", () => {
+    const result = updateDevice({
+      ids: "123",
+      paramDisplayValues: '{"789": "-6 dB"}',
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "789" }),
+      "display_value",
+      "-6 dB",
+    );
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should set both params and paramDisplayValues", () => {
+    const result = updateDevice({
+      ids: "123",
+      params: '{"789": 0.5}',
+      paramDisplayValues: '{"790": "50%"}',
+    });
+
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "789" }),
+      "value",
+      0.5,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: "790" }),
+      "display_value",
+      "50%",
+    );
+    expect(result).toEqual({ id: "123" });
+  });
+
+  it("should log error for invalid param ID but continue", () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = updateDevice({
+      ids: "123",
+      params: '{"999": 0.5}',
+    });
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'updateDevice: param id "999" does not exist',
+    );
+    expect(result).toEqual({ id: "123" });
+
+    consoleSpy.mockRestore();
+  });
+
+  it("should throw error for invalid JSON in params", () => {
+    expect(() =>
+      updateDevice({
+        ids: "123",
+        params: "not valid json",
+      }),
+    ).toThrow();
+  });
+
+  it("should throw error for invalid JSON in paramDisplayValues", () => {
+    expect(() =>
+      updateDevice({
+        ids: "123",
+        paramDisplayValues: "not valid json",
+      }),
+    ).toThrow();
   });
 });
