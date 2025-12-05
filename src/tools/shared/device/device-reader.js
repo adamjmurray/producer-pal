@@ -155,6 +155,10 @@ export function readDevice(device, options = {}) {
   if (!isActive) {
     deviceInfo.deactivated = true;
   }
+  const deviceView = new LiveAPI(`${device.path} view`);
+  if (deviceView.exists() && deviceView.getProperty("is_collapsed") > 0) {
+    deviceInfo.collapsed = true;
+  }
   if (deviceType.includes("rack") && (includeChains || includeDrumChains)) {
     if (deviceType === DEVICE_TYPE.DRUM_RACK) {
       processDrumChains(
