@@ -6,7 +6,7 @@ import { validateIdTypes } from "../../shared/validation/id-validation.js";
  * Deletes objects by ids
  * @param {object} args - The parameters
  * @param {string} args.ids - ID or comma-separated list of IDs to delete
- * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
+ * @param {string} args.type - Type of objects to delete ("track", "scene", "clip", or "device")
  * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Result object(s) with success information
  */
@@ -17,9 +17,9 @@ export function deleteObject({ ids, type } = {}, _context = {}) {
   if (!type) {
     throw new Error("delete failed: type is required");
   }
-  if (!["track", "scene", "clip"].includes(type)) {
+  if (!["track", "scene", "clip", "device"].includes(type)) {
     throw new Error(
-      `delete failed: type must be one of "track", "scene", or "clip"`,
+      `delete failed: type must be one of "track", "scene", "clip", or "device"`,
     );
   }
 
@@ -114,8 +114,25 @@ function deleteClipObject(id, object) {
 }
 
 /**
+ * Deletes a device by its ID via the parent track
+ * @param {string} id - The object ID
+ * @param {object} object - The object to delete
+ */
+function deleteDeviceObject(id, object) {
+  // Extract track path from device path (handles regular, return, and master tracks)
+  const trackPath = object.path.replace(/ devices \d+.*$/, "");
+  if (trackPath === object.path) {
+    throw new Error(
+      `delete failed: could not extract track path from device "${id}" (path="${object.path}")`,
+    );
+  }
+  const track = new LiveAPI(trackPath);
+  track.call("delete_device", object.deviceIndex);
+}
+
+/**
  * Deletes an object based on its type
- * @param {string} type - The type of object ("track", "scene", or "clip")
+ * @param {string} type - The type of object ("track", "scene", "clip", or "device")
  * @param {string} id - The object ID
  * @param {object} object - The object to delete
  */
@@ -126,5 +143,7 @@ function deleteObjectByType(type, id, object) {
     deleteSceneObject(id, object);
   } else if (type === "clip") {
     deleteClipObject(id, object);
+  } else if (type === "device") {
+    deleteDeviceObject(id, object);
   }
 }

@@ -21,16 +21,6 @@ function validateDeviceName(deviceName) {
 }
 
 /**
- * Extract device index from device path
- * @param {string} path - Device path like "live_set tracks 0 devices 2"
- * @returns {number|null} Device index or null if not found
- */
-function extractDeviceIndex(path) {
-  const match = path.match(/devices (\d+)/);
-  return match ? Number(match[1]) : null;
-}
-
-/**
  * Creates a native Live device on a track, or lists available devices
  * @param {object} args - The device parameters
  * @param {string} [args.trackCategory="regular"] - Track category: "regular", "return", or "master"
@@ -98,6 +88,6 @@ export function createDevice(
 
   return {
     deviceId,
-    deviceIndex: extractDeviceIndex(device.path),
+    deviceIndex: device.deviceIndex,
   };
 }

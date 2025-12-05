@@ -226,6 +226,16 @@ if (typeof LiveAPI !== "undefined") {
     });
   }
 
+  // Device index extension
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "deviceIndex")) {
+    Object.defineProperty(LiveAPI.prototype, "deviceIndex", {
+      get: function () {
+        const match = this.path.match(/devices (\d+)/);
+        return match ? Number(match[1]) : null;
+      },
+    });
+  }
+
   if (
     !Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "timeSignature")
   ) {
