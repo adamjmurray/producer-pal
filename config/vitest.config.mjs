@@ -45,6 +45,7 @@ export default defineConfig({
         "**/*.d.ts",
 
         // ignore type definition files (pure TypeScript interfaces/types):
+        "**/jsconfig.json",
         "**/tsconfig.json",
         "webui/src/types/**",
 
@@ -80,7 +81,7 @@ export default defineConfig({
       // IMPORTANT: Do NOT let test coverage drop:
       thresholds: {
         statements: 92, /// Keep above 92
-        branches: 88, // TODO: get above 90
+        branches: 89, // TODO: get above 90
         functions: 93, // Keep above 93
         lines: 93, /// Keep above 93
       },
