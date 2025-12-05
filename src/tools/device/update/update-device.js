@@ -97,7 +97,12 @@ function setParamDisplayValues(paramDisplayValuesJson) {
       param.set("value", index);
     } else {
       // For continuous params or numeric values, use display_value
-      param.set("display_value", displayValue);
+      // Extract numeric value from strings like "475 ms" or "1.00 kHz"
+      const numericValue =
+        typeof displayValue === "string"
+          ? parseFloat(displayValue)
+          : displayValue;
+      param.set("display_value", numericValue);
     }
   }
 }

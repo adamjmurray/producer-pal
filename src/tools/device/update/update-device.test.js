@@ -211,16 +211,16 @@ describe("updateDevice", () => {
     expect(result).toEqual({ id: "123" });
   });
 
-  it("should set param display value", () => {
+  it("should set param display value with parseFloat for strings", () => {
     const result = updateDevice({
       ids: "123",
       paramDisplayValues: '{"789": "-6 dB"}',
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "789" }),
+      expect.objectContaining({ _path: "id 789" }),
       "display_value",
-      "-6 dB",
+      -6,
     );
     expect(result).toEqual({ id: "123" });
   });
@@ -233,14 +233,14 @@ describe("updateDevice", () => {
     });
 
     expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "789" }),
+      expect.objectContaining({ _path: "id 789" }),
       "value",
       0.5,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
-      expect.objectContaining({ id: "790" }),
+      expect.objectContaining({ _path: "id 790" }),
       "display_value",
-      "50%",
+      50,
     );
     expect(result).toEqual({ id: "123" });
   });
@@ -332,16 +332,16 @@ describe("updateDevice", () => {
       consoleSpy.mockRestore();
     });
 
-    it("should use display_value for continuous param with string", () => {
+    it("should parseFloat string value for continuous param", () => {
       updateDevice({
         ids: "123",
-        paramDisplayValues: '{"789": "-6 dB"}',
+        paramDisplayValues: '{"789": "1.00 kHz"}',
       });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
         expect.objectContaining({ _path: "id 789" }),
         "display_value",
-        "-6 dB",
+        1,
       );
     });
 
