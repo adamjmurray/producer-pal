@@ -22,6 +22,7 @@ export function getDeviceType(device) {
   const typeValue = device.getProperty("type");
   const canHaveChains = device.getProperty("can_have_chains");
   const canHaveDrumPads = device.getProperty("can_have_drum_pads");
+
   if (typeValue === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
     if (canHaveDrumPads) {
       return DEVICE_TYPE.DRUM_RACK;
@@ -41,6 +42,7 @@ export function getDeviceType(device) {
     }
     return DEVICE_TYPE.MIDI_EFFECT;
   }
+
   return "unknown";
 }
 
@@ -53,10 +55,13 @@ export function cleanupInternalDrumChains(obj) {
   if (!obj || typeof obj !== "object") {
     return obj;
   }
+
   if (Array.isArray(obj)) {
     return obj.map(cleanupInternalDrumChains);
   }
+
   const { _processedDrumChains, ...rest } = obj;
+
   if (rest.chains) {
     rest.chains = rest.chains.map((chain) => {
       if (chain.devices) {
@@ -68,6 +73,7 @@ export function cleanupInternalDrumChains(obj) {
       return chain;
     });
   }
+
   return rest;
 }
 
@@ -84,6 +90,7 @@ export function getDrumMap(devices) {
    */
   function findDrumRacksInDevices(deviceList) {
     const drumRacks = [];
+
     for (const device of deviceList) {
       if (
         device.type.startsWith(DEVICE_TYPE.DRUM_RACK) &&
@@ -91,6 +98,7 @@ export function getDrumMap(devices) {
       ) {
         drumRacks.push(device);
       }
+
       if (device.chains) {
         for (const chain of device.chains) {
           if (chain.devices) {
@@ -99,19 +107,25 @@ export function getDrumMap(devices) {
         }
       }
     }
+
     return drumRacks;
   }
+
   const drumRacks = findDrumRacksInDevices(devices);
+
   if (drumRacks.length === 0) {
     return null;
   }
+
   const drumMap = {};
+
   drumRacks[0]._processedDrumChains.forEach((drumChain) => {
     if (drumChain.hasInstrument !== false) {
       const pitchName = drumChain.pitch;
       drumMap[pitchName] = drumChain.name;
     }
   });
+
   return Object.keys(drumMap).length > 0 ? drumMap : {};
 }
 
@@ -136,29 +150,36 @@ export function readDevice(device, options = {}) {
     depth = 0,
     maxDepth = 4,
   } = options;
+
   if (depth > maxDepth) {
     console.error(`Maximum recursion depth (${maxDepth}) exceeded`);
     return {};
   }
+
   const deviceType = getDeviceType(device);
   const className = device.getProperty("class_display_name");
   const userDisplayName = device.getProperty("name");
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
+
   const deviceInfo = {
     id: device.id,
     type: isRedundant ? deviceType : `${deviceType}: ${className}`,
   };
+
   if (userDisplayName !== className) {
     deviceInfo.name = userDisplayName;
   }
+
   const isActive = device.getProperty("is_active") > 0;
   if (!isActive) {
     deviceInfo.deactivated = true;
   }
+
   const deviceView = new LiveAPI(`${device.path} view`);
   if (deviceView.exists() && deviceView.getProperty("is_collapsed") > 0) {
     deviceInfo.collapsed = true;
   }
+
   if (deviceType.includes("rack") && (includeChains || includeDrumChains)) {
     if (deviceType === DEVICE_TYPE.DRUM_RACK) {
       processDrumChains(
@@ -181,6 +202,7 @@ export function readDevice(device, options = {}) {
         readDevice,
       );
     }
+
     if (includeDrumChains) {
       processReturnChains(
         device,
@@ -194,11 +216,13 @@ export function readDevice(device, options = {}) {
       );
     }
   }
+
   if (includeParams) {
     deviceInfo.parameters = readDeviceParameters(device, {
       includeValues: includeParamValues,
       search: paramSearch,
     });
   }
+
   return deviceInfo;
 }

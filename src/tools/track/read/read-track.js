@@ -31,13 +31,16 @@ import {
  */
 export function readTrack(args = {}, _context = {}) {
   const { trackIndex, trackId, category = "regular", returnTrackNames } = args;
+
   // Validate parameters
   if (trackId == null && trackIndex == null && category !== "master") {
     throw new Error("Either trackId or trackIndex must be provided");
   }
+
   let track;
   let resolvedTrackIndex = trackIndex;
   let resolvedCategory = category;
+
   if (trackId != null) {
     // Use trackId to access track directly and validate it's a track
     track = validateIdType(trackId, "track", "readTrack");
@@ -60,6 +63,7 @@ export function readTrack(args = {}, _context = {}) {
     }
     track = new LiveAPI(trackPath);
   }
+
   return readTrackGeneric({
     track,
     trackIndex: resolvedCategory === "master" ? null : resolvedTrackIndex,
@@ -88,6 +92,7 @@ function processSessionClips(
   if (category !== "regular") {
     return includeSessionClips ? { sessionClips: [] } : { sessionClipCount: 0 };
   }
+
   if (includeSessionClips) {
     const sessionClips = track
       .getChildIds("clip_slots")
@@ -101,6 +106,7 @@ function processSessionClips(
       .filter((clip) => clip.id != null);
     return { sessionClips };
   }
+
   const sessionClipCount = track
     .getChildIds("clip_slots")
     .map((_clipSlotId, sceneIndex) => {
@@ -110,6 +116,7 @@ function processSessionClips(
       return clip.exists() ? clip : null;
     })
     .filter(Boolean).length;
+
   return { sessionClipCount };
 }
 
@@ -134,6 +141,7 @@ function processArrangementClips(
       ? { arrangementClips: [] }
       : { arrangementClipCount: 0 };
   }
+
   if (includeArrangementClips) {
     const arrangementClips = track
       .getChildIds("arrangement_clips")
@@ -146,7 +154,9 @@ function processArrangementClips(
       .filter((clip) => clip.id != null);
     return { arrangementClips };
   }
+
   const clipIds = track.getChildIds("arrangement_clips");
+
   return { arrangementClipCount: clipIds.length };
 }
 
@@ -165,13 +175,16 @@ function processDevices(categorizedDevices, config) {
     includeRackChains,
     isProducerPalHost,
   } = config;
+
   const result = {};
   const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
+
   if (includeMidiEffects) {
     result.midiEffects = shouldFetchChainsForDrumMaps
       ? categorizedDevices.midiEffects.map(stripChains)
       : categorizedDevices.midiEffects;
   }
+
   if (includeInstruments) {
     if (!(isProducerPalHost && categorizedDevices.instrument === null)) {
       result.instrument =
@@ -180,11 +193,13 @@ function processDevices(categorizedDevices, config) {
           : categorizedDevices.instrument;
     }
   }
+
   if (includeAudioEffects) {
     result.audioEffects = shouldFetchChainsForDrumMaps
       ? categorizedDevices.audioEffects.map(stripChains)
       : categorizedDevices.audioEffects;
   }
+
   if (includeDrumMaps) {
     const allDevices = [
       ...categorizedDevices.midiEffects,
@@ -196,6 +211,7 @@ function processDevices(categorizedDevices, config) {
       result.drumMap = drumMap;
     }
   }
+
   return result;
 }
 
@@ -231,17 +247,21 @@ export function readTrackGeneric({
     includeColor,
     includeMixer,
   } = parseIncludeArray(include, READ_TRACK_DEFAULTS);
+
   if (!track.exists()) {
     return handleNonExistentTrack(category, trackIndex);
   }
+
   const groupId = track.get("group_track")[1];
   const isMidiTrack = track.getProperty("has_midi_input") > 0;
   const isProducerPalHost =
     category === "regular" && trackIndex === getHostTrackIndex();
   const trackDevices = track.getChildren("devices");
+
   // Check track capabilities to avoid warnings
   const canBeArmed = track.getProperty("can_be_armed") > 0;
   const isGroup = track.getProperty("is_foldable") > 0;
+
   const result = {
     id: track.id,
     type: isMidiTrack ? "midi" : "audio",
@@ -249,15 +269,20 @@ export function readTrackGeneric({
     ...(includeColor && { color: track.getColor() }),
     arrangementFollower: track.getProperty("back_to_arranger") === 0,
   };
+
   addOptionalBooleanProperties(result, track, canBeArmed);
+
   // Add mixer properties if requested
   if (includeMixer) {
     Object.assign(result, readMixerProperties(track, returnTrackNames));
   }
+
   if (groupId) {
     result.groupId = `${groupId}`;
   }
+
   addCategoryIndex(result, category, trackIndex);
+
   // Session clips
   Object.assign(
     result,
@@ -269,6 +294,7 @@ export function readTrackGeneric({
       include,
     ),
   );
+
   // Arrangement clips
   Object.assign(
     result,
@@ -280,6 +306,7 @@ export function readTrackGeneric({
       include,
     ),
   );
+
   // Process devices
   const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
   const categorizedDevices = categorizeDevices(
@@ -287,6 +314,7 @@ export function readTrackGeneric({
     includeDrumChains,
     shouldFetchChainsForDrumMaps ? true : includeRackChains,
   );
+
   const deviceResults = processDevices(categorizedDevices, {
     includeMidiEffects,
     includeInstruments,
@@ -296,9 +324,11 @@ export function readTrackGeneric({
     isProducerPalHost,
   });
   Object.assign(result, deviceResults);
+
   cleanupDeviceChains(result);
   addSlotIndices(result, track, category);
   addStateIfNotDefault(result, track, category);
+
   addRoutingInfo(
     result,
     track,
@@ -308,7 +338,9 @@ export function readTrackGeneric({
     includeRoutings,
     includeAvailableRoutings,
   );
+
   addProducerPalHostInfo(result, isProducerPalHost);
+
   return result;
 }
 
@@ -327,13 +359,16 @@ function categorizeDevices(
   const midiEffects = [];
   const instruments = [];
   const audioEffects = [];
+
   for (const device of devices) {
     const processedDevice = readDevice(device, {
       includeChains: includeRackChains,
       includeDrumChains,
     });
+
     // Use processed device type for proper rack categorization
     const deviceType = processedDevice.type;
+
     if (
       deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT) ||
       deviceType.startsWith(DEVICE_TYPE.MIDI_EFFECT_RACK)
@@ -352,12 +387,14 @@ function categorizeDevices(
       audioEffects.push(processedDevice);
     }
   }
+
   // Validate instrument count
   if (instruments.length > 1) {
     console.error(
       `Track has ${instruments.length} instruments, which is unusual. Expected 0 or 1.`,
     );
   }
+
   return {
     midiEffects,
     instrument: instruments.length > 0 ? instruments[0] : null,
@@ -375,6 +412,8 @@ function stripChains(device) {
   if (!device || typeof device !== "object") {
     return device;
   }
+
   const { chains: _chains, ...rest } = device;
+
   return rest;
 }
