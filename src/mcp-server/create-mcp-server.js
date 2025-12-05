@@ -8,6 +8,7 @@ import { toolDefRawLiveApi } from "../tools/control/raw-live-api.def.js";
 import { toolDefSelect } from "../tools/control/select.def.js";
 import { toolDefCreateDevice } from "../tools/device/create/create-device.def.js";
 import { toolDefReadDevice } from "../tools/device/read-device.def.js";
+import { toolDefUpdateDevice } from "../tools/device/update/update-device.def.js";
 import { toolDefReadLiveSet } from "../tools/live-set/read-live-set.def.js";
 import { toolDefUpdateLiveSet } from "../tools/live-set/update-live-set.def.js";
 import { toolDefDelete } from "../tools/operations/delete/delete.def.js";
@@ -60,6 +61,7 @@ export function createMcpServer(callLiveApi, options = {}) {
 
   addTool(toolDefCreateDevice);
   addTool(toolDefReadDevice);
+  addTool(toolDefUpdateDevice);
 
   addTool(toolDefPlayback);
   addTool(toolDefSelect);
