@@ -101,6 +101,29 @@ create.
 - Set send levels to return tracks
 - Bulk update multiple tracks
 
+## Device Management
+
+### Create Device (`ppal-create-device`)
+
+- Add native Live devices (instruments, MIDI effects, audio effects)
+- Place devices on any track type: MIDI, audio, return, or master
+- Position devices at a specific index in the device chain
+- List the native Live devices
+
+### Read Device (`ppal-read-device`)
+
+- Get detailed information about a device by ID
+- View device chains and drum pad chains
+- List parameter names or full parameter details with values
+- Search parameters by name substring
+
+### Update Device (`ppal-update-device`)
+
+- Change device display names
+- Collapse or expand device view in Live's UI
+- Modify device parameters by value or display string
+- Bulk update multiple devices at once
+
 ## Clip Creation & Editing
 
 ### Create Clip (`ppal-create-clip`)
@@ -172,7 +195,7 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 
 ### Delete (`ppal-delete`)
 
-- Remove tracks, scenes, or clips
+- Remove tracks, scenes, clips, or devices
 - Bulk delete multiple objects
 
 ### Transform Clips (`ppal-transform-clips`)
