@@ -32,19 +32,26 @@ Studio, Ollama, and more.
   arrangement clips, randomly reorder slices, and randomize various parameters
   across multiple clips
 
+### 1.3.0 - Device Control
+
+- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
+  any track (audio/midi, return, master)
+- Delete devices
+- Read/write device parameters
+
 ## In Progress
 
-### 1.3 - Device Control
+### v1.3.1
 
-- Add device
-- Delete device
-- Read/write synth and effect parameters
-- A/B comparison of device parameters
 - Rack macro variation management
   - Select macro variation
-  - Save macro variation
+  - Create/update macro variation
   - Delete macro variation
   - Randomize macros
+
+### v1.3.2
+
+- A/B comparison of device parameters
 
 ## Planned
 
