@@ -6,7 +6,7 @@ hero:
   text: "Natural language interface for Ableton"
   tagline:
     Control Ableton Live by explaining what you want to happen. Works with
-    Claude, Gemini, OpenAI, Mistral, local models, and more.
+    Claude, Gemini, ChatGPT, Mistral, local models, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
