@@ -1,5 +1,19 @@
 # Roadmap
 
+## Get Involved
+
+I maintain the core tools and roadmap, but there's room to collaborate:
+
+- **Testing & evaluations** — automated end-to-end testing, LLM comparisons
+- **Small model optimization** — help make Ollama/LM Studio work better
+- **Voice interaction** — experimental bidirectional voice chat
+- **Documentation** — improvements and tutorials
+- **Bug reports** — especially reproducible LLM tool misuse
+
+Open a
+[GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
+reach out directly.
+
 ## Released
 
 ### 0.9 - Public Beta with Claude Desktop

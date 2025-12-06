@@ -35,7 +35,7 @@ Official website: <a href="https://producer-pal.org">producer-pal.org</a>
 
 Star ⭐️ the repo to help others discover Producer Pal!
 
-For development setup, see [DEVELOPERS.md](./DEVELOPERS.md).
+Want to contribute or build from source? See [DEVELOPERS.md](./DEVELOPERS.md).
 
 ## Open Source & Free Forever
 

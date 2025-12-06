@@ -93,3 +93,8 @@ tempo, etc.) is sent to that service for processing. Most services offer options
 to opt out of training on your data. Check your AI provider's privacy policy and
 account settings. Avoid online services for highly confidential or commercially
 sensitive work.
+
+## Get Involved
+
+Want to help? Join the
+[discussion on GitHub](https://github.com/adamjmurray/producer-pal/discussions).
