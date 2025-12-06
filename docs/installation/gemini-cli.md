@@ -5,7 +5,7 @@ needed.
 
 If you feel comfortable with the command line, this is a good option for using
 Producer Pal. Also consider using Gemini with Producer Pal's
-[built-in chat UI](./chat-ui).
+[built-in chat UI](./gemini).
 
 ## Requirements
 

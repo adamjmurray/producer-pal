@@ -17,7 +17,7 @@ Choose your preferred AI platform to get started with Producer Pal:
 
 These are the easiest and most reliable ways to use Producer Pal:
 
-- **[Producer Pal Chat UI](./installation/chat-ui)** - Built-in chat interface
+- **[Producer Pal Chat UI](./installation/gemini)** - Built-in chat interface
   supporting Gemini, Mistral, local Ollama models, and more (free tier available
   with Gemini)
 - **[Claude Desktop](./installation/claude-desktop)** - Anthropic's desktop GUI
@@ -52,8 +52,7 @@ Use Producer Pal in your browser:
 
 Run models completely offline:
 
-- **[Ollama](./installation/chat-ui#ollama)** - Using the
-  [built-in chat interface](./installation/chat-ui)
+- **[Ollama](./installation/ollama)** - Using the built-in chat interface
 - **[LM Studio](./installation/lm-studio)** - Alternative local model server
 - **[Other MCP-compatible LLMs](./installation/other-mcp)** - Any LLM supporting
   MCP

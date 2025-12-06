@@ -7,7 +7,7 @@ music production in Ableton Live.
 
 Producer Pal is a **natural language interface** for Ableton Live. It translates
 your ideas into actions, letting you work at the speed of thought instead of
-clicking through menus.
+clicking through the UI.
 
 Instead of:
 
@@ -25,7 +25,7 @@ For detailed installation instructions for your preferred AI platform, see the
 
 Quick options:
 
-- **[Built-in Chat UI](/installation/chat-ui)** - Works with Gemini, Ollama, and
+- **[Built-in Chat UI](/installation/gemini)** - Works with Gemini, Ollama, and
   more
 - **[Claude Desktop](/installation/claude-desktop)** - Recommended for Anthropic
   users
@@ -53,7 +53,7 @@ After installation:
 
 ## Next Steps
 
-- Check out the [Usage Guide](/guide/usage) for detailed examples and tips
+- Check out the [usage examples](/guide/examples) for detailed examples and tips
 - Explore the [feature list](/features) to see everything Producer Pal can do
 - Watch the [demo video](/#demo) and
   [video tutorials](https://www.youtube.com/playlist?list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)

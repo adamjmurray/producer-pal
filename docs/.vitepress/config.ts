@@ -48,8 +48,8 @@ export default defineConfig({
       {
         text: "Guide",
         items: [
-          { text: "Getting Started", link: "/guide" },
-          { text: "Usage Examples", link: "/guide/usage" },
+          { text: "User Guide", link: "/guide" },
+          { text: "Usage Examples", link: "/guide/examples" },
         ],
       },
       {
@@ -58,6 +58,7 @@ export default defineConfig({
           { text: "Features", link: "/features" },
           { text: "Roadmap", link: "/roadmap" },
           { text: "Known Issues", link: "/known-issues" },
+          { text: "Troubleshooting", link: "/installation/troubleshooting" },
         ],
       },
       {
@@ -68,14 +69,21 @@ export default defineConfig({
         ],
       },
       {
-        text: "Recommended",
+        text: "Built-in Chat UI",
         items: [
+          { text: "Gemini", link: "/installation/gemini" },
+          { text: "Ollama", link: "/installation/ollama" },
           {
-            text: "Chat UI (Gemini, Ollama, etc)",
-            link: "/installation/chat-ui",
+            text: "Other Providers",
+            link: "/installation/chat-ui-other-providers",
           },
+        ],
+      },
+      {
+        text: "Desktop Apps",
+        items: [
           { text: "Claude Desktop", link: "/installation/claude-desktop" },
-          { text: "npx producer-pal", link: "/installation/other-mcp" },
+          { text: "LM Studio", link: "/installation/lm-studio" },
         ],
       },
       {
@@ -94,13 +102,10 @@ export default defineConfig({
         ],
       },
       {
-        text: "Local & Advanced",
+        text: "Advanced",
         items: [
-          { text: "Ollama", link: "/installation/chat-ui#ollama" },
-          { text: "LM Studio", link: "/installation/lm-studio" },
           { text: "Other MCP LLMs", link: "/installation/other-mcp" },
           { text: "Web Tunnels", link: "/installation/web-tunnels" },
-          { text: "Troubleshooting", link: "/installation/troubleshooting" },
         ],
       },
     ],
