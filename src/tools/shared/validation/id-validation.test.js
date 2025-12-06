@@ -57,6 +57,28 @@ describe("validateIdType", () => {
       "updateTrack failed:",
     );
   });
+
+  it("should match device subclasses to device type", () => {
+    const id = "device_1";
+    liveApiId.mockReturnValue(id);
+
+    // Test various device subclasses from the Live Object Model
+    const deviceSubclasses = [
+      "Device",
+      "Eq8Device",
+      "HybridReverbDevice",
+      "SimplerDevice",
+      "WavetableDevice",
+      "PluginDevice",
+      "RackDevice",
+      "MixerDevice",
+    ];
+
+    for (const subclass of deviceSubclasses) {
+      liveApiType.mockReturnValue(subclass);
+      expect(() => validateIdType(id, "device", "testTool")).not.toThrow();
+    }
+  });
 });
 
 describe("validateIdTypes", () => {
@@ -193,6 +215,31 @@ describe("validateIdTypes", () => {
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         'testTool: id "scene_1" is not a track (found Scene)',
       );
+    });
+
+    it("should accept device subclasses when validating device type", () => {
+      const ids = ["device_1", "device_2", "device_3"];
+      liveApiId.mockImplementation(function () {
+        return this._id;
+      });
+      // Return different device subclass types
+      liveApiType.mockImplementation(function () {
+        const subclassMap = {
+          device_1: "Eq8Device",
+          device_2: "HybridReverbDevice",
+          device_3: "SimplerDevice",
+        };
+        return subclassMap[this._id] || "Device";
+      });
+
+      const result = validateIdTypes(ids, "device", "testTool", {
+        skipInvalid: true,
+      });
+
+      expect(result).toHaveLength(3);
+      expect(result[0].id).toBe("device_1");
+      expect(result[1].id).toBe("device_2");
+      expect(result[2].id).toBe("device_3");
     });
   });
 });
