@@ -65,9 +65,9 @@ features:
         </div>
         <p class="card-description">The easiest way to start</p>
         <ul class="card-links">
-          <li><a href="/installation/chat-ui">Gemini</a> <span class="tag">free tier</span></li>
-          <li><a href="/installation/chat-ui#ollama">Ollama</a> <span class="tag">offline</span></li>
-          <li><a href="/installation/chat-ui#online-llm-apis">OpenRouter, Mistral, etc.</a></li>
+          <li><a href="/installation/gemini">Gemini</a> <span class="tag">free tier</span></li>
+          <li><a href="/installation/ollama">Ollama</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/chat-ui-other-providers">OpenRouter, Mistral, etc.</a></li>
         </ul>
       </div>
       <div class="get-started-card card-secondary">
@@ -131,8 +131,8 @@ Watch the Producer Pal walk-through video with Claude Desktop:
 **More helpful videos:**
 
 - ⭐️
-  [How to setup Producer Pal with Google Gemini and the built-in chat UI](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (recommended setup)
+  [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
+  ([written guide](/installation/gemini))
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
   (for command line users)
 

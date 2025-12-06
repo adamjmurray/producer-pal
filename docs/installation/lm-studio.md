@@ -174,9 +174,12 @@ specific models, please share in
 [GitHub Discussions](https://github.com/adamjmurray/producer-pal/discussions).
 The community benefits from learning what works with different local models.
 
+## Alternative: Built-in Chat UI
+
+You can also use LM Studio as a backend for
+[Producer Pal's built-in chat UI](./chat-ui-other-providers#lm-studio) instead
+of LM Studio's native interface.
+
 ## Troubleshooting
 
 If it doesn't work, see the [Troubleshooting Guide](./troubleshooting).
-
-Note: You can also use LM Studio with
-[Producer Pal's built-in chat UI](./chat-ui).

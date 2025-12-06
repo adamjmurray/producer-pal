@@ -4,8 +4,9 @@ Use Producer Pal with OpenAI's command line coding assistant.
 
 If you feel comfortable with the command line and have an OpenAI subscription,
 this is a good option. It's the recommended way to use OpenAI models with
-Producer Pal because using an OpenAI key with the [built-in chat UI](./chat-ui)
-requires pay-as-you-go pricing for OpenAI's API.
+Producer Pal because using an OpenAI key with the
+[built-in chat UI](./chat-ui-other-providers) requires pay-as-you-go pricing for
+OpenAI's API.
 
 ## Requirements
 
