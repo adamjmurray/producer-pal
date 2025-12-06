@@ -159,15 +159,27 @@ describe("readDevice paramSearch filtering", () => {
       if (this._path === "id device-123") {
         return getDeviceProps(prop);
       }
-      return getFullParamProps(this._path, prop);
+      const fullProps = getFullParamProps(this._path, prop);
+      if (fullProps.length > 0) return fullProps;
+      if (prop === "display_value") {
+        if (this._path === "id param-1") return [-6];
+        if (this._path === "id param-2") return [1000];
+      }
+      return [];
     });
 
-    liveApiCall.mockImplementation(function (method) {
-      if (this._path === "id param-1" && method === "str_for_value") {
-        return "-6 dB";
-      }
-      if (this._path === "id param-2" && method === "str_for_value") {
-        return "1000 Hz";
+    liveApiCall.mockImplementation(function (method, value) {
+      if (method === "str_for_value") {
+        if (this._path === "id param-1") {
+          if (value === 0) return "-inf dB";
+          if (value === 1) return "0 dB";
+          return "-6 dB";
+        }
+        if (this._path === "id param-2") {
+          if (value === 20) return "20 Hz";
+          if (value === 20000) return "20.0 kHz";
+          return "1.00 kHz";
+        }
       }
       return [];
     });
@@ -179,14 +191,14 @@ describe("readDevice paramSearch filtering", () => {
     });
 
     expect(result.parameters).toHaveLength(1);
+    // New format: parsed value with unit, min/max from label parsing
     expect(result.parameters[0]).toEqual({
       id: "param-1",
       name: "Volume",
-      value: 0.5,
-      displayValue: "-6 dB",
-      min: 0,
-      max: 1,
-      defaultValue: 0.7,
+      value: -6,
+      min: -70, // -inf dB → -70
+      max: 0,
+      unit: "dB",
     });
   });
 });

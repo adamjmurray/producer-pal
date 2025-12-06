@@ -1,5 +1,6 @@
 import { midiPitchToName } from "#src/notation/midi-pitch-to-name.js";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
+import { readParameter, readParameterBasic } from "./device-display-helpers.js";
 
 /**
  * Check if device className is redundant (matches the rack type name)
@@ -11,15 +12,19 @@ export function isRedundantDeviceClassName(deviceType, className) {
   if (deviceType === DEVICE_TYPE.INSTRUMENT_RACK) {
     return className === "Instrument Rack";
   }
+
   if (deviceType === DEVICE_TYPE.DRUM_RACK) {
     return className === "Drum Rack";
   }
+
   if (deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK) {
     return className === "Audio Effect Rack";
   }
+
   if (deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK) {
     return className === "MIDI Effect Rack";
   }
+
   return false;
 }
 
@@ -33,6 +38,7 @@ export function computeState(liveObject, category = "regular") {
   if (category === "master") {
     return STATE.ACTIVE;
   }
+
   const isMuted = liveObject.getProperty("mute") > 0;
   const isSoloed = liveObject.getProperty("solo") > 0;
   const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
@@ -329,99 +335,6 @@ export function processReturnChains(
     }
     return returnChainInfo;
   });
-}
-
-// Parameter state mapping (0=active, 1=inactive, 2=disabled)
-const PARAM_STATE_MAP = {
-  0: "active",
-  1: "inactive",
-  2: "disabled",
-};
-
-// Automation state mapping (0=none, 1=active, 2=overridden)
-const AUTOMATION_STATE_MAP = {
-  0: "none",
-  1: "active",
-  2: "overridden",
-};
-
-/**
- * Read basic parameter info (id and name only)
- * @param {object} paramApi - LiveAPI parameter object
- * @returns {object} Parameter info object with id and name
- */
-function readParameterBasic(paramApi) {
-  const name = paramApi.getProperty("name");
-  const originalName = paramApi.getProperty("original_name");
-
-  const param = {
-    id: paramApi.id,
-    name,
-  };
-
-  if (originalName !== name) {
-    param.originalName = originalName;
-  }
-
-  return param;
-}
-
-/**
- * Read a single device parameter with full details
- * @param {object} paramApi - LiveAPI parameter object
- * @returns {object} Parameter info object
- */
-function readParameter(paramApi) {
-  const name = paramApi.getProperty("name");
-  const originalName = paramApi.getProperty("original_name");
-  const value = paramApi.getProperty("value");
-  const isQuantized = paramApi.getProperty("is_quantized") > 0;
-  const displayValue = paramApi.call("str_for_value", value);
-  const state = PARAM_STATE_MAP[paramApi.getProperty("state")];
-  const automation =
-    AUTOMATION_STATE_MAP[paramApi.getProperty("automation_state")];
-
-  const param = {
-    id: paramApi.id,
-    name,
-    value,
-  };
-
-  // Only include displayValue when different from value
-  if (String(displayValue) !== String(value)) {
-    param.displayValue = displayValue;
-  }
-
-  // Only include state when not "active" (the default)
-  if (state !== "active") {
-    param.state = state;
-  }
-
-  // Only include automation when not "none" (the default)
-  if (automation !== "none") {
-    param.automation = automation;
-  }
-
-  // Conditional properties
-  if (originalName !== name) {
-    param.originalName = originalName;
-  }
-  if (!paramApi.getProperty("is_enabled")) {
-    param.enabled = false;
-  }
-
-  if (isQuantized) {
-    // For quantized params: include allowedValues map (index -> displayValue), omit min/max
-    const valueItems = paramApi.get("value_items");
-    param.allowedValues = Object.fromEntries(valueItems.map((v, i) => [i, v]));
-  } else {
-    // For non-quantized params: include min/max/defaultValue
-    param.min = paramApi.getProperty("min");
-    param.max = paramApi.getProperty("max");
-    param.defaultValue = paramApi.getProperty("default_value");
-  }
-
-  return param;
 }
 
 /**
