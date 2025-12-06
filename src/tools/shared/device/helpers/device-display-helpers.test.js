@@ -61,10 +61,10 @@ describe("device-display-helpers", () => {
 
     describe("semitones (st)", () => {
       it("parses semitone values", () => {
-        expect(parseLabel("0 st")).toEqual({ value: 0, unit: "st" });
-        expect(parseLabel("+12 st")).toEqual({ value: 12, unit: "st" });
-        expect(parseLabel("-24 st")).toEqual({ value: -24, unit: "st" });
-        expect(parseLabel("7 st")).toEqual({ value: 7, unit: "st" });
+        expect(parseLabel("0 st")).toEqual({ value: 0, unit: "semitones" });
+        expect(parseLabel("+12 st")).toEqual({ value: 12, unit: "semitones" });
+        expect(parseLabel("-24 st")).toEqual({ value: -24, unit: "semitones" });
+        expect(parseLabel("7 st")).toEqual({ value: 7, unit: "semitones" });
       });
     });
 
