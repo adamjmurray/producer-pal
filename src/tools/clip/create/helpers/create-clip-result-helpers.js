@@ -34,6 +34,7 @@ export function buildClipProperties(
   // Use clipLength as default when endBeats not specified
   // Note: loop_end must be > loop_start (Live API constraint)
   const effectiveEnd = endBeats ?? clipLength;
+
   propsToSet.loop_end = effectiveEnd;
   propsToSet.end_marker = effectiveEnd;
 
@@ -110,6 +111,7 @@ export function buildClipResult(
     // Include calculated length if it wasn't provided as input parameter
     if (length == null) {
       const actualClipLength = clip.getProperty("length");
+
       clipResult.length = abletonBeatsToBarBeatDuration(
         actualClipLength,
         timeSigNumerator,
@@ -121,6 +123,7 @@ export function buildClipResult(
   // For audio clips: include actual clip length from Live API
   if (sampleFile) {
     const actualClipLength = clip.getProperty("length");
+
     clipResult.length = abletonBeatsToBarBeatDuration(
       actualClipLength,
       timeSigNumerator,

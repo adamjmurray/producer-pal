@@ -12,6 +12,7 @@ export function validateBasicInputs(type, id, count) {
   }
 
   const validTypes = ["track", "scene", "clip"];
+
   if (!validTypes.includes(type)) {
     throw new Error(
       `duplicate failed: type must be one of ${validTypes.join(", ")}`,
@@ -44,6 +45,7 @@ export function validateAndConfigureRouteToSource(
   if (!routeToSource) {
     return { withoutClips, withoutDevices };
   }
+
   if (type !== "track") {
     throw new Error(
       "duplicate failed: routeToSource is only supported for type 'track'",
@@ -56,6 +58,7 @@ export function validateAndConfigureRouteToSource(
       "Warning: routeToSource requires withoutClips=true, ignoring user-provided withoutClips=false",
     );
   }
+
   if (withoutDevices === false) {
     console.error(
       "Warning: routeToSource requires withoutDevices=true, ignoring user-provided withoutDevices=false",
@@ -101,6 +104,7 @@ export function validateClipParameters(
         "duplicate failed: toTrackIndex is required for session clips",
       );
     }
+
     if (toSceneIndex == null || toSceneIndex.trim() === "") {
       throw new Error(
         "duplicate failed: toSceneIndex is required for session clips",

@@ -38,6 +38,7 @@ Create MIDI clips using the bar|beat notation syntax:
 - Notes: C0-B8 with # or b (C3 = middle C)
 - Parameters (v/t/p) and pitch persist until changed
 - copying bars:
+  - **Bar copying MERGES** - target bars keep existing notes; use v0 to remove unwanted notes
   - @N= copies previous bar to N; @N=M copies bar M; @N=M-P copies range
   - @N-M= copies previous bar to range N-M; @N-M=P copies bar P to range N-M
   - @N-M=P-Q tiles bars P-Q across range N-M (repeating multi-bar patterns)
@@ -106,20 +107,18 @@ C1 4|1,3.5 D1 |4 // bar 4
 
 ### Repeats with Variations
 
-1. Copy full bars
-2. Delete specific notes with v0
-3. Add additional notes as desired
-
-Faster than writing each bar individually.
+Copy foundation to **all bars** (including variation bars), then modify:
 
 \`\`\`
 C1 1|1,3 D1 |2,4               // bar 1 foundation
 Gb1 |1.5,2.5,3.5,4.5
-@2-8=1                         // copy to bars 2-8
-v0 Gb1 2|4.5 4|3.5 6|2.5 v100  // skip different hats, reset velocity
-v0 C1 4|3 v100                 // drop kick for variation, reset velocity
-v0 C1 7|3 v100 D1 |3           // replace kick with snare
+@2-16=1                        // copy to ALL bars, not just 2-8
+v0 Gb1 9|4.5 v100              // remove hat from bar 9
+C1 |3.5                        // add extra kick to bar 9
+v0 C1 13|3 v100 D1 |3          // replace kick with snare in bar 13
 \`\`\`
+
+**Common mistake:** Copying to bars 2-8, then writing \`C1 9|3.5\` expecting bar 9 to have the foundation. Bar 9 is empty - you get one lonely kick, not a variation.
 
 ### Multi-bar phrases
 

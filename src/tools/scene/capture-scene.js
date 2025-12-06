@@ -11,6 +11,7 @@ export function captureScene({ sceneIndex, name } = {}) {
 
   if (sceneIndex != null) {
     const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+
     appView.set("selected_scene", `id ${scene.id}`);
   }
 
@@ -18,6 +19,7 @@ export function captureScene({ sceneIndex, name } = {}) {
   const selectedSceneIndex = Number.parseInt(
     selectedScene.path.match(/live_set scenes (\d+)/)?.[1],
   );
+
   if (Number.isNaN(selectedSceneIndex)) {
     throw new Error(
       `capture-scene failed: couldn't determine selected scene index`,
@@ -41,6 +43,7 @@ export function captureScene({ sceneIndex, name } = {}) {
     const clip = new LiveAPI(
       `live_set tracks ${trackIndex} clip_slots ${newSceneIndex} clip`,
     );
+
     if (clip.exists()) {
       clips.push({
         id: clip.id,

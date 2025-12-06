@@ -37,6 +37,7 @@ export function MessageList({
         return i;
       }
     }
+
     return -1;
   };
 
@@ -114,6 +115,7 @@ function formatUserContent(message: UIMessage): string {
       if ("content" in part) {
         return part.content;
       }
+
       return "";
     })
     .join("");

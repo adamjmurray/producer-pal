@@ -29,6 +29,7 @@ const tools = [];
 
 for (const [name, toolInfo] of Object.entries(server._registeredTools)) {
   const shortDescription = toolInfo.description.split("\n")[0];
+
   tools.push({
     name: getDisplayName(toolInfo) || name,
     description: shortDescription,

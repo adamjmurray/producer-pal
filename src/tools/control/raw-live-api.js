@@ -58,12 +58,15 @@ function validateOperationParameters(operation) {
   if (requirements.property && !property) {
     throw new Error(messages.property);
   }
+
   if (requirements.method && !method) {
     throw new Error(messages.method);
   }
+
   if (requirements.valueDefined && value === undefined) {
     throw new Error(messages.value);
   }
+
   if (requirements.valueTruthy && !value) {
     throw new Error(messages.value);
   }
@@ -84,10 +87,12 @@ function executeOperation(api, operation) {
 
     case "set_property":
       api[operation.property] = operation.value;
+
       return api[operation.property];
 
     case "call_method": {
       const args = operation.args || [];
+
       return api[operation.method](...args);
     }
 
@@ -99,6 +104,7 @@ function executeOperation(api, operation) {
 
     case "call": {
       const callArgs = operation.args || [];
+
       return api.call(operation.method, ...callArgs);
     }
 
@@ -157,6 +163,7 @@ export function rawLiveApi({ path, operations } = {}, _context = {}) {
 
   for (const operation of operations) {
     let result;
+
     try {
       validateOperationParameters(operation);
       result = executeOperation(api, operation);

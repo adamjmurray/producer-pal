@@ -88,6 +88,7 @@ function revealUnwarpedAudioContent(
   _context,
 ) {
   const filePath = sourceClip.getProperty("file_path");
+
   console.error(
     `WARNING: Extending unwarped audio clip requires recreating the extended portion due to Live API limitations. Envelopes will be lost in the revealed section.`,
   );
@@ -139,6 +140,7 @@ function revealUnwarpedAudioContent(
     );
 
     const tempShortener = LiveAPI.from(tempShortenerResult);
+
     tempShortenerSlot.call("delete_clip");
     track.call("delete_clip", `id ${tempShortener.id}`);
   }
@@ -214,12 +216,14 @@ export function setAudioParameters(
 ) {
   if (gainDb !== undefined) {
     const liveGain = dbToLiveGain(gainDb);
+
     clip.set("gain", liveGain);
   }
 
   if (pitchShift !== undefined) {
     const pitchCoarse = Math.floor(pitchShift);
     const pitchFine = Math.round((pitchShift - pitchCoarse) * 100);
+
     clip.set("pitch_coarse", pitchCoarse);
     clip.set("pitch_fine", pitchFine);
   }
@@ -234,6 +238,7 @@ export function setAudioParameters(
       [WARP_MODE.REX]: LIVE_API_WARP_MODE_REX,
       [WARP_MODE.PRO]: LIVE_API_WARP_MODE_PRO,
     }[warpMode];
+
     if (warpModeValue !== undefined) {
       clip.set("warp_mode", warpModeValue);
     }
@@ -280,16 +285,20 @@ export function handleWarpMarkerOperation(
         warpSampleTime != null
           ? { beat_time: warpBeatTime, sample_time: warpSampleTime }
           : { beat_time: warpBeatTime };
+
       clip.call("add_warp_marker", args);
       break;
     }
+
     case "move": {
       if (warpDistance == null) {
         throw new Error("warpDistance required for move operation");
       }
+
       clip.call("move_warp_marker", warpBeatTime, warpDistance);
       break;
     }
+
     case "remove": {
       clip.call("remove_warp_marker", warpBeatTime);
       break;

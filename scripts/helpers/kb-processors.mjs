@@ -76,6 +76,7 @@ async function processDirectoryFlat(config, item, sourcePath, excludeGroups) {
   for (const filePath of files) {
     // Check if this file's group should be excluded
     const groupName = config.computeGroupName(item, filePath);
+
     if (excludeGroups.has(groupName)) {
       continue;
     }
@@ -84,6 +85,7 @@ async function processDirectoryFlat(config, item, sourcePath, excludeGroups) {
     const flatName =
       dirName + config.FLAT_SEP + config.flattenPath(relativePath);
     const targetPath = path.join(config.outputDir, flatName);
+
     await copyFile(config, filePath, targetPath);
     console.log(
       `  ${path.relative(config.projectRoot, filePath)} → ${path.relative(config.projectRoot, targetPath)}`,
@@ -101,6 +103,7 @@ async function processDirectoryFlat(config, item, sourcePath, excludeGroups) {
 async function processFileFlat(config, item, sourcePath, excludeGroups) {
   // Check if this file's group should be excluded
   const groupName = config.computeGroupName(item, sourcePath);
+
   if (excludeGroups.has(groupName)) {
     return;
   }
@@ -108,6 +111,7 @@ async function processFileFlat(config, item, sourcePath, excludeGroups) {
   // Copy single file
   const targetName = item.flatName || config.flattenPath(item.src);
   const targetPath = path.join(config.outputDir, targetName);
+
   await copyFile(config, sourcePath, targetPath);
   console.log(`  ${item.src} → ${targetName}`);
 }
@@ -133,11 +137,13 @@ async function processDirectoryConcat(config, item, sourcePath, fileGroups) {
           file: filePath,
           relativePath,
         }) || dirName;
+
       config.addToGroup(fileGroups, groupName, filePath);
     }
   } else {
     // Static grouping - use string or default
     const groupName = item.group || dirName;
+
     config.addToGroup(fileGroups, groupName, ...files);
   }
 }
@@ -159,6 +165,7 @@ async function processFileConcat(config, item, sourcePath, fileGroups) {
           relativePath,
         })
       : item.group) || "misc";
+
   config.addToGroup(fileGroups, groupName, sourcePath);
 }
 
@@ -191,6 +198,7 @@ async function writeGroupedFiles(config, fileGroups, excludeGroups) {
       targetPath,
       sourceFiles,
     );
+
     console.log(`  Created ${outputFileName} (${fileCount} files)`);
   }
 }

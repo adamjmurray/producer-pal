@@ -33,6 +33,7 @@ class Max {
   static addHandler = vi.fn((message, handler) => {
     if (message === "mcp_response") {
       Max.mcpResponseHandler = handler;
+
       // Save the first handler registered (from createExpressApp) as the default
       if (!Max.defaultMcpResponseHandler && handler) {
         Max.defaultMcpResponseHandler = handler;

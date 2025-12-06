@@ -66,6 +66,7 @@ export function duplicate(
     withoutClips,
     withoutDevices,
   );
+
   withoutClips = routeToSourceConfig.withoutClips;
   withoutDevices = routeToSourceConfig.withoutDevices;
 
@@ -119,6 +120,7 @@ export function duplicate(
   if (createdObjects.length === 1) {
     return createdObjects[0];
   }
+
   return createdObjects;
 }
 
@@ -133,12 +135,15 @@ function generateObjectName(baseName, count, index) {
   if (baseName == null) {
     return undefined;
   }
+
   if (count === 1) {
     return baseName;
   }
+
   if (index === 0) {
     return baseName;
   }
+
   return `${baseName} ${index + 1}`;
 }
 
@@ -211,9 +216,11 @@ function determineTargetView(destination, type) {
   if (destination === "arrangement") {
     return "arrangement";
   }
+
   if (destination === "session" || type === "track" || type === "scene") {
     return "session";
   }
+
   return null;
 }
 
@@ -229,6 +236,7 @@ function switchViewIfRequested(switchView, destination, type) {
   }
 
   const targetView = determineTargetView(destination, type);
+
   if (targetView) {
     select({ view: targetView });
   }
@@ -269,6 +277,7 @@ function duplicateSceneToArrangementView(
   );
 
   const sceneIndex = object.sceneIndex;
+
   if (sceneIndex == null) {
     throw new Error(
       `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
@@ -279,6 +288,7 @@ function duplicateSceneToArrangementView(
   const sceneLength = calculateSceneLength(sceneIndex);
   const actualArrangementStartBeats =
     baseArrangementStartBeats + i * sceneLength;
+
   return duplicateSceneToArrangement(
     id,
     actualArrangementStartBeats,
@@ -316,13 +326,16 @@ function duplicateTrackOrSceneToSession(
   if (type === "track") {
     // Session view operations (no bar|beat conversion needed)
     const trackIndex = object.trackIndex;
+
     if (trackIndex == null) {
       throw new Error(
         `duplicate failed: no track index for id "${id}" (path="${object.path}")`,
       );
     }
+
     // For multiple tracks, we need to account for previously created tracks
     const actualTrackIndex = trackIndex + i;
+
     return duplicateTrack(
       actualTrackIndex,
       objectName,
@@ -333,12 +346,15 @@ function duplicateTrackOrSceneToSession(
     );
   } else if (type === "scene") {
     const sceneIndex = object.sceneIndex;
+
     if (sceneIndex == null) {
       throw new Error(
         `duplicate failed: no scene index for id "${id}" (path="${object.path}")`,
       );
     }
+
     const actualSceneIndex = sceneIndex + i;
+
     return duplicateScene(actualSceneIndex, objectName, withoutClips);
   }
 }
@@ -385,6 +401,7 @@ function performDuplication(
       context,
     );
   }
+
   return duplicateTrackOrSceneToSession(
     type,
     object,

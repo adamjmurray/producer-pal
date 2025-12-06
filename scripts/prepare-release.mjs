@@ -18,6 +18,7 @@ try {
       stdio: ["pipe", "pipe", "ignore"],
     },
   ).trim();
+
   console.log(`✓ Building from tag: ${currentTag}\n`);
 } catch {
   console.log("⚠️  WARNING: Not on a tagged commit!");
@@ -27,14 +28,17 @@ try {
 
 // Get version from package.json
 const pkg = JSON.parse(readFileSync(join(rootDir, "package.json"), "utf8"));
+
 console.log(`Building version: ${pkg.version}\n`);
 
 // Clean release directory
 const releaseDir = join(rootDir, "release");
+
 if (existsSync(releaseDir)) {
   console.log("Cleaning release directory...");
   rmSync(releaseDir, { recursive: true });
 }
+
 mkdirSync(releaseDir);
 
 // Build

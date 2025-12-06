@@ -69,6 +69,7 @@ export async function copyFile(config, sourcePath, targetPath) {
 
     // Prepend path comment and write to target
     const contentWithComment = pathComment + originalContent;
+
     await fs.writeFile(targetPath, contentWithComment, "utf8");
   } else {
     // Regular copy for non-code files
@@ -104,6 +105,7 @@ export async function writeConcatenatedFile(config, outputPath, sourceFiles) {
   }
 
   await fs.writeFile(outputPath, concatenatedContent, "utf8");
+
   return fileCount;
 }
 
@@ -122,6 +124,7 @@ export function determineOutputFilename(config, groupName, sourceFiles) {
     const hasCodeFile = sourceFiles.some((f) =>
       config.codeExts.includes(path.extname(f)),
     );
+
     outputFileName += hasCodeFile ? ".js" : ".md";
   }
 

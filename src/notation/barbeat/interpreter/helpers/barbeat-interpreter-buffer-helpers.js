@@ -24,6 +24,7 @@ export function validateBufferedState(state, operationType) {
       `Warning: ${state.currentPitches.length} pitch(es) buffered but not emitted before ${operationType}`,
     );
   }
+
   if (
     (state.stateChangedSinceLastPitch && state.pitchGroupStarted) ||
     state.stateChangedAfterEmission
@@ -65,6 +66,7 @@ export function updateBufferedPitches(state, updateFn) {
     for (const pitchState of state.currentPitches) {
       updateFn(pitchState);
     }
+
     // State changes applied to buffered pitches could be wasted if bar copy occurs
     state.stateChangedAfterEmission = true;
   }

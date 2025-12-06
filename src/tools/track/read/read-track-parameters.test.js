@@ -305,6 +305,7 @@ describe("readTrack", () => {
 
       // Should have instrument but NO chains
       expect(result.instrument).toEqual({
+        id: "drumrack1",
         name: "Test Drum Rack",
         type: "drum-rack",
         // drumChains: [ // Only included when drum-chains is requested
@@ -396,6 +397,7 @@ describe("readTrack", () => {
 
       // Should have instrument WITHOUT chains (drum racks don't expose main chains)
       expect(result.instrument).toEqual({
+        id: "drumrack1",
         name: "Test Drum Rack",
         type: "drum-rack",
         // drumChains: [ // Only included when drum-chains is requested
@@ -503,16 +505,19 @@ describe("readTrack", () => {
 
       // All devices should have chains stripped
       expect(result.midiEffects[0]).toEqual({
+        id: "midi_effect_rack",
         type: "midi-effect-rack",
       });
       expect(result.midiEffects[0].chains).toBeUndefined();
 
       expect(result.instrument).toEqual({
+        id: "instrument_rack",
         type: "instrument-rack",
       });
       expect(result.instrument.chains).toBeUndefined();
 
       expect(result.audioEffects[0]).toEqual({
+        id: "audio_effect_rack",
         type: "audio-effect-rack",
       });
       expect(result.audioEffects[0].chains).toBeUndefined();
@@ -561,6 +566,7 @@ describe("readTrack", () => {
 
       // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
       expect(result.instrument).toEqual({
+        id: "instrument_rack",
         type: "instrument-rack",
       });
       expect(result.instrument.chains).toBeUndefined();
@@ -589,6 +595,7 @@ describe("readTrack", () => {
 
       // Should have instrument but no drumMap
       expect(result.instrument).toEqual({
+        id: "wavetable",
         type: "instrument: Wavetable",
       });
       expect(result.drumMap).toBeUndefined();

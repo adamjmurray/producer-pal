@@ -3,8 +3,10 @@ layout: home
 
 hero:
   name: "Producer Pal"
-  text: "Natural language interface for Ableton Live"
-  tagline: Works with Claude, Gemini, OpenAI, Mistral, local models, and more.
+  text: "Natural language interface for Ableton"
+  tagline:
+    Control Ableton Live by explaining what you want to happen. Works with
+    Claude, Gemini, ChatGPT, Mistral, local models, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
@@ -91,3 +93,8 @@ tempo, etc.) is sent to that service for processing. Most services offer options
 to opt out of training on your data. Check your AI provider's privacy policy and
 account settings. Avoid online services for highly confidential or commercially
 sensitive work.
+
+## Get Involved
+
+Want to help? Join the
+[discussion on GitHub](https://github.com/adamjmurray/producer-pal/discussions).

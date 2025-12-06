@@ -22,6 +22,7 @@ async function cleanAndCreateOutputDir(outputDir) {
   } catch (_error) {
     // Directory doesn't exist, which is fine
   }
+
   await fs.mkdir(outputDir, { recursive: true });
 }
 
@@ -78,6 +79,7 @@ async function main() {
     );
 
     const files = await fs.readdir(config.outputDir);
+
     console.log(`Total files: ${files.length}`);
   } catch (error) {
     console.error("Error generating knowledge base files:", error);

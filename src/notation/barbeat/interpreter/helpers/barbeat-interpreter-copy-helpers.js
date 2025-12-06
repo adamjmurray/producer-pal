@@ -24,12 +24,14 @@ export function copyNoteToDestination(
     probability: sourceNote.probability,
     velocity_deviation: sourceNote.velocity_deviation,
   };
+
   events.push(copiedNote);
 
   // Track in notesByBar cache
   if (!notesByBar.has(destBar)) {
     notesByBar.set(destBar, []);
   }
+
   notesByBar.get(destBar).push({
     ...copiedNote,
     relativeTime: sourceNote.relativeTime,
@@ -58,17 +60,21 @@ function copyBarToBar(
     console.error(
       `Warning: Cannot copy bar ${sourceBar} to itself (would cause infinite loop)`,
     );
+
     return false;
   }
 
   const sourceNotes = notesByBar.get(sourceBar);
+
   if (sourceNotes == null || sourceNotes.length === 0) {
     console.error(`Warning: Bar ${sourceBar} is empty, nothing to copy`);
+
     return false;
   }
 
   // Copy and shift notes
   const destinationBarStart = (destinationBar - 1) * barDuration;
+
   for (const sourceNote of sourceNotes) {
     copyNoteToDestination(
       sourceNote,
@@ -90,12 +96,15 @@ function copyBarToBar(
 function determineSourceBarsForCopy(element) {
   if (element.source === "previous") {
     const previousBar = element.destination.bar - 1;
+
     if (previousBar <= 0) {
       console.error(
         "Warning: Cannot copy from previous bar when at bar 1 or earlier",
       );
+
       return null;
     }
+
     return [previousBar];
   }
 
@@ -104,29 +113,38 @@ function determineSourceBarsForCopy(element) {
       console.error(
         `Warning: Cannot copy from bar ${element.source.bar} (no such bar)`,
       );
+
       return null;
     }
+
     return [element.source.bar];
   }
 
   if (element.source.range !== undefined) {
     const [start, end] = element.source.range;
+
     if (start <= 0 || end <= 0) {
       console.error(
         `Warning: Cannot copy from range ${start}-${end} (invalid bar numbers)`,
       );
+
       return null;
     }
+
     if (start > end) {
       console.error(
         `Warning: Invalid source range ${start}-${end} (start > end)`,
       );
+
       return null;
     }
+
     const sourceBars = [];
+
     for (let bar = start; bar <= end; bar++) {
       sourceBars.push(bar);
     }
+
     return sourceBars;
   }
 
@@ -162,12 +180,15 @@ function handleMultiBarSourceRangeCopy(
     console.error(
       `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (invalid bar numbers)`,
     );
+
     return { currentTime: null, hasExplicitBarNumber: false };
   }
+
   if (sourceStart > sourceEnd) {
     console.error(
       `Warning: Invalid source range @${destStart}-${destEnd}=${sourceStart}-${sourceEnd} (start > end)`,
     );
+
     return { currentTime: null, hasExplicitBarNumber: false };
   }
 
@@ -197,6 +218,7 @@ function handleMultiBarSourceRangeCopy(
 
     // Get source notes
     const sourceNotes = notesByBar.get(sourceBar);
+
     if (sourceNotes == null || sourceNotes.length === 0) {
       console.error(`Warning: Bar ${sourceBar} is empty, nothing to copy`);
       destBar++;
@@ -228,6 +250,7 @@ function handleMultiBarSourceRangeCopy(
       hasExplicitBarNumber: true,
     };
   }
+
   return { currentTime: null, hasExplicitBarNumber: false };
 }
 
@@ -256,12 +279,15 @@ export function handleBarCopyRangeDestination(
     console.error(
       `Warning: Invalid destination range @${destStart}-${destEnd}= (invalid bar numbers)`,
     );
+
     return { currentTime: null, hasExplicitBarNumber: false };
   }
+
   if (destStart > destEnd) {
     console.error(
       `Warning: Invalid destination range @${destStart}-${destEnd}= (start > end)`,
     );
+
     return { currentTime: null, hasExplicitBarNumber: false };
   }
 
@@ -281,18 +307,23 @@ export function handleBarCopyRangeDestination(
 
   // Determine single source bar
   let sourceBar;
+
   if (element.source === "previous") {
     sourceBar = destStart - 1;
+
     if (sourceBar <= 0) {
       console.error(
         `Warning: Cannot copy from previous bar when destination starts at bar ${destStart}`,
       );
+
       return { currentTime: null, hasExplicitBarNumber: false };
     }
   } else if (element.source.bar !== undefined) {
     sourceBar = element.source.bar;
+
     if (sourceBar <= 0) {
       console.error(`Warning: Cannot copy from bar ${sourceBar} (no such bar)`);
+
       return { currentTime: null, hasExplicitBarNumber: false };
     }
   }
@@ -301,8 +332,10 @@ export function handleBarCopyRangeDestination(
 
   // Get source notes
   const sourceNotes = notesByBar.get(sourceBar);
+
   if (sourceNotes == null || sourceNotes.length === 0) {
     console.error(`Warning: Bar ${sourceBar} is empty, nothing to copy`);
+
     return { currentTime: null, hasExplicitBarNumber: false };
   }
 
@@ -343,6 +376,7 @@ export function handleBarCopyRangeDestination(
       hasExplicitBarNumber: true,
     };
   }
+
   return { currentTime: null, hasExplicitBarNumber: false };
 }
 
@@ -366,6 +400,7 @@ export function handleBarCopySingleDestination(
 ) {
   // Determine source bar(s)
   const sourceBars = determineSourceBarsForCopy(element);
+
   if (sourceBars === null) {
     return { currentTime: null, hasExplicitBarNumber: false };
   }
@@ -389,9 +424,11 @@ export function handleBarCopySingleDestination(
       events,
       barDuration,
     );
+
     if (copySucceeded) {
       copiedAny = true;
     }
+
     destinationBar++;
   }
 
@@ -401,6 +438,7 @@ export function handleBarCopySingleDestination(
       hasExplicitBarNumber: true,
     };
   }
+
   return { currentTime: null, hasExplicitBarNumber: false };
 }
 

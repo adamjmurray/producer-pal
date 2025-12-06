@@ -27,6 +27,7 @@ function addReasoningDetails(
   if (!reasoningText) return;
 
   const lastPart = parts.at(-1);
+
   if (lastPart?.type === "thought") {
     // Merge with previous thought part
     lastPart.content += reasoningText;
@@ -49,6 +50,7 @@ function findToolResult(
 ): { result: string | null; isError: boolean } {
   for (let i = startIndex; i < history.length; i++) {
     const nextMsg = history[i];
+
     if (!nextMsg) continue;
 
     if (
@@ -78,6 +80,7 @@ function findToolResult(
  */
 function addTextContent(parts: UIPart[], content: string): void {
   const lastPart = parts.at(-1);
+
   if (lastPart?.type === "text") {
     lastPart.content += content;
   } else {
@@ -163,11 +166,13 @@ function processMessageContent(
     const reasoningDetails = msg.reasoning_details as
       | ReasoningDetail[]
       | undefined;
+
     addReasoningDetails(reasoningDetails, parts);
   }
 
   // Add text content
   const content = typeof msg.content === "string" ? msg.content : undefined;
+
   if (content) {
     addTextContent(parts, content);
   }
@@ -182,9 +187,11 @@ function processMessageContent(
  */
 function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastMessage = messages.at(-1);
+
   if (!lastMessage) return;
 
   const lastPart = lastMessage.parts.at(-1);
+
   if (lastPart?.type === "thought") {
     (lastPart as UIThoughtPart).isOpen = true;
   }
@@ -233,6 +240,7 @@ export function formatOpenAIMessages(history: OpenAIMessage[]): UIMessage[] {
 
   for (let rawIndex = 0; rawIndex < history.length; rawIndex++) {
     const msg = history[rawIndex];
+
     if (!msg) continue;
 
     // Skip system messages (internal)

@@ -40,6 +40,7 @@ export function playback(
   if (!action) {
     throw new Error("playback failed: action is required");
   }
+
   const liveSet = new LiveAPI("live_set");
 
   // Get song time signature for bar|beat conversions
@@ -57,9 +58,11 @@ export function playback(
     );
     liveSet.set("start_time", startTimeBeats);
   }
+
   if (loop != null) {
     liveSet.set("loop", loop);
   }
+
   if (loopStart != null) {
     loopStartBeats = barBeatToAbletonBeats(
       loopStart,
@@ -68,6 +71,7 @@ export function playback(
     );
     liveSet.set("loop_start", loopStartBeats);
   }
+
   if (loopEnd != null) {
     loopEndBeats = barBeatToAbletonBeats(
       loopEnd,
@@ -78,6 +82,7 @@ export function playback(
     const actualLoopStartBeats =
       loopStartBeats ?? liveSet.getProperty("loop_start");
     const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
+
     liveSet.set("loop_length", loopLengthBeats);
   }
 
@@ -126,6 +131,7 @@ export function playback(
   // Handle view switching if requested
   if (switchView) {
     let targetView = null;
+
     if (action === "play-arrangement") {
       targetView = "arrangement";
     } else if (action === "play-scene" || action === "play-session-clips") {
@@ -142,6 +148,7 @@ export function playback(
   const arrangementFollowerTrackIds = trackIds
     .filter((trackId) => {
       const track = LiveAPI.from(trackId);
+
       return track.exists() && track.getProperty("back_to_arranger") === 0;
     })
     .map((trackId) => trackId.replace("id ", ""))
@@ -155,6 +162,7 @@ export function playback(
 
   // Only include arrangementLoop if loop is enabled
   const loopEnabled = loop ?? liveSet.getProperty("loop") > 0;
+
   if (loopEnabled) {
     result.arrangementLoop = {
       start: loopStart ?? currentLoopStart,
@@ -215,12 +223,15 @@ function handlePlayScene(sceneIndex, state) {
       `playback failed: sceneIndex is required for action "play-scene"`,
     );
   }
+
   const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
+
   if (!scene.exists()) {
     throw new Error(
       `playback failed: scene at index ${sceneIndex} does not exist`,
     );
   }
+
   scene.call("fire");
 
   return {
@@ -254,19 +265,23 @@ function handlePlaySessionClips(liveSet, clipIds, state) {
     // Extract track index and scene index from clip path or properties
     const trackIndex = clip.trackIndex;
     const sceneIndex = clip.sceneIndex;
+
     if (trackIndex == null || sceneIndex == null) {
       throw new Error(
         `playback play-session-clips action failed: could not determine track/scene for clipId=${clip.id}`,
       );
     }
+
     const clipSlot = new LiveAPI(
       `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
     );
+
     if (!clipSlot.exists()) {
       throw new Error(
         `playback play-session-clips action failed: clip slot for clipId=${clip.id.replace(/^id /, "")} does not exist`,
       );
     }
+
     clipSlot.call("fire");
   }
 
@@ -306,24 +321,30 @@ function handleStopSessionClips(clipIds, state) {
   for (const clip of stopClips) {
     // Extract track index from clip and add to set to avoid duplicate calls
     const trackIndex = clip.trackIndex;
+
     if (trackIndex == null) {
       throw new Error(
         `playback stop-session-clips action failed: could not determine track for clipId=${clip.id}`,
       );
     }
+
     const trackPath = `live_set tracks ${trackIndex}`;
+
     tracksToStop.add(trackPath);
   }
 
   for (const trackPath of tracksToStop) {
     const track = new LiveAPI(trackPath);
+
     if (!track.exists()) {
       throw new Error(
         `playback stop-session-clips action failed: track for clip path does not exist`,
       );
     }
+
     track.call("stop_all_clips");
   }
+
   // this doesn't affect the isPlaying state
   return state;
 }
@@ -365,12 +386,14 @@ function handlePlaybackAction(action, liveSet, params, state) {
 
     case "stop-all-session-clips":
       liveSet.call("stop_all_clips");
+
       // the transport/arrangement might still be playing so don't update isPlaying
       return state;
 
     case "stop":
       liveSet.call("stop_playing");
       liveSet.set("start_time", 0);
+
       return {
         isPlaying: false,
         currentTimeBeats: 0,

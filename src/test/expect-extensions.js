@@ -68,6 +68,7 @@ expect.extend({
     if (typeof received !== "function" || !received.mock) {
       return { pass: false, message: () => EXPECTED_MOCK_FUNCTION_MSG };
     }
+
     const { calls, contexts } = received.mock;
 
     if (typeof nthCall !== "number" || nthCall < 1) {

@@ -37,6 +37,7 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
+      id: "device-123",
       type: "instrument: Operator",
     });
   });
@@ -88,6 +89,7 @@ describe("readDevice", () => {
     });
 
     expect(result).toEqual({
+      id: "rack-device-123",
       type: "instrument-rack",
       chains: [],
     });
@@ -133,6 +135,7 @@ describe("readDevice", () => {
     });
 
     expect(result).toEqual({
+      id: "drum-rack-123",
       type: "drum-rack",
       drumChains: [], // Included because drum-chains was requested
     });
@@ -156,6 +159,8 @@ describe("readDevice", () => {
           return [0];
         case "is_active":
           return [1];
+        case "parameters":
+          return []; // empty parameters for "*" include
         default:
           return [];
       }
@@ -178,8 +183,10 @@ describe("readDevice", () => {
     });
 
     expect(result).toEqual({
+      id: "device-123",
       type: "audio-effect-rack",
       chains: [],
+      parameters: [],
     });
   });
 
@@ -209,6 +216,7 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
+      id: "device-123",
       type: "audio-effect: EQ Eight",
       deactivated: true,
     });
@@ -240,6 +248,7 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
+      id: "device-123",
       type: "instrument: Operator",
       name: "My Custom Operator",
     });
@@ -279,6 +288,7 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
+      id: "device-123",
       type: "midi-effect-rack",
       chains: [],
     });
@@ -310,7 +320,84 @@ describe("readDevice", () => {
     const result = readDevice({ deviceId: "device-123" });
 
     expect(result).toEqual({
+      id: "device-123",
       type: "midi-effect: Arpeggiator",
+    });
+  });
+
+  it("should include collapsed: true when device is collapsed", () => {
+    liveApiId.mockImplementation(function () {
+      // Return valid IDs for both device and view
+      if (this._path === "id device-123") return "device-123";
+      if (this._path === "id device-123 view") return "view-123";
+      return "0";
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      // Handle view is_collapsed property
+      if (this._path === "id device-123 view" && prop === "is_collapsed") {
+        return [1]; // collapsed
+      }
+      // Handle device properties
+      switch (prop) {
+        case "name":
+          return ["Operator"];
+        case "class_display_name":
+          return ["Operator"];
+        case "type":
+          return [1]; // instrument
+        case "can_have_chains":
+          return [0];
+        case "can_have_drum_pads":
+          return [0];
+        case "is_active":
+          return [1];
+        default:
+          return [];
+      }
+    });
+
+    const result = readDevice({ deviceId: "device-123" });
+
+    expect(result).toEqual({
+      id: "device-123",
+      type: "instrument: Operator",
+      collapsed: true,
+    });
+  });
+
+  it("should not include collapsed when device is not collapsed", () => {
+    liveApiId.mockImplementation(function () {
+      if (this._path === "id device-123") return "device-123";
+      if (this._path === "id device-123 view") return "view-123";
+      return "0";
+    });
+    liveApiGet.mockImplementation(function (prop) {
+      if (this._path === "id device-123 view" && prop === "is_collapsed") {
+        return [0]; // not collapsed
+      }
+      switch (prop) {
+        case "name":
+          return ["Operator"];
+        case "class_display_name":
+          return ["Operator"];
+        case "type":
+          return [1];
+        case "can_have_chains":
+          return [0];
+        case "can_have_drum_pads":
+          return [0];
+        case "is_active":
+          return [1];
+        default:
+          return [];
+      }
+    });
+
+    const result = readDevice({ deviceId: "device-123" });
+
+    expect(result).toEqual({
+      id: "device-123",
+      type: "instrument: Operator",
     });
   });
 
@@ -319,12 +406,5 @@ describe("readDevice", () => {
   // These code paths in device-reader.js (lines 358, 422-450) would require
   // extensive LiveAPI mocking including drum pads, chains, and their properties.
   // Skipping these for now to focus on easier wins for test coverage.
-
-  /* it("should handle drum rack with soloed and muted pads", () => {
-    // ...
-  });
-
-  it("should handle drum rack with return chains", () => {
-    // ...
-  }); */
+  // Params tests are in read-device-params.test.js
 });

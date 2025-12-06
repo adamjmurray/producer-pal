@@ -25,21 +25,26 @@ export function toCompactJSLiteral(obj) {
 
     if (Array.isArray(val)) {
       const items = val.map(convert).filter((v) => v !== undefined);
+
       return "[" + items.join(",") + "]";
     }
 
     if (typeof val === "object") {
       const pairs = [];
+
       for (const [key, value] of Object.entries(val)) {
         const converted = convert(value);
+
         if (converted === undefined) {
           continue;
         } // Skip undefined values
+
         // assume key doesn't need to be quoted
         // to generate valid JS we might need to be stricter here, but since we're using
         // this to send text to an LLM, it should be fine (and all our keys should be valid unquoted anyway)
         pairs.push(key + ":" + converted);
       }
+
       return "{" + pairs.join(",") + "}";
     }
 

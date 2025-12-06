@@ -17,6 +17,9 @@ import { updateClip } from "../tools/clip/update/update-clip.js";
 import { playback } from "../tools/control/playback.js";
 import { rawLiveApi } from "../tools/control/raw-live-api.js";
 import { select } from "../tools/control/select.js";
+import { createDevice } from "../tools/device/create/create-device.js";
+import { readDevice } from "../tools/device/read-device.js";
+import { updateDevice } from "../tools/device/update/update-device.js";
 import { readLiveSet } from "../tools/live-set/read-live-set.js";
 import { updateLiveSet } from "../tools/live-set/update-live-set.js";
 import { deleteObject } from "../tools/operations/delete/delete.js";
@@ -62,6 +65,9 @@ const tools = {
   "ppal-read-clip": (args) => readClip(args, context),
   "ppal-update-clip": (args) => updateClip(args, context),
   "ppal-transform-clips": (args) => transformClips(args, context),
+  "ppal-create-device": (args) => createDevice(args, context),
+  "ppal-read-device": (args) => readDevice(args, context),
+  "ppal-update-device": (args) => updateDevice(args, context),
   "ppal-playback": (args) => playback(args, context),
   "ppal-select": (args) => select(args, context),
   "ppal-delete": (args) => deleteObject(args, context),
@@ -83,13 +89,16 @@ if (process.env.ENABLE_RAW_LIVE_API === "true") {
  */
 function callTool(toolName, args) {
   const tool = tools[toolName];
+
   if (!tool) {
     throw new Error(`Unknown tool: ${tool}`);
   }
+
   return tool(args);
 }
 
 let isCompactOutputEnabled = true;
+
 /**
  * Enable or disable compact output format
  *
@@ -172,6 +181,7 @@ function sendResponse(requestId, result) {
     const errorResult = formatErrorResponse(
       `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
     );
+
     outlet(
       0,
       "mcp_response",
@@ -179,11 +189,13 @@ function sendResponse(requestId, result) {
       JSON.stringify(errorResult),
       MAX_ERROR_DELIMITER,
     );
+
     return;
   }
 
   // Chunk the JSON string
   const chunks = [];
+
   for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
     chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
   }
@@ -203,6 +215,7 @@ function sendResponse(requestId, result) {
  */
 export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
   let result;
+
   try {
     const args = JSON.parse(argsJSON);
 
@@ -210,6 +223,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
     if (contextJSON != null) {
       try {
         const incomingContext = JSON.parse(contextJSON);
+
         Object.assign(context, incomingContext);
       } catch (contextError) {
         console.error(
@@ -225,6 +239,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
       const output = await callTool(tool, args);
+
       result = formatSuccessResponse(
         isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
       );
@@ -238,6 +253,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
       `Error parsing tool call request: ${error.message}`,
     );
   }
+
   // Send response back to Node for Max
   sendResponse(requestId, result);
 }

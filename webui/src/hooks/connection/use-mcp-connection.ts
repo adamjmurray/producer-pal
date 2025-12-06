@@ -20,6 +20,7 @@ export function useMcpConnection(): UseMcpConnectionReturn {
   const checkMcpConnection = useCallback(async () => {
     setMcpStatus("connecting");
     setMcpError(null);
+
     try {
       await GeminiClient.testConnection();
       setMcpStatus("connected");

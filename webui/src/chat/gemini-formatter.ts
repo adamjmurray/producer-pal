@@ -52,6 +52,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
       // Handle error-role messages
       if (role === "error") {
         handleErrorMessage(acc, lastMessage, parts, rawIndex);
+
         return acc;
       }
 
@@ -74,6 +75,7 @@ export function formatGeminiMessages(history: GeminiMessage[]): UIMessage[] {
   );
 
   markLastThoughtAsOpen(messages);
+
   return messages;
 }
 
@@ -129,7 +131,9 @@ function createNewErrorMessage(acc: UIMessage[], rawIndex: number): UIMessage {
     parts: [],
     rawHistoryIndex: rawIndex,
   };
+
   acc.push(message);
+
   return message;
 }
 
@@ -163,7 +167,9 @@ function getOrCreateMessage(
     parts: [],
     rawHistoryIndex: rawIndex,
   };
+
   acc.push(message);
+
   return message;
 }
 
@@ -223,6 +229,7 @@ function handleFunctionResponse(
 
   if (toolPart) {
     toolPart.result = getToolCallResult(functionResponse);
+
     if (isToolCallError(functionResponse)) {
       toolPart.isError = true;
     }
@@ -275,6 +282,7 @@ function canMergeWithLastPart(
   isThought: boolean,
 ): boolean {
   if (!lastPart) return false;
+
   return (
     (lastPart.type === "text" && !isThought) ||
     (lastPart.type === "thought" && isThought)
@@ -287,6 +295,7 @@ function canMergeWithLastPart(
  */
 function markLastThoughtAsOpen(messages: UIMessage[]): void {
   const lastPart = messages.at(-1)?.parts.at(-1);
+
   if (lastPart?.type === "thought") {
     lastPart.isOpen = true; // show the thought as currently active
   }
@@ -315,6 +324,7 @@ function getToolCallResult(functionResponse: FunctionResponse): string {
         error?: { content?: Array<{ text?: string }> };
       }
     | undefined;
+
   return (
     response?.content?.[0]?.text ?? response?.error?.content?.[0]?.text ?? ""
   );

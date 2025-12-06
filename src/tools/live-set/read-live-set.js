@@ -29,6 +29,7 @@ export function readLiveSet(args = {}, _context = {}) {
   // Compute return track names once for efficiency (used for sends in mixer data)
   const returnTrackNames = returnTrackIds.map((_, idx) => {
     const rt = new LiveAPI(`live_set return_tracks ${idx}`);
+
     return rt.getProperty("name");
   });
 
@@ -51,6 +52,7 @@ export function readLiveSet(args = {}, _context = {}) {
 
   // Only include isPlaying when true
   const isPlaying = liveSet.getProperty("is_playing") > 0;
+
   if (isPlaying) {
     result.isPlaying = isPlaying;
   }
@@ -84,6 +86,7 @@ export function readLiveSet(args = {}, _context = {}) {
         const returnTrack = new LiveAPI(
           `live_set return_tracks ${returnTrackIndex}`,
         );
+
         return readTrackGeneric({
           track: returnTrack,
           trackIndex: returnTrackIndex,
@@ -97,6 +100,7 @@ export function readLiveSet(args = {}, _context = {}) {
 
   if (includeFlags.includeMasterTrack) {
     const masterTrack = new LiveAPI("live_set master_track");
+
     result.masterTrack = readTrackGeneric({
       track: masterTrack,
       trackIndex: null,
@@ -108,12 +112,15 @@ export function readLiveSet(args = {}, _context = {}) {
 
   // Only include scale properties when scale is enabled
   const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
+
   if (scaleEnabled) {
     const scaleName = liveSet.getProperty("scale_name");
     const rootNote = liveSet.getProperty("root_note");
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
+
     result.scale = `${scaleRoot} ${scaleName}`;
     const scaleIntervals = liveSet.getProperty("scale_intervals");
+
     result.scalePitches = intervalsToPitchClasses(
       scaleIntervals,
       rootNote,

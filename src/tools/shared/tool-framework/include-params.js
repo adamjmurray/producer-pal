@@ -160,6 +160,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeWarpMarkers: includeSet.has(WARP_MARKERS),
     includeMixer: includeSet.has(MIXER),
   };
+
   return result;
 }
 
@@ -174,57 +175,75 @@ export function includeArrayFromFlags(includeFlags) {
   if (includeFlags.includeDrumChains) {
     includes.push(DRUM_CHAINS);
   }
+
   if (includeFlags.includeDrumMaps) {
     includes.push(DRUM_MAPS);
   }
+
   if (includeFlags.includeClipNotes) {
     includes.push(CLIP_NOTES);
   }
+
   if (includeFlags.includeRackChains) {
     includes.push(RACK_CHAINS);
   }
+
   if (includeFlags.includeScenes) {
     includes.push("scenes");
   }
+
   if (includeFlags.includeMidiEffects) {
     includes.push(MIDI_EFFECTS);
   }
+
   if (includeFlags.includeInstruments) {
     includes.push(INSTRUMENTS);
   }
+
   if (includeFlags.includeAudioEffects) {
     includes.push(AUDIO_EFFECTS);
   }
+
   if (includeFlags.includeRoutings) {
     includes.push("routings");
   }
+
   if (includeFlags.includeAvailableRoutings) {
     includes.push(AVAILABLE_ROUTINGS);
   }
+
   if (includeFlags.includeSessionClips) {
     includes.push(SESSION_CLIPS);
   }
+
   if (includeFlags.includeArrangementClips) {
     includes.push(ARRANGEMENT_CLIPS);
   }
+
   if (includeFlags.includeClips) {
     includes.push(CLIPS);
   }
+
   if (includeFlags.includeRegularTracks) {
     includes.push(REGULAR_TRACKS);
   }
+
   if (includeFlags.includeReturnTracks) {
     includes.push(RETURN_TRACKS);
   }
+
   if (includeFlags.includeMasterTrack) {
     includes.push(MASTER_TRACK);
   }
+
   if (includeFlags.includeColor) {
     includes.push(COLOR);
   }
+
   if (includeFlags.includeWarpMarkers) {
     includes.push(WARP_MARKERS);
   }
+
   if (includeFlags.includeMixer) {
     includes.push(MIXER);
   }
@@ -303,6 +322,7 @@ export const READ_CLIP_DEFAULTS = {
 function expandWildcardIncludes(includeArray, defaults) {
   // First expand shortcuts
   const expandedArray = [];
+
   for (const option of includeArray) {
     if (SHORTCUT_MAPPINGS[option]) {
       expandedArray.push(...SHORTCUT_MAPPINGS[option]);
@@ -318,6 +338,7 @@ function expandWildcardIncludes(includeArray, defaults) {
 
   // Determine tool type from defaults structure to get appropriate options
   let toolType;
+
   if (
     Object.keys(defaults).length === 1 &&
     defaults.includeClipNotes !== undefined
@@ -337,6 +358,7 @@ function expandWildcardIncludes(includeArray, defaults) {
 
   // Create set with all non-'*' options plus all available options
   const expandedSet = new Set(expandedArray.filter((option) => option !== "*"));
+
   allOptions.forEach((option) => expandedSet.add(option));
 
   return Array.from(expandedSet);

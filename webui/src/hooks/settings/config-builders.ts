@@ -54,6 +54,7 @@ export function buildGeminiConfig(
 function isOpenAIProvider(baseUrl?: string): boolean {
   // If no baseUrl, OpenAIClient defaults to OpenAI
   if (!baseUrl) return true;
+
   // Check if it's the OpenAI API URL
   return baseUrl === "https://api.openai.com/v1";
 }
@@ -115,6 +116,7 @@ export function buildOpenAIConfig(
   // Only include reasoning_effort when using actual OpenAI API (not Groq/Mistral/etc)
   if (isOpenAIProvider(baseUrl)) {
     const reasoningEffort = mapThinkingToReasoningEffort(thinking);
+
     if (reasoningEffort) {
       config.reasoningEffort = reasoningEffort;
     }

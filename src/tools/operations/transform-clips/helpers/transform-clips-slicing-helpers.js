@@ -113,13 +113,16 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
   if (slice == null) {
     return null;
   }
+
   if (arrangementClips.length === 0) {
     if (!warnings.has("slice-no-arrangement")) {
       console.error("Warning: slice requires arrangement clips");
       warnings.add("slice-no-arrangement");
     }
+
     return null;
   }
+
   const liveSet = new LiveAPI("live_set");
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
@@ -128,9 +131,11 @@ export function prepareSliceParams(slice, arrangementClips, warnings) {
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
+
   if (sliceBeats <= 0) {
     throw new Error("slice must be greater than 0");
   }
+
   return sliceBeats;
 }
 
@@ -155,6 +160,7 @@ export function performSlicing(
   let totalSlicesCreated = 0;
   // Track position ranges for sliced clips to re-scan after deletion
   const slicedClipRanges = new Map();
+
   for (const clip of arrangementClips) {
     const isMidiClip = clip.getProperty("is_midi_clip") === 1;
     const isLooping = clip.getProperty("looping") > 0;
@@ -162,29 +168,36 @@ export function performSlicing(
     const currentStartTime = clip.getProperty("start_time");
     const currentEndTime = clip.getProperty("end_time");
     const currentArrangementLength = currentEndTime - currentStartTime;
+
     // Only slice if clip is longer than or equal to slice size
     if (currentArrangementLength < sliceBeats) {
       continue; // Skip clips smaller than slice size
     }
+
     // Check if adding this clip's slices would exceed the limit
     const sliceCount = Math.ceil(currentArrangementLength / sliceBeats);
+
     if (totalSlicesCreated + sliceCount > MAX_SLICES) {
       throw new Error(
         `Slicing at ${slice} would create ${sliceCount} slices for a ${currentArrangementLength}-beat clip. ` +
           `Maximum ${MAX_SLICES} slices total. Use a longer slice duration.`,
       );
     }
+
     // Get track for this clip
     // Store trackIndex BEFORE any operations to prevent staleness
     const trackIndex = clip.trackIndex;
+
     if (trackIndex == null) {
       throw new Error(
         `transformClips failed: could not determine trackIndex for clip ${clip.id}`,
       );
     }
+
     const track = new LiveAPI(`live_set tracks ${trackIndex}`);
     // Store position info before slicing (for re-scanning after deletion)
     const originalClipId = clip.id;
+
     slicedClipRanges.set(originalClipId, {
       trackIndex,
       startTime: currentStartTime,
@@ -199,6 +212,7 @@ export function performSlicing(
       isMidiClip,
       _context,
     );
+
     // Delete original clip before moving from holding
     track.call("delete_clip", `id ${originalClipId}`);
     // Move shortened clip from holding back to original position
@@ -209,6 +223,7 @@ export function performSlicing(
     );
     // Fill remaining space after the first slice
     const remainingLength = currentArrangementLength - sliceBeats;
+
     if (remainingLength > 0) {
       if (isLooping) {
         // Looped clips: tile to fill with repeated content
@@ -242,9 +257,11 @@ export function performSlicing(
         );
       }
     }
+
     // Track total slices created
     totalSlicesCreated += sliceCount;
   }
+
   // Re-scan tracks to replace stale clip objects with fresh ones
   for (const [oldClipId, range] of slicedClipRanges) {
     const track = new LiveAPI(`live_set tracks ${range.trackIndex}`);
@@ -255,6 +272,7 @@ export function performSlicing(
       .map((id) => LiveAPI.from(id))
       .filter((c) => {
         const clipStart = c.getProperty("start_time");
+
         return (
           clipStart >= range.startTime - EPSILON &&
           clipStart < range.endTime - EPSILON
@@ -262,6 +280,7 @@ export function performSlicing(
       });
     // Replace stale clip in clips array with fresh clips
     const staleIndex = clips.findIndex((c) => c.id === oldClipId);
+
     if (staleIndex !== -1) {
       clips.splice(staleIndex, 1, ...freshClips);
     }

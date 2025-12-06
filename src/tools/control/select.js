@@ -110,6 +110,7 @@ export function select(
     } else {
       // Select specific clip and validate it's a clip
       const clipAPI = validateIdType(clipId, "clip", "select");
+
       songView.setProperty("detail_clip", clipAPI.id);
     }
   }
@@ -173,12 +174,15 @@ function buildTrackPath(category, trackIndex) {
   if (finalCategory === "regular") {
     return `live_set tracks ${trackIndex}`;
   }
+
   if (finalCategory === "return") {
     return `live_set return_tracks ${trackIndex}`;
   }
+
   if (finalCategory === "master") {
     return MASTER_TRACK_PATH;
   }
+
   return null;
 }
 
@@ -220,8 +224,10 @@ function validateParameters({
   // Cross-validation for track ID vs index (requires Live API calls)
   if (trackId != null && trackIndex != null) {
     const trackPath = buildTrackPath(category, trackIndex);
+
     if (trackPath) {
       const trackAPI = new LiveAPI(trackPath);
+
       if (trackAPI.exists() && trackAPI.id !== trackId) {
         throw new Error("trackId and trackIndex refer to different tracks");
       }
@@ -231,6 +237,7 @@ function validateParameters({
   // Cross-validation for scene ID vs index
   if (sceneId != null && sceneIndex != null) {
     const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
+
     if (sceneAPI.exists() && sceneAPI.id !== sceneId) {
       throw new Error("sceneId and sceneIndex refer to different scenes");
     }
@@ -259,9 +266,11 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
     trackAPI = validateIdType(trackId, "track", "select");
     songView.setProperty("selected_track", trackAPI.id);
     result.selectedTrackId = trackId;
+
     if (category != null) {
       result.selectedCategory = category;
     }
+
     if (trackIndex != null) {
       result.selectedTrackIndex = trackIndex;
     }
@@ -272,11 +281,13 @@ function updateTrackSelection({ songView, trackId, category, trackIndex }) {
 
     if (trackPath) {
       trackAPI = new LiveAPI(trackPath);
+
       if (trackAPI.exists()) {
         finalTrackId = trackAPI.id;
         songView.setProperty("selected_track", trackAPI.id);
         result.selectedTrackId = finalTrackId;
         result.selectedCategory = finalCategory;
+
         if (finalCategory !== "master" && trackIndex != null) {
           result.selectedTrackIndex = trackIndex;
         }
@@ -302,16 +313,20 @@ function updateSceneSelection({ songView, sceneId, sceneIndex }) {
   if (sceneId != null) {
     // Select by ID and validate it's a scene
     const sceneAPI = validateIdType(sceneId, "scene", "select");
+
     songView.setProperty("selected_scene", sceneAPI.id);
     result.selectedSceneId = sceneId;
+
     if (sceneIndex != null) {
       result.selectedSceneIndex = sceneIndex;
     }
   } else if (sceneIndex != null) {
     // Select by index
     const sceneAPI = new LiveAPI(`live_set scenes ${sceneIndex}`);
+
     if (sceneAPI.exists()) {
       const finalSceneId = sceneAPI.id;
+
       songView.setProperty("selected_scene", sceneAPI.id);
       result.selectedSceneId = finalSceneId;
       result.selectedSceneIndex = sceneIndex;
@@ -339,6 +354,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
     const deviceIdForApi = deviceIdStr.startsWith("id ")
       ? deviceIdStr
       : `id ${deviceIdStr}`;
+
     songView.call("select_device", deviceIdForApi);
   } else if (instrument === true) {
     // Select instrument on the currently selected or specified track
@@ -350,12 +366,14 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
     if (!trackPath) {
       // Use currently selected track
       const selectedTrackAPI = new LiveAPI("live_set view selected_track");
+
       if (selectedTrackAPI.exists()) {
         const category = selectedTrackAPI.category;
         const trackIndex =
           category === "return"
             ? selectedTrackAPI.returnTrackIndex
             : selectedTrackAPI.trackIndex;
+
         trackPath = buildTrackPath(category, trackIndex);
       }
     }
@@ -363,6 +381,7 @@ function updateDeviceSelection({ deviceId, instrument, trackSelectionResult }) {
     if (trackPath) {
       // Use the track view's select_instrument function
       const trackView = new LiveAPI(`${trackPath} view`);
+
       if (trackView.exists()) {
         trackView.call("select_instrument");
       }
@@ -384,6 +403,7 @@ function updateHighlightedClipSlot({ songView, clipSlot }) {
     const clipSlotAPI = new LiveAPI(
       `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
     );
+
     if (clipSlotAPI.exists()) {
       songView.setProperty("highlighted_clip_slot", clipSlotAPI.id);
     }
@@ -425,8 +445,10 @@ function readViewState() {
 
   // Get selected device from the selected track's view
   let selectedDeviceId = null;
+
   if (selectedTrack.exists()) {
     const trackView = new LiveAPI(`${selectedTrack.path} view`);
+
     if (trackView.exists()) {
       selectedDeviceId =
         trackView.get("selected_device")?.[1]?.toString() || null;
@@ -441,6 +463,7 @@ function readViewState() {
     : null;
 
   let detailView = null;
+
   if (appView.call("is_view_visible", LIVE_API_VIEW_NAMES.DETAIL_CLIP)) {
     detailView = "clip";
   } else if (

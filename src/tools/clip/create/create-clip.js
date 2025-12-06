@@ -74,6 +74,7 @@ export function createClip(
 
   // Validate track exists (fatal - affects all clips)
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
   if (!track.exists()) {
     throw new Error(`createClip failed: track ${trackIndex} does not exist`);
   }
@@ -86,8 +87,10 @@ export function createClip(
 
   // Determine clip time signature (custom or from song)
   let timeSigNumerator, timeSigDenominator;
+
   if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
+
     timeSigNumerator = parsed.numerator;
     timeSigDenominator = parsed.denominator;
   } else {
@@ -144,6 +147,7 @@ export function createClip(
 
   // Handle automatic playback and view switching
   handleAutoPlayback(auto, view, sceneIndices, trackIndex);
+
   if (switchView) {
     select({ view });
   }
@@ -244,11 +248,13 @@ function createClips(
         length,
         sampleFile,
       );
+
       createdClips.push(clipResult);
 
       // For audio clips, get actual length from first successful clip
       if (sampleFile && createdClips.length === 1) {
         const firstClip = new LiveAPI(clipResult.id);
+
         clipLength = firstClip.getProperty("length");
       }
     } catch (error) {
@@ -257,6 +263,7 @@ function createClips(
         view === "session"
           ? `trackIndex=${trackIndex}, sceneIndex=${currentSceneIndex}`
           : `trackIndex=${trackIndex}, arrangementStart=${currentArrangementStart}`;
+
       console.error(
         `Warning: Failed to create clip at ${position}: ${error.message}`,
       );
@@ -303,6 +310,7 @@ function prepareClipData(
 
   // Determine clip length
   let clipLength;
+
   if (sampleFile) {
     // For audio clips, we'll get the length from the first created clip
     // Use 1 as a placeholder for now
@@ -401,11 +409,13 @@ function calculateClipLength(
       abletonBeatsPerBar
     );
   }
+
   // Empty clip, use 1 bar minimum
   const abletonBeatsPerBar = timeSigToAbletonBeatsPerBar(
     timeSigNumerator,
     timeSigDenominator,
   );
+
   return abletonBeatsPerBar;
 }
 
@@ -426,11 +436,13 @@ function handleAutoPlayback(auto, view, sceneIndices, trackIndex) {
       // Launch the first scene for synchronization
       const firstSceneIndex = sceneIndices[0];
       const scene = new LiveAPI(`live_set scenes ${firstSceneIndex}`);
+
       if (!scene.exists()) {
         throw new Error(
           `createClip auto="play-scene" failed: scene at sceneIndex=${firstSceneIndex} does not exist`,
         );
       }
+
       scene.call("fire");
       break;
     }
@@ -441,8 +453,10 @@ function handleAutoPlayback(auto, view, sceneIndices, trackIndex) {
         const clipSlot = new LiveAPI(
           `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
         );
+
         clipSlot.call("fire");
       }
+
       break;
 
     default:

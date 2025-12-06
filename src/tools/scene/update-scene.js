@@ -55,6 +55,7 @@ export function updateScene(
       scene.set("time_signature_enabled", false);
     } else if (timeSignature != null) {
       const parsed = parseTimeSignature(timeSignature);
+
       scene.set("time_signature_numerator", parsed.numerator);
       scene.set("time_signature_denominator", parsed.denominator);
       scene.set("time_signature_enabled", true);
@@ -70,5 +71,6 @@ export function updateScene(
   if (updatedScenes.length === 0) {
     return [];
   }
+
   return updatedScenes.length === 1 ? updatedScenes[0] : updatedScenes;
 }

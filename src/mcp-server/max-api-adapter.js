@@ -18,8 +18,10 @@ export const DEFAULT_LIVE_API_CALL_TIMEOUT_MS = 30_000;
 const pendingRequests = new Map();
 
 let timeoutMs = DEFAULT_LIVE_API_CALL_TIMEOUT_MS;
+
 Max.addHandler("timeoutMs", (input) => {
   const n = Number(input);
+
   if (n > 0 && n <= 60_000) {
     timeoutMs = n;
   } else {
@@ -57,6 +59,7 @@ function callLiveApi(tool, args) {
         ),
       );
     }
+
     pendingRequests.set(requestId, {
       resolve,
       timeout: setTimeout(() => {
@@ -85,14 +88,17 @@ function handleLiveApiResult(requestId, ...params) {
 
   if (pendingRequests.has(requestId)) {
     const { resolve, timeout } = pendingRequests.get(requestId);
+
     if (timeout) {
       clearTimeout(timeout);
     }
+
     pendingRequests.delete(requestId);
 
     try {
       // Find the delimiter
       const delimiterIndex = params.indexOf(MAX_ERROR_DELIMITER);
+
       if (delimiterIndex === -1) {
         throw new Error("Missing MAX_ERROR_DELIMITER in response");
       }
@@ -114,13 +120,16 @@ function handleLiveApiResult(requestId, ...params) {
       // Add any Max errors as warnings
       for (const error of maxErrors) {
         let msg = `${error}`;
+
         // Remove v8: prefix and trim whitespace
         if (msg.startsWith("v8:")) {
           msg = msg.slice(3).trim();
         }
+
         // Only add if there's actual content after cleaning
         if (msg.length > 0) {
           const errorText = `WARNING: ${msg}`;
+
           result.content.push({ type: "text", text: errorText });
           errorMessageLength += errorText.length;
         }

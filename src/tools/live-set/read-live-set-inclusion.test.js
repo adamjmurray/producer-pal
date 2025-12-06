@@ -210,6 +210,7 @@ describe("readLiveSet - inclusion", () => {
 
     // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
     expect(result.tracks[0].instrument).toEqual({
+      id: "drumrack1",
       name: "Test Drum Rack",
       type: "drum-rack",
       // drumChains: [ // Only included when drum-chains is requested

@@ -22,6 +22,7 @@ export const PITCH_CLASS_NAMES = [
 export function midiPitchToName(midiPitch) {
   const pitchClass = midiPitch % 12;
   const octave = Math.floor(midiPitch / 12) - 2;
+
   return `${PITCH_CLASS_NAMES[pitchClass]}${octave}`;
 }
 
@@ -34,6 +35,7 @@ export function midiPitchToName(midiPitch) {
 export function intervalsToPitchClasses(intervals, rootNote) {
   return intervals.map((interval) => {
     const pitchClass = (rootNote + interval) % 12;
+
     return PITCH_CLASS_NAMES[pitchClass];
   });
 }

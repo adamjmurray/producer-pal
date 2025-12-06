@@ -35,6 +35,7 @@ export function applyAudioParams(
     const gainDbOffset = randomInRange(gainDbMin, gainDbMax, rng);
     const newGainDb = Math.max(-70, Math.min(24, currentGainDb + gainDbOffset));
     const newLiveGain = dbToLiveGain(newGainDb);
+
     clip.set("gain", newLiveGain);
   }
 
@@ -52,6 +53,7 @@ export function applyAudioParams(
 
     const pitchCoarse = Math.floor(newPitch);
     const pitchFine = Math.round((newPitch - pitchCoarse) * 100);
+
     clip.set("pitch_coarse", pitchCoarse);
     clip.set("pitch_fine", pitchFine);
   } else if (transposeMin != null && transposeMax != null) {
@@ -65,6 +67,7 @@ export function applyAudioParams(
 
     const pitchCoarse = Math.floor(newPitch);
     const pitchFine = Math.round((newPitch - pitchCoarse) * 100);
+
     clip.set("pitch_coarse", pitchCoarse);
     clip.set("pitch_fine", pitchFine);
   }
@@ -81,9 +84,11 @@ function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
   if (velocityMin == null || velocityMax == null) {
     return;
   }
+
   const velocityOffset = Math.round(
     randomInRange(velocityMin, velocityMax, rng),
   );
+
   note.velocity = Math.max(1, Math.min(127, note.velocity + velocityOffset));
 }
 
@@ -95,10 +100,12 @@ function applyVelocityOffset(note, velocityMin, velocityMax, rng) {
  */
 function applyTranspose(note, transposeParams, rng) {
   const { transposeValuesArray, transposeMin, transposeMax } = transposeParams;
+
   if (transposeValuesArray != null) {
     // Pick from discrete values
     const transposeOffset =
       transposeValuesArray[Math.floor(rng() * transposeValuesArray.length)];
+
     note.pitch = Math.max(
       0,
       Math.min(127, note.pitch + Math.round(transposeOffset)),
@@ -108,6 +115,7 @@ function applyTranspose(note, transposeParams, rng) {
     const transposeOffset = Math.round(
       randomInRange(transposeMin, transposeMax, rng),
     );
+
     note.pitch = Math.max(0, Math.min(127, note.pitch + transposeOffset));
   }
 }
@@ -123,7 +131,9 @@ function applyDurationMultiplier(note, durationMin, durationMax, rng) {
   if (durationMin == null || durationMax == null) {
     return;
   }
+
   const durationMultiplier = randomInRange(durationMin, durationMax, rng);
+
   note.duration = note.duration * durationMultiplier;
 }
 
@@ -136,7 +146,9 @@ function applyVelocityDeviation(note, velocityRange) {
   if (velocityRange == null) {
     return;
   }
+
   const currentDeviation = note.velocity_deviation ?? 0;
+
   note.velocity_deviation = Math.max(
     -127,
     Math.min(127, currentDeviation + velocityRange),
@@ -152,7 +164,9 @@ function applyProbabilityOffset(note, probability) {
   if (probability == null) {
     return;
   }
+
   const currentProbability = note.probability ?? 1.0;
+
   note.probability = Math.max(
     0.0,
     Math.min(1.0, currentProbability + probability),

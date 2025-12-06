@@ -130,10 +130,6 @@ typically overkill and will hit usage limits faster.
 
 ## Limitations
 
-Producer Pal cannot (yet) manage devices (instruments or effects) in your
-tracks. You must add and adjust all devices yourself. Note that it can duplicate
-tracks, including all the track's devices.
-
 Drum Racks work in nested structures, but tracks with multiple Drum Racks only
 use the first one's drum map. Use one Drum Rack per track for predictable
 results.

@@ -1,5 +1,6 @@
 import { midiPitchToName } from "#src/notation/midi-pitch-to-name.js";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
+import { readParameter, readParameterBasic } from "./device-display-helpers.js";
 
 /**
  * Check if device className is redundant (matches the rack type name)
@@ -11,15 +12,19 @@ export function isRedundantDeviceClassName(deviceType, className) {
   if (deviceType === DEVICE_TYPE.INSTRUMENT_RACK) {
     return className === "Instrument Rack";
   }
+
   if (deviceType === DEVICE_TYPE.DRUM_RACK) {
     return className === "Drum Rack";
   }
+
   if (deviceType === DEVICE_TYPE.AUDIO_EFFECT_RACK) {
     return className === "Audio Effect Rack";
   }
+
   if (deviceType === DEVICE_TYPE.MIDI_EFFECT_RACK) {
     return className === "MIDI Effect Rack";
   }
+
   return false;
 }
 
@@ -33,21 +38,27 @@ export function computeState(liveObject, category = "regular") {
   if (category === "master") {
     return STATE.ACTIVE;
   }
+
   const isMuted = liveObject.getProperty("mute") > 0;
   const isSoloed = liveObject.getProperty("solo") > 0;
   const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
+
   if (isSoloed) {
     return STATE.SOLOED;
   }
+
   if (isMuted && isMutedViaSolo) {
     return STATE.MUTED_ALSO_VIA_SOLO;
   }
+
   if (isMutedViaSolo) {
     return STATE.MUTED_VIA_SOLO;
   }
+
   if (isMuted) {
     return STATE.MUTED;
   }
+
   return STATE.ACTIVE;
 }
 
@@ -73,10 +84,12 @@ export function hasInstrumentInDevices(devices) {
   if (!devices || devices.length === 0) {
     return false;
   }
+
   for (const device of devices) {
     if (isInstrumentDevice(device.type)) {
       return true;
     }
+
     if (device.chains) {
       for (const chain of device.chains) {
         if (chain.devices && hasInstrumentInDevices(chain.devices)) {
@@ -85,6 +98,7 @@ export function hasInstrumentInDevices(devices) {
       }
     }
   }
+
   return false;
 }
 
@@ -121,11 +135,13 @@ export function processDrumPad(
   };
   const isMuted = pad.getProperty("mute") > 0;
   const isSoloed = pad.getProperty("solo") > 0;
+
   if (isSoloed) {
     drumChainInfo.state = STATE.SOLOED;
   } else if (isMuted) {
     drumChainInfo.state = STATE.MUTED;
   }
+
   if (includeDrumChains) {
     const processedChainDevices = chainDevices.map((chainDevice) =>
       readDevice(chainDevice, {
@@ -135,15 +151,19 @@ export function processDrumPad(
         maxDepth,
       }),
     );
+
     drumChainInfo.chain = {
       name: chain.getProperty("name"),
       devices: processedChainDevices,
     };
     const chainState = computeState(chain);
+
     if (chainState !== STATE.ACTIVE) {
       drumChainInfo.chain.state = chainState;
     }
+
     const hasInstrument = hasInstrumentInDevices(processedChainDevices);
+
     if (!hasInstrument) {
       drumChainInfo.hasInstrument = false;
     }
@@ -157,10 +177,12 @@ export function processDrumPad(
       }),
     );
     const hasInstrument = hasInstrumentInDevices(processedChainDevices);
+
     if (!hasInstrument) {
       drumChainInfo.hasInstrument = false;
     }
   }
+
   return drumChainInfo;
 }
 
@@ -172,9 +194,11 @@ export function updateDrumChainSoloStates(processedDrumChains) {
   const hasSoloedDrumChain = processedDrumChains.some(
     (drumChainInfo) => drumChainInfo.state === STATE.SOLOED,
   );
+
   if (!hasSoloedDrumChain) {
     return;
   }
+
   processedDrumChains.forEach((drumChainInfo) => {
     if (drumChainInfo.state === STATE.SOLOED) {
       // Keep soloed state as-is
@@ -212,6 +236,7 @@ export function processDrumChains(
       const chains = pad.getChildren("chains");
       const chain = chains[0];
       const chainDevices = chain.getChildren("devices");
+
       return processDrumPad(
         pad,
         chain,
@@ -223,12 +248,15 @@ export function processDrumChains(
         readDeviceFn,
       );
     });
+
   updateDrumChainSoloStates(processedDrumChains);
+
   if (includeDrumChains) {
     deviceInfo.drumChains = processedDrumChains.map(
       ({ _originalPad, _originalChain, ...drumChainInfo }) => drumChainInfo,
     );
   }
+
   deviceInfo._processedDrumChains = processedDrumChains;
 }
 
@@ -254,15 +282,18 @@ export function processRegularChains(
   const readDevice = readDeviceFn;
   const chains = device.getChildren("chains");
   const hasSoloedChain = chains.some((chain) => chain.getProperty("solo") > 0);
+
   if (includeChains) {
     deviceInfo.chains = chains.map((chain) => {
       const chainInfo = {
         name: chain.getProperty("name"),
       };
       const chainState = computeState(chain);
+
       if (chainState !== STATE.ACTIVE) {
         chainInfo.state = chainState;
       }
+
       chainInfo.devices = chain.getChildren("devices").map((chainDevice) =>
         readDevice(chainDevice, {
           includeChains,
@@ -271,9 +302,11 @@ export function processRegularChains(
           maxDepth,
         }),
       );
+
       return chainInfo;
     });
   }
+
   if (hasSoloedChain) {
     deviceInfo.hasSoloedChain = hasSoloedChain;
   }
@@ -302,19 +335,24 @@ export function processReturnChains(
 ) {
   const readDevice = readDeviceFn;
   const returnChains = device.getChildren("return_chains");
+
   if (returnChains.length === 0) {
     return;
   }
+
   deviceInfo.returnChains = returnChains.map((chain) => {
     const returnChainInfo = {
       name: chain.getProperty("name"),
     };
     const chainState = computeState(chain);
+
     if (chainState !== STATE.ACTIVE) {
       returnChainInfo.state = chainState;
     }
+
     const shouldIncludeDevices =
       deviceType !== DEVICE_TYPE.DRUM_RACK || includeDrumChains;
+
     if (shouldIncludeDevices) {
       returnChainInfo.devices = chain
         .getChildren("devices")
@@ -327,6 +365,32 @@ export function processReturnChains(
           }),
         );
     }
+
     return returnChainInfo;
   });
+}
+
+/**
+ * Read all parameters for a device
+ * @param {object} device - LiveAPI device object
+ * @param {object} options - Reading options
+ * @param {boolean} options.includeValues - Include full values/metadata
+ * @param {string} options.search - Filter by name substring (case-insensitive)
+ * @returns {Array} Array of parameter info objects
+ */
+export function readDeviceParameters(device, options = {}) {
+  const { includeValues = false, search } = options;
+
+  let parameters = device.getChildren("parameters");
+
+  // Filter by search string if provided
+  if (search) {
+    const searchLower = search.toLowerCase().trim();
+
+    parameters = parameters.filter((p) =>
+      p.getProperty("name").toLowerCase().includes(searchLower),
+    );
+  }
+
+  return parameters.map(includeValues ? readParameter : readParameterBasic);
 }

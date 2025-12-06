@@ -67,6 +67,7 @@ export function handleUnloopedLengthening({
       const tileEndMarker = tileStartMarker + tileLengthNeeded;
 
       let tileClip;
+
       if (isPartialTile) {
         // Partial tiles use holding area to avoid overwriting subsequent clips
         const { holdingClipId } = createShortenedClipInHolding(
@@ -77,6 +78,7 @@ export function handleUnloopedLengthening({
           true, // isMidiClip
           context,
         );
+
         tileClip = moveClipFromHolding(holdingClipId, track, currentPosition);
       } else {
         // Full tiles use direct duplication
@@ -85,6 +87,7 @@ export function handleUnloopedLengthening({
           `id ${clip.id}`,
           currentPosition,
         );
+
         tileClip = LiveAPI.from(duplicateResult);
       }
 
@@ -117,6 +120,7 @@ export function handleUnloopedLengthening({
   } else {
     const liveSet = new LiveAPI("live_set");
     const tempo = liveSet.getProperty("tempo");
+
     clipStartMarkerBeats = clipStartMarker * (tempo / 60);
   }
 

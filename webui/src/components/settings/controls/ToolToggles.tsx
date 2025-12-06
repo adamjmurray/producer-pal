@@ -34,6 +34,7 @@ export function ToolToggles({
     if (tool.requiresEnvVar) {
       return import.meta.env.ENABLE_RAW_LIVE_API === true;
     }
+
     return true;
   });
 

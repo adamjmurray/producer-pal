@@ -80,6 +80,7 @@ export function App() {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
     }
+
     prevShowSettingsRef.current = showSettings;
   }, [showSettings, theme]);
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { defineTool } from "../../shared/tool-framework/define-tool.js";
 
 export const toolDefDelete = defineTool("ppal-delete", {
-  title: "Delete Track/Scene/Clip",
+  title: "Delete Track/Scene/Clip/Device",
   description: "Deletes objects",
   annotations: {
     readOnlyHint: false,
@@ -15,7 +15,7 @@ export const toolDefDelete = defineTool("ppal-delete", {
         "comma-separated list of object IDs to delete (must be same type)",
       ),
     type: z
-      .enum(["track", "scene", "clip"])
+      .enum(["track", "scene", "clip", "device"])
       .describe("type of objects to delete"),
   },
 });

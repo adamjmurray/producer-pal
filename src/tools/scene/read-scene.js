@@ -67,12 +67,14 @@ export function readScene(args = {}, _context = {}) {
   if (isTempoEnabled) {
     result.tempo = scene.getProperty("tempo");
   }
+
   if (isTimeSignatureEnabled) {
     result.timeSignature = scene.timeSignature;
   }
 
   // Only include triggered when scene is triggered
   const isTriggered = scene.getProperty("is_triggered") > 0;
+
   if (isTriggered) {
     result.triggered = true;
   }

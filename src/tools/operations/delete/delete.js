@@ -6,7 +6,7 @@ import { validateIdTypes } from "../../shared/validation/id-validation.js";
  * Deletes objects by ids
  * @param {object} args - The parameters
  * @param {string} args.ids - ID or comma-separated list of IDs to delete
- * @param {string} args.type - Type of objects to delete ("track", "scene", or "clip")
+ * @param {string} args.type - Type of objects to delete ("track", "scene", "clip", or "device")
  * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Result object(s) with success information
  */
@@ -14,12 +14,14 @@ export function deleteObject({ ids, type } = {}, _context = {}) {
   if (!ids) {
     throw new Error("delete failed: ids is required");
   }
+
   if (!type) {
     throw new Error("delete failed: type is required");
   }
-  if (!["track", "scene", "clip"].includes(type)) {
+
+  if (!["track", "scene", "clip", "device"].includes(type)) {
     throw new Error(
-      `delete failed: type must be one of "track", "scene", or "clip"`,
+      `delete failed: type must be one of "track", "scene", "clip", or "device"`,
     );
   }
 
@@ -41,6 +43,7 @@ export function deleteObject({ ids, type } = {}, _context = {}) {
         type === "track" ? /live_set tracks (\d+)/ : /live_set scenes (\d+)/;
       const indexA = Number(a.object.path.match(pathRegex)?.[1]);
       const indexB = Number(b.object.path.match(pathRegex)?.[1]);
+
       return indexB - indexA; // Descending order
     });
   }
@@ -54,6 +57,7 @@ export function deleteObject({ ids, type } = {}, _context = {}) {
   if (deletedObjects.length === 0) {
     return [];
   }
+
   return deletedObjects.length === 1 ? deletedObjects[0] : deletedObjects;
 }
 
@@ -64,6 +68,7 @@ export function deleteObject({ ids, type } = {}, _context = {}) {
  */
 function deleteTrackObject(id, object) {
   const trackIndex = Number(object.path.match(/live_set tracks (\d+)/)?.[1]);
+
   if (Number.isNaN(trackIndex)) {
     throw new Error(
       `delete failed: no track index for id "${id}" (path="${object.path}")`,
@@ -71,6 +76,7 @@ function deleteTrackObject(id, object) {
   }
 
   const hostTrackIndex = getHostTrackIndex();
+
   if (trackIndex === hostTrackIndex) {
     throw new Error(
       "delete failed: cannot delete track hosting the Producer Pal device",
@@ -78,6 +84,7 @@ function deleteTrackObject(id, object) {
   }
 
   const liveSet = new LiveAPI("live_set");
+
   liveSet.call("delete_track", trackIndex);
 }
 
@@ -88,12 +95,15 @@ function deleteTrackObject(id, object) {
  */
 function deleteSceneObject(id, object) {
   const sceneIndex = Number(object.path.match(/live_set scenes (\d+)/)?.[1]);
+
   if (Number.isNaN(sceneIndex)) {
     throw new Error(
       `delete failed: no scene index for id "${id}" (path="${object.path}")`,
     );
   }
+
   const liveSet = new LiveAPI("live_set");
+
   liveSet.call("delete_scene", sceneIndex);
 }
 
@@ -104,18 +114,41 @@ function deleteSceneObject(id, object) {
  */
 function deleteClipObject(id, object) {
   const trackIndex = object.path.match(/live_set tracks (\d+)/)?.[1];
+
   if (!trackIndex) {
     throw new Error(
       `delete failed: no track index for id "${id}" (path="${object.path}")`,
     );
   }
+
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
   track.call("delete_clip", `id ${object.id}`);
 }
 
 /**
+ * Deletes a device by its ID via the parent track
+ * @param {string} id - The object ID
+ * @param {object} object - The object to delete
+ */
+function deleteDeviceObject(id, object) {
+  // Extract track path from device path (handles regular, return, and master tracks)
+  const trackPath = object.path.replace(/ devices \d+.*$/, "");
+
+  if (trackPath === object.path) {
+    throw new Error(
+      `delete failed: could not extract track path from device "${id}" (path="${object.path}")`,
+    );
+  }
+
+  const track = new LiveAPI(trackPath);
+
+  track.call("delete_device", object.deviceIndex);
+}
+
+/**
  * Deletes an object based on its type
- * @param {string} type - The type of object ("track", "scene", or "clip")
+ * @param {string} type - The type of object ("track", "scene", "clip", or "device")
  * @param {string} id - The object ID
  * @param {object} object - The object to delete
  */
@@ -126,5 +159,7 @@ function deleteObjectByType(type, id, object) {
     deleteSceneObject(id, object);
   } else if (type === "clip") {
     deleteClipObject(id, object);
+  } else if (type === "device") {
+    deleteDeviceObject(id, object);
   }
 }

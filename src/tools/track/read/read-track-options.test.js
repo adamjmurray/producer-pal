@@ -434,9 +434,11 @@ describe("readTrack", () => {
 
         expect(result.audioEffects).toEqual([
           {
+            id: "compressor1",
             type: "audio-effect: Compressor",
           },
           {
+            id: "limiter1",
             type: "audio-effect: Limiter",
           },
         ]);

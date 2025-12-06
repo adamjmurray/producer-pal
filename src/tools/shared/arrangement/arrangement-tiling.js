@@ -25,6 +25,7 @@ export function createAudioClipInSession(track, targetLength, audioFilePath) {
 
   if (!isEmpty) {
     const newSceneResult = liveSet.call("create_scene", sceneIds.length);
+
     // LiveAPI.call returns an array like ["id", "833"], join it with space to match getChildIds format
     workingSceneId = Array.isArray(newSceneResult)
       ? newSceneResult.join(" ")
@@ -99,6 +100,7 @@ export function createShortenedClipInHolding(
   // Only create temp clip if there's actually something to truncate
   // Use small epsilon to handle floating-point precision
   const EPSILON = 0.001;
+
   if (tempLength > EPSILON) {
     // For audio clips, create in session then duplicate to arrangement
     // For MIDI clips, create directly in arrangement
@@ -109,6 +111,7 @@ export function createShortenedClipInHolding(
         tempLength,
       );
       const tempClip = LiveAPI.from(tempResult);
+
       track.call("delete_clip", `id ${tempClip.id}`);
     } else {
       // Create audio clip in session with exact length
@@ -195,6 +198,7 @@ export function adjustClipPreRoll(clip, track, isMidiClip, context) {
         tempClipLength,
       );
       const tempClip = LiveAPI.from(tempClipPath);
+
       track.call("delete_clip", `id ${tempClip.id}`);
     } else {
       // Create audio clip in session with exact length
@@ -263,6 +267,7 @@ export function createPartialTile(
   const clipLoopEnd = sourceClip.getProperty("loop_end");
   const clipLength = clipLoopEnd - clipLoopStart;
   const tileStartMarker = clipLoopStart + (contentOffset % clipLength);
+
   partialTile.set("start_marker", tileStartMarker);
 
   // Optionally adjust pre-roll
@@ -316,6 +321,7 @@ export function tileClipToRange(
   // This prevents "invalid syntax" errors when setting start_marker on duplicates
   // (start_marker cannot exceed end_marker)
   const currentEndMarker = sourceClip.getProperty("end_marker");
+
   if (currentEndMarker !== clipLoopEnd) {
     sourceClip.set("end_marker", clipLoopEnd);
   }
@@ -332,6 +338,7 @@ export function tileClipToRange(
 
   // Create full tiles
   let currentPosition = startPosition;
+
   for (let i = 0; i < fullTiles; i++) {
     // Create fresh track object for each iteration to avoid staleness issues
     const freshTrack = new LiveAPI(`live_set tracks ${trackIndex}`);

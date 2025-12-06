@@ -11,6 +11,7 @@ export function filterSchemaForSmallModel(schema, excludeParams) {
   }
 
   const filtered = {};
+
   for (const [key, value] of Object.entries(schema)) {
     if (!excludeParams.includes(key)) {
       filtered[key] = value;

@@ -1,8 +1,11 @@
-# <sub><img src="./assets/image/producer-pal-logo.svg" height="40"/></sub> Producer Pal
+<h1 align="center"><a href="https://producer-pal.org"><sub><img src="./assets/image/producer-pal-logo.svg" height="40"/></sub> Producer Pal</a></h1>
 
 **Natural language interface for Ableton Live**
 
-Control Ableton with Claude, Gemini, OpenAI, local models, and more.
+Control Ableton Live by explaining what you want to happen. Works with Claude,
+Gemini, ChatGPT, Mistral, local models, and more.
+
+Official website: <a href="https://producer-pal.org">producer-pal.org</a>
 
 <img src="./assets/image/screenshot.png" alt="Producer Pal Screenshot" width="1000">
 
@@ -32,7 +35,7 @@ Control Ableton with Claude, Gemini, OpenAI, local models, and more.
 
 Star ⭐️ the repo to help others discover Producer Pal!
 
-For development setup, see [DEVELOPERS.md](./DEVELOPERS.md).
+Want to contribute or build from source? See [DEVELOPERS.md](./DEVELOPERS.md).
 
 ## Open Source & Free Forever
 

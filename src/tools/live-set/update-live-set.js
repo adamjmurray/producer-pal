@@ -39,6 +39,7 @@ export function updateLiveSet(
     if (tempo < 20 || tempo > 999) {
       throw new Error("Tempo must be between 20.0 and 999.0 BPM");
     }
+
     liveSet.set("tempo", tempo);
 
     result.tempo = tempo;
@@ -46,6 +47,7 @@ export function updateLiveSet(
 
   if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
+
     liveSet.set("signature_numerator", parsed.numerator);
     liveSet.set("signature_denominator", parsed.denominator);
 
@@ -62,15 +64,18 @@ export function updateLiveSet(
       // Non-empty string sets the scale and enables it
       const { scaleRoot, scaleName } = parseScale(scale);
       const scaleRootNumber = pitchClassNameToNumber(scaleRoot);
+
       liveSet.set("root_note", scaleRootNumber);
       liveSet.set("scale_name", scaleName);
       liveSet.set("scale_mode", 1);
 
       result.scale = `${scaleRoot} ${scaleName}`;
     }
+
     if (!result.$meta) {
       result.$meta = [];
     }
+
     result.$meta.push(
       "Scale applied to selected clips and defaults for new clips.",
     );
@@ -88,6 +93,7 @@ export function updateLiveSet(
   if (shouldIncludeScalePitches) {
     const rootNote = liveSet.getProperty("root_note");
     const scaleIntervals = liveSet.getProperty("scale_intervals");
+
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
 
@@ -121,6 +127,7 @@ function parseScale(scaleString) {
 
   const scaleRootIndex =
     VALID_PITCH_CLASS_NAMES_LOWERCASE.indexOf(scaleRootLower);
+
   if (scaleRootIndex === -1) {
     throw new Error(
       `Invalid scale root '${scaleRoot}'. Valid roots: ${VALID_PITCH_CLASS_NAMES.join(", ")}`,
@@ -128,6 +135,7 @@ function parseScale(scaleString) {
   }
 
   const scaleNameIndex = VALID_SCALE_NAMES_LOWERCASE.indexOf(scaleNameLower);
+
   if (scaleNameIndex === -1) {
     throw new Error(
       `Invalid scale name '${scaleName}'. Valid scales: ${VALID_SCALE_NAMES.join(", ")}`,

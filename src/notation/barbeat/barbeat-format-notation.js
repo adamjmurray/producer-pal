@@ -29,11 +29,14 @@ function formatNumberWithoutTrailingZeros(value) {
  */
 function calculateBarBeat(startTime, beatsPerBar, timeSigDenominator) {
   let adjustedTime = Math.round(startTime * 1000) / 1000;
+
   if (timeSigDenominator != null) {
     adjustedTime = adjustedTime * (timeSigDenominator / 4);
   }
+
   const bar = Math.floor(adjustedTime / beatsPerBar) + 1;
   const beat = (adjustedTime % beatsPerBar) + 1;
+
   return { bar, beat };
 }
 
@@ -111,6 +114,7 @@ function handleVelocityChange(
       velocityMax !== currentVelocityMax
     ) {
       elements.push(`v${velocityMin}-${velocityMax}`);
+
       return {
         velocity: velocityMin,
         velocityDeviation: noteVelocityDeviation,
@@ -118,6 +122,7 @@ function handleVelocityChange(
     }
   } else if (noteVelocity !== currentVelocity || currentVelocityDeviation > 0) {
     elements.push(`v${noteVelocity}`);
+
     return { velocity: noteVelocity, velocityDeviation: 0 };
   }
 
@@ -138,9 +143,12 @@ function handleVelocityChange(
 function handleDurationChange(noteDuration, currentDuration, elements) {
   if (Math.abs(noteDuration - currentDuration) > 0.001) {
     const durationFormatted = formatNumberWithoutTrailingZeros(noteDuration);
+
     elements.push(`t${durationFormatted}`);
+
     return noteDuration;
   }
+
   return currentDuration;
 }
 
@@ -160,9 +168,12 @@ function handleProbabilityChange(
   if (Math.abs(noteProbability - currentProbability) > 0.001) {
     const probabilityFormatted =
       formatNumberWithoutTrailingZeros(noteProbability);
+
     elements.push(`p${probabilityFormatted}`);
+
     return noteProbability;
   }
+
   return currentProbability;
 }
 
@@ -195,6 +206,7 @@ export function formatNotation(clipNotes, options = {}) {
     timeSigNumerator,
     timeSigDenominator,
   } = options;
+
   if (
     (timeSigNumerator != null && timeSigDenominator == null) ||
     (timeSigDenominator != null && timeSigNumerator == null)
@@ -203,6 +215,7 @@ export function formatNotation(clipNotes, options = {}) {
       "Time signature must be specified with both numerator and denominator",
     );
   }
+
   const beatsPerBar =
     timeSigNumerator != null
       ? timeSigNumerator
@@ -213,6 +226,7 @@ export function formatNotation(clipNotes, options = {}) {
     if (a.start_time !== b.start_time) {
       return a.start_time - b.start_time;
     }
+
     return a.pitch - b.pitch;
   });
 
@@ -246,11 +260,13 @@ export function formatNotation(clipNotes, options = {}) {
         currentVelocityDeviation,
         elements,
       );
+
       currentVelocity = velocityState.velocity;
       currentVelocityDeviation = velocityState.velocityDeviation;
 
       // Check duration change
       const noteDuration = note.duration;
+
       currentDuration = handleDurationChange(
         noteDuration,
         currentDuration,
@@ -259,6 +275,7 @@ export function formatNotation(clipNotes, options = {}) {
 
       // Check probability change
       const noteProbability = note.probability ?? DEFAULT_PROBABILITY;
+
       currentProbability = handleProbabilityChange(
         noteProbability,
         currentProbability,
@@ -271,6 +288,7 @@ export function formatNotation(clipNotes, options = {}) {
 
     // Output time position after all notes for this time
     const beatFormatted = formatBeat(group.beat);
+
     elements.push(`${group.bar}|${beatFormatted}`);
   }
 

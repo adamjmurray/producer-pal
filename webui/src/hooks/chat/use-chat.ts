@@ -170,10 +170,12 @@ export function useChat<
   const handleSend = useCallback(
     async (message: string) => {
       const userMessage = message.trim();
+
       if (!userMessage) return;
 
       if (!apiKey) {
         const userMessageEntry = adapter.createUserMessage(userMessage);
+
         setMessages(
           adapter.createErrorMessage(
             new Error(
@@ -182,9 +184,12 @@ export function useChat<
             [userMessageEntry],
           ),
         );
+
         return;
       }
+
       setIsAssistantResponding(true);
+
       try {
         if (!clientRef.current) {
           await initializeChat();
@@ -195,6 +200,7 @@ export function useChat<
         }
 
         const controller = new AbortController();
+
         abortControllerRef.current = controller;
 
         const stream = clientRef.current.sendMessage(
@@ -223,12 +229,14 @@ export function useChat<
       if (!apiKey) return;
 
       const message = messages[mergedMessageIndex];
+
       if (message?.role !== "user") return;
 
       if (!clientRef.current) return;
 
       const rawIndex = message.rawHistoryIndex;
       const rawMessage = clientRef.current.chatHistory[rawIndex];
+
       if (!rawMessage) return;
 
       // Extract the user message text using adapter
@@ -245,6 +253,7 @@ export function useChat<
         await initializeChat(slicedHistory);
 
         const controller = new AbortController();
+
         abortControllerRef.current = controller;
 
         const stream = clientRef.current.sendMessage(

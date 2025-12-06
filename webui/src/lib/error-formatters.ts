@@ -6,8 +6,10 @@
 export function normalizeErrorMessage(error: unknown): string {
   console.error(error);
   let errorMessage = `${error}`;
+
   if (!errorMessage.startsWith("Error")) {
     errorMessage = `Error: ${errorMessage}`;
   }
+
   return errorMessage;
 }

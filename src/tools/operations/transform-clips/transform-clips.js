@@ -69,12 +69,14 @@ export function transformClips(
   // Generate seed if not provided (do this early so it's available for return)
   const actualSeed = seed ?? Date.now();
   const rng = createSeededRNG(actualSeed);
+
   // Parse transposeValues if provided
   const transposeValuesArray = parseTransposeValues(
     transposeValues,
     transposeMin,
     transposeMax,
   );
+
   // Determine clip selection method
   const clipIdArray = getClipIds(
     clipIds,
@@ -82,26 +84,35 @@ export function transformClips(
     arrangementStart,
     arrangementLength,
   );
+
   if (clipIdArray.length === 0) {
     console.error("Warning: no clips found in arrangement range");
+
     return { clipIds: [], seed: actualSeed };
   }
+
   // Validate clip IDs
   const clips = validateIdTypes(clipIdArray, "clip", "transformClips", {
     skipInvalid: true,
   });
+
   if (clips.length === 0) {
     console.error("Warning: no valid clips found");
+
     return { clipIds: [], seed: actualSeed };
   }
+
   // Track warnings to emit each type only once
   const warnings = new Set();
+
   // Filter arrangement clips only for position shuffling and slicing
   const arrangementClips = clips.filter(
     (clip) => clip.getProperty("is_arrangement_clip") > 0,
   );
+
   // Prepare slice parameters if needed
   const sliceBeats = prepareSliceParams(slice, arrangementClips, warnings);
+
   // Slice clips if requested
   if (slice != null && sliceBeats != null && arrangementClips.length > 0) {
     performSlicing(
@@ -117,14 +128,17 @@ export function transformClips(
     const freshArrangementClips = clips.filter(
       (clip) => clip.getProperty("is_arrangement_clip") > 0,
     );
+
     // Update arrangementClips reference for subsequent operations
     arrangementClips.length = 0;
     arrangementClips.push(...freshArrangementClips);
   }
+
   // Shuffle clip positions if requested
   if (shuffleOrder) {
     performShuffling(arrangementClips, clips, warnings, rng);
   }
+
   // Apply randomization to each clip
   applyParameterTransforms(
     clips,
@@ -145,7 +159,9 @@ export function transformClips(
     rng,
     warnings,
   );
+
   // Return affected clip IDs and seed
   const affectedClipIds = clips.map((clip) => clip.id);
+
   return { clipIds: affectedClipIds, seed: actualSeed };
 }
