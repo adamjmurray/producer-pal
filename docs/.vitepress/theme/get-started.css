@@ -65,17 +65,26 @@
     border-radius: 12px;
     padding: 20px 24px;
     text-align: left;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
 
     &:hover {
       transform: translateY(-4px);
       box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
     }
 
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+
     .card-icon {
-      width: 40px;
-      height: 40px;
-      margin-bottom: 8px;
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
       color: var(--vp-c-brand-1);
 
       svg {
@@ -88,7 +97,7 @@
       font-size: 18px;
       font-weight: 600;
       color: var(--vp-c-text-1);
-      margin: 0 0 6px;
+      margin: 0;
       border: none;
     }
 
@@ -131,7 +140,11 @@
 
   /* Card variants */
   .card-primary {
-    background: linear-gradient(135deg, var(--vp-c-brand-soft) 0%, var(--vp-c-bg-soft) 100%);
+    background: linear-gradient(
+      135deg,
+      var(--vp-c-brand-soft) 0%,
+      var(--vp-c-bg-soft) 100%
+    );
     border: 1px solid var(--vp-c-brand-2);
   }
 

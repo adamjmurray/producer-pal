@@ -55,12 +55,14 @@ features:
     </div>
     <div class="get-started-cards">
       <div class="get-started-card card-primary">
-        <div class="card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
+        <div class="card-header">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <h3 class="card-title">Built-in Chat UI</h3>
         </div>
-        <h3 class="card-title">Built-in Chat UI</h3>
         <p class="card-description">The easiest way to start</p>
         <ul class="card-links">
           <li><a href="/installation/chat-ui">Gemini</a> <span class="tag">free tier</span></li>
@@ -69,14 +71,16 @@ features:
         </ul>
       </div>
       <div class="get-started-card card-secondary">
-        <div class="card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-            <line x1="8" y1="21" x2="16" y2="21" />
-            <line x1="12" y1="17" x2="12" y2="21" />
-          </svg>
+        <div class="card-header">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              <line x1="8" y1="21" x2="16" y2="21" />
+              <line x1="12" y1="17" x2="12" y2="21" />
+            </svg>
+          </div>
+          <h3 class="card-title">Desktop Apps</h3>
         </div>
-        <h3 class="card-title">Desktop Apps</h3>
         <p class="card-description">Native app experience</p>
         <ul class="card-links">
           <li><a href="/installation/claude-desktop">Claude Desktop</a></li>
@@ -84,14 +88,16 @@ features:
         </ul>
       </div>
       <div class="get-started-card card-tertiary">
-        <div class="card-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="1" />
-            <circle cx="19" cy="12" r="1" />
-            <circle cx="5" cy="12" r="1" />
-          </svg>
+        <div class="card-header">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="1" />
+              <circle cx="19" cy="12" r="1" />
+              <circle cx="5" cy="12" r="1" />
+            </svg>
+          </div>
+          <h3 class="card-title">More Options</h3>
         </div>
-        <h3 class="card-title">More Options</h3>
         <p class="card-description">CLI tools & web apps</p>
         <ul class="card-links">
           <li><a href="/installation">See all options →</a></li>
