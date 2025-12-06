@@ -2,11 +2,11 @@
 layout: home
 
 hero:
-  name: "Producer Pal"
-  text: "Natural language interface for Ableton"
+  name: Producer Pal
+  text: Control Ableton Live with words
   tagline:
-    Control Ableton Live by explaining what you want to happen. Works with
-    Claude, Gemini, ChatGPT, Mistral, local models, and more.
+    AI-powered assistant for music production. Works with Claude, Gemini,
+    ChatGPT, Ollama, and more.
   image:
     src: /producer-pal-logo.svg
     alt: Producer Pal
@@ -19,17 +19,15 @@ hero:
       link: /guide
 
 features:
-  - title: Natural Language Control
+  - title: Describe, Don't Click
     details: >
-      Control Ableton using conversational commands. Work faster: Manage tracks
-      and scenes, edit MIDI and audio clips, and build arrangements without
-      clicking.
+      Manage tracks and scenes, edit MIDI and audio clips, add and tweak
+      instruments and effects, and build arrangements through conversation.
 
   - title: Complex Edits Made Simple
-    details:
-      Apply transformations that would be tedious by hand, like "shift every
-      third note down an octave" or "fade out velocities over 8 bars". Explore
-      variations and experiment with patterns.
+    details: >
+      Do tedious edits in seconds: transpose patterns, fade velocities, shift
+      notes, randomize timing. Explore your ideas quickly.
 
   - title: Works Online or Offline
     details:
