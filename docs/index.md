@@ -15,7 +15,7 @@ hero:
       text: Installation
       link: /installation
     - theme: alt
-      text: Getting Started
+      text: User Guide
       link: /guide
 
 features:
@@ -41,6 +41,65 @@ features:
       paywalls, no premium features. Fork it, modify it, use it however you
       want.
 ---
+
+<div class="get-started-wrapper">
+  <section class="get-started-container">
+    <h2 class="get-started-title">Get Started Now</h2>
+    <p class="get-started-subtitle">Choose your setup:</p>
+    <div class="get-started-arrows">
+      <svg viewBox="0 0 600 80" preserveAspectRatio="xMidYMid meet">
+        <path class="arrow-path" d="M300,10 Q180,45 80,70" />
+        <path class="arrow-path" d="M300,10 L300,70" />
+        <path class="arrow-path" d="M300,10 Q420,45 520,70" />
+      </svg>
+    </div>
+    <div class="get-started-cards">
+      <div class="get-started-card card-primary">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </div>
+        <h3 class="card-title">Built-in Chat UI</h3>
+        <p class="card-description">The easiest way to start</p>
+        <ul class="card-links">
+          <li><a href="/installation/chat-ui">Gemini</a> <span class="tag">free tier</span></li>
+          <li><a href="/installation/chat-ui#ollama">Ollama</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/chat-ui#online-llm-apis">OpenRouter, Mistral, etc.</a></li>
+        </ul>
+      </div>
+      <div class="get-started-card card-secondary">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+            <line x1="8" y1="21" x2="16" y2="21" />
+            <line x1="12" y1="17" x2="12" y2="21" />
+          </svg>
+        </div>
+        <h3 class="card-title">Desktop Apps</h3>
+        <p class="card-description">Native app experience</p>
+        <ul class="card-links">
+          <li><a href="/installation/claude-desktop">Claude Desktop</a></li>
+          <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
+        </ul>
+      </div>
+      <div class="get-started-card card-tertiary">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="1" />
+            <circle cx="19" cy="12" r="1" />
+            <circle cx="5" cy="12" r="1" />
+          </svg>
+        </div>
+        <h3 class="card-title">More Options</h3>
+        <p class="card-description">CLI tools & web apps</p>
+        <ul class="card-links">
+          <li><a href="/installation">See all options →</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
 
 ## Demo
 
@@ -79,11 +138,6 @@ Watch the Producer Pal walk-through video with Claude Desktop:
   [the bug reports forum](https://github.com/adamjmurray/producer-pal/discussions/categories/bug-reports)
   or [issues list](https://github.com/adamjmurray/producer-pal/issues)
 
-If you want to support Producer Pal development, ⭐️ star
-[the GitHub repository](https://github.com/adamjmurray/producer-pal) and share
-the [npm package](https://www.npmjs.com/package/producer-pal) to help others
-discover the project.
-
 ## Data Privacy
 
 When using online AI services, your musical data (MIDI notes, track names,
@@ -94,5 +148,11 @@ sensitive work.
 
 ## Get Involved
 
+To support Producer Pal development, ⭐️ star
+[the GitHub repository](https://github.com/adamjmurray/producer-pal) to help
+others discover the project.
+
 Want to help? Join the
-[discussion on GitHub](https://github.com/adamjmurray/producer-pal/discussions).
+[discussion on GitHub](https://github.com/adamjmurray/producer-pal/discussions)
+or
+[contribute directly](https://github.com/adamjmurray/producer-pal/blob/main/DEVELOPERS.md).
