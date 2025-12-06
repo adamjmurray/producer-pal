@@ -1,9 +1,9 @@
 <h1 align="center"><a href="https://producer-pal.org"><sub><img src="./assets/image/producer-pal-logo.svg" height="40"/></sub> Producer Pal</a></h1>
 
-**Natural language interface for Ableton Live**
+**Control Ableton Live with words**
 
-Control Ableton Live by explaining what you want to happen. Works with Claude,
-Gemini, ChatGPT, Mistral, local models, and more.
+AI-powered assistant for music production. Works with Claude, Gemini, ChatGPT,
+Ollama, and more.
 
 Official website: <a href="https://producer-pal.org">producer-pal.org</a>
 
