@@ -4,6 +4,14 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "./ChatInput";
+import type { Provider } from "../../../types/settings";
+
+const defaultProps = {
+  provider: "gemini" as Provider,
+  model: "gemini-2.0-flash-thinking",
+  defaultThinking: "Auto",
+  defaultTemperature: 1.0,
+};
 
 describe("ChatInput", () => {
   describe("rendering", () => {
@@ -15,6 +23,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -29,6 +38,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -43,6 +53,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={true}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -57,6 +68,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -76,6 +88,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -95,6 +108,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -112,6 +126,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -132,6 +147,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={true}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -152,6 +168,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -172,6 +189,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -182,7 +200,10 @@ describe("ChatInput", () => {
       fireEvent.click(button);
 
       expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Hello");
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Auto",
+        temperature: 1.0,
+      });
     });
 
     it("clears input after sending", () => {
@@ -193,6 +214,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -215,6 +237,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -223,7 +246,10 @@ describe("ChatInput", () => {
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 
       expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Hello");
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Auto",
+        temperature: 1.0,
+      });
     });
 
     it("clears input after Enter key send", () => {
@@ -234,6 +260,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -252,6 +279,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -270,6 +298,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={true}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -288,6 +317,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -305,6 +335,7 @@ describe("ChatInput", () => {
           handleSend={handleSend}
           isAssistantResponding={false}
           onStop={onStop}
+          {...defaultProps}
         />,
       );
 
@@ -313,6 +344,70 @@ describe("ChatInput", () => {
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 
       expect(handleSend).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("per-message settings", () => {
+    it("passes default thinking and temperature on send", () => {
+      const handleSend = vi.fn();
+      const onStop = vi.fn();
+      render(
+        <ChatInput
+          handleSend={handleSend}
+          isAssistantResponding={false}
+          onStop={onStop}
+          {...defaultProps}
+        />,
+      );
+
+      const textarea = screen.getByRole("textbox");
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+
+      const button = screen.getByRole("button", { name: "Send" });
+      fireEvent.click(button);
+
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Auto",
+        temperature: 1.0,
+      });
+    });
+
+    it("resets to defaults when reset button clicked", () => {
+      const handleSend = vi.fn();
+      const onStop = vi.fn();
+      const { container } = render(
+        <ChatInput
+          handleSend={handleSend}
+          isAssistantResponding={false}
+          onStop={onStop}
+          {...defaultProps}
+        />,
+      );
+
+      // Expand settings toolbar
+      const expandButton = container.querySelector("button");
+      fireEvent.click(expandButton!);
+
+      // Change thinking
+      const select = container.querySelector("select");
+      fireEvent.change(select!, { target: { value: "High" } });
+
+      // Reset to defaults
+      const resetButton = Array.from(container.querySelectorAll("button")).find(
+        (btn) => btn.textContent.includes("Use defaults"),
+      );
+      fireEvent.click(resetButton!);
+
+      // Send message and verify defaults are used
+      const textarea = screen.getByRole("textbox");
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+      const sendButton = screen.getByRole("button", { name: "Send" });
+      fireEvent.click(sendButton);
+
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Auto",
+        temperature: 1.0,
+      });
     });
   });
 });

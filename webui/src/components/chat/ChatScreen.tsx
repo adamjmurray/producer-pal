@@ -8,12 +8,19 @@ import { MessageList } from "./MessageList";
 interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (
+    message: string,
+    options?: { thinking?: string; temperature?: number },
+  ) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
   activeProvider: Provider | null;
+  provider: Provider;
+  model: string;
+  defaultThinking: string;
+  defaultTemperature: number;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
@@ -50,6 +57,10 @@ export function ChatScreen({
   activeThinking,
   activeTemperature,
   activeProvider,
+  provider,
+  model,
+  defaultThinking,
+  defaultTemperature,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -91,6 +102,10 @@ export function ChatScreen({
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
         onStop={onStop}
+        provider={provider}
+        model={model}
+        defaultThinking={defaultThinking}
+        defaultTemperature={defaultTemperature}
       />
     </div>
   );
