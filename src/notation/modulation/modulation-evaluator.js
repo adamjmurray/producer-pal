@@ -22,12 +22,14 @@ export function applyModulations(
 
   // Parse the modulation string once before processing notes
   let ast;
+
   try {
     ast = parser.parse(modulationString);
   } catch (error) {
     console.error(
       `Warning: Failed to parse modulation string: ${error.message}`,
     );
+
     return; // Early return - no point processing notes if parsing failed
   }
 
@@ -236,12 +238,14 @@ export function evaluateModulation(
   }
 
   let ast;
+
   try {
     ast = parser.parse(modulationString);
   } catch (error) {
     console.error(
       `Warning: Failed to parse modulation string: ${error.message}`,
     );
+
     return {};
   }
 

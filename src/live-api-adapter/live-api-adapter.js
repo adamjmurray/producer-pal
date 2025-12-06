@@ -89,13 +89,16 @@ if (process.env.ENABLE_RAW_LIVE_API === "true") {
  */
 function callTool(toolName, args) {
   const tool = tools[toolName];
+
   if (!tool) {
     throw new Error(`Unknown tool: ${tool}`);
   }
+
   return tool(args);
 }
 
 let isCompactOutputEnabled = true;
+
 /**
  * Enable or disable compact output format
  *
@@ -178,6 +181,7 @@ function sendResponse(requestId, result) {
     const errorResult = formatErrorResponse(
       `Response too large: ${jsonString.length} bytes would require ${totalChunks} chunks (max ${MAX_CHUNKS})`,
     );
+
     outlet(
       0,
       "mcp_response",
@@ -185,11 +189,13 @@ function sendResponse(requestId, result) {
       JSON.stringify(errorResult),
       MAX_ERROR_DELIMITER,
     );
+
     return;
   }
 
   // Chunk the JSON string
   const chunks = [];
+
   for (let i = 0; i < jsonString.length; i += MAX_CHUNK_SIZE) {
     chunks.push(jsonString.slice(i, i + MAX_CHUNK_SIZE));
   }
@@ -209,6 +215,7 @@ function sendResponse(requestId, result) {
  */
 export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
   let result;
+
   try {
     const args = JSON.parse(argsJSON);
 
@@ -216,6 +223,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
     if (contextJSON != null) {
       try {
         const incomingContext = JSON.parse(contextJSON);
+
         Object.assign(context, incomingContext);
       } catch (contextError) {
         console.error(
@@ -231,6 +239,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
       // toCompactJSLiteral() doesn't save us a ton of tokens in most tools, so if we see any issues
       // with any LLMs, we can go back to omitting toCompactJSLiteral() here.
       const output = await callTool(tool, args);
+
       result = formatSuccessResponse(
         isCompactOutputEnabled ? toCompactJSLiteral(output) : output,
       );
@@ -244,6 +253,7 @@ export async function mcp_request(requestId, tool, argsJSON, contextJSON) {
       `Error parsing tool call request: ${error.message}`,
     );
   }
+
   // Send response back to Node for Max
   sendResponse(requestId, result);
 }

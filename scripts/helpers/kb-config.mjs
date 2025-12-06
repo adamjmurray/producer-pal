@@ -26,17 +26,22 @@ function createItemsArray() {
           if (relativePath.startsWith("src/tools/")) {
             return "src--tools--tests";
           }
+
           if (relativePath.startsWith("src/notation/")) {
             return "src--notation--tests";
           }
+
           return "src--tests";
         }
+
         if (relativePath.startsWith("src/tools/")) {
           return "src--tools";
         }
+
         if (relativePath.startsWith("src/notation/")) {
           return "src--notation";
         }
+
         return "src";
       },
     },
@@ -49,18 +54,22 @@ function createItemsArray() {
         if (relativePath.includes("/test-cases/")) {
           return "webui--test.ts";
         }
+
         // Test files
         if (relativePath.match(/\.test\.\w+$/)) {
           return "webui--test.ts";
         }
+
         // TSX files (React components)
         if (relativePath.endsWith(".tsx")) {
           return "webui--tsx";
         }
+
         // TS files (hooks, utilities, etc.)
         if (relativePath.endsWith(".ts")) {
           return "webui--ts";
         }
+
         // Everything else (CSS, HTML, SVG, etc.)
         return "webui--other";
       },
@@ -138,6 +147,7 @@ export function createKnowledgeBaseConfig(projectRoot) {
     if (!groups.has(groupName)) {
       groups.set(groupName, []);
     }
+
     groups.get(groupName).push(...item);
   }
 

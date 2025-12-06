@@ -39,10 +39,12 @@ export function connect(_params = {}, context = {}) {
   };
 
   const scaleEnabled = liveSet.getProperty("scale_mode") > 0;
+
   if (scaleEnabled) {
     const scaleName = liveSet.getProperty("scale_name");
     const rootNote = liveSet.getProperty("root_note");
     const scaleRoot = PITCH_CLASS_NAMES[rootNote];
+
     result.liveSet.scale = `${scaleRoot} ${scaleName}`;
   }
 
@@ -54,22 +56,27 @@ export function connect(_params = {}, context = {}) {
   ];
 
   let foundAnyInstrument = false;
+
   for (const trackId of trackIds) {
     const track = LiveAPI.from(trackId);
+
     if (track.getProperty("has_midi_input") > 0) {
       for (const device of track.getChildren("devices")) {
         const deviceType = device.getProperty("type");
+
         if (deviceType === LIVE_API_DEVICE_TYPE_INSTRUMENT) {
           // it's an instrument, instrument rack, or drum rack
           foundAnyInstrument = true;
           break;
         }
       }
+
       if (foundAnyInstrument) {
         break;
       }
     }
   }
+
   if (!foundAnyInstrument) {
     messages.push(`No instruments found.
 To create music with MIDI clips, you need instruments (Wavetable, Operator, Drum Rack, etc).

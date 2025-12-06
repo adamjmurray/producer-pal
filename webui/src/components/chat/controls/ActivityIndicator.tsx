@@ -118,6 +118,7 @@ function generateSineWavePath(
   for (let i = 0; i <= points; i++) {
     const x = i * step;
     const y = amplitude * Math.sin((i / points) * frequency * 2 * Math.PI);
+
     path += `${i === 0 ? "M" : "L"} ${x},${y} `;
   }
 

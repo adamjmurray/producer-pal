@@ -10,6 +10,7 @@ export function useTheme() {
   // Load theme from localStorage on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
+
     if (savedTheme) {
       setTheme(savedTheme);
     }
@@ -34,8 +35,10 @@ export function useTheme() {
     // Listen for system theme changes when using "system" theme
     if (theme === "system") {
       mediaQuery.addEventListener("change", applyTheme);
+
       return () => mediaQuery.removeEventListener("change", applyTheme);
     }
+
     return undefined;
   }, [theme]);
 

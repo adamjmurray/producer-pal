@@ -15,6 +15,7 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
       console.error("Warning: shuffleOrder requires arrangement clips");
       warnings.add("shuffle-no-arrangement");
     }
+
     return;
   }
 
@@ -29,11 +30,13 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
 
   // Calculate gaps between consecutive clips (preserves original spacing pattern)
   const gaps = [];
+
   for (let i = 0; i < sortedClips.length - 1; i++) {
     const clipEnd =
       sortedClips[i].getProperty("start_time") +
       sortedClips[i].getProperty("length");
     const nextStart = sortedClips[i + 1].getProperty("start_time");
+
     gaps.push(nextStart - clipEnd);
   }
 
@@ -45,8 +48,10 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
   let currentPos = startPosition;
   const targetPositions = shuffledClips.map((clip, i) => {
     const pos = currentPos;
+
     currentPos += clip.getProperty("length");
     if (i < gaps.length) currentPos += gaps[i];
+
     return pos;
   });
 
@@ -64,8 +69,10 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
       holdingPos,
     );
     const tempClip = LiveAPI.from(result);
+
     // Delete original
     track.call("delete_clip", `id ${clip.id}`);
+
     return { tempClip, track, targetPosition: targetPositions[index] };
   });
 
@@ -78,6 +85,7 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
     );
     track.call("delete_clip", `id ${tempClip.id}`);
   }
+
   // After shuffling, the clips in the array are stale (they were deleted and recreated)
   // Re-scan to get fresh clip objects
   const track = new LiveAPI(`live_set tracks ${trackIndexForShuffle}`);
@@ -100,6 +108,7 @@ export function shuffleArray(array, rng) {
 
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
+
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
@@ -115,9 +124,11 @@ export function shuffleArray(array, rng) {
 export function calculateShufflePositions(sortedClipInfo, shuffledIndices) {
   // Calculate gaps between consecutive clips in original order
   const gaps = [];
+
   for (let i = 0; i < sortedClipInfo.length - 1; i++) {
     const clipEnd = sortedClipInfo[i].startTime + sortedClipInfo[i].length;
     const nextStart = sortedClipInfo[i + 1].startTime;
+
     gaps.push(nextStart - clipEnd);
   }
 
@@ -127,8 +138,10 @@ export function calculateShufflePositions(sortedClipInfo, shuffledIndices) {
 
   return shuffledIndices.map((origIndex, i) => {
     const pos = currentPos;
+
     currentPos += sortedClipInfo[origIndex].length;
     if (i < gaps.length) currentPos += gaps[i];
+
     return pos;
   });
 }

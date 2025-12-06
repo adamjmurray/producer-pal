@@ -50,6 +50,7 @@ export function readTrack(args = {}, _context = {}) {
   } else {
     // Construct the appropriate Live API path based on track category
     let trackPath;
+
     if (category === "regular") {
       trackPath = `live_set tracks ${trackIndex}`;
     } else if (category === "return") {
@@ -61,6 +62,7 @@ export function readTrack(args = {}, _context = {}) {
         `Invalid category: ${category}. Must be "regular", "return", or "master".`,
       );
     }
+
     track = new LiveAPI(trackPath);
   }
 
@@ -104,6 +106,7 @@ function processSessionClips(
         }),
       )
       .filter((clip) => clip.id != null);
+
     return { sessionClips };
   }
 
@@ -113,6 +116,7 @@ function processSessionClips(
       const clip = new LiveAPI(
         `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
       );
+
       return clip.exists() ? clip : null;
     })
     .filter(Boolean).length;
@@ -152,6 +156,7 @@ function processArrangementClips(
         }),
       )
       .filter((clip) => clip.id != null);
+
     return { arrangementClips };
   }
 
@@ -207,6 +212,7 @@ function processDevices(categorizedDevices, config) {
       ...categorizedDevices.audioEffects,
     ];
     const drumMap = getDrumMap(allDevices);
+
     if (drumMap != null) {
       result.drumMap = drumMap;
     }
@@ -323,6 +329,7 @@ export function readTrackGeneric({
     includeRackChains,
     isProducerPalHost,
   });
+
   Object.assign(result, deviceResults);
 
   cleanupDeviceChains(result);

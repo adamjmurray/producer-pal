@@ -10,6 +10,7 @@ export function setAllNonNull(target, properties) {
       target[key] = value;
     }
   }
+
   return target;
 }
 
@@ -20,11 +21,13 @@ export function setAllNonNull(target, properties) {
  */
 export function withoutNulls(obj) {
   const result = {};
+
   for (const [key, value] of Object.entries(obj)) {
     if (value != null) {
       result[key] = value;
     }
   }
+
   return result;
 }
 
@@ -53,9 +56,11 @@ export function parseCommaSeparatedIndices(indices) {
     .filter((index) => index.length > 0)
     .map((index) => {
       const parsed = parseInt(index, 10);
+
       if (isNaN(parsed)) {
         throw new Error(`Invalid index "${index}" - must be a valid integer`);
       }
+
       return parsed;
     });
 }
@@ -68,9 +73,11 @@ export function parseCommaSeparatedIndices(indices) {
  */
 export function parseTimeSignature(timeSignature) {
   const match = timeSignature.match(/^(\d+)\/(\d+)$/);
+
   if (!match) {
     throw new Error('Time signature must be in format "n/m" (e.g. "4/4")');
   }
+
   return {
     numerator: parseInt(match[1], 10),
     denominator: parseInt(match[2], 10),
@@ -85,6 +92,7 @@ export function parseTimeSignature(timeSignature) {
  */
 export function toLiveApiView(view) {
   const normalized = view.toLowerCase(); // for added flexibility even though should already be lower case
+
   switch (normalized) {
     case "session":
       return "Session";

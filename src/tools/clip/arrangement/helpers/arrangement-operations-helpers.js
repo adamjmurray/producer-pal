@@ -83,6 +83,7 @@ export function handleArrangementLengthening({
         tileLength: currentArrangementLength,
       },
     );
+
     updatedClips.push({ id: clip.id });
     updatedClips.push(...tiledClips);
   } else {
@@ -104,6 +105,7 @@ export function handleArrangementLengthening({
       track,
       context,
     });
+
     updatedClips.push({ id: clip.id });
     updatedClips.push(...tiledClips);
   }
@@ -162,7 +164,9 @@ function createLoopeClipTiles({
         tileLength: currentArrangementLength,
       },
     );
+
     updatedClips.push(...tiledClips);
+
     return updatedClips;
   }
 
@@ -191,6 +195,7 @@ function createLoopeClipTiles({
         newEndTime,
       );
       const tempClip = LiveAPI.from(tempResult);
+
       slot.call("delete_clip");
       track.call("delete_clip", `id ${tempClip.id}`);
     } else {
@@ -200,6 +205,7 @@ function createLoopeClipTiles({
         tempClipLength,
       );
       const tempClip = LiveAPI.from(tempClipPath);
+
       track.call("delete_clip", `id ${tempClip.id}`);
     }
 
@@ -215,7 +221,9 @@ function createLoopeClipTiles({
       context,
       { adjustPreRoll: true, tileLength: firstTileLength },
     );
+
     updatedClips.push(...tiledClips);
+
     return updatedClips;
   }
 
@@ -231,7 +239,9 @@ function createLoopeClipTiles({
     context,
     { adjustPreRoll: true, tileLength: firstTileLength },
   );
+
   updatedClips.push(...tiledClips);
+
   return updatedClips;
 }
 
@@ -287,6 +297,7 @@ export function handleArrangementShortening({
       newEndTime,
     );
     const tempClip = LiveAPI.from(tempResult);
+
     // Re-apply warping and looping to arrangement clip
     tempClip.set("warping", 1);
     tempClip.set("looping", 1);
@@ -300,6 +311,7 @@ export function handleArrangementShortening({
       tempClipLength,
     );
     const tempClip = LiveAPI.from(tempClipResult);
+
     track.call("delete_clip", `id ${tempClip.id}`);
   }
 }

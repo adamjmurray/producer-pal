@@ -45,11 +45,13 @@ export function updateDevice({ ids, name, collapsed, params }) {
   if (updatedDevices.length === 0) {
     return [];
   }
+
   return updatedDevices.length === 1 ? updatedDevices[0] : updatedDevices;
 }
 
 function updateCollapsedState(device, collapsed) {
   const deviceView = new LiveAPI(`${device.path} view`);
+
   if (deviceView.exists()) {
     deviceView.set("is_collapsed", collapsed ? 1 : 0);
   }
@@ -60,6 +62,7 @@ function setParamValues(paramsJson) {
 
   for (const [paramId, inputValue] of Object.entries(paramValues)) {
     const param = LiveAPI.from(paramId);
+
     if (!param.exists()) {
       console.error(`updateDevice: param id "${paramId}" does not exist`);
       continue;
@@ -76,36 +79,47 @@ function setParamValue(param, inputValue) {
   if (isQuantized && typeof inputValue === "string") {
     const valueItems = param.get("value_items");
     const index = valueItems.indexOf(inputValue);
+
     if (index === -1) {
       console.error(
         `updateDevice: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
       );
+
       return;
     }
+
     param.set("value", index);
+
     return;
   }
 
   // 2. Note - string matching note pattern (e.g., "C4", "F#-1")
   if (isNoteName(inputValue)) {
     const midi = noteNameToMidi(inputValue);
+
     if (midi == null) {
       console.error(`updateDevice: invalid note name "${inputValue}"`);
+
       return;
     }
+
     param.set("value", midi);
+
     return;
   }
 
   // 3. Pan - detect via current label, convert -1/1 to internal range
   const currentValue = param.getProperty("value");
   const currentLabel = param.call("str_for_value", currentValue);
+
   if (isPanLabel(currentLabel)) {
     const min = param.getProperty("min");
     const max = param.getProperty("max");
     // Convert -1 to 1 → internal range
     const internalValue = ((inputValue + 1) / 2) * (max - min) + min;
+
     param.set("value", internalValue);
+
     return;
   }
 

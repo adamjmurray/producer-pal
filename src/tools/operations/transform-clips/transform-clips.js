@@ -87,6 +87,7 @@ export function transformClips(
 
   if (clipIdArray.length === 0) {
     console.error("Warning: no clips found in arrangement range");
+
     return { clipIds: [], seed: actualSeed };
   }
 
@@ -97,6 +98,7 @@ export function transformClips(
 
   if (clips.length === 0) {
     console.error("Warning: no valid clips found");
+
     return { clipIds: [], seed: actualSeed };
   }
 
@@ -126,6 +128,7 @@ export function transformClips(
     const freshArrangementClips = clips.filter(
       (clip) => clip.getProperty("is_arrangement_clip") > 0,
     );
+
     // Update arrangementClips reference for subsequent operations
     arrangementClips.length = 0;
     arrangementClips.push(...freshArrangementClips);
@@ -159,5 +162,6 @@ export function transformClips(
 
   // Return affected clip IDs and seed
   const affectedClipIds = clips.map((clip) => clip.id);
+
   return { clipIds: affectedClipIds, seed: actualSeed };
 }

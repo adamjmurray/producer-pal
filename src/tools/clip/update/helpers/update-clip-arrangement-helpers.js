@@ -19,6 +19,7 @@ export function handleArrangementStartOperation({
     console.error(
       `Warning: arrangementStart parameter ignored for session clip (id ${clip.id})`,
     );
+
     return clip.id;
   }
 
@@ -35,6 +36,7 @@ export function handleArrangementStartOperation({
 
   // Track clips being moved to same track
   const moveCount = (tracksWithMovedClips.get(trackIndex) || 0) + 1;
+
   tracksWithMovedClips.set(trackIndex, moveCount);
 
   const newClipResult = track.call(

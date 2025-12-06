@@ -78,6 +78,7 @@ export function applyAudioTransformIfNeeded(clip, audioParams, rng, warnings) {
       console.error("Warning: audio parameters ignored for MIDI clips");
       warnings.add("audio-params-midi-clip");
     }
+
     return;
   }
 
@@ -99,6 +100,7 @@ export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
       console.error("Warning: MIDI parameters ignored for audio clips");
       warnings.add("midi-params-audio-clip");
     }
+
     return;
   }
 

@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import stylistic from "@stylistic/eslint-plugin";
 import tsPlugin from "@typescript-eslint/eslint-plugin";
 import tsParser from "@typescript-eslint/parser";
 import importPlugin from "eslint-plugin-import";
@@ -84,6 +85,26 @@ const baseRules = {
   // Security - eval family
   "no-eval": "error", // Never use eval()
   "no-new-func": "error", // Never use new Function()
+
+  // Vertical spacing - enforces blank lines at logical locations
+  "@stylistic/padding-line-between-statements": [
+    "error",
+    // Blank line after imports
+    { blankLine: "always", prev: "import", next: "*" },
+    { blankLine: "any", prev: "import", next: "import" },
+    // Blank line after variable declarations block
+    { blankLine: "always", prev: ["const", "let", "var"], next: "*" },
+    {
+      blankLine: "any",
+      prev: ["const", "let", "var"],
+      next: ["const", "let", "var"],
+    },
+    // Blank line before return
+    { blankLine: "always", prev: "*", next: "return" },
+    // Blank line before/after multiline block-like statements
+    { blankLine: "always", prev: "*", next: "multiline-block-like" },
+    { blankLine: "always", prev: "multiline-block-like", next: "*" },
+  ],
 
   // Complexity rules
   "max-lines-per-function": [
@@ -235,6 +256,7 @@ export default [
       sourceType: "module",
     },
     plugins: {
+      "@stylistic": stylistic,
       import: importPlugin,
       sonarjs,
       jsdoc,
@@ -279,6 +301,7 @@ export default [
       },
     },
     plugins: {
+      "@stylistic": stylistic,
       "@typescript-eslint": tsPlugin,
       import: importPlugin,
       sonarjs,
@@ -394,6 +417,8 @@ export default [
       complexity: ["error", 30],
       "sonarjs/no-duplicate-string": "off",
       "import/order": "off", // Test files need imports after vi.mock() calls
+      // TODO: Enable padding for tests after increasing max-lines or splitting large test files
+      "@stylistic/padding-line-between-statements": "off",
     },
   },
   {

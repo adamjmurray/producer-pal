@@ -27,6 +27,7 @@ export function validateAndParseArrangementParams(
   }
 
   const songTimeSig = parseSongTimeSignature();
+
   result.songTimeSigNumerator = songTimeSig.numerator;
   result.songTimeSigDenominator = songTimeSig.denominator;
 
@@ -61,9 +62,11 @@ export function validateAndParseArrangementParams(
  */
 export function buildClipResultObject(clipId, noteCount) {
   const result = { id: clipId };
+
   if (noteCount != null) {
     result.noteCount = noteCount;
   }
+
   return result;
 }
 

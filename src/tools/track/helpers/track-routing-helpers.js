@@ -27,6 +27,7 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
 
   if (!isGroup && category === "regular") {
     const inputType = track.getProperty("input_routing_type");
+
     result.inputRoutingType = inputType
       ? {
           name: inputType.display_name,
@@ -35,6 +36,7 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
       : null;
 
     const inputChannel = track.getProperty("input_routing_channel");
+
     result.inputRoutingChannel = inputChannel
       ? {
           name: inputChannel.display_name,
@@ -47,6 +49,7 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
   }
 
   const outputType = track.getProperty("output_routing_type");
+
   result.outputRoutingType = outputType
     ? {
         name: outputType.display_name,
@@ -55,6 +58,7 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
     : null;
 
   const outputChannel = track.getProperty("output_routing_channel");
+
   result.outputRoutingChannel = outputChannel
     ? {
         name: outputChannel.display_name,
@@ -64,6 +68,7 @@ export function processCurrentRouting(track, category, isGroup, canBeArmed) {
 
   if (canBeArmed) {
     const monitoringStateValue = track.getProperty("current_monitoring_state");
+
     result.monitoringState =
       {
         [LIVE_API_MONITORING_STATE_IN]: MONITORING_STATE.IN,
@@ -97,6 +102,7 @@ export function processAvailableRouting(track, category, isGroup) {
   if (!isGroup && category === "regular") {
     const availableInputTypes =
       track.getProperty("available_input_routing_types") || [];
+
     result.availableInputRoutingTypes = availableInputTypes.map((type) => ({
       name: type.display_name,
       inputId: String(type.identifier),
@@ -104,6 +110,7 @@ export function processAvailableRouting(track, category, isGroup) {
 
     const availableInputChannels =
       track.getProperty("available_input_routing_channels") || [];
+
     result.availableInputRoutingChannels = availableInputChannels.map((ch) => ({
       name: ch.display_name,
       inputId: String(ch.identifier),
@@ -115,6 +122,7 @@ export function processAvailableRouting(track, category, isGroup) {
 
   const availableOutputTypes =
     track.getProperty("available_output_routing_types") || [];
+
   result.availableOutputRoutingTypes = availableOutputTypes.map((type) => ({
     name: type.display_name,
     outputId: String(type.identifier),
@@ -122,6 +130,7 @@ export function processAvailableRouting(track, category, isGroup) {
 
   const availableOutputChannels =
     track.getProperty("available_output_routing_channels") || [];
+
   result.availableOutputRoutingChannels = availableOutputChannels.map((ch) => ({
     name: ch.display_name,
     outputId: String(ch.identifier),

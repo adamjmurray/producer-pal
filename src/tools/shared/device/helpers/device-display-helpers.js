@@ -57,6 +57,7 @@ export function parseLabel(label) {
 
   for (const pattern of LABEL_PATTERNS) {
     const match = label.match(pattern.regex);
+
     if (!match) continue;
 
     if (pattern.fixedValue !== undefined) {
@@ -71,6 +72,7 @@ export function parseLabel(label) {
       // Will be normalized later when we know the max pan value
       const num = parseInt(match[1]);
       const dir = match[2];
+
       return { value: num, unit: "pan", direction: dir };
     }
 
@@ -82,6 +84,7 @@ export function parseLabel(label) {
 
   // No unit detected - try to extract just a number
   const numMatch = label.match(/^([\d.-]+)/);
+
   if (numMatch) {
     return { value: parseFloat(numMatch[1]), unit: null };
   }
@@ -96,6 +99,7 @@ export function parseLabel(label) {
  */
 export function isPanLabel(label) {
   if (!label || typeof label !== "string") return false;
+
   return /^(\d+[LR]|C)$/.test(label);
 }
 
@@ -109,10 +113,12 @@ export function normalizePan(label, maxPanValue) {
   if (label === "C") return 0;
 
   const match = label.match(/^(\d+)([LR])$/);
+
   if (!match) return 0;
 
   const num = parseInt(match[1]);
   const dir = match[2];
+
   return dir === "L" ? -num / maxPanValue : num / maxPanValue;
 }
 
@@ -123,6 +129,7 @@ export function normalizePan(label, maxPanValue) {
  */
 export function extractMaxPanValue(label) {
   const match = label.match(/^(\d+)[LR]$/);
+
   return match ? parseInt(match[1]) : 50;
 }
 
@@ -134,6 +141,7 @@ export function extractMaxPanValue(label) {
 export function midiToNoteName(midi) {
   const octave = Math.floor(midi / 12) - 2;
   const note = NOTE_NAMES[midi % 12];
+
   return `${note}${octave}`;
 }
 
@@ -144,6 +152,7 @@ export function midiToNoteName(midi) {
  */
 export function noteNameToMidi(name) {
   const match = name.match(/^([A-G])([#b]?)(-?\d+)$/);
+
   if (!match) return null;
 
   const [, letter, accidental, octave] = match;
@@ -164,8 +173,10 @@ export function isNoteName(value) {
 
 function addStateFlags(result, paramApi, state, automationState) {
   const isEnabled = paramApi.getProperty("is_enabled") > 0;
+
   if (!isEnabled) result.enabled = false;
   if (state && state !== "active") result.state = state;
+
   if (automationState && automationState !== "none") {
     result.automation = automationState;
   }
@@ -180,7 +191,9 @@ export function readParameterBasic(paramApi) {
   const name = paramApi.getProperty("name");
   const originalName = paramApi.getProperty("original_name");
   const result = { id: paramApi.id, name };
+
   if (originalName !== name) result.originalName = originalName;
+
   return result;
 }
 
@@ -203,7 +216,9 @@ export function readParameter(paramApi) {
       value: valueItems[paramApi.getProperty("value")],
       options: valueItems,
     };
+
     addStateFlags(result, paramApi, state, automationState);
+
     return result;
   }
 
@@ -229,7 +244,9 @@ export function readParameter(paramApi) {
       max: 1,
       unit: "pan",
     };
+
     addStateFlags(result, paramApi, state, automationState);
+
     return result;
   }
 
@@ -241,7 +258,9 @@ export function readParameter(paramApi) {
     min: minParsed.value ?? rawMin,
     max: maxParsed.value ?? rawMax,
   };
+
   if (unit) result.unit = unit;
   addStateFlags(result, paramApi, state, automationState);
+
   return result;
 }

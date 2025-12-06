@@ -7,17 +7,20 @@ export function parseSceneIndexList(input) {
   if (input == null) {
     return [];
   }
+
   return input
     .split(",")
     .map((s) => s.trim())
     .filter((s) => s !== "")
     .map((s) => {
       const num = parseInt(s, 10);
+
       if (isNaN(num) || num < 0) {
         throw new Error(
           `invalid sceneIndex "${s}" - must be a non-negative integer`,
         );
       }
+
       return num;
     });
 }
@@ -31,6 +34,7 @@ export function parseArrangementStartList(input) {
   if (input == null) {
     return [];
   }
+
   return input
     .split(",")
     .map((s) => s.trim())

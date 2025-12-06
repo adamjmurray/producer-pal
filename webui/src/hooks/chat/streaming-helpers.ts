@@ -24,12 +24,14 @@ export async function handleMessageStream<TMessage>(
     for await (const chatHistory of stream) {
       onUpdate(formatter(chatHistory));
     }
+
     return true;
   } catch (error) {
     // Abort errors are expected when user cancels - don't treat as error
     if (error instanceof Error && error.name === "AbortError") {
       return false;
     }
+
     throw error;
   }
 }

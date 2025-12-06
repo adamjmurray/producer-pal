@@ -50,6 +50,7 @@ export class Folder {
     if (this._index >= this._entries.length) {
       return "";
     }
+
     return this._entries[this._index].name;
   }
 
@@ -57,6 +58,7 @@ export class Folder {
     if (this._index >= this._entries.length) {
       return "";
     }
+
     return this._entries[this._index].type;
   }
 
@@ -64,6 +66,7 @@ export class Folder {
     if (this._index >= this._entries.length) {
       return "";
     }
+
     return this._entries[this._index].extension ?? "";
   }
 

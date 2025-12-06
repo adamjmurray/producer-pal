@@ -90,18 +90,22 @@ function applySendProperties(track, sendGainDb, sendReturn) {
       "updateTrack failed: sendGainDb and sendReturn must both be specified",
     );
   }
+
   if (sendGainDb == null) {
     return;
   }
 
   // Get mixer and sends
   const mixer = new LiveAPI(track.path + " mixer_device");
+
   if (!mixer.exists()) {
     throw new Error(
       `updateTrack failed: track ${track.id} has no mixer device`,
     );
   }
+
   const sends = mixer.getChildren("sends");
+
   if (sends.length === 0) {
     throw new Error(`updateTrack failed: track ${track.id} has no sends`);
   }
@@ -112,9 +116,11 @@ function applySendProperties(track, sendGainDb, sendReturn) {
   const returnTrackIds = liveSet.getChildIds("return_tracks");
 
   let sendIndex = -1;
+
   for (let i = 0; i < returnTrackIds.length; i++) {
     const rt = new LiveAPI(`live_set return_tracks ${i}`);
     const name = rt.getProperty("name");
+
     // Match exact name or single-letter prefix
     if (name === sendReturn || name.startsWith(sendReturn + "-")) {
       sendIndex = i;
@@ -127,6 +133,7 @@ function applySendProperties(track, sendGainDb, sendReturn) {
       `updateTrack failed: no return track found matching "${sendReturn}"`,
     );
   }
+
   if (sendIndex >= sends.length) {
     throw new Error(
       `updateTrack failed: send ${sendIndex} doesn't exist on track ${track.id}`,
@@ -147,6 +154,7 @@ function applySendProperties(track, sendGainDb, sendReturn) {
 function applyStereoPan(mixer, pan, leftPan, rightPan) {
   if (pan != null) {
     const panning = new LiveAPI(mixer.path + " panning");
+
     if (panning.exists()) {
       panning.set("value", pan);
     }
@@ -170,6 +178,7 @@ function applyStereoPan(mixer, pan, leftPan, rightPan) {
 function applySplitPan(mixer, pan, leftPan, rightPan) {
   if (leftPan != null) {
     const leftSplit = new LiveAPI(mixer.path + " left_split_stereo");
+
     if (leftSplit.exists()) {
       leftSplit.set("value", leftPan);
     }
@@ -177,6 +186,7 @@ function applySplitPan(mixer, pan, leftPan, rightPan) {
 
   if (rightPan != null) {
     const rightSplit = new LiveAPI(mixer.path + " right_split_stereo");
+
     if (rightSplit.exists()) {
       rightSplit.set("value", rightPan);
     }
@@ -213,6 +223,7 @@ function applyMixerProperties(
   // Handle gain (independent of panning mode)
   if (gainDb != null) {
     const volume = new LiveAPI(mixer.path + " volume");
+
     if (volume.exists()) {
       volume.set("display_value", gainDb);
     }
@@ -225,6 +236,7 @@ function applyMixerProperties(
   // Set new panning mode if provided
   if (panningMode != null) {
     const newMode = panningMode === "split" ? 1 : 0;
+
     mixer.set("panning_mode", newMode);
   }
 
@@ -363,5 +375,6 @@ export function updateTrack(
   if (updatedTracks.length === 0) {
     return [];
   }
+
   return updatedTracks.length === 1 ? updatedTracks[0] : updatedTracks;
 }

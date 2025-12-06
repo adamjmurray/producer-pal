@@ -21,7 +21,9 @@ const str = (any) => {
     case typeof Dict !== "undefined" ? Dict.prototype : null:
       return `Dict("${any.name}") ${any.stringify().replaceAll("\n", " ")}`;
   }
+
   const s = String(any);
+
   return s === "[object Object]"
     ? any.constructor.name + JSON.stringify(any)
     : s;

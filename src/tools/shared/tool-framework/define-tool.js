@@ -36,6 +36,7 @@ export function defineTool(name, options) {
           const errorMessages = validation.error.issues.map((issue) => {
             const path =
               issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
+
             return `${path}${issue.message}`;
           });
 

@@ -29,6 +29,7 @@ export const geminiAdapter: ChatAdapter<
     extraParams?: Record<string, unknown>,
   ): GeminiClientConfig {
     const showThoughts = Boolean(extraParams?.showThoughts);
+
     return buildGeminiConfig(
       model,
       temperature,

@@ -54,6 +54,7 @@ export function createDevice(
 
   // Build track path based on trackCategory
   let trackPath;
+
   if (trackCategory === "regular") {
     trackPath = `live_set tracks ${trackIndex}`;
   } else if (trackCategory === "return") {
@@ -63,11 +64,13 @@ export function createDevice(
   }
 
   const track = new LiveAPI(trackPath);
+
   if (!track.exists()) {
     const trackDesc =
       trackCategory === "master"
         ? "master track"
         : `${trackCategory} track ${trackIndex}`;
+
     throw new Error(`createDevice failed: ${trackDesc} does not exist`);
   }
 
@@ -81,6 +84,7 @@ export function createDevice(
 
   if (!device || !device.exists()) {
     const position = deviceIndex != null ? `index ${deviceIndex}` : "end";
+
     throw new Error(
       `createDevice failed: could not insert "${deviceName}" at ${position}`,
     );

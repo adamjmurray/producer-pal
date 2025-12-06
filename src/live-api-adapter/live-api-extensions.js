@@ -1,3 +1,4 @@
+/* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 if (typeof LiveAPI !== "undefined") {
   /**
    * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing

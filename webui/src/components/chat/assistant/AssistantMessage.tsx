@@ -45,6 +45,7 @@ export function AssistantMessage({
         } else if (part.type === "text") {
           return <AssistantText key={i} content={part.content} />;
         }
+
         // TypeScript has narrowed this to UIErrorPart
         return <AssistantError key={i} content={part.content} />;
       })}

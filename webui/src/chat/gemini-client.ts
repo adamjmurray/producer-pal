@@ -76,6 +76,7 @@ export class GeminiClient {
       name: "producer-pal-chat-ui-test",
       version: "1.0.0",
     });
+
     await client.connect(transport);
     await client.close();
   }
@@ -88,6 +89,7 @@ export class GeminiClient {
   async initialize(): Promise<void> {
     // Connect to MCP server
     const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
+
     this.mcpClient = new Client({
       name: "producer-pal-chat-ui",
       version: "1.0.0",
@@ -179,6 +181,7 @@ export class GeminiClient {
       role: "user",
       parts: [{ text: message }],
     };
+
     this.chatHistory.push(userMessage);
     yield this.chatHistory;
 
@@ -251,6 +254,7 @@ export class GeminiClient {
         candidates?: { content?: { role?: string; parts?: Part[] } }[];
       };
       const response = chunkAny.candidates?.[0];
+
       if (!response?.content) continue;
       const content = response.content;
       const role = content.role;
@@ -287,6 +291,7 @@ export class GeminiClient {
     const lastMessage = this.chatHistory.at(-1);
 
     const hasFunctionCalls = this.hasUnexecutedFunctionCalls(lastMessage);
+
     this.hadFunctionCallsInLastTurn = hasFunctionCalls;
 
     if (!hasFunctionCalls) {
@@ -301,6 +306,7 @@ export class GeminiClient {
       role: "user",
       parts: functionResponseParts as Part[],
     };
+
     this.chatHistory.push(functionResponseMessage);
     yield this.chatHistory;
 
@@ -319,6 +325,7 @@ export class GeminiClient {
     if (abortSignal?.aborted) {
       return false;
     }
+
     // Continue the loop if the last turn had tool calls
     // (chat has been recreated with tool responses included)
     return this.hadFunctionCallsInLastTurn;
@@ -356,6 +363,7 @@ export class GeminiClient {
 
     if (this.shouldMergeWithLastPart(partAny, lastPart)) {
       const lastPartAny = lastPart as { text?: string };
+
       if (lastPartAny.text && partAny.text) {
         lastPartAny.text += partAny.text;
       }
@@ -418,6 +426,7 @@ export class GeminiClient {
    */
   private isToolCall(part: unknown): boolean {
     const partAny = part as { functionCall?: unknown };
+
     return Boolean(partAny.functionCall);
   }
 
@@ -439,6 +448,7 @@ export class GeminiClient {
           functionCall?: { name?: string; args?: unknown };
         },
       );
+
       functionResponseParts.push(toolResponsePart);
     }
 
@@ -489,6 +499,7 @@ export class GeminiClient {
    */
   private isErrorResult(result: unknown): boolean {
     const resultAny = result as { isError?: boolean };
+
     return Boolean(resultAny.isError);
   }
 

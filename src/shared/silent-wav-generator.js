@@ -27,6 +27,7 @@ export function ensureSilenceWav() {
 
   // Cache for subsequent calls in this process
   silenceWavGenerated = true;
+
   return SILENCE_WAV;
 }
 

@@ -20,6 +20,7 @@ const appServer = createExpressApp();
 appServer
   .listen(port, () => {
     const url = `http://localhost:${port}/mcp`;
+
     console.log(
       `Producer Pal ${VERSION} running.\nConnect Claude Desktop or another MCP client to ${url}`,
     );

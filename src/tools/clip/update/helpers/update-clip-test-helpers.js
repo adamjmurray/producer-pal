@@ -57,8 +57,10 @@ export function setupMocks() {
     } else if (method === "get_notes_extended") {
       // Return the notes that were previously added for this clip
       const notes = addedNotesByClipId[this.id] || [];
+
       return JSON.stringify({ notes });
     }
+
     return undefined;
   });
 }

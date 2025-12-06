@@ -8,6 +8,7 @@ import { callLiveApi } from "./max-api-adapter.js";
 import * as console from "./node-for-max-logger.js";
 
 let chatUIEnabled = true; // default
+
 Max.addHandler(
   "chatUIEnabled",
   // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], etc
@@ -16,6 +17,7 @@ Max.addHandler(
 );
 
 let smallModelMode = false; // default
+
 Max.addHandler(
   "smallModelMode",
   // very intentionally doing a loose equality check `input == 1` here to support "1", literal true, [1], 0, false, etc
@@ -53,10 +55,12 @@ export function createExpressApp() {
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE");
     res.setHeader("Access-Control-Allow-Headers", "*");
+
     // Handle preflight requests
     if (req.method === "OPTIONS") {
       return res.status(200).end();
     }
+
     next();
   });
 
@@ -103,6 +107,7 @@ export function createExpressApp() {
     if (!chatUIEnabled) {
       return res.status(403).send("Chat UI is disabled");
     }
+
     next();
   });
 

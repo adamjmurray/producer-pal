@@ -14,5 +14,6 @@ export function truncateString(
   if (str == null) return str;
   if (str.length <= maxLength) return str;
   const cutoff = Math.max(0, maxLength - suffix.length);
+
   return str.slice(0, cutoff) + suffix;
 }

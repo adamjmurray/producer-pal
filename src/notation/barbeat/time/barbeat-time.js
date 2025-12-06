@@ -13,6 +13,7 @@ export function beatsToBarBeat(beats, beatsPerBar) {
 
   const beatFormatted =
     beat % 1 === 0 ? beat.toString() : beat.toFixed(3).replace(/\.?0+$/, "");
+
   return `${bar}|${beatFormatted}`;
 }
 
@@ -26,24 +27,29 @@ export function barBeatToBeats(barBeat, beatsPerBar) {
   const match = barBeat.match(
     /^(-?\d+)\|((-?\d+)(?:\+\d+\/\d+|\.\d+|\/\d+)?)$/,
   );
+
   if (!match) {
     throw new Error(
       `Invalid bar|beat format: "${barBeat}". Expected "{int}|{float}" like "1|2" or "2|3.5" or "{int}|{int}/{int}" like "1|4/3" or "{int}|{int}+{int}/{int}" like "1|2+1/3"`,
     );
   }
+
   const bar = Number.parseInt(match[1]);
 
   // Parse beat as decimal, fraction, or integer+fraction
   const beatStr = match[2];
   let beat;
+
   if (beatStr.includes("+")) {
     const [intPart, fracPart] = beatStr.split("+");
     const [numerator, denominator] = fracPart.split("/");
+
     beat =
       Number.parseInt(intPart) +
       Number.parseInt(numerator) / Number.parseInt(denominator);
   } else if (beatStr.includes("/")) {
     const [numerator, denominator] = beatStr.split("/");
+
     beat = Number.parseInt(numerator) / Number.parseInt(denominator);
   } else {
     beat = Number.parseFloat(beatStr);
@@ -52,6 +58,7 @@ export function barBeatToBeats(barBeat, beatsPerBar) {
   if (bar < 1) {
     throw new Error(`Bar number must be 1 or greater, got: ${bar}`);
   }
+
   if (beat < 1) {
     throw new Error(`Beat must be 1 or greater, got: ${beat}`);
   }
@@ -86,6 +93,7 @@ export function abletonBeatsToBarBeat(
 ) {
   const musicalBeatsPerBar = timeSigNumerator;
   const musicalBeats = abletonBeats * (timeSigDenominator / 4);
+
   return beatsToBarBeat(musicalBeats, musicalBeatsPerBar);
 }
 
@@ -104,8 +112,10 @@ export function barBeatToAbletonBeats(
   if (barBeat == null) {
     return null;
   }
+
   const musicalBeatsPerBar = timeSigNumerator;
   const musicalBeats = barBeatToBeats(barBeat, musicalBeatsPerBar);
+
   return musicalBeats * (4 / timeSigDenominator);
 }
 
@@ -164,6 +174,7 @@ function parseBeatValue(beatsStr, context) {
     if (fracDen === 0) {
       throw new Error(`Invalid fraction: division by zero in "${context}"`);
     }
+
     if (isNaN(fracNum) || isNaN(fracDen)) {
       throw new Error(`Invalid integer+fraction format: "${context}"`);
     }
@@ -179,6 +190,7 @@ function parseBeatValue(beatsStr, context) {
     if (den === 0) {
       throw new Error(`Invalid fraction: division by zero in "${context}"`);
     }
+
     if (isNaN(num) || isNaN(den)) {
       throw new Error(`Invalid fraction format: "${context}"`);
     }
@@ -187,9 +199,11 @@ function parseBeatValue(beatsStr, context) {
   }
 
   const beats = Number.parseFloat(beatsStr);
+
   if (isNaN(beats)) {
     throw new Error(`Invalid duration format: "${context}"`);
   }
+
   return beats;
 }
 
@@ -203,6 +217,7 @@ function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
   const match = barBeatDuration.match(
     /^(-?\d+):((-?\d+)(?:\+\d+\/\d+|\.\d+|\/\d+)?)$/,
   );
+
   if (!match) {
     throw new Error(
       `Invalid bar:beat duration format: "${barBeatDuration}". Expected "{int}:{float}" like "1:2" or "2:1.5" or "{int}:{int}/{int}" like "0:4/3" or "{int}:{int}+{int}/{int}" like "1:2+1/3"`,
@@ -216,11 +231,13 @@ function parseBarBeatFormat(barBeatDuration, timeSigNumerator) {
   if (bars < 0) {
     throw new Error(`Bars in duration must be 0 or greater, got: ${bars}`);
   }
+
   if (beats < 0) {
     throw new Error(`Beats in duration must be 0 or greater, got: ${beats}`);
   }
 
   const musicalBeatsPerBar = timeSigNumerator;
+
   return bars * musicalBeatsPerBar + beats;
 }
 
@@ -275,5 +292,6 @@ export function barBeatDurationToAbletonBeats(
     timeSigNumerator,
     timeSigDenominator,
   );
+
   return musicalBeats * (4 / timeSigDenominator);
 }

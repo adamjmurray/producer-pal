@@ -27,19 +27,23 @@ export function getDeviceType(device) {
     if (canHaveDrumPads) {
       return DEVICE_TYPE.DRUM_RACK;
     }
+
     if (canHaveChains) {
       return DEVICE_TYPE.INSTRUMENT_RACK;
     }
+
     return DEVICE_TYPE.INSTRUMENT;
   } else if (typeValue === LIVE_API_DEVICE_TYPE_AUDIO_EFFECT) {
     if (canHaveChains) {
       return DEVICE_TYPE.AUDIO_EFFECT_RACK;
     }
+
     return DEVICE_TYPE.AUDIO_EFFECT;
   } else if (typeValue === LIVE_API_DEVICE_TYPE_MIDI_EFFECT) {
     if (canHaveChains) {
       return DEVICE_TYPE.MIDI_EFFECT_RACK;
     }
+
     return DEVICE_TYPE.MIDI_EFFECT;
   }
 
@@ -70,6 +74,7 @@ export function cleanupInternalDrumChains(obj) {
           devices: cleanupInternalDrumChains(chain.devices),
         };
       }
+
       return chain;
     });
   }
@@ -122,6 +127,7 @@ export function getDrumMap(devices) {
   drumRacks[0]._processedDrumChains.forEach((drumChain) => {
     if (drumChain.hasInstrument !== false) {
       const pitchName = drumChain.pitch;
+
       drumMap[pitchName] = drumChain.name;
     }
   });
@@ -153,6 +159,7 @@ export function readDevice(device, options = {}) {
 
   if (depth > maxDepth) {
     console.error(`Maximum recursion depth (${maxDepth}) exceeded`);
+
     return {};
   }
 
@@ -171,11 +178,13 @@ export function readDevice(device, options = {}) {
   }
 
   const isActive = device.getProperty("is_active") > 0;
+
   if (!isActive) {
     deviceInfo.deactivated = true;
   }
 
   const deviceView = new LiveAPI(`${device.path} view`);
+
   if (deviceView.exists() && deviceView.getProperty("is_collapsed") > 0) {
     deviceInfo.collapsed = true;
   }

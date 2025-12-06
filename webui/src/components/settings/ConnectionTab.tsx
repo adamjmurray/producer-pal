@@ -103,6 +103,7 @@ export function ConnectionTab({
             onChange={(e) => {
               const value = (e.target as HTMLInputElement).value;
               const numValue = parseInt(value, 10);
+
               if (!isNaN(numValue)) {
                 setPort(numValue);
               }

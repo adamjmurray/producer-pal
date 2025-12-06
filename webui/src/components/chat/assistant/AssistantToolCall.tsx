@@ -66,6 +66,7 @@ function FullResultDetails({ result }: { result: string }) {
   if (s.startsWith("{")) {
     try {
       const obj = JSON.parse(s);
+
       formatted = JSON.stringify(obj, null, 2).replaceAll("\\n", "\n");
     } catch {
       // JSON parsing failed, will render as plain text
@@ -75,5 +76,6 @@ function FullResultDetails({ result }: { result: string }) {
   if (formatted) {
     return <pre className="whitespace-pre-wrap">{formatted}</pre>;
   }
+
   return <>{s}</>;
 }

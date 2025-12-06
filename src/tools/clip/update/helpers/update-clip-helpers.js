@@ -65,6 +65,7 @@ export function calculateBeatPositions({
         // For non-looping clips, derive from end_marker - length
         const currentEndMarker = clip.getProperty("end_marker");
         const currentStartMarker = clip.getProperty("start_marker");
+
         startBeats = currentEndMarker - lengthBeats;
 
         // Sanity check: warn if derived start doesn't match start_marker
@@ -155,9 +156,11 @@ export function buildClipPropertiesToSet({
       // Set end first to avoid "LoopStart behind LoopEnd" error
       propsToSet.loop_end = endBeats;
     }
+
     if (startBeats != null && looping !== false) {
       propsToSet.loop_start = startBeats;
     }
+
     if (!setEndFirst && endBeats != null && looping !== false) {
       // Set end after start in normal case
       propsToSet.loop_end = endBeats;
@@ -210,6 +213,7 @@ export function handleNoteUpdates(
         timeSigNumerator,
         timeSigDenominator,
       });
+
       combinedNotationString = `${existingNotationString} ${notationString}`;
     }
   }
@@ -229,6 +233,7 @@ export function handleNoteUpdates(
 
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
+
   if (notes.length > 0) {
     clip.call("add_new_notes", { notes });
   }
@@ -305,8 +310,10 @@ export function processSingleClipUpdate(params) {
 
   // Parse time signature if provided
   let timeSigNumerator, timeSigDenominator;
+
   if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
+
     timeSigNumerator = parsed.numerator;
     timeSigDenominator = parsed.denominator;
   } else {
@@ -363,6 +370,7 @@ export function processSingleClipUpdate(params) {
 
   // Audio-specific parameters
   const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+
   if (isAudioClip) {
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
   }

@@ -29,6 +29,7 @@ export const openaiAdapter: ChatAdapter<
     extraParams?: Record<string, unknown>,
   ): OpenAIClientConfig {
     const baseUrl = extraParams?.baseUrl as string | undefined;
+
     return buildOpenAIConfig(
       model,
       temperature,

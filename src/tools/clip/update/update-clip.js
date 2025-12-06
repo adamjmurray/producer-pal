@@ -126,5 +126,6 @@ export function updateClip(
   if (updatedClips.length === 0) {
     return [];
   }
+
   return updatedClips.length === 1 ? updatedClips[0] : updatedClips;
 }

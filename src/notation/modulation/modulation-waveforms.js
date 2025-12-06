@@ -12,6 +12,7 @@
 export function cos(phase) {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
+
   // cos(0) = 1, descending to -1 at 0.5, back to 1 at 1.0
   return Math.cos(normalizedPhase * 2 * Math.PI);
 }
@@ -24,11 +25,13 @@ export function cos(phase) {
 export function tri(phase) {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
+
   // Starts at 1.0, descends linearly to -1.0 at phase 0.5, returns to 1.0 at phase 1.0
   if (normalizedPhase <= 0.5) {
     // Descending: 1.0 -> -1.0 over first half
     return 1.0 - 4.0 * normalizedPhase;
   }
+
   // Ascending: -1.0 -> 1.0 over second half
   return -3.0 + 4.0 * normalizedPhase;
 }
@@ -41,6 +44,7 @@ export function tri(phase) {
 export function saw(phase) {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
+
   // Starts at 1.0, descends linearly to -1.0, then jumps back to 1.0
   return 1.0 - 2.0 * normalizedPhase;
 }
@@ -54,6 +58,7 @@ export function saw(phase) {
 export function square(phase, pulseWidth = 0.5) {
   // Normalize phase to 0-1 range
   const normalizedPhase = phase % 1.0;
+
   // Starts high (1.0) for first pulseWidth fraction, then low (-1.0)
   return normalizedPhase < pulseWidth ? 1.0 : -1.0;
 }
@@ -78,6 +83,7 @@ export function noise() {
 export function ramp(phase, start, end, speed = 1) {
   // Apply speed multiplier and normalize to 0-1 range
   const scaledPhase = (phase * speed) % 1.0;
+
   // Linear interpolation from start to end
   return start + (end - start) * scaledPhase;
 }

@@ -119,6 +119,7 @@ export function ModelSelector({
   // Track whether custom input is shown (for non-custom providers)
   const [showCustomInput, setShowCustomInput] = useState(() => {
     if (provider === "custom" || presetModels.length === 0) return false;
+
     // Check if current model matches any preset (excluding "OTHER")
     return !presetModels.some((m) => m.value === model && m.value !== "OTHER");
   });
@@ -131,11 +132,14 @@ export function ModelSelector({
   useEffect(() => {
     if (provider === "custom" || presetModels.length === 0) {
       setShowCustomInput(false);
+
       return;
     }
+
     const isCustom = !presetModels.some(
       (m) => m.value === model && m.value !== "OTHER",
     );
+
     setShowCustomInput(isCustom);
   }, [model, provider, presetModels]);
 
@@ -148,6 +152,7 @@ export function ModelSelector({
     ) {
       customInputRef.current.focus();
     }
+
     previousShowCustomInputRef.current = showCustomInput;
   }, [showCustomInput]);
 
@@ -161,6 +166,7 @@ export function ModelSelector({
       provider === "lmstudio" || provider === "ollama"
         ? "e.g., llama-3.1-70b, qwen-2.5-72b"
         : "e.g., gpt-4, llama-3.1-70b";
+
     return (
       <div>
         <label className="block text-sm mb-2">Model</label>
