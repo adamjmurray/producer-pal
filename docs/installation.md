@@ -17,9 +17,9 @@ Choose your preferred AI platform to get started with Producer Pal:
 
 These are the easiest and most reliable ways to use Producer Pal:
 
-- **[Producer Pal Chat UI](./installation/gemini)** - Built-in chat interface
-  supporting Gemini, Mistral, local Ollama models, and more (free tier available
-  with Gemini)
+- **[Built-in Chat UI](./installation/chat-ui)** - Integrated chat interface
+  supporting cloud providers (Gemini, OpenRouter, Mistral) and local models
+  (Ollama, LM Studio)
 - **[Claude Desktop](./installation/claude-desktop)** - Anthropic's desktop GUI
   (easiest setup for Anthropic users)
 

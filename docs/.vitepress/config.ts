@@ -71,6 +71,7 @@ export default defineConfig({
       {
         text: "Built-in Chat UI",
         items: [
+          { text: "Overview", link: "/installation/chat-ui" },
           { text: "Gemini", link: "/installation/gemini" },
           { text: "Ollama", link: "/installation/ollama" },
           {
