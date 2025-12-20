@@ -193,25 +193,38 @@ export function useChat<
   );
 
   /**
-   * Executes a stream request with automatic retry on rate limit errors
+   * Executes a stream request with automatic retry on rate limit errors.
+   * If content was received before the error, sends "continue" on retry
+   * instead of the original message.
    */
   const executeWithRetry = useCallback(
     async (
-      executeStream: () => AsyncIterable<TMessage[]>,
+      executeStream: (message: string) => AsyncIterable<TMessage[]>,
       getChatHistory: () => TMessage[],
+      originalMessage: string,
     ): Promise<void> => {
       let attempt = 0;
+      // Use mutable object so callback can set it and loop can read updated value
+      const contentState = { hasReceived: false };
 
       retryAbortRef.current = new AbortController();
 
+      const onMessageUpdate = (msgs: UIMessage[]) => {
+        contentState.hasReceived = true;
+        setMessages(msgs);
+      };
+
       while (shouldRetry(attempt)) {
         try {
-          const stream = executeStream();
+          const messageToSend = contentState.hasReceived
+            ? "continue"
+            : originalMessage;
+          const stream = executeStream(messageToSend);
 
           await handleMessageStream(
             stream,
             adapter.formatMessages,
-            setMessages,
+            onMessageUpdate,
           );
           setRateLimitState(null);
 
@@ -301,8 +314,9 @@ export function useChat<
         abortControllerRef.current = controller;
 
         await executeWithRetry(
-          () => client.sendMessage(userMessage, controller.signal),
+          (msg) => client.sendMessage(msg, controller.signal),
           () => client.chatHistory,
+          userMessage,
         );
       } catch (error) {
         setMessages(
@@ -358,8 +372,9 @@ export function useChat<
         abortControllerRef.current = controller;
 
         await executeWithRetry(
-          () => client.sendMessage(userMessage, controller.signal),
+          (msg) => client.sendMessage(msg, controller.signal),
           () => client.chatHistory,
+          userMessage,
         );
       } catch (error) {
         // Client was checked before try block, so it's always defined here
