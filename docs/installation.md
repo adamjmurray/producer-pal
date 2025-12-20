@@ -17,11 +17,11 @@ Choose your preferred AI platform to get started with Producer Pal:
 
 These are the easiest and most reliable ways to use Producer Pal:
 
+- **[Claude Desktop](./installation/claude-desktop)** - Anthropic's desktop GUI
+  (easiest setup, subscription required)
 - **[Built-in Chat UI](./installation/chat-ui)** - Integrated chat interface
   supporting cloud providers (Gemini, OpenRouter, Mistral) and local models
   (Ollama, LM Studio)
-- **[Claude Desktop](./installation/claude-desktop)** - Anthropic's desktop GUI
-  (easiest setup for Anthropic users)
 
 Already have an MCP-compatible client? Connect with
 [`npx producer-pal`](https://www.npmjs.com/package/producer-pal) (see
@@ -32,8 +32,8 @@ Already have an MCP-compatible client? Connect with
 
 For users comfortable with the terminal:
 
-- **[Gemini CLI](./installation/gemini-cli)** - Google's command line agent (no
-  subscription needed)
+- **[Gemini CLI](./installation/gemini-cli)** - Google's command line agent
+  (free tier has strict rate limits)
 - **[Codex CLI](./installation/codex-cli)** - OpenAI's command line agent
   (subscription required)
 - **[Claude Code](./installation/claude-code)** - Anthropic's command line agent

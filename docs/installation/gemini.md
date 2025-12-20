@@ -1,6 +1,17 @@
 # Gemini
 
-The easiest way to use Producer Pal. Google offers a free tier to get started.
+Use Producer Pal with Google's Gemini AI through the built-in chat interface.
+
+::: warning Free Tier Limitations
+
+Google's free tier has strict rate limits. You'll likely hit quotas within
+moments. Consider [Claude Desktop](./claude-desktop) for a more reliable
+experience, or using Gemini through a LLM aggregator like
+[OpenRouter](/installation/chat-ui-other-providers#openrouter). You can also add
+billing to your Google Cloud account and setup a pay-as-you go API key, but this
+is not recommended for personal use.
+
+:::
 
 ## What You Need
 

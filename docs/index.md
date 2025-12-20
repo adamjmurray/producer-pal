@@ -58,22 +58,6 @@ features:
         <div class="card-header">
           <div class="card-icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </svg>
-          </div>
-          <h3 class="card-title">Built-in Chat UI</h3>
-        </div>
-        <p class="card-description">The easiest way to start</p>
-        <ul class="card-links">
-          <li><a href="/installation/gemini">Gemini</a> <span class="tag">free tier</span></li>
-          <li><a href="/installation/ollama">Ollama</a> <span class="tag">offline</span></li>
-          <li><a href="/installation/chat-ui-other-providers">OpenRouter, Mistral, etc.</a></li>
-        </ul>
-      </div>
-      <div class="get-started-card card-secondary">
-        <div class="card-header">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
               <line x1="8" y1="21" x2="16" y2="21" />
               <line x1="12" y1="17" x2="12" y2="21" />
@@ -81,10 +65,27 @@ features:
           </div>
           <h3 class="card-title">Desktop Apps</h3>
         </div>
-        <p class="card-description">Native app experience</p>
+        <p class="card-description">The easiest way to start</p>
         <ul class="card-links">
-          <li><a href="/installation/claude-desktop">Claude Desktop</a></li>
+          <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">subscription</span></li>
           <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
+        </ul>
+      </div>
+      <div class="get-started-card card-secondary">
+        <div class="card-header">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </svg>
+          </div>
+          <h3 class="card-title">Built-in Chat UI</h3>
+        </div>
+        <p class="card-description">Browser-based chat</p>
+        <ul class="card-links">
+          <li><a href="/installation/ollama">Ollama</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/chat-ui-other-providers#openrouter">OpenRouter</a></li>
+          <li><a href="/installation/gemini">Gemini</a></li>
+           <li><a href="/installation/chat-ui-other-providers">Mistral, etc.</a></li>
         </ul>
       </div>
       <div class="get-started-card card-tertiary">
@@ -130,11 +131,11 @@ Watch the Producer Pal walk-through video with Claude Desktop:
 
 **More helpful videos:**
 
-- ⭐️
-  [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  ([written guide](/installation/gemini))
+- [How to setup Producer Pal with Gemini](https://www.youtube.com/watch?v=A_NXOtnR57M&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
+  ([written guide](/installation/gemini)) — _Note: free tier now has strict
+  limits_
 - [How to setup Producer Pal with Gemini CLI](https://www.youtube.com/watch?v=jd3wTdDqd4Y&list=PLFqWfbwGKmqenUb1DUFZ5ECYU6klUWNtX)
-  (for command line users)
+  (for command line users) — _Note: free tier now has strict limits_
 
 ## Support
 

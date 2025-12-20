@@ -7,12 +7,15 @@ The chat UI supports multiple AI providers. Choose based on your needs:
 
 ## Cloud Providers
 
-### Gemini (Recommended)
+### Gemini
 
-Google's AI with a free tier to get started.
+Google's AI.
 
-- **Cost:** Free tier available (may hit rate limits with heavy use)
-- **Setup:** Just need a Google account
+- **Cost:** Free tier has strict rate limits; paid tier recommended for regular
+  use
+- **Setup:** Just need a Google account. But, to use it without quickly hitting
+  limits, you need to setup a pay-as-you-go API key, which is not recommended.
+  Consider using Gemini via [OpenRouter](#openrouter) instead.
 - **[Get started with Gemini →](./gemini)**
 
 ### OpenRouter
@@ -44,7 +47,7 @@ GPT models with pay-as-you-go pricing.
 
 Run models on your own computer with no internet required.
 
-### Ollama (Recommended for offline)
+### Ollama (Recommended)
 
 Simple local model server with many model options.
 
@@ -62,14 +65,14 @@ Desktop app for running local models with a visual interface.
 
 ## Quick Comparison
 
-| Provider   | Cost          | Internet Required | Best For              |
-| ---------- | ------------- | ----------------- | --------------------- |
-| Gemini     | Free tier     | Yes               | Getting started       |
-| Ollama     | Free          | No                | Privacy, offline use  |
-| OpenRouter | Pay-as-you-go | Yes               | Access to many models |
-| Mistral    | Free tier     | Yes               | Alternative to Gemini |
-| OpenAI     | Pay-as-you-go | Yes               | GPT models            |
-| LM Studio  | Free          | No                | Visual local model UI |
+| Provider   | Cost               | Internet Required | Best For              |
+| ---------- | ------------------ | ----------------- | --------------------- |
+| Ollama     | Free               | No                | Privacy, offline use  |
+| Gemini     | Free tier (limits) | Yes               | Quick testing         |
+| OpenRouter | Pay-as-you-go      | Yes               | Access to many models |
+| Mistral    | Free tier          | Yes               | Alternative to Gemini |
+| OpenAI     | Pay-as-you-go      | Yes               | GPT models            |
+| LM Studio  | Free               | No                | Visual local model UI |
 
 ## Troubleshooting
 
