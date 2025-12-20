@@ -1,11 +1,21 @@
 # Gemini CLI
 
-Use Producer Pal with Google's command line coding assistant. No subscription
-needed.
+Use Producer Pal with Google's command line coding assistant.
 
-If you feel comfortable with the command line, this is a good option for using
+::: warning Free Tier Limitations
+
+Gemini CLI works best with a
+[Google AI Pro subscription](https://one.google.com/about/google-ai-plans/).
+Without a subscription, the free tier has strict rate limits and you'll hit
+quotas quickly. Consider [Claude Code](./claude-code) for an alternative CLI
+experience.
+
+:::
+
+If you feel comfortable with the command line, this is an option for using
 Producer Pal. Also consider using Gemini with Producer Pal's
-[built-in chat UI](./gemini).
+[built-in chat UI](./gemini) (but probably via OpenRouter as noted on that
+page).
 
 ## Requirements
 
