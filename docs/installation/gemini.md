@@ -1,7 +1,6 @@
 # Gemini
 
-The easiest way to use Producer Pal. Google's free tier has generous daily
-quotas.
+The easiest way to use Producer Pal. Google offers a free tier to get started.
 
 ## What You Need
 
