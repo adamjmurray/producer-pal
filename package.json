@@ -92,7 +92,7 @@
     "@types/max-api": "^2.0.3",
     "@types/node": "^24.10.1",
     "@typescript-eslint/eslint-plugin": "^8.48.1",
-    "@typescript-eslint/parser": "^8.48.1",
+    "@typescript-eslint/parser": "^8.49.0",
     "@vitest/coverage-v8": "^4.0.15",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
