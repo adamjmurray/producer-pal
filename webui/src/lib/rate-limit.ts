@@ -31,6 +31,7 @@ const RATE_LIMIT_PATTERNS = [
   /resource.*exhausted/i,
   /rate.*limit/i,
   /quota.*exceeded/i,
+  /exceeded.*quota/i,
   /too.*many.*requests/i,
   /429/,
 ] as const;
