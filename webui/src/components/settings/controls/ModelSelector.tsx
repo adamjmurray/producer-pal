@@ -90,6 +90,16 @@ const OPENROUTER_MODELS = [
   { value: "OTHER", label: "Other..." },
 ];
 
+const OLLAMA_MODELS = [
+  { value: "ministral-3", label: "Ministral 3" },
+  { value: "devstral-small-2", label: "Devstral Small 2" },
+  { value: "mistral", label: "Mistral" },
+  { value: "gpt-oss", label: "GPT-OSS" },
+  { value: "qwen3", label: "Qwen3" },
+  { value: "qwen3-coder", label: "Qwen3 Coder" },
+  { value: "OTHER", label: "Other..." },
+];
+
 /**
  * Model selection dropdown with provider-specific presets
  * @param {ModelSelectorProps} root0 - Component props
@@ -113,7 +123,9 @@ export function ModelSelector({
           ? MISTRAL_MODELS
           : provider === "openrouter"
             ? OPENROUTER_MODELS
-            : [];
+            : provider === "ollama"
+              ? OLLAMA_MODELS
+              : [];
   }, [provider]);
 
   // Track whether custom input is shown (for non-custom providers)
@@ -157,13 +169,9 @@ export function ModelSelector({
   }, [showCustomInput]);
 
   // For custom and local providers, use free-form text input
-  if (
-    provider === "custom" ||
-    provider === "lmstudio" ||
-    provider === "ollama"
-  ) {
+  if (provider === "custom" || provider === "lmstudio") {
     const placeholder =
-      provider === "lmstudio" || provider === "ollama"
+      provider === "lmstudio"
         ? "e.g., llama-3.1-70b, qwen-2.5-72b"
         : "e.g., gpt-4, llama-3.1-70b";
 

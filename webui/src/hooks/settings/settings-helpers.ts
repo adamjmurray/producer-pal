@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   ollama: {
     apiKey: "",
-    model: "",
+    model: "ministral-3",
     port: 11434,
     thinking: "Auto",
     temperature: 1.0,
