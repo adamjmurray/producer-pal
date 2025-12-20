@@ -85,6 +85,37 @@ describe("detectRateLimit", () => {
     expect(result.message).toContain("Rate limit");
     expect(result.message).toContain("retried automatically");
   });
+
+  it("extracts status code from error message text", () => {
+    const error = new Error("Error 429: Too many requests");
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+  });
+
+  it("extracts retryAfterMs from numeric retryAfter in milliseconds", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      retryAfter: 5000, // Already in milliseconds (>= 1000)
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(5000);
+  });
+
+  it("extracts retryAfterMs from string retryAfter in seconds", () => {
+    const error = {
+      status: 429,
+      message: "Rate limited",
+      retryAfter: "30", // 30 seconds as string
+    };
+    const result = detectRateLimit(error);
+
+    expect(result.isRateLimited).toBe(true);
+    expect(result.retryAfterMs).toBe(30000);
+  });
 });
 
 describe("calculateRetryDelay", () => {
