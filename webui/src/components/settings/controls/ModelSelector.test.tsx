@@ -53,9 +53,10 @@ describe("ModelSelector", () => {
 
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
     expect(options[0]!.value).toBe("gemini-3-pro-preview");
-    expect(options[1]!.value).toBe("gemini-2.5-pro");
-    expect(options[2]!.value).toBe("gemini-2.5-flash");
-    expect(options[3]!.value).toBe("gemini-2.5-flash-lite");
+    expect(options[1]!.value).toBe("gemini-3-flash-preview");
+    expect(options[2]!.value).toBe("gemini-2.5-pro");
+    expect(options[3]!.value).toBe("gemini-2.5-flash");
+    expect(options[4]!.value).toBe("gemini-2.5-flash-lite");
   });
 
   it("triggers setModel callback on change", () => {

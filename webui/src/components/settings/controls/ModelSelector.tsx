@@ -9,6 +9,7 @@ interface ModelSelectorProps {
 
 const GEMINI_MODELS = [
   { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (preview)" },
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (preview)" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (most advanced)" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (fast & intelligent)" },
   {
