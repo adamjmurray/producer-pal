@@ -1,6 +1,6 @@
 import type { UIMessage } from "#webui/types/messages";
 import { geminiAdapter } from "./gemini-adapter";
-import { useChat } from "./use-chat";
+import { useChat, type RateLimitState } from "./use-chat";
 
 interface UseGeminiChatProps {
   apiKey: string;
@@ -20,6 +20,7 @@ interface UseGeminiChatReturn {
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
+  rateLimitState: RateLimitState | null;
   handleSend: (message: string) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
