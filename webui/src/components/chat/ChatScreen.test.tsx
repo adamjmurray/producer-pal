@@ -17,6 +17,7 @@ describe("ChatScreen", () => {
   const defaultProps = {
     messages: [] as UIMessage[],
     isAssistantResponding: false,
+    rateLimitState: null,
     handleSend: mockHandleSend,
     handleRetry: mockHandleRetry,
     activeModel: "gemini-1.5-flash",

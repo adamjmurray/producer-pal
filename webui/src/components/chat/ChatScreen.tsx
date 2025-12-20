@@ -1,13 +1,16 @@
+import type { RateLimitState } from "#webui/hooks/chat/use-chat";
 import type { UIMessage } from "#webui/types/messages";
 import type { Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
 import { ChatHeader } from "./controls/ChatHeader";
 import { ChatInput } from "./controls/ChatInput";
+import { RateLimitIndicator } from "./controls/RateLimitIndicator";
 import { MessageList } from "./MessageList";
 
 interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
+  rateLimitState: RateLimitState | null;
   handleSend: (message: string) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   activeModel: string | null;
@@ -27,6 +30,7 @@ interface ChatScreenProps {
  * @param {ChatScreenProps} root0 - Component props
  * @param {UIMessage[]} root0.messages - Chat messages
  * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
+ * @param {RateLimitState | null} root0.rateLimitState - Rate limit retry state
  * @param {(message: string) => Promise<void>} root0.handleSend - Send message callback
  * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
  * @param {string | null} root0.activeModel - Active model identifier
@@ -44,6 +48,7 @@ interface ChatScreenProps {
 export function ChatScreen({
   messages,
   isAssistantResponding,
+  rateLimitState,
   handleSend,
   handleRetry,
   activeModel,
@@ -86,6 +91,15 @@ export function ChatScreen({
           />
         )}
       </div>
+
+      {rateLimitState?.isRetrying && (
+        <RateLimitIndicator
+          retryAttempt={rateLimitState.attempt}
+          maxAttempts={rateLimitState.maxAttempts}
+          retryDelayMs={rateLimitState.delayMs}
+          onCancel={onStop}
+        />
+      )}
 
       <ChatInput
         handleSend={handleSend}
