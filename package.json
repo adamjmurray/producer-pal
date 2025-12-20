@@ -96,7 +96,7 @@
     "@vitest/coverage-v8": "^4.0.15",
     "chokidar-cli": "^3.0.0",
     "commander": "^14.0.2",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "eslint-import-resolver-alias": "^1.1.2",
     "eslint-import-resolver-node": "^0.3.9",
     "eslint-import-resolver-typescript": "^4.4.4",
