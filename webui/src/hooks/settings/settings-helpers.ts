@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   openai: {
     apiKey: "",
-    model: "gpt-5.1-2025-11-13",
+    model: "gpt-5.2-2025-12-11",
     thinking: "Medium",
     temperature: 1.0,
     showThoughts: true,

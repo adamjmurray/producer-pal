@@ -20,7 +20,7 @@ const GEMINI_MODELS = [
 ];
 
 const OPENAI_MODELS = [
-  { value: "gpt-5.1-2025-11-13", label: "GPT-5.1 (most capable)" },
+  { value: "gpt-5.2-2025-12-11", label: "GPT-5.2 (most capable)" },
   { value: "gpt-5-2025-08-07", label: "GPT-5 (previous version)" },
   { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini (fast & affordable)" },
   { value: "gpt-5-nano-2025-08-07", label: "GPT-5 Nano (ultra fast)" },

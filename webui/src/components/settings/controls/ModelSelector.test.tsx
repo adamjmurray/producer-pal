@@ -102,7 +102,7 @@ describe("ModelSelector", () => {
         />,
       );
       expect(
-        screen.getByRole("option", { name: /GPT-5\.1 \(most capable\)/ }),
+        screen.getByRole("option", { name: /GPT-5\.2 \(most capable\)/ }),
       ).toBeDefined();
       expect(
         screen.getByRole("option", { name: /GPT-5 \(previous version\)/ }),
