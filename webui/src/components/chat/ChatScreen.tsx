@@ -35,21 +35,27 @@ interface ChatScreenProps {
 /**
  * Main chat screen component
  * @param {ChatScreenProps} root0 - Component props
+ *
  * @param {UIMessage[]} root0.messages - Chat messages
  * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
  * @param {RateLimitState | null} root0.rateLimitState - Rate limit retry state
+ *
  * @param {(message: string) => Promise<void>} root0.handleSend - Send message callback
  * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
+ *
  * @param {string | null} root0.activeModel - Active model identifier
  * @param {string | null} root0.activeThinking - Active thinking mode
  * @param {number | null} root0.activeTemperature - Active temperature setting
  * @param {Provider | null} root0.activeProvider - Active provider
+ *
  * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
  * @param {string | null} root0.mcpError - MCP error message
  * @param {() => Promise<void>} root0.checkMcpConnection - Check MCP connection callback
+ *
  * @param {() => void} root0.onOpenSettings - Open settings callback
  * @param {() => void} root0.onClearConversation - Clear conversation callback
  * @param {() => void} root0.onStop - Stop response callback
+ *
  * @returns {JSX.Element} - React component
  */
 export function ChatScreen({
@@ -58,17 +64,21 @@ export function ChatScreen({
   rateLimitState,
   handleSend,
   handleRetry,
+
   activeModel,
   activeThinking,
   activeTemperature,
   activeProvider,
+
   provider,
   model,
   defaultThinking,
   defaultTemperature,
+
   mcpStatus,
   mcpError,
   checkMcpConnection,
+
   onOpenSettings,
   onClearConversation,
   onStop,
