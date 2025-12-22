@@ -10,6 +10,7 @@ import { MAX_AUTO_CREATED_TRACKS } from "../../constants.js";
  */
 function createSingleTrack(liveSet, type, currentIndex) {
   let result;
+
   if (type === "return") {
     result = liveSet.call("create_return_track");
   } else if (type === "midi") {
@@ -17,6 +18,7 @@ function createSingleTrack(liveSet, type, currentIndex) {
   } else {
     result = liveSet.call("create_audio_track", currentIndex);
   }
+
   return result[1]; // Live API returns ["id", "123"]
 }
 
@@ -36,15 +38,18 @@ function buildTrackName(baseName, count, index, parsedNames = null) {
     if (index < parsedNames.length) {
       return parsedNames[index];
     }
+
     // Fall back to numbering from the last name (starting from 2)
     const lastName = parsedNames[parsedNames.length - 1];
     const fallbackIndex = index - parsedNames.length + 2;
+
     return `${lastName} ${fallbackIndex}`;
   }
 
   // Original behavior when no comma-separated names
   if (count === 1) return baseName;
   if (index === 0) return baseName;
+
   return `${baseName} ${index + 1}`;
 }
 
@@ -58,6 +63,7 @@ function buildTrackName(baseName, count, index, parsedNames = null) {
 function getColorForIndex(color, index, parsedColors) {
   if (color == null) return undefined;
   if (parsedColors == null) return color;
+
   return parsedColors[index % parsedColors.length];
 }
 
@@ -71,6 +77,7 @@ function parseCommaSeparated(value, count) {
   if (count <= 1 || value == null || !value.includes(",")) {
     return null;
   }
+
   return value.split(",").map((v) => v.trim());
 }
 
@@ -120,6 +127,7 @@ function calculateResultIndex(
   if (type === "return" || effectiveTrackIndex === -1) {
     return baseTrackCount + loopIndex;
   }
+
   return effectiveTrackIndex + loopIndex;
 }
 
@@ -134,9 +142,11 @@ function getBaseTrackCount(liveSet, type, effectiveTrackIndex) {
   if (type === "return") {
     return liveSet.getChildIds("return_tracks").length;
   }
+
   if (effectiveTrackIndex === -1) {
     return liveSet.getChildIds("tracks").length;
   }
+
   return 0;
 }
 
@@ -159,6 +169,7 @@ export function createTrack(
   _context = {},
 ) {
   const effectiveTrackIndex = trackIndex ?? -1;
+
   validateTrackCreation(count, type, trackIndex, effectiveTrackIndex);
 
   const liveSet = new LiveAPI("live_set");

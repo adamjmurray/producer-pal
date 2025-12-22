@@ -28,6 +28,7 @@ export function readSamples({ search = null } = {}, context = {}) {
   }
 
   let sampleFolder = context.sampleFolder;
+
   if (!sampleFolder.endsWith("/")) {
     sampleFolder = `${sampleFolder}/`;
   }
@@ -35,6 +36,7 @@ export function readSamples({ search = null } = {}, context = {}) {
   const samples = [];
   const limitReached = { value: false };
   const searchLower = search ? search.toLowerCase() : null;
+
   scanFolder(sampleFolder, sampleFolder, samples, limitReached, searchLower);
 
   if (limitReached.value) {
@@ -49,13 +51,17 @@ export function readSamples({ search = null } = {}, context = {}) {
 // dirPath must end with /
 function scanFolder(dirPath, baseFolder, results, limitReached, searchLower) {
   const f = new Folder(dirPath);
+
   while (!f.end) {
     if (results.length >= MAX_SAMPLE_FILES) {
       limitReached.value = true;
       f.close();
+
       return;
     }
+
     const filepath = `${f.pathname}${f.filename}`;
+
     if (f.filetype === "fold") {
       scanFolder(
         `${filepath}/`,
@@ -66,11 +72,14 @@ function scanFolder(dirPath, baseFolder, results, limitReached, searchLower) {
       );
     } else if (AUDIO_EXTENSIONS.has(f.extension?.toLowerCase())) {
       const relativePath = filepath.substring(baseFolder.length);
+
       if (!searchLower || relativePath.toLowerCase().includes(searchLower)) {
         results.push(relativePath);
       }
     }
+
     f.next();
   }
+
   f.close();
 }

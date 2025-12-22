@@ -16,6 +16,7 @@ const LOG_DIR = (() => {
   } else if (process.platform === "win32") {
     return join(process.env.LOCALAPPDATA || homedir(), "ProducerPal", "Logs");
   }
+
   // Linux/Unix: follows XDG Base Directory specification
   return join(homedir(), ".local", "share", "Producer Pal", "logs");
 })();

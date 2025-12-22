@@ -39,6 +39,7 @@ export function BehaviorTab({
   setShowThoughts,
   resetBehaviorToDefaults,
 }: BehaviorTabProps) {
+  // Render the behavior settings with thinking and temperature controls
   return (
     <div>
       <div className="flex justify-end">
@@ -50,6 +51,7 @@ export function BehaviorTab({
           Reset to defaults
         </button>
       </div>
+
       <div className="space-y-4">
         <ThinkingSettings
           provider={provider}

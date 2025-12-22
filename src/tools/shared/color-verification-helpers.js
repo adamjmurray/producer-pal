@@ -18,6 +18,7 @@ export function verifyColorQuantization(object, requestedColor) {
     // Case-insensitive comparison (handles #ff0000 vs #FF0000)
     if (actualColor?.toUpperCase() !== requestedColor.toUpperCase()) {
       const objectType = object.type;
+
       console.error(
         `Note: Requested ${objectType.toLowerCase()} color ${requestedColor} was mapped to nearest palette color ${actualColor}. Live uses a fixed color palette.`,
       );

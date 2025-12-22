@@ -103,6 +103,7 @@ function evaluateRamp(
 
   // Optional third argument: speed (default 1)
   let speed = 1;
+
   if (args.length >= 3) {
     speed = evaluateExpression(
       args[2],
@@ -112,6 +113,7 @@ function evaluateRamp(
       timeRange,
       noteProperties,
     );
+
     if (speed <= 0) {
       throw new Error(`Function ramp() speed must be > 0, got ${speed}`);
     }
@@ -171,6 +173,7 @@ function evaluateWaveform(
 
   // Optional second argument: phase offset
   let phaseOffset = 0;
+
   if (args.length >= 2) {
     phaseOffset = evaluateExpression(
       args[1],
@@ -198,6 +201,7 @@ function evaluateWaveform(
     case "square": {
       // Optional third argument: pulseWidth
       let pulseWidth = 0.5; // default
+
       if (args.length >= 3) {
         pulseWidth = evaluateExpression(
           args[2],
@@ -208,6 +212,7 @@ function evaluateWaveform(
           noteProperties,
         );
       }
+
       return waveforms.square(phase, pulseWidth);
     }
 
@@ -252,6 +257,7 @@ function parsePeriod(
       timeRange,
       noteProperties,
     );
+
     if (period <= 0) {
       throw new Error(`Function ${name}() period must be > 0, got ${period}`);
     }

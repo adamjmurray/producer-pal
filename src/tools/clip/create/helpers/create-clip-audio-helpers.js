@@ -32,6 +32,7 @@ export function createAudioSessionClip(
 
   if (sceneIndex >= currentSceneCount) {
     const scenesToCreate = sceneIndex - currentSceneCount + 1;
+
     for (let j = 0; j < scenesToCreate; j++) {
       liveSet.call("create_scene", -1); // -1 means append at the end
     }
@@ -40,6 +41,7 @@ export function createAudioSessionClip(
   const clipSlot = new LiveAPI(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
+
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
       `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
@@ -85,6 +87,7 @@ export function createAudioArrangementClip(
     arrangementStartBeats,
   );
   const clip = LiveAPI.from(newClipResult);
+
   if (!clip.exists()) {
     throw new Error("failed to create audio Arrangement clip");
   }

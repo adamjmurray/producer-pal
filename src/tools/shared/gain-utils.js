@@ -31,6 +31,7 @@ export function liveGainToDb(gain) {
   if (gain <= 0) {
     return -Infinity;
   }
+
   if (gain >= 1) {
     return 24; // Maximum gain in Live
   }
@@ -41,6 +42,7 @@ export function liveGainToDb(gain) {
 
   while (upperIndex - lowerIndex > 1) {
     const mid = Math.floor((lowerIndex + upperIndex) / 2);
+
     if (LOOKUP_TABLE[mid].gain <= gain) {
       lowerIndex = mid;
     } else {
@@ -56,6 +58,7 @@ export function liveGainToDb(gain) {
     if (upper.dB === null || upper.dB === -Infinity) {
       return -Infinity;
     }
+
     return upper.dB;
   }
 
@@ -90,6 +93,7 @@ export function dbToLiveGain(dB) {
   if (dB === -Infinity || dB < -70) {
     return 0;
   }
+
   if (dB >= 24) {
     return 1;
   }
@@ -100,6 +104,7 @@ export function dbToLiveGain(dB) {
 
   for (let i = 0; i < LOOKUP_TABLE.length; i++) {
     const entry = LOOKUP_TABLE[i];
+
     if (entry.dB === null || entry.dB === -Infinity) {
       continue;
     }
@@ -116,6 +121,7 @@ export function dbToLiveGain(dB) {
   if (lowerIndex === -1) {
     return 0;
   }
+
   if (upperIndex === -1) {
     return LOOKUP_TABLE[lowerIndex].gain;
   }

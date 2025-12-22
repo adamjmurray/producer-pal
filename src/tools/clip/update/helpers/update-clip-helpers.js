@@ -15,35 +15,6 @@ import {
 } from "./update-clip-audio-helpers.js";
 
 /**
- * Get the actual content end position by examining all notes in a clip.
- * This is needed for unlooped clips where end_marker is unreliable.
- * @param {LiveAPI} clip - The clip to analyze
- * @returns {number} The end position of the last note in beats, or 0 if no notes
- */
-export function getActualContentEnd(clip) {
-  try {
-    // For unlooped clips, check ALL notes using MAX_CLIP_BEATS
-    const notesDictionary = clip.call(
-      "get_notes_extended",
-      0,
-      128,
-      0,
-      MAX_CLIP_BEATS,
-    );
-    const notes = JSON.parse(notesDictionary).notes;
-    if (!notes || notes.length === 0) return 0;
-    return Math.max(...notes.map((note) => note.start_time + note.duration));
-  } catch (error) {
-    console.error(
-      `Warning: Failed to get notes for clip ${clip.id}: ${error.message}`,
-    );
-    return 0;
-  }
-}
-
-// Audio-specific helper functions are now in update-clip-audio-helpers.js
-
-/**
  * Calculate beat positions from bar|beat notation
  * @param {object} args - Calculation arguments
  * @param {string} [args.start] - Start position in bar|beat notation
@@ -68,6 +39,7 @@ export function calculateBeatPositions({
   let endBeats = null;
   let firstStartBeats = null;
   let startMarkerBeats = null;
+
   // Convert start to beats if provided
   if (start != null) {
     startBeats = barBeatToAbletonBeats(
@@ -76,6 +48,7 @@ export function calculateBeatPositions({
       timeSigDenominator,
     );
   }
+
   // Calculate end from start + length
   if (length != null) {
     const lengthBeats = barBeatDurationToAbletonBeats(
@@ -83,6 +56,7 @@ export function calculateBeatPositions({
       timeSigNumerator,
       timeSigDenominator,
     );
+
     // If start not provided, read current value from clip
     if (startBeats == null) {
       if (isLooping) {
@@ -91,7 +65,9 @@ export function calculateBeatPositions({
         // For non-looping clips, derive from end_marker - length
         const currentEndMarker = clip.getProperty("end_marker");
         const currentStartMarker = clip.getProperty("start_marker");
+
         startBeats = currentEndMarker - lengthBeats;
+
         // Sanity check: warn if derived start doesn't match start_marker
         if (
           Math.abs(startBeats - currentStartMarker) > 0.001 &&
@@ -103,8 +79,10 @@ export function calculateBeatPositions({
         }
       }
     }
+
     endBeats = startBeats + lengthBeats;
   }
+
   // Handle firstStart for looping clips
   if (firstStart != null && isLooping) {
     firstStartBeats = barBeatToAbletonBeats(
@@ -113,6 +91,7 @@ export function calculateBeatPositions({
       timeSigDenominator,
     );
   }
+
   // Determine start_marker value
   if (firstStartBeats != null) {
     // firstStart takes precedence
@@ -124,6 +103,7 @@ export function calculateBeatPositions({
     // For looping clips without firstStart, start_marker = start
     startMarkerBeats = startBeats;
   }
+
   return { startBeats, endBeats, firstStartBeats, startMarkerBeats };
 }
 
@@ -160,6 +140,7 @@ export function buildClipPropertiesToSet({
     isLooping && startBeats != null && endBeats != null
       ? startBeats > currentLoopEnd
       : false;
+
   const propsToSet = {
     name: name,
     color: color,
@@ -168,26 +149,31 @@ export function buildClipPropertiesToSet({
     start_marker: startMarkerBeats,
     looping: looping,
   };
+
   // Set loop properties for looping clips (order matters!)
   if (isLooping || looping == null) {
     if (setEndFirst && endBeats != null && looping !== false) {
       // Set end first to avoid "LoopStart behind LoopEnd" error
       propsToSet.loop_end = endBeats;
     }
+
     if (startBeats != null && looping !== false) {
       propsToSet.loop_start = startBeats;
     }
+
     if (!setEndFirst && endBeats != null && looping !== false) {
       // Set end after start in normal case
       propsToSet.loop_end = endBeats;
     }
   }
+
   // Set end_marker for non-looping clips
   if (!isLooping || looping === false) {
     if (endBeats != null) {
       propsToSet.end_marker = endBeats;
     }
   }
+
   return propsToSet;
 }
 
@@ -212,25 +198,31 @@ export function handleNoteUpdates(
   if (notationString == null) {
     return null;
   }
+
   let combinedNotationString = notationString;
+
   if (noteUpdateMode === "merge") {
     // In merge mode, prepend existing notes as bar|beat notation
     const existingNotesResult = JSON.parse(
       clip.call("get_notes_extended", 0, 128, 0, MAX_CLIP_BEATS),
     );
     const existingNotes = existingNotesResult?.notes || [];
+
     if (existingNotes.length > 0) {
       const existingNotationString = formatNotation(existingNotes, {
         timeSigNumerator,
         timeSigDenominator,
       });
+
       combinedNotationString = `${existingNotationString} ${notationString}`;
     }
   }
+
   const notes = interpretNotation(combinedNotationString, {
     timeSigNumerator,
     timeSigDenominator,
   });
+
   // Apply modulations to notes if provided
   applyModulations(
     notes,
@@ -238,16 +230,20 @@ export function handleNoteUpdates(
     timeSigNumerator,
     timeSigDenominator,
   );
+
   // Remove all notes and add new notes
   clip.call("remove_notes_extended", 0, 128, 0, MAX_CLIP_BEATS);
+
   if (notes.length > 0) {
     clip.call("add_new_notes", { notes });
   }
+
   // Query actual note count within playback region
   const lengthBeats = clip.getProperty("length");
   const actualNotesResult = JSON.parse(
     clip.call("get_notes_extended", 0, 128, 0, lengthBeats),
   );
+
   return actualNotesResult?.notes?.length || 0;
 }
 
@@ -314,8 +310,10 @@ export function processSingleClipUpdate(params) {
 
   // Parse time signature if provided
   let timeSigNumerator, timeSigDenominator;
+
   if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
+
     timeSigNumerator = parsed.numerator;
     timeSigDenominator = parsed.denominator;
   } else {
@@ -372,6 +370,7 @@ export function processSingleClipUpdate(params) {
 
   // Audio-specific parameters
   const isAudioClip = clip.getProperty("is_audio_clip") > 0;
+
   if (isAudioClip) {
     setAudioParameters(clip, { gainDb, pitchShift, warpMode, warping });
   }
@@ -397,32 +396,77 @@ export function processSingleClipUpdate(params) {
     );
   }
 
-  // Handle arrangementLength
-  let hasArrangementLengthResults = false;
-  if (arrangementLengthBeats != null) {
-    const results = handleArrangementLengthOperation({
-      clip,
-      isAudioClip,
-      arrangementLengthBeats,
-      context,
-    });
-    if (results.length > 0) {
-      updatedClips.push(...results);
-      hasArrangementLengthResults = true;
-    }
-  }
+  // Handle arrangement operations (move FIRST, then length)
+  handleArrangementOperations({
+    clip,
+    isAudioClip,
+    arrangementStartBeats,
+    arrangementLengthBeats,
+    tracksWithMovedClips,
+    context,
+    updatedClips,
+    finalNoteCount,
+    handleArrangementLengthOperation,
+    buildClipResultObject,
+  });
+}
 
-  // Handle arrangementStart
+/**
+ * Handle arrangement start and length operations in correct order
+ * @param {object} args - Operation arguments
+ * @param {LiveAPI} args.clip - The clip to operate on
+ * @param {boolean} args.isAudioClip - Whether the clip is audio
+ * @param {number} args.arrangementStartBeats - Target start position in beats
+ * @param {number} args.arrangementLengthBeats - Target length in beats
+ * @param {Map} args.tracksWithMovedClips - Map of tracks with moved clips
+ * @param {object} args.context - Tool execution context
+ * @param {Array} args.updatedClips - Array to collect updated clips
+ * @param {number} args.finalNoteCount - Final note count for result
+ * @param {Function} args.handleArrangementLengthOperation - Length handler
+ * @param {Function} args.buildClipResultObject - Result builder
+ */
+function handleArrangementOperations({
+  clip,
+  isAudioClip,
+  arrangementStartBeats,
+  arrangementLengthBeats,
+  tracksWithMovedClips,
+  context,
+  updatedClips,
+  finalNoteCount,
+  handleArrangementLengthOperation,
+  buildClipResultObject,
+}) {
+  // Move FIRST so lengthening uses the new position
   let finalClipId = clip.id;
+  let currentClip = clip;
+
   if (arrangementStartBeats != null) {
     finalClipId = handleArrangementStartOperation({
       clip,
       arrangementStartBeats,
       tracksWithMovedClips,
     });
+    currentClip = LiveAPI.from(`id ${finalClipId}`);
   }
 
-  // Build result object if arrangementLength didn't return results
+  // Handle arrangementLength SECOND
+  let hasArrangementLengthResults = false;
+
+  if (arrangementLengthBeats != null) {
+    const results = handleArrangementLengthOperation({
+      clip: currentClip,
+      isAudioClip,
+      arrangementLengthBeats,
+      context,
+    });
+
+    if (results.length > 0) {
+      updatedClips.push(...results);
+      hasArrangementLengthResults = true;
+    }
+  }
+
   if (!hasArrangementLengthResults) {
     updatedClips.push(buildClipResultObject(finalClipId, finalNoteCount));
   }

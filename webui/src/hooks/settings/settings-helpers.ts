@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   openai: {
     apiKey: "",
-    model: "gpt-5.1-2025-11-13",
+    model: "gpt-5.2-2025-12-11",
     thinking: "Medium",
     temperature: 1.0,
     showThoughts: true,
@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   ollama: {
     apiKey: "",
-    model: "",
+    model: "ministral-3",
     port: 11434,
     thinking: "Auto",
     temperature: 1.0,
@@ -97,20 +97,24 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
     const legacySettings: Partial<ProviderSettings> = {};
 
     const apiKey = localStorage.getItem("gemini_api_key");
+
     if (apiKey) legacySettings.apiKey = apiKey;
 
     const model =
       localStorage.getItem("gemini_model") ?? localStorage.getItem("model");
+
     if (model) legacySettings.model = model;
 
     const thinking =
       localStorage.getItem("thinking") ??
       localStorage.getItem("gemini_thinking");
+
     if (thinking) legacySettings.thinking = thinking;
 
     const temperature =
       localStorage.getItem("temperature") ??
       localStorage.getItem("gemini_temperature");
+
     if (temperature != null) {
       legacySettings.temperature = parseFloat(temperature);
     }
@@ -118,6 +122,7 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
     const showThoughts =
       localStorage.getItem("showThoughts") ??
       localStorage.getItem("gemini_showThoughts");
+
     if (showThoughts != null) {
       legacySettings.showThoughts = showThoughts === "true";
     }
@@ -140,6 +145,7 @@ export function saveProviderSettings(
   settings: ProviderSettings,
 ) {
   const key = `producer_pal_provider_${provider}`;
+
   localStorage.setItem(key, JSON.stringify(settings));
 }
 
@@ -153,9 +159,11 @@ export function normalizeThinkingForOpenAI(thinking: string): string {
   if (thinking === "Off" || thinking === "Auto") {
     return "Low";
   }
+
   if (thinking === "Ultra") {
     return "High";
   }
+
   return thinking;
 }
 
@@ -170,9 +178,11 @@ export function checkHasApiKey(provider: Provider): boolean {
   }
 
   const savedData = localStorage.getItem(`producer_pal_provider_${provider}`);
+
   if (savedData) {
     try {
       const data = JSON.parse(savedData);
+
       return Boolean(data.apiKey);
     } catch {
       return false;
@@ -248,6 +258,7 @@ export function loadCurrentProvider(): Provider {
  */
 export function loadEnabledTools(): Record<string, boolean> {
   const saved = localStorage.getItem("producer_pal_enabled_tools");
+
   if (saved) {
     try {
       return { ...DEFAULT_ENABLED_TOOLS, ...JSON.parse(saved) };
@@ -255,6 +266,7 @@ export function loadEnabledTools(): Record<string, boolean> {
       return DEFAULT_ENABLED_TOOLS;
     }
   }
+
   return DEFAULT_ENABLED_TOOLS;
 }
 
@@ -266,6 +278,7 @@ export function createAllToolsEnabled(): Record<string, boolean> {
   return TOOLS.reduce(
     (acc, tool) => {
       acc[tool.id] = true;
+
       return acc;
     },
     {} as Record<string, boolean>,
@@ -280,6 +293,7 @@ export function createAllToolsDisabled(): Record<string, boolean> {
   return TOOLS.reduce(
     (acc, tool) => {
       acc[tool.id] = false;
+
       return acc;
     },
     {} as Record<string, boolean>,

@@ -19,12 +19,15 @@ function generateClipName(baseName, count, index) {
   if (baseName == null) {
     return undefined;
   }
+
   if (count === 1) {
     return baseName;
   }
+
   if (index === 0) {
     return baseName;
   }
+
   return `${baseName} ${index + 1}`;
 }
 
@@ -74,6 +77,7 @@ export function duplicateClipWithPositions(
         sceneIndices[i],
         objectName,
       );
+
       createdObjects.push(result);
     }
   } else {
@@ -99,6 +103,7 @@ export function duplicateClipWithPositions(
         songTimeSigDenominator,
         context,
       );
+
       createdObjects.push(result);
     }
   }

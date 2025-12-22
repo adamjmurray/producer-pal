@@ -16,20 +16,26 @@ export function expandRepeatPattern(
 ) {
   const { start, times, step: stepValue } = pattern;
   const step = stepValue ?? currentDuration;
+
   if (times > 100) {
     console.error(
       `WARNING: Repeat pattern generates ${times} notes, which may be excessive`,
     );
   }
+
   const positions = [];
+
   // Convert starting position to absolute beats (0-based)
   const startBeats = (currentBar - 1) * beatsPerBar + (start - 1);
+
   for (let i = 0; i < times; i++) {
     const absoluteBeats = startBeats + i * step;
     const bar = Math.floor(absoluteBeats / beatsPerBar) + 1;
     const beat = (absoluteBeats % beatsPerBar) + 1;
+
     positions.push({ bar, beat });
   }
+
   return positions;
 }
 
@@ -69,6 +75,7 @@ export function emitPitchAtPosition(
     probability: pitchState.probability,
     velocity_deviation: pitchState.velocityDeviation,
   };
+
   events.push(noteEvent);
 
   // Track for bar copy: calculate actual bar from note position
@@ -79,9 +86,11 @@ export function emitPitchAtPosition(
   const actualBar = Math.floor(abletonBeats / barDuration) + 1;
   const barStartAbletonBeats = (actualBar - 1) * barDuration;
   const relativeAbletonBeats = abletonBeats - barStartAbletonBeats;
+
   if (!notesByBar.has(actualBar)) {
     notesByBar.set(actualBar, []);
   }
+
   // Add to bar copy buffer (v0 notes will be filtered by applyV0Deletions at the end)
   notesByBar.get(actualBar).push({
     ...noteEvent,
@@ -112,11 +121,14 @@ export function emitPitchesAtPositions(
 ) {
   let currentTime = null;
   let hasExplicitBarNumber = false;
+
   for (const position of positions) {
     currentTime = position;
+
     if (element.bar !== null) {
       hasExplicitBarNumber = true;
     }
+
     for (const pitchState of currentPitches) {
       emitPitchAtPosition(
         pitchState,
@@ -128,6 +140,7 @@ export function emitPitchesAtPositions(
       );
     }
   }
+
   return { currentTime, hasExplicitBarNumber };
 }
 
@@ -146,6 +159,7 @@ export function calculatePositions(element, state, beatsPerBar) {
           ? state.currentTime.bar
           : 1
         : element.bar;
+
     return expandRepeatPattern(
       element.beat,
       currentBar,
@@ -161,6 +175,7 @@ export function calculatePositions(element, state, beatsPerBar) {
         : 1
       : element.bar;
   const beat = element.beat;
+
   return [{ bar, beat }];
 }
 
@@ -193,6 +208,7 @@ export function handlePitchEmission(
         `Warning: Time position has no pitches (first position: ${positions[0].bar}|${positions[0].beat})`,
       );
     }
+
     return;
   }
 
@@ -213,8 +229,10 @@ export function handlePitchEmission(
   );
 
   state.currentTime = emitResult.currentTime;
+
   if (emitResult.hasExplicitBarNumber) {
     state.hasExplicitBarNumber = true;
   }
+
   state.pitchesEmitted = true;
 }

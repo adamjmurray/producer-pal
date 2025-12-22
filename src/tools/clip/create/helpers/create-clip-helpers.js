@@ -106,6 +106,7 @@ export function convertTimingParameters(
 
   // Convert length parameter to end position
   let endBeats = null;
+
   if (length != null) {
     const lengthBeats = barBeatDurationToAbletonBeats(
       length,
@@ -113,6 +114,7 @@ export function convertTimingParameters(
       timeSigDenominator,
     );
     const startOffsetBeats = startBeats || 0;
+
     endBeats = startOffsetBeats + lengthBeats;
   }
 
@@ -148,6 +150,7 @@ function createSessionClip(
 
   if (sceneIndex >= currentSceneCount) {
     const scenesToCreate = sceneIndex - currentSceneCount + 1;
+
     for (let j = 0; j < scenesToCreate; j++) {
       liveSet.call("create_scene", -1); // -1 means append at the end
     }
@@ -156,12 +159,15 @@ function createSessionClip(
   const clipSlot = new LiveAPI(
     `live_set tracks ${trackIndex} clip_slots ${sceneIndex}`,
   );
+
   if (clipSlot.getProperty("has_clip")) {
     throw new Error(
       `a clip already exists at track ${trackIndex}, clip slot ${sceneIndex}`,
     );
   }
+
   clipSlot.call("create_clip", clipLength);
+
   return {
     clip: new LiveAPI(`${clipSlot.path} clip`),
     sceneIndex,
@@ -183,6 +189,7 @@ function createArrangementClip(trackIndex, arrangementStartBeats, clipLength) {
     clipLength,
   );
   const clip = LiveAPI.from(newClipResult);
+
   if (!clip.exists()) {
     throw new Error("failed to create Arrangement clip");
   }
@@ -247,6 +254,7 @@ export function processClipIteration(
         liveSet,
         MAX_AUTO_CREATED_SCENES,
       );
+
       clip = result.clip;
       currentSceneIndex = result.sceneIndex;
     } else {
@@ -257,11 +265,13 @@ export function processClipIteration(
         sampleFile,
         clipLength,
       );
+
       clip = result.clip;
     }
 
     // For audio clips: only set name and color (no looping, timing, or notes)
     const propsToSet = {};
+
     if (clipName) propsToSet.name = clipName;
     if (color != null) propsToSet.color = color;
 
@@ -278,6 +288,7 @@ export function processClipIteration(
         liveSet,
         MAX_AUTO_CREATED_SCENES,
       );
+
       clip = result.clip;
       currentSceneIndex = result.sceneIndex;
     } else {
@@ -287,6 +298,7 @@ export function processClipIteration(
         arrangementStartBeats,
         clipLength,
       );
+
       clip = result.clip;
     }
 

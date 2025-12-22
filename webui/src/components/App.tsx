@@ -80,6 +80,7 @@ export function App() {
     if (showSettings && !prevShowSettingsRef.current) {
       originalThemeRef.current = theme;
     }
+
     prevShowSettingsRef.current = showSettings;
   }, [showSettings, theme]);
 
@@ -132,6 +133,7 @@ export function App() {
     <ChatScreen
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding}
+      rateLimitState={chat.rateLimitState}
       handleSend={chat.handleSend}
       handleRetry={chat.handleRetry}
       activeModel={chat.activeModel}

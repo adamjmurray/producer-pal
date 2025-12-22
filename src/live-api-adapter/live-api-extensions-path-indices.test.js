@@ -136,6 +136,44 @@ describe("LiveAPI extensions - path index extensions", () => {
     });
   });
 
+  describe("deviceIndex", () => {
+    it("should return deviceIndex from regular track device path", () => {
+      const device = new LiveAPI("live_set tracks 0 devices 1");
+      expect(device.deviceIndex).toBe(1);
+    });
+
+    it("should return deviceIndex from return track device path", () => {
+      const device = new LiveAPI("live_set return_tracks 0 devices 2");
+      expect(device.deviceIndex).toBe(2);
+    });
+
+    it("should return deviceIndex from master track device path", () => {
+      const device = new LiveAPI("live_set master_track devices 0");
+      expect(device.deviceIndex).toBe(0);
+    });
+
+    it("should return null for non-device paths", () => {
+      const track = new LiveAPI("live_set tracks 1");
+      expect(track.deviceIndex).toBe(null);
+
+      const liveSet = new LiveAPI("live_set");
+      expect(liveSet.deviceIndex).toBe(null);
+
+      const clipSlot = new LiveAPI("live_set tracks 1 clip_slots 0");
+      expect(clipSlot.deviceIndex).toBe(null);
+    });
+
+    it("should handle device index 0", () => {
+      const device = new LiveAPI("live_set tracks 0 devices 0");
+      expect(device.deviceIndex).toBe(0);
+    });
+
+    it("should handle double-digit device indices", () => {
+      const device = new LiveAPI("live_set tracks 0 devices 15");
+      expect(device.deviceIndex).toBe(15);
+    });
+  });
+
   describe("session view integration", () => {
     it("should extract both trackIndex and sceneIndex from clip_slots path", () => {
       const clipSlot = new LiveAPI("live_set tracks 8 clip_slots 12");
@@ -167,6 +205,7 @@ describe("LiveAPI extensions - path index extensions", () => {
       expect(empty.trackIndex).toBe(null);
       expect(empty.sceneIndex).toBe(null);
       expect(empty.clipSlotIndex).toBe(null);
+      expect(empty.deviceIndex).toBe(null);
     });
 
     it("should handle malformed paths", () => {
@@ -178,6 +217,9 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       const malformed3 = new LiveAPI("live_set tracks clip_slots 5");
       expect(malformed3.clipSlotIndex).toBe(null);
+
+      const malformed4 = new LiveAPI("live_set tracks 0 devices");
+      expect(malformed4.deviceIndex).toBe(null);
     });
 
     it("should handle paths with non-numeric indices", () => {
@@ -189,6 +231,9 @@ describe("LiveAPI extensions - path index extensions", () => {
 
       const nonNumeric3 = new LiveAPI("live_set tracks 1 clip_slots abc");
       expect(nonNumeric3.clipSlotIndex).toBe(null);
+
+      const nonNumeric4 = new LiveAPI("live_set tracks 0 devices abc");
+      expect(nonNumeric4.deviceIndex).toBe(null);
     });
 
     it("should handle floating point numbers in paths (should return integer part)", () => {

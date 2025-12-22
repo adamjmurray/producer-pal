@@ -226,7 +226,7 @@ describe("useSettings", () => {
       result.current.setProvider("openai");
     });
 
-    expect(result.current.model).toBe("gpt-5.1-2025-11-13");
+    expect(result.current.model).toBe("gpt-5.2-2025-12-11");
     expect(result.current.thinking).toBe("Medium");
     expect(result.current.temperature).toBe(1.0);
     expect(result.current.showThoughts).toBe(true);

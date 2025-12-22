@@ -515,4 +515,171 @@ describe("useChat", () => {
       expect(result.current.isAssistantResponding).toBe(false);
     });
   });
+
+  describe("rate limit handling", () => {
+    it("sets rateLimitState when rate limit error occurs", async () => {
+      let callCount = 0;
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+          const originalSendMessage = client.sendMessage.bind(client);
+
+          client.sendMessage = async function* (
+            message: string,
+            signal: AbortSignal,
+          ) {
+            callCount++;
+
+            if (callCount === 1) {
+              // First call throws rate limit error
+              throw new Error("Resource has been exhausted");
+            }
+
+            // Subsequent calls succeed
+            yield* originalSendMessage(message, signal);
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      // Start send - it will hit rate limit, retry, and succeed
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // After completion, rateLimitState should be null
+      expect(result.current.rateLimitState).toBeNull();
+      // Messages should be populated (retry succeeded)
+      expect(result.current.messages.length).toBeGreaterThan(0);
+    });
+
+    it("clears rateLimitState when stopResponse is called", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.stopResponse();
+      });
+
+      expect(result.current.rateLimitState).toBeNull();
+    });
+
+    it("clears rateLimitState when clearConversation is called", async () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      await act(async () => {
+        result.current.clearConversation();
+      });
+
+      expect(result.current.rateLimitState).toBeNull();
+    });
+
+    it("returns rateLimitState in hook return value", () => {
+      const { result } = renderHook(() => useChat(defaultProps));
+
+      // rateLimitState should be part of the return value and initially null
+      expect(result.current).toHaveProperty("rateLimitState");
+      expect(result.current.rateLimitState).toBeNull();
+    });
+
+    it("sends original message on retry when no content was received", async () => {
+      const receivedMessages: string[] = [];
+      let callCount = 0;
+
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+          const originalSendMessage = client.sendMessage.bind(client);
+
+          client.sendMessage = async function* (
+            message: string,
+            signal: AbortSignal,
+          ) {
+            receivedMessages.push(message);
+            callCount++;
+
+            if (callCount === 1) {
+              // First call throws rate limit error immediately (no content)
+              throw new Error("Resource has been exhausted");
+            }
+
+            yield* originalSendMessage(message, signal);
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // Both calls should have received the original message
+      expect(receivedMessages).toEqual(["Hello", "Hello"]);
+    });
+
+    it("sends 'continue' on retry when content was already received", async () => {
+      const receivedMessages: string[] = [];
+      let callCount = 0;
+
+      const rateLimitAdapter = {
+        ...mockAdapter,
+        createClient: vi.fn(() => {
+          const client = new MockChatClient();
+
+          client.sendMessage = async function* (
+            message: string,
+            _signal: AbortSignal,
+          ) {
+            receivedMessages.push(message);
+            callCount++;
+
+            // Add user message
+            client.chatHistory.push({ role: "user", content: message });
+            yield [...client.chatHistory];
+
+            if (callCount === 1) {
+              // First call: yield some content, then throw rate limit error
+              client.chatHistory.push({
+                role: "assistant",
+                content: "Partial response...",
+              });
+              yield [...client.chatHistory];
+              throw new Error("Resource has been exhausted");
+            }
+
+            // Second call (retry with "continue"): complete the response
+            client.chatHistory.push({
+              role: "assistant",
+              content: `Continued from: ${message}`,
+            });
+            yield [...client.chatHistory];
+          };
+
+          return client;
+        }),
+      };
+
+      const { result } = renderHook(() =>
+        useChat({ ...defaultProps, adapter: rateLimitAdapter }),
+      );
+
+      await act(async () => {
+        await result.current.handleSend("Hello");
+      });
+
+      // First call should have original message, retry should have "continue"
+      expect(receivedMessages).toEqual(["Hello", "continue"]);
+    });
+  });
 });

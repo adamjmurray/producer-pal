@@ -11,6 +11,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
  */
 function printLargeText(text, prefix = "") {
   const lines = text.split("\n");
+
   lines.forEach((line) => {
     console.log(prefix + line);
   });
@@ -40,6 +41,7 @@ function parseArgs() {
   // Check for command
   if (args[0]) {
     command = args[0];
+
     if (command === "tools/call") {
       if (!args[1] || !args[2]) {
         console.error(
@@ -50,7 +52,9 @@ function parseArgs() {
         );
         process.exit(1);
       }
+
       toolName = args[1];
+
       try {
         toolArgs = JSON.parse(args[2]);
       } catch (e) {
@@ -91,6 +95,7 @@ async function main() {
 
     // Always show server info
     console.log("\nServer Info:");
+
     if (client._serverVersion) {
       console.log(`  Name: ${client._serverVersion.name}`);
       console.log(`  Version: ${client._serverVersion.version}`);
@@ -106,12 +111,15 @@ async function main() {
       if (tools?.length > 0) {
         tools.forEach((tool, index) => {
           console.log(`\n${index + 1}. ${tool.name}`);
+
           if (tool.description) {
             console.log(`   Description: ${tool.description}`);
           }
+
           if (tool.inputSchema) {
             console.log(`   Input Schema:`);
             const schemaJson = JSON.stringify(tool.inputSchema, null, 2);
+
             printLargeText(schemaJson, "   ");
           }
         });
@@ -128,15 +136,18 @@ async function main() {
       });
 
       console.log("\nResult:");
+
       if (result.isError) {
         console.log("ERROR:");
       }
+
       if (result.content) {
         result.content.forEach((content, index) => {
           if (content.type === "text") {
             console.log(content.text);
           } else if (content.type === "resource") {
             console.log(`Resource: ${content.resource.uri}`);
+
             if (content.resource.text) {
               console.log(content.resource.text);
             }
@@ -158,12 +169,15 @@ async function main() {
     console.log("\nConnection closed.");
   } catch (error) {
     console.error("\nError:", error.message);
+
     if (error.cause) {
       console.error("Cause:", error.cause.message);
     }
+
     if (error.stack) {
       console.error("\nStack trace:", error.stack);
     }
+
     process.exit(1);
   }
 }

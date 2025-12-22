@@ -15,8 +15,7 @@ export function validateIdType(id, expectedType, toolName) {
     throw new Error(`${toolName} failed: id "${id}" does not exist`);
   }
 
-  // Live API returns "Track", user passes "track" - normalize both sides for comparison
-  if (object.type.toLowerCase() !== expectedType.toLowerCase()) {
+  if (!isTypeMatch(object.type, expectedType)) {
     throw new Error(
       `${toolName} failed: id "${id}" is not a ${expectedType} (found ${object.type})`,
     );
@@ -56,8 +55,7 @@ export function validateIdTypes(
       }
     }
 
-    // Check type match
-    if (object.type.toLowerCase() !== expectedType.toLowerCase()) {
+    if (!isTypeMatch(object.type, expectedType)) {
       if (skipInvalid) {
         console.error(
           `${toolName}: id "${id}" is not a ${expectedType} (found ${object.type})`,
@@ -74,4 +72,23 @@ export function validateIdTypes(
   }
 
   return validObjects;
+}
+
+/**
+ * Checks if the actual type matches the expected type.
+ * Handles device subclasses (e.g., "HybridReverbDevice" matches "device").
+ * @param {string} actualType - The actual type from the Live API object
+ * @param {string} expectedType - The expected type to match against
+ * @returns {boolean} True if types match
+ */
+function isTypeMatch(actualType, expectedType) {
+  const actual = actualType.toLowerCase();
+  const expected = expectedType.toLowerCase();
+
+  if (actual === expected) return true;
+
+  // Device subclass match: "hybridreverbdevice" matches "device"
+  if (expected === "device" && actual.endsWith("device")) return true;
+
+  return false;
 }

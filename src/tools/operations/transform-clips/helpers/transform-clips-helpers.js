@@ -51,10 +51,12 @@ export function parseTransposeValues(
   if (transposeValues == null) {
     return null;
   }
+
   const transposeValuesArray = transposeValues
     .split(",")
     .map((v) => parseFloat(v.trim()))
     .filter((v) => !isNaN(v));
+
   if (transposeValuesArray.length === 0) {
     throw new Error("transposeValues must contain at least one valid number");
   }
@@ -62,6 +64,7 @@ export function parseTransposeValues(
   if (transposeMin != null || transposeMax != null) {
     console.error("Warning: transposeValues ignores transposeMin/transposeMax");
   }
+
   return transposeValuesArray;
 }
 
@@ -82,6 +85,7 @@ export function getClipIds(
   if (clipIds) {
     return parseCommaSeparatedIds(clipIds);
   }
+
   if (arrangementTrackIndex == null) {
     throw new Error(
       "transformClips failed: clipIds or arrangementTrackIndex is required",
@@ -95,6 +99,7 @@ export function getClipIds(
 
   let arrangementStartBeats = 0;
   let arrangementEndBeats = Infinity;
+
   if (arrangementStart != null) {
     arrangementStartBeats = barBeatToAbletonBeats(
       arrangementStart,
@@ -102,28 +107,36 @@ export function getClipIds(
       songTimeSigDenominator,
     );
   }
+
   if (arrangementLength != null) {
     const arrangementLengthBeats = barBeatDurationToAbletonBeats(
       arrangementLength,
       songTimeSigNumerator,
       songTimeSigDenominator,
     );
+
     if (arrangementLengthBeats <= 0) {
       throw new Error("arrangementLength must be greater than 0");
     }
+
     arrangementEndBeats = arrangementStartBeats + arrangementLengthBeats;
   }
 
   const result = [];
+
   for (const trackIndex of trackIndices) {
     const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
     if (!track.exists()) {
       throw new Error(`transformClips failed: track ${trackIndex} not found`);
     }
+
     const trackClipIds = track.getChildIds("arrangement_clips");
+
     for (const clipId of trackClipIds) {
       const clip = new LiveAPI(clipId);
       const clipStartTime = clip.getProperty("start_time");
+
       if (
         clipStartTime >= arrangementStartBeats &&
         clipStartTime < arrangementEndBeats
@@ -132,6 +145,7 @@ export function getClipIds(
       }
     }
   }
+
   return result;
 }
 
@@ -142,11 +156,14 @@ export function getClipIds(
  */
 export function createSeededRNG(seed) {
   let state = seed;
+
   return function () {
     state |= 0;
     state = (state + 0x6d2b79f5) | 0;
     let t = Math.imul(state ^ (state >>> 15), 1 | state);
+
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }

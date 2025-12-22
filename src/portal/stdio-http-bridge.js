@@ -86,13 +86,16 @@ The default URL value is http://localhost:3350`);
       } catch (error) {
         logger.error(`Error closing old client: ${error.message}`);
       }
+
       this.httpClient = null;
     }
 
     // Create new connection
     const url = new URL(this.httpUrl); // let this throw if the URL is invalid, see handling for ERR_INVALID_URL
+
     try {
       const httpTransport = new StreamableHTTPClientTransport(url);
+
       this.httpClient = new Client({
         name: "producer-pal-portal",
         version: "1.0.0",
@@ -104,14 +107,17 @@ The default URL value is http://localhost:3350`);
     } catch (error) {
       logger.error(`HTTP connection failed: ${error.message}`);
       this.isConnected = false;
+
       if (this.httpClient) {
         try {
           this.httpClient.close();
         } catch (closeError) {
           logger.error(`Error closing failed client: ${closeError.message}`);
         }
+
         this.httpClient = null;
       }
+
       throw new Error(
         `Failed to connect to Producer Pal MCP server at ${this.httpUrl}: ${error.message}`,
       );
@@ -143,7 +149,9 @@ The default URL value is http://localhost:3350`);
       try {
         await this._ensureHttpConnection();
         const result = await this.httpClient.listTools();
+
         logger.debug(`[Bridge] tools/list successful via HTTP`);
+
         return result;
       } catch (error) {
         logger.debug(
@@ -154,6 +162,7 @@ The default URL value is http://localhost:3350`);
 
       // Return fallback tools when HTTP is not available
       logger.debug(`[Bridge] Returning fallback tools list`);
+
       return this.fallbackTools;
     });
 
@@ -171,9 +180,11 @@ The default URL value is http://localhost:3350`);
         };
 
         const result = await this.httpClient.callTool(toolRequest);
+
         logger.debug(
           `[Bridge] Tool call successful for ${request.params.name}`,
         );
+
         return result;
       } catch (error) {
         logger.error(
@@ -190,9 +201,11 @@ The default URL value is http://localhost:3350`);
           let errorMessage = error.message || `Unknown MCP error ${error.code}`;
           // Strip redundant "MCP error {code}:" prefix if present
           const mcpErrorPrefix = `MCP error ${error.code}: `;
+
           if (errorMessage.startsWith(mcpErrorPrefix)) {
             errorMessage = errorMessage.slice(mcpErrorPrefix.length);
           }
+
           return formatErrorResponse(errorMessage);
         }
 
@@ -203,6 +216,7 @@ The default URL value is http://localhost:3350`);
           logger.debug(
             `[Bridge] Invalid Producer Pal URL in the Desktop Extension config. Returning the dedicated error response for this scenario.`,
           );
+
           return this._createMisconfiguredUrlResponse();
         }
       }
@@ -211,11 +225,13 @@ The default URL value is http://localhost:3350`);
       logger.debug(
         `[Bridge] Connectivity problem detected. Returning setup error response`,
       );
+
       return this._createSetupErrorResponse();
     });
 
     // Connect stdio transport
     const transport = new StdioServerTransport();
+
     await this.mcpServer.connect(transport);
 
     logger.info(`stdio-to-HTTP bridge started successfully`);
@@ -229,16 +245,20 @@ The default URL value is http://localhost:3350`);
       } catch (error) {
         logger.error(`Error closing HTTP client: ${error.message}`);
       }
+
       this.httpClient = null;
     }
+
     if (this.mcpServer) {
       try {
         this.mcpServer.close();
       } catch (error) {
         logger.error(`Error closing MCP server: ${error.message}`);
       }
+
       this.mcpServer = null;
     }
+
     this.isConnected = false;
     logger.info(`stdio-to-HTTP bridge stopped`);
   }

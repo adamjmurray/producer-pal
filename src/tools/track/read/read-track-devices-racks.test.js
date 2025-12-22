@@ -58,6 +58,7 @@ describe("readTrack", () => {
       });
 
       expect(result.instrument).toEqual({
+        id: "rack1",
         name: "My Empty Rack",
         type: "instrument-rack",
         chains: [
@@ -145,6 +146,7 @@ describe("readTrack", () => {
       });
 
       expect(result.instrument).toEqual({
+        id: "rack1",
         type: "instrument-rack",
         name: "My Custom Rack",
         chains: [
@@ -152,6 +154,7 @@ describe("readTrack", () => {
             name: "Piano",
             devices: [
               {
+                id: "device1",
                 type: "instrument: Operator",
                 name: "Lead Synth",
               },
@@ -162,6 +165,7 @@ describe("readTrack", () => {
             state: "muted",
             devices: [
               {
+                id: "device2",
                 type: "instrument: Wavetable",
                 name: "Bass Synth",
               },
@@ -267,6 +271,7 @@ describe("readTrack", () => {
         ],
       });
       expect(result.instrument).toEqual({
+        id: "drum_rack",
         type: "drum-rack",
         name: "My Drums",
         drumChains: [
@@ -347,9 +352,11 @@ describe("readTrack", () => {
       });
       expect(result.audioEffects).toEqual([
         {
+          id: "device1",
           type: "audio-effect: Reverb",
         },
         {
+          id: "device2",
           type: "audio-effect: Reverb",
           name: "My Custom Reverb",
         },

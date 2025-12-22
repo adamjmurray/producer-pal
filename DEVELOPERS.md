@@ -1,11 +1,28 @@
 # Producer Pal Development Info
 
-This is a personal project with a focused roadmap. While the code is open source
-for learning and forking, I'm not generally not accepting code contributions at
-this time to keep the project aligned with my specific needs and development
-workflow. This may change in the future.
+Contributing to Producer Pal
 
-Feel free to:
+I maintain the core MCP tools and feature roadmap myself to keep development
+moving quickly. But there's plenty of room to collaborate:
+
+**High-value contributions:**
+
+- End-to-end testing automation and LLM evaluations
+- Small language model optimization (making Ollama/LM Studio work better)
+- Voice interaction development
+- Documentation improvements
+
+**Always welcome:**
+
+- Beta testing and detailed bug reports
+- Reproducible cases where LLMs misuse the tools
+- Feature requests and wishlist ideas
+
+Interested? Open a
+[GitHub discussion](https://github.com/adamjmurray/producer-pal/discussions) or
+reach out directly.
+
+Also feel free to:
 
 - File bug reports in
   [the issues](https://github.com/adamjmurray/producer-pal/issues) (help me

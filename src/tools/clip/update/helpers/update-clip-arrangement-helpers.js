@@ -14,31 +14,41 @@ export function handleArrangementStartOperation({
   tracksWithMovedClips,
 }) {
   const isArrangementClip = clip.getProperty("is_arrangement_clip") > 0;
+
   if (!isArrangementClip) {
     console.error(
       `Warning: arrangementStart parameter ignored for session clip (id ${clip.id})`,
     );
+
     return clip.id;
   }
+
   // Get track and duplicate clip to new position
   const trackIndex = clip.trackIndex;
+
   if (trackIndex == null) {
     throw new Error(
       `updateClip failed: could not determine trackIndex for clip ${clip.id}`,
     );
   }
+
   const track = new LiveAPI(`live_set tracks ${trackIndex}`);
+
   // Track clips being moved to same track
   const moveCount = (tracksWithMovedClips.get(trackIndex) || 0) + 1;
+
   tracksWithMovedClips.set(trackIndex, moveCount);
+
   const newClipResult = track.call(
     "duplicate_clip_to_arrangement",
     `id ${clip.id}`,
     arrangementStartBeats,
   );
   const newClip = LiveAPI.from(newClipResult);
+
   // Delete original clip
   track.call("delete_clip", `id ${clip.id}`);
+
   // Return the new clip ID
   return newClip.id;
 }

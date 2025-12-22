@@ -1,50 +1,64 @@
 # Roadmap
 
+## Get Involved
+
+I maintain the core tools and roadmap, but there's room to collaborate:
+
+- **Testing & evaluations** — automated end-to-end testing, LLM comparisons
+- **Small model optimization** — help make Ollama/LM Studio work better
+- **Voice interaction** — experimental bidirectional voice chat
+- **Documentation** — improvements and tutorials
+- **Bug reports** — especially reproducible LLM tool misuse
+
+Open a
+[GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
+reach out directly.
+
 ## Released
 
-### 0.9 - Public Beta with Claude Desktop
+### 0.9 - Public Beta with Claude Desktop (July 2025)
 
 Initial public release with Claude Desktop support.
 
-### 1.0 - Fleshed out feature set, multi-LLM support
+### 1.0 - Support for more LLMs (October 2025)
 
 Expanded features and support for multiple AI platforms.
 
-### 1.1 - Built-in chat UI
+### 1.1 - Built-in chat UI (November 2025)
 
 Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
 Studio, Ollama, and more.
 
-### 1.2 - Audio clip support, mixer support, enhanced track/clip management
+### 1.2 - Audio clip and mixer support (November 2025)
 
-- Create audio clips
-- A new `read-samples` tool can scan a folder (if you choose to allow it) for
-  audio files and create audio clips from those samples
-- Read and write audio clip properties: gain, pitch, warp mode, warp markers
-- Read and write track mixer properties for gain, panning (including standard
-  stereo panning and split L/R panning modes), and sends
-- Change clip arrangement start time and arrangement length
-- Create return tracks
-- Create multiple tracks at once with independent names and colors
-- Create or duplicate clips to multiple arbitrary arrangement positions and clip
-  slots (e.g. for quickly laying out audio clips in the arrangement)
-- Added an experimental tool `ppal-transform-clips` that can, slice up
-  arrangement clips, randomly reorder slices, and randomize various parameters
-  across multiple clips
+- Audio clip support with a `read-samples` tool to scan folders for samples
+- Track mixer control: gain, panning, and sends
+- Arrangement clip positioning and length control
+- Experimental `ppal-transform-clips` tool for slicing, shuffling, and
+  randomizing clips
 
-## Planned
+### 1.3.0 - Device Control (December 2025)
 
-### 1.3 - Device Control
+- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
+  any track (audio/midi, return, master)
+- Delete devices
+- Read/write device parameters
 
-- Add device
-- Delete device
-- Read/write synth and effect parameters
-- A/B comparison of device parameters
+## In Progress
+
+### v1.3.1
+
 - Rack macro variation management
   - Select macro variation
-  - Save macro variation
+  - Create/update macro variation
   - Delete macro variation
   - Randomize macros
+
+### v1.3.2
+
+- A/B comparison of device parameters
+
+## Planned
 
 ### 1.4 - Modulation
 
@@ -72,12 +86,12 @@ Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
 
 - Sandboxed JavaScript for algorithmic composition and transformation
 
-### 1.7 - Audio Synthesis
+### 1.7 - Audio Editing and Synthesis
 
+- Reverse audio clips
 - Generate audio files on demand from a selection of synthesis algorithms and
   arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
-- Reverse audio clips - If this is still not directly possible in the API,
-  generate the reversed audio sample on demand
+- Generate novel DSP algorithms
 
 ### 1.8 - Harmony
 

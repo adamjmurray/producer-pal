@@ -18,6 +18,7 @@ try {
 
   if (result) {
     const files = result.split("\n").filter(Boolean);
+
     console.error("\n❌ JavaScript files found in webui/ directory\n");
     console.error(
       "The webui directory must contain only TypeScript files (.ts/.tsx).\n",

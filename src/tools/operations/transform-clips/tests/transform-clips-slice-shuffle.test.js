@@ -51,6 +51,7 @@ describe("transformClips - slice + shuffle combination", () => {
 
     const slicedClips = [];
     const shuffledClips = [];
+    let isShufflePhase = false;
 
     /**
      * Mock clip properties for test clips
@@ -158,15 +159,22 @@ describe("transformClips - slice + shuffle combination", () => {
         const idCounter = Date.now() + Math.random();
 
         if (position >= 40000) {
-          // Holding area - part of slicing
+          // Holding area - detect shuffle phase by position > 40000
+          // Slicing uses exactly 40000, shuffle uses 40000, 40100, 40200, etc.
+          if (position > 40000) {
+            isShufflePhase = true;
+          }
           return ["id", `holding_${idCounter}`];
-        } else if (slicedClips.length > 0 && position < 10) {
-          // Shuffle operation - moving clips to new positions
+        }
+
+        if (isShufflePhase) {
+          // Shuffle operation - moving clips from holding to final positions
           const shuffleId = `shuffled_${idCounter}`;
           shuffledClips.push(shuffleId);
           return ["id", shuffleId];
         }
-        // Slicing operation
+
+        // Slicing operation - creating tile clips
         const sliceId =
           slicedClips.length === 0
             ? `moved_${slicedClips.length + 1}`

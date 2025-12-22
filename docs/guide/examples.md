@@ -1,19 +1,7 @@
-# Usage Guide
+# Usage Examples
 
-## Getting Started
-
-1. Add the Producer Pal Max for Live device
-   ([download here](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd))
-   to a MIDI track in your Ableton Live project
-2. Provide your AI with Producer Pal tools. Either:
-   - Add Producer Pal tools to your AI application (see the
-     [Installation Guide](/installation))
-
-     OR
-
-   - Use the [built-in chat UI](/installation/chat-ui)
-
-3. Start a conversation with "Connect to Ableton"
+Once you have [installed Producer Pal](/installation), here are some examples of
+how to use it.
 
 ## Basic Examples
 
@@ -129,10 +117,6 @@ in the Max device to persist important context. For particularly complex tasks,
 typically overkill and will hit usage limits faster.
 
 ## Limitations
-
-Producer Pal cannot (yet) manage devices (instruments or effects) in your
-tracks. You must add and adjust all devices yourself. Note that it can duplicate
-tracks, including all the track's devices.
 
 Drum Racks work in nested structures, but tracks with multiple Drum Racks only
 use the first one's drum map. Use one Drum Rack per track for predictable

@@ -65,6 +65,7 @@ export function ChatHeader({
       onClearConversation();
     }
   };
+
   return (
     <header className="bg-gray-100 dark:bg-gray-800 px-4 py-2 border-b border-gray-300 dark:border-gray-700 flex items-baseline">
       <img
@@ -86,6 +87,7 @@ export function ChatHeader({
           <span className="text-red-600 dark:text-red-400">✗ Error</span>
         )}
       </div>
+
       {hasMessages && <div className="flex-1" />}
       {hasMessages && (
         <button
@@ -96,6 +98,7 @@ export function ChatHeader({
         </button>
       )}
       {hasMessages && <div className="flex-1" />}
+
       <div
         className={
           hasMessages

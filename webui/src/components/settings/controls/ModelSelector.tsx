@@ -9,6 +9,7 @@ interface ModelSelectorProps {
 
 const GEMINI_MODELS = [
   { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (preview)" },
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (preview)" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (most advanced)" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (fast & intelligent)" },
   {
@@ -19,7 +20,7 @@ const GEMINI_MODELS = [
 ];
 
 const OPENAI_MODELS = [
-  { value: "gpt-5.1-2025-11-13", label: "GPT-5.1 (most capable)" },
+  { value: "gpt-5.2-2025-12-11", label: "GPT-5.2 (most capable)" },
   { value: "gpt-5-2025-08-07", label: "GPT-5 (previous version)" },
   { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini (fast & affordable)" },
   { value: "gpt-5-nano-2025-08-07", label: "GPT-5 Nano (ultra fast)" },
@@ -90,6 +91,16 @@ const OPENROUTER_MODELS = [
   { value: "OTHER", label: "Other..." },
 ];
 
+const OLLAMA_MODELS = [
+  { value: "ministral-3", label: "Ministral 3" },
+  { value: "devstral-small-2", label: "Devstral Small 2" },
+  { value: "mistral", label: "Mistral" },
+  { value: "gpt-oss", label: "GPT-OSS" },
+  { value: "qwen3", label: "Qwen3" },
+  { value: "qwen3-coder", label: "Qwen3 Coder" },
+  { value: "OTHER", label: "Other..." },
+];
+
 /**
  * Model selection dropdown with provider-specific presets
  * @param {ModelSelectorProps} root0 - Component props
@@ -113,12 +124,15 @@ export function ModelSelector({
           ? MISTRAL_MODELS
           : provider === "openrouter"
             ? OPENROUTER_MODELS
-            : [];
+            : provider === "ollama"
+              ? OLLAMA_MODELS
+              : [];
   }, [provider]);
 
   // Track whether custom input is shown (for non-custom providers)
   const [showCustomInput, setShowCustomInput] = useState(() => {
     if (provider === "custom" || presetModels.length === 0) return false;
+
     // Check if current model matches any preset (excluding "OTHER")
     return !presetModels.some((m) => m.value === model && m.value !== "OTHER");
   });
@@ -131,11 +145,14 @@ export function ModelSelector({
   useEffect(() => {
     if (provider === "custom" || presetModels.length === 0) {
       setShowCustomInput(false);
+
       return;
     }
+
     const isCustom = !presetModels.some(
       (m) => m.value === model && m.value !== "OTHER",
     );
+
     setShowCustomInput(isCustom);
   }, [model, provider, presetModels]);
 
@@ -148,19 +165,17 @@ export function ModelSelector({
     ) {
       customInputRef.current.focus();
     }
+
     previousShowCustomInputRef.current = showCustomInput;
   }, [showCustomInput]);
 
   // For custom and local providers, use free-form text input
-  if (
-    provider === "custom" ||
-    provider === "lmstudio" ||
-    provider === "ollama"
-  ) {
+  if (provider === "custom" || provider === "lmstudio") {
     const placeholder =
-      provider === "lmstudio" || provider === "ollama"
+      provider === "lmstudio"
         ? "e.g., llama-3.1-70b, qwen-2.5-72b"
         : "e.g., gpt-4, llama-3.1-70b";
+
     return (
       <div>
         <label className="block text-sm mb-2">Model</label>

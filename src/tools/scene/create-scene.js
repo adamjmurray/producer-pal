@@ -33,6 +33,7 @@ export function createScene(
   // Handle capture mode
   if (capture) {
     const result = captureScene({ sceneIndex, name });
+
     applyCaptureProperties(result, { color, tempo, timeSignature });
 
     if (switchView) {
@@ -46,6 +47,7 @@ export function createScene(
   validateCreateSceneArgs(sceneIndex, count);
 
   const liveSet = new LiveAPI("live_set");
+
   ensureSceneCountForIndex(liveSet, sceneIndex);
 
   const createdScenes = [];
@@ -62,6 +64,7 @@ export function createScene(
       tempo,
       timeSignature,
     );
+
     createdScenes.push(sceneResult);
     currentIndex++;
   }
@@ -114,6 +117,7 @@ function applyTimeSignatureProperty(scene, timeSignature) {
     scene.set("time_signature_enabled", false);
   } else if (timeSignature != null) {
     const parsed = parseTimeSignature(timeSignature);
+
     scene.set("time_signature_numerator", parsed.numerator);
     scene.set("time_signature_denominator", parsed.denominator);
     scene.set("time_signature_enabled", true);
@@ -131,9 +135,11 @@ function buildSceneName(name, index, count) {
   if (name == null) {
     return undefined;
   }
+
   if (count === 1 || index === 0) {
     return name;
   }
+
   return `${name} ${index + 1}`;
 }
 
@@ -165,8 +171,10 @@ function validateCreateSceneArgs(sceneIndex, count) {
  */
 function ensureSceneCountForIndex(liveSet, sceneIndex) {
   const currentSceneCount = liveSet.getChildIds("scenes").length;
+
   if (sceneIndex > currentSceneCount) {
     const scenesToPad = sceneIndex - currentSceneCount;
+
     for (let i = 0; i < scenesToPad; i++) {
       liveSet.call("create_scene", -1);
     }
@@ -180,8 +188,10 @@ function ensureSceneCountForIndex(liveSet, sceneIndex) {
  */
 function applyCaptureProperties(result, props) {
   const { color, tempo, timeSignature } = props;
+
   if (color != null || tempo != null || timeSignature != null) {
     const scene = new LiveAPI(`live_set scenes ${result.sceneIndex}`);
+
     applySceneProperties(scene, { color, tempo, timeSignature });
   }
 }
@@ -212,6 +222,7 @@ function createSingleScene(
   const scene = new LiveAPI(`live_set scenes ${sceneIndex}`);
 
   const sceneName = buildSceneName(name, creationIndex, count);
+
   if (sceneName != null) {
     scene.set("name", sceneName);
   }

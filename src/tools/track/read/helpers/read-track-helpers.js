@@ -53,6 +53,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
         const clip = new LiveAPI(
           `live_set tracks ${trackIndex} clip_slots ${sceneIndex} clip`,
         );
+
         return clip.exists() ? clip : null;
       })
       .filter(Boolean).length;
@@ -60,6 +61,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
 
   // Arrangement clips - exclude group tracks which have no arrangement clips
   const isGroup = track.getProperty("is_foldable") > 0;
+
   if (isGroup) {
     if (includeFlags.includeArrangementClips || includeFlags.includeAllClips) {
       result.arrangementClips = [];
@@ -76,6 +78,7 @@ export function readTrackMinimal({ trackIndex, includeFlags }) {
       .filter((clip) => clip.id != null);
   } else {
     const clipIds = track.getChildIds("arrangement_clips");
+
     result.arrangementClipCount = clipIds.length;
   }
 
@@ -94,6 +97,7 @@ export function handleNonExistentTrack(category, trackIndex) {
     type: null,
     name: null,
   };
+
   if (category === "regular") {
     result.trackIndex = trackIndex;
   } else if (category === "return") {
@@ -101,6 +105,7 @@ export function handleNonExistentTrack(category, trackIndex) {
   } else if (category === "master") {
     result.trackIndex = null;
   }
+
   return result;
 }
 
@@ -112,14 +117,19 @@ export function handleNonExistentTrack(category, trackIndex) {
  */
 export function addOptionalBooleanProperties(result, track, canBeArmed) {
   const isArmed = canBeArmed ? track.getProperty("arm") > 0 : false;
+
   if (isArmed) {
     result.isArmed = isArmed;
   }
+
   const isGroup = track.getProperty("is_foldable") > 0;
+
   if (isGroup) {
     result.isGroup = isGroup;
   }
+
   const isGroupMember = track.getProperty("is_grouped") > 0;
+
   if (isGroupMember) {
     result.isGroupMember = isGroupMember;
   }
@@ -147,9 +157,11 @@ export function cleanupDeviceChains(result) {
   if (result.midiEffects) {
     result.midiEffects = cleanupInternalDrumChains(result.midiEffects);
   }
+
   if (result.instrument) {
     result.instrument = cleanupInternalDrumChains(result.instrument);
   }
+
   if (result.audioEffects) {
     result.audioEffects = cleanupInternalDrumChains(result.audioEffects);
   }
@@ -165,11 +177,15 @@ export function addSlotIndices(result, track, category) {
   if (category !== "regular") {
     return;
   }
+
   const playingSlotIndex = track.getProperty("playing_slot_index");
+
   if (playingSlotIndex >= 0) {
     result.playingSlotIndex = playingSlotIndex;
   }
+
   const firedSlotIndex = track.getProperty("fired_slot_index");
+
   if (firedSlotIndex >= 0) {
     result.firedSlotIndex = firedSlotIndex;
   }
@@ -183,6 +199,7 @@ export function addSlotIndices(result, track, category) {
  */
 export function addStateIfNotDefault(result, track, category) {
   const trackState = computeState(track, category);
+
   if (trackState !== STATE.ACTIVE) {
     result.state = trackState;
   }
@@ -199,21 +216,27 @@ function computeState(liveObject, category = "regular") {
   if (category === "master") {
     return STATE.ACTIVE;
   }
+
   const isMuted = liveObject.getProperty("mute") > 0;
   const isSoloed = liveObject.getProperty("solo") > 0;
   const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
+
   if (isSoloed) {
     return STATE.SOLOED;
   }
+
   if (isMuted && isMutedViaSolo) {
     return STATE.MUTED_ALSO_VIA_SOLO;
   }
+
   if (isMutedViaSolo) {
     return STATE.MUTED_VIA_SOLO;
   }
+
   if (isMuted) {
     return STATE.MUTED;
   }
+
   return STATE.ACTIVE;
 }
 
@@ -242,6 +265,7 @@ export function addRoutingInfo(
       processCurrentRouting(track, category, isGroup, canBeArmed),
     );
   }
+
   if (includeAvailableRoutings) {
     Object.assign(result, processAvailableRouting(track, category, isGroup));
   }
@@ -276,6 +300,7 @@ export function readMixerProperties(track, returnTrackNames) {
 
   // Read gain
   const volume = new LiveAPI(mixer.path + " volume");
+
   if (volume.exists()) {
     result.gainDb = volume.getProperty("display_value");
   }
@@ -283,6 +308,7 @@ export function readMixerProperties(track, returnTrackNames) {
   // Read panning mode
   const panningMode = mixer.getProperty("panning_mode");
   const isSplitMode = panningMode === 1;
+
   result.panningMode = isSplitMode ? "split" : "stereo";
 
   // Read panning based on mode
@@ -293,11 +319,13 @@ export function readMixerProperties(track, returnTrackNames) {
     if (leftSplit.exists()) {
       result.leftPan = leftSplit.getProperty("value");
     }
+
     if (rightSplit.exists()) {
       result.rightPan = rightSplit.getProperty("value");
     }
   } else {
     const panning = new LiveAPI(mixer.path + " panning");
+
     if (panning.exists()) {
       result.pan = panning.getProperty("value");
     }
@@ -305,14 +333,18 @@ export function readMixerProperties(track, returnTrackNames) {
 
   // Read sends
   const sends = mixer.getChildren("sends");
+
   if (sends.length > 0) {
     // Fetch return track names if not provided
     let names = returnTrackNames;
+
     if (!names) {
       const liveSet = new LiveAPI("live_set");
       const returnTrackIds = liveSet.getChildIds("return_tracks");
+
       names = returnTrackIds.map((_, idx) => {
         const rt = new LiveAPI(`live_set return_tracks ${idx}`);
+
         return rt.getProperty("name");
       });
     }

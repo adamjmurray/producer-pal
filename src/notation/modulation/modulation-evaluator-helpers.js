@@ -94,6 +94,7 @@ function processAssignment(
   try {
     // Update persistent pitch range context if specified
     let pitchRange = null;
+
     if (assignment.pitchRange != null) {
       pitchRange = assignment.pitchRange;
       currentPitchRange = pitchRange;
@@ -102,6 +103,7 @@ function processAssignment(
     // Apply pitch filtering
     if (currentPitchRange != null && pitch != null) {
       const { startPitch, endPitch } = currentPitchRange;
+
       if (pitch < startPitch || pitch > endPitch) {
         return { skip: true }; // Skip this assignment - note's pitch outside range
       }
@@ -136,6 +138,7 @@ function processAssignment(
     console.error(
       `Warning: Failed to evaluate modulation for parameter "${assignment.parameter}": ${error.message}`,
     );
+
     return { skip: true };
   }
 }
@@ -179,6 +182,7 @@ function calculateActiveTimeRange(
       musicalBeatsPerBar,
     );
     const endBeats = barBeatToBeats(`${endBar}|${endBeat}`, musicalBeatsPerBar);
+
     return { timeRange: { start: startBeats, end: endBeats } };
   }
 
@@ -220,6 +224,7 @@ export function evaluateExpression(
         `Variable "note.${node.name}" is not available in this context`,
       );
     }
+
     return noteProperties[node.name];
   }
 
@@ -304,10 +309,12 @@ export function evaluateExpression(
       timeRange,
       noteProperties,
     );
+
     // Division by zero yields 0 per spec
     if (right === 0) {
       return 0;
     }
+
     return left / right;
   }
 

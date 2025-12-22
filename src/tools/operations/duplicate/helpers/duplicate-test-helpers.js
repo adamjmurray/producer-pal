@@ -26,6 +26,7 @@ export const moveClipFromHoldingMock = vi.fn(
   (_holdingClipId, track, _startBeats) => {
     // Return a mock LiveAPI object with necessary methods
     const clipId = `${track.path} arrangement_clips 0`;
+
     return {
       id: clipId,
       path: clipId,
@@ -34,14 +35,17 @@ export const moveClipFromHoldingMock = vi.fn(
         if (prop === "is_arrangement_clip") {
           return 1;
         }
+
         if (prop === "start_time") {
           return _startBeats;
         }
+
         return null;
       }),
       // Add trackIndex getter for getMinimalClipInfo
       get trackIndex() {
         const match = clipId.match(/tracks (\d+)/);
+
         return match ? parseInt(match[1]) : null;
       },
     };

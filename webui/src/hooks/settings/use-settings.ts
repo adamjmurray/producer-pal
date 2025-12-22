@@ -124,6 +124,7 @@ export function useSettings(): UseSettingsReturn {
       ollamaSettings,
       customSettings,
     );
+
     saveCurrentSettings(provider, enabledTools, allSettings);
     setSettingsConfigured(true);
   }, [
@@ -182,11 +183,13 @@ export function useSettings(): UseSettingsReturn {
       // If switching to OpenAI, normalize the thinking value
       if (newProvider === "openai") {
         const normalized = normalizeThinkingForOpenAI(currentSettings.thinking);
+
         if (normalized !== currentSettings.thinking) {
           // Update OpenAI settings with normalized thinking value
           setOpenaiSettings((prev) => ({ ...prev, thinking: normalized }));
         }
       }
+
       setProviderState(newProvider);
     },
     [currentSettings.thinking],

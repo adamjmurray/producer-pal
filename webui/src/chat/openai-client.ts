@@ -46,6 +46,7 @@ export function extractReasoningFromDelta(
   // @ts-expect-error - reasoning fields not in official types yet
   if (delta.reasoning_details) {
     let text = "";
+
     // Extract text from reasoning_details array (standard OpenRouter format)
     // @ts-expect-error - reasoning fields not in official types yet
     for (const detail of delta.reasoning_details) {
@@ -53,6 +54,7 @@ export function extractReasoningFromDelta(
         text += detail.text;
       }
     }
+
     return text;
   }
 
@@ -161,6 +163,7 @@ export class OpenAIClient {
       name: "producer-pal-chat-ui-test",
       version: "1.0.0",
     });
+
     await client.connect(transport);
     await client.close();
   }
@@ -172,6 +175,7 @@ export class OpenAIClient {
    */
   async initialize(): Promise<void> {
     const transport = new StreamableHTTPClientTransport(new URL(this.mcpUrl));
+
     this.mcpClient = new Client({
       name: "producer-pal-chat-ui",
       version: "1.0.0",
@@ -214,6 +218,7 @@ export class OpenAIClient {
 
     // Add user message
     const userMessage: OpenAIMessage = { role: "user", content: message };
+
     this.chatHistory.push(userMessage);
     yield this.chatHistory;
 
@@ -233,8 +238,10 @@ export class OpenAIClient {
 
       // Handle any tool calls from the assistant's response
       const toolCalls = this.getToolCallsFromLastMessage();
+
       if (toolCalls) {
         yield* this.executeToolCalls(toolCalls);
+
         if (abortSignal?.aborted) {
           continueLoop = false;
         }
@@ -257,9 +264,11 @@ export class OpenAIClient {
    */
   private async getFilteredTools(): Promise<OpenAI.Chat.ChatCompletionTool[]> {
     const toolsResult = await this.mcpClient?.listTools();
+
     if (!toolsResult) {
       throw new Error(MCP_NOT_INITIALIZED_ERROR);
     }
+
     const enabledTools = this.config.enabledTools;
     const filteredTools = enabledTools
       ? toolsResult.tools.filter((tool) => enabledTools[tool.name] !== false)
@@ -302,6 +311,7 @@ export class OpenAIClient {
 
     for await (const chunk of stream) {
       const choice = chunk.choices[0];
+
       if (!choice) continue;
 
       const delta = choice.delta;
@@ -318,6 +328,7 @@ export class OpenAIClient {
         reasoningText,
         choice.finish_reason,
       );
+
       this.updateChatHistoryWithMessage(messageToAdd);
 
       yield this.chatHistory;
@@ -352,6 +363,7 @@ export class OpenAIClient {
     reasoningText: string,
   ): string {
     const reasoning = extractReasoningFromDelta(delta);
+
     return reasoning ? reasoningText + reasoning : reasoningText;
   }
 
@@ -389,6 +401,7 @@ export class OpenAIClient {
     }
 
     const tc = toolCallsMap.get(tcDelta.index);
+
     if (tc?.type !== "function") return;
 
     if (tcDelta.id) tc.id = tcDelta.id;
@@ -442,6 +455,7 @@ export class OpenAIClient {
     message: OpenAIAssistantMessageWithReasoning,
   ): void {
     const lastMsg = this.chatHistory.at(-1);
+
     if (lastMsg?.role === "assistant") {
       this.chatHistory[this.chatHistory.length - 1] =
         message as unknown as OpenAIMessage;
@@ -456,6 +470,7 @@ export class OpenAIClient {
    */
   private getToolCallsFromLastMessage(): OpenAIToolCall[] | null {
     const finalMessage = this.chatHistory.at(-1);
+
     return finalMessage?.role === "assistant" && finalMessage.tool_calls
       ? finalMessage.tool_calls
       : null;
@@ -479,6 +494,7 @@ export class OpenAIClient {
           tool_call_id: toolCall.id,
           content: JSON.stringify(result),
         };
+
         this.chatHistory.push(toolMessage);
         yield this.chatHistory;
       } catch (error) {
@@ -506,9 +522,11 @@ export class OpenAIClient {
       name: toolCall.function.name,
       arguments: args,
     });
+
     if (!result) {
       throw new Error(MCP_NOT_INITIALIZED_ERROR);
     }
+
     return result.content;
   }
 
@@ -526,6 +544,7 @@ export class OpenAIClient {
         isError: true,
       }),
     };
+
     this.chatHistory.push(toolMessage);
   }
 }

@@ -10,6 +10,7 @@ import { Command } from "commander";
 const debugSeparator = "\n" + "-".repeat(80);
 
 const program = new Command();
+
 program
   .name("chat")
   .description("Chat with Google Gemini API")
@@ -95,6 +96,7 @@ async function chat(
     name: "producer-pal-chat-prototype",
     version: "0.0.1",
   });
+
   await client.connect(transport);
   config.tools = [mcpToTool(client)];
   config.automaticFunctionCalling = {
@@ -181,9 +183,11 @@ function buildConfig({
 
   if (thinking || thinkingBudget != null) {
     config.thinkingConfig = {};
+
     if (thinking) {
       config.thinkingConfig.includeThoughts = true;
     }
+
     if (thinkingBudget != null) {
       config.thinkingConfig.thinkingBudget = thinkingBudget;
     }
@@ -219,6 +223,7 @@ async function sendMessage(
   if (stream) {
     if (debug || verbose) debugCall("chat.sendMessageStream", message);
     const responseStream = await chatSession.sendMessageStream(message);
+
     console.log(`\n[Turn ${turnCount}] Assistant:`);
     await printStream(responseStream, { debug, verbose });
   } else {
@@ -226,9 +231,11 @@ async function sendMessage(
     const response = await chatSession.sendMessage(message);
 
     console.log(`\n[Turn ${turnCount}] Assistant:`);
+
     if (debug || verbose) {
       debugResult(response, verbose);
     }
+
     console.log(formatResponse(response, currentInput));
   }
 }
@@ -243,16 +250,19 @@ async function sendMessage(
  */
 async function printStream(stream, { debug, verbose }) {
   let inThought = false;
+
   for await (const chunk of stream) {
     if (debug || verbose) {
       console.log(debugSeparator);
       console.log("Stream chunk");
       debugResult(chunk, verbose);
     }
+
     for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
       inThought = processPart(part, inThought);
     }
   }
+
   console.log();
 }
 
@@ -269,25 +279,33 @@ function processPart(part, inThought) {
       process.stdout.write(
         inThought ? continueThought(part.text) : startThought(part.text),
       );
+
       return true;
     }
+
     if (inThought) {
       process.stdout.write(endThought());
     }
+
     process.stdout.write(part.text);
+
     return false;
   }
+
   if (part.functionCall) {
     process.stdout.write(
       `🔧 ${part.functionCall.name}(${inspect(part.functionCall.args, { compact: true, depth: 10 })})\n`,
     );
+
     return inThought;
   }
+
   if (part.functionResponse) {
     process.stdout.write(
       `   ↳ ${truncate(part.functionResponse?.response?.content?.[0]?.text, 160)}\n`,
     );
   }
+
   return inThought;
 }
 
@@ -299,6 +317,7 @@ function processPart(part, inThought) {
  */
 function isExitCommand(input) {
   const trimmed = input.trim().toLowerCase();
+
   return trimmed === "exit" || trimmed === "quit" || trimmed === "bye";
 }
 
@@ -324,9 +343,11 @@ function formatResponse(
       ) {
         result.pastInput = true;
       }
+
       if (result.pastInput) {
         for (const { functionCall, functionResponse } of parts) {
           if (functionCall) result.calls.push(functionCall);
+
           if (functionResponse) {
             result.calls[result.responses.length].result =
               functionResponse?.response?.content?.[0]?.text;
@@ -334,6 +355,7 @@ function formatResponse(
           }
         }
       }
+
       return result;
     },
     { pastInput: false, calls: [], responses: [] },
@@ -347,6 +369,7 @@ function formatResponse(
       `🔧 ${name}(${inspect(args, { compact: true })})\n   ↳ ${truncate(result, 160)}`,
     );
   }
+
   if (calls.length > 0) {
     output.push("");
   }
@@ -413,6 +436,7 @@ function endThought() {
  */
 function debugResult(result, verbose) {
   const { sdkHttpResponse, candidates, ...rest } = result;
+
   debugLog({
     ...(verbose ? { sdkHttpResponse } : {}),
     ...rest,
@@ -450,5 +474,6 @@ function debugCall(funcName, args) {
 function truncate(str, maxLength, suffix = "…") {
   if ((str?.length ?? 0) <= maxLength) return str;
   const cutoff = Math.max(0, maxLength - suffix.length);
+
   return str.slice(0, cutoff) + suffix;
 }

@@ -7,13 +7,19 @@ import {
 } from "../../../../test/mock-live-api.js";
 import { updateClip } from "../update-clip.js";
 
+// NOTE: After discovering that the Live API's warp_markers and end_marker properties
+// are unreliable for detecting hidden audio content, we changed the behavior to
+// always attempt to extend audio clips to the target length, letting Live fill
+// with silence if the audio runs out. This simplifies the logic and hopefully works more reliably.
+
 describe("Unlooped audio clips - arrangementLength extension", () => {
-  it("should NOT reveal when audio fully visible (clip 661 scenario: start_marker=0, no hidden)", () => {
+  it("should extend even when audio appears fully visible (clip 661 scenario: start_marker=0)", () => {
     const trackIndex = 0;
     const clipId = "661";
+    const revealedClipId = "662";
 
     liveApiPath.mockImplementation(function () {
-      if (this._id === clipId) {
+      if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
       if (this._path === "live_set") {
@@ -36,6 +42,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         is_midi_clip: 0,
         is_audio_clip: 1,
         looping: 0, // Unlooped clip
+        warping: 1, // Warped clip
         start_time: 0.0,
         end_time: 8.0, // 8 beats visible in arrangement
         start_marker: 0.0,
@@ -44,14 +51,25 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         loop_end: 8.0,
         name: "Audio No Hidden start==firstStart",
         trackIndex,
-        warp_markers: JSON.stringify({
-          warp_markers: [
-            { sample_time: 0.0, beat_time: 0.0 },
-            { sample_time: 4.8, beat_time: 8.0 },
-            { sample_time: 4.81875, beat_time: 8.03125 },
-          ],
-        }),
       },
+      [revealedClipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        start_time: 8.0,
+        end_time: 14.0,
+        start_marker: 8.0,
+        end_marker: 14.0,
+        trackIndex,
+      },
+    });
+
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (method === "duplicate_clip_to_arrangement") {
+        return ["id", revealedClipId];
+      }
+      return 1;
     });
 
     const result = updateClip(
@@ -59,19 +77,58 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       mockContext,
     );
 
-    // Should NOT call duplicate_clip_to_arrangement (no hidden content to reveal)
-    expect(liveApiCall).not.toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.anything(),
-      expect.anything(),
+    // Should set source clip end_marker to target (3:2 = 14 beats)
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: clipId }),
+      "end_marker",
+      14.0,
     );
 
-    // Should only return original clip (no empty clips for audio)
-    // When only 1 clip, updateClip returns a single object not an array
-    expect(result).toEqual({ id: clipId });
+    // Should duplicate clip to extend
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      `id ${clipId}`,
+      8.0,
+    );
+
+    // Should set markers on revealed clip using looping workaround
+    // newStartMarker = 8 (visibleContentEnd), newEndMarker = 14 (target)
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "looping",
+      1,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "loop_end",
+      14.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "loop_start",
+      8.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "end_marker",
+      14.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "start_marker",
+      8.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "looping",
+      0,
+    );
+
+    // Should return original + revealed clip
+    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
-  it("should reveal hidden audio content (clip 672 scenario: start_marker=0, hidden content)", () => {
+  it("should extend to target length (clip 672 scenario: start_marker=0, extending beyond visible)", () => {
     const trackIndex = 0;
     const clipId = "672";
     const revealedClipId = "673";
@@ -109,13 +166,6 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         loop_end: 5.0,
         name: "Audio Hidden start==firstStart",
         trackIndex,
-        warp_markers: JSON.stringify({
-          warp_markers: [
-            { sample_time: 0.0, beat_time: 0.0 },
-            { sample_time: 4.8, beat_time: 8.0 },
-            { sample_time: 4.81875, beat_time: 8.03125 },
-          ],
-        }),
       },
       [revealedClipId]: {
         is_arrangement_clip: 1,
@@ -123,9 +173,9 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         is_audio_clip: 1,
         looping: 0,
         start_time: 5.0,
-        end_time: 8.0,
+        end_time: 14.0,
         start_marker: 5.0,
-        end_marker: 8.0,
+        end_marker: 14.0,
         name: "Audio Hidden start==firstStart",
         trackIndex,
       },
@@ -143,14 +193,14 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       mockContext,
     );
 
-    // Should set source clip end_marker to actual audio end
+    // Should set source clip end_marker to target length (3:2 = 14 beats)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: clipId }),
       "end_marker",
-      8.0,
+      14.0,
     );
 
-    // Should duplicate clip to reveal hidden content
+    // Should duplicate clip to reveal content
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       `id ${clipId}`,
@@ -158,6 +208,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     );
 
     // Should set markers on revealed clip with workaround
+    // newStartMarker = 5 (visibleContentEnd), newEndMarker = 14 (target)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
       "looping",
@@ -166,7 +217,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
       "loop_end",
-      8.0,
+      14.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
@@ -176,7 +227,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
       "end_marker",
-      8.0,
+      14.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
@@ -193,12 +244,13 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
-  it("should NOT reveal when audio fully visible (clip 683 scenario: start_marker=0, no hidden)", () => {
+  it("should extend even when audio appears fully visible (clip 683 scenario: start_marker=0)", () => {
     const trackIndex = 0;
     const clipId = "683";
+    const revealedClipId = "684";
 
     liveApiPath.mockImplementation(function () {
-      if (this._id === clipId) {
+      if (this._id === clipId || this._id === revealedClipId) {
         return `live_set tracks ${trackIndex} arrangement_clips 0`;
       }
       if (this._path === "live_set") {
@@ -221,6 +273,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         is_midi_clip: 0,
         is_audio_clip: 1,
         looping: 0,
+        warping: 1,
         start_time: 0.0,
         end_time: 8.0,
         start_marker: 0.0,
@@ -229,14 +282,25 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         loop_end: 8.0,
         name: "Audio No Hidden start<firstStart",
         trackIndex,
-        warp_markers: JSON.stringify({
-          warp_markers: [
-            { sample_time: 0.0, beat_time: 0.0 },
-            { sample_time: 4.8, beat_time: 8.0 },
-            { sample_time: 4.81875, beat_time: 8.03125 },
-          ],
-        }),
       },
+      [revealedClipId]: {
+        is_arrangement_clip: 1,
+        is_midi_clip: 0,
+        is_audio_clip: 1,
+        looping: 0,
+        start_time: 8.0,
+        end_time: 14.0,
+        start_marker: 8.0,
+        end_marker: 14.0,
+        trackIndex,
+      },
+    });
+
+    liveApiCall.mockImplementation(function (method, ..._args) {
+      if (method === "duplicate_clip_to_arrangement") {
+        return ["id", revealedClipId];
+      }
+      return 1;
     });
 
     const result = updateClip(
@@ -244,17 +308,57 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       mockContext,
     );
 
-    expect(liveApiCall).not.toHaveBeenCalledWith(
-      "duplicate_clip_to_arrangement",
-      expect.anything(),
-      expect.anything(),
+    // Should set source clip end_marker to target (3:2 = 14 beats)
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: clipId }),
+      "end_marker",
+      14.0,
     );
 
-    // When only 1 clip, updateClip returns a single object not an array
-    expect(result).toEqual({ id: clipId });
+    // Should duplicate clip to extend
+    expect(liveApiCall).toHaveBeenCalledWith(
+      "duplicate_clip_to_arrangement",
+      `id ${clipId}`,
+      8.0,
+    );
+
+    // Should set markers on revealed clip
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "looping",
+      1,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "loop_end",
+      14.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "loop_start",
+      8.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "end_marker",
+      14.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "start_marker",
+      8.0,
+    );
+    expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect.objectContaining({ id: revealedClipId }),
+      "looping",
+      0,
+    );
+
+    // Should return original + revealed clip
+    expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 
-  it("should reveal hidden audio content (clip 694 scenario: start_marker=0, hidden content)", () => {
+  it("should extend to target length (clip 694 scenario: start_marker=0, extending beyond visible)", () => {
     const trackIndex = 0;
     const clipId = "694";
     const revealedClipId = "695";
@@ -292,13 +396,6 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         loop_end: 5.0,
         name: "Audio Hidden start<firstStart",
         trackIndex,
-        warp_markers: JSON.stringify({
-          warp_markers: [
-            { sample_time: 0.0, beat_time: 0.0 },
-            { sample_time: 4.8, beat_time: 8.0 },
-            { sample_time: 4.81875, beat_time: 8.03125 },
-          ],
-        }),
       },
       [revealedClipId]: {
         is_arrangement_clip: 1,
@@ -306,9 +403,9 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
         is_audio_clip: 1,
         looping: 0,
         start_time: 5.0,
-        end_time: 8.0,
+        end_time: 14.0,
         start_marker: 5.0,
-        end_marker: 8.0,
+        end_marker: 14.0,
         name: "Audio Hidden start<firstStart",
         trackIndex,
       },
@@ -326,18 +423,21 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       mockContext,
     );
 
+    // Should set source clip end_marker to target (3:2 = 14 beats)
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: clipId }),
       "end_marker",
-      8.0,
+      14.0,
     );
 
+    // Should duplicate clip
     expect(liveApiCall).toHaveBeenCalledWith(
       "duplicate_clip_to_arrangement",
       `id ${clipId}`,
       5.0,
     );
 
+    // Should set markers on revealed clip
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
       "looping",
@@ -346,7 +446,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
       "loop_end",
-      8.0,
+      14.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
@@ -356,7 +456,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
       "end_marker",
-      8.0,
+      14.0,
     );
     expect(liveApiSet).toHaveBeenCalledWithThis(
       expect.objectContaining({ id: revealedClipId }),
@@ -369,6 +469,7 @@ describe("Unlooped audio clips - arrangementLength extension", () => {
       0,
     );
 
+    // Should return original + revealed clip
     expect(result).toEqual([{ id: clipId }, { id: revealedClipId }]);
   });
 });

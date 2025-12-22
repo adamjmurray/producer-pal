@@ -26,6 +26,7 @@ export function handleArrangementLengthOperation({
     console.error(
       `Warning: arrangementLength parameter ignored for session clip (id ${clip.id})`,
     );
+
     return updatedClips;
   }
 
@@ -46,6 +47,7 @@ export function handleArrangementLengthOperation({
       currentEndTime,
       context,
     });
+
     updatedClips.push(...result);
   } else if (arrangementLengthBeats < currentArrangementLength) {
     // Shortening: Use temp clip overlay pattern

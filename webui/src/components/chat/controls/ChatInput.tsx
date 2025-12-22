@@ -44,6 +44,7 @@ export function ChatInput({
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+
       if (!isAssistantResponding && input.trim()) {
         void handleSend(input, { thinking, temperature });
         setInput("");

@@ -24,6 +24,7 @@ export function SettingsFooter({
           ? "Note: Settings changes apply to new conversations."
           : "Settings will be stored in this web browser."}
       </p>
+
       <div className="flex gap-2 mt-4">
         <button
           onClick={saveSettings}

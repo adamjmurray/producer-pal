@@ -39,11 +39,13 @@ export function parseArrangementLength(
     if (error.message.includes("Invalid bar:beat duration format")) {
       throw new Error(`duplicate failed: ${error.message}`);
     }
+
     if (error.message.includes("must be 0 or greater")) {
       throw new Error(
         `duplicate failed: arrangementLength ${error.message.replace("in duration ", "")}`,
       );
     }
+
     throw error;
   }
 }
@@ -59,6 +61,7 @@ export function getMinimalClipInfo(clip, omitFields = []) {
 
   if (isArrangementClip) {
     const trackIndex = clip.trackIndex;
+
     if (trackIndex == null) {
       throw new Error(
         `getMinimalClipInfo failed: could not determine trackIndex for clip (path="${clip.path}")`,
@@ -84,12 +87,14 @@ export function getMinimalClipInfo(clip, omitFields = []) {
     if (!omitFields.includes("trackIndex")) {
       result.trackIndex = trackIndex;
     }
+
     if (!omitFields.includes("arrangementStart")) {
       result.arrangementStart = arrangementStart;
     }
 
     return result;
   }
+
   const trackIndex = clip.trackIndex;
   const sceneIndex = clip.sceneIndex;
 
@@ -106,6 +111,7 @@ export function getMinimalClipInfo(clip, omitFields = []) {
   if (!omitFields.includes("trackIndex")) {
     result.trackIndex = trackIndex;
   }
+
   if (!omitFields.includes("sceneIndex")) {
     result.sceneIndex = sceneIndex;
   }
@@ -233,6 +239,7 @@ export function createClipsForLength(
       if (name != null) {
         newClip.set("name", name);
       }
+
       duplicatedClips.push(getMinimalClipInfo(newClip, omitFields));
     }
   }
@@ -270,6 +277,7 @@ export function findRoutingOptionForDuplicateNames(
   const tracksWithSameName = allTrackIds
     .map((trackId, index) => {
       const track = new LiveAPI(trackId);
+
       return {
         index,
         id: track.id,
@@ -282,6 +290,7 @@ export function findRoutingOptionForDuplicateNames(
   tracksWithSameName.sort((a, b) => {
     const idA = parseInt(a.id);
     const idB = parseInt(b.id);
+
     return idA - idB;
   });
 
@@ -294,6 +303,7 @@ export function findRoutingOptionForDuplicateNames(
     console.error(
       `Warning: Could not find source track in duplicate name list for "${sourceTrackName}"`,
     );
+
     return undefined;
   }
 
@@ -389,6 +399,7 @@ export function duplicateClipToArrangement(
   }
 
   const trackIndex = clip.trackIndex;
+
   if (trackIndex == null) {
     throw new Error(
       `duplicate failed: no track index for clipId "${clipId}" (path=${clip.path})`,
@@ -417,6 +428,7 @@ export function duplicateClipToArrangement(
       ["trackIndex"],
       context,
     );
+
     duplicatedClips.push(...clipsCreated);
   } else {
     // No length specified - use original behavior
@@ -438,6 +450,7 @@ export function duplicateClipToArrangement(
   if (duplicatedClips.length === 1) {
     return duplicatedClips[0];
   }
+
   return {
     trackIndex,
     clips: duplicatedClips,

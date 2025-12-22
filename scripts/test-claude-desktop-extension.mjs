@@ -134,7 +134,9 @@ function parseResponse(data) {
   // Try to parse the accumulated buffer
   try {
     const response = JSON.parse(responseBuffer.trim());
+
     responseBuffer = ""; // Clear buffer on successful parse
+
     return response;
   } catch (_e) {
     // If parse fails, check if we have a complete JSON by counting braces
@@ -147,7 +149,9 @@ function parseResponse(data) {
         error: "Failed to parse complete response",
         raw: responseBuffer,
       };
+
       responseBuffer = "";
+
       return error;
     }
 
@@ -166,6 +170,7 @@ function logResponse(response, count, tool) {
   if (response.error) {
     console.log("❌ Error:", response.error);
     if (response.raw) console.log("Raw data:", response.raw);
+
     return;
   }
 
@@ -180,9 +185,12 @@ function logResponse(response, count, tool) {
     } else if (count === 2) {
       // Tools list response
       const toolCount = response.result.tools?.length || 0;
+
       console.log(`✅ Tools list successful - ${toolCount} tools available`);
+
       if (toolCount > 0) {
         const toolNames = response.result.tools.map((t) => t.name).join(", ");
+
         console.log(
           `   Tools: ${toolNames.substring(0, 100)}${toolNames.length > 100 ? "..." : ""}`,
         );
@@ -190,10 +198,12 @@ function logResponse(response, count, tool) {
     } else if (count === 3) {
       // Tool call response
       console.log(`✅ Tool call '${tool}' successful`);
+
       if (response.result.content) {
         console.log(`   Content items: ${response.result.content.length}`);
       }
     }
+
     return;
   }
 
@@ -221,6 +231,7 @@ function continueTestSequence(count, elapsed) {
       },
       id: 3,
     };
+
     sendMessage(toolCallMessage, `tools/call ${toolName}`);
   } else {
     // Test complete
@@ -250,6 +261,7 @@ bridge.stdout.on("data", (data) => {
 // Filter stderr to reduce noise from bridge debugging
 bridge.stderr.on("data", (data) => {
   const message = data.toString();
+
   // Only show important errors, not routine bridge logging
   if (
     message.includes("Failed") ||
@@ -266,6 +278,7 @@ bridge.on("error", (error) => {
 
 bridge.on("close", (code) => {
   const elapsed = Date.now() - startTime;
+
   if (code === 0) {
     console.log(`✅ Bridge exited cleanly (${elapsed}ms total)`);
     bridge.kill();

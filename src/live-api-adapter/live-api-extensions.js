@@ -1,3 +1,4 @@
+/* eslint-disable @stylistic/padding-line-between-statements -- switch fallthrough patterns */
 if (typeof LiveAPI !== "undefined") {
   /**
    * Create a LiveAPI instance from an ID or path, automatically handling ID prefixing
@@ -221,6 +222,16 @@ if (typeof LiveAPI !== "undefined") {
 
         // Also try scene path (clip slot index is the scene index in session view)
         match = this.path.match(/live_set scenes (\d+)/);
+        return match ? Number(match[1]) : null;
+      },
+    });
+  }
+
+  // Device index extension
+  if (!Object.prototype.hasOwnProperty.call(LiveAPI.prototype, "deviceIndex")) {
+    Object.defineProperty(LiveAPI.prototype, "deviceIndex", {
+      get: function () {
+        const match = this.path.match(/devices (\d+)/);
         return match ? Number(match[1]) : null;
       },
     });

@@ -36,6 +36,7 @@ export function readClip(args = {}, _context = {}) {
 
   const { includeClipNotes, includeColor, includeWarpMarkers } =
     parseIncludeArray(args.include, READ_CLIP_DEFAULTS);
+
   if (clipId === null && (trackIndex === null || sceneIndex === null)) {
     throw new Error(
       "Either clipId or both trackIndex and sceneIndex must be provided",
@@ -44,6 +45,7 @@ export function readClip(args = {}, _context = {}) {
 
   // Support "id {id}" (such as returned by childIds()) and id values directly
   let clip;
+
   if (clipId != null) {
     // Validate the clip ID is actually a clip
     clip = validateIdType(clipId, "clip", "readClip");
@@ -163,6 +165,7 @@ export function readClip(args = {}, _context = {}) {
 function processWarpMarkers(clip) {
   try {
     const warpMarkersJson = clip.getProperty("warp_markers");
+
     if (!warpMarkersJson || warpMarkersJson === "") {
       return undefined;
     }
@@ -191,6 +194,7 @@ function processWarpMarkers(clip) {
     console.error(
       `Failed to read warp markers for clip ${clip.id}: ${error.message}`,
     );
+
     return undefined;
   }
 }
@@ -205,15 +209,19 @@ function addBooleanStateProperties(result, clip) {
   if (clip.getProperty("is_playing") > 0) {
     result.playing = true;
   }
+
   if (clip.getProperty("is_triggered") > 0) {
     result.triggered = true;
   }
+
   if (clip.getProperty("is_recording") > 0) {
     result.recording = true;
   }
+
   if (clip.getProperty("is_overdubbing") > 0) {
     result.overdubbing = true;
   }
+
   if (clip.getProperty("muted") > 0) {
     result.muted = true;
   }
@@ -244,7 +252,9 @@ function processMidiClip(
     lengthBeats,
   );
   const notes = JSON.parse(notesDictionary).notes;
+
   result.noteCount = notes.length;
+
   if (includeClipNotes) {
     result.notes = formatNotation(notes, {
       timeSigNumerator,
@@ -277,15 +287,18 @@ function getWarpModeMapping() {
  */
 function processAudioClip(result, clip, includeWarpMarkers) {
   const liveGain = clip.getProperty("gain");
+
   result.gainDb = liveGainToDb(liveGain);
 
   const filePath = clip.getProperty("file_path");
+
   if (filePath) {
     result.sampleFile = filePath;
   }
 
   const pitchCoarse = clip.getProperty("pitch_coarse");
   const pitchFine = clip.getProperty("pitch_fine");
+
   result.pitchShift = pitchCoarse + pitchFine / 100;
 
   result.sampleLength = clip.getProperty("sample_length");
@@ -295,11 +308,13 @@ function processAudioClip(result, clip, includeWarpMarkers) {
   result.warping = clip.getProperty("warping") > 0;
   const warpModeValue = clip.getProperty("warp_mode");
   const warpModeMapping = getWarpModeMapping();
+
   result.warpMode = warpModeMapping[warpModeValue] ?? "unknown";
 
   // Add warp markers array when requested
   if (includeWarpMarkers) {
     const warpMarkers = processWarpMarkers(clip);
+
     if (warpMarkers !== undefined) {
       result.warpMarkers = warpMarkers;
     }
@@ -317,9 +332,11 @@ function addClipLocationProperties(result, clip, isArrangementClip) {
     const liveSet = new LiveAPI("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
+
     result.trackIndex = clip.trackIndex;
     const startTimeBeats = clip.getProperty("start_time");
     const endTimeBeats = clip.getProperty("end_time");
+
     result.arrangementStart = abletonBeatsToBarBeat(
       startTimeBeats,
       songTimeSigNumerator,
@@ -360,6 +377,7 @@ function getActiveClipBounds(
   // Sanity check for non-looping clips
   if (!isLooping) {
     const derivedStart = endBeats - lengthBeats;
+
     if (Math.abs(derivedStart - startBeats) > 0.001) {
       console.error(
         `Warning: Derived start (${derivedStart}) differs from start_marker (${startBeats})`,
