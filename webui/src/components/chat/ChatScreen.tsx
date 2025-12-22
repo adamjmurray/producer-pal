@@ -17,8 +17,6 @@ interface ChatScreenProps {
   ) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   activeModel: string | null;
-  activeThinking: string | null;
-  activeTemperature: number | null;
   activeProvider: Provider | null;
   provider: Provider;
   model: string;
@@ -44,8 +42,6 @@ interface ChatScreenProps {
  * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
  *
  * @param {string | null} root0.activeModel - Active model identifier
- * @param {string | null} root0.activeThinking - Active thinking mode
- * @param {number | null} root0.activeTemperature - Active temperature setting
  * @param {Provider | null} root0.activeProvider - Active provider
  *
  * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
@@ -66,8 +62,6 @@ export function ChatScreen({
   handleRetry,
 
   activeModel,
-  activeThinking,
-  activeTemperature,
   activeProvider,
 
   provider,
@@ -88,8 +82,6 @@ export function ChatScreen({
       <ChatHeader
         mcpStatus={mcpStatus}
         activeModel={activeModel}
-        activeThinking={activeThinking}
-        activeTemperature={activeTemperature}
         activeProvider={activeProvider}
         hasMessages={messages.length > 0}
         onOpenSettings={onOpenSettings}

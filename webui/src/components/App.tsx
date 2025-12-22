@@ -137,8 +137,6 @@ export function App() {
       handleSend={chat.handleSend}
       handleRetry={chat.handleRetry}
       activeModel={chat.activeModel}
-      activeThinking={chat.activeThinking}
-      activeTemperature={chat.activeTemperature}
       activeProvider={chat.activeModel ? settings.provider : null}
       provider={settings.provider}
       model={settings.model}

@@ -5,8 +5,6 @@ import type { Provider } from "#webui/types/settings";
 interface ChatHeaderProps {
   mcpStatus: "connected" | "connecting" | "error";
   activeModel: string | null;
-  activeThinking: string | null;
-  activeTemperature: number | null;
   activeProvider: Provider | null;
   hasMessages: boolean;
   onOpenSettings: () => void;
@@ -42,8 +40,6 @@ function getProviderName(provider: Provider): string {
  * @param {ChatHeaderProps} root0 - Component props
  * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
  * @param {string | null} root0.activeModel - Active model identifier
- * @param {string | null} root0.activeThinking - Active thinking mode
- * @param {number | null} root0.activeTemperature - Active temperature setting
  * @param {Provider | null} root0.activeProvider - Active provider
  * @param {boolean} root0.hasMessages - Whether conversation has messages
  * @param {() => void} root0.onOpenSettings - Callback to open settings
@@ -53,8 +49,6 @@ function getProviderName(provider: Provider): string {
 export function ChatHeader({
   mcpStatus,
   activeModel,
-  activeThinking,
-  activeTemperature,
   activeProvider,
   hasMessages,
   onOpenSettings,
@@ -109,16 +103,6 @@ export function ChatHeader({
         {activeModel && activeProvider && (
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {getProviderName(activeProvider)} | {getModelName(activeModel)}
-          </span>
-        )}
-        {activeThinking && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            Thinking: {activeThinking}
-          </span>
-        )}
-        {activeTemperature != null && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {Math.round((activeTemperature / 2) * 100)}% random
           </span>
         )}
         <button
