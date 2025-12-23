@@ -44,26 +44,33 @@ Studio, Ollama, and more.
 - Delete devices
 - Read/write device parameters
 
+### 1.3.1 - maintenance (December 2025)
+
+- Auto-recover from rate limit errors in the built-in chat UI
+
 ## In Progress
 
-### v1.3.1
+### v1.3.2
 
 - Rack macro variation management
   - Select macro variation
   - Create/update macro variation
   - Delete macro variation
   - Randomize macros
+- Support moving/reordering devices
 
-### v1.3.2
+### v1.3.3
 
 - A/B comparison of device parameters
+- Arrangement cue support
+- Change the samples played by Simpler
 
 ## Planned
 
 ### 1.4 - Modulation
 
-Replace or extend the `ppal-transform-clips` tool with more flexible modulation
-features:
+Enhance `ppal-create-clip`, `ppal-update-clip`, and `ppal-transform-clips` tool
+with more flexible modulation features:
 
 - Apply ramps and curves to MIDI velocity, audio gain and other properties
 - Randomize velocity and timing
