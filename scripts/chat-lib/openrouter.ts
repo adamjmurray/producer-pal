@@ -173,16 +173,10 @@ function buildRequestBody(ctx: SessionContext): OpenRouterRequestBody {
     tools,
   };
 
-  if (options.thinking || options.thinkingBudget != null) {
-    const reasoning: OpenRouterReasoningConfig = {};
-
-    if (options.thinkingBudget != null) {
-      reasoning.max_tokens = options.thinkingBudget;
-    } else {
-      reasoning.effort = "medium";
-    }
-
-    body.reasoning = reasoning;
+  if (options.thinking) {
+    body.reasoning = {
+      effort: options.thinking as OpenRouterReasoningConfig["effort"],
+    };
   }
 
   if (options.outputTokens != null) {
@@ -603,16 +597,10 @@ function buildResponsesRequestBody(
     tools,
   };
 
-  if (options.thinking || options.thinkingBudget != null) {
-    const reasoning: OpenRouterReasoningConfig = {};
-
-    if (options.thinkingBudget != null) {
-      reasoning.max_tokens = options.thinkingBudget;
-    } else {
-      reasoning.effort = "medium";
-    }
-
-    body.reasoning = reasoning;
+  if (options.thinking) {
+    body.reasoning = {
+      effort: options.thinking as OpenRouterReasoningConfig["effort"],
+    };
   }
 
   if (options.outputTokens != null) {

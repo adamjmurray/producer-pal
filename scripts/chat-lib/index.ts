@@ -21,8 +21,10 @@ program
   .option("-s, --stream", "Enable streaming mode")
   .option("-d, --debug", "Debug mode (log all output)")
   .option("-v, --verbose", "Verbose mode (debug + HTTP response details)")
-  .option("-t, --thinking", "Enable thinking/reasoning tokens")
-  .option("-b, --thinking-budget <number>", "Thinking token budget", parseInt)
+  .option(
+    "-t, --thinking <level>",
+    "Thinking/reasoning level (provider-specific)",
+  )
   .option("-r, --randomness <number>", "Temperature (0.0-1.0)", parseFloat)
   .option("-o, --output-tokens <number>", "Max output tokens", parseInt)
   .option("-p, --system-prompt <text>", "System instructions")

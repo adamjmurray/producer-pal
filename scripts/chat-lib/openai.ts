@@ -18,7 +18,7 @@ import {
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import type { ChatOptions } from "./shared/types.ts";
 
-const DEFAULT_MODEL = "o4-mini";
+const DEFAULT_MODEL = "gpt-5.2-2025-12-11";
 
 interface ConversationItem {
   type: string;
@@ -177,21 +177,8 @@ function buildRequestBody(
   };
 
   // Configure reasoning/thinking
-  if (options.thinking || options.thinkingBudget != null) {
-    const reasoning: Record<string, unknown> = {};
-
-    if (options.thinkingBudget != null) {
-      reasoning.effort =
-        options.thinkingBudget <= 0
-          ? "low"
-          : options.thinkingBudget >= 10000
-            ? "high"
-            : "medium";
-    } else {
-      reasoning.effort = "medium";
-    }
-
-    requestBody.reasoning = reasoning;
+  if (options.thinking) {
+    requestBody.reasoning = { effort: options.thinking };
   }
 
   if (options.outputTokens != null) {

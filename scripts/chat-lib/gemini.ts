@@ -124,6 +124,16 @@ export async function runGemini(
   }
 }
 
+// Maps thinking level strings to token budgets
+const GEMINI_THINKING_MAP: Record<string, number> = {
+  off: 0,
+  low: 2048,
+  medium: 4096,
+  high: 8192,
+  ultra: 16384,
+  auto: -1,
+};
+
 function buildConfig(options: ChatOptions): GeminiConfig {
   const config: GeminiConfig = {};
 
@@ -135,16 +145,14 @@ function buildConfig(options: ChatOptions): GeminiConfig {
     config.temperature = options.randomness;
   }
 
-  if (options.thinking || options.thinkingBudget != null) {
-    config.thinkingConfig = {};
+  if (options.thinking) {
+    const budget =
+      GEMINI_THINKING_MAP[options.thinking] ?? parseInt(options.thinking, 10);
 
-    if (options.thinking) {
-      config.thinkingConfig.includeThoughts = true;
-    }
-
-    if (options.thinkingBudget != null) {
-      config.thinkingConfig.thinkingBudget = options.thinkingBudget;
-    }
+    config.thinkingConfig = {
+      includeThoughts: budget !== 0,
+      thinkingBudget: budget > 0 ? budget : undefined,
+    };
   }
 
   if (options.systemPrompt != null) {

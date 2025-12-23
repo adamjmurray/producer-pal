@@ -8,8 +8,7 @@ export interface ChatOptions {
   stream: boolean;
   debug: boolean;
   verbose: boolean;
-  thinking: boolean;
-  thinkingBudget?: number;
+  thinking?: string;
   randomness?: number;
   outputTokens?: number;
   systemPrompt?: string;
@@ -72,8 +71,8 @@ export interface ChatTool {
 export interface OpenRouterReasoningConfig {
   /** Token limit for reasoning (Anthropic-style) */
   max_tokens?: number;
-  /** Effort level (OpenAI-style): "low" | "medium" | "high" */
-  effort?: "low" | "medium" | "high";
+  /** Effort level (OpenAI-style) */
+  effort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
   /** Exclude reasoning from response */
   exclude?: boolean;
   /** Enable with defaults */
