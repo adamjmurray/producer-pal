@@ -88,7 +88,7 @@ interface StreamEventItem {
 
 interface StreamEvent {
   type: string;
-  delta?: { text?: string };
+  delta?: { text?: string } | string;
   item_id?: string;
   arguments?: string;
   item?: StreamEventItem;
@@ -311,13 +311,19 @@ async function handleStreamingResponse(
   }
 }
 
+function getDeltaText(delta: StreamEvent["delta"]): string | undefined {
+  return typeof delta === "string" ? delta : delta?.text;
+}
+
 function handleReasoningDelta(event: StreamEvent, state: StreamState): void {
-  if (event.delta?.text) {
+  const text = getDeltaText(event.delta);
+
+  if (text) {
     if (!state.inThought) {
-      process.stdout.write(startThought(event.delta.text));
+      process.stdout.write(startThought(text));
       state.inThought = true;
     } else {
-      process.stdout.write(continueThought(event.delta.text));
+      process.stdout.write(continueThought(text));
     }
   }
 }
@@ -335,7 +341,7 @@ function handleTextDelta(event: StreamEvent, state: StreamState): void {
     state.inThought = false;
   }
 
-  process.stdout.write(event.delta?.text ?? "");
+  process.stdout.write(getDeltaText(event.delta) ?? "");
 }
 
 function handleOutputItemAdded(event: StreamEvent, state: StreamState): void {
