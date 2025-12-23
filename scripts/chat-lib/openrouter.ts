@@ -89,10 +89,10 @@ async function runOpenRouterChat(
   initialText: string,
   options: ChatOptions,
 ): Promise<void> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.OPENROUTER_KEY;
 
   if (!apiKey) {
-    console.error("Error: OPENROUTER_API_KEY environment variable is required");
+    console.error("Error: OPENROUTER_KEY environment variable is required");
     process.exit(1);
   }
 
@@ -515,10 +515,10 @@ async function runOpenRouterResponses(
   initialText: string,
   options: ChatOptions,
 ): Promise<void> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const apiKey = process.env.OPENROUTER_KEY;
 
   if (!apiKey) {
-    console.error("Error: OPENROUTER_API_KEY environment variable is required");
+    console.error("Error: OPENROUTER_KEY environment variable is required");
     process.exit(1);
   }
 
@@ -648,7 +648,7 @@ async function handleResponsesNonStreaming(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${process.env.OPENROUTER_KEY}`,
       [HTTP_REFERER_HEADER]: REFERER_URL,
       [X_TITLE_HEADER]: APP_TITLE,
     },
@@ -746,7 +746,7 @@ async function handleResponsesStreaming(
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      Authorization: `Bearer ${process.env.OPENROUTER_KEY}`,
       [HTTP_REFERER_HEADER]: REFERER_URL,
       [X_TITLE_HEADER]: APP_TITLE,
     },

@@ -92,10 +92,10 @@ export async function runOpenAI(
   initialText: string,
   options: ChatOptions,
 ): Promise<void> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENAI_KEY;
 
   if (!apiKey) {
-    console.error("Error: OPENAI_API_KEY environment variable is required");
+    console.error("Error: OPENAI_KEY environment variable is required");
     process.exit(1);
   }
 

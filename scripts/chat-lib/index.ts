@@ -11,10 +11,10 @@ const program = new Command();
 program
   .name("chat")
   .description("Chat with AI providers")
-  .option(
+  .showHelpAfterError(true)
+  .requiredOption(
     "--provider <provider>",
     "AI provider (gemini, openai, openrouter)",
-    "gemini",
   )
   .option("--api <api>", "API style for OpenRouter (chat, responses)", "chat")
   .option("-m, --model <model>", "Model to use")

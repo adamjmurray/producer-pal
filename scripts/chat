@@ -2,4 +2,4 @@
 # Chat CLI - delegates to TypeScript implementation in chat-lib/
 # Usage: ./scripts/chat --provider gemini|openai|openrouter [options]
 
-exec npx tsx scripts/chat-lib/index.ts "$@"
+exec npx tsx --env-file=.env scripts/chat-lib/index.ts "$@"
