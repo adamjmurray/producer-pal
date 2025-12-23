@@ -67,7 +67,7 @@ export interface OpenAIClientConfig {
   model: string;
   temperature?: number;
   systemInstruction?: string;
-  reasoningEffort?: "low" | "medium" | "high"; // For o1/o3 models
+  reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
   chatHistory?: OpenAIMessage[];
   baseUrl?: string; // For OpenAI-compatible providers
   enabledTools?: Record<string, boolean>;

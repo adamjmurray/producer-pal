@@ -86,7 +86,7 @@ describe("ThinkingSettings", () => {
   });
 
   describe("OpenAI provider", () => {
-    it("renders thinking options without Gemini-specific options", () => {
+    it("renders all OpenAI thinking options", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
       render(
@@ -100,12 +100,14 @@ describe("ThinkingSettings", () => {
         />,
       );
 
-      // Should have common options
+      // Should have all OpenAI options
+      expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
       expect(screen.getByRole("option", { name: "High" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "XHigh" })).toBeDefined();
       // Should not have Gemini-specific options
-      expect(screen.queryByRole("option", { name: "Off" })).toBeNull();
       expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
       expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
     });

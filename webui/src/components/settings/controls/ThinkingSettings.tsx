@@ -44,12 +44,25 @@ export function ThinkingSettings({
           onChange={(e) => setThinking((e.target as HTMLSelectElement).value)}
           className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
         >
-          {isGemini && <option value="Off">Off</option>}
-          {isGemini && <option value="Auto">Auto</option>}
-          <option value="Low">Low</option>
-          <option value="Medium">Medium</option>
-          <option value="High">High</option>
-          {isGemini && <option value="Ultra">Ultra</option>}
+          {isGemini ? (
+            <>
+              <option value="Off">Off</option>
+              <option value="Auto">Auto</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Ultra">Ultra</option>
+            </>
+          ) : (
+            <>
+              <option value="Off">Off</option>
+              <option value="Minimal">Minimal</option>
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="XHigh">XHigh</option>
+            </>
+          )}
         </select>
       </div>
       {/* Only show "Show thinking process" checkbox for Gemini */}

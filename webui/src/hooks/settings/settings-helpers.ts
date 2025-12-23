@@ -79,14 +79,8 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
   if (newFormatData) {
     try {
       const parsed = JSON.parse(newFormatData);
-      const settings = { ...DEFAULT_SETTINGS[provider], ...parsed };
 
-      // Normalize thinking value for OpenAI if it's invalid
-      if (provider === "openai") {
-        settings.thinking = normalizeThinkingForOpenAI(settings.thinking);
-      }
-
-      return settings;
+      return { ...DEFAULT_SETTINGS[provider], ...parsed };
     } catch {
       // Invalid JSON, fall through to defaults or migration
     }
@@ -147,24 +141,6 @@ export function saveProviderSettings(
   const key = `producer_pal_provider_${provider}`;
 
   localStorage.setItem(key, JSON.stringify(settings));
-}
-
-/**
- * Normalizes thinking value for OpenAI's limited options
- * @param {string} thinking - Thinking mode to normalize
- * @returns {any} - Hook return value
- */
-export function normalizeThinkingForOpenAI(thinking: string): string {
-  // OpenAI only supports "Low", "Medium", "High"
-  if (thinking === "Off" || thinking === "Auto") {
-    return "Low";
-  }
-
-  if (thinking === "Ultra") {
-    return "High";
-  }
-
-  return thinking;
 }
 
 /**
