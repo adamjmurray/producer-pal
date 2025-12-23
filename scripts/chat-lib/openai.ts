@@ -74,6 +74,7 @@ interface PendingFunctionCall {
 interface StreamState {
   inThought: boolean;
   pendingFunctionCalls: Map<string, PendingFunctionCall>;
+  toolResults: Map<string, string>; // call_id -> result text
   hasToolCalls: boolean;
 }
 
@@ -277,6 +278,7 @@ async function handleStreamingResponse(
     const state: StreamState = {
       inThought: false,
       pendingFunctionCalls: new Map(),
+      toolResults: new Map(),
       hasToolCalls: false,
     };
 
@@ -354,7 +356,7 @@ async function handleFunctionCallDone(
   state: StreamState,
   ctx: SessionContext,
 ): Promise<void> {
-  const { mcpClient, conversation } = ctx;
+  const { mcpClient } = ctx;
   const itemId = event.item_id;
 
   if (!itemId || !event.arguments) return;
@@ -373,27 +375,28 @@ async function handleFunctionCallDone(
 
   console.log(formatToolResult(resultText));
 
-  // Add tool result to conversation for multi-turn
-  conversation.push({
-    type: "function_call",
-    id: itemId,
-    call_id,
-    name,
-    arguments: event.arguments,
-  });
-  conversation.push({
-    type: "function_call_output",
-    call_id,
-    output: resultText,
-  });
+  // Store result for later - we'll add to conversation in response.completed
+  // This ensures we include all output items (including reasoning) from the response
+  state.toolResults.set(call_id, resultText);
 }
 
 function handleResponseCompleted(
   event: StreamEvent,
+  state: StreamState,
   conversation: ConversationItem[],
 ): void {
+  // Add all output items from response (includes reasoning + function_call items)
   if (event.response?.output) {
     conversation.push(...(event.response.output as ConversationItem[]));
+  }
+
+  // Add function_call_output for each tool result
+  for (const [call_id, resultText] of state.toolResults) {
+    conversation.push({
+      type: "function_call_output",
+      call_id,
+      output: resultText,
+    });
   }
 }
 
@@ -419,12 +422,8 @@ async function processStreamEvent(
       await handleFunctionCallDone(event, state, ctx);
       break;
     case "response.completed":
-      // Don't add to conversation here - we handle it in handleFunctionCallDone
-      // and for non-tool responses, handleResponseCompleted would duplicate
-      if (!state.hasToolCalls) {
-        handleResponseCompleted(event, ctx.conversation);
-      }
-
+      // Always add all output items (reasoning + function_call) and tool results
+      handleResponseCompleted(event, state, ctx.conversation);
       break;
   }
 }
