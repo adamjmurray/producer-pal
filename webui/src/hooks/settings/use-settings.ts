@@ -9,7 +9,6 @@ import {
   loadAllProviderSettings,
   loadCurrentProvider,
   loadEnabledTools,
-  normalizeThinkingForOpenAI,
   type ProviderSettings,
   saveCurrentSettings,
 } from "./settings-helpers";
@@ -177,23 +176,9 @@ export function useSettings(): UseSettingsReturn {
     setTemperature,
     setShowThoughts,
   } = setters;
-  // Custom setProvider that normalizes thinking value when switching providers
-  const setProvider = useCallback(
-    (newProvider: Provider) => {
-      // If switching to OpenAI, normalize the thinking value
-      if (newProvider === "openai") {
-        const normalized = normalizeThinkingForOpenAI(currentSettings.thinking);
-
-        if (normalized !== currentSettings.thinking) {
-          // Update OpenAI settings with normalized thinking value
-          setOpenaiSettings((prev) => ({ ...prev, thinking: normalized }));
-        }
-      }
-
-      setProviderState(newProvider);
-    },
-    [currentSettings.thinking],
-  );
+  const setProvider = useCallback((newProvider: Provider) => {
+    setProviderState(newProvider);
+  }, []);
   const hasApiKey = checkHasApiKey(provider);
   const toolsUtils = useMemo(
     () => ({
