@@ -28,7 +28,7 @@ export async function connectMcp(
   return { client, transport };
 }
 
-export interface OpenAITool {
+export interface ChatTool {
   type: "function";
   function: {
     name: string;
@@ -37,15 +37,16 @@ export interface OpenAITool {
   };
 }
 
+// Alias for backward compatibility with OpenAI Responses API code
+export type OpenAITool = ChatTool;
+
 /**
- * Convert MCP tools to OpenAI function format for Responses API
+ * Convert MCP tools to OpenAI/OpenRouter Chat API function format
  *
  * @param client - MCP client
- * @returns OpenAI-formatted tool definitions
+ * @returns Chat API formatted tool definitions
  */
-export async function getMcpToolsForOpenAI(
-  client: Client,
-): Promise<OpenAITool[]> {
+export async function getMcpToolsForChat(client: Client): Promise<ChatTool[]> {
   const { tools } = await client.listTools();
 
   return tools.map((tool) => ({
@@ -57,3 +58,6 @@ export async function getMcpToolsForOpenAI(
     },
   }));
 }
+
+// Alias for backward compatibility
+export const getMcpToolsForOpenAI = getMcpToolsForChat;

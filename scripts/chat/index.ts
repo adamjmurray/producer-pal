@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { runGemini } from "./gemini.ts";
 import { runOpenAI } from "./openai.ts";
+import { runOpenRouter } from "./openrouter.ts";
 import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
@@ -36,8 +37,7 @@ program
         await runOpenAI(initialText, options);
         break;
       case "openrouter":
-        console.error("OpenRouter provider not yet implemented");
-        process.exit(1);
+        await runOpenRouter(initialText, options);
         break;
       default:
         console.error(`Unknown provider: ${options.provider}`);
