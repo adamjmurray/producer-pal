@@ -66,21 +66,33 @@ interface SessionContext {
   options: ChatOptions;
 }
 
+interface PendingFunctionCall {
+  name: string;
+  call_id: string;
+}
+
 interface StreamState {
   inThought: boolean;
-  outputItems: ResponseOutput[];
+  pendingFunctionCalls: Map<string, PendingFunctionCall>;
+  hasToolCalls: boolean;
+}
+
+interface StreamEventItem {
+  id: string;
+  type: string;
+  name?: string;
+  call_id?: string;
+  arguments?: string;
 }
 
 interface StreamEvent {
   type: string;
   delta?: { text?: string };
-  name?: string;
+  item_id?: string;
   arguments?: string;
-  call_id?: string;
+  item?: StreamEventItem;
   response?: { output?: ResponseOutput[] };
 }
-
-type McpClient = SessionContext["mcpClient"];
 
 /**
  * Run an interactive chat session with OpenAI Responses API
@@ -250,27 +262,51 @@ async function handleStreamingResponse(
   ctx: SessionContext,
   requestBody: Record<string, unknown>,
 ): Promise<void> {
-  const { client, options } = ctx;
+  const { client, conversation, model, options } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const stream = await (client as any).responses.create({
-    ...requestBody,
-    stream: true,
-  });
+  // Agentic loop: keep calling API until no more tool calls
+  let continueLoop = true;
 
-  const state: StreamState = { inThought: false, outputItems: [] };
+  while (continueLoop) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const stream = await (client as any).responses.create({
+      ...requestBody,
+      stream: true,
+    });
 
-  for await (const event of stream) {
-    if (options.debug) {
-      console.log(DEBUG_SEPARATOR);
-      console.log("Stream event:", event.type);
-      debugLog(event);
+    const state: StreamState = {
+      inThought: false,
+      pendingFunctionCalls: new Map(),
+      hasToolCalls: false,
+    };
+
+    for await (const event of stream) {
+      if (options.debug) {
+        console.log(DEBUG_SEPARATOR);
+        console.log("Stream event:", event.type);
+        debugLog(event);
+      }
+
+      await processStreamEvent(event as StreamEvent, state, ctx);
     }
 
-    await processStreamEvent(event as StreamEvent, state, ctx);
-  }
+    console.log();
 
-  console.log();
+    if (state.hasToolCalls) {
+      // Update request body with new conversation for next iteration
+      requestBody = buildRequestBody(ctx, model, options);
+
+      if (options.debug) {
+        debugCall("responses.create (tool continuation)", {
+          ...requestBody,
+          tools: "[...]",
+          input: `[${conversation.length} items]`,
+        });
+      }
+    } else {
+      continueLoop = false;
+    }
+  }
 }
 
 function handleReasoningDelta(event: StreamEvent, state: StreamState): void {
@@ -300,35 +336,56 @@ function handleTextDelta(event: StreamEvent, state: StreamState): void {
   process.stdout.write(event.delta?.text ?? "");
 }
 
+function handleOutputItemAdded(event: StreamEvent, state: StreamState): void {
+  const item = event.item;
+
+  if (item?.type === "function_call" && item.name && item.call_id) {
+    state.pendingFunctionCalls.set(item.id, {
+      name: item.name,
+      call_id: item.call_id,
+    });
+    // Mark that we have tool calls early, before any async operations
+    state.hasToolCalls = true;
+  }
+}
+
 async function handleFunctionCallDone(
   event: StreamEvent,
   state: StreamState,
-  mcpClient: McpClient,
+  ctx: SessionContext,
 ): Promise<void> {
-  if (!event.name || !event.arguments) return;
+  const { mcpClient, conversation } = ctx;
+  const itemId = event.item_id;
 
+  if (!itemId || !event.arguments) return;
+
+  const functionInfo = state.pendingFunctionCalls.get(itemId);
+
+  if (!functionInfo) return;
+
+  const { name, call_id } = functionInfo;
   const args = JSON.parse(event.arguments) as Record<string, unknown>;
 
-  console.log("\n" + formatToolCall(event.name, args));
+  console.log("\n" + formatToolCall(name, args));
 
-  const result = await mcpClient.callTool({
-    name: event.name,
-    arguments: args,
-  });
+  const result = await mcpClient.callTool({ name, arguments: args });
+  const resultText = extractToolResultText(result);
 
-  console.log(formatToolResult(extractToolResultText(result)));
+  console.log(formatToolResult(resultText));
 
-  state.outputItems.push({
+  // Add tool result to conversation for multi-turn
+  conversation.push({
     type: "function_call",
-    id: event.call_id,
-    call_id: event.call_id,
-    name: event.name,
+    id: itemId,
+    call_id,
+    name,
     arguments: event.arguments,
   });
-  state.outputItems.push({
+  conversation.push({
     type: "function_call_output",
-    call_id: event.call_id,
-  } as ResponseOutput);
+    call_id,
+    output: resultText,
+  });
 }
 
 function handleResponseCompleted(
@@ -355,11 +412,19 @@ async function processStreamEvent(
     case "response.output_text.delta":
       handleTextDelta(event, state);
       break;
+    case "response.output_item.added":
+      handleOutputItemAdded(event, state);
+      break;
     case "response.function_call_arguments.done":
-      await handleFunctionCallDone(event, state, ctx.mcpClient);
+      await handleFunctionCallDone(event, state, ctx);
       break;
     case "response.completed":
-      handleResponseCompleted(event, ctx.conversation);
+      // Don't add to conversation here - we handle it in handleFunctionCallDone
+      // and for non-tool responses, handleResponseCompleted would duplicate
+      if (!state.hasToolCalls) {
+        handleResponseCompleted(event, ctx.conversation);
+      }
+
       break;
   }
 }
