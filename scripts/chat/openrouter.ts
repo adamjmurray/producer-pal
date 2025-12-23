@@ -14,7 +14,11 @@ import {
   debugCall,
   DEBUG_SEPARATOR,
 } from "./shared/formatting.ts";
-import { connectMcp, getMcpToolsForChat } from "./shared/mcp.ts";
+import {
+  connectMcp,
+  getMcpToolsForChat,
+  getMcpToolsForResponses,
+} from "./shared/mcp.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import type {
   ChatOptions,
@@ -26,6 +30,11 @@ import type {
   OpenRouterTool,
   OpenRouterToolCall,
   ReasoningDetail,
+  ResponsesAPIResponse,
+  ResponsesConversationItem,
+  ResponsesOutputItem,
+  ResponsesStreamEvent,
+  ResponsesTool,
 } from "./shared/types.ts";
 
 // OpenRouter extends OpenAI's API with additional fields like `reasoning`
@@ -39,6 +48,10 @@ type OpenRouterStreamingParams = ChatCompletionCreateParamsStreaming & {
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
+const HTTP_REFERER_HEADER = "HTTP-Referer";
+const REFERER_URL = "https://producer-pal.org";
+const X_TITLE_HEADER = "X-Title";
+const APP_TITLE = "Producer Pal CLI";
 
 interface SessionContext {
   client: OpenAI;
@@ -60,12 +73,29 @@ function extractToolResultText(
 }
 
 /**
- * Run an interactive chat session with OpenRouter Chat API
+ * Run an interactive chat session with OpenRouter
  *
  * @param initialText - Optional initial text to start the conversation
  * @param options - Chat configuration options
  */
 export async function runOpenRouter(
+  initialText: string,
+  options: ChatOptions,
+): Promise<void> {
+  const apiStyle = options.api ?? "chat";
+
+  if (apiStyle === "responses") {
+    await runOpenRouterResponses(initialText, options);
+  } else {
+    await runOpenRouterChat(initialText, options);
+  }
+}
+
+// =============================================================================
+// CHAT API IMPLEMENTATION
+// =============================================================================
+
+async function runOpenRouterChat(
   initialText: string,
   options: ChatOptions,
 ): Promise<void> {
@@ -83,8 +113,8 @@ export async function runOpenRouter(
     apiKey,
     baseURL: OPENROUTER_BASE_URL,
     defaultHeaders: {
-      "HTTP-Referer": "https://producer-pal.org",
-      "X-Title": "Producer Pal CLI",
+      [HTTP_REFERER_HEADER]: REFERER_URL,
+      [X_TITLE_HEADER]: APP_TITLE,
     },
   });
 
@@ -93,7 +123,7 @@ export async function runOpenRouter(
   const tools = await getMcpToolsForChat(mcpClient);
 
   console.log(`Model: ${model}`);
-  console.log(`Provider: OpenRouter`);
+  console.log(`Provider: OpenRouter (Chat API)`);
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   const messages: OpenRouterMessage[] = [];
@@ -103,7 +133,7 @@ export async function runOpenRouter(
       { client, mcpClient, tools, messages, model, options },
       rl,
       initialText,
-      { sendMessage },
+      { sendMessage: sendMessageChat },
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -120,7 +150,7 @@ export async function runOpenRouter(
   }
 }
 
-async function sendMessage(
+async function sendMessageChat(
   ctx: SessionContext,
   input: string,
   turnCount: number,
@@ -475,4 +505,461 @@ async function executeToolCall(
       tool_call_id: toolCall.id,
     });
   }
+}
+
+// =============================================================================
+// RESPONSES API IMPLEMENTATION
+// =============================================================================
+
+const OPENROUTER_RESPONSES_URL = "https://openrouter.ai/api/v1/responses";
+
+interface ResponsesSessionContext {
+  mcpClient: Awaited<ReturnType<typeof connectMcp>>["client"];
+  tools: ResponsesTool[];
+  conversation: ResponsesConversationItem[];
+  model: string;
+  options: ChatOptions;
+}
+
+async function runOpenRouterResponses(
+  initialText: string,
+  options: ChatOptions,
+): Promise<void> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    console.error("Error: OPENROUTER_API_KEY environment variable is required");
+    process.exit(1);
+  }
+
+  const model = options.model ?? DEFAULT_MODEL;
+
+  const rl = createReadline();
+  const { client: mcpClient } = await connectMcp();
+  const tools = await getMcpToolsForResponses(mcpClient);
+
+  console.log(`Model: ${model}`);
+  console.log(`Provider: OpenRouter (Responses API)`);
+  console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
+
+  const conversation: ResponsesConversationItem[] = [];
+
+  try {
+    await runChatLoop(
+      { mcpClient, tools, conversation, model, options },
+      rl,
+      initialText,
+      { sendMessage: sendMessageResponses },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    console.error("Error:", message);
+
+    if (options.debug || options.verbose) {
+      console.error(error);
+    }
+
+    process.exit(1);
+  } finally {
+    rl.close();
+  }
+}
+
+async function sendMessageResponses(
+  ctx: ResponsesSessionContext,
+  input: string,
+  turnCount: number,
+): Promise<void> {
+  const { conversation, options } = ctx;
+
+  conversation.push({
+    type: "message",
+    role: "user",
+    content: input,
+  });
+
+  console.log(`\n[Turn ${turnCount}] Assistant:`);
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  while (true) {
+    const shouldContinue = options.stream
+      ? await handleResponsesStreaming(ctx)
+      : await handleResponsesNonStreaming(ctx);
+
+    if (!shouldContinue) break;
+  }
+}
+
+interface ResponsesRequestBody {
+  model: string;
+  input: ResponsesConversationItem[];
+  tools?: ResponsesTool[];
+  reasoning?: OpenRouterReasoningConfig;
+  max_output_tokens?: number;
+  temperature?: number;
+  instructions?: string;
+  stream?: boolean;
+}
+
+function buildResponsesRequestBody(
+  ctx: ResponsesSessionContext,
+): ResponsesRequestBody {
+  const { conversation, model, tools, options } = ctx;
+
+  const body: ResponsesRequestBody = {
+    model,
+    input: conversation,
+    tools,
+  };
+
+  if (options.thinking || options.thinkingBudget != null) {
+    const reasoning: OpenRouterReasoningConfig = {};
+
+    if (options.thinkingBudget != null) {
+      reasoning.max_tokens = options.thinkingBudget;
+    } else {
+      reasoning.effort = "medium";
+    }
+
+    body.reasoning = reasoning;
+  }
+
+  if (options.outputTokens != null) {
+    body.max_output_tokens = options.outputTokens;
+  }
+
+  if (options.randomness != null) {
+    body.temperature = options.randomness;
+  }
+
+  if (options.systemPrompt != null) {
+    body.instructions = options.systemPrompt;
+  }
+
+  return body;
+}
+
+async function handleResponsesNonStreaming(
+  ctx: ResponsesSessionContext,
+): Promise<boolean> {
+  const { options } = ctx;
+  const body = buildResponsesRequestBody(ctx);
+
+  if (options.debug || options.verbose) {
+    debugCall("responses (non-streaming)", {
+      ...body,
+      tools: "[...]",
+      input: `[${ctx.conversation.length} items]`,
+    });
+  }
+
+  const response = await fetch(OPENROUTER_RESPONSES_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      [HTTP_REFERER_HEADER]: REFERER_URL,
+      [X_TITLE_HEADER]: APP_TITLE,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(`Responses API error: ${response.status} ${errorText}`);
+  }
+
+  const data = (await response.json()) as ResponsesAPIResponse;
+
+  if (options.debug || options.verbose) {
+    debugLog(data);
+  }
+
+  return await processResponsesOutput(ctx, data.output);
+}
+
+function parseSseLines(
+  lines: string[],
+  options: ChatOptions,
+  state: ResponsesStreamState,
+): void {
+  for (const line of lines) {
+    if (!line.startsWith("data: ")) continue;
+
+    const data = line.slice(6);
+
+    if (data === "[DONE]") continue;
+
+    try {
+      const event = JSON.parse(data) as ResponsesStreamEvent;
+
+      if (options.debug || options.verbose) {
+        console.log(DEBUG_SEPARATOR);
+        debugLog(event);
+      }
+
+      processResponsesStreamEvent(event, state);
+    } catch {
+      // Skip invalid JSON
+    }
+  }
+}
+
+async function readSseStream(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  options: ChatOptions,
+  state: ResponsesStreamState,
+): Promise<void> {
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  while (true) {
+    const { done, value } = await reader.read();
+
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n");
+
+    buffer = lines.pop() ?? "";
+
+    parseSseLines(lines, options, state);
+  }
+}
+
+async function handleResponsesStreaming(
+  ctx: ResponsesSessionContext,
+): Promise<boolean> {
+  const { options } = ctx;
+  const body = { ...buildResponsesRequestBody(ctx), stream: true };
+
+  if (options.debug || options.verbose) {
+    debugCall("responses (streaming)", {
+      ...body,
+      tools: "[...]",
+      input: `[${ctx.conversation.length} items]`,
+    });
+  }
+
+  const response = await fetch(OPENROUTER_RESPONSES_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      [HTTP_REFERER_HEADER]: REFERER_URL,
+      [X_TITLE_HEADER]: APP_TITLE,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+
+    throw new Error(`Responses API error: ${response.status} ${errorText}`);
+  }
+
+  const state: ResponsesStreamState = {
+    inThought: false,
+    currentContent: "",
+    currentReasoning: "",
+    functionCalls: new Map<string, { name: string; arguments: string }>(),
+  };
+
+  const reader = response.body?.getReader();
+
+  if (!reader) {
+    throw new Error("No response body");
+  }
+
+  await readSseStream(reader, options, state);
+
+  if (state.inThought) {
+    process.stdout.write(endThought());
+  }
+
+  console.log();
+
+  if (state.functionCalls.size > 0) {
+    return await handleResponsesFunctionCalls(ctx, state);
+  }
+
+  if (state.currentContent) {
+    ctx.conversation.push({
+      type: "message",
+      role: "assistant",
+      content: state.currentContent,
+    });
+  }
+
+  return false;
+}
+
+interface ResponsesStreamState {
+  inThought: boolean;
+  currentContent: string;
+  currentReasoning: string;
+  functionCalls: Map<string, { name: string; arguments: string }>;
+}
+
+function processResponsesStreamEvent(
+  event: ResponsesStreamEvent,
+  state: ResponsesStreamState,
+): void {
+  if (event.type === "response.reasoning.delta" && event.delta?.text) {
+    state.currentReasoning += event.delta.text;
+
+    if (!state.inThought) {
+      process.stdout.write(startThought(event.delta.text));
+      state.inThought = true;
+    } else {
+      process.stdout.write(continueThought(event.delta.text));
+    }
+  }
+
+  if (event.type === "response.output_text.delta" && event.delta?.text) {
+    if (state.inThought) {
+      process.stdout.write(endThought());
+      state.inThought = false;
+    }
+
+    process.stdout.write(event.delta.text);
+    state.currentContent += event.delta.text;
+  }
+
+  if (event.type === "response.function_call_arguments.delta") {
+    const callId = event.call_id ?? "";
+    const existing = state.functionCalls.get(callId);
+
+    if (existing) {
+      existing.arguments += event.arguments ?? "";
+    } else {
+      state.functionCalls.set(callId, {
+        name: event.name ?? "",
+        arguments: event.arguments ?? "",
+      });
+    }
+  }
+}
+
+async function handleResponsesFunctionCalls(
+  ctx: ResponsesSessionContext,
+  state: ResponsesStreamState,
+): Promise<boolean> {
+  const { conversation } = ctx;
+
+  for (const [callId, fc] of state.functionCalls) {
+    const functionCallItem: ResponsesConversationItem = {
+      type: "function_call",
+      id: `fc_${callId}`,
+      call_id: callId,
+      name: fc.name,
+      arguments: fc.arguments,
+    };
+
+    conversation.push(functionCallItem);
+
+    await executeResponsesToolCall(ctx, callId, fc.name, fc.arguments);
+  }
+
+  return true;
+}
+
+async function executeResponsesToolCall(
+  ctx: ResponsesSessionContext,
+  callId: string,
+  name: string,
+  argsJson: string,
+): Promise<void> {
+  const { mcpClient, conversation } = ctx;
+
+  let args: Record<string, unknown>;
+
+  try {
+    args = JSON.parse(argsJson) as Record<string, unknown>;
+  } catch {
+    args = {};
+  }
+
+  console.log(formatToolCall(name, args));
+
+  try {
+    const result = await mcpClient.callTool({ name, arguments: args });
+    const resultText = extractToolResultText(result);
+
+    console.log(formatToolResult(resultText));
+
+    conversation.push({
+      type: "function_call_output",
+      call_id: callId,
+      output: resultText,
+    });
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+
+    console.log(formatToolResult(`Error: ${errorMsg}`));
+
+    conversation.push({
+      type: "function_call_output",
+      call_id: callId,
+      output: `Error: ${errorMsg}`,
+    });
+  }
+}
+
+async function processResponsesOutput(
+  ctx: ResponsesSessionContext,
+  output: ResponsesOutputItem[],
+): Promise<boolean> {
+  const { conversation } = ctx;
+  let hasFunctionCalls = false;
+
+  for (const item of output) {
+    if (item.type === "reasoning" && item.summary) {
+      console.log(formatThought(item.summary));
+    }
+
+    if (item.type === "message" && item.content) {
+      const text = item.content
+        .filter((c) => c.type === "output_text")
+        .map((c) => c.text)
+        .join("");
+
+      if (text) {
+        console.log(text);
+
+        conversation.push({
+          type: "message",
+          role: "assistant",
+          content: text,
+        });
+      }
+    }
+
+    if (item.type === "function_call" && item.name && item.call_id) {
+      hasFunctionCalls = true;
+
+      const functionCallItem: ResponsesConversationItem = {
+        type: "function_call",
+        id: item.id ?? `fc_${item.call_id}`,
+        call_id: item.call_id,
+        name: item.name,
+        arguments: item.arguments ?? "{}",
+      };
+
+      conversation.push(functionCallItem);
+
+      await executeResponsesToolCall(
+        ctx,
+        item.call_id,
+        item.name,
+        item.arguments ?? "{}",
+      );
+    }
+  }
+
+  return hasFunctionCalls;
 }

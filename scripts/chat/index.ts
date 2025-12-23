@@ -16,6 +16,7 @@ program
     "AI provider (gemini, openai, openrouter)",
     "gemini",
   )
+  .option("--api <api>", "API style for OpenRouter (chat, responses)", "chat")
   .option("-m, --model <model>", "Model to use")
   .option("-s, --stream", "Enable streaming mode")
   .option("-d, --debug", "Debug mode (log all output)")

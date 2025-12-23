@@ -3,6 +3,7 @@ import type { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 export interface ChatOptions {
   provider: string;
+  api?: "chat" | "responses";
   model?: string;
   stream: boolean;
   debug: boolean;
@@ -147,3 +148,65 @@ export interface OpenRouterStreamChunk {
     finish_reason: string | null;
   }>;
 }
+
+// OpenRouter Responses API types
+export interface ResponsesContentPart {
+  type: "input_text" | "output_text";
+  text: string;
+}
+
+export interface ResponsesOutputItem {
+  type: "message" | "function_call" | "reasoning";
+  id?: string;
+  role?: string;
+  content?: ResponsesContentPart[];
+  call_id?: string;
+  name?: string;
+  arguments?: string;
+  status?: string;
+  summary?: string;
+  text?: string;
+}
+
+export interface ResponsesAPIResponse {
+  id: string;
+  object: string;
+  output: ResponsesOutputItem[];
+  output_text?: string;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    output_tokens_details?: {
+      reasoning_tokens?: number;
+    };
+  };
+}
+
+export interface ResponsesStreamEvent {
+  type: string;
+  response?: ResponsesAPIResponse;
+  delta?: { text?: string };
+  call_id?: string;
+  name?: string;
+  arguments?: string;
+}
+
+export interface ResponsesTool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
+export type ResponsesConversationItem =
+  | { type: "message"; role: string; content: string }
+  | {
+      type: "function_call";
+      id: string;
+      call_id: string;
+      name: string;
+      arguments: string;
+    }
+  | { type: "function_call_output"; call_id: string; output: string };

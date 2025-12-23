@@ -59,5 +59,6 @@ export async function getMcpToolsForChat(client: Client): Promise<ChatTool[]> {
   }));
 }
 
-// Alias for backward compatibility
+// Aliases for backward compatibility and different API styles
 export const getMcpToolsForOpenAI = getMcpToolsForChat;
+export const getMcpToolsForResponses = getMcpToolsForChat;
