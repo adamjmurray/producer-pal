@@ -4,20 +4,26 @@ interface ChatInputProps {
   handleSend: (message: string) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
+  thinking: string;
+  temperature: number;
 }
 
 /**
  * Input component for chat messages
- * @param {ChatInputProps} root0 - Component props
- * @param {(message: string) => Promise<void>} root0.handleSend - Callback to send message
- * @param {boolean} root0.isAssistantResponding - Whether assistant is currently responding
- * @param {() => void} root0.onStop - Callback to stop assistant response
+ * @param {ChatInputProps} props - Component props
+ * @param {(message: string) => Promise<void>} props.handleSend - Callback to send message
+ * @param {boolean} props.isAssistantResponding - Whether assistant is currently responding
+ * @param {() => void} props.onStop - Callback to stop assistant response
+ * @param {string} props.thinking - Thinking mode for display
+ * @param {number} props.temperature - Temperature for display
  * @returns {JSX.Element} - React component
  */
 export function ChatInput({
   handleSend,
   isAssistantResponding,
   onStop,
+  thinking,
+  temperature,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
 
@@ -39,6 +45,9 @@ export function ChatInput({
 
   return (
     <div className="border-t border-gray-300 dark:border-gray-700 p-4">
+      <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+        Thinking: {thinking} • {Math.round((temperature / 2) * 100)}% random
+      </div>
       <div className="flex gap-3">
         <textarea
           value={input}
