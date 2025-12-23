@@ -26,10 +26,12 @@ export function startThought(text: string): string {
  * @param text - Thought text
  * @returns Formatted thought continuation
  */
-export function continueThought(text: string): string {
+export function continueThought(text: string | object): string {
+  const str = typeof text === "string" ? text : JSON.stringify(text);
+
   return (
     "\n" +
-    text
+    str
       .split("\n")
       .map((line) => `║ ${line}`)
       .join("\n")

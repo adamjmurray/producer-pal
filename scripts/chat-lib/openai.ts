@@ -133,7 +133,7 @@ export async function runOpenAI(
 async function sendMessage(
   ctx: SessionContext,
   input: string,
-  _turnCount: number,
+  turnCount: number,
 ): Promise<void> {
   const { conversation, model, options } = ctx;
 
@@ -154,7 +154,7 @@ async function sendMessage(
     });
   }
 
-  console.log(`\n[Turn ${conversation.length}] Assistant:`);
+  console.log(`\n[Turn ${turnCount}] Assistant:`);
 
   if (options.stream) {
     await handleStreamingResponse(ctx, requestBody);

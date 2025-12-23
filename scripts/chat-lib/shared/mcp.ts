@@ -54,9 +54,41 @@ export async function getMcpToolsForChat(client: Client): Promise<ChatTool[]> {
   }));
 }
 
-// Aliases for backward compatibility and different API styles
-export const getMcpToolsForOpenAI = getMcpToolsForChat;
-export const getMcpToolsForResponses = getMcpToolsForChat;
+// Aliases for different API styles
+export const getMcpToolsForOpenRouter = getMcpToolsForChat;
+
+// Tool format for OpenAI Responses API (name/description/parameters at top level)
+export interface ResponsesTool {
+  type: "function";
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>;
+}
+
+/**
+ * Convert MCP tools to OpenAI Responses API function format
+ *
+ * The Responses API uses a flat format where name, description, and parameters
+ * are at the same level as type, not nested under "function".
+ *
+ * @param client - MCP client
+ * @returns Responses API formatted tool definitions
+ */
+export async function getMcpToolsForOpenAI(
+  client: Client,
+): Promise<ResponsesTool[]> {
+  const { tools } = await client.listTools();
+
+  return tools.map((tool) => ({
+    type: "function" as const,
+    name: tool.name,
+    description: tool.description ?? "",
+    parameters: tool.inputSchema as Record<string, unknown>,
+  }));
+}
+
+// Alias for OpenRouter Responses API (uses same flat format as OpenAI Responses)
+export const getMcpToolsForResponses = getMcpToolsForOpenAI;
 
 /**
  * Extract text content from an MCP tool call result
