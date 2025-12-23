@@ -63,12 +63,11 @@ features:
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
           </div>
-          <h3 class="card-title">Desktop Apps</h3>
+          <h3 class="card-title">Claude Desktop</h3>
         </div>
-        <p class="card-description">The easiest way to start</p>
+        <p class="card-description">Easiest setup</p>
         <ul class="card-links">
-          <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">subscription</span></li>
-          <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
+          <li><a href="/installation/claude-desktop">Get started →</a> <span class="tag">subscription</span></li>
         </ul>
       </div>
       <div class="get-started-card card-secondary">
