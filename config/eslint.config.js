@@ -225,6 +225,7 @@ const tsOnlyRules = {
 
   // JSDoc overrides for TypeScript - TS types are source of truth
   "jsdoc/require-param-type": "off", // TypeScript types are authoritative
+  "jsdoc/require-returns-type": "off", // TypeScript types are authoritative
   "jsdoc/check-types": "off", // Don't validate redundant JSDoc types
 };
 

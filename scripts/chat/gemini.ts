@@ -1,12 +1,21 @@
-import { createInterface, type Interface } from "node:readline";
 import { inspect } from "node:util";
 import { GoogleGenAI, mcpToTool } from "@google/genai";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type { ChatOptions } from "./index.ts";
-
-const DEBUG_SEPARATOR = "\n" + "-".repeat(80);
-const MCP_URL = "http://localhost:3350/mcp";
+import {
+  startThought,
+  continueThought,
+  endThought,
+  debugCall,
+  debugLog,
+  truncate,
+  DEBUG_SEPARATOR,
+} from "./shared/formatting.ts";
+import { connectMcp } from "./shared/mcp.ts";
+import {
+  createReadline,
+  runChatLoop,
+  type ChatLoopCallbacks,
+} from "./shared/readline.ts";
+import type { ChatOptions } from "./shared/types.ts";
 
 // Default model for Gemini
 const DEFAULT_MODEL = "gemini-2.5-flash-lite";
@@ -54,6 +63,11 @@ interface GeminiResponse {
 
 type ChatSession = ReturnType<GoogleGenAI["chats"]["create"]>;
 
+interface GeminiSessionContext {
+  chatSession: ChatSession;
+  options: ChatOptions;
+}
+
 /**
  * Run an interactive chat session with Gemini API
  *
@@ -75,20 +89,10 @@ export async function runGemini(
   const ai = new GoogleGenAI({ apiKey });
   const config = buildConfig(options);
 
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
+  const rl = createReadline();
+  const { client: mcpClient } = await connectMcp();
 
-  // Connect to MCP server
-  const transport = new StreamableHTTPClientTransport(MCP_URL);
-  const client = new Client({
-    name: "producer-pal-chat",
-    version: "1.0.0",
-  });
-
-  await client.connect(transport);
-  config.tools = [mcpToTool(client)];
+  config.tools = [mcpToTool(mcpClient)];
   config.automaticFunctionCalling = {};
 
   if (options.debug || options.verbose) {
@@ -103,8 +107,12 @@ export async function runGemini(
   console.log(`Model: ${model}`);
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
+  const callbacks: ChatLoopCallbacks<GeminiSessionContext> = {
+    sendMessage: sendMessage,
+  };
+
   try {
-    await chatLoop(chatSession, rl, initialText, options);
+    await runChatLoop({ chatSession, options }, rl, initialText, callbacks);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
 
@@ -145,41 +153,12 @@ function buildConfig(options: ChatOptions): GeminiConfig {
   return config;
 }
 
-async function chatLoop(
-  chatSession: ChatSession,
-  rl: Interface,
-  initialText: string,
-  options: ChatOptions,
-): Promise<void> {
-  let turnCount = 0;
-  let currentInput = initialText;
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  while (true) {
-    if (currentInput.trim() === "") {
-      currentInput = await question(rl, "> ");
-    }
-
-    if (isExitCommand(currentInput)) {
-      console.log("Goodbye!");
-      break;
-    }
-
-    turnCount++;
-    console.log(`\n[Turn ${turnCount}] User: ${currentInput}`);
-
-    await sendMessage(chatSession, currentInput, turnCount, options);
-
-    currentInput = await question(rl, "\n> ");
-  }
-}
-
 async function sendMessage(
-  chatSession: ChatSession,
+  ctx: GeminiSessionContext,
   input: string,
   turnCount: number,
-  options: ChatOptions,
 ): Promise<void> {
+  const { chatSession, options } = ctx;
   const message = { message: input };
   const { stream, debug, verbose } = options;
 
@@ -337,46 +316,6 @@ function formatResponse(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Formatting helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function startThought(text: string): string {
-  return (
-    "\n╔══════════════════════════════════════════════" +
-    "═<THOUGHT>══════════════════════════════════════════════" +
-    continueThought(text)
-  );
-}
-
-function continueThought(text: string): string {
-  return (
-    "\n" +
-    text
-      .split("\n")
-      .map((line) => `║ ${line}`)
-      .join("\n")
-  );
-}
-
-function endThought(): string {
-  return (
-    "\n╚══════════════════════════════════════════════" +
-    "═<end_thought>══════════════════════════════════════════════\n\n"
-  );
-}
-
-function truncate(
-  str: string | undefined,
-  maxLength: number,
-  suffix = "…",
-): string {
-  if (!str || str.length <= maxLength) return str ?? "";
-  const cutoff = Math.max(0, maxLength - suffix.length);
-
-  return str.slice(0, cutoff) + suffix;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Debug helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -388,26 +327,4 @@ function debugResult(result: GeminiResponse, verbose: boolean): void {
     ...rest,
     candidates,
   });
-}
-
-function debugLog(object: unknown): void {
-  console.log(inspect(object, { depth: 10 }), DEBUG_SEPARATOR);
-}
-
-function debugCall(funcName: string, args: unknown): void {
-  console.log(`${funcName}(${inspect(args, { depth: 10 })})`, DEBUG_SEPARATOR);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Utility helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-function question(rl: Interface, prompt: string): Promise<string> {
-  return new Promise((resolve) => rl.question(prompt, resolve));
-}
-
-function isExitCommand(input: string): boolean {
-  const trimmed = input.trim().toLowerCase();
-
-  return trimmed === "exit" || trimmed === "quit" || trimmed === "bye";
 }

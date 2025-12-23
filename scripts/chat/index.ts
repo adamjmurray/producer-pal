@@ -2,19 +2,8 @@
 
 import { Command } from "commander";
 import { runGemini } from "./gemini.ts";
-
-export interface ChatOptions {
-  provider: string;
-  model?: string;
-  stream: boolean;
-  debug: boolean;
-  verbose: boolean;
-  thinking: boolean;
-  thinkingBudget?: number;
-  randomness?: number;
-  outputTokens?: number;
-  systemPrompt?: string;
-}
+import { runOpenAI } from "./openai.ts";
+import type { ChatOptions } from "./shared/types.ts";
 
 const program = new Command();
 
@@ -44,8 +33,7 @@ program
         await runGemini(initialText, options);
         break;
       case "openai":
-        console.error("OpenAI provider not yet implemented");
-        process.exit(1);
+        await runOpenAI(initialText, options);
         break;
       case "openrouter":
         console.error("OpenRouter provider not yet implemented");
