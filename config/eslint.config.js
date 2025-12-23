@@ -326,7 +326,7 @@ export default [
       parserOptions: {
         ecmaVersion: 2022,
         sourceType: "module",
-        project: "./scripts/chat/tsconfig.json",
+        project: "./scripts/chat-lib/tsconfig.json",
       },
       globals: {
         ...globals.node,
@@ -335,7 +335,7 @@ export default [
     settings: {
       "import/resolver": {
         typescript: {
-          project: "./scripts/chat/tsconfig.json",
+          project: "./scripts/chat-lib/tsconfig.json",
         },
         node: true,
       },
