@@ -17,10 +17,14 @@ Choose your preferred AI platform to get started with Producer Pal:
 
 These are the easiest and most reliable ways to use Producer Pal:
 
-- **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app (easiest setup, subscription required)
-- **[Built-in Chat UI](./installation/chat-ui)** — Integrated chat interface supporting cloud providers and local models
+- **[Claude Desktop](./installation/claude-desktop)** — Anthropic's desktop app
+  (easiest setup, subscription required)
+- **[Built-in Chat UI](./installation/chat-ui)** — Integrated chat interface
+  supporting cloud providers and local models
 
-Looking for offline/local options? See [Desktop Apps](./installation/desktop-apps) for LM Studio or [Ollama](./installation/ollama) via the built-in chat UI.
+Looking for offline/local options? See
+[Desktop Apps](./installation/desktop-apps) for LM Studio or
+[Ollama](./installation/ollama) via the built-in chat UI.
 
 Already have an MCP-compatible client? Connect with
 [`npx producer-pal`](https://www.npmjs.com/package/producer-pal) (see
