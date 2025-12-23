@@ -24,6 +24,11 @@ program
     "-t, --thinking <level>",
     "Thinking/reasoning level (provider-specific)",
   )
+  .option(
+    "--thinking-summary <level>",
+    "Reasoning summary detail (auto, concise, detailed) - provider-specific",
+    "auto",
+  )
   .option("-r, --randomness <number>", "Temperature (0.0-1.0)", parseFloat)
   .option("-o, --output-tokens <number>", "Max output tokens", parseInt)
   .option("-p, --system-prompt <text>", "System instructions")

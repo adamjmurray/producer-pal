@@ -8,6 +8,7 @@ export interface ChatOptions {
   stream: boolean;
   debug: boolean;
   thinking?: string;
+  thinkingSummary?: string;
   randomness?: number;
   outputTokens?: number;
   systemPrompt?: string;

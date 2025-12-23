@@ -191,7 +191,10 @@ function buildRequestBody(
 
   // Configure reasoning/thinking
   if (options.thinking) {
-    requestBody.reasoning = { effort: options.thinking };
+    requestBody.reasoning = {
+      effort: options.thinking,
+      summary: options.thinkingSummary ?? "auto",
+    };
   }
 
   if (options.outputTokens != null) {
