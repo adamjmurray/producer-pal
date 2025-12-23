@@ -200,24 +200,50 @@ async function handleNonStreamingResponse(
   ctx: SessionContext,
   requestBody: Record<string, unknown>,
 ): Promise<void> {
-  const { client, conversation, options } = ctx;
+  const { client, conversation, model, options } = ctx;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const response = (await (client as any).responses.create(
-    requestBody,
-  )) as OpenAIResponse;
+  // Agentic loop: keep calling API until no more tool calls
+  let continueLoop = true;
 
-  if (options.debug || options.verbose) {
-    debugLog(response);
+  while (continueLoop) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const response = (await (client as any).responses.create(
+      requestBody,
+    )) as OpenAIResponse;
+
+    if (options.debug || options.verbose) {
+      debugLog(response);
+    }
+
+    // Check if there are any tool calls in the response
+    const hasToolCalls = response.output.some(
+      (item) => item.type === "function_call",
+    );
+
+    // Process output items and collect tool results
+    for (const item of response.output) {
+      await processOutputItem(item, ctx);
+    }
+
+    // Add assistant response to conversation for multi-turn
+    conversation.push(...(response.output as ConversationItem[]));
+
+    if (hasToolCalls) {
+      // Update request body with new conversation for next iteration
+      requestBody = buildRequestBody(ctx, model, options);
+
+      if (options.debug || options.verbose) {
+        debugCall("responses.create (tool continuation)", {
+          ...requestBody,
+          tools: "[...]",
+          input: `[${conversation.length} items]`,
+        });
+      }
+    } else {
+      // No tool calls, exit loop
+      continueLoop = false;
+    }
   }
-
-  // Process output items
-  for (const item of response.output) {
-    await processOutputItem(item, ctx);
-  }
-
-  // Add assistant response to conversation for multi-turn
-  conversation.push(...(response.output as ConversationItem[]));
 }
 
 async function handleStreamingResponse(
@@ -348,7 +374,15 @@ async function processOutputItem(
     case "reasoning":
       // Non-streaming reasoning - shown as thought block
       {
-        const reasoningText = item.summary ?? item.text ?? "";
+        // summary can be string, array, or null - extract meaningful text
+        const summary: unknown = item.summary;
+        const summaryText =
+          typeof summary === "string"
+            ? summary
+            : Array.isArray(summary) && summary.length > 0
+              ? (summary as string[]).join("\n")
+              : "";
+        const reasoningText = summaryText || (item.text ?? "");
 
         if (reasoningText) {
           console.log(formatThought(reasoningText));

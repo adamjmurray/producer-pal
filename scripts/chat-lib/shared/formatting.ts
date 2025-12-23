@@ -92,13 +92,36 @@ export function formatToolResult(result: string | undefined): string {
 // Debug helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Fields to abbreviate in debug output */
+const VERBOSE_FIELDS = ["tools", "input"];
+
+/**
+ * Strip verbose fields from an object for cleaner debug output
+ */
+function stripVerboseFields(obj: unknown): unknown {
+  if (obj == null || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(stripVerboseFields);
+
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(obj)) {
+    if (VERBOSE_FIELDS.includes(key) && Array.isArray(value)) {
+      result[key] = `[${value.length} items]`;
+    } else {
+      result[key] = stripVerboseFields(value);
+    }
+  }
+
+  return result;
+}
+
 /**
  * Log an object for debugging
  *
  * @param object - Object to log
  */
 export function debugLog(object: unknown): void {
-  console.log(inspect(object, { depth: 10 }), DEBUG_SEPARATOR);
+  console.log(inspect(stripVerboseFields(object), { depth: 10 }), DEBUG_SEPARATOR);
 }
 
 /**
