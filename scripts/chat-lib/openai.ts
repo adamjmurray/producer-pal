@@ -73,6 +73,7 @@ interface PendingFunctionCall {
 
 interface StreamState {
   inThought: boolean;
+  displayedReasoning: boolean; // Track if reasoning was streamed via deltas
   pendingFunctionCalls: Map<string, PendingFunctionCall>;
   toolResults: Map<string, string>; // call_id -> result text
   hasToolCalls: boolean;
@@ -280,6 +281,7 @@ async function handleStreamingResponse(
 
     const state: StreamState = {
       inThought: false,
+      displayedReasoning: false,
       pendingFunctionCalls: new Map(),
       toolResults: new Map(),
       hasToolCalls: false,
@@ -322,6 +324,8 @@ function handleReasoningDelta(event: StreamEvent, state: StreamState): void {
   const text = getDeltaText(event.delta);
 
   if (text) {
+    state.displayedReasoning = true;
+
     if (!state.inThought) {
       process.stdout.write(startThought(text));
       state.inThought = true;
@@ -389,11 +393,40 @@ async function handleFunctionCallDone(
   state.toolResults.set(call_id, resultText);
 }
 
+function extractReasoningText(item: ResponseOutput): string {
+  // summary can be string, array of {type, text} objects, or null
+  const summary: unknown = item.summary;
+  const summaryText =
+    typeof summary === "string"
+      ? summary
+      : Array.isArray(summary) && summary.length > 0
+        ? (summary as Array<{ text?: string }>)
+            .map((s) => s.text ?? "")
+            .filter(Boolean)
+            .join("\n")
+        : "";
+
+  return summaryText || (item.text ?? "");
+}
+
 function handleResponseCompleted(
   event: StreamEvent,
   state: StreamState,
   conversation: ConversationItem[],
 ): void {
+  // Display reasoning from completed event if not already streamed via deltas
+  if (!state.displayedReasoning && event.response?.output) {
+    for (const item of event.response.output as ResponseOutput[]) {
+      if (item.type === "reasoning") {
+        const reasoningText = extractReasoningText(item);
+
+        if (reasoningText) {
+          console.log(formatThought(reasoningText));
+        }
+      }
+    }
+  }
+
   // Add all output items from response (includes reasoning + function_call items)
   if (event.response?.output) {
     conversation.push(...(event.response.output as ConversationItem[]));
@@ -445,20 +478,8 @@ async function processOutputItem(
 
   switch (item.type) {
     case "reasoning":
-      // Non-streaming reasoning - shown as thought block
       {
-        // summary can be string, array of {type, text} objects, or null
-        const summary: unknown = item.summary;
-        const summaryText =
-          typeof summary === "string"
-            ? summary
-            : Array.isArray(summary) && summary.length > 0
-              ? (summary as Array<{ text?: string }>)
-                  .map((s) => s.text ?? "")
-                  .filter(Boolean)
-                  .join("\n")
-              : "";
-        const reasoningText = summaryText || (item.text ?? "");
+        const reasoningText = extractReasoningText(item);
 
         if (reasoningText) {
           console.log(formatThought(reasoningText));
