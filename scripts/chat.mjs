@@ -40,16 +40,16 @@ program.parse();
  * Start an interactive chat session with Google Gemini API
  *
  * @param {string[]} textArray - Initial text to start the conversation with
- * @param {object} root0 - Configuration options
- * @param {string} root0.model - Gemini model to use
- * @param {boolean} root0.debug - Enable debug mode
- * @param {boolean} root0.verbose - Enable verbose debug mode
- * @param {boolean} root0.thinking - Enable includeThoughts
- * @param {number} root0.randomness - Temperature setting (0.0-1.0)
- * @param {number} root0.outputTokens - Maximum output tokens
- * @param {number} root0.thinkingBudget - Thinking budget (0=disabled, -1=automatic)
- * @param {boolean} root0.stream - Enable streaming mode
- * @param {string} root0.systemPrompt - System instructions
+ * @param {object} options - Configuration options
+ * @param {string} options.model - Gemini model to use
+ * @param {boolean} options.debug - Enable debug mode
+ * @param {boolean} options.verbose - Enable verbose debug mode
+ * @param {boolean} options.thinking - Enable includeThoughts
+ * @param {number} options.randomness - Temperature setting (0.0-1.0)
+ * @param {number} options.outputTokens - Maximum output tokens
+ * @param {number} options.thinkingBudget - Thinking budget (0=disabled, -1=automatic)
+ * @param {boolean} options.stream - Enable streaming mode
+ * @param {string} options.systemPrompt - System instructions
  */
 async function chat(
   textArray,
@@ -156,12 +156,12 @@ async function chat(
 /**
  * Build Gemini API configuration object
  *
- * @param {object} root0 - Configuration parameters
- * @param {number} root0.outputTokens - Maximum output tokens
- * @param {number} root0.randomness - Temperature setting (0.0-1.0)
- * @param {boolean} root0.thinking - Enable includeThoughts
- * @param {number} root0.thinkingBudget - Thinking budget (0=disabled, -1=automatic)
- * @param {string} root0.systemPrompt - System instructions
+ * @param {object} options - Configuration parameters
+ * @param {number} options.outputTokens - Maximum output tokens
+ * @param {number} options.randomness - Temperature setting (0.0-1.0)
+ * @param {boolean} options.thinking - Enable includeThoughts
+ * @param {number} options.thinkingBudget - Thinking budget (0=disabled, -1=automatic)
+ * @param {string} options.systemPrompt - System instructions
  * @returns {object} Gemini API configuration
  */
 function buildConfig({
@@ -244,9 +244,9 @@ async function sendMessage(
  * Print streaming response chunks as they arrive
  *
  * @param {AsyncIterable} stream - Response stream
- * @param {object} root0 - Debug options
- * @param {boolean} root0.debug - Enable debug mode
- * @param {boolean} root0.verbose - Enable verbose debug mode
+ * @param {object} options - Debug options
+ * @param {boolean} options.debug - Enable debug mode
+ * @param {boolean} options.verbose - Enable verbose debug mode
  */
 async function printStream(stream, { debug, verbose }) {
   let inThought = false;
@@ -324,9 +324,9 @@ function isExitCommand(input) {
 /**
  * Format the complete response including function calls
  *
- * @param {object} root0 - Response object
- * @param {Array} root0.candidates - Response candidates
- * @param {Array} root0.automaticFunctionCallingHistory - Function call history
+ * @param {object} options - Response object
+ * @param {Array} options.candidates - Response candidates
+ * @param {Array} options.automaticFunctionCallingHistory - Function call history
  * @param {string} currentInput - Current user input
  * @returns {string} Formatted response string
  */
