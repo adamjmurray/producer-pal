@@ -282,9 +282,9 @@ export default [
     },
   },
 
-  // All TypeScript files (any directory)
+  // WebUI TypeScript files
   {
-    files: ["{src,scripts,webui}/**/*.{ts,tsx}"],
+    files: ["webui/**/*.{ts,tsx}"],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
@@ -297,6 +297,45 @@ export default [
     settings: {
       "import/resolver": {
         typescript: true,
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+      jsdoc,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      ...sonarCoreRules,
+      ...jsdocRules, // JSDoc required for TS (but not type annotations)
+      ...tsOnlyRules, // Overrides: turns off jsdoc/require-param-type and jsdoc/check-types
+    },
+  },
+
+  // Scripts TypeScript files (CLI tools)
+  {
+    files: ["scripts/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+        project: "./scripts/chat/tsconfig.json",
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./scripts/chat/tsconfig.json",
+        },
         node: true,
       },
     },
