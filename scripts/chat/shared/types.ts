@@ -69,6 +69,25 @@ export interface OpenRouterReasoningConfig {
   enabled?: boolean;
 }
 
+export interface OpenRouterRequestBody {
+  model: string;
+  messages: OpenRouterMessage[];
+  tools?: OpenRouterTool[];
+  reasoning?: OpenRouterReasoningConfig;
+  max_tokens?: number;
+  temperature?: number;
+  stream?: boolean;
+}
+
+export interface OpenRouterTool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
 export interface OpenRouterMessage {
   role: "system" | "user" | "assistant" | "tool";
   content: string | null;

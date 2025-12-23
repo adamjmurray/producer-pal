@@ -1,4 +1,8 @@
 import OpenAI from "openai";
+import type {
+  ChatCompletionCreateParamsNonStreaming,
+  ChatCompletionCreateParamsStreaming,
+} from "openai/resources/chat/completions";
 import {
   formatThought,
   formatToolCall,
@@ -10,17 +14,28 @@ import {
   debugCall,
   DEBUG_SEPARATOR,
 } from "./shared/formatting.ts";
-import { connectMcp, getMcpToolsForChat, type ChatTool } from "./shared/mcp.ts";
+import { connectMcp, getMcpToolsForChat } from "./shared/mcp.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import type {
   ChatOptions,
   OpenRouterMessage,
   OpenRouterReasoningConfig,
+  OpenRouterRequestBody,
   OpenRouterResponse,
   OpenRouterStreamChunk,
+  OpenRouterTool,
   OpenRouterToolCall,
   ReasoningDetail,
 } from "./shared/types.ts";
+
+// OpenRouter extends OpenAI's API with additional fields like `reasoning`
+type OpenRouterNonStreamingParams = ChatCompletionCreateParamsNonStreaming & {
+  reasoning?: OpenRouterReasoningConfig;
+};
+
+type OpenRouterStreamingParams = ChatCompletionCreateParamsStreaming & {
+  reasoning?: OpenRouterReasoningConfig;
+};
 
 const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
@@ -28,7 +43,7 @@ const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 interface SessionContext {
   client: OpenAI;
   mcpClient: Awaited<ReturnType<typeof connectMcp>>["client"];
-  tools: ChatTool[];
+  tools: OpenRouterTool[];
   messages: OpenRouterMessage[];
   model: string;
   options: ChatOptions;
@@ -129,10 +144,10 @@ async function sendMessage(
   }
 }
 
-function buildRequestBody(ctx: SessionContext): Record<string, unknown> {
+function buildRequestBody(ctx: SessionContext): OpenRouterRequestBody {
   const { messages, model, tools, options } = ctx;
 
-  const body: Record<string, unknown> = {
+  const body: OpenRouterRequestBody = {
     model,
     messages,
     tools,
@@ -187,7 +202,7 @@ async function handleNonStreamingResponse(
   }
 
   const response = (await client.chat.completions.create(
-    body as any, // eslint-disable-line @typescript-eslint/no-explicit-any
+    body as OpenRouterNonStreamingParams,
   )) as unknown as OpenRouterResponse;
 
   if (options.debug || options.verbose) {
@@ -251,7 +266,7 @@ async function handleStreamingResponse(ctx: SessionContext): Promise<boolean> {
   const stream = await client.chat.completions.create({
     ...body,
     stream: true,
-  } as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+  } as OpenRouterStreamingParams);
 
   const state = {
     inThought: false,
