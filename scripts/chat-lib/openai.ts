@@ -447,13 +447,16 @@ async function processOutputItem(
     case "reasoning":
       // Non-streaming reasoning - shown as thought block
       {
-        // summary can be string, array, or null - extract meaningful text
+        // summary can be string, array of {type, text} objects, or null
         const summary: unknown = item.summary;
         const summaryText =
           typeof summary === "string"
             ? summary
             : Array.isArray(summary) && summary.length > 0
-              ? (summary as string[]).join("\n")
+              ? (summary as Array<{ text?: string }>)
+                  .map((s) => s.text ?? "")
+                  .filter(Boolean)
+                  .join("\n")
               : "";
         const reasoningText = summaryText || (item.text ?? "");
 
