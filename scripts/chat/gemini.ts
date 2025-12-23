@@ -105,6 +105,7 @@ export async function runGemini(
   const chatSession = ai.chats.create({ model, config });
 
   console.log(`Model: ${model}`);
+  console.log(`Provider: Gemini`);
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   const callbacks: ChatLoopCallbacks<GeminiSessionContext> = {

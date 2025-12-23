@@ -58,6 +58,16 @@ export interface ResponseContentPart {
   annotations?: unknown[];
 }
 
+// Shared tool type for OpenAI/OpenRouter APIs
+export interface ChatTool {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+}
+
 // OpenRouter Chat API types
 export interface OpenRouterReasoningConfig {
   /** Token limit for reasoning (Anthropic-style) */
@@ -73,20 +83,11 @@ export interface OpenRouterReasoningConfig {
 export interface OpenRouterRequestBody {
   model: string;
   messages: OpenRouterMessage[];
-  tools?: OpenRouterTool[];
+  tools?: ChatTool[];
   reasoning?: OpenRouterReasoningConfig;
   max_tokens?: number;
   temperature?: number;
   stream?: boolean;
-}
-
-export interface OpenRouterTool {
-  type: "function";
-  function: {
-    name: string;
-    description: string;
-    parameters: Record<string, unknown>;
-  };
 }
 
 export interface OpenRouterMessage {
@@ -191,14 +192,8 @@ export interface ResponsesStreamEvent {
   arguments?: string;
 }
 
-export interface ResponsesTool {
-  type: "function";
-  function: {
-    name: string;
-    description: string;
-    parameters: Record<string, unknown>;
-  };
-}
+// Alias for backward compatibility
+export type ResponsesTool = ChatTool;
 
 export type ResponsesConversationItem =
   | { type: "message"; role: string; content: string }

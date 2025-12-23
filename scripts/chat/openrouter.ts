@@ -16,25 +16,25 @@ import {
 } from "./shared/formatting.ts";
 import {
   connectMcp,
+  extractToolResultText,
   getMcpToolsForChat,
   getMcpToolsForResponses,
 } from "./shared/mcp.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import type {
   ChatOptions,
+  ChatTool,
   OpenRouterMessage,
   OpenRouterReasoningConfig,
   OpenRouterRequestBody,
   OpenRouterResponse,
   OpenRouterStreamChunk,
-  OpenRouterTool,
   OpenRouterToolCall,
   ReasoningDetail,
   ResponsesAPIResponse,
   ResponsesConversationItem,
   ResponsesOutputItem,
   ResponsesStreamEvent,
-  ResponsesTool,
 } from "./shared/types.ts";
 
 // OpenRouter extends OpenAI's API with additional fields like `reasoning`
@@ -56,20 +56,10 @@ const APP_TITLE = "Producer Pal CLI";
 interface SessionContext {
   client: OpenAI;
   mcpClient: Awaited<ReturnType<typeof connectMcp>>["client"];
-  tools: OpenRouterTool[];
+  tools: ChatTool[];
   messages: OpenRouterMessage[];
   model: string;
   options: ChatOptions;
-}
-
-type McpClient = SessionContext["mcpClient"];
-
-function extractToolResultText(
-  result: Awaited<ReturnType<McpClient["callTool"]>>,
-): string {
-  const content = result.content as Array<{ text?: string }> | undefined;
-
-  return content?.[0]?.text ?? "";
 }
 
 /**
@@ -515,7 +505,7 @@ const OPENROUTER_RESPONSES_URL = "https://openrouter.ai/api/v1/responses";
 
 interface ResponsesSessionContext {
   mcpClient: Awaited<ReturnType<typeof connectMcp>>["client"];
-  tools: ResponsesTool[];
+  tools: ChatTool[];
   conversation: ResponsesConversationItem[];
   model: string;
   options: ChatOptions;
@@ -594,7 +584,7 @@ async function sendMessageResponses(
 interface ResponsesRequestBody {
   model: string;
   input: ResponsesConversationItem[];
-  tools?: ResponsesTool[];
+  tools?: ChatTool[];
   reasoning?: OpenRouterReasoningConfig;
   max_output_tokens?: number;
   temperature?: number;
@@ -678,6 +668,13 @@ async function handleResponsesNonStreaming(
   }
 
   return await processResponsesOutput(ctx, data.output);
+}
+
+interface ResponsesStreamState {
+  inThought: boolean;
+  currentContent: string;
+  currentReasoning: string;
+  functionCalls: Map<string, { name: string; arguments: string }>;
 }
 
 function parseSseLines(
@@ -796,13 +793,6 @@ async function handleResponsesStreaming(
   }
 
   return false;
-}
-
-interface ResponsesStreamState {
-  inThought: boolean;
-  currentContent: string;
-  currentReasoning: string;
-  functionCalls: Map<string, { name: string; arguments: string }>;
 }
 
 function processResponsesStreamEvent(

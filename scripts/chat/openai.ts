@@ -10,7 +10,11 @@ import {
   debugCall,
   DEBUG_SEPARATOR,
 } from "./shared/formatting.ts";
-import { connectMcp, getMcpToolsForOpenAI } from "./shared/mcp.ts";
+import {
+  connectMcp,
+  extractToolResultText,
+  getMcpToolsForOpenAI,
+} from "./shared/mcp.ts";
 import { createReadline, runChatLoop } from "./shared/readline.ts";
 import type { ChatOptions } from "./shared/types.ts";
 
@@ -78,14 +82,6 @@ interface StreamEvent {
 
 type McpClient = SessionContext["mcpClient"];
 
-function extractToolResultText(
-  result: Awaited<ReturnType<McpClient["callTool"]>>,
-): string {
-  const content = result.content as Array<{ text?: string }> | undefined;
-
-  return content?.[0]?.text ?? "";
-}
-
 /**
  * Run an interactive chat session with OpenAI Responses API
  *
@@ -111,6 +107,7 @@ export async function runOpenAI(
   const tools = await getMcpToolsForOpenAI(mcpClient);
 
   console.log(`Model: ${model}`);
+  console.log(`Provider: OpenAI (Responses API)`);
   console.log("Starting conversation (type 'exit', 'quit', or 'bye' to end)\n");
 
   // Conversation history for multi-turn

@@ -30,6 +30,17 @@ program
   .action(async (textArray: string[], options: ChatOptions) => {
     const initialText = textArray.join(" ");
 
+    // Warn if --api is used with non-OpenRouter providers
+    if (
+      options.api &&
+      options.api !== "chat" &&
+      options.provider !== "openrouter"
+    ) {
+      console.warn(
+        `Warning: --api flag only applies to OpenRouter provider (ignored for ${options.provider})`,
+      );
+    }
+
     switch (options.provider) {
       case "gemini":
         await runGemini(initialText, options);
