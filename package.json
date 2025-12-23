@@ -72,7 +72,7 @@
     "express": "^5.2.1",
     "marked": "^17.0.1",
     "openai": "^6.15.0",
-    "preact": "^10.28.0",
+    "preact": "^10.28.1",
     "zod": "^4.2.1"
   },
   "devDependencies": {
