@@ -7,7 +7,6 @@ export interface ChatOptions {
   model?: string;
   stream: boolean;
   debug: boolean;
-  verbose: boolean;
   thinking?: string;
   randomness?: number;
   outputTokens?: number;

@@ -146,7 +146,7 @@ async function sendMessage(
 
   const requestBody = buildRequestBody(ctx, model, options);
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugCall("responses.create", {
       ...requestBody,
       tools: "[...]",
@@ -211,7 +211,7 @@ async function handleNonStreamingResponse(
       requestBody,
     )) as OpenAIResponse;
 
-    if (options.debug || options.verbose) {
+    if (options.debug) {
       debugLog(response);
     }
 
@@ -232,7 +232,7 @@ async function handleNonStreamingResponse(
       // Update request body with new conversation for next iteration
       requestBody = buildRequestBody(ctx, model, options);
 
-      if (options.debug || options.verbose) {
+      if (options.debug) {
         debugCall("responses.create (tool continuation)", {
           ...requestBody,
           tools: "[...]",
@@ -261,7 +261,7 @@ async function handleStreamingResponse(
   const state: StreamState = { inThought: false, outputItems: [] };
 
   for await (const event of stream) {
-    if (options.debug || options.verbose) {
+    if (options.debug) {
       console.log(DEBUG_SEPARATOR);
       console.log("Stream event:", event.type);
       debugLog(event);

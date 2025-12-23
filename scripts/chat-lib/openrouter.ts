@@ -130,7 +130,7 @@ async function runOpenRouterChat(
 
     console.error("Error:", message);
 
-    if (options.debug || options.verbose) {
+    if (options.debug) {
       console.error(error);
     }
 
@@ -207,7 +207,7 @@ async function handleNonStreamingResponse(
   const { client, messages, options } = ctx;
   const body = buildRequestBody(ctx);
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugCall("chat.completions.create", {
       ...body,
       tools: "[...]",
@@ -219,7 +219,7 @@ async function handleNonStreamingResponse(
     body as OpenRouterNonStreamingParams,
   )) as unknown as OpenRouterResponse;
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugLog(response);
   }
 
@@ -269,7 +269,7 @@ async function handleStreamingResponse(ctx: SessionContext): Promise<boolean> {
   const { client, messages, options } = ctx;
   const body = buildRequestBody(ctx);
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugCall("chat.completions.create (stream)", {
       ...body,
       tools: "[...]",
@@ -294,7 +294,7 @@ async function handleStreamingResponse(ctx: SessionContext): Promise<boolean> {
   };
 
   for await (const chunk of stream as AsyncIterable<OpenRouterStreamChunk>) {
-    if (options.debug || options.verbose) {
+    if (options.debug) {
       console.log(DEBUG_SEPARATOR);
       debugLog(chunk);
     }
@@ -540,7 +540,7 @@ async function runOpenRouterResponses(
 
     console.error("Error:", message);
 
-    if (options.debug || options.verbose) {
+    if (options.debug) {
       console.error(error);
     }
 
@@ -624,7 +624,7 @@ async function handleResponsesNonStreaming(
   const { options } = ctx;
   const body = buildResponsesRequestBody(ctx);
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugCall("responses (non-streaming)", {
       ...body,
       tools: "[...]",
@@ -651,7 +651,7 @@ async function handleResponsesNonStreaming(
 
   const data = (await response.json()) as ResponsesAPIResponse;
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugLog(data);
   }
 
@@ -680,7 +680,7 @@ function parseSseLines(
     try {
       const event = JSON.parse(data) as ResponsesStreamEvent;
 
-      if (options.debug || options.verbose) {
+      if (options.debug) {
         console.log(DEBUG_SEPARATOR);
         debugLog(event);
       }
@@ -722,7 +722,7 @@ async function handleResponsesStreaming(
   const { options } = ctx;
   const body = { ...buildResponsesRequestBody(ctx), stream: true };
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugCall("responses (streaming)", {
       ...body,
       tools: "[...]",

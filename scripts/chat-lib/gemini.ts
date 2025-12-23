@@ -95,7 +95,7 @@ export async function runGemini(
   config.tools = [mcpToTool(mcpClient)];
   config.automaticFunctionCalling = {};
 
-  if (options.debug || options.verbose) {
+  if (options.debug) {
     debugCall("ai.chats.create", {
       model,
       config: { ...config, tools: "[...]" },
@@ -169,22 +169,22 @@ async function sendMessage(
 ): Promise<void> {
   const { chatSession, options } = ctx;
   const message = { message: input };
-  const { stream, debug, verbose } = options;
+  const { stream, debug } = options;
 
   if (stream) {
-    if (debug || verbose) debugCall("chat.sendMessageStream", message);
+    if (debug) debugCall("chat.sendMessageStream", message);
     const responseStream = await chatSession.sendMessageStream(message);
 
     console.log(`\n[Turn ${turnCount}] Assistant:`);
-    await printStream(responseStream, { debug, verbose });
+    await printStream(responseStream, debug);
   } else {
-    if (debug || verbose) debugCall("chat.sendMessage", message);
+    if (debug) debugCall("chat.sendMessage", message);
     const response = (await chatSession.sendMessage(message)) as GeminiResponse;
 
     console.log(`\n[Turn ${turnCount}] Assistant:`);
 
-    if (debug || verbose) {
-      debugResult(response, verbose);
+    if (debug) {
+      debugResult(response);
     }
 
     console.log(formatResponse(response, input));
@@ -193,15 +193,15 @@ async function sendMessage(
 
 async function printStream(
   stream: AsyncIterable<GeminiResponse>,
-  options: { debug: boolean; verbose: boolean },
+  debug: boolean,
 ): Promise<void> {
   let inThought = false;
 
   for await (const chunk of stream) {
-    if (options.debug || options.verbose) {
+    if (debug) {
       console.log(DEBUG_SEPARATOR);
       console.log("Stream chunk");
-      debugResult(chunk, options.verbose);
+      debugResult(chunk);
     }
 
     for (const part of chunk.candidates?.[0]?.content?.parts ?? []) {
@@ -328,11 +328,10 @@ function formatResponse(
 // Debug helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-function debugResult(result: GeminiResponse, verbose: boolean): void {
-  const { sdkHttpResponse, candidates, ...rest } = result;
+function debugResult(result: GeminiResponse): void {
+  const { candidates, ...rest } = result;
 
   debugLog({
-    ...(verbose ? { sdkHttpResponse } : {}),
     ...rest,
     candidates,
   });

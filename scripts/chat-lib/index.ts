@@ -19,8 +19,7 @@ program
   .option("--api <api>", "API style for OpenRouter (chat, responses)", "chat")
   .option("-m, --model <model>", "Model to use")
   .option("-s, --stream", "Enable streaming mode")
-  .option("-d, --debug", "Debug mode (log all output)")
-  .option("-v, --verbose", "Verbose mode (debug + HTTP response details)")
+  .option("-d, --debug", "Debug mode (log all API responses)")
   .option(
     "-t, --thinking <level>",
     "Thinking/reasoning level (provider-specific)",

@@ -97,6 +97,9 @@ const VERBOSE_FIELDS = ["tools", "input"];
 
 /**
  * Strip verbose fields from an object for cleaner debug output
+ *
+ * @param obj - Object to strip verbose fields from
+ * @returns Object with verbose fields abbreviated
  */
 function stripVerboseFields(obj: unknown): unknown {
   if (obj == null || typeof obj !== "object") return obj;
@@ -121,7 +124,10 @@ function stripVerboseFields(obj: unknown): unknown {
  * @param object - Object to log
  */
 export function debugLog(object: unknown): void {
-  console.log(inspect(stripVerboseFields(object), { depth: 10 }), DEBUG_SEPARATOR);
+  console.log(
+    inspect(stripVerboseFields(object), { depth: 10 }),
+    DEBUG_SEPARATOR,
+  );
 }
 
 /**
