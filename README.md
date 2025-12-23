@@ -11,6 +11,9 @@ Official website: <a href="https://producer-pal.org">producer-pal.org</a>
 
 ## Quick Start
 
+[![Run in Smithery](https://smithery.ai/badge/skills/adamjmurray)](https://smithery.ai/skills?ns=adamjmurray&utm_source=github&utm_medium=badge)
+
+
 1. **Install**: Download
    [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
 2. **Setup**: Follow the
