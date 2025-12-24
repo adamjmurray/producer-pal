@@ -1,5 +1,7 @@
 # Roadmap
 
+[Get Involved](#get-involved) · [In Progress](#in-progress) · [Released](#released) · [Future Plans](#future-plans)
+
 ## Get Involved
 
 I maintain the core tools and roadmap, but there's room to collaborate:
@@ -13,40 +15,6 @@ I maintain the core tools and roadmap, but there's room to collaborate:
 Open a
 [GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
 reach out directly.
-
-## Released
-
-### 0.9 - Public Beta with Claude Desktop (July 2025)
-
-Initial public release with Claude Desktop support.
-
-### 1.0 - Support for more LLMs (October 2025)
-
-Expanded features and support for multiple AI platforms.
-
-### 1.1 - Built-in chat UI (November 2025)
-
-Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
-Studio, Ollama, and more.
-
-### 1.2 - Audio clip and mixer support (November 2025)
-
-- Audio clip support with a `read-samples` tool to scan folders for samples
-- Track mixer control: gain, panning, and sends
-- Arrangement clip positioning and length control
-- Experimental `ppal-transform-clips` tool for slicing, shuffling, and
-  randomizing clips
-
-### 1.3.0 - Device Control (December 2025)
-
-- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
-  any track (audio/midi, return, master)
-- Delete devices
-- Read/write device parameters
-
-### 1.3.1 - maintenance (December 2025)
-
-- Auto-recover from rate limit errors in the built-in chat UI
 
 ## In Progress
 
@@ -65,7 +33,41 @@ Studio, Ollama, and more.
 - Arrangement cue support
 - Change the samples played by Simpler
 
-## Planned
+## Released
+
+### 1.3.1 - maintenance (December 2025)
+
+- Auto-recover from rate limit errors in the built-in chat UI
+
+### 1.3.0 - Device Control (December 2025)
+
+- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
+  any track (audio/midi, return, master)
+- Delete devices
+- Read/write device parameters
+
+### 1.2 - Audio clip and mixer support (November 2025)
+
+- Audio clip support with a `read-samples` tool to scan folders for samples
+- Track mixer control: gain, panning, and sends
+- Arrangement clip positioning and length control
+- Experimental `ppal-transform-clips` tool for slicing, shuffling, and
+  randomizing clips
+
+### 1.1 - Built-in chat UI (November 2025)
+
+Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
+Studio, Ollama, and more.
+
+### 1.0 - Support for more LLMs (October 2025)
+
+Expanded features and support for multiple AI platforms.
+
+### 0.9 - Public Beta with Claude Desktop (July 2025)
+
+Initial public release with Claude Desktop support.
+
+## Future Plans
 
 ### 1.4 - Modulation
 
