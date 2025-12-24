@@ -408,6 +408,25 @@ export function readMacroVariations(device) {
 }
 
 /**
+ * Read A/B Compare state for devices that support it
+ * @param {object} device - LiveAPI device object
+ * @returns {object} Object with abCompare property if supported, empty object otherwise
+ */
+export function readABCompare(device) {
+  const canCompareAB = device.getProperty("can_compare_ab");
+
+  if (!canCompareAB) {
+    return {};
+  }
+
+  const isUsingB = device.getProperty("is_using_compare_preset_b") > 0;
+
+  return {
+    abCompare: isUsingB ? "b" : "a",
+  };
+}
+
+/**
  * Read all parameters for a device
  * @param {object} device - LiveAPI device object
  * @param {object} options - Reading options

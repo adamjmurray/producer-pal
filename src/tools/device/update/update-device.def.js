@@ -37,5 +37,11 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .max(16)
       .optional()
       .describe("Rack only: set visible macro count (0-16)"),
+    abCompare: z
+      .enum(["a", "b", "save"])
+      .optional()
+      .describe(
+        "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
+      ),
   },
 });

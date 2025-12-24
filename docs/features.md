@@ -118,6 +118,7 @@ create.
 - Search parameters by name substring
 - View macro variation info for rack devices (count and selected index)
 - View macro count and mapping status for rack devices
+- View A/B Compare state for supported devices
 
 ### Update Device (`ppal-update-device`)
 
@@ -128,6 +129,7 @@ create.
 - Rack macro variations: store, recall, delete, or randomize macro settings
 - Select macro variation by index for recall or delete operations
 - Set visible macro count on rack devices (adds/removes macros)
+- A/B Compare: switch between presets or save current state to other slot
 
 ## Clip Creation & Editing
 

@@ -660,4 +660,81 @@ describe("updateDevice", () => {
       consoleSpy.mockRestore();
     });
   });
+
+  describe("abCompare", () => {
+    beforeEach(() => {
+      liveApiGet.mockImplementation(function (prop) {
+        // Device with AB Compare support (id 123)
+        if (this._path === "id 123") {
+          if (prop === "can_compare_ab") return [1];
+        }
+        // Device without AB Compare support (id 456)
+        if (this._path === "id 456") {
+          if (prop === "can_compare_ab") return [0];
+        }
+        return [0];
+      });
+    });
+
+    it("should reject devices without AB Compare support", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateDevice({
+        ids: "456",
+        abCompare: "b",
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "updateDevice: A/B Compare not available on this device",
+      );
+      expect(liveApiSet).not.toHaveBeenCalled();
+      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(result).toEqual({ id: "456" });
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should set is_using_compare_preset_b to 0 for 'a'", () => {
+      const result = updateDevice({
+        ids: "123",
+        abCompare: "a",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "is_using_compare_preset_b",
+        0,
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should set is_using_compare_preset_b to 1 for 'b'", () => {
+      const result = updateDevice({
+        ids: "123",
+        abCompare: "b",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "is_using_compare_preset_b",
+        1,
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should call save_preset_to_compare_ab_slot for 'save'", () => {
+      const result = updateDevice({
+        ids: "123",
+        abCompare: "save",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "save_preset_to_compare_ab_slot",
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+  });
 });

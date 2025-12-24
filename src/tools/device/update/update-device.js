@@ -16,6 +16,7 @@ import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
  * @param {string} [args.macroVariation] - Rack variation action
  * @param {number} [args.macroVariationIndex] - Rack variation index
  * @param {number} [args.macroCount] - Rack visible macro count (0-16)
+ * @param {string} [args.abCompare] - A/B Compare action: a, b, or save
  * @returns {object|Array} Updated device info(s)
  */
 export function updateDevice({
@@ -26,6 +27,7 @@ export function updateDevice({
   macroVariation,
   macroVariationIndex,
   macroCount,
+  abCompare,
 }) {
   const deviceIds = parseCommaSeparatedIds(ids);
   const updatedDevices = [];
@@ -56,6 +58,10 @@ export function updateDevice({
 
     if (macroCount != null) {
       updateMacroCount(device, macroCount);
+    }
+
+    if (abCompare != null) {
+      updateABCompare(device, abCompare);
     }
 
     updatedDevices.push({ id: device.id });
@@ -237,5 +243,32 @@ function updateMacroCount(device, targetCount) {
     for (let i = 0; i < pairCount; i++) {
       device.call("remove_macro");
     }
+  }
+}
+
+/**
+ * Update A/B Compare state for devices that support it
+ * @param {object} device - Live API device object
+ * @param {string} action - "a", "b", or "save"
+ */
+function updateABCompare(device, action) {
+  const canCompareAB = device.getProperty("can_compare_ab");
+
+  if (!canCompareAB) {
+    console.error("updateDevice: A/B Compare not available on this device");
+
+    return;
+  }
+
+  switch (action) {
+    case "a":
+      device.set("is_using_compare_preset_b", 0);
+      break;
+    case "b":
+      device.set("is_using_compare_preset_b", 1);
+      break;
+    case "save":
+      device.call("save_preset_to_compare_ab_slot");
+      break;
   }
 }
