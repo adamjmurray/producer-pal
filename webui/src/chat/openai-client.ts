@@ -308,6 +308,7 @@ export class OpenAIClient {
     };
     const toolCallsMap = new Map<number, OpenAIToolCall>();
     let reasoningText = ""; // Accumulate reasoning separately
+    let toolCallsFinalized = false; // Track if we've received finish_reason: tool_calls
 
     for await (const chunk of stream) {
       const choice = chunk.choices[0];
@@ -321,12 +322,15 @@ export class OpenAIClient {
       reasoningText = this.processReasoningDelta(delta, reasoningText);
       this.processToolCallDeltas(delta, toolCallsMap);
 
+      // Once finalized, preserve tool_calls for subsequent chunks (e.g., OpenRouter usage chunks)
+      toolCallsFinalized ||= choice.finish_reason === "tool_calls";
+
       // Build and update message
       const messageToAdd = this.buildStreamMessage(
         currentMessage,
         toolCallsMap,
         reasoningText,
-        choice.finish_reason,
+        toolCallsFinalized ? "tool_calls" : choice.finish_reason,
       );
 
       this.updateChatHistoryWithMessage(messageToAdd);
