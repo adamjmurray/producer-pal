@@ -5,6 +5,7 @@
   },
   "editor.formatOnSave": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "files.insertFinalNewline": true,
   "eslint.options": {
     "overrideConfigFile": "config/eslint.config.js"
   },

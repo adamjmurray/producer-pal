@@ -51,6 +51,11 @@ After installation:
    - "Create a new MIDI track called Bass"
    - "Change the tempo to 108 BPM"
 
+## User Interface
+
+- [Device Interface](/guide/device) - The Max for Live device tabs and settings
+- [Chat UI](/guide/chat-ui) - The built-in browser-based chat interface
+
 ## Next Steps
 
 - Check out the [usage examples](/guide/examples) for detailed examples and tips

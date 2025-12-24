@@ -116,6 +116,7 @@ create.
 - View device chains and drum pad chains
 - List parameter names or full parameter details with values
 - Search parameters by name substring
+- View macro variation info for rack devices (count and selected index)
 
 ### Update Device (`ppal-update-device`)
 
@@ -123,6 +124,8 @@ create.
 - Collapse or expand device view in Live's UI
 - Modify device parameters by value or display string
 - Bulk update multiple devices at once
+- Rack macro variations: store, recall, delete, or randomize macro settings
+- Select macro variation by index for recall or delete operations
 
 ## Clip Creation & Editing
 
@@ -161,6 +164,16 @@ create.
 - Arrangement clip length: shorten clips, extend to reveal hidden content, or
   tile/loop clips to fill longer durations
 - Slicing technique: reduce then extend clip length to create separate segments
+
+## Sample Browser
+
+### Read Samples (`ppal-read-samples`)
+
+- List audio files from configured sample folder
+- Supports WAV, AIFF, FLAC, OGG, MP3, and M4A formats
+- Search by filename or path substring
+- Returns paths for use in audio clip creation
+- Requires sample folder to be configured in the Producer Pal device Setup tab
 
 ### Custom Music Notation
 

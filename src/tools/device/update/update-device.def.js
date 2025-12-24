@@ -18,5 +18,17 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .describe(
         'JSON: {"paramId": value}. Values in display units: enum string, note name, pan -1 to 1, or number',
       ),
+    macroVariation: z
+      .enum(["store", "recall", "recall-last", "delete", "randomize"])
+      .optional()
+      .describe(
+        "Rack only: store/recall/recall-last/delete selected variation, or randomize macros",
+      ),
+    macroVariationIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe("Rack only: select variation by index (0-based)"),
   },
 });

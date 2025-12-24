@@ -6,6 +6,8 @@ interface ChatHeaderProps {
   mcpStatus: "connected" | "connecting" | "error";
   activeModel: string | null;
   activeProvider: Provider | null;
+  enabledToolsCount: number;
+  totalToolsCount: number;
   hasMessages: boolean;
   onOpenSettings: () => void;
   onClearConversation: () => void;
@@ -37,19 +39,23 @@ function getProviderName(provider: Provider): string {
 
 /**
  * Header component for chat UI
- * @param {ChatHeaderProps} root0 - Component props
- * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
- * @param {string | null} root0.activeModel - Active model identifier
- * @param {Provider | null} root0.activeProvider - Active provider
- * @param {boolean} root0.hasMessages - Whether conversation has messages
- * @param {() => void} root0.onOpenSettings - Callback to open settings
- * @param {() => void} root0.onClearConversation - Callback to clear conversation
+ * @param {ChatHeaderProps} props - Component props
+ * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
+ * @param {string | null} props.activeModel - Active model identifier
+ * @param {Provider | null} props.activeProvider - Active provider
+ * @param {number} props.enabledToolsCount - Number of enabled tools
+ * @param {number} props.totalToolsCount - Total number of available tools
+ * @param {boolean} props.hasMessages - Whether conversation has messages
+ * @param {() => void} props.onOpenSettings - Callback to open settings
+ * @param {() => void} props.onClearConversation - Callback to clear conversation
  * @returns {JSX.Element} - React component
  */
 export function ChatHeader({
   mcpStatus,
   activeModel,
   activeProvider,
+  enabledToolsCount,
+  totalToolsCount,
   hasMessages,
   onOpenSettings,
   onClearConversation,
@@ -105,6 +111,9 @@ export function ChatHeader({
             {getProviderName(activeProvider)} | {getModelName(activeModel)}
           </span>
         )}
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {enabledToolsCount}/{totalToolsCount} tools
+        </span>
         <button
           onClick={onOpenSettings}
           className="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600"

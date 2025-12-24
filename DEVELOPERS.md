@@ -92,11 +92,11 @@ default browser. It connects to both the Gemini API and the local MCP server.
 npm run ui:dev
 ```
 
-This starts a dev server at http://localhost:3355 with hot reload. Changes to
+This starts a dev server at http://localhost:5173 with hot reload. Changes to
 webui source files will update automatically in the browser. Occasionally a page
 refresh may be needed if things stop working.
 
-**Note:** The dev server runs on a different port (3355) than the production
+**Note:** The dev server runs on a different port (5173) than the production
 server (3350). Both connect to the MCP server at http://localhost:3350/mcp. For
 full integration testing, use the production build served from port 3350.
 
@@ -144,13 +144,13 @@ should pass type checking before committing.
 
 - Build MCP server once: `npm run build`
 - Run: `npm run ui:dev` (watches UI with hot reload)
-- Access UI at http://localhost:3355
+- Access UI at http://localhost:5173
 
 **Working on everything** (full-stack development):
 
 - Terminal 1: `npm run dev` (watches MCP server, V8, Portal)
 - Terminal 2: `npm run ui:dev` (watches UI with hot reload)
-- Access UI at http://localhost:3355
+- Access UI at http://localhost:5173
 
 **Tip:** The Max for Live device has a button to open http://localhost:3350/chat
 in your browser.
@@ -376,7 +376,7 @@ This ensures the tag matches the exact code used to build the release.
 
 ```sh
 # Build from the tagged commit
-npm run release:prepare
+npm run release
 ```
 
 This script:
@@ -469,7 +469,7 @@ If problems are found during pre-release testing:
 3. **Rebuild**
 
    ```sh
-   npm run release:prep
+   npm run release
    # Freeze Max device again
    ```
 

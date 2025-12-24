@@ -6,6 +6,7 @@ import {
   isInstrumentDevice,
   hasInstrumentInDevices,
   updateDrumChainSoloStates,
+  readMacroVariations,
 } from "./device-reader-helpers.js";
 
 describe("device-reader-helpers", () => {
@@ -257,6 +258,43 @@ describe("device-reader-helpers", () => {
       updateDrumChainSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_VIA_SOLO);
+    });
+  });
+
+  describe("readMacroVariations", () => {
+    it("returns empty object for non-rack device", () => {
+      const device = {
+        getProperty: () => 0, // can_have_chains = 0
+      };
+      expect(readMacroVariations(device)).toEqual({});
+    });
+
+    it("returns empty object for rack with no variations", () => {
+      const device = {
+        getProperty: (prop) => (prop === "can_have_chains" ? 1 : 0),
+      };
+      expect(readMacroVariations(device)).toEqual({});
+    });
+
+    it("returns variations object with count and selected", () => {
+      const device = {
+        getProperty: (prop) => {
+          switch (prop) {
+            case "can_have_chains":
+              return 1;
+            case "variation_count":
+              return 5;
+            case "selected_variation_index":
+              return 2;
+          }
+        },
+      };
+      expect(readMacroVariations(device)).toEqual({
+        variations: {
+          count: 5,
+          selected: 2,
+        },
+      });
     });
   });
 });

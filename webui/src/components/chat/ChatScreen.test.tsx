@@ -26,6 +26,8 @@ describe("ChatScreen", () => {
     model: "gemini-2.0-flash-thinking",
     defaultThinking: "Auto",
     defaultTemperature: 1.0,
+    enabledToolsCount: 20,
+    totalToolsCount: 20,
     mcpStatus: "connected" as const,
     mcpError: null,
     checkMcpConnection: mockCheckMcpConnection,

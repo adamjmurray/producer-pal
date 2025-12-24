@@ -504,4 +504,70 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const reasoning = result.reasoning_details?.[0];
     expect(reasoning?.text).toBe("I need to analyze this data...");
   });
+
+  /**
+   * OpenRouter sends an extra "usage" chunk after finish_reason: "tool_calls".
+   * This extra chunk has finish_reason: null, which could clear tool_calls if not handled.
+   *
+   * The streaming loop in processStreamAndUpdateHistory tracks a `toolCallsFinalized` flag
+   * and continues passing "tool_calls" as the finishReason after it's been received.
+   *
+   * This test documents the expected behavior: buildStreamMessage is stateless and depends
+   * on the caller to pass the correct finishReason. The streaming loop is responsible for
+   * maintaining the finalized state.
+   */
+  it("should demonstrate that tool_calls inclusion depends on finishReason passed by caller", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "I'll help you.",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>([
+      [
+        0,
+        {
+          id: "call_abc",
+          type: "function",
+          function: {
+            name: "ppal-connect",
+            arguments: "{}",
+          },
+        },
+      ],
+    ]);
+
+    // Simulating streaming chunks:
+    // Chunk 1-2: Tool calls accumulating, finish_reason: null
+    const streamingResult = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      null, // Still streaming
+    );
+    expect(streamingResult.tool_calls).toBeUndefined();
+
+    // Chunk 3: finish_reason: "tool_calls" - tool_calls should be included
+    const finalizedResult = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      "tool_calls", // Finalized
+    );
+    expect(finalizedResult.tool_calls).toBeDefined();
+    expect(finalizedResult.tool_calls).toHaveLength(1);
+
+    // Chunk 4 (OpenRouter usage chunk): finish_reason: null again
+    // The streaming loop preserves "tool_calls" via toolCallsFinalized flag,
+    // so it would pass "tool_calls" here instead of null
+    const preservedResult = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      "",
+      "tool_calls", // Streaming loop passes "tool_calls" (not null) after finalization
+    );
+    expect(preservedResult.tool_calls).toBeDefined();
+    expect(preservedResult.tool_calls).toHaveLength(1);
+  });
 });

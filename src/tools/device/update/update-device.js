@@ -13,9 +13,18 @@ import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
  * @param {string} [args.name] - Device display name
  * @param {boolean} [args.collapsed] - Collapse/expand device view
  * @param {string} [args.params] - JSON: {"paramId": value, ...} - values in display units
+ * @param {string} [args.macroVariation] - Rack variation action
+ * @param {number} [args.macroVariationIndex] - Rack variation index
  * @returns {object|Array} Updated device info(s)
  */
-export function updateDevice({ ids, name, collapsed, params }) {
+export function updateDevice({
+  ids,
+  name,
+  collapsed,
+  params,
+  macroVariation,
+  macroVariationIndex,
+}) {
   const deviceIds = parseCommaSeparatedIds(ids);
   const updatedDevices = [];
 
@@ -37,6 +46,10 @@ export function updateDevice({ ids, name, collapsed, params }) {
 
     if (params != null) {
       setParamValues(params);
+    }
+
+    if (macroVariation != null || macroVariationIndex != null) {
+      updateMacroVariation(device, macroVariation, macroVariationIndex);
     }
 
     updatedDevices.push({ id: device.id });
@@ -125,4 +138,58 @@ function setParamValue(param, inputValue) {
 
   // 4. All other numeric - set display_value directly
   param.set("display_value", inputValue);
+}
+
+/**
+ * Update macro variation state for rack devices
+ * @param {object} device - Live API device object
+ * @param {string} [action] - Variation action: store, recall, recall-last, delete, randomize
+ * @param {number} [index] - Variation index to select (0-based)
+ */
+function updateMacroVariation(device, action, index) {
+  const canHaveChains = device.getProperty("can_have_chains");
+
+  if (!canHaveChains) {
+    console.error(
+      "updateDevice: macro variations only available on rack devices",
+    );
+
+    return;
+  }
+
+  // Set selected variation index first (if provided)
+  if (index != null) {
+    const variationCount = device.getProperty("variation_count");
+
+    if (index >= variationCount) {
+      console.error(
+        `updateDevice: variation index ${index} out of range (${variationCount} available)`,
+      );
+
+      return;
+    }
+
+    device.set("selected_variation_index", index);
+  }
+
+  // Execute action (if provided)
+  if (action != null) {
+    switch (action) {
+      case "store":
+        device.call("store_variation");
+        break;
+      case "recall":
+        device.call("recall_selected_variation");
+        break;
+      case "recall-last":
+        device.call("recall_last_used_variation");
+        break;
+      case "delete":
+        device.call("delete_selected_variation");
+        break;
+      case "randomize":
+        device.call("randomize_macros");
+        break;
+    }
+  }
 }

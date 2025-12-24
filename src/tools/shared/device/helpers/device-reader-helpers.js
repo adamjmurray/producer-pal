@@ -371,6 +371,32 @@ export function processReturnChains(
 }
 
 /**
+ * Read macro variation info for rack devices
+ * @param {object} device - LiveAPI device object
+ * @returns {object} Object with variations property if device is a rack with variations, empty object otherwise
+ */
+export function readMacroVariations(device) {
+  const canHaveChains = device.getProperty("can_have_chains");
+
+  if (!canHaveChains) {
+    return {};
+  }
+
+  const variationCount = device.getProperty("variation_count");
+
+  if (!variationCount) {
+    return {};
+  }
+
+  return {
+    variations: {
+      count: variationCount,
+      selected: device.getProperty("selected_variation_index"),
+    },
+  };
+}
+
+/**
  * Read all parameters for a device
  * @param {object} device - LiveAPI device object
  * @param {object} options - Reading options

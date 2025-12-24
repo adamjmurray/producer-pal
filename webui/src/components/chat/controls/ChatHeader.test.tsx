@@ -10,6 +10,8 @@ describe("ChatHeader", () => {
     mcpStatus: "connected" as const,
     activeModel: null,
     activeProvider: null,
+    enabledToolsCount: 20,
+    totalToolsCount: 20,
     hasMessages: false,
     onOpenSettings: vi.fn(),
     onClearConversation: vi.fn(),
@@ -112,6 +114,53 @@ describe("ChatHeader", () => {
     });
   });
 
+  describe("tools count display", () => {
+    it("shows all tools enabled", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={20}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("20/20 tools")).toBeDefined();
+    });
+
+    it("shows some tools disabled", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={15}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("15/20 tools")).toBeDefined();
+    });
+
+    it("shows no tools enabled", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={0}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("0/20 tools")).toBeDefined();
+    });
+
+    it("shows tools count even when no messages", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          hasMessages={false}
+          enabledToolsCount={18}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("18/20 tools")).toBeDefined();
+    });
+  });
+
   describe("Settings button", () => {
     it("calls onOpenSettings when clicked", () => {
       const onOpenSettings = vi.fn();
@@ -132,11 +181,14 @@ describe("ChatHeader", () => {
           mcpStatus="connected"
           activeModel="gemini-2.5-pro"
           activeProvider="gemini"
+          enabledToolsCount={18}
+          totalToolsCount={20}
         />,
       );
 
       expect(screen.getByText("✓ Ready")).toBeDefined();
       expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
+      expect(screen.getByText("18/20 tools")).toBeDefined();
     });
   });
 

@@ -17,10 +17,14 @@ interface ChatInputProps {
 
 /**
  * Input component for chat messages
- * @param {ChatInputProps} root0 - Component props
- * @param {(message: string) => Promise<void>} root0.handleSend - Callback to send message
- * @param {boolean} root0.isAssistantResponding - Whether assistant is currently responding
- * @param {() => void} root0.onStop - Callback to stop assistant response
+ * @param {ChatInputProps} props - Component props
+ * @param {(message: string) => Promise<void>} props.handleSend - Callback to send message
+ * @param {boolean} props.isAssistantResponding - Whether assistant is currently responding
+ * @param {() => void} props.onStop - Callback to stop assistant response
+ * @param {Provider} props.provider - Current provider
+ * @param {string} props.model - Current model
+ * @param {string} props.defaultThinking - Default thinking mode from settings
+ * @param {number} props.defaultTemperature - Default temperature from settings
  * @returns {JSX.Element} - React component
  */
 export function ChatInput({

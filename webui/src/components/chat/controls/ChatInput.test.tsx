@@ -7,6 +7,9 @@ import { ChatInput } from "./ChatInput";
 import type { Provider } from "../../../types/settings";
 
 const defaultProps = {
+  handleSend: vi.fn(),
+  isAssistantResponding: false,
+  onStop: vi.fn(),
   provider: "gemini" as Provider,
   model: "gemini-2.0-flash-thinking",
   defaultThinking: "Auto",
@@ -16,62 +19,22 @@ const defaultProps = {
 describe("ChatInput", () => {
   describe("rendering", () => {
     it("renders textarea", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
-
+      render(<ChatInput {...defaultProps} />);
       expect(screen.getByRole("textbox")).toBeDefined();
     });
 
     it("renders Send button when not responding", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
-
+      render(<ChatInput {...defaultProps} />);
       expect(screen.getByRole("button", { name: "Send" })).toBeDefined();
     });
 
     it("renders ... button when responding", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={true}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
-
+      render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
       expect(screen.getByRole("button", { name: "..." })).toBeDefined();
     });
 
     it("shows placeholder text", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
-
+      render(<ChatInput {...defaultProps} />);
       const textarea = screen.getByRole("textbox");
       expect(textarea.getAttribute("placeholder")).toBe(
         "Type a message... (Shift+Enter for new line)",
@@ -81,16 +44,7 @@ describe("ChatInput", () => {
 
   describe("input handling", () => {
     it("updates input value when typing", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} />);
 
       const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -101,16 +55,7 @@ describe("ChatInput", () => {
 
   describe("send button", () => {
     it("is disabled when input is empty", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} />);
 
       const button = screen.getByRole("button", {
         name: "Send",
@@ -119,16 +64,7 @@ describe("ChatInput", () => {
     });
 
     it("is enabled when input has content", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -140,16 +76,7 @@ describe("ChatInput", () => {
     });
 
     it("is disabled when assistant is responding", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={true}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} isAssistantResponding={true} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -161,16 +88,7 @@ describe("ChatInput", () => {
     });
 
     it("is disabled when input is only whitespace", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "   " } });
@@ -183,15 +101,7 @@ describe("ChatInput", () => {
 
     it("calls handleSend with input when clicked", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -207,16 +117,7 @@ describe("ChatInput", () => {
     });
 
     it("clears input after sending", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} />);
 
       const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -231,15 +132,7 @@ describe("ChatInput", () => {
   describe("Enter key handling", () => {
     it("sends message on Enter key", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -253,16 +146,7 @@ describe("ChatInput", () => {
     });
 
     it("clears input after Enter key send", () => {
-      const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} />);
 
       const textarea = screen.getByRole("textbox") as HTMLTextAreaElement;
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -273,15 +157,7 @@ describe("ChatInput", () => {
 
     it("does not send on Shift+Enter", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -292,13 +168,11 @@ describe("ChatInput", () => {
 
     it("does not send when assistant is responding", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
       render(
         <ChatInput
+          {...defaultProps}
           handleSend={handleSend}
           isAssistantResponding={true}
-          onStop={onStop}
-          {...defaultProps}
         />,
       );
 
@@ -311,15 +185,7 @@ describe("ChatInput", () => {
 
     it("does not send when input is empty", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
@@ -329,15 +195,7 @@ describe("ChatInput", () => {
 
     it("does not send when input is only whitespace", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "   " } });
@@ -350,15 +208,7 @@ describe("ChatInput", () => {
   describe("per-message settings", () => {
     it("passes default thinking and temperature on send", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
-      render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
-      );
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
 
       const textarea = screen.getByRole("textbox");
       fireEvent.input(textarea, { target: { value: "Hello" } });
@@ -374,14 +224,8 @@ describe("ChatInput", () => {
 
     it("resets to defaults when reset button clicked", () => {
       const handleSend = vi.fn();
-      const onStop = vi.fn();
       const { container } = render(
-        <ChatInput
-          handleSend={handleSend}
-          isAssistantResponding={false}
-          onStop={onStop}
-          {...defaultProps}
-        />,
+        <ChatInput {...defaultProps} handleSend={handleSend} />,
       );
 
       // Expand settings toolbar

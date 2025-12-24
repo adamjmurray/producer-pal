@@ -4,6 +4,7 @@ import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
 import { useSettings } from "#webui/hooks/settings/use-settings";
 import { useTheme } from "#webui/hooks/theme/use-theme";
+import { TOOLS } from "#webui/lib/constants/tools";
 import { ChatScreen } from "./chat/ChatScreen";
 import { SettingsScreen } from "./settings/SettingsScreen";
 
@@ -13,6 +14,20 @@ const PROVIDER_BASE_URLS = {
   mistral: "https://api.mistral.ai/v1",
   openrouter: "https://openrouter.ai/api/v1",
 } as const;
+
+// Filter tools that are visible (not requiring env var unless it's set)
+const VISIBLE_TOOLS = TOOLS.filter(
+  (tool) => !tool.requiresEnvVar || import.meta.env.ENABLE_RAW_LIVE_API,
+);
+
+/**
+ * Calculate the number of enabled tools
+ * @param {Record<string, boolean>} enabledTools - Map of tool IDs to enabled state
+ * @returns {number} - Number of enabled tools
+ */
+function getEnabledToolsCount(enabledTools: Record<string, boolean>): number {
+  return VISIBLE_TOOLS.filter((tool) => enabledTools[tool.id] !== false).length;
+}
 
 /**
  *
@@ -66,6 +81,9 @@ export function App() {
 
   // Route to appropriate chat based on provider
   const chat = settings.provider === "gemini" ? geminiChat : openaiChat;
+
+  // Calculate tools counts for header display
+  const enabledToolsCount = getEnabledToolsCount(settings.enabledTools);
 
   const [showSettings, setShowSettings] = useState(
     !settings.settingsConfigured,
@@ -142,6 +160,8 @@ export function App() {
       model={settings.model}
       defaultThinking={settings.thinking}
       defaultTemperature={settings.temperature}
+      enabledToolsCount={enabledToolsCount}
+      totalToolsCount={VISIBLE_TOOLS.length}
       mcpStatus={mcpStatus}
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}
