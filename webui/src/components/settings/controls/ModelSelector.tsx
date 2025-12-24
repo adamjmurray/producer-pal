@@ -38,13 +38,20 @@ const MISTRAL_MODELS = [
 
 const OPENROUTER_MODELS = [
   // Free models
-  { value: "minimax/minimax-m2:free", label: "[Free] MiniMax M2" },
-  { value: "qwen/qwen3-235b-a22b:free", label: "[Free] Qwen3 235B A22B" },
+  { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
+  { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B A35B" },
+  {
+    value: "mistralai/devstral-2512:free",
+    label: "[Free] Mistral Devstral 2 2512",
+  },
+  {
+    value: "openai/gpt-oss-120b:free",
+    label: "[Free] OpenAI: gpt-oss-120b",
+  },
   {
     value: "nvidia/nemotron-3-nano-30b-a3b:free",
-    label: "[Free] Nemotron 3 Nano 30B",
+    label: "[Free] Nemotron 3 Nano",
   },
-  { value: "mistralai/devstral-2512:free", label: "[Free] Devstral 2" },
   // Paid models - MiniMax
   { value: "minimax/minimax-m1", label: "[Paid] MiniMax M1 (smart)" },
   { value: "minimax/minimax-m2.1", label: "[Paid] MiniMax M2.1" },
@@ -61,7 +68,7 @@ const OPENROUTER_MODELS = [
     label: "[Paid] Nemotron 3 Nano 30B",
   },
   // Paid models - Moonshot AI
-  { value: "moonshotai/kimi-k2", label: "[Paid] Kimi K2" },
+  { value: "moonshotai/kimi-k2-0905", label: "[Paid] Kimi K2" },
   // Paid models - Perplexity
   {
     value: "perplexity/sonar-reasoning-pro",
