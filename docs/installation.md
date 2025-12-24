@@ -2,7 +2,7 @@
 
 Choose your preferred AI platform to get started with Producer Pal:
 
-:::tip Prerequisites
+::: tip Prerequisites
 
 **Download:**&nbsp;
 [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
