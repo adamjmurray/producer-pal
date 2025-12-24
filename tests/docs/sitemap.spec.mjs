@@ -14,6 +14,7 @@ const ALLOWED_EXTERNAL_DOMAINS = [
   "console.mistral.ai",
   "github.com",
   "google.com",
+  "groq.com",
   "lmstudio.ai",
   "mistral.ai",
   "modelcontextprotocol.io",
