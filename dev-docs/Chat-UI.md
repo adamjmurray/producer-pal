@@ -172,14 +172,14 @@ for await (const chunk of stream) {
 **Commands:**
 
 ```bash
-npm run ui:dev    # Dev server at localhost:3355 with hot reload
+npm run ui:dev    # Dev server at localhost:5173 with hot reload
 npm run ui:build  # Production build
 npm run build     # Includes UI build
 ```
 
 **Development workflow:**
 
-- UI only: `npm run ui:dev` for hot reload at localhost:3355
+- UI only: `npm run ui:dev` for hot reload at localhost:5173
 - Full-stack: Run `npm run dev` + `npm run ui:dev` in separate terminals
 - Tests colocated with source (`.test.ts` / `.test.tsx`), run with `npm test`
 - See `DEVELOPERS.md` for detailed workflow scenarios
