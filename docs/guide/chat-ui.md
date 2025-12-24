@@ -8,8 +8,11 @@ directly from within Producer Pal.
 ## Getting Started
 
 1. Enable Chat UI in the [Device Interface](/guide/device) Main tab
-2. Click "Open Chat UI" or navigate to `http://localhost:3350`
-3. Click "Quick Connect" to connect to Ableton Live
+2. Click "Open Chat UI" or navigate to `http://localhost:3350/chat`
+3. If this is your first time using the chat UI, you need to configure which AI
+   to use. See [the Settings documentation](#settings) below
+4. Click "Quick Connect" to connect to Ableton Live (this is a shortcut sending
+   "Connect to Ableton" via the message input)
 
 ## Header Bar
 
@@ -26,73 +29,113 @@ directly from within Producer Pal.
 During conversations, you'll see:
 
 - **Your messages** - What you typed
-- **AI thinking** - Expandable sections showing AI's reasoning process
-- **Tool usage** - Collapsed indicators when AI uses Producer Pal tools
 - **AI responses** - Results and suggestions from the AI
+- **Tool usage** - Collapsed indicators when AI uses Producer Pal tools
+- **AI thinking** - Expandable sections showing AI's reasoning process (only
+  appears for some AI models)
 
 ### Expandable Thoughts
 
-![Expandable thoughts](/producer-pal-chat-expandable-thoughts.png)
+Some AI models output "thoughts". When they do, you can click "Thought about:"
+sections to see the AI's reasoning process:
 
-Click "Thought about:" sections to see the AI's reasoning process.
+![Expandable thoughts](/producer-pal-chat-expandable-thoughts.png)
 
 ## Message Input
 
-- **Thinking indicator** - Shows current thinking mode and randomness
+- **Thinking indicator** - Shows current thinking mode and randomness (this can
+  be changed in settings)
 - **Text area** - Type your message (Shift+Enter for new line)
 - **Send** - Send your message
 
 ## Settings
 
+Settings are stored on your computer in your browser's local storage so you
+don't have to redo the setup every time you use Producer Pal. If entering an AI
+cloud provider's API key concerns you, use a private browser or clear your
+settings after use.
+
+For more information about how to configure specific AI providers, see the
+[installation guide for AI with the chat UI](/installation/chat-ui).
+
 ### Connection
 
-![Connection settings](/producer-pal-chat-settings-connection.png)
+The Connection tab is where you choose and configure your AI provider and model:
+
+<img src="/producer-pal-chat-settings-connection.png" alt="Connection settings" width="500"/>
 
 Configure your AI provider:
 
-- **Provider** - Choose from Gemini, OpenAI, Ollama (local), OpenRouter, or
-  Other
+- **Provider** - Choose from Gemini, OpenAI, Mistral, OpenRouter, Ollama
+  (local), LM Studio (local), or Other
 - **API Key** - Your API key (for cloud providers)
 - **Model** - Select a model or enter a custom model name
 
-#### Ollama (Local)
+#### Local AI settings (Ollama, LM Studio)
 
-![Ollama settings](/producer-pal-chat-settings-connection-ollama.png)
+<img src="/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
 
-For local models with Ollama:
+Local models, such as those you can run with Ollama, do not require any API
+keys. Instead, they have a configurable port.
 
-- **Port** - Ollama port (default: 11434)
+- **Port** - Local port (default: 11434 for Ollama, 1234 for LM Studio)
 - **Model** - Select from installed models
 
-#### OpenRouter
+With Ollama, you almost never need to change this from the default Ollama port
+(11434) unless you've modified advanced settings for your Ollama installation.
+Similarly with LM Studio, if you change the port in LM Studio from its default,
+Producer Pal's chat UI must use the same port.
 
-![OpenRouter settings](/producer-pal-chat-settings-connection-open-router-other-model.png)
+#### Other models
 
-Access many models through OpenRouter:
+Each AI provider supports multiple models and Producer Pal provides some
+recommended options in the model dropdown box. To use a different model, select
+"Other...". An additional text input appears where you can enter an arbitrary
+model id. Consult your AI provider for the models that are currently available.
 
-- Select "Other..." to enter any model name (e.g., `deepseek/deepseek-v3.2`)
+<img src="/producer-pal-chat-settings-connection-open-router-other-model.png" alt="OpenRouter settings" width="500"/>
+
+#### Custom providers
+
+Producer Pal can work with any AI provider that has an API compatible with
+OpenAI's chat API. Most providers support this. When setting up a custom
+provider, you also need to enter the **base URL** for the provider's API.
+Consult the provider's documentation to determine the correct setting.
+
+For example, one could use [groq.com](https://groq.com/) as follows:
+
+<img src="/producer-pal-chat-settings-custom-provider.png" alt="Custom provider" width="500"/>
 
 ### Behavior
 
-![Behavior settings](/producer-pal-chat-settings-behavior.png)
+The behavior tab lets you control aspects of how the AI behaves:
 
-- **Thinking** - Control AI thinking depth (None, Low, Medium, High, Auto)
-- **Show thinking process** - Display AI reasoning in chat
+<img src="/producer-pal-chat-settings-behavior.png" alt="Behavior settings" width="500"/>
+
+- **Thinking** - Control AI thinking effort. The choices and availability of
+  this option depend on the provider selected in
+  [the Connection tab](#connection)
+- **Show thinking process** - Display AI reasoning in chat. If you don't care
+  about this, you can disable it to reduce clutter.
 - **Randomness** - Creativity level (0% = deterministic, 100% = creative)
 - **Reset to defaults** - Restore default behavior settings
 
 ### Tools
 
-![Tools settings](/producer-pal-chat-settings-tools.png)
+The Tools tab controls which tools are available to the AI when using the chat
+UI. This is important for reducing context size for local models (when using the
+Ollama or LM Studio provider). For local models, only enable the tools you need.
+For state-of-the-art cloud providers (Gemini, OpenAI, etc), you generally want
+to keep everything enabled to make full use of Producer Pal's capabilities. If
+you want to prevent the AI from using a specific tool, you can disable it here.
 
-Enable or disable individual Producer Pal tools. Useful for:
+Consult [the Features page](/features) for more info on what each tool does.
 
-- Limiting AI capabilities for safety
-- Focusing on specific tasks
-- Troubleshooting
+<img src="/producer-pal-chat-settings-tools.png" alt="Tools settings" width="500"/>
 
 ### Appearance
 
-![Appearance settings](/producer-pal-chat-settings-appearance.png)
+The Appearance tab lets you choose between light mode or dark mode, or follow
+the system settings:
 
-- **Theme** - System, Light, or Dark mode
+<img src="/producer-pal-chat-settings-appearance.png" alt="Appearance settings" width="500"/>
