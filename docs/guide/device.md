@@ -20,6 +20,12 @@ actions.
   phone access, but consider disabling on shared networks).
 - **Open Chat UI** - Opens the Chat UI in your default browser
 
+If you see "Producer Pal Error", click the three-dot menu in the upper right of
+the device, select "Open Max Window", scroll down if needed, and look for an
+error message.
+
+![Startup error example](/producer-pal-startup-error.png)
+
 ## Notes Tab
 
 ![Notes tab](/device-notes-tab.png)
