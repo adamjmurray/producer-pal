@@ -376,7 +376,7 @@ This ensures the tag matches the exact code used to build the release.
 
 ```sh
 # Build from the tagged commit
-npm run release:prepare
+npm run release
 ```
 
 This script:
@@ -469,7 +469,7 @@ If problems are found during pre-release testing:
 3. **Rebuild**
 
    ```sh
-   npm run release:prep
+   npm run release
    # Freeze Max device again
    ```
 
