@@ -50,6 +50,7 @@ export default defineConfig({
         items: [
           { text: "User Guide", link: "/guide" },
           { text: "Device Interface", link: "/guide/device" },
+          { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
         ],
       },
