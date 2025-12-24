@@ -19,17 +19,10 @@ reach out directly.
 
 ## In Progress
 
-### v1.3.2
+### 1.3.x
 
 - Rack macro variation management
-  - Select macro variation
-  - Create/update macro variation
-  - Delete macro variation
-  - Randomize macros
 - Support moving/reordering devices
-
-### v1.3.3
-
 - A/B comparison of device parameters
 - Arrangement cue support
 - Change the samples played by Simpler
