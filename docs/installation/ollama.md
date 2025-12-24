@@ -14,10 +14,11 @@ Download and install [Ollama](https://ollama.com/) for your operating system.
 
 ## 2. Download a Model
 
-Download a model that supports tools. Good options:
+Download a model that supports tools. Some good options include:
 
-- `qwen3:8b` - Good balance of speed and quality
-- `llama3.3:70b` - Higher quality but requires more RAM
+- `qwen3`
+- `devstral-small-2`
+- `gpt-oss`
 
 Browse [models with tool support](https://ollama.com/search?c=tools) on the
 Ollama website.
@@ -34,12 +35,18 @@ It should display "Producer Pal Running":
 
 ## 4. Enable Small Model Mode
 
-In the Producer Pal "Setup" tab, check **Small Model Mode**. This simplifies
-tool descriptions for better compatibility with local models.
+In [the Producer Pal "Setup" tab](/guide/device#setup-tab), enable **Small Model
+Mode**. This simplifies tool descriptions for better compatibility with local
+models.
+
+![Setup tab](/device-setup-tab.png)
 
 ## 5. Open the Chat UI
 
-In the Producer Pal device, click "Open Chat UI".
+In the Producer Pal device's Main tab, click "Open Chat UI". The built-in chat
+UI opens in a browser:
+
+![Chat UI](/producer-pal-chat.png)
 
 ## 6. Configure Ollama
 
@@ -47,15 +54,26 @@ In the chat UI settings:
 
 - Provider: **Ollama (local)**
 - Port: `11434` (default)
-- Model: Your model name (e.g., `qwen3:8b`)
+- Model: Your model name (e.g., `qwen3` or `qwen3:8b`)
 
 Click "Save".
+
+<img src="/producer-pal-chat-settings-connection-ollama.png" alt="Ollama settings" width="500"/>
+
+::: tip Ollama Model Aliases
+
+If Producer Pal says a model like `qwen3` is not installed but you downloaded
+`qwen3:8b`, that's because Ollama aliases work one way: `qwen3` points to
+`qwen3:8b`, but not vice versa. Install `qwen3` in Ollama to create the alias.
+It won't re-download the model.
+
+:::
 
 ## 7. Connect
 
 Click "Quick Connect" and say "connect to ableton":
 
-![Producer Pal Chat UI](/built-in-chat-ui.png)
+![Producer Pal Chat UI conversation](/producer-pal-chat-conversation.png)
 
 ::: tip Local Model Limitations
 

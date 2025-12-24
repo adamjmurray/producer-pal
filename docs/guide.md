@@ -54,7 +54,7 @@ After installation:
 ## User Interface
 
 - [Device Interface](/guide/device) - The Max for Live device tabs and settings
-- Chat UI - The built-in browser-based chat interface (coming soon)
+- [Chat UI](/guide/chat-ui) - The built-in browser-based chat interface
 
 ## Next Steps
 
