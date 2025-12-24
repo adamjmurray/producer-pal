@@ -49,6 +49,7 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "User Guide", link: "/guide" },
+          { text: "Device Interface", link: "/guide/device" },
           { text: "Usage Examples", link: "/guide/examples" },
         ],
       },

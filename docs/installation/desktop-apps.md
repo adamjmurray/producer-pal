@@ -14,10 +14,13 @@ Anthropic's desktop app. The easiest way to use Producer Pal.
 
 ## LM Studio (Advanced)
 
-::: warning For Power Users LM Studio requires significant hardware (Apple
-Silicon with lots of RAM or Nvidia 4080+ GPU) and technical comfort with local
-models. Expect experimentation. Online options work better and faster at this
-time. :::
+::: warning For Power Users
+
+LM Studio requires significant hardware (Apple Silicon with lots of RAM or
+Nvidia 4080+ GPU) and technical comfort with local models. Expect
+experimentation. Online options work better and faster at this time.
+
+:::
 
 - **Difficulty:** Advanced
 - **Cost:** Free (uses your hardware)
