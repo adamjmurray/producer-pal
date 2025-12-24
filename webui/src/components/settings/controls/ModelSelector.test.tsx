@@ -53,9 +53,10 @@ describe("ModelSelector", () => {
 
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
     expect(options[0]!.value).toBe("gemini-3-pro-preview");
-    expect(options[1]!.value).toBe("gemini-2.5-pro");
-    expect(options[2]!.value).toBe("gemini-2.5-flash");
-    expect(options[3]!.value).toBe("gemini-2.5-flash-lite");
+    expect(options[1]!.value).toBe("gemini-3-flash-preview");
+    expect(options[2]!.value).toBe("gemini-2.5-pro");
+    expect(options[3]!.value).toBe("gemini-2.5-flash");
+    expect(options[4]!.value).toBe("gemini-2.5-flash-lite");
   });
 
   it("triggers setModel callback on change", () => {
@@ -101,7 +102,7 @@ describe("ModelSelector", () => {
         />,
       );
       expect(
-        screen.getByRole("option", { name: /GPT-5\.1 \(most capable\)/ }),
+        screen.getByRole("option", { name: /GPT-5\.2 \(most capable\)/ }),
       ).toBeDefined();
       expect(
         screen.getByRole("option", { name: /GPT-5 \(previous version\)/ }),
@@ -161,15 +162,15 @@ describe("ModelSelector", () => {
       render(
         <ModelSelector
           provider="openrouter"
-          model="minimax/minimax-m2:free"
+          model="qwen/qwen3-coder:free"
           setModel={vi.fn()}
         />,
       );
       expect(
-        screen.getByRole("option", { name: /\[Free\] MiniMax M2/ }),
+        screen.getByRole("option", { name: /\[Free\] Qwen3 Coder/ }),
       ).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /\[Free\] Qwen3 235B/ }),
+        screen.getByRole("option", { name: /\[Free\] Z\.AI GLM/ }),
       ).toBeDefined();
     });
 
@@ -178,15 +179,15 @@ describe("ModelSelector", () => {
       render(
         <ModelSelector
           provider="openrouter"
-          model="minimax/minimax-m2:free"
+          model="qwen/qwen3-coder:free"
           setModel={setModel}
         />,
       );
       const select = screen.getByRole("combobox");
       fireEvent.change(select, {
-        target: { value: "qwen/qwen3-235b-a22b:free" },
+        target: { value: "mistralai/devstral-2512:free" },
       });
-      expect(setModel).toHaveBeenCalledWith("qwen/qwen3-235b-a22b:free");
+      expect(setModel).toHaveBeenCalledWith("mistralai/devstral-2512:free");
     });
   });
 
@@ -240,30 +241,30 @@ describe("ModelSelector", () => {
   });
 
   describe("ollama provider", () => {
-    it("renders text input for ollama provider", () => {
+    it("renders Ollama models", () => {
       render(
         <ModelSelector
           provider="ollama"
-          model="llama-3.1-70b"
+          model="ministral-3"
           setModel={vi.fn()}
         />,
       );
-      const input = screen.getByPlaceholderText(/e.g., llama-3.1-70b/);
-      expect(input).toBeDefined();
+      expect(screen.getByRole("option", { name: /Ministral 3/ })).toBeDefined();
+      expect(screen.getByRole("option", { name: /Qwen3 Coder/ })).toBeDefined();
     });
 
-    it("calls setModel when ollama input changes", () => {
+    it("calls setModel when Ollama model changes", () => {
       const setModel = vi.fn();
       render(
         <ModelSelector
           provider="ollama"
-          model="llama-3.1-70b"
+          model="ministral-3"
           setModel={setModel}
         />,
       );
-      const input = screen.getByPlaceholderText(/e.g., llama-3.1-70b/);
-      fireEvent.change(input, { target: { value: "qwen-2.5-72b" } });
-      expect(setModel).toHaveBeenCalledWith("qwen-2.5-72b");
+      const select = screen.getByRole("combobox");
+      fireEvent.change(select, { target: { value: "qwen3" } });
+      expect(setModel).toHaveBeenCalledWith("qwen3");
     });
   });
 

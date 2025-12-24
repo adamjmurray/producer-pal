@@ -24,12 +24,19 @@ export const TOOLS: Tool[] = [
   { id: "ppal-read-clip", name: "Read Clip" },
   { id: "ppal-update-clip", name: "Update Clip" },
   // Row 6
+  { id: "ppal-create-device", name: "Create Device" },
+  { id: "ppal-read-device", name: "Read Device" },
+  { id: "ppal-update-device", name: "Update Device" },
+  // Row 7
   { id: "ppal-playback", name: "Control Playback" },
   { id: "ppal-select", name: "Select/View Control" },
-  // Row 7
+  // Row 8
   { id: "ppal-delete", name: "Delete Objects" },
   { id: "ppal-duplicate", name: "Duplicate Objects" },
-  // Row 8 (conditional)
+  { id: "ppal-transform-clips", name: "Transform Clips" },
+  // Row 9
+  { id: "ppal-read-samples", name: "Read Samples" },
+  // Row 10 (conditional)
   {
     id: "ppal-raw-live-api",
     name: "Raw Live API",

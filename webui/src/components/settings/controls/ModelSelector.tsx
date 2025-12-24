@@ -9,6 +9,7 @@ interface ModelSelectorProps {
 
 const GEMINI_MODELS = [
   { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (preview)" },
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (preview)" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro (most advanced)" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash (fast & intelligent)" },
   {
@@ -19,7 +20,7 @@ const GEMINI_MODELS = [
 ];
 
 const OPENAI_MODELS = [
-  { value: "gpt-5.1-2025-11-13", label: "GPT-5.1 (most capable)" },
+  { value: "gpt-5.2-2025-12-11", label: "GPT-5.2 (most capable)" },
   { value: "gpt-5-2025-08-07", label: "GPT-5 (previous version)" },
   { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini (fast & affordable)" },
   { value: "gpt-5-nano-2025-08-07", label: "GPT-5 Nano (ultra fast)" },
@@ -37,56 +38,50 @@ const MISTRAL_MODELS = [
 
 const OPENROUTER_MODELS = [
   // Free models
-  { value: "minimax/minimax-m2:free", label: "[Free] MiniMax M2" },
-  { value: "qwen/qwen3-235b-a22b:free", label: "[Free] Qwen3 235B A22B" },
-  // Paid models - MiniMax
-  { value: "minimax/minimax-m1", label: "[Paid] MiniMax M1 (smart)" },
-  { value: "minimax/minimax-m2", label: "[Paid] MiniMax M2 (basic)" },
-  // Paid models - Qwen
-  { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max (smart)" },
+  { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
+  { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
+  { value: "mistralai/devstral-2512:free", label: "[Free] Devstral 2" },
+  { value: "openai/gpt-oss-120b:free", label: "[Free] GPT-OSS 120B" },
   {
-    value: "qwen/qwen3-235b-a22b-07-25",
-    label: "[Paid] Qwen3 235B A22B (basic)",
-  },
-  // Paid models - Moonshot AI
-  { value: "moonshotai/kimi-k2", label: "[Paid] Kimi K2" },
-  // Paid models - Perplexity
-  {
-    value: "perplexity/sonar-reasoning-pro",
-    label: "[Paid] Sonar Reasoning Pro (smart)",
-  },
-  {
-    value: "perplexity/sonar-reasoning",
-    label: "[Paid] Sonar Reasoning (fast)",
-  },
-  // Paid models - xAI
-  { value: "x-ai/grok-4", label: "[Paid] Grok 4 (smart)" },
-  { value: "x-ai/grok-4-fast", label: "[Paid] Grok 4 Fast (fast)" },
-
-  // Paid models - Anthropic
-  {
-    value: "anthropic/claude-sonnet-4-5-20250929",
-    label: "[Paid] Claude Sonnet 4.5 (smart)",
-  },
-  {
-    value: "anthropic/claude-haiku-4-5-20250514",
-    label: "[Paid] Claude Haiku 4.5 (fast)",
+    value: "nvidia/nemotron-3-nano-30b-a3b:free",
+    label: "[Free] Nemotron 3 Nano",
   },
   // Paid models - Google
-  { value: "google/gemini-2.5-pro", label: "[Paid] Gemini 2.5 Pro (smart)" },
-  { value: "google/gemini-2.5-flash", label: "[Paid] Gemini 2.5 Flash (fast)" },
-  // Paid models - Mistral
   {
-    value: "mistralai/magistral-medium-2506:thinking",
-    label: "[Paid] Magistral Medium (thinking)",
+    value: "google/gemini-3-flash-preview",
+    label: "[Paid] Gemini 3 Flash (preview)",
   },
   {
-    value: "mistralai/mistral-medium-3.1",
-    label: "[Paid] Mistral Medium 3.1 (basic)",
+    value: "google/gemini-3-pro-preview",
+    label: "[Paid] Gemini 3 Pro (preview)",
   },
+  // Paid models - Anthropic
+  { value: "anthropic/claude-sonnet-4.5", label: "[Paid] Claude Sonnet 4.5" },
+  { value: "anthropic/claude-opus-4.5", label: "[Paid] Claude Opus 4.5" },
   // Paid models - OpenAI
-  { value: "openai/gpt-5", label: "[Paid] GPT-5 (smart)" },
-  { value: "openai/gpt-5-mini", label: "[Paid] GPT-5 Mini (fast)" },
+  { value: "openai/gpt-5.2", label: "[Paid] GPT-5.2" },
+  { value: "openai/gpt-5.1-codex-max", label: "[Paid] GPT-5.1 Codex Max" },
+  // Paid models - xAI
+  { value: "x-ai/grok-4", label: "[Paid] Grok 4" },
+  { value: "x-ai/grok-4.1-fast", label: "[Paid] Grok 4.1 Fast" },
+  // Paid models - Mistral
+  { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
+  // Paid models - DeepSeek
+  { value: "deepseek/deepseek-v3.2", label: "[Paid] DeepSeek V3.2" },
+  // Paid models - Qwen
+  { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max" },
+  // Paid models - MiniMax
+  { value: "minimax/minimax-m2.1", label: "[Paid] MiniMax M2.1" },
+  { value: "OTHER", label: "Other..." },
+];
+
+const OLLAMA_MODELS = [
+  { value: "ministral-3", label: "Ministral 3" },
+  { value: "devstral-small-2", label: "Devstral Small 2" },
+  { value: "mistral", label: "Mistral" },
+  { value: "gpt-oss", label: "GPT-OSS" },
+  { value: "qwen3", label: "Qwen3" },
+  { value: "qwen3-coder", label: "Qwen3 Coder" },
   { value: "OTHER", label: "Other..." },
 ];
 
@@ -113,7 +108,9 @@ export function ModelSelector({
           ? MISTRAL_MODELS
           : provider === "openrouter"
             ? OPENROUTER_MODELS
-            : [];
+            : provider === "ollama"
+              ? OLLAMA_MODELS
+              : [];
   }, [provider]);
 
   // Track whether custom input is shown (for non-custom providers)
@@ -157,13 +154,9 @@ export function ModelSelector({
   }, [showCustomInput]);
 
   // For custom and local providers, use free-form text input
-  if (
-    provider === "custom" ||
-    provider === "lmstudio" ||
-    provider === "ollama"
-  ) {
+  if (provider === "custom" || provider === "lmstudio") {
     const placeholder =
-      provider === "lmstudio" || provider === "ollama"
+      provider === "lmstudio"
         ? "e.g., llama-3.1-70b, qwen-2.5-72b"
         : "e.g., gpt-4, llama-3.1-70b";
 

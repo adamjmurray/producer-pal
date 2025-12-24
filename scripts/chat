@@ -1,2 +1,5 @@
-#!/bin/bash
-node --env-file=.env scripts/chat.mjs "$@"
+#!/usr/bin/env bash
+# Chat CLI - delegates to TypeScript implementation in chat-lib/
+# Usage: ./scripts/chat --provider gemini|openai|openrouter [options]
+
+exec npx tsx --env-file=.env scripts/chat-lib/index.ts "$@"

@@ -226,7 +226,7 @@ describe("useSettings", () => {
       result.current.setProvider("openai");
     });
 
-    expect(result.current.model).toBe("gpt-5.1-2025-11-13");
+    expect(result.current.model).toBe("gpt-5.2-2025-12-11");
     expect(result.current.thinking).toBe("Medium");
     expect(result.current.temperature).toBe(1.0);
     expect(result.current.showThoughts).toBe(true);
@@ -549,19 +549,19 @@ describe("useSettings", () => {
     expect(result.current.showThoughts).toBe(false);
   });
 
-  it("setProvider normalizes thinking value when switching to OpenAI", async () => {
+  it("setProvider preserves thinking value when switching providers", async () => {
     const { result } = renderHook(() => useSettings());
-    // Set thinking to "Auto" which needs normalization for OpenAI
+    // Set thinking to "High" for gemini
     await act(() => {
       result.current.setProvider("gemini");
-      result.current.setThinking("Auto");
+      result.current.setThinking("High");
     });
-    expect(result.current.thinking).toBe("Auto");
-    // Switch to OpenAI - "Auto" should normalize to "Low"
+    expect(result.current.thinking).toBe("High");
+    // Switch to OpenAI - thinking should use OpenAI's saved setting (Medium by default)
     await act(() => {
       result.current.setProvider("openai");
     });
-    expect(result.current.thinking).toBe("Low");
+    expect(result.current.thinking).toBe("Medium"); // Default for OpenAI
   });
 
   it("hasApiKey returns false when localStorage has invalid JSON", async () => {

@@ -4,7 +4,7 @@ const DEFAULT_MCP_URL = `http://localhost:${DEFAULT_MCP_PORT}/mcp`;
 
 /**
  * Gets the MCP server URL based on the current page origin.
- * In dev mode (Vite on port 3355), falls back to localhost:3350.
+ * In dev mode (Vite on port 5173), falls back to localhost:3350.
  * @returns {string} The MCP server URL
  */
 export function getMcpUrl(): string {

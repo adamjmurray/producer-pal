@@ -21,7 +21,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   openai: {
     apiKey: "",
-    model: "gpt-5.1-2025-11-13",
+    model: "gpt-5.2-2025-12-11",
     thinking: "Medium",
     temperature: 1.0,
     showThoughts: true,
@@ -50,7 +50,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   ollama: {
     apiKey: "",
-    model: "",
+    model: "ministral-3",
     port: 11434,
     thinking: "Auto",
     temperature: 1.0,
@@ -79,14 +79,8 @@ export function loadProviderSettings(provider: Provider): ProviderSettings {
   if (newFormatData) {
     try {
       const parsed = JSON.parse(newFormatData);
-      const settings = { ...DEFAULT_SETTINGS[provider], ...parsed };
 
-      // Normalize thinking value for OpenAI if it's invalid
-      if (provider === "openai") {
-        settings.thinking = normalizeThinkingForOpenAI(settings.thinking);
-      }
-
-      return settings;
+      return { ...DEFAULT_SETTINGS[provider], ...parsed };
     } catch {
       // Invalid JSON, fall through to defaults or migration
     }
@@ -147,24 +141,6 @@ export function saveProviderSettings(
   const key = `producer_pal_provider_${provider}`;
 
   localStorage.setItem(key, JSON.stringify(settings));
-}
-
-/**
- * Normalizes thinking value for OpenAI's limited options
- * @param {string} thinking - Thinking mode to normalize
- * @returns {any} - Hook return value
- */
-export function normalizeThinkingForOpenAI(thinking: string): string {
-  // OpenAI only supports "Low", "Medium", "High"
-  if (thinking === "Off" || thinking === "Auto") {
-    return "Low";
-  }
-
-  if (thinking === "Ultra") {
-    return "High";
-  }
-
-  return thinking;
 }
 
 /**

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { buildGeminiConfig, buildOpenAIConfig } from "./config-builders";
+import {
+  buildGeminiConfig,
+  buildOpenAIConfig,
+  extractGptVersion,
+} from "./config-builders";
 
 describe("config-builders", () => {
   describe("buildGeminiConfig", () => {
@@ -45,6 +49,28 @@ describe("config-builders", () => {
     });
   });
 
+  describe("extractGptVersion", () => {
+    it("should extract version from gpt-5.2 models", () => {
+      expect(extractGptVersion("gpt-5.2-2025-12-11")).toBe(5.2);
+      expect(extractGptVersion("gpt-5.2-turbo")).toBe(5.2);
+    });
+
+    it("should extract version from gpt-5.1 models", () => {
+      expect(extractGptVersion("gpt-5.1-2025-01-01")).toBe(5.1);
+      expect(extractGptVersion("gpt-5.1-codex-max")).toBe(5.1);
+    });
+
+    it("should return null for gpt-5 without decimal", () => {
+      expect(extractGptVersion("gpt-5-2025-08-07")).toBeNull();
+      expect(extractGptVersion("gpt-5-mini-2025-08-07")).toBeNull();
+    });
+
+    it("should return null for non-gpt models", () => {
+      expect(extractGptVersion("o1-preview")).toBeNull();
+      expect(extractGptVersion("claude-3")).toBeNull();
+    });
+  });
+
   describe("buildOpenAIConfig", () => {
     it("should build basic config", () => {
       const config = buildOpenAIConfig("gpt-4", 1.0, "Off", undefined, {});
@@ -54,33 +80,189 @@ describe("config-builders", () => {
       expect(config.reasoningEffort).toBeUndefined();
     });
 
-    it("should include reasoning effort for OpenAI API", () => {
+    it("should not include reasoning effort for unsupported models", () => {
       const config = buildOpenAIConfig("gpt-4", 1.0, "Medium", undefined, {});
 
-      expect(config.reasoningEffort).toBe("medium");
+      expect(config.reasoningEffort).toBeUndefined();
     });
 
-    it("should map Low thinking to low reasoning effort", () => {
-      const config = buildOpenAIConfig("gpt-4", 1.0, "Low", undefined, {});
+    it("should not include reasoning effort for gpt-5 without decimal", () => {
+      const config = buildOpenAIConfig(
+        "gpt-5-2025-08-07",
+        1.0,
+        "Medium",
+        undefined,
+        {},
+      );
 
-      expect(config.reasoningEffort).toBe("low");
+      expect(config.reasoningEffort).toBeUndefined();
     });
 
-    it("should map High thinking to high reasoning effort", () => {
-      const config = buildOpenAIConfig("gpt-4", 1.0, "High", undefined, {});
+    describe("o1/o3 models", () => {
+      it("should map Low to low", () => {
+        const config = buildOpenAIConfig(
+          "o1-preview",
+          1.0,
+          "Low",
+          undefined,
+          {},
+        );
 
-      expect(config.reasoningEffort).toBe("high");
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map Minimal to low", () => {
+        const config = buildOpenAIConfig(
+          "o3-mini",
+          1.0,
+          "Minimal",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map Medium to medium", () => {
+        const config = buildOpenAIConfig("o1", 1.0, "Medium", undefined, {});
+
+        expect(config.reasoningEffort).toBe("medium");
+      });
+
+      it("should map High to high", () => {
+        const config = buildOpenAIConfig("o1", 1.0, "High", undefined, {});
+
+        expect(config.reasoningEffort).toBe("high");
+      });
+
+      it("should map XHigh to high (capped)", () => {
+        const config = buildOpenAIConfig("o3", 1.0, "XHigh", undefined, {});
+
+        expect(config.reasoningEffort).toBe("high");
+      });
+
+      it("should return undefined for Off", () => {
+        const config = buildOpenAIConfig("o1", 1.0, "Off", undefined, {});
+
+        expect(config.reasoningEffort).toBeUndefined();
+      });
     });
 
-    it("should map Ultra thinking to high reasoning effort", () => {
-      const config = buildOpenAIConfig("gpt-4", 1.0, "Ultra", undefined, {});
+    describe("gpt-5.1 models", () => {
+      it("should map Off to none", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "Off",
+          undefined,
+          {},
+        );
 
-      expect(config.reasoningEffort).toBe("high");
+        expect(config.reasoningEffort).toBe("none");
+      });
+
+      it("should map Minimal to minimal", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "Minimal",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("minimal");
+      });
+
+      it("should map Low to low", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "Low",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map High to high", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "High",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+      });
+
+      it("should map XHigh to high (capped for 5.1)", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "XHigh",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+      });
+
+      it("should allow xhigh for gpt-5.1-codex-max", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-codex-max",
+          1.0,
+          "XHigh",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("xhigh");
+      });
+    });
+
+    describe("gpt-5.2+ models", () => {
+      it("should map Off to none", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Off",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("none");
+      });
+
+      it("should map Minimal to minimal", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Minimal",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("minimal");
+      });
+
+      it("should map XHigh to xhigh", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "XHigh",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("xhigh");
+      });
     });
 
     it("should not include reasoning effort for custom API", () => {
       const config = buildOpenAIConfig(
-        "gpt-4",
+        "gpt-5.2-2025-12-11",
         1.0,
         "Medium",
         "https://custom.api/v1",

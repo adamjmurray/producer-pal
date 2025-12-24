@@ -1,4 +1,10 @@
 import { useCallback, useRef, useState } from "preact/hooks";
+import {
+  detectRateLimit,
+  calculateRetryDelay,
+  shouldRetry,
+  MAX_RETRY_ATTEMPTS,
+} from "#webui/lib/rate-limit";
 import type { UIMessage } from "#webui/types/messages";
 import {
   handleMessageStream,
@@ -77,12 +83,23 @@ interface UseChatProps<
   extraParams?: Record<string, unknown>;
 }
 
+/**
+ * Rate limit retry state for UI display
+ */
+export interface RateLimitState {
+  isRetrying: boolean;
+  attempt: number;
+  maxAttempts: number;
+  delayMs: number;
+}
+
 interface UseChatReturn {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   activeModel: string | null;
   activeThinking: string | null;
   activeTemperature: number | null;
+  rateLimitState: RateLimitState | null;
   handleSend: (message: string) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
@@ -119,8 +136,12 @@ export function useChat<
   const [activeTemperature, setActiveTemperature] = useState<number | null>(
     null,
   );
+  const [rateLimitState, setRateLimitState] = useState<RateLimitState | null>(
+    null,
+  );
   const clientRef = useRef<TClient | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const retryAbortRef = useRef<AbortController | null>(null);
 
   const clearConversation = useCallback(() => {
     setMessages([]);
@@ -128,11 +149,15 @@ export function useChat<
     setActiveModel(null);
     setActiveThinking(null);
     setActiveTemperature(null);
+    setRateLimitState(null);
+    retryAbortRef.current?.abort();
   }, []);
 
   const stopResponse = useCallback(() => {
     abortControllerRef.current?.abort();
+    retryAbortRef.current?.abort();
     setIsAssistantResponding(false);
+    setRateLimitState(null);
   }, []);
 
   const initializeChat = useCallback(
@@ -167,6 +192,89 @@ export function useChat<
     ],
   );
 
+  /**
+   * Executes a stream request with automatic retry on rate limit errors.
+   * If content was received before the error, sends "continue" on retry
+   * instead of the original message.
+   */
+  const executeWithRetry = useCallback(
+    async (
+      executeStream: (message: string) => AsyncIterable<TMessage[]>,
+      getChatHistory: () => TMessage[],
+      originalMessage: string,
+    ): Promise<void> => {
+      let attempt = 0;
+      // Use mutable object so callback can set it and loop can read updated value
+      const contentState = { hasReceived: false };
+
+      retryAbortRef.current = new AbortController();
+
+      const onMessageUpdate = (msgs: UIMessage[]) => {
+        contentState.hasReceived = true;
+        setMessages(msgs);
+      };
+
+      while (shouldRetry(attempt)) {
+        try {
+          const messageToSend = contentState.hasReceived
+            ? "continue"
+            : originalMessage;
+          const stream = executeStream(messageToSend);
+
+          await handleMessageStream(
+            stream,
+            adapter.formatMessages,
+            onMessageUpdate,
+          );
+          setRateLimitState(null);
+
+          return;
+        } catch (error) {
+          // Check if retry was aborted (using signal from loop-scoped controller)
+          if (retryAbortRef.current.signal.aborted) {
+            return;
+          }
+
+          const rateLimitInfo = detectRateLimit(error);
+
+          if (!rateLimitInfo.isRateLimited || !shouldRetry(attempt + 1)) {
+            // Not a rate limit error or no more retries - show error
+            setMessages(adapter.createErrorMessage(error, getChatHistory()));
+            setRateLimitState(null);
+
+            return;
+          }
+
+          // Calculate delay and update state for UI
+          const delayMs = calculateRetryDelay(
+            attempt,
+            rateLimitInfo.retryAfterMs,
+          );
+
+          setRateLimitState({
+            isRetrying: true,
+            attempt,
+            maxAttempts: MAX_RETRY_ATTEMPTS,
+            delayMs,
+          });
+
+          // Wait before retrying
+          await new Promise<void>((resolve, reject) => {
+            const timeoutId = setTimeout(resolve, delayMs);
+
+            retryAbortRef.current?.signal.addEventListener("abort", () => {
+              clearTimeout(timeoutId);
+              reject(new Error("Retry cancelled"));
+            });
+          });
+
+          attempt++;
+        }
+      }
+    },
+    [adapter],
+  );
+
   const handleSend = useCallback(
     async (message: string) => {
       const userMessage = message.trim();
@@ -195,7 +303,9 @@ export function useChat<
           await initializeChat();
         }
 
-        if (!clientRef.current) {
+        const client = clientRef.current;
+
+        if (!client) {
           throw new Error("Failed to initialize chat client");
         }
 
@@ -203,12 +313,11 @@ export function useChat<
 
         abortControllerRef.current = controller;
 
-        const stream = clientRef.current.sendMessage(
+        await executeWithRetry(
+          (msg) => client.sendMessage(msg, controller.signal),
+          () => client.chatHistory,
           userMessage,
-          controller.signal,
         );
-
-        await handleMessageStream(stream, adapter.formatMessages, setMessages);
       } catch (error) {
         setMessages(
           adapter.createErrorMessage(
@@ -219,9 +328,10 @@ export function useChat<
       } finally {
         abortControllerRef.current = null;
         setIsAssistantResponding(false);
+        setRateLimitState(null);
       }
     },
-    [apiKey, initializeChat, adapter],
+    [apiKey, initializeChat, adapter, executeWithRetry],
   );
 
   const handleRetry = useCallback(
@@ -252,26 +362,32 @@ export function useChat<
 
         await initializeChat(slicedHistory);
 
+        // Client is guaranteed to be set after successful initialization
+        const client = clientRef.current as NonNullable<
+          typeof clientRef.current
+        >;
+
         const controller = new AbortController();
 
         abortControllerRef.current = controller;
 
-        const stream = clientRef.current.sendMessage(
+        await executeWithRetry(
+          (msg) => client.sendMessage(msg, controller.signal),
+          () => client.chatHistory,
           userMessage,
-          controller.signal,
         );
-
-        await handleMessageStream(stream, adapter.formatMessages, setMessages);
       } catch (error) {
+        // Client was checked before try block, so it's always defined here
         setMessages(
           adapter.createErrorMessage(error, clientRef.current.chatHistory),
         );
       } finally {
         abortControllerRef.current = null;
         setIsAssistantResponding(false);
+        setRateLimitState(null);
       }
     },
-    [apiKey, messages, initializeChat, adapter],
+    [apiKey, messages, initializeChat, adapter, executeWithRetry],
   );
 
   return {
@@ -280,6 +396,7 @@ export function useChat<
     activeModel,
     activeThinking,
     activeTemperature,
+    rateLimitState,
     handleSend,
     handleRetry,
     clearConversation,
