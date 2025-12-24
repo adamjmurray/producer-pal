@@ -11,6 +11,7 @@ import {
   processRegularChains,
   processReturnChains,
   readDeviceParameters,
+  readMacroVariations,
 } from "./helpers/device-reader-helpers.js";
 
 /**
@@ -188,6 +189,9 @@ export function readDevice(device, options = {}) {
   if (deviceView.exists() && deviceView.getProperty("is_collapsed") > 0) {
     deviceInfo.collapsed = true;
   }
+
+  // Add variation info for rack devices (spreads empty object if not applicable)
+  Object.assign(deviceInfo, readMacroVariations(device));
 
   if (deviceType.includes("rack") && (includeChains || includeDrumChains)) {
     if (deviceType === DEVICE_TYPE.DRUM_RACK) {
