@@ -1,115 +1,135 @@
 # Releasing
 
-## Version Numbers
+## Preparation
 
-Version numbers appear in these locations:
+Do this early in the development cycle, ideally soon after the previous release.
+This way, whenever going back to a previous release (e.g. to confirm a behavior
+is a regression), it's always clear which build is running.
 
-1. `package.json` (root) - Source of truth
-2. `claude-desktop-extension/package.json`
-3. `src/shared/version.js`
-4. `max-for-live-device/Producer_Pal.amxd` - In the Max UI (manual update
-   required)
+1. Bump the version:
 
-## Release Process
+   ```sh
+   npm run version:bump        # patch: 0.9.0 → 0.9.1
+   npm run version:bump:minor  # minor: 0.9.1 → 0.10.0
+   npm run version:bump:major  # major: 0.9.1 → 1.0.0
+   ```
 
-### Step 1: Version Bump (on dev branch)
+   If unsure, start with patch. The version can be re-bumped during a
+   development cycle.
 
-```sh
-# Automated version bump script
-npm run version:bump        # patch: 0.9.0 → 0.9.1
-npm run version:bump:minor  # minor: 0.9.1 → 0.10.0
-npm run version:bump:major  # major: 0.9.1 → 1.0.0
-```
+2. Commit and push:
 
-This script updates:
+   ```sh
+   npm run check
+   git add .
+   git commit -m "bump version to X.Y.Z"
+   git push origin dev
+   ```
 
-- ✅ package.json files
-- ✅ src/shared/version.js
-- ✅ Max device UI (it uses the value in src/shared/version.js)
+3. Create a pull request via GitHub UI: `dev → main`
 
-### Step 2: Test and Commit
+The PR can be long-lived during development. It makes it easy to check CI status
+and see how much is accumulating for the release.
 
-```sh
-npm test
-git add -A
-git commit -m "Bump version to X.Y.Z"
-```
+### About the Versioning System
 
-### Step 3: Tag the Release (BEFORE building)
+The version bump script updates the following:
 
-```sh
-# Tag the exact commit we're about to build from
-git tag vX.Y.Z
-git push origin dev vX.Y.Z
-```
+1. `src/shared/version.js` controls the version reported by the runtime (Max for
+   Live device UI / MCP server)
+2. `claude-desktop-extension/manifest.json` controls version in Claude Desktop
+   Extension (this file is generated during the build)
+3. `npm/package.json` controls the `producer-pal` npm module's version
+4. `package.json` and `claude-desktop-extension/package.json` for consistency
 
-This ensures the tag matches the exact code used to build the release.
+## Step 0: Checklist before releasing
 
-### Step 4: Build Release Files
+- [ ] All code is committed
+- [ ] All commits in the local dev branch are pushed to github
+- [ ] The PR build is green
 
-```sh
-# Build from the tagged commit
-npm run release
-```
+## Step 1: Build Release Files
 
-This script:
+1. Build release versions of desktop extensions and the portal script:
 
-- Cleans the release/` directory
-- Builds the `.mcpb` file
-- Copies it to `release/Producer_Pal.mcpb`
+   ```sh
+   npm run release
+   ```
 
-### Step 5: Freeze Max Device
+   This creates:
+   - `release/Producer_Pal.mcpb` (Claude Desktop extension)
+   - `release/producer-pal-portal.js` (MCP proxy, an alternative to
+     `npx producer-pal`)
 
-1. Open `max-for-live-device/Producer_Pal.amxd` in Max
-2. Click the freeze button
-3. Save as: `release/Producer_Pal.amxd`
+2. Freeze a fresh Max device:
+   - Add the freshly built `max-for-live-device/Producer_Pal.amxd` to Ableton
+     Live
+   - Open the device in Max
+   - Click the freeze button
+   - Save as: `release/Producer_Pal.amxd`
 
-### Step 6: Create GitHub Pre-Release
+## Step 2: Create GitHub Pre-Release
 
-1. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
-2. Click "Draft a new release"
-3. Choose tag: `vX.Y.Z`
+1. Create and push the version tag:
+
+   ```sh
+   git tag vX.Y.Z
+   git push origin dev vX.Y.Z
+   ```
+
+2. Go to [GitHub Releases](https://github.com/adamjmurray/producer-pal/releases)
+3. Click "Draft a new release"
 4. Release title: `X.Y.Z`
-5. Upload files from `release/`:
+5. Choose tag: `vX.Y.Z`
+6. Upload files from `release/`:
    - `Producer_Pal.amxd`
    - `Producer_Pal.mcpb`
    - `producer-pal-portal.js`
-6. ✅ Check "Set as a pre-release"
-7. Write release notes
-8. Publish pre-release
+7. Check "Set as a pre-release"
+8. Write release notes
+9. Publish pre-release
 
-### Step 7: Create Pull Request
+## Step 3: Test Pre-Release
 
-Create PR via GitHub UI: `dev → main`
+Test the pre-release thoroughly on both macOS and Windows. Download directly
+from the GitHub pre-release page to ensure the files work correctly.
 
-The PR will include the tag and all release commits.
+See the [Release Testing Checklist](#release-testing-checklist) for detailed
+test steps. If issues are found, see
+[Fixing Issues During Pre-Release](#fixing-issues-during-pre-release).
 
-### Step 8: Test Pre-Release
+## Step 4: Publish to npm / test npx
 
-Test the pre-release thoroughly, especially on different platforms (Windows,
-macOS). Download directly from GitHub to ensure the files work correctly.
+1. Publish the package:
 
-If issues are found, see "Fixing Issues During Pre-Release" section below.
+   ```sh
+   cd npm && npm publish
+   ```
 
-### Step 9: Merge and Promote
+2. Test the published package with LM Studio or another MCP client:
+
+   ```json
+   "producer-pal": {
+     "command": "npx",
+     "args": ["-y", "producer-pal"]
+   }
+   ```
+
+3. Connect and confirm `ppal-read-live-set` is called
+
+See [Publishing to npm](#publishing-to-npm) for more details and
+troubleshooting.
+
+## Step 5: Ship it
 
 After testing succeeds:
 
-1. Review and merge the PR via GitHub UI
-2. Go to the pre-release on GitHub
-3. Click "Edit"
-4. Uncheck "Set as a pre-release"
-5. Update release (no need to re-upload files)
-
-### Step 10: Post-Release
-
-```sh
-# Fetch and merge the updated main branch
-git fetch origin main
-git merge origin/main
-```
-
-This ensures dev has the merge commit created by GitHub when merging the PR.
+1. Review and merge the PR in the GitHub UI
+2. Promote the github release
+   - Go to the pre-release page on GitHub
+   - Click "Edit"
+   - Uncheck "Set as a pre-release"
+   - Update release (no need to re-upload files)
 
 ## Release Testing Checklist
 
@@ -153,26 +173,6 @@ For each provider, just connect and confirm `ppal-read-live-set` is called:
 
 - [ ] Connect and confirm `ppal-read-live-set` called
 
-### Publish npm
-
-- [ ] `cd npm && npm publish`
-
-### LM Studio - npx
-
-```json
-"producer-pal": {
-  "command": "npx",
-  "args": ["-y", "producer-pal"]
-}
-```
-
-- [ ] Connect and confirm `ppal-read-live-set` called
-
-### Finalize Release
-
-- [ ] Merge PR: `dev → main`
-- [ ] Promote GitHub pre-release to release
-
 ## Fixing Issues During Pre-Release
 
 If problems are found during pre-release testing:
@@ -181,7 +181,7 @@ If problems are found during pre-release testing:
 
    ```sh
    # Make necessary fixes
-   git add -A
+   git add .
    git commit -m "Fix: description of fix"
    ```
 
@@ -218,6 +218,9 @@ If problems are found during pre-release testing:
 
 This is acceptable for pre-releases since they're explicitly marked as not
 production-ready.
+
+If problems are discovered after the npm had been published, it should be
+republished (TODO: document the process if this ever happens)
 
 ## Publishing to npm
 
@@ -269,18 +272,3 @@ cd ..
   - `producer-pal-logo.svg` (logo for npm page)
 - Build artifacts in `npm/` are gitignored (never committed)
 - Version numbers in root `package.json` and `npm/package.json` should match
-
-**Version Management:**
-
-When bumping versions with `npm run version:bump`, you must manually update
-`npm/package.json` to match the root `package.json` version. The version bump
-script does not automatically update `npm/package.json`.
-
-## Stable Download URLs
-
-After release, these URLs will always point to the latest version:
-
-- [Producer_Pal.amxd](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.amxd)
-- [Producer_Pal.mcpb](https://github.com/adamjmurray/producer-pal/releases/latest/download/Producer_Pal.mcpb)
-
-No README updates needed for new releases!
