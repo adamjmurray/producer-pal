@@ -2,9 +2,13 @@
 
 Use Producer Pal in your browser with claude.ai or ChatGPT.
 
-::: warning Requires Web Tunnel Web apps cannot connect to localhost. You must
-set up a [web tunnel](./web-tunnels) (Cloudflare or Pinggy) to expose your local
-Producer Pal server. :::
+::: warning Requires Web Tunnel
+
+Web apps cannot connect to localhost. You must set up a
+[web tunnel](./web-tunnels) (Cloudflare or Pinggy) to expose your local Producer
+Pal server.
+
+:::
 
 ## Available Options
 
