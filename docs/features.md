@@ -117,6 +117,7 @@ create.
 - List parameter names or full parameter details with values
 - Search parameters by name substring
 - View macro variation info for rack devices (count and selected index)
+- View macro count and mapping status for rack devices
 
 ### Update Device (`ppal-update-device`)
 
@@ -126,6 +127,7 @@ create.
 - Bulk update multiple devices at once
 - Rack macro variations: store, recall, delete, or randomize macro settings
 - Select macro variation by index for recall or delete operations
+- Set visible macro count on rack devices (adds/removes macros)
 
 ## Clip Creation & Editing
 

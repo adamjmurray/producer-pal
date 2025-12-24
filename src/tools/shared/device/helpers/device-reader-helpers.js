@@ -371,9 +371,9 @@ export function processReturnChains(
 }
 
 /**
- * Read macro variation info for rack devices
+ * Read macro variation and macro info for rack devices
  * @param {object} device - LiveAPI device object
- * @returns {object} Object with variations property if device is a rack with variations, empty object otherwise
+ * @returns {object} Object with variations and/or macros properties if applicable, empty object otherwise
  */
 export function readMacroVariations(device) {
   const canHaveChains = device.getProperty("can_have_chains");
@@ -382,18 +382,29 @@ export function readMacroVariations(device) {
     return {};
   }
 
+  const result = {};
+
+  // Variation info
   const variationCount = device.getProperty("variation_count");
 
-  if (!variationCount) {
-    return {};
-  }
-
-  return {
-    variations: {
+  if (variationCount) {
+    result.variations = {
       count: variationCount,
       selected: device.getProperty("selected_variation_index"),
-    },
-  };
+    };
+  }
+
+  // Macro info
+  const visibleMacroCount = device.getProperty("visible_macro_count");
+
+  if (visibleMacroCount > 0) {
+    result.macros = {
+      count: visibleMacroCount,
+      hasMappings: device.getProperty("has_macro_mappings") > 0,
+    };
+  }
+
+  return result;
 }
 
 /**

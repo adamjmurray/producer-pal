@@ -15,6 +15,7 @@ import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
  * @param {string} [args.params] - JSON: {"paramId": value, ...} - values in display units
  * @param {string} [args.macroVariation] - Rack variation action
  * @param {number} [args.macroVariationIndex] - Rack variation index
+ * @param {number} [args.macroCount] - Rack visible macro count (0-16)
  * @returns {object|Array} Updated device info(s)
  */
 export function updateDevice({
@@ -24,6 +25,7 @@ export function updateDevice({
   params,
   macroVariation,
   macroVariationIndex,
+  macroCount,
 }) {
   const deviceIds = parseCommaSeparatedIds(ids);
   const updatedDevices = [];
@@ -50,6 +52,10 @@ export function updateDevice({
 
     if (macroVariation != null || macroVariationIndex != null) {
       updateMacroVariation(device, macroVariation, macroVariationIndex);
+    }
+
+    if (macroCount != null) {
+      updateMacroCount(device, macroCount);
     }
 
     updatedDevices.push({ id: device.id });
@@ -190,6 +196,46 @@ function updateMacroVariation(device, action, index) {
       case "randomize":
         device.call("randomize_macros");
         break;
+    }
+  }
+}
+
+/**
+ * Update visible macro count for rack devices.
+ * Macros are added/removed in pairs, so odd counts are rounded up to the next even.
+ * @param {object} device - Live API device object
+ * @param {number} targetCount - Target number of visible macros (0-16)
+ */
+function updateMacroCount(device, targetCount) {
+  const canHaveChains = device.getProperty("can_have_chains");
+
+  if (!canHaveChains) {
+    console.error("updateDevice: macro count only available on rack devices");
+
+    return;
+  }
+
+  // Macros are added/removed in pairs - round up odd numbers to next even
+  let effectiveTarget = targetCount;
+
+  if (targetCount % 2 !== 0) {
+    effectiveTarget = Math.min(targetCount + 1, 16);
+    console.error(
+      `updateDevice: macro count rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
+    );
+  }
+
+  const currentCount = device.getProperty("visible_macro_count");
+  const diff = effectiveTarget - currentCount;
+  const pairCount = Math.abs(diff) / 2;
+
+  if (diff > 0) {
+    for (let i = 0; i < pairCount; i++) {
+      device.call("add_macro");
+    }
+  } else if (diff < 0) {
+    for (let i = 0; i < pairCount; i++) {
+      device.call("remove_macro");
     }
   }
 }
