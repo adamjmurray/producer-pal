@@ -154,10 +154,10 @@ export function App() {
       rateLimitState={chat.rateLimitState}
       handleSend={chat.handleSend}
       handleRetry={chat.handleRetry}
-      activeModel={chat.activeModel}
+      activeModel={chat.activeModel ?? settings.model}
       activeThinking={chat.activeThinking}
       activeTemperature={chat.activeTemperature}
-      activeProvider={chat.activeModel ? settings.provider : null}
+      activeProvider={settings.provider}
       defaultThinking={settings.thinking}
       defaultTemperature={settings.temperature}
       enabledToolsCount={enabledToolsCount}
