@@ -1,6 +1,7 @@
 # Roadmap
 
-[Get Involved](#get-involved) · [In Progress](#in-progress) · [Released](#released) · [Future Plans](#future-plans)
+[Get Involved](#get-involved) · [In Progress](#in-progress) ·
+[Released](#released) · [Future Plans](#future-plans)
 
 ## Get Involved
 
