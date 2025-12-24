@@ -162,6 +162,16 @@ create.
   tile/loop clips to fill longer durations
 - Slicing technique: reduce then extend clip length to create separate segments
 
+## Sample Browser
+
+### Read Samples (`ppal-read-samples`)
+
+- List audio files from configured sample folder
+- Supports WAV, AIFF, FLAC, OGG, MP3, and M4A formats
+- Search by filename or path substring
+- Returns paths for use in audio clip creation
+- Requires sample folder to be configured in the Producer Pal device Setup tab
+
 ### Custom Music Notation
 
 Producer Pal uses a text-based music notation syntax called `bar|beat` to work

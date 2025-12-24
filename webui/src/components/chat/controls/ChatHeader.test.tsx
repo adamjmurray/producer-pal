@@ -9,9 +9,9 @@ describe("ChatHeader", () => {
   const defaultProps = {
     mcpStatus: "connected" as const,
     activeModel: null,
-    activeThinking: null,
-    activeTemperature: null,
     activeProvider: null,
+    enabledToolsCount: 20,
+    totalToolsCount: 20,
     hasMessages: false,
     onOpenSettings: vi.fn(),
     onClearConversation: vi.fn(),
@@ -114,52 +114,50 @@ describe("ChatHeader", () => {
     });
   });
 
-  describe("activeThinking display", () => {
-    it("does not show thinking when activeThinking is null", () => {
-      render(<ChatHeader {...defaultProps} activeThinking={null} />);
-      expect(screen.queryByText(/Thinking:/)).toBeNull();
+  describe("tools count display", () => {
+    it("shows all tools enabled", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={20}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("20/20 tools")).toBeDefined();
     });
 
-    it("shows thinking level when activeThinking is set", () => {
-      render(<ChatHeader {...defaultProps} activeThinking="Medium" />);
-      expect(screen.getByText("Thinking: Medium")).toBeDefined();
+    it("shows some tools disabled", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={15}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("15/20 tools")).toBeDefined();
     });
 
-    it("shows Off thinking level", () => {
-      render(<ChatHeader {...defaultProps} activeThinking="Off" />);
-      expect(screen.getByText("Thinking: Off")).toBeDefined();
+    it("shows no tools enabled", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          enabledToolsCount={0}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("0/20 tools")).toBeDefined();
     });
 
-    it("shows Auto thinking level", () => {
-      render(<ChatHeader {...defaultProps} activeThinking="Auto" />);
-      expect(screen.getByText("Thinking: Auto")).toBeDefined();
-    });
-  });
-
-  describe("activeTemperature display", () => {
-    it("does not show randomness when activeTemperature is null", () => {
-      render(<ChatHeader {...defaultProps} activeTemperature={null} />);
-      expect(screen.queryByText(/random/)).toBeNull();
-    });
-
-    it("shows 0% random when temperature is 0", () => {
-      render(<ChatHeader {...defaultProps} activeTemperature={0} />);
-      expect(screen.getByText("0% random")).toBeDefined();
-    });
-
-    it("shows 50% random when temperature is 1", () => {
-      render(<ChatHeader {...defaultProps} activeTemperature={1} />);
-      expect(screen.getByText("50% random")).toBeDefined();
-    });
-
-    it("shows 100% random when temperature is 2", () => {
-      render(<ChatHeader {...defaultProps} activeTemperature={2} />);
-      expect(screen.getByText("100% random")).toBeDefined();
-    });
-
-    it("shows 25% random when temperature is 0.5", () => {
-      render(<ChatHeader {...defaultProps} activeTemperature={0.5} />);
-      expect(screen.getByText("25% random")).toBeDefined();
+    it("shows tools count even when no messages", () => {
+      render(
+        <ChatHeader
+          {...defaultProps}
+          hasMessages={false}
+          enabledToolsCount={18}
+          totalToolsCount={20}
+        />,
+      );
+      expect(screen.getByText("18/20 tools")).toBeDefined();
     });
   });
 
@@ -183,15 +181,14 @@ describe("ChatHeader", () => {
           mcpStatus="connected"
           activeModel="gemini-2.5-pro"
           activeProvider="gemini"
-          activeThinking="High"
-          activeTemperature={1.5}
+          enabledToolsCount={18}
+          totalToolsCount={20}
         />,
       );
 
       expect(screen.getByText("✓ Ready")).toBeDefined();
       expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
-      expect(screen.getByText("Thinking: High")).toBeDefined();
-      expect(screen.getByText("75% random")).toBeDefined();
+      expect(screen.getByText("18/20 tools")).toBeDefined();
     });
   });
 

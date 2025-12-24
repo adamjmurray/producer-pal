@@ -63,11 +63,11 @@ features:
               <line x1="12" y1="17" x2="12" y2="21" />
             </svg>
           </div>
-          <h3 class="card-title">Desktop Apps</h3>
+          <h3 class="card-title"><a href="/installation/desktop-apps">Desktop Apps</a></h3>
         </div>
-        <p class="card-description">The easiest way to start</p>
+        <p class="card-description">Dedicated AI apps</p>
         <ul class="card-links">
-          <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">subscription</span></li>
+          <li><a href="/installation/claude-desktop">Claude Desktop</a> <span class="tag">easiest</span></li>
           <li><a href="/installation/lm-studio">LM Studio</a> <span class="tag">offline</span></li>
         </ul>
       </div>
@@ -78,7 +78,7 @@ features:
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
             </svg>
           </div>
-          <h3 class="card-title">Built-in Chat UI</h3>
+          <h3 class="card-title"><a href="/installation/chat-ui">Built-in Chat UI</a></h3>
         </div>
         <p class="card-description">Browser-based chat</p>
         <ul class="card-links">
@@ -97,11 +97,13 @@ features:
               <circle cx="5" cy="12" r="1" />
             </svg>
           </div>
-          <h3 class="card-title">More Options</h3>
+          <h3 class="card-title"><a href="/installation">More Options</a></h3>
         </div>
-        <p class="card-description">CLI tools & web apps</p>
+        <p class="card-description">Other ways to connect</p>
         <ul class="card-links">
-          <li><a href="/installation">See all options →</a></li>
+          <li><a href="/installation/cli">Command Line Tools</a></li>
+          <li><a href="/installation/web-apps">Web Apps</a></li>
+          <li><a href="/installation/other-mcp">Other LLMs</a></li>
         </ul>
       </div>
     </div>

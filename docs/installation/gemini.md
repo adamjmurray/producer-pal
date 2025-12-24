@@ -54,7 +54,7 @@ Click "Save".
 
 Click "Quick Connect" and say "connect to ableton":
 
-![Producer Pal Chat UI](/built-in-chat-ui.png)
+![Producer Pal Chat UI conversation](/producer-pal-chat-conversation.png)
 
 <!-- TODO: Embed YouTube video walkthrough -->
 

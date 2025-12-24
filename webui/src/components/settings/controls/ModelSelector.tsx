@@ -38,76 +38,40 @@ const MISTRAL_MODELS = [
 
 const OPENROUTER_MODELS = [
   // Free models
-  { value: "minimax/minimax-m2:free", label: "[Free] MiniMax M2" },
-  { value: "qwen/qwen3-235b-a22b:free", label: "[Free] Qwen3 235B A22B" },
+  { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
+  { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
+  { value: "mistralai/devstral-2512:free", label: "[Free] Devstral 2" },
+  { value: "openai/gpt-oss-120b:free", label: "[Free] GPT-OSS 120B" },
   {
     value: "nvidia/nemotron-3-nano-30b-a3b:free",
-    label: "[Free] Nemotron 3 Nano 30B",
-  },
-  { value: "mistralai/devstral-2512:free", label: "[Free] Devstral 2" },
-  // Paid models - MiniMax
-  { value: "minimax/minimax-m1", label: "[Paid] MiniMax M1 (smart)" },
-  { value: "minimax/minimax-m2.1", label: "[Paid] MiniMax M2.1" },
-  { value: "minimax/minimax-m2", label: "[Paid] MiniMax M2 (basic)" },
-  // Paid models - Qwen
-  { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max (smart)" },
-  {
-    value: "qwen/qwen3-235b-a22b-07-25",
-    label: "[Paid] Qwen3 235B A22B (basic)",
-  },
-  // Paid models - NVIDIA
-  {
-    value: "nvidia/nemotron-3-nano-30b-a3b",
-    label: "[Paid] Nemotron 3 Nano 30B",
-  },
-  // Paid models - Moonshot AI
-  { value: "moonshotai/kimi-k2", label: "[Paid] Kimi K2" },
-  // Paid models - Perplexity
-  {
-    value: "perplexity/sonar-reasoning-pro",
-    label: "[Paid] Sonar Reasoning Pro (smart)",
-  },
-  {
-    value: "perplexity/sonar-reasoning",
-    label: "[Paid] Sonar Reasoning (fast)",
-  },
-  // Paid models - xAI
-  { value: "x-ai/grok-4", label: "[Paid] Grok 4 (smart)" },
-  { value: "x-ai/grok-4.1-fast", label: "[Paid] Grok 4.1 Fast" },
-  { value: "x-ai/grok-4-fast", label: "[Paid] Grok 4 Fast (fast)" },
-  // Paid models - Anthropic
-  { value: "anthropic/claude-opus-4.5", label: "[Paid] Claude Opus 4.5" },
-  {
-    value: "anthropic/claude-sonnet-4-5-20250929",
-    label: "[Paid] Claude Sonnet 4.5 (smart)",
-  },
-  {
-    value: "anthropic/claude-haiku-4-5-20250514",
-    label: "[Paid] Claude Haiku 4.5 (fast)",
+    label: "[Free] Nemotron 3 Nano",
   },
   // Paid models - Google
   {
     value: "google/gemini-3-flash-preview",
-    label: "[Paid] Gemini 3 Flash Preview",
-  },
-  { value: "google/gemini-2.5-pro", label: "[Paid] Gemini 2.5 Pro (smart)" },
-  { value: "google/gemini-2.5-flash", label: "[Paid] Gemini 2.5 Flash (fast)" },
-  // Paid models - Mistral
-  {
-    value: "mistralai/magistral-medium-2506:thinking",
-    label: "[Paid] Magistral Medium (thinking)",
+    label: "[Paid] Gemini 3 Flash (preview)",
   },
   {
-    value: "mistralai/mistral-medium-3.1",
-    label: "[Paid] Mistral Medium 3.1 (basic)",
+    value: "google/gemini-3-pro-preview",
+    label: "[Paid] Gemini 3 Pro (preview)",
   },
-  { value: "mistralai/devstral-2512", label: "[Paid] Devstral 2" },
-  { value: "mistralai/ministral-14b-2512", label: "[Paid] Ministral 3 14B" },
+  // Paid models - Anthropic
+  { value: "anthropic/claude-sonnet-4.5", label: "[Paid] Claude Sonnet 4.5" },
+  { value: "anthropic/claude-opus-4.5", label: "[Paid] Claude Opus 4.5" },
   // Paid models - OpenAI
-  { value: "openai/gpt-5.2", label: "[Paid] GPT-5.2 (smart)" },
+  { value: "openai/gpt-5.2", label: "[Paid] GPT-5.2" },
   { value: "openai/gpt-5.1-codex-max", label: "[Paid] GPT-5.1 Codex Max" },
-  { value: "openai/gpt-5", label: "[Paid] GPT-5" },
-  { value: "openai/gpt-5-mini", label: "[Paid] GPT-5 Mini (fast)" },
+  // Paid models - xAI
+  { value: "x-ai/grok-4", label: "[Paid] Grok 4" },
+  { value: "x-ai/grok-4.1-fast", label: "[Paid] Grok 4.1 Fast" },
+  // Paid models - Mistral
+  { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
+  // Paid models - DeepSeek
+  { value: "deepseek/deepseek-v3.2", label: "[Paid] DeepSeek V3.2" },
+  // Paid models - Qwen
+  { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max" },
+  // Paid models - MiniMax
+  { value: "minimax/minimax-m2.1", label: "[Paid] MiniMax M2.1" },
   { value: "OTHER", label: "Other..." },
 ];
 

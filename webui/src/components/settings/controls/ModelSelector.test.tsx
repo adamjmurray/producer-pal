@@ -162,15 +162,15 @@ describe("ModelSelector", () => {
       render(
         <ModelSelector
           provider="openrouter"
-          model="minimax/minimax-m2:free"
+          model="qwen/qwen3-coder:free"
           setModel={vi.fn()}
         />,
       );
       expect(
-        screen.getByRole("option", { name: /\[Free\] MiniMax M2/ }),
+        screen.getByRole("option", { name: /\[Free\] Qwen3 Coder/ }),
       ).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /\[Free\] Qwen3 235B/ }),
+        screen.getByRole("option", { name: /\[Free\] Z\.AI GLM/ }),
       ).toBeDefined();
     });
 
@@ -179,15 +179,15 @@ describe("ModelSelector", () => {
       render(
         <ModelSelector
           provider="openrouter"
-          model="minimax/minimax-m2:free"
+          model="qwen/qwen3-coder:free"
           setModel={setModel}
         />,
       );
       const select = screen.getByRole("combobox");
       fireEvent.change(select, {
-        target: { value: "qwen/qwen3-235b-a22b:free" },
+        target: { value: "mistralai/devstral-2512:free" },
       });
-      expect(setModel).toHaveBeenCalledWith("qwen/qwen3-235b-a22b:free");
+      expect(setModel).toHaveBeenCalledWith("mistralai/devstral-2512:free");
     });
   });
 

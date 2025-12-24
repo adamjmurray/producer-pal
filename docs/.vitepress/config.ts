@@ -49,6 +49,8 @@ export default defineConfig({
         text: "Guide",
         items: [
           { text: "User Guide", link: "/guide" },
+          { text: "Device Interface", link: "/guide/device" },
+          { text: "Chat UI", link: "/guide/chat-ui" },
           { text: "Usage Examples", link: "/guide/examples" },
         ],
       },
@@ -83,6 +85,7 @@ export default defineConfig({
       {
         text: "Desktop Apps",
         items: [
+          { text: "Overview", link: "/installation/desktop-apps" },
           { text: "Claude Desktop", link: "/installation/claude-desktop" },
           { text: "LM Studio", link: "/installation/lm-studio" },
         ],
@@ -90,6 +93,7 @@ export default defineConfig({
       {
         text: "Command Line",
         items: [
+          { text: "Overview", link: "/installation/cli" },
           { text: "Gemini CLI", link: "/installation/gemini-cli" },
           { text: "Codex CLI", link: "/installation/codex-cli" },
           { text: "Claude Code", link: "/installation/claude-code" },
@@ -98,6 +102,7 @@ export default defineConfig({
       {
         text: "Web Apps",
         items: [
+          { text: "Overview", link: "/installation/web-apps" },
           { text: "claude.ai", link: "/installation/claude-web" },
           { text: "ChatGPT", link: "/installation/chatgpt-web" },
         ],

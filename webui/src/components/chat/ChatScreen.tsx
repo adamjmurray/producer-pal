@@ -7,6 +7,9 @@ import { ChatInput } from "./controls/ChatInput";
 import { RateLimitIndicator } from "./controls/RateLimitIndicator";
 import { MessageList } from "./MessageList";
 
+/**
+ * Props for the main chat screen layout
+ */
 interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
@@ -17,6 +20,11 @@ interface ChatScreenProps {
   activeThinking: string | null;
   activeTemperature: number | null;
   activeProvider: Provider | null;
+
+  defaultThinking: string;
+  defaultTemperature: number;
+  enabledToolsCount: number;
+  totalToolsCount: number;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
@@ -27,22 +35,26 @@ interface ChatScreenProps {
 
 /**
  * Main chat screen component
- * @param {ChatScreenProps} root0 - Component props
- * @param {UIMessage[]} root0.messages - Chat messages
- * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
- * @param {RateLimitState | null} root0.rateLimitState - Rate limit retry state
- * @param {(message: string) => Promise<void>} root0.handleSend - Send message callback
- * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
- * @param {string | null} root0.activeModel - Active model identifier
- * @param {string | null} root0.activeThinking - Active thinking mode
- * @param {number | null} root0.activeTemperature - Active temperature setting
- * @param {Provider | null} root0.activeProvider - Active provider
- * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
- * @param {string | null} root0.mcpError - MCP error message
- * @param {() => Promise<void>} root0.checkMcpConnection - Check MCP connection callback
- * @param {() => void} root0.onOpenSettings - Open settings callback
- * @param {() => void} root0.onClearConversation - Clear conversation callback
- * @param {() => void} root0.onStop - Stop response callback
+ * @param {ChatScreenProps} props - Component props
+ * @param {UIMessage[]} props.messages - Chat messages
+ * @param {boolean} props.isAssistantResponding - Whether assistant is responding
+ * @param {RateLimitState | null} props.rateLimitState - Rate limit retry state
+ * @param {(message: string) => Promise<void>} props.handleSend - Send message callback
+ * @param {(messageIndex: number) => Promise<void>} props.handleRetry - Retry message callback
+ * @param {string | null} props.activeModel - Active model identifier
+ * @param {string | null} props.activeThinking - Active thinking mode
+ * @param {number | null} props.activeTemperature - Active temperature setting
+ * @param {Provider | null} props.activeProvider - Active provider
+ * @param {string} props.defaultThinking - Default thinking mode from settings
+ * @param {number} props.defaultTemperature - Default temperature from settings
+ * @param {number} props.enabledToolsCount - Number of enabled tools
+ * @param {number} props.totalToolsCount - Total number of available tools
+ * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
+ * @param {string | null} props.mcpError - MCP error message
+ * @param {() => Promise<void>} props.checkMcpConnection - Check MCP connection callback
+ * @param {() => void} props.onOpenSettings - Open settings callback
+ * @param {() => void} props.onClearConversation - Clear conversation callback
+ * @param {() => void} props.onStop - Stop response callback
  * @returns {JSX.Element} - React component
  */
 export function ChatScreen({
@@ -55,6 +67,10 @@ export function ChatScreen({
   activeThinking,
   activeTemperature,
   activeProvider,
+  defaultThinking,
+  defaultTemperature,
+  enabledToolsCount,
+  totalToolsCount,
   mcpStatus,
   mcpError,
   checkMcpConnection,
@@ -67,9 +83,9 @@ export function ChatScreen({
       <ChatHeader
         mcpStatus={mcpStatus}
         activeModel={activeModel}
-        activeThinking={activeThinking}
-        activeTemperature={activeTemperature}
         activeProvider={activeProvider}
+        enabledToolsCount={enabledToolsCount}
+        totalToolsCount={totalToolsCount}
         hasMessages={messages.length > 0}
         onOpenSettings={onOpenSettings}
         onClearConversation={onClearConversation}
@@ -105,6 +121,8 @@ export function ChatScreen({
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
         onStop={onStop}
+        thinking={activeThinking ?? defaultThinking}
+        temperature={activeTemperature ?? defaultTemperature}
       />
     </div>
   );

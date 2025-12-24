@@ -360,16 +360,17 @@ describe("MCP Express App", () => {
   });
 
   describe("Error Handling", () => {
-    it("should return status for GET /mcp", async () => {
+    it("should return method not allowed for GET /mcp", async () => {
       const response = await fetch(serverUrl, {
         method: "GET",
       });
 
-      expect(response.status).toBe(200);
-      const statusResponse = await response.json();
-      expect(statusResponse.status).toBe("ready");
-      expect(statusResponse.mode).toBe("stateless");
-      expect(statusResponse.message).toBe("Use POST to /mcp for MCP requests");
+      expect(response.status).toBe(405);
+      const errorResponse = await response.json();
+      expect(errorResponse.jsonrpc).toBe("2.0");
+      expect(errorResponse.error.code).toBe(-32000); // ConnectionClosed
+      expect(errorResponse.error.message).toBe("Method not allowed.");
+      expect(errorResponse.id).toBe(null);
     });
 
     it("should return method not allowed for DELETE /mcp", async () => {

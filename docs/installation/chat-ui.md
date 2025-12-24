@@ -1,7 +1,7 @@
 # Built-in Chat UI
 
-Producer Pal includes a built-in chat interface that runs in your browser. Click
-"Open Chat UI" in the Max for Live device to launch it.
+Producer Pal includes a [built-in chat interface](/guide/chat-ui) that runs in
+your browser. Click "Open Chat UI" in the Max for Live device to launch it.
 
 The chat UI supports multiple AI providers. Choose based on your needs:
 
