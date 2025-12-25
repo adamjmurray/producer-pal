@@ -55,7 +55,7 @@
     "typecheck": "npm run ui:typecheck",
     "ui:build": "vite build --config config/vite.config.mjs",
     "ui:dev": "ENABLE_RAW_LIVE_API=true vite --config config/vite.config.mjs",
-    "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json",
+    "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json && tsc --project tests/webui/tsconfig.json",
     "ui:test": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.ui.config.mjs",
     "ui:test:dev": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.ui.config.mjs --ui",
     "ui:test:headed": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.ui.config.mjs --headed",
