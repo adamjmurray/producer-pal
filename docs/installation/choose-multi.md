@@ -1,36 +1,31 @@
 # Using Multiple AI Providers
 
-Want flexibility to switch between providers or access many models? OpenRouter
-and the Built-in Chat UI support this.
+Want flexibility to switch between providers or access many models?
 
-## Options
+## OpenRouter
 
-| Option                                        | Best For              | Trade-offs                                           |
-| --------------------------------------------- | --------------------- | ---------------------------------------------------- |
-| [Built-in Chat UI](./chat-ui-other-providers) | Provider flexibility  | Supports OpenRouter, direct APIs. Requires API keys. |
-| [OpenRouter](https://openrouter.ai)           | Access to 100+ models | Single API key, pay-per-use. Configure via Chat UI.  |
+[OpenRouter](https://openrouter.ai) provides access to 100+ models through a
+single API key with pay-per-use pricing. Access it via the
+[Built-in Chat UI](./openrouter).
 
-## Why Multiple Providers?
+### Why OpenRouter?
 
+- **Model variety:** Switch between Claude, Gemini, GPT, Mistral, and more
 - **Cost optimization:** Use cheaper models for simple tasks, powerful ones for
   complex work
-- **Availability:** Fallback options when one provider is down or rate-limited
-- **Experimentation:** Compare how different models handle musical tasks
-- **EU data sovereignty:** Access Mistral models via OpenRouter for EU-compliant
-  option
+- **Single billing:** One account for all providers
+- **Availability:** Fallback options when one provider is rate-limited
 
-## Setup
+### Recommended Models
 
-Use the [Built-in Chat UI](./chat-ui) with OpenRouter:
+- **Gemini 3 Flash** - fast and capable
+- **Claude Opus 4.5** - strong reasoning
+- **GPT-5.2** - solid all-rounder
+- **Mistral Large** - competitive performance and pricing
 
-1. Get an [OpenRouter API key](https://openrouter.ai/keys)
-2. In Producer Pal Chat UI, select OpenRouter as provider
-3. Enter your API key
-4. Choose from available models
+## Other OpenAI-Compatible Providers
 
-## Recommended Models via OpenRouter
-
-- **Gemini 3 Flash**
-- **Claude Sonnet 4.5**
-- **GPT-4.5**
-- **Mistral Large**
+The Chat UI also supports direct connections to other providers like Groq,
+Together AI, or any OpenAI-compatible endpoint. See the
+[Custom Providers setup](./chat-ui-other-providers#custom-providers) for
+details.

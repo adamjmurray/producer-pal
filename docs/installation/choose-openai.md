@@ -19,5 +19,4 @@ prefer API pricing.
 
 ## Model Notes
 
-- GPT-4o recommended for best results
-- o1/o3 reasoning models not yet tested with Producer Pal
+- GPT-5.2, GPT-5.1-Codex-Max, or GPT-4o recommended

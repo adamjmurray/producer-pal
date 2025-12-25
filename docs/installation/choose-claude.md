@@ -19,6 +19,5 @@ Pal was originally built for.
 
 ## Model Notes
 
-- Claude Sonnet 4 or Opus 4.5 recommended for complex musical tasks
-- Haiku works for simple operations but may struggle with multi-step
-  arrangements
+- The latestClaude Sonnet or Opus is recommended for complex musical tasks
+- Haiku works for simple operations but may struggle with anything complicated
