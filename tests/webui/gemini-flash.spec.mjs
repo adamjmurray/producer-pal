@@ -27,15 +27,15 @@ test.describe("Gemini 3 Flash", () => {
 
     // Configure provider settings
     // Select Google provider
-    const providerSelect = page.locator("select").first();
+    const providerSelect = page.getByTestId("provider-select");
     await providerSelect.selectOption("gemini");
 
     // Select Gemini 3 Flash model (before API key to avoid state reset)
-    const modelSelect = page.locator("select").nth(1);
+    const modelSelect = page.getByTestId("model-select");
     await modelSelect.selectOption("gemini-3-flash-preview");
 
     // Enter API key (after model selection, for some reason it doesn't actually get set if we do this first)
-    const apiKeyInput = page.locator('input[type="password"]');
+    const apiKeyInput = page.getByTestId("api-key-input");
     await apiKeyInput.fill(apiKey);
 
     // Save settings
@@ -56,7 +56,7 @@ test.describe("Gemini 3 Flash", () => {
     await expect(stopButton).toBeVisible({ timeout: 10000 }); // Response started
     await expect(stopButton).toBeHidden({ timeout: 60000 }); // Response finished
 
-    const messageList = page.locator(".space-y-4");
+    const messageList = page.getByTestId("message-list");
 
     // Wait for user message to appear
     await expect(messageList.getByText("Connect to Ableton.")).toBeVisible();
@@ -64,9 +64,7 @@ test.describe("Gemini 3 Flash", () => {
     // Wait for assistant response - should contain some indication of success
     // Allow up to 30 seconds for the AI response
     await expect(async () => {
-      const assistantMessages = messageList.locator(
-        ".bg-gray-100, .dark\\:bg-gray-800",
-      );
+      const assistantMessages = page.getByTestId("assistant-message-bubble");
       const count = await assistantMessages.count();
       expect(count).toBeGreaterThan(0);
     }).toPass({ timeout: 30000 });

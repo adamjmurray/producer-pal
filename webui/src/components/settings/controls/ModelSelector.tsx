@@ -197,6 +197,7 @@ export function ModelSelector({
           handleDropdownChange((e.target as HTMLSelectElement).value)
         }
         className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+        data-testid="model-select"
       >
         {presetModels.map(({ value, label }) => (
           <option key={value} value={value}>

@@ -25,6 +25,7 @@ export function ProviderSelector({
           setProvider((e.target as HTMLSelectElement).value as Provider)
         }
         className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+        data-testid="provider-select"
       >
         <option value="gemini">Google</option>
         <option value="openai">OpenAI</option>
