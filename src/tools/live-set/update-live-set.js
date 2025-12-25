@@ -5,6 +5,7 @@ import {
   VALID_PITCH_CLASS_NAMES,
 } from "../../notation/pitch-class-name-to-number.js";
 import * as console from "../../shared/v8-max-console.js";
+import { waitUntil } from "../../shared/v8-sleep.js";
 import { VALID_SCALE_NAMES } from "../constants.js";
 import {
   findCue,
@@ -36,7 +37,7 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
  * @param {object} _context - Internal context object (unused)
  * @returns {object} Updated Live Set information
  */
-export function updateLiveSet(
+export async function updateLiveSet(
   {
     tempo,
     timeSignature,
@@ -120,7 +121,7 @@ export function updateLiveSet(
 
   // Handle cue point operations
   if (cueOperation != null) {
-    const cueResult = handleCueOperation(liveSet, {
+    const cueResult = await handleCueOperation(liveSet, {
       cueOperation,
       cueId,
       cueTime,
@@ -152,6 +153,28 @@ function stopPlaybackIfNeeded(liveSet) {
 }
 
 /**
+ * Wait for the playhead position to reach the target time
+ * This is needed because set_or_delete_cue operates on the actual playhead position,
+ * which updates asynchronously after setting current_song_time
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {number} targetBeats - Expected position in beats
+ * @returns {Promise<void>}
+ */
+async function waitForPlayheadPosition(liveSet, targetBeats) {
+  const success = await waitUntil(
+    () =>
+      Math.abs(liveSet.getProperty("current_song_time") - targetBeats) < 0.001,
+    { pollingInterval: 10, maxRetries: 10 },
+  );
+
+  if (!success) {
+    console.error(
+      `Warning: Playhead position did not reach target ${targetBeats} after waiting`,
+    );
+  }
+}
+
+/**
  * Handle cue point operations (create, delete, rename)
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} options - Operation options
@@ -159,9 +182,9 @@ function stopPlaybackIfNeeded(liveSet) {
  * @param {string} [options.cueId] - Cue ID for delete/rename
  * @param {string} [options.cueTime] - Bar|beat position
  * @param {string} [options.cueName] - Name for create/rename or name filter for delete
- * @returns {object} Result of the cue operation
+ * @returns {Promise<object>} Result of the cue operation
  */
-function handleCueOperation(
+async function handleCueOperation(
   liveSet,
   { cueOperation, cueId, cueTime, cueName },
 ) {
@@ -170,14 +193,14 @@ function handleCueOperation(
 
   switch (cueOperation) {
     case "create":
-      return createCue(liveSet, {
+      return await createCue(liveSet, {
         cueTime,
         cueName,
         timeSigNumerator,
         timeSigDenominator,
       });
     case "delete":
-      return deleteCue(liveSet, {
+      return await deleteCue(liveSet, {
         cueId,
         cueTime,
         cueName,
@@ -205,9 +228,9 @@ function handleCueOperation(
  * @param {string} [options.cueName] - Optional name for the cue
  * @param {number} options.timeSigNumerator - Time signature numerator
  * @param {number} options.timeSigDenominator - Time signature denominator
- * @returns {object} Created cue info
+ * @returns {Promise<object>} Created cue info
  */
-function createCue(
+async function createCue(
   liveSet,
   { cueTime, cueName, timeSigNumerator, timeSigDenominator },
 ) {
@@ -223,8 +246,11 @@ function createCue(
 
   stopPlaybackIfNeeded(liveSet);
 
-  // Move playhead and create cue
+  // Move playhead and wait for it to update (race condition fix)
   liveSet.set("current_song_time", targetBeats);
+  await waitForPlayheadPosition(liveSet, targetBeats);
+
+  // Create cue at current playhead position
   liveSet.call("set_or_delete_cue");
 
   // Find the newly created cue to get its index and set name if provided
@@ -251,9 +277,9 @@ function createCue(
  * @param {string} [options.cueName] - Name filter for batch delete
  * @param {number} options.timeSigNumerator - Time signature numerator
  * @param {number} options.timeSigDenominator - Time signature denominator
- * @returns {object} Deletion result
+ * @returns {Promise<object>} Deletion result
  */
-function deleteCue(
+async function deleteCue(
   liveSet,
   { cueId, cueTime, cueName, timeSigNumerator, timeSigDenominator },
 ) {
@@ -277,6 +303,7 @@ function deleteCue(
 
     for (const time of times) {
       liveSet.set("current_song_time", time);
+      await waitForPlayheadPosition(liveSet, time);
       liveSet.call("set_or_delete_cue");
     }
 
@@ -312,6 +339,7 @@ function deleteCue(
   }
 
   liveSet.set("current_song_time", timeInBeats);
+  await waitForPlayheadPosition(liveSet, timeInBeats);
   liveSet.call("set_or_delete_cue");
 
   return {

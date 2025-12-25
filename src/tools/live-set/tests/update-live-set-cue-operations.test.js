@@ -26,8 +26,8 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should create cue at specified position", () => {
-      const result = updateLiveSet({
+    it("should create cue at specified position", async () => {
+      const result = await updateLiveSet({
         cueOperation: "create",
         cueTime: "1|1",
       });
@@ -45,7 +45,7 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should create cue with name", () => {
+    it("should create cue with name", async () => {
       // Track the cue that gets its name set
       let cueNameSet = null;
 
@@ -65,7 +65,7 @@ describe("updateLiveSet - cue operations", () => {
         }
       });
 
-      const result = updateLiveSet({
+      const result = await updateLiveSet({
         cueOperation: "create",
         cueTime: "5|1",
         cueName: "Verse",
@@ -86,7 +86,7 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should stop playback before creating cue", () => {
+    it("should stop playback before creating cue", async () => {
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -96,7 +96,7 @@ describe("updateLiveSet - cue operations", () => {
         return [0];
       });
 
-      updateLiveSet({
+      await updateLiveSet({
         cueOperation: "create",
         cueTime: "1|1",
       });
@@ -104,12 +104,12 @@ describe("updateLiveSet - cue operations", () => {
       expect(liveApiCall).toHaveBeenCalledWith("stop_playing");
     });
 
-    it("should throw if cueTime is missing for create", () => {
-      expect(() =>
+    it("should throw if cueTime is missing for create", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "create",
         }),
-      ).toThrow("cueTime is required for create operation");
+      ).rejects.toThrow("cueTime is required for create operation");
     });
   });
 
@@ -132,8 +132,8 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should delete cue by ID", () => {
-      const result = updateLiveSet({
+    it("should delete cue by ID", async () => {
+      const result = await updateLiveSet({
         cueOperation: "delete",
         cueId: "cue-0",
       });
@@ -150,8 +150,8 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should delete cue by time", () => {
-      const result = updateLiveSet({
+    it("should delete cue by time", async () => {
+      const result = await updateLiveSet({
         cueOperation: "delete",
         cueTime: "5|1",
       });
@@ -168,7 +168,7 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should delete all cues by name", () => {
+    it("should delete all cues by name", async () => {
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -189,7 +189,7 @@ describe("updateLiveSet - cue operations", () => {
         return [0];
       });
 
-      const result = updateLiveSet({
+      const result = await updateLiveSet({
         cueOperation: "delete",
         cueName: "Verse",
       });
@@ -202,39 +202,39 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should throw if no identifier provided for delete", () => {
-      expect(() =>
+    it("should throw if no identifier provided for delete", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "delete",
         }),
-      ).toThrow("delete requires cueId, cueTime, or cueName");
+      ).rejects.toThrow("delete requires cueId, cueTime, or cueName");
     });
 
-    it("should throw if cue ID not found", () => {
-      expect(() =>
+    it("should throw if cue ID not found", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "delete",
           cueId: "cue-99",
         }),
-      ).toThrow("Cue not found: cue-99");
+      ).rejects.toThrow("Cue not found: cue-99");
     });
 
-    it("should throw if no cue at specified time", () => {
-      expect(() =>
+    it("should throw if no cue at specified time", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "delete",
           cueTime: "100|1",
         }),
-      ).toThrow("No cue found at position: 100|1");
+      ).rejects.toThrow("No cue found at position: 100|1");
     });
 
-    it("should throw if no cues match name", () => {
-      expect(() =>
+    it("should throw if no cues match name", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "delete",
           cueName: "NonExistent",
         }),
-      ).toThrow("No cues found with name: NonExistent");
+      ).rejects.toThrow("No cues found with name: NonExistent");
     });
   });
 
@@ -255,8 +255,8 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should rename cue by ID", () => {
-      const result = updateLiveSet({
+    it("should rename cue by ID", async () => {
+      const result = await updateLiveSet({
         cueOperation: "rename",
         cueId: "cue-0",
         cueName: "New Intro",
@@ -270,8 +270,8 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should rename cue by time", () => {
-      const result = updateLiveSet({
+    it("should rename cue by time", async () => {
+      const result = await updateLiveSet({
         cueOperation: "rename",
         cueTime: "5|1",
         cueName: "New Verse",
@@ -285,32 +285,32 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should throw if cueName is missing for rename", () => {
-      expect(() =>
+    it("should throw if cueName is missing for rename", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "rename",
           cueId: "cue-0",
         }),
-      ).toThrow("cueName is required for rename operation");
+      ).rejects.toThrow("cueName is required for rename operation");
     });
 
-    it("should throw if no identifier provided for rename", () => {
-      expect(() =>
+    it("should throw if no identifier provided for rename", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "rename",
           cueName: "New Name",
         }),
-      ).toThrow("rename requires cueId or cueTime");
+      ).rejects.toThrow("rename requires cueId or cueTime");
     });
 
-    it("should throw if cue ID not found for rename", () => {
-      expect(() =>
+    it("should throw if cue ID not found for rename", async () => {
+      await expect(
         updateLiveSet({
           cueOperation: "rename",
           cueId: "cue-99",
           cueName: "New Name",
         }),
-      ).toThrow("Cue not found: cue-99");
+      ).rejects.toThrow("Cue not found: cue-99");
     });
   });
 
@@ -326,8 +326,8 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should allow cue operation with tempo change", () => {
-      const result = updateLiveSet({
+    it("should allow cue operation with tempo change", async () => {
+      const result = await updateLiveSet({
         tempo: 140,
         cueOperation: "create",
         cueTime: "1|1",
