@@ -54,15 +54,19 @@ export function validateCueOrTime(
   const hasCueId = cueIdParam != null;
   const hasCueName = cueNameParam != null;
 
+  // Compute base name for cue parameters (strip "Time" suffix if present)
+  // e.g., "startTime" → "start", "loopStart" → "loopStart"
+  const cueParamBase = paramName.replace(/Time$/, "");
+
   if (hasTime && (hasCueId || hasCueName)) {
     throw new Error(
-      `playback failed: ${paramName} cannot be used with ${paramName}CueId or ${paramName}CueName`,
+      `playback failed: ${paramName} cannot be used with ${cueParamBase}CueId or ${cueParamBase}CueName`,
     );
   }
 
   if (hasCueId && hasCueName) {
     throw new Error(
-      `playback failed: ${paramName}CueId and ${paramName}CueName are mutually exclusive`,
+      `playback failed: ${cueParamBase}CueId and ${cueParamBase}CueName are mutually exclusive`,
     );
   }
 }

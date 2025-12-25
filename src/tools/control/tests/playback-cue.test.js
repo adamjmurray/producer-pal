@@ -79,7 +79,7 @@ describe("playback - cue support", () => {
           startCueId: "cue-0",
         }),
       ).toThrow(
-        "playback failed: startTime cannot be used with startTimeCueId or startTimeCueName",
+        "playback failed: startTime cannot be used with startCueId or startCueName",
       );
     });
   });
@@ -142,7 +142,7 @@ describe("playback - cue support", () => {
           startCueName: "Verse",
         }),
       ).toThrow(
-        "playback failed: startTimeCueId and startTimeCueName are mutually exclusive",
+        "playback failed: startCueId and startCueName are mutually exclusive",
       );
     });
   });
