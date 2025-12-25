@@ -84,6 +84,7 @@ for (const config of TEST_CONFIGS) {
         await page.goto("/chat");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+
         throw new Error(
           "Could not connect to Producer Pal. Make sure:\n" +
             "1. Ableton Live is running with the Producer Pal device active\n" +
@@ -97,14 +98,17 @@ for (const config of TEST_CONFIGS) {
 
       // Configure provider settings
       const providerSelect = page.getByTestId("provider-select");
+
       await providerSelect.selectOption(config.provider);
 
       // Select model (before API key to avoid state reset)
       const modelSelect = page.getByTestId("model-select");
+
       await modelSelect.selectOption(config.model);
 
       // Enter API key (after model selection)
       const apiKeyInput = page.getByTestId("api-key-input");
+
       await apiKeyInput.fill(apiKey);
 
       // Save settings
@@ -115,6 +119,7 @@ for (const config of TEST_CONFIGS) {
       const quickConnectButton = page.getByRole("button", {
         name: "Quick Connect",
       });
+
       await expect(quickConnectButton).toBeVisible({ timeout: 10000 });
 
       // Click Quick Connect
@@ -122,6 +127,7 @@ for (const config of TEST_CONFIGS) {
 
       // Wait for response to complete (Stop button disappears when done)
       const stopButton = page.getByRole("button", { name: "Stop" });
+
       await expect(stopButton).toBeVisible({ timeout: 10000 }); // Response started
       await expect(stopButton).toBeHidden({ timeout: 60000 }); // Response finished
 
@@ -135,6 +141,7 @@ for (const config of TEST_CONFIGS) {
       await expect(async () => {
         const assistantMessages = page.getByTestId("assistant-message-bubble");
         const count = await assistantMessages.count();
+
         expect(count).toBeGreaterThan(0);
       }).toPass({ timeout: 30000 });
 

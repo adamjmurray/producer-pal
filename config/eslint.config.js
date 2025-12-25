@@ -251,7 +251,7 @@ export default [
 
   // All JavaScript files (any directory)
   {
-    files: ["{src,scripts,webui}/**/*.{js,mjs}"],
+    files: ["{src,scripts,webui,tests}/**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -364,6 +364,67 @@ export default [
       globals: {
         ...globals.node,
       },
+    },
+  },
+
+  // Playwright docs tests (JavaScript)
+  {
+    files: ["tests/docs/**/*.{js,mjs}"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      import: importPlugin,
+      sonarjs,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...baseRules,
+      "jsdoc/require-jsdoc": "off",
+      "jsdoc/require-param": "off",
+      "jsdoc/require-returns": "off",
+      "no-loop-func": "off", // Common pattern in Playwright tests
+    },
+  },
+
+  // Playwright UI tests (TypeScript)
+  {
+    files: ["tests/webui/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+        project: "./tests/webui/tsconfig.json",
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./tests/webui/tsconfig.json",
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      "no-loop-func": "off", // Common pattern in Playwright tests
     },
   },
 
