@@ -1,7 +1,8 @@
 # Using ChatGPT / OpenAI with Producer Pal
 
-OpenAI's models work with Producer Pal through their web app or CLI tools.
-Requires ChatGPT Plus ($20/mo) or API credits.
+OpenAI's models work with Producer Pal through their web app or CLI tools. A
+free tier is available with an OpenAI account, but has low usage limits. ChatGPT
+Plus ($20/mo) or API credits is recommended for regular use.
 
 ## Options
 

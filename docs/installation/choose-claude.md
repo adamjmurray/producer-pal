@@ -1,7 +1,8 @@
 # Using Claude with Producer Pal
 
-Anthropic's Claude models work great with Producer Pal. Requires a subscription
-($20/mo Pro) or API credits.
+Anthropic's Claude models work great with Producer Pal. A free tier is available
+with an Anthropic account, but has low usage limits. A subscription ($20/mo Pro)
+is recommended for regular use.
 
 ## Options
 
