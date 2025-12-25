@@ -36,14 +36,14 @@ This makes them suitable only for local QA testing, not automated CI.
 
 ## Test Files
 
-- `quick-connect.spec.mjs` - Tests Quick Connect across multiple
-  providers/models
+- `quick-connect.spec.ts` - Tests Quick Connect across multiple providers/models
+  (includes all OpenRouter models automatically)
 
 ## Adding New Provider/Model Tests
 
-Edit `quick-connect.spec.mjs` and add a new entry to `TEST_CONFIGS`:
+Edit `quick-connect.spec.ts` and add a new entry to `TEST_CONFIGS`:
 
-```javascript
+```typescript
 {
   provider: "mistral",           // Value for provider select
   providerLabel: "Mistral",      // Display name for test output
@@ -52,3 +52,7 @@ Edit `quick-connect.spec.mjs` and add a new entry to `TEST_CONFIGS`:
   envKey: "MISTRAL_KEY",         // Env var for API key
 },
 ```
+
+OpenRouter models are automatically imported from `OPENROUTER_MODELS` in
+`webui/src/components/settings/controls/ModelSelector.tsx` and tested with
+`OPENROUTER_KEY`.

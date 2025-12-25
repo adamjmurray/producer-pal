@@ -37,7 +37,7 @@ const MISTRAL_MODELS = [
   { value: "OTHER", label: "Other..." },
 ];
 
-const OPENROUTER_MODELS = [
+export const OPENROUTER_MODELS = [
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },

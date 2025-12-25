@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { OPENROUTER_MODELS } from "../../webui/src/components/settings/controls/ModelSelector";
 
-let consoleErrors = [];
-let consoleWarnings = [];
-let consoleLogs = [];
+let consoleErrors: string[] = [];
+let consoleWarnings: string[] = [];
+let consoleLogs: string[] = [];
 
 test.beforeEach(({ page }) => {
   consoleErrors = [];
@@ -30,6 +31,17 @@ test.beforeEach(({ page }) => {
   });
 });
 
+// Generate OpenRouter configs from the shared models list
+const OPENROUTER_CONFIGS = OPENROUTER_MODELS.filter(
+  (m) => m.value !== "OTHER",
+).map((m) => ({
+  provider: "openrouter",
+  providerLabel: "OpenRouter",
+  model: m.value,
+  modelLabel: m.label,
+  envKey: "OPENROUTER_KEY",
+}));
+
 // Provider/model configurations to test
 const TEST_CONFIGS = [
   {
@@ -53,6 +65,7 @@ const TEST_CONFIGS = [
     modelLabel: "Mistral Medium",
     envKey: "MISTRAL_KEY",
   },
+  ...OPENROUTER_CONFIGS,
 ];
 
 for (const config of TEST_CONFIGS) {
@@ -70,11 +83,12 @@ for (const config of TEST_CONFIGS) {
       try {
         await page.goto("/chat");
       } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
         throw new Error(
           "Could not connect to Producer Pal. Make sure:\n" +
             "1. Ableton Live is running with the Producer Pal device active\n" +
             "2. The device is built with `npm run build:all`\n\n" +
-            `Original error: ${error.message}`,
+            `Original error: ${message}`,
         );
       }
 
@@ -126,7 +140,7 @@ for (const config of TEST_CONFIGS) {
 
       // Verify the response contains expected content
       // The response typically mentions connection or Ableton
-      const pageContent = await page.textContent("body");
+      const pageContent = (await page.textContent("body")) ?? "";
 
       expect(
         (pageContent.includes("connected") ||
