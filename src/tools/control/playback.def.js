@@ -32,24 +32,33 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("bar|beat position in arrangement"),
-    startCueId: z
+    startLocatorId: z
       .string()
       .optional()
-      .describe("cue ID for start position (e.g., cue-0)"),
-    startCueName: z.string().optional().describe("cue name for start position"),
+      .describe("locator ID for start position (e.g., locator-0)"),
+    startLocatorName: z
+      .string()
+      .optional()
+      .describe("locator name for start position"),
     loop: z.boolean().optional().describe("arrangement loop?"),
     loopStart: z.string().optional().describe("bar|beat position"),
-    loopStartCueId: z
+    loopStartLocatorId: z
       .string()
       .optional()
-      .describe("cue ID for loop start (e.g., cue-0)"),
-    loopStartCueName: z.string().optional().describe("cue name for loop start"),
+      .describe("locator ID for loop start (e.g., locator-0)"),
+    loopStartLocatorName: z
+      .string()
+      .optional()
+      .describe("locator name for loop start"),
     loopEnd: z.string().optional().describe("bar|beat position"),
-    loopEndCueId: z
+    loopEndLocatorId: z
       .string()
       .optional()
-      .describe("cue ID for loop end (e.g., cue-1)"),
-    loopEndCueName: z.string().optional().describe("cue name for loop end"),
+      .describe("locator ID for loop end (e.g., locator-1)"),
+    loopEndLocatorName: z
+      .string()
+      .optional()
+      .describe("locator name for loop end"),
     autoFollow: z
       .boolean()
       .optional()

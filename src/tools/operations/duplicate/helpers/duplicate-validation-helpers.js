@@ -134,33 +134,35 @@ export function validateDestinationParameter(type, destination) {
  * Validates arrangement-specific parameters
  * @param {string} destination - Destination for duplication
  * @param {string} arrangementStart - Start time in bar|beat format
- * @param {string} arrangementCueId - Cue ID for arrangement position
- * @param {string} arrangementCueName - Cue name for arrangement position
+ * @param {string} arrangementLocatorId - Locator ID for arrangement position
+ * @param {string} arrangementLocatorName - Locator name for arrangement position
  */
 export function validateArrangementParameters(
   destination,
   arrangementStart,
-  arrangementCueId,
-  arrangementCueName,
+  arrangementLocatorId,
+  arrangementLocatorName,
 ) {
   if (destination !== "arrangement") {
     return;
   }
 
   const hasStart = arrangementStart != null && arrangementStart.trim() !== "";
-  const hasCueId = arrangementCueId != null;
-  const hasCueName = arrangementCueName != null;
-  const positionCount = [hasStart, hasCueId, hasCueName].filter(Boolean).length;
+  const hasLocatorId = arrangementLocatorId != null;
+  const hasLocatorName = arrangementLocatorName != null;
+  const positionCount = [hasStart, hasLocatorId, hasLocatorName].filter(
+    Boolean,
+  ).length;
 
   if (positionCount === 0) {
     throw new Error(
-      "duplicate failed: arrangementStart, arrangementCueId, or arrangementCueName is required when destination is 'arrangement'",
+      "duplicate failed: arrangementStart, arrangementLocatorId, or arrangementLocatorName is required when destination is 'arrangement'",
     );
   }
 
   if (positionCount > 1) {
     throw new Error(
-      "duplicate failed: arrangementStart, arrangementCueId, and arrangementCueName are mutually exclusive",
+      "duplicate failed: arrangementStart, arrangementLocatorId, and arrangementLocatorName are mutually exclusive",
     );
   }
 }

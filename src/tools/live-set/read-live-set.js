@@ -3,7 +3,7 @@ import {
   PITCH_CLASS_NAMES,
 } from "../../notation/midi-pitch-to-name.js";
 import { readScene } from "../scene/read-scene.js";
-import { readCuePoints } from "../shared/cue/cue-helpers.js";
+import { readLocators } from "../shared/locator/locator-helpers.js";
 import {
   includeArrayFromFlags,
   parseIncludeArray,
@@ -128,12 +128,12 @@ export function readLiveSet(args = {}, _context = {}) {
     ).join(",");
   }
 
-  // Include cue points when requested
-  if (includeFlags.includeCuePoints) {
+  // Include locators when requested
+  if (includeFlags.includeLocators) {
     const timeSigNumerator = liveSet.getProperty("signature_numerator");
     const timeSigDenominator = liveSet.getProperty("signature_denominator");
 
-    result.cuePoints = readCuePoints(
+    result.locators = readLocators(
       liveSet,
       timeSigNumerator,
       timeSigDenominator,

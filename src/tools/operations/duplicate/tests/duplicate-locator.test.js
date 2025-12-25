@@ -39,9 +39,9 @@ vi.mock(import("../../../shared/arrangement/arrangement-tiling.js"), () => ({
   }),
 }));
 
-describe("duplicate - cue-based arrangement positioning", () => {
+describe("duplicate - locator-based arrangement positioning", () => {
   describe("parameter validation", () => {
-    it("should throw error when arrangementStart, arrangementCueId, and arrangementCueName are all missing", () => {
+    it("should throw error when arrangementStart, arrangementLocatorId, and arrangementLocatorName are all missing", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -54,11 +54,11 @@ describe("duplicate - cue-based arrangement positioning", () => {
           destination: "arrangement",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart, arrangementCueId, or arrangementCueName is required when destination is 'arrangement'",
+        "duplicate failed: arrangementStart, arrangementLocatorId, or arrangementLocatorName is required when destination is 'arrangement'",
       );
     });
 
-    it("should throw error when arrangementStart and arrangementCueId are both provided", () => {
+    it("should throw error when arrangementStart and arrangementLocatorId are both provided", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -70,14 +70,14 @@ describe("duplicate - cue-based arrangement positioning", () => {
           id: "scene1",
           destination: "arrangement",
           arrangementStart: "5|1",
-          arrangementCueId: "cue-0",
+          arrangementLocatorId: "locator-0",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart, arrangementCueId, and arrangementCueName are mutually exclusive",
+        "duplicate failed: arrangementStart, arrangementLocatorId, and arrangementLocatorName are mutually exclusive",
       );
     });
 
-    it("should throw error when arrangementStart and arrangementCueName are both provided", () => {
+    it("should throw error when arrangementStart and arrangementLocatorName are both provided", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -89,14 +89,14 @@ describe("duplicate - cue-based arrangement positioning", () => {
           id: "scene1",
           destination: "arrangement",
           arrangementStart: "5|1",
-          arrangementCueName: "Verse",
+          arrangementLocatorName: "Verse",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart, arrangementCueId, and arrangementCueName are mutually exclusive",
+        "duplicate failed: arrangementStart, arrangementLocatorId, and arrangementLocatorName are mutually exclusive",
       );
     });
 
-    it("should throw error when arrangementCueId and arrangementCueName are both provided", () => {
+    it("should throw error when arrangementLocatorId and arrangementLocatorName are both provided", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -107,17 +107,17 @@ describe("duplicate - cue-based arrangement positioning", () => {
           type: "scene",
           id: "scene1",
           destination: "arrangement",
-          arrangementCueId: "cue-0",
-          arrangementCueName: "Verse",
+          arrangementLocatorId: "locator-0",
+          arrangementLocatorName: "Verse",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart, arrangementCueId, and arrangementCueName are mutually exclusive",
+        "duplicate failed: arrangementStart, arrangementLocatorId, and arrangementLocatorName are mutually exclusive",
       );
     });
   });
 
-  describe("scene duplication with cue", () => {
-    it("should duplicate a scene to arrangement at cue ID position", () => {
+  describe("scene duplication with locator", () => {
+    it("should duplicate a scene to arrangement at locator ID position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -187,10 +187,10 @@ describe("duplicate - cue-based arrangement positioning", () => {
         type: "scene",
         id: "scene1",
         destination: "arrangement",
-        arrangementCueId: "cue-1",
+        arrangementLocatorId: "locator-1",
       });
 
-      // Should duplicate at cue-1's position (16 beats = 5|1)
+      // Should duplicate at locator-1's position (16 beats = 5|1)
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "duplicate_clip_to_arrangement",
@@ -202,7 +202,7 @@ describe("duplicate - cue-based arrangement positioning", () => {
       expect(result).toHaveProperty("clips");
     });
 
-    it("should duplicate a scene to arrangement at cue name position", () => {
+    it("should duplicate a scene to arrangement at locator name position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -270,7 +270,7 @@ describe("duplicate - cue-based arrangement positioning", () => {
         type: "scene",
         id: "scene1",
         destination: "arrangement",
-        arrangementCueName: "Chorus",
+        arrangementLocatorName: "Chorus",
       });
 
       // Should duplicate at Chorus position (32 beats = 9|1)
@@ -285,8 +285,8 @@ describe("duplicate - cue-based arrangement positioning", () => {
     });
   });
 
-  describe("clip duplication with cue", () => {
-    it("should duplicate a clip to arrangement at cue ID position", () => {
+  describe("clip duplication with locator", () => {
+    it("should duplicate a clip to arrangement at locator ID position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
         return this._path;
@@ -352,10 +352,10 @@ describe("duplicate - cue-based arrangement positioning", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementCueId: "cue-1",
+        arrangementLocatorId: "locator-1",
       });
 
-      // Should duplicate at cue-1's position (8 beats = 3|1)
+      // Should duplicate at locator-1's position (8 beats = 3|1)
       expect(liveApiCall).toHaveBeenCalledWithThis(
         expect.objectContaining({ path: "live_set tracks 0" }),
         "duplicate_clip_to_arrangement",
@@ -366,7 +366,7 @@ describe("duplicate - cue-based arrangement positioning", () => {
       expect(result).toHaveProperty("arrangementStart", "3|1");
     });
 
-    it("should duplicate a clip to arrangement at cue name position", () => {
+    it("should duplicate a clip to arrangement at locator name position", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "clip1") return "live_set tracks 0 clip_slots 0 clip";
         return this._path;
@@ -432,7 +432,7 @@ describe("duplicate - cue-based arrangement positioning", () => {
         type: "clip",
         id: "clip1",
         destination: "arrangement",
-        arrangementCueName: "Drop",
+        arrangementLocatorName: "Drop",
       });
 
       // Should duplicate at Drop position (8 beats = 3|1)
@@ -448,7 +448,7 @@ describe("duplicate - cue-based arrangement positioning", () => {
   });
 
   describe("error handling", () => {
-    it("should throw error for non-existent cue ID", () => {
+    it("should throw error for non-existent locator ID", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -473,12 +473,12 @@ describe("duplicate - cue-based arrangement positioning", () => {
           type: "scene",
           id: "scene1",
           destination: "arrangement",
-          arrangementCueId: "cue-5",
+          arrangementLocatorId: "locator-5",
         }),
-      ).toThrow("duplicate failed: cue not found: cue-5");
+      ).toThrow("duplicate failed: locator not found: locator-5");
     });
 
-    it("should throw error for non-existent cue name", () => {
+    it("should throw error for non-existent locator name", () => {
       liveApiPath.mockImplementation(function () {
         if (this._id === "scene1") return "live_set scenes 0";
         return this._path;
@@ -503,9 +503,9 @@ describe("duplicate - cue-based arrangement positioning", () => {
           type: "scene",
           id: "scene1",
           destination: "arrangement",
-          arrangementCueName: "NonExistent",
+          arrangementLocatorName: "NonExistent",
         }),
-      ).toThrow('duplicate failed: no cue found with name "NonExistent"');
+      ).toThrow('duplicate failed: no locator found with name "NonExistent"');
     });
   });
 });

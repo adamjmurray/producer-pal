@@ -8,10 +8,10 @@ import * as console from "../../shared/v8-max-console.js";
 import { waitUntil } from "../../shared/v8-sleep.js";
 import { VALID_SCALE_NAMES } from "../constants.js";
 import {
-  findCue,
-  findCuesByName,
-  getCueId,
-} from "../shared/cue/cue-helpers.js";
+  findLocator,
+  findLocatorsByName,
+  getLocatorId,
+} from "../shared/locator/locator-helpers.js";
 import { parseTimeSignature } from "../shared/utils.js";
 
 // Create lowercase versions for case-insensitive comparison
@@ -23,16 +23,16 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
 );
 
 /**
- * Updates Live Set parameters like tempo, time signature, scale, and cue points.
+ * Updates Live Set parameters like tempo, time signature, scale, and locators.
  * Note: Scale changes affect currently selected clips and set defaults for new clips.
  * @param {object} args - The parameters
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
- * @param {string} [args.cueOperation] - Cue point operation: "create", "delete", or "rename"
- * @param {string} [args.cueId] - Cue ID for delete/rename (e.g., "cue-0")
- * @param {string} [args.cueTime] - Bar|beat position for create/delete/rename
- * @param {string} [args.cueName] - Name for create/rename, or name filter for delete
+ * @param {string} [args.locatorOperation] - Locator operation: "create", "delete", or "rename"
+ * @param {string} [args.locatorId] - Locator ID for delete/rename (e.g., "locator-0")
+ * @param {string} [args.locatorTime] - Bar|beat position for create/delete/rename
+ * @param {string} [args.locatorName] - Name for create/rename, or name filter for delete
  * @param {boolean} [args.arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
  * @param {object} _context - Internal context object (unused)
  * @returns {object} Updated Live Set information
@@ -42,10 +42,10 @@ export async function updateLiveSet(
     tempo,
     timeSignature,
     scale,
-    cueOperation,
-    cueId,
-    cueTime,
-    cueName,
+    locatorOperation,
+    locatorId,
+    locatorTime,
+    locatorName,
     arrangementFollower,
   } = {},
   _context = {},
@@ -119,23 +119,23 @@ export async function updateLiveSet(
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
 
-  // Handle cue point operations
-  if (cueOperation != null) {
-    const cueResult = await handleCueOperation(liveSet, {
-      cueOperation,
-      cueId,
-      cueTime,
-      cueName,
+  // Handle locator operations
+  if (locatorOperation != null) {
+    const locatorResult = await handleLocatorOperation(liveSet, {
+      locatorOperation,
+      locatorId,
+      locatorTime,
+      locatorName,
     });
 
-    result.cue = cueResult;
+    result.locator = locatorResult;
   }
 
   return result;
 }
 
 /**
- * Stop playback if currently playing (required for cue point modifications)
+ * Stop playback if currently playing (required for locator modifications)
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @returns {boolean} True if playback was stopped
  */
@@ -144,7 +144,7 @@ function stopPlaybackIfNeeded(liveSet) {
 
   if (isPlaying) {
     liveSet.call("stop_playing");
-    console.error("Playback stopped to modify cue points");
+    console.error("Playback stopped to modify locators");
 
     return true;
   }
@@ -175,88 +175,88 @@ async function waitForPlayheadPosition(liveSet, targetBeats) {
 }
 
 /**
- * Handle cue point operations (create, delete, rename)
+ * Handle locator operations (create, delete, rename)
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} options - Operation options
- * @param {string} options.cueOperation - "create", "delete", or "rename"
- * @param {string} [options.cueId] - Cue ID for delete/rename
- * @param {string} [options.cueTime] - Bar|beat position
- * @param {string} [options.cueName] - Name for create/rename or name filter for delete
- * @returns {Promise<object>} Result of the cue operation
+ * @param {string} options.locatorOperation - "create", "delete", or "rename"
+ * @param {string} [options.locatorId] - Locator ID for delete/rename
+ * @param {string} [options.locatorTime] - Bar|beat position
+ * @param {string} [options.locatorName] - Name for create/rename or name filter for delete
+ * @returns {Promise<object>} Result of the locator operation
  */
-async function handleCueOperation(
+async function handleLocatorOperation(
   liveSet,
-  { cueOperation, cueId, cueTime, cueName },
+  { locatorOperation, locatorId, locatorTime, locatorName },
 ) {
   const timeSigNumerator = liveSet.getProperty("signature_numerator");
   const timeSigDenominator = liveSet.getProperty("signature_denominator");
 
-  switch (cueOperation) {
+  switch (locatorOperation) {
     case "create":
-      return await createCue(liveSet, {
-        cueTime,
-        cueName,
+      return await createLocator(liveSet, {
+        locatorTime,
+        locatorName,
         timeSigNumerator,
         timeSigDenominator,
       });
     case "delete":
-      return await deleteCue(liveSet, {
-        cueId,
-        cueTime,
-        cueName,
+      return await deleteLocator(liveSet, {
+        locatorId,
+        locatorTime,
+        locatorName,
         timeSigNumerator,
         timeSigDenominator,
       });
     case "rename":
-      return renameCue(liveSet, {
-        cueId,
-        cueTime,
-        cueName,
+      return renameLocator(liveSet, {
+        locatorId,
+        locatorTime,
+        locatorName,
         timeSigNumerator,
         timeSigDenominator,
       });
     default:
-      throw new Error(`Unknown cue operation: ${cueOperation}`);
+      throw new Error(`Unknown locator operation: ${locatorOperation}`);
   }
 }
 
 /**
- * Create a cue point at the specified position
+ * Create a locator at the specified position
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} options - Create options
- * @param {string} options.cueTime - Bar|beat position for the cue
- * @param {string} [options.cueName] - Optional name for the cue
+ * @param {string} options.locatorTime - Bar|beat position for the locator
+ * @param {string} [options.locatorName] - Optional name for the locator
  * @param {number} options.timeSigNumerator - Time signature numerator
  * @param {number} options.timeSigDenominator - Time signature denominator
- * @returns {Promise<object>} Created cue info
+ * @returns {Promise<object>} Created locator info
  */
-async function createCue(
+async function createLocator(
   liveSet,
-  { cueTime, cueName, timeSigNumerator, timeSigDenominator },
+  { locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
 ) {
-  if (cueTime == null) {
-    throw new Error("cueTime is required for create operation");
+  if (locatorTime == null) {
+    throw new Error("locatorTime is required for create operation");
   }
 
   const targetBeats = barBeatToAbletonBeats(
-    cueTime,
+    locatorTime,
     timeSigNumerator,
     timeSigDenominator,
   );
 
-  // Check if a cue already exists at this position
-  const existing = findCue(liveSet, { timeInBeats: targetBeats });
+  // Check if a locator already exists at this position
+  const existing = findLocator(liveSet, { timeInBeats: targetBeats });
 
   if (existing) {
     console.error(
-      `Cue already exists at ${cueTime} (id: ${getCueId(existing.index)}), skipping create`,
+      `Locator already exists at ${locatorTime} (id: ${getLocatorId(existing.index)}), skipping create`,
     );
 
     return {
       operation: "skipped",
-      reason: "cue_exists",
-      time: cueTime,
-      existingId: getCueId(existing.index),
+      reason: "locator_exists",
+      time: locatorTime,
+      existingId: getLocatorId(existing.index),
     };
   }
 
@@ -266,55 +266,57 @@ async function createCue(
   liveSet.set("current_song_time", targetBeats);
   await waitForPlayheadPosition(liveSet, targetBeats);
 
-  // Create cue at current playhead position
+  // Create locator at current playhead position
   liveSet.call("set_or_delete_cue");
 
-  // Find the newly created cue to get its index and set name if provided
-  const found = findCue(liveSet, { timeInBeats: targetBeats });
+  // Find the newly created locator to get its index and set name if provided
+  const found = findLocator(liveSet, { timeInBeats: targetBeats });
 
-  if (found && cueName != null) {
-    found.cue.set("name", cueName);
+  if (found && locatorName != null) {
+    found.locator.set("name", locatorName);
   }
 
   return {
     operation: "created",
-    time: cueTime,
-    ...(cueName != null && { name: cueName }),
-    ...(found && { id: getCueId(found.index) }),
+    time: locatorTime,
+    ...(locatorName != null && { name: locatorName }),
+    ...(found && { id: getLocatorId(found.index) }),
   };
 }
 
 /**
- * Delete cue point(s) by ID, time, or name
+ * Delete locator(s) by ID, time, or name
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} options - Delete options
- * @param {string} [options.cueId] - Cue ID to delete
- * @param {string} [options.cueTime] - Bar|beat position to delete
- * @param {string} [options.cueName] - Name filter for batch delete
+ * @param {string} [options.locatorId] - Locator ID to delete
+ * @param {string} [options.locatorTime] - Bar|beat position to delete
+ * @param {string} [options.locatorName] - Name filter for batch delete
  * @param {number} options.timeSigNumerator - Time signature numerator
  * @param {number} options.timeSigDenominator - Time signature denominator
  * @returns {Promise<object>} Deletion result
  */
-async function deleteCue(
+async function deleteLocator(
   liveSet,
-  { cueId, cueTime, cueName, timeSigNumerator, timeSigDenominator },
+  { locatorId, locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
 ) {
   // Validate that at least one identifier is provided
-  if (cueId == null && cueTime == null && cueName == null) {
-    throw new Error("delete requires cueId, cueTime, or cueName");
+  if (locatorId == null && locatorTime == null && locatorName == null) {
+    throw new Error("delete requires locatorId, locatorTime, or locatorName");
   }
 
-  // Delete by name (can match multiple cues)
-  if (cueId == null && cueTime == null && cueName != null) {
-    const matches = findCuesByName(liveSet, cueName);
+  // Delete by name (can match multiple locators)
+  if (locatorId == null && locatorTime == null && locatorName != null) {
+    const matches = findLocatorsByName(liveSet, locatorName);
 
     if (matches.length === 0) {
-      console.error(`No cues found with name: ${cueName}, skipping delete`);
+      console.error(
+        `No locators found with name: ${locatorName}, skipping delete`,
+      );
 
       return {
         operation: "skipped",
-        reason: "no_cues_found",
-        name: cueName,
+        reason: "no_locators_found",
+        name: locatorName,
       };
     }
 
@@ -332,42 +334,44 @@ async function deleteCue(
     return {
       operation: "deleted",
       count: matches.length,
-      name: cueName,
+      name: locatorName,
     };
   }
 
-  // Delete by ID or time (single cue)
+  // Delete by ID or time (single locator)
   let timeInBeats;
 
-  if (cueId != null) {
-    const found = findCue(liveSet, { cueId });
+  if (locatorId != null) {
+    const found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      console.error(`Cue not found: ${cueId}, skipping delete`);
+      console.error(`Locator not found: ${locatorId}, skipping delete`);
 
       return {
         operation: "skipped",
-        reason: "cue_not_found",
-        id: cueId,
+        reason: "locator_not_found",
+        id: locatorId,
       };
     }
 
-    timeInBeats = found.cue.getProperty("time");
-  } else if (cueTime != null) {
+    timeInBeats = found.locator.getProperty("time");
+  } else if (locatorTime != null) {
     timeInBeats = barBeatToAbletonBeats(
-      cueTime,
+      locatorTime,
       timeSigNumerator,
       timeSigDenominator,
     );
-    const found = findCue(liveSet, { timeInBeats });
+    const found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      console.error(`No cue found at position: ${cueTime}, skipping delete`);
+      console.error(
+        `No locator found at position: ${locatorTime}, skipping delete`,
+      );
 
       return {
         operation: "skipped",
-        reason: "cue_not_found",
-        time: cueTime,
+        reason: "locator_not_found",
+        time: locatorTime,
       };
     }
   }
@@ -380,62 +384,62 @@ async function deleteCue(
 
   return {
     operation: "deleted",
-    ...(cueId != null && { id: cueId }),
-    ...(cueTime != null && { time: cueTime }),
+    ...(locatorId != null && { id: locatorId }),
+    ...(locatorTime != null && { time: locatorTime }),
   };
 }
 
 /**
- * Rename a cue point by ID or time
+ * Rename a locator by ID or time
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} options - Rename options
- * @param {string} [options.cueId] - Cue ID to rename
- * @param {string} [options.cueTime] - Bar|beat position to rename
- * @param {string} options.cueName - New name for the cue
+ * @param {string} [options.locatorId] - Locator ID to rename
+ * @param {string} [options.locatorTime] - Bar|beat position to rename
+ * @param {string} options.locatorName - New name for the locator
  * @param {number} options.timeSigNumerator - Time signature numerator
  * @param {number} options.timeSigDenominator - Time signature denominator
  * @returns {object} Rename result
  */
-function renameCue(
+function renameLocator(
   liveSet,
-  { cueId, cueTime, cueName, timeSigNumerator, timeSigDenominator },
+  { locatorId, locatorTime, locatorName, timeSigNumerator, timeSigDenominator },
 ) {
-  if (cueName == null) {
-    throw new Error("cueName is required for rename operation");
+  if (locatorName == null) {
+    throw new Error("locatorName is required for rename operation");
   }
 
-  if (cueId == null && cueTime == null) {
-    throw new Error("rename requires cueId or cueTime");
+  if (locatorId == null && locatorTime == null) {
+    throw new Error("rename requires locatorId or locatorTime");
   }
 
   let found;
 
-  if (cueId != null) {
-    found = findCue(liveSet, { cueId });
+  if (locatorId != null) {
+    found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      throw new Error(`Cue not found: ${cueId}`);
+      throw new Error(`Locator not found: ${locatorId}`);
     }
   } else {
     const timeInBeats = barBeatToAbletonBeats(
-      cueTime,
+      locatorTime,
       timeSigNumerator,
       timeSigDenominator,
     );
 
-    found = findCue(liveSet, { timeInBeats });
+    found = findLocator(liveSet, { timeInBeats });
 
     if (!found) {
-      throw new Error(`No cue found at position: ${cueTime}`);
+      throw new Error(`No locator found at position: ${locatorTime}`);
     }
   }
 
-  found.cue.set("name", cueName);
+  found.locator.set("name", locatorName);
 
   return {
     operation: "renamed",
-    id: getCueId(found.index),
-    name: cueName,
+    id: getLocatorId(found.index),
+    name: locatorName,
   };
 }
 

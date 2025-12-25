@@ -6,8 +6,8 @@ import {
 } from "../../../test/mock-live-api.js";
 import { readLiveSet } from "../read-live-set.js";
 
-describe("readLiveSet - cue points", () => {
-  it("should not include cue points by default", () => {
+describe("readLiveSet - locators", () => {
+  it("should not include locators by default", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       return this._id;
@@ -28,10 +28,10 @@ describe("readLiveSet - cue points", () => {
 
     const result = readLiveSet({ include: [] });
 
-    expect(result.cuePoints).toBeUndefined();
+    expect(result.locators).toBeUndefined();
   });
 
-  it("should include cue points when requested", () => {
+  it("should include locators when requested", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
@@ -60,15 +60,15 @@ describe("readLiveSet - cue points", () => {
       },
     });
 
-    const result = readLiveSet({ include: ["cue-points"] });
+    const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.cuePoints).toEqual([
-      { id: "cue-0", name: "Intro", time: "1|1" },
-      { id: "cue-1", name: "Verse", time: "5|1" },
+    expect(result.locators).toEqual([
+      { id: "locator-0", name: "Intro", time: "1|1" },
+      { id: "locator-1", name: "Verse", time: "5|1" },
     ]);
   });
 
-  it("should handle empty cue points array", () => {
+  it("should handle empty locators array", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       return this._id;
@@ -87,12 +87,12 @@ describe("readLiveSet - cue points", () => {
       },
     });
 
-    const result = readLiveSet({ include: ["cue-points"] });
+    const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.cuePoints).toEqual([]);
+    expect(result.locators).toEqual([]);
   });
 
-  it("should format cue times correctly in different time signatures", () => {
+  it("should format locator times correctly in different time signatures", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
@@ -116,14 +116,14 @@ describe("readLiveSet - cue points", () => {
       },
     });
 
-    const result = readLiveSet({ include: ["cue-points"] });
+    const result = readLiveSet({ include: ["locators"] });
 
-    expect(result.cuePoints).toEqual([
-      { id: "cue-0", name: "Chorus", time: "3|1" },
+    expect(result.locators).toEqual([
+      { id: "locator-0", name: "Chorus", time: "3|1" },
     ]);
   });
 
-  it("should include cue points with wildcard include", () => {
+  it("should include locators with wildcard include", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") return "live_set_id";
       if (this._path === "id cue1") return "cue1";
@@ -149,8 +149,8 @@ describe("readLiveSet - cue points", () => {
 
     const result = readLiveSet({ include: ["*"] });
 
-    expect(result.cuePoints).toEqual([
-      { id: "cue-0", name: "Bridge", time: "9|1" },
+    expect(result.locators).toEqual([
+      { id: "locator-0", name: "Bridge", time: "9|1" },
     ]);
   });
 });

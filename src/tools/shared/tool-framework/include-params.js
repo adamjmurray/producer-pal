@@ -16,7 +16,7 @@ const AVAILABLE_ROUTINGS = "available-routings";
 const COLOR = "color";
 const CLIPS = "clips";
 const MIXER = "mixer";
-const CUE_POINTS = "cue-points";
+const LOCATORS = "locators";
 
 /**
  * All available include options mapped by tool type
@@ -43,7 +43,7 @@ const ALL_INCLUDE_OPTIONS = {
     COLOR,
     WARP_MARKERS,
     MIXER,
-    CUE_POINTS,
+    LOCATORS,
   ],
   track: [
     DRUM_CHAINS,
@@ -107,7 +107,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeColor: Boolean(defaults.includeColor),
       includeWarpMarkers: Boolean(defaults.includeWarpMarkers),
       includeMixer: Boolean(defaults.includeMixer),
-      includeCuePoints: Boolean(defaults.includeCuePoints),
+      includeLocators: Boolean(defaults.includeLocators),
     };
   }
 
@@ -139,7 +139,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeColor: false,
       includeWarpMarkers: false,
       includeMixer: false,
-      includeCuePoints: false,
+      includeLocators: false,
     };
   }
 
@@ -163,7 +163,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeColor: includeSet.has(COLOR),
     includeWarpMarkers: includeSet.has(WARP_MARKERS),
     includeMixer: includeSet.has(MIXER),
-    includeCuePoints: includeSet.has(CUE_POINTS),
+    includeLocators: includeSet.has(LOCATORS),
   };
 
   return result;
@@ -192,7 +192,7 @@ const FLAG_TO_OPTION = [
   ["includeColor", COLOR],
   ["includeWarpMarkers", WARP_MARKERS],
   ["includeMixer", MIXER],
-  ["includeCuePoints", CUE_POINTS],
+  ["includeLocators", LOCATORS],
 ];
 
 /**
@@ -227,7 +227,7 @@ export const READ_SONG_DEFAULTS = {
   includeColor: false,
   includeWarpMarkers: false,
   includeMixer: false,
-  includeCuePoints: false,
+  includeLocators: false,
 };
 
 /**

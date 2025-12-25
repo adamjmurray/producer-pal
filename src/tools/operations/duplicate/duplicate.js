@@ -1,6 +1,6 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { select } from "#src/tools/control/select.js";
-import { resolveCueToBeats } from "#src/tools/shared/cue/cue-helpers.js";
+import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
 import {
@@ -18,11 +18,11 @@ import {
 } from "./helpers/duplicate-validation-helpers.js";
 
 /**
- * Resolves arrangement position from bar|beat or cue
+ * Resolves arrangement position from bar|beat or locator
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {string} arrangementStart - Bar|beat position
- * @param {string} arrangementCueId - Cue ID for position
- * @param {string} arrangementCueName - Cue name for position
+ * @param {string} arrangementLocatorId - Locator ID for position
+ * @param {string} arrangementLocatorName - Locator name for position
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number} Position in beats
@@ -30,15 +30,15 @@ import {
 function resolveArrangementPosition(
   liveSet,
   arrangementStart,
-  arrangementCueId,
-  arrangementCueName,
+  arrangementLocatorId,
+  arrangementLocatorName,
   timeSigNumerator,
   timeSigDenominator,
 ) {
-  if (arrangementCueId != null || arrangementCueName != null) {
-    return resolveCueToBeats(
+  if (arrangementLocatorId != null || arrangementLocatorName != null) {
+    return resolveLocatorToBeats(
       liveSet,
-      { cueId: arrangementCueId, cueName: arrangementCueName },
+      { locatorId: arrangementLocatorId, locatorName: arrangementLocatorName },
       "duplicate",
     );
   }
@@ -59,8 +59,8 @@ function resolveArrangementPosition(
  * @param {number} [args.count=1] - Number of duplicates to create
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement"), required when type is "clip"
  * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
- * @param {string} [args.arrangementCueId] - Cue ID for arrangement position (e.g., 'cue-0')
- * @param {string} [args.arrangementCueName] - Cue name for arrangement position
+ * @param {string} [args.arrangementLocatorId] - Locator ID for arrangement position (e.g., 'locator-0')
+ * @param {string} [args.arrangementLocatorName] - Locator name for arrangement position
  * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
@@ -79,8 +79,8 @@ export function duplicate(
     count = 1,
     destination,
     arrangementStart,
-    arrangementCueId,
-    arrangementCueName,
+    arrangementLocatorId,
+    arrangementLocatorName,
     arrangementLength,
     name,
     withoutClips,
@@ -121,8 +121,8 @@ export function duplicate(
   validateArrangementParameters(
     destination,
     arrangementStart,
-    arrangementCueId,
-    arrangementCueName,
+    arrangementLocatorId,
+    arrangementLocatorName,
   );
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
@@ -136,8 +136,8 @@ export function duplicate(
           toTrackIndex,
           toSceneIndex,
           arrangementStart,
-          arrangementCueId,
-          arrangementCueName,
+          arrangementLocatorId,
+          arrangementLocatorName,
           arrangementLength,
           context,
         )
@@ -150,8 +150,8 @@ export function duplicate(
           name,
           {
             arrangementStart,
-            arrangementCueId,
-            arrangementCueName,
+            arrangementLocatorId,
+            arrangementLocatorName,
             arrangementLength,
             withoutClips,
             withoutDevices,
@@ -219,8 +219,8 @@ function duplicateTrackOrSceneWithCount(
   const createdObjects = [];
   const {
     arrangementStart,
-    arrangementCueId,
-    arrangementCueName,
+    arrangementLocatorId,
+    arrangementLocatorName,
     arrangementLength,
     withoutClips,
     withoutDevices,
@@ -239,8 +239,8 @@ function duplicateTrackOrSceneWithCount(
       objectName,
       {
         arrangementStart,
-        arrangementCueId,
-        arrangementCueName,
+        arrangementLocatorId,
+        arrangementLocatorName,
         arrangementLength,
         withoutClips,
         withoutDevices,
@@ -300,8 +300,8 @@ function switchViewIfRequested(switchView, destination, type) {
  * @param {number} i - Current duplicate index
  * @param {string} objectName - Name for the duplicated object
  * @param {string} arrangementStart - Start time in bar|beat format
- * @param {string} arrangementCueId - Cue ID for arrangement position
- * @param {string} arrangementCueName - Cue name for arrangement position
+ * @param {string} arrangementLocatorId - Locator ID for arrangement position
+ * @param {string} arrangementLocatorName - Locator name for arrangement position
  * @param {string} arrangementLength - Duration in bar|beat format
  * @param {boolean} withoutClips - Whether to exclude clips
  * @param {object} context - Context object with holdingAreaStartBeats
@@ -313,8 +313,8 @@ function duplicateSceneToArrangementView(
   i,
   objectName,
   arrangementStart,
-  arrangementCueId,
-  arrangementCueName,
+  arrangementLocatorId,
+  arrangementLocatorName,
   arrangementLength,
   withoutClips,
   context,
@@ -324,12 +324,12 @@ function duplicateSceneToArrangementView(
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-  // Resolve arrangement start position from bar|beat or cue
+  // Resolve arrangement start position from bar|beat or locator
   const baseArrangementStartBeats = resolveArrangementPosition(
     liveSet,
     arrangementStart,
-    arrangementCueId,
-    arrangementCueName,
+    arrangementLocatorId,
+    arrangementLocatorName,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -441,8 +441,8 @@ function performDuplication(
 ) {
   const {
     arrangementStart,
-    arrangementCueId,
-    arrangementCueName,
+    arrangementLocatorId,
+    arrangementLocatorName,
     arrangementLength,
     withoutClips,
     withoutDevices,
@@ -456,8 +456,8 @@ function performDuplication(
       i,
       objectName,
       arrangementStart,
-      arrangementCueId,
-      arrangementCueName,
+      arrangementLocatorId,
+      arrangementLocatorName,
       arrangementLength,
       withoutClips,
       context,

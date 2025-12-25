@@ -1,36 +1,43 @@
 import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
-import { findCue, findCuesByName } from "../shared/cue/cue-helpers.js";
+import {
+  findLocator,
+  findLocatorsByName,
+} from "../shared/locator/locator-helpers.js";
 
 /**
- * Resolve a cue by ID or name to its time in beats
+ * Resolve a locator by ID or name to its time in beats
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
- * @param {object} options - Cue identifier options
- * @param {string} [options.cueId] - Cue ID to find
- * @param {string} [options.cueName] - Cue name to find
+ * @param {object} options - Locator identifier options
+ * @param {string} [options.locatorId] - Locator ID to find
+ * @param {string} [options.locatorName] - Locator name to find
  * @param {string} paramName - Name of the parameter for error messages
- * @returns {number|null} Time in beats or null if no cue specified
+ * @returns {number|null} Time in beats or null if no locator specified
  */
-export function resolveCueToBeats(liveSet, { cueId, cueName }, paramName) {
-  if (cueId != null) {
-    const found = findCue(liveSet, { cueId });
+export function resolveLocatorToBeats(
+  liveSet,
+  { locatorId, locatorName },
+  paramName,
+) {
+  if (locatorId != null) {
+    const found = findLocator(liveSet, { locatorId });
 
     if (!found) {
-      throw new Error(`playback failed: cue not found: ${cueId}`);
+      throw new Error(`playback failed: locator not found: ${locatorId}`);
     }
 
-    return found.cue.getProperty("time");
+    return found.locator.getProperty("time");
   }
 
-  if (cueName != null) {
-    const matches = findCuesByName(liveSet, cueName);
+  if (locatorName != null) {
+    const matches = findLocatorsByName(liveSet, locatorName);
 
     if (matches.length === 0) {
       throw new Error(
-        `playback failed: no cue found with name "${cueName}" for ${paramName}`,
+        `playback failed: no locator found with name "${locatorName}" for ${paramName}`,
       );
     }
 
-    // Use the first matching cue
+    // Use the first matching locator
     return matches[0].time;
   }
 
@@ -38,57 +45,57 @@ export function resolveCueToBeats(liveSet, { cueId, cueName }, paramName) {
 }
 
 /**
- * Validate mutual exclusivity of time and cue parameters
+ * Validate mutual exclusivity of time and locator parameters
  * @param {string} timeParam - Time parameter value
- * @param {string} cueIdParam - Cue ID parameter value
- * @param {string} cueNameParam - Cue name parameter value
+ * @param {string} locatorIdParam - Locator ID parameter value
+ * @param {string} locatorNameParam - Locator name parameter value
  * @param {string} paramName - Name of the parameter for error messages
  */
-export function validateCueOrTime(
+export function validateLocatorOrTime(
   timeParam,
-  cueIdParam,
-  cueNameParam,
+  locatorIdParam,
+  locatorNameParam,
   paramName,
 ) {
   const hasTime = timeParam != null;
-  const hasCueId = cueIdParam != null;
-  const hasCueName = cueNameParam != null;
+  const hasLocatorId = locatorIdParam != null;
+  const hasLocatorName = locatorNameParam != null;
 
-  // Compute base name for cue parameters (strip "Time" suffix if present)
+  // Compute base name for locator parameters (strip "Time" suffix if present)
   // e.g., "startTime" → "start", "loopStart" → "loopStart"
-  const cueParamBase = paramName.replace(/Time$/, "");
+  const locatorParamBase = paramName.replace(/Time$/, "");
 
-  if (hasTime && (hasCueId || hasCueName)) {
+  if (hasTime && (hasLocatorId || hasLocatorName)) {
     throw new Error(
-      `playback failed: ${paramName} cannot be used with ${cueParamBase}CueId or ${cueParamBase}CueName`,
+      `playback failed: ${paramName} cannot be used with ${locatorParamBase}LocatorId or ${locatorParamBase}LocatorName`,
     );
   }
 
-  if (hasCueId && hasCueName) {
+  if (hasLocatorId && hasLocatorName) {
     throw new Error(
-      `playback failed: ${cueParamBase}CueId and ${cueParamBase}CueName are mutually exclusive`,
+      `playback failed: ${locatorParamBase}LocatorId and ${locatorParamBase}LocatorName are mutually exclusive`,
     );
   }
 }
 
 /**
- * Resolve start time from either bar|beat string, cue ID, or cue name
+ * Resolve start time from either bar|beat string, locator ID, or locator name
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} params - Start time parameters
  * @param {string} [params.startTime] - Bar|beat position
- * @param {string} [params.startCueId] - Cue ID for start
- * @param {string} [params.startCueName] - Cue name for start
+ * @param {string} [params.startLocatorId] - Locator ID for start
+ * @param {string} [params.startLocatorName] - Locator name for start
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
- * @returns {{startTimeBeats: number|undefined, useCueStart: boolean}} Resolved start time
+ * @returns {{startTimeBeats: number|undefined, useLocatorStart: boolean}} Resolved start time
  */
 export function resolveStartTime(
   liveSet,
-  { startTime, startCueId, startCueName },
+  { startTime, startLocatorId, startLocatorName },
   timeSigNumerator,
   timeSigDenominator,
 ) {
-  const useCueStart = startCueId != null || startCueName != null;
+  const useLocatorStart = startLocatorId != null || startLocatorName != null;
   let startTimeBeats;
 
   if (startTime != null) {
@@ -98,32 +105,32 @@ export function resolveStartTime(
       timeSigDenominator,
     );
     liveSet.set("start_time", startTimeBeats);
-  } else if (useCueStart) {
-    startTimeBeats = resolveCueToBeats(
+  } else if (useLocatorStart) {
+    startTimeBeats = resolveLocatorToBeats(
       liveSet,
-      { cueId: startCueId, cueName: startCueName },
+      { locatorId: startLocatorId, locatorName: startLocatorName },
       "start",
     );
     liveSet.set("start_time", startTimeBeats);
   }
 
-  return { startTimeBeats, useCueStart };
+  return { startTimeBeats, useLocatorStart };
 }
 
 /**
- * Resolve loop start time from either bar|beat string, cue ID, or cue name
+ * Resolve loop start time from either bar|beat string, locator ID, or locator name
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} params - Loop start parameters
  * @param {string} [params.loopStart] - Bar|beat position
- * @param {string} [params.loopStartCueId] - Cue ID for loop start
- * @param {string} [params.loopStartCueName] - Cue name for loop start
+ * @param {string} [params.loopStartLocatorId] - Locator ID for loop start
+ * @param {string} [params.loopStartLocatorName] - Locator name for loop start
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  * @returns {number|undefined} Resolved loop start in beats
  */
 export function resolveLoopStart(
   liveSet,
-  { loopStart, loopStartCueId, loopStartCueName },
+  { loopStart, loopStartLocatorId, loopStartLocatorName },
   timeSigNumerator,
   timeSigDenominator,
 ) {
@@ -136,10 +143,10 @@ export function resolveLoopStart(
       timeSigDenominator,
     );
     liveSet.set("loop_start", loopStartBeats);
-  } else if (loopStartCueId != null || loopStartCueName != null) {
-    loopStartBeats = resolveCueToBeats(
+  } else if (loopStartLocatorId != null || loopStartLocatorName != null) {
+    loopStartBeats = resolveLocatorToBeats(
       liveSet,
-      { cueId: loopStartCueId, cueName: loopStartCueName },
+      { locatorId: loopStartLocatorId, locatorName: loopStartLocatorName },
       "loopStart",
     );
     liveSet.set("loop_start", loopStartBeats);
@@ -153,15 +160,15 @@ export function resolveLoopStart(
  * @param {LiveAPI} liveSet - The live_set LiveAPI object
  * @param {object} params - Loop end parameters
  * @param {string} [params.loopEnd] - Bar|beat position
- * @param {string} [params.loopEndCueId] - Cue ID for loop end
- * @param {string} [params.loopEndCueName] - Cue name for loop end
+ * @param {string} [params.loopEndLocatorId] - Locator ID for loop end
+ * @param {string} [params.loopEndLocatorName] - Locator name for loop end
  * @param {number|undefined} loopStartBeats - Resolved loop start in beats
  * @param {number} timeSigNumerator - Time signature numerator
  * @param {number} timeSigDenominator - Time signature denominator
  */
 export function resolveLoopEnd(
   liveSet,
-  { loopEnd, loopEndCueId, loopEndCueName },
+  { loopEnd, loopEndLocatorId, loopEndLocatorName },
   loopStartBeats,
   timeSigNumerator,
   timeSigDenominator,
@@ -174,10 +181,10 @@ export function resolveLoopEnd(
       timeSigNumerator,
       timeSigDenominator,
     );
-  } else if (loopEndCueId != null || loopEndCueName != null) {
-    loopEndBeats = resolveCueToBeats(
+  } else if (loopEndLocatorId != null || loopEndLocatorName != null) {
+    loopEndBeats = resolveLocatorToBeats(
       liveSet,
-      { cueId: loopEndCueId, cueName: loopEndCueName },
+      { locatorId: loopEndLocatorId, locatorName: loopEndLocatorName },
       "loopEnd",
     );
   }
@@ -189,4 +196,22 @@ export function resolveLoopEnd(
 
     liveSet.set("loop_length", loopLengthBeats);
   }
+}
+
+/**
+ * Get track IDs that are currently following the arrangement
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @returns {string} Comma-separated list of track IDs following arrangement
+ */
+export function getArrangementFollowerTrackIds(liveSet) {
+  const trackIds = liveSet.getChildIds("tracks");
+
+  return trackIds
+    .filter((trackId) => {
+      const track = LiveAPI.from(trackId);
+
+      return track.exists() && track.getProperty("back_to_arranger") === 0;
+    })
+    .map((trackId) => trackId.replace("id ", ""))
+    .join(",");
 }

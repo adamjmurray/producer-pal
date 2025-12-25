@@ -8,24 +8,24 @@ import {
 } from "../../../test/mock-live-api.js";
 import { updateLiveSet } from "../update-live-set.js";
 
-describe("updateLiveSet - cue operations", () => {
+describe("updateLiveSet - locator operations", () => {
   beforeEach(() => {
     liveApiId.mockReturnValue("live_set_id");
     vi.clearAllMocks();
   });
 
-  describe("create cue", () => {
-    it("should create cue at specified position", async () => {
-      // Track whether set_or_delete_cue was called (simulates cue creation)
-      let cueCreated = false;
+  describe("create locator", () => {
+    it("should create locator at specified position", async () => {
+      // Track whether set_or_delete_cue was called (simulates locator creation)
+      let locatorCreated = false;
 
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
-        // Return empty before creation, return cue after
+        // Return empty before creation, return locator after
         if (prop === "cue_points") {
-          return cueCreated ? children("new_cue") : children();
+          return locatorCreated ? children("new_cue") : children();
         }
         if (prop === "time") return [0]; // 1|1 = 0 beats
         return [0];
@@ -33,13 +33,13 @@ describe("updateLiveSet - cue operations", () => {
 
       liveApiCall.mockImplementation(function (method) {
         if (method === "set_or_delete_cue") {
-          cueCreated = true;
+          locatorCreated = true;
         }
       });
 
       const result = await updateLiveSet({
-        cueOperation: "create",
-        cueTime: "1|1",
+        locatorOperation: "create",
+        locatorTime: "1|1",
       });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -48,23 +48,23 @@ describe("updateLiveSet - cue operations", () => {
         0,
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "created",
         time: "1|1",
-        id: "cue-0",
+        id: "locator-0",
       });
     });
 
-    it("should create cue with name", async () => {
-      let cueCreated = false;
-      let cueNameSet = null;
+    it("should create locator with name", async () => {
+      let locatorCreated = false;
+      let locatorNameSet = null;
 
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") {
-          return cueCreated ? children("new_cue") : children();
+          return locatorCreated ? children("new_cue") : children();
         }
         if (prop === "time") return [16]; // 5|1 = 16 beats
         return [0];
@@ -72,20 +72,20 @@ describe("updateLiveSet - cue operations", () => {
 
       liveApiCall.mockImplementation(function (method) {
         if (method === "set_or_delete_cue") {
-          cueCreated = true;
+          locatorCreated = true;
         }
       });
 
       liveApiSet.mockImplementation(function (prop, value) {
         if (prop === "name") {
-          cueNameSet = value;
+          locatorNameSet = value;
         }
       });
 
       const result = await updateLiveSet({
-        cueOperation: "create",
-        cueTime: "5|1",
-        cueName: "Verse",
+        locatorOperation: "create",
+        locatorTime: "5|1",
+        locatorName: "Verse",
       });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -94,24 +94,24 @@ describe("updateLiveSet - cue operations", () => {
         16,
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(cueNameSet).toBe("Verse");
-      expect(result.cue).toEqual({
+      expect(locatorNameSet).toBe("Verse");
+      expect(result.locator).toEqual({
         operation: "created",
         time: "5|1",
         name: "Verse",
-        id: "cue-0",
+        id: "locator-0",
       });
     });
 
-    it("should stop playback before creating cue", async () => {
-      let cueCreated = false;
+    it("should stop playback before creating locator", async () => {
+      let locatorCreated = false;
 
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [1];
         if (prop === "cue_points") {
-          return cueCreated ? children("new_cue") : children();
+          return locatorCreated ? children("new_cue") : children();
         }
         if (prop === "time") return [0];
         return [0];
@@ -119,19 +119,19 @@ describe("updateLiveSet - cue operations", () => {
 
       liveApiCall.mockImplementation(function (method) {
         if (method === "set_or_delete_cue") {
-          cueCreated = true;
+          locatorCreated = true;
         }
       });
 
       await updateLiveSet({
-        cueOperation: "create",
-        cueTime: "1|1",
+        locatorOperation: "create",
+        locatorTime: "1|1",
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("stop_playing");
     });
 
-    it("should skip creation if cue already exists at position", async () => {
+    it("should skip creation if locator already exists at position", async () => {
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -143,31 +143,31 @@ describe("updateLiveSet - cue operations", () => {
       });
 
       const result = await updateLiveSet({
-        cueOperation: "create",
-        cueTime: "5|1",
-        cueName: "New Cue",
+        locatorOperation: "create",
+        locatorTime: "5|1",
+        locatorName: "New Locator",
       });
 
-      // Should NOT call set_or_delete_cue (would delete existing cue)
+      // Should NOT call set_or_delete_cue (would delete existing locator)
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "skipped",
-        reason: "cue_exists",
+        reason: "locator_exists",
         time: "5|1",
-        existingId: "cue-0",
+        existingId: "locator-0",
       });
     });
 
-    it("should throw if cueTime is missing for create", async () => {
+    it("should throw if locatorTime is missing for create", async () => {
       await expect(
         updateLiveSet({
-          cueOperation: "create",
+          locatorOperation: "create",
         }),
-      ).rejects.toThrow("cueTime is required for create operation");
+      ).rejects.toThrow("locatorTime is required for create operation");
     });
   });
 
-  describe("delete cue", () => {
+  describe("delete locator", () => {
     beforeEach(() => {
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
@@ -186,10 +186,10 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should delete cue by ID", async () => {
+    it("should delete locator by ID", async () => {
       const result = await updateLiveSet({
-        cueOperation: "delete",
-        cueId: "cue-0",
+        locatorOperation: "delete",
+        locatorId: "locator-0",
       });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -198,16 +198,16 @@ describe("updateLiveSet - cue operations", () => {
         0,
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "deleted",
-        id: "cue-0",
+        id: "locator-0",
       });
     });
 
-    it("should delete cue by time", async () => {
+    it("should delete locator by time", async () => {
       const result = await updateLiveSet({
-        cueOperation: "delete",
-        cueTime: "5|1",
+        locatorOperation: "delete",
+        locatorTime: "5|1",
       });
 
       expect(liveApiSet).toHaveBeenCalledWithThis(
@@ -216,13 +216,13 @@ describe("updateLiveSet - cue operations", () => {
         16,
       );
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "deleted",
         time: "5|1",
       });
     });
 
-    it("should delete all cues by name", async () => {
+    it("should delete all locators by name", async () => {
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
@@ -244,12 +244,12 @@ describe("updateLiveSet - cue operations", () => {
       });
 
       const result = await updateLiveSet({
-        cueOperation: "delete",
-        cueName: "Verse",
+        locatorOperation: "delete",
+        locatorName: "Verse",
       });
 
       expect(liveApiCall).toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "deleted",
         count: 2,
         name: "Verse",
@@ -259,55 +259,57 @@ describe("updateLiveSet - cue operations", () => {
     it("should throw if no identifier provided for delete", async () => {
       await expect(
         updateLiveSet({
-          cueOperation: "delete",
+          locatorOperation: "delete",
         }),
-      ).rejects.toThrow("delete requires cueId, cueTime, or cueName");
+      ).rejects.toThrow(
+        "delete requires locatorId, locatorTime, or locatorName",
+      );
     });
 
-    it("should skip if cue ID not found", async () => {
+    it("should skip if locator ID not found", async () => {
       const result = await updateLiveSet({
-        cueOperation: "delete",
-        cueId: "cue-99",
+        locatorOperation: "delete",
+        locatorId: "locator-99",
       });
 
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "skipped",
-        reason: "cue_not_found",
-        id: "cue-99",
+        reason: "locator_not_found",
+        id: "locator-99",
       });
     });
 
-    it("should skip if no cue at specified time", async () => {
+    it("should skip if no locator at specified time", async () => {
       const result = await updateLiveSet({
-        cueOperation: "delete",
-        cueTime: "100|1",
+        locatorOperation: "delete",
+        locatorTime: "100|1",
       });
 
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "skipped",
-        reason: "cue_not_found",
+        reason: "locator_not_found",
         time: "100|1",
       });
     });
 
-    it("should skip if no cues match name", async () => {
+    it("should skip if no locators match name", async () => {
       const result = await updateLiveSet({
-        cueOperation: "delete",
-        cueName: "NonExistent",
+        locatorOperation: "delete",
+        locatorName: "NonExistent",
       });
 
       expect(liveApiCall).not.toHaveBeenCalledWith("set_or_delete_cue");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "skipped",
-        reason: "no_cues_found",
+        reason: "no_locators_found",
         name: "NonExistent",
       });
     });
   });
 
-  describe("rename cue", () => {
+  describe("rename locator", () => {
     beforeEach(() => {
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
@@ -324,75 +326,75 @@ describe("updateLiveSet - cue operations", () => {
       });
     });
 
-    it("should rename cue by ID", async () => {
+    it("should rename locator by ID", async () => {
       const result = await updateLiveSet({
-        cueOperation: "rename",
-        cueId: "cue-0",
-        cueName: "New Intro",
+        locatorOperation: "rename",
+        locatorId: "locator-0",
+        locatorName: "New Intro",
       });
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "New Intro");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "renamed",
-        id: "cue-0",
+        id: "locator-0",
         name: "New Intro",
       });
     });
 
-    it("should rename cue by time", async () => {
+    it("should rename locator by time", async () => {
       const result = await updateLiveSet({
-        cueOperation: "rename",
-        cueTime: "5|1",
-        cueName: "New Verse",
+        locatorOperation: "rename",
+        locatorTime: "5|1",
+        locatorName: "New Verse",
       });
 
       expect(liveApiSet).toHaveBeenCalledWith("name", "New Verse");
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "renamed",
-        id: "cue-1",
+        id: "locator-1",
         name: "New Verse",
       });
     });
 
-    it("should throw if cueName is missing for rename", async () => {
+    it("should throw if locatorName is missing for rename", async () => {
       await expect(
         updateLiveSet({
-          cueOperation: "rename",
-          cueId: "cue-0",
+          locatorOperation: "rename",
+          locatorId: "locator-0",
         }),
-      ).rejects.toThrow("cueName is required for rename operation");
+      ).rejects.toThrow("locatorName is required for rename operation");
     });
 
     it("should throw if no identifier provided for rename", async () => {
       await expect(
         updateLiveSet({
-          cueOperation: "rename",
-          cueName: "New Name",
+          locatorOperation: "rename",
+          locatorName: "New Name",
         }),
-      ).rejects.toThrow("rename requires cueId or cueTime");
+      ).rejects.toThrow("rename requires locatorId or locatorTime");
     });
 
-    it("should throw if cue ID not found for rename", async () => {
+    it("should throw if locator ID not found for rename", async () => {
       await expect(
         updateLiveSet({
-          cueOperation: "rename",
-          cueId: "cue-99",
-          cueName: "New Name",
+          locatorOperation: "rename",
+          locatorId: "locator-99",
+          locatorName: "New Name",
         }),
-      ).rejects.toThrow("Cue not found: cue-99");
+      ).rejects.toThrow("Locator not found: locator-99");
     });
   });
 
   describe("combined with other operations", () => {
-    it("should allow cue operation with tempo change", async () => {
-      let cueCreated = false;
+    it("should allow locator operation with tempo change", async () => {
+      let locatorCreated = false;
 
       liveApiGet.mockImplementation(function (prop) {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
         if (prop === "cue_points") {
-          return cueCreated ? children("new_cue") : children();
+          return locatorCreated ? children("new_cue") : children();
         }
         if (prop === "time") return [0];
         return [0];
@@ -400,21 +402,21 @@ describe("updateLiveSet - cue operations", () => {
 
       liveApiCall.mockImplementation(function (method) {
         if (method === "set_or_delete_cue") {
-          cueCreated = true;
+          locatorCreated = true;
         }
       });
 
       const result = await updateLiveSet({
         tempo: 140,
-        cueOperation: "create",
-        cueTime: "1|1",
+        locatorOperation: "create",
+        locatorTime: "1|1",
       });
 
       expect(result.tempo).toBe(140);
-      expect(result.cue).toEqual({
+      expect(result.locator).toEqual({
         operation: "created",
         time: "1|1",
-        id: "cue-0",
+        id: "locator-0",
       });
     });
   });

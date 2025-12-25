@@ -34,8 +34,8 @@ create.
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
 - Set loop points and playback position
-- Jump to arrangement markers (cue points) by ID or name
-- Set loop start/end using cue points
+- Jump to arrangement locators by ID or name
+- Set loop start/end using locators
 - Control which tracks follow the Arrangement
 - Stop all clips or specific track clips
 
@@ -46,7 +46,7 @@ create.
 - Get complete Live project overview
 - View all tracks, scenes, and clips at once
 - See tempo, time signature, and scale settings
-- View arrangement markers (cue points) with times and names
+- View arrangement locators with times and names
 - Check what's playing and track states
 
 ### Update Live Set (`ppal-update-live-set`)
@@ -54,7 +54,7 @@ create.
 - Change tempo
 - Set time signature
 - Set scale
-- Create, update, or delete arrangement markers (cue points)
+- Create, rename, or delete arrangement locators
 
 ## Scene Operations
 
@@ -208,8 +208,8 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - Duplicate to Session or Arrangement
 - Duplicate session clips to specific clip slots (any track, any scene)
 - Duplicate to Arrangement at specific bar|beat positions
-- Duplicate to Arrangement at cue point positions by ID or name (e.g., "copy
-  that scene to the second chorus")
+- Duplicate to Arrangement at locator positions by ID or name (e.g., "copy that
+  scene to the second chorus")
 - Set arrangement length when duplicating: extend and tile/loop clips to fill
   longer durations automatically
 - Create multiple copies at once (placed sequentially)

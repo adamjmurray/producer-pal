@@ -246,7 +246,7 @@ describe("readLiveSet - track types", () => {
         "return-tracks",
         "master-track",
         "color",
-        "cue-points",
+        "locators",
       ],
     });
 
