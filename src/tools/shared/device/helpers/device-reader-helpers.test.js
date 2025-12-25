@@ -6,6 +6,8 @@ import {
   isInstrumentDevice,
   hasInstrumentInDevices,
   updateDrumChainSoloStates,
+  readMacroVariations,
+  readABCompare,
 } from "./device-reader-helpers.js";
 
 describe("device-reader-helpers", () => {
@@ -257,6 +259,145 @@ describe("device-reader-helpers", () => {
       updateDrumChainSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_VIA_SOLO);
+    });
+  });
+
+  describe("readMacroVariations", () => {
+    it("returns empty object for non-rack device", () => {
+      const device = {
+        getProperty: () => 0, // can_have_chains = 0
+      };
+      expect(readMacroVariations(device)).toEqual({});
+    });
+
+    it("returns empty object for rack with no variations", () => {
+      const device = {
+        getProperty: (prop) => (prop === "can_have_chains" ? 1 : 0),
+      };
+      expect(readMacroVariations(device)).toEqual({});
+    });
+
+    it("returns variations object with count and selected", () => {
+      const device = {
+        getProperty: (prop) => {
+          switch (prop) {
+            case "can_have_chains":
+              return 1;
+            case "variation_count":
+              return 5;
+            case "selected_variation_index":
+              return 2;
+            default:
+              return 0;
+          }
+        },
+      };
+      expect(readMacroVariations(device)).toEqual({
+        variations: {
+          count: 5,
+          selected: 2,
+        },
+      });
+    });
+
+    it("returns macros info when visible macros exist", () => {
+      const device = {
+        getProperty: (prop) => {
+          switch (prop) {
+            case "can_have_chains":
+              return 1;
+            case "visible_macro_count":
+              return 8;
+            case "has_macro_mappings":
+              return 1;
+            default:
+              return 0;
+          }
+        },
+      };
+      expect(readMacroVariations(device)).toEqual({
+        macros: { count: 8, hasMappings: true },
+      });
+    });
+
+    it("omits macros when visible_macro_count is 0", () => {
+      const device = {
+        getProperty: (prop) => {
+          switch (prop) {
+            case "can_have_chains":
+              return 1;
+            default:
+              return 0;
+          }
+        },
+      };
+      expect(readMacroVariations(device)).toEqual({});
+    });
+
+    it("returns both variations and macros when both exist", () => {
+      const device = {
+        getProperty: (prop) => {
+          switch (prop) {
+            case "can_have_chains":
+              return 1;
+            case "variation_count":
+              return 3;
+            case "selected_variation_index":
+              return 1;
+            case "visible_macro_count":
+              return 4;
+            case "has_macro_mappings":
+              return 0;
+            default:
+              return 0;
+          }
+        },
+      };
+      expect(readMacroVariations(device)).toEqual({
+        variations: { count: 3, selected: 1 },
+        macros: { count: 4, hasMappings: false },
+      });
+    });
+  });
+
+  describe("readABCompare", () => {
+    it("returns empty object for device without AB support", () => {
+      const device = {
+        getProperty: () => 0, // can_compare_ab = 0
+      };
+      expect(readABCompare(device)).toEqual({});
+    });
+
+    it("returns { abCompare: 'a' } when on preset A", () => {
+      const device = {
+        getProperty: (prop) => {
+          switch (prop) {
+            case "can_compare_ab":
+              return 1;
+            case "is_using_compare_preset_b":
+              return 0;
+            default:
+              return 0;
+          }
+        },
+      };
+      expect(readABCompare(device)).toEqual({ abCompare: "a" });
+    });
+
+    it("returns { abCompare: 'b' } when on preset B", () => {
+      const device = {
+        getProperty: (prop) => {
+          switch (prop) {
+            case "can_compare_ab":
+              return 1;
+            case "is_using_compare_preset_b":
+              return 1;
+            default:
+              return 0;
+          }
+        },
+      };
+      expect(readABCompare(device)).toEqual({ abCompare: "b" });
     });
   });
 });

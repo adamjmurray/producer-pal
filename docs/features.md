@@ -120,6 +120,9 @@ create.
 - View device chains and drum pad chains
 - List parameter names or full parameter details with values
 - Search parameters by name substring
+- View macro variation info for rack devices (count and selected index)
+- View macro count and mapping status for rack devices
+- View A/B Compare state for supported devices
 
 ### Update Device (`ppal-update-device`)
 
@@ -127,6 +130,10 @@ create.
 - Collapse or expand device view in Live's UI
 - Modify device parameters by value or display string
 - Bulk update multiple devices at once
+- Rack macro variations: store, recall, delete, or randomize macro settings
+- Select macro variation by index for recall or delete operations
+- Set visible macro count on rack devices (adds/removes macros)
+- A/B Compare: switch between presets or save current state to other slot
 
 ## Clip Creation & Editing
 
