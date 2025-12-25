@@ -16,6 +16,7 @@ const AVAILABLE_ROUTINGS = "available-routings";
 const COLOR = "color";
 const CLIPS = "clips";
 const MIXER = "mixer";
+const CUE_POINTS = "cue-points";
 
 /**
  * All available include options mapped by tool type
@@ -42,6 +43,7 @@ const ALL_INCLUDE_OPTIONS = {
     COLOR,
     WARP_MARKERS,
     MIXER,
+    CUE_POINTS,
   ],
   track: [
     DRUM_CHAINS,
@@ -105,6 +107,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeColor: Boolean(defaults.includeColor),
       includeWarpMarkers: Boolean(defaults.includeWarpMarkers),
       includeMixer: Boolean(defaults.includeMixer),
+      includeCuePoints: Boolean(defaults.includeCuePoints),
     };
   }
 
@@ -136,6 +139,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeColor: false,
       includeWarpMarkers: false,
       includeMixer: false,
+      includeCuePoints: false,
     };
   }
 
@@ -159,10 +163,37 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeColor: includeSet.has(COLOR),
     includeWarpMarkers: includeSet.has(WARP_MARKERS),
     includeMixer: includeSet.has(MIXER),
+    includeCuePoints: includeSet.has(CUE_POINTS),
   };
 
   return result;
 }
+
+/**
+ * Mapping of flag properties to their include option strings
+ */
+const FLAG_TO_OPTION = [
+  ["includeDrumChains", DRUM_CHAINS],
+  ["includeDrumMaps", DRUM_MAPS],
+  ["includeClipNotes", CLIP_NOTES],
+  ["includeRackChains", RACK_CHAINS],
+  ["includeScenes", "scenes"],
+  ["includeMidiEffects", MIDI_EFFECTS],
+  ["includeInstruments", INSTRUMENTS],
+  ["includeAudioEffects", AUDIO_EFFECTS],
+  ["includeRoutings", "routings"],
+  ["includeAvailableRoutings", AVAILABLE_ROUTINGS],
+  ["includeSessionClips", SESSION_CLIPS],
+  ["includeArrangementClips", ARRANGEMENT_CLIPS],
+  ["includeClips", CLIPS],
+  ["includeRegularTracks", REGULAR_TRACKS],
+  ["includeReturnTracks", RETURN_TRACKS],
+  ["includeMasterTrack", MASTER_TRACK],
+  ["includeColor", COLOR],
+  ["includeWarpMarkers", WARP_MARKERS],
+  ["includeMixer", MIXER],
+  ["includeCuePoints", CUE_POINTS],
+];
 
 /**
  * Convert include flags back to an array format
@@ -170,85 +201,9 @@ export function parseIncludeArray(includeArray, defaults = {}) {
  * @returns {string[]} Array of include options
  */
 export function includeArrayFromFlags(includeFlags) {
-  const includes = [];
-
-  if (includeFlags.includeDrumChains) {
-    includes.push(DRUM_CHAINS);
-  }
-
-  if (includeFlags.includeDrumMaps) {
-    includes.push(DRUM_MAPS);
-  }
-
-  if (includeFlags.includeClipNotes) {
-    includes.push(CLIP_NOTES);
-  }
-
-  if (includeFlags.includeRackChains) {
-    includes.push(RACK_CHAINS);
-  }
-
-  if (includeFlags.includeScenes) {
-    includes.push("scenes");
-  }
-
-  if (includeFlags.includeMidiEffects) {
-    includes.push(MIDI_EFFECTS);
-  }
-
-  if (includeFlags.includeInstruments) {
-    includes.push(INSTRUMENTS);
-  }
-
-  if (includeFlags.includeAudioEffects) {
-    includes.push(AUDIO_EFFECTS);
-  }
-
-  if (includeFlags.includeRoutings) {
-    includes.push("routings");
-  }
-
-  if (includeFlags.includeAvailableRoutings) {
-    includes.push(AVAILABLE_ROUTINGS);
-  }
-
-  if (includeFlags.includeSessionClips) {
-    includes.push(SESSION_CLIPS);
-  }
-
-  if (includeFlags.includeArrangementClips) {
-    includes.push(ARRANGEMENT_CLIPS);
-  }
-
-  if (includeFlags.includeClips) {
-    includes.push(CLIPS);
-  }
-
-  if (includeFlags.includeRegularTracks) {
-    includes.push(REGULAR_TRACKS);
-  }
-
-  if (includeFlags.includeReturnTracks) {
-    includes.push(RETURN_TRACKS);
-  }
-
-  if (includeFlags.includeMasterTrack) {
-    includes.push(MASTER_TRACK);
-  }
-
-  if (includeFlags.includeColor) {
-    includes.push(COLOR);
-  }
-
-  if (includeFlags.includeWarpMarkers) {
-    includes.push(WARP_MARKERS);
-  }
-
-  if (includeFlags.includeMixer) {
-    includes.push(MIXER);
-  }
-
-  return includes;
+  return FLAG_TO_OPTION.filter(([flag]) => includeFlags[flag]).map(
+    ([, option]) => option,
+  );
 }
 
 /**
@@ -272,6 +227,7 @@ export const READ_SONG_DEFAULTS = {
   includeColor: false,
   includeWarpMarkers: false,
   includeMixer: false,
+  includeCuePoints: false,
 };
 
 /**

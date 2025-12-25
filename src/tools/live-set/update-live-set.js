@@ -1,9 +1,16 @@
+import { barBeatToAbletonBeats } from "../../notation/barbeat/time/barbeat-time.js";
 import { intervalsToPitchClasses } from "../../notation/midi-pitch-to-name.js";
 import {
   pitchClassNameToNumber,
   VALID_PITCH_CLASS_NAMES,
 } from "../../notation/pitch-class-name-to-number.js";
+import * as console from "../../shared/v8-max-console.js";
 import { VALID_SCALE_NAMES } from "../constants.js";
+import {
+  findCue,
+  findCuesByName,
+  getCueId,
+} from "../shared/cue/cue-helpers.js";
 import { parseTimeSignature } from "../shared/utils.js";
 
 // Create lowercase versions for case-insensitive comparison
@@ -15,17 +22,31 @@ const VALID_SCALE_NAMES_LOWERCASE = VALID_SCALE_NAMES.map((name) =>
 );
 
 /**
- * Updates Live Set parameters like tempo, time signature, and scale.\n * Note: Scale changes affect currently selected clips and set defaults for new clips.
+ * Updates Live Set parameters like tempo, time signature, scale, and cue points.
+ * Note: Scale changes affect currently selected clips and set defaults for new clips.
  * @param {object} args - The parameters
  * @param {number} [args.tempo] - Set tempo in BPM (20.0-999.0)
  * @param {string} [args.timeSignature] - Time signature in format "4/4"
  * @param {string} [args.scale] - Scale in format "Root ScaleName" (e.g., "C Major", "F# Minor", "Bb Dorian"). Use empty string to disable scale.
+ * @param {string} [args.cueOperation] - Cue point operation: "create", "delete", or "rename"
+ * @param {string} [args.cueId] - Cue ID for delete/rename (e.g., "cue-0")
+ * @param {string} [args.cueTime] - Bar|beat position for create/delete/rename
+ * @param {string} [args.cueName] - Name for create/rename, or name filter for delete
  * @param {boolean} [args.arrangementFollower] - (Hidden from interface) Whether all tracks should follow the arrangement timeline
  * @param {object} _context - Internal context object (unused)
  * @returns {object} Updated Live Set information
  */
 export function updateLiveSet(
-  { tempo, timeSignature, scale, arrangementFollower } = {},
+  {
+    tempo,
+    timeSignature,
+    scale,
+    cueOperation,
+    cueId,
+    cueTime,
+    cueName,
+    arrangementFollower,
+  } = {},
   _context = {},
 ) {
   const liveSet = new LiveAPI("live_set");
@@ -97,7 +118,261 @@ export function updateLiveSet(
     result.scalePitches = intervalsToPitchClasses(scaleIntervals, rootNote);
   }
 
+  // Handle cue point operations
+  if (cueOperation != null) {
+    const cueResult = handleCueOperation(liveSet, {
+      cueOperation,
+      cueId,
+      cueTime,
+      cueName,
+    });
+
+    result.cue = cueResult;
+  }
+
   return result;
+}
+
+/**
+ * Stop playback if currently playing (required for cue point modifications)
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @returns {boolean} True if playback was stopped
+ */
+function stopPlaybackIfNeeded(liveSet) {
+  const isPlaying = liveSet.getProperty("is_playing") > 0;
+
+  if (isPlaying) {
+    liveSet.call("stop_playing");
+    console.error("Playback stopped to modify cue points");
+
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Handle cue point operations (create, delete, rename)
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {object} options - Operation options
+ * @param {string} options.cueOperation - "create", "delete", or "rename"
+ * @param {string} [options.cueId] - Cue ID for delete/rename
+ * @param {string} [options.cueTime] - Bar|beat position
+ * @param {string} [options.cueName] - Name for create/rename or name filter for delete
+ * @returns {object} Result of the cue operation
+ */
+function handleCueOperation(
+  liveSet,
+  { cueOperation, cueId, cueTime, cueName },
+) {
+  const timeSigNumerator = liveSet.getProperty("signature_numerator");
+  const timeSigDenominator = liveSet.getProperty("signature_denominator");
+
+  switch (cueOperation) {
+    case "create":
+      return createCue(liveSet, {
+        cueTime,
+        cueName,
+        timeSigNumerator,
+        timeSigDenominator,
+      });
+    case "delete":
+      return deleteCue(liveSet, {
+        cueId,
+        cueTime,
+        cueName,
+        timeSigNumerator,
+        timeSigDenominator,
+      });
+    case "rename":
+      return renameCue(liveSet, {
+        cueId,
+        cueTime,
+        cueName,
+        timeSigNumerator,
+        timeSigDenominator,
+      });
+    default:
+      throw new Error(`Unknown cue operation: ${cueOperation}`);
+  }
+}
+
+/**
+ * Create a cue point at the specified position
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {object} options - Create options
+ * @param {string} options.cueTime - Bar|beat position for the cue
+ * @param {string} [options.cueName] - Optional name for the cue
+ * @param {number} options.timeSigNumerator - Time signature numerator
+ * @param {number} options.timeSigDenominator - Time signature denominator
+ * @returns {object} Created cue info
+ */
+function createCue(
+  liveSet,
+  { cueTime, cueName, timeSigNumerator, timeSigDenominator },
+) {
+  if (cueTime == null) {
+    throw new Error("cueTime is required for create operation");
+  }
+
+  const targetBeats = barBeatToAbletonBeats(
+    cueTime,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+
+  stopPlaybackIfNeeded(liveSet);
+
+  // Move playhead and create cue
+  liveSet.set("current_song_time", targetBeats);
+  liveSet.call("set_or_delete_cue");
+
+  // Find the newly created cue to get its index and set name if provided
+  const found = findCue(liveSet, { timeInBeats: targetBeats });
+
+  if (found && cueName != null) {
+    found.cue.set("name", cueName);
+  }
+
+  return {
+    operation: "created",
+    time: cueTime,
+    ...(cueName != null && { name: cueName }),
+    ...(found && { id: getCueId(found.index) }),
+  };
+}
+
+/**
+ * Delete cue point(s) by ID, time, or name
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {object} options - Delete options
+ * @param {string} [options.cueId] - Cue ID to delete
+ * @param {string} [options.cueTime] - Bar|beat position to delete
+ * @param {string} [options.cueName] - Name filter for batch delete
+ * @param {number} options.timeSigNumerator - Time signature numerator
+ * @param {number} options.timeSigDenominator - Time signature denominator
+ * @returns {object} Deletion result
+ */
+function deleteCue(
+  liveSet,
+  { cueId, cueTime, cueName, timeSigNumerator, timeSigDenominator },
+) {
+  // Validate that at least one identifier is provided
+  if (cueId == null && cueTime == null && cueName == null) {
+    throw new Error("delete requires cueId, cueTime, or cueName");
+  }
+
+  stopPlaybackIfNeeded(liveSet);
+
+  // Delete by name (can match multiple cues)
+  if (cueId == null && cueTime == null && cueName != null) {
+    const matches = findCuesByName(liveSet, cueName);
+
+    if (matches.length === 0) {
+      throw new Error(`No cues found with name: ${cueName}`);
+    }
+
+    // Delete in reverse order to avoid index shifting issues
+    const times = matches.map((m) => m.time).sort((a, b) => b - a);
+
+    for (const time of times) {
+      liveSet.set("current_song_time", time);
+      liveSet.call("set_or_delete_cue");
+    }
+
+    return {
+      operation: "deleted",
+      count: matches.length,
+      name: cueName,
+    };
+  }
+
+  // Delete by ID or time (single cue)
+  let timeInBeats;
+
+  if (cueId != null) {
+    const found = findCue(liveSet, { cueId });
+
+    if (!found) {
+      throw new Error(`Cue not found: ${cueId}`);
+    }
+
+    timeInBeats = found.cue.getProperty("time");
+  } else if (cueTime != null) {
+    timeInBeats = barBeatToAbletonBeats(
+      cueTime,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+    const found = findCue(liveSet, { timeInBeats });
+
+    if (!found) {
+      throw new Error(`No cue found at position: ${cueTime}`);
+    }
+  }
+
+  liveSet.set("current_song_time", timeInBeats);
+  liveSet.call("set_or_delete_cue");
+
+  return {
+    operation: "deleted",
+    ...(cueId != null && { id: cueId }),
+    ...(cueTime != null && { time: cueTime }),
+  };
+}
+
+/**
+ * Rename a cue point by ID or time
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {object} options - Rename options
+ * @param {string} [options.cueId] - Cue ID to rename
+ * @param {string} [options.cueTime] - Bar|beat position to rename
+ * @param {string} options.cueName - New name for the cue
+ * @param {number} options.timeSigNumerator - Time signature numerator
+ * @param {number} options.timeSigDenominator - Time signature denominator
+ * @returns {object} Rename result
+ */
+function renameCue(
+  liveSet,
+  { cueId, cueTime, cueName, timeSigNumerator, timeSigDenominator },
+) {
+  if (cueName == null) {
+    throw new Error("cueName is required for rename operation");
+  }
+
+  if (cueId == null && cueTime == null) {
+    throw new Error("rename requires cueId or cueTime");
+  }
+
+  let found;
+
+  if (cueId != null) {
+    found = findCue(liveSet, { cueId });
+
+    if (!found) {
+      throw new Error(`Cue not found: ${cueId}`);
+    }
+  } else {
+    const timeInBeats = barBeatToAbletonBeats(
+      cueTime,
+      timeSigNumerator,
+      timeSigDenominator,
+    );
+
+    found = findCue(liveSet, { timeInBeats });
+
+    if (!found) {
+      throw new Error(`No cue found at position: ${cueTime}`);
+    }
+  }
+
+  found.cue.set("name", cueName);
+
+  return {
+    operation: "renamed",
+    id: getCueId(found.index),
+    name: cueName,
+  };
 }
 
 /**
