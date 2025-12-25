@@ -90,4 +90,55 @@ describe("processReasoningDelta", () => {
     expect(block?.id).toBe("original_id");
     expect(block?.text).toBe("Start... end.");
   });
+
+  it("should overwrite empty string signature with real value (Anthropic pattern)", () => {
+    const reasoningDetailsMap = new Map<string, ReasoningDetail>();
+
+    // First chunk: Anthropic sends signature as empty string initially
+    const delta1 = {
+      reasoning_details: [
+        {
+          type: "reasoning.text",
+          text: "Thinking...",
+          index: 0,
+          signature: "",
+          format: "anthropic-claude-v1",
+        },
+      ],
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    processReasoningDelta(delta1, reasoningDetailsMap);
+
+    // Second chunk: more text, signature still empty
+    const delta2 = {
+      reasoning_details: [
+        {
+          type: "reasoning.text",
+          text: " more thinking.",
+          index: 0,
+        },
+      ],
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    processReasoningDelta(delta2, reasoningDetailsMap);
+
+    // Final chunk: real signature arrives
+    const delta3 = {
+      reasoning_details: [
+        {
+          type: "reasoning.text",
+          index: 0,
+          signature: "EpICCkgICxACGAIqQNdcKyZb...",
+        },
+      ],
+    } as OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta;
+
+    processReasoningDelta(delta3, reasoningDetailsMap);
+
+    const block = reasoningDetailsMap.get("reasoning.text-0");
+    expect(block?.text).toBe("Thinking... more thinking.");
+    expect(block?.format).toBe("anthropic-claude-v1");
+    // Critical: signature must be the real value, not empty string
+    expect(block?.signature).toBe("EpICCkgICxACGAIqQNdcKyZb...");
+  });
 });

@@ -83,14 +83,18 @@ export function processReasoningDelta(
 
     if (existing) {
       if (detail.text) existing.text = (existing.text ?? "") + detail.text;
-      // Merge NEW fields from later chunks (e.g., thought_signature, id)
-      for (const field of Object.keys(detail))
-        if (
-          field !== "text" &&
-          field !== "index" &&
-          existing[field] === undefined
-        )
-          existing[field] = detail[field];
+
+      // Merge NEW fields from later chunks (e.g., thought_signature, signature)
+      // Also overwrite empty strings - Anthropic sends signature:"" first, real value later
+      for (const field of Object.keys(detail)) {
+        if (field === "text" || field === "index") continue;
+        const existingVal = existing[field];
+        const newVal = detail[field];
+
+        if (existingVal === undefined || (existingVal === "" && newVal)) {
+          existing[field] = newVal;
+        }
+      }
     } else {
       reasoningDetailsMap.set(key, { ...detail });
     }
