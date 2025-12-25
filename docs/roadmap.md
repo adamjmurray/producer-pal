@@ -1,5 +1,8 @@
 # Roadmap
 
+[Get Involved](#get-involved) · [In Progress](#in-progress) ·
+[Released](#released) · [Future Plans](#future-plans)
+
 ## Get Involved
 
 I maintain the core tools and roadmap, but there's room to collaborate:
@@ -14,20 +17,33 @@ Open a
 [GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
 reach out directly.
 
+## In Progress
+
+### 1.3.x
+
+- Support moving/reordering devices (including from the track to inside a chain
+  in a rack)
+- Rack chain support: add chains, insert devices into chains
+- Change the samples played by Simpler
+
 ## Released
 
-### 0.9 - Public Beta with Claude Desktop (July 2025)
+### 1.3.2 - Rack macros & variations, AB comparison, Arrangement locators
 
-Initial public release with Claude Desktop support.
+- Rack macro and variation management
+- A/B comparison for device parameters
+- Arrangement locator support
 
-### 1.0 - Support for more LLMs (October 2025)
+### 1.3.1 - maintenance (December 2025)
 
-Expanded features and support for multiple AI platforms.
+- Auto-recover from rate limit errors in the built-in chat UI
 
-### 1.1 - Built-in chat UI (November 2025)
+### 1.3.0 - Device Control (December 2025)
 
-Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
-Studio, Ollama, and more.
+- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
+  any track (audio/midi, return, master)
+- Delete devices
+- Read/write device parameters
 
 ### 1.2 - Audio clip and mixer support (November 2025)
 
@@ -37,35 +53,20 @@ Studio, Ollama, and more.
 - Experimental `ppal-transform-clips` tool for slicing, shuffling, and
   randomizing clips
 
-### 1.3.0 - Device Control (December 2025)
+### 1.1 - Built-in chat UI (November 2025)
 
-- Add native Live devices (built-in instruments, MIDI effects, audio effects) to
-  any track (audio/midi, return, master)
-- Delete devices
-- Read/write device parameters
+Direct API integrations for Google Gemini, OpenAI, Mistral, OpenRouter, LM
+Studio, Ollama, and more.
 
-### 1.3.1 - maintenance (December 2025)
+### 1.0 - Support for more LLMs (October 2025)
 
-- Auto-recover from rate limit errors in the built-in chat UI
+Expanded features and support for multiple AI platforms.
 
-## In Progress
+### 0.9 - Public Beta with Claude Desktop (July 2025)
 
-### v1.3.2
+Initial public release with Claude Desktop support.
 
-- Rack macro variation management
-  - Select macro variation
-  - Create/update macro variation
-  - Delete macro variation
-  - Randomize macros
-- Support moving/reordering devices
-
-### v1.3.3
-
-- A/B comparison of device parameters
-- Arrangement cue support
-- Change the samples played by Simpler
-
-## Planned
+## Future Plans
 
 ### 1.4 - Modulation
 
@@ -105,3 +106,7 @@ Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
 - Chord notation
 - Pitches as scale/chord degrees (instead of absolute pitches)
 - Microtonal support
+
+### 1.x - Misc
+
+- Take lane support
