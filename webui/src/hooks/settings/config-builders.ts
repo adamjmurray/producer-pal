@@ -49,7 +49,7 @@ export function buildGeminiConfig(
  * Check if we're using the actual OpenAI API (not OpenAI-compatible providers like Groq/Mistral).
  * reasoning_effort is only supported by OpenAI's API.
  * @param {string} [baseUrl] - Base URL to check
- * @returns {any} - Hook return value
+ * @returns {boolean} - True if OpenAI API
  */
 function isOpenAIProvider(baseUrl?: string): boolean {
   // If no baseUrl, OpenAIClient defaults to OpenAI
@@ -59,7 +59,42 @@ function isOpenAIProvider(baseUrl?: string): boolean {
   return baseUrl === "https://api.openai.com/v1";
 }
 
+/**
+ * Check if we're using OpenRouter.
+ * OpenRouter supports reasoning with a different format: { reasoning: { effort: "high" } }
+ * @param {string} [baseUrl] - Base URL to check
+ * @returns {boolean} - True if OpenRouter API
+ */
+function isOpenRouterProvider(baseUrl?: string): boolean {
+  return baseUrl?.includes("openrouter.ai") ?? false;
+}
+
 type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+/**
+ * Maps thinking UI setting to reasoning effort for OpenRouter.
+ * Simple direct mapping without model-specific logic.
+ * @param {string} thinking - Thinking mode setting from UI
+ * @returns {ReasoningEffort | undefined} - reasoning effort value or undefined
+ */
+function mapThinkingToOpenRouterEffort(
+  thinking: string,
+): ReasoningEffort | undefined {
+  switch (thinking) {
+    case "Minimal":
+      return "minimal";
+    case "Low":
+      return "low";
+    case "Medium":
+      return "medium";
+    case "High":
+      return "high";
+    case "XHigh":
+      return "xhigh";
+    default:
+      return undefined; // Off
+  }
+}
 
 /**
  * Extracts the GPT version number from a model name.
@@ -187,12 +222,20 @@ export function buildOpenAIConfig(
     config.chatHistory = chatHistory;
   }
 
-  // Only include reasoning_effort when using actual OpenAI API (not Groq/Mistral/etc)
-  if (isOpenAIProvider(baseUrl)) {
-    const reasoningEffort = mapThinkingToReasoningEffort(thinking, model);
+  // Only include reasoning when using OpenAI API or OpenRouter (not Groq/Mistral/etc)
+  if (isOpenRouterProvider(baseUrl)) {
+    // OpenRouter: simple direct mapping, client formats as { reasoning: { effort } }
+    const effort = mapThinkingToOpenRouterEffort(thinking);
 
-    if (reasoningEffort) {
-      config.reasoningEffort = reasoningEffort;
+    if (effort) {
+      config.reasoningEffort = effort;
+    }
+  } else if (isOpenAIProvider(baseUrl)) {
+    // OpenAI: model-specific mapping, client formats as { reasoning_effort }
+    const effort = mapThinkingToReasoningEffort(thinking, model);
+
+    if (effort) {
+      config.reasoningEffort = effort;
     }
   }
 

@@ -47,7 +47,6 @@ export function extractReasoningFromDelta(
   if (delta.reasoning_details) {
     let text = "";
 
-    // Extract text from reasoning_details array (standard OpenRouter format)
     // @ts-expect-error - reasoning fields not in official types yet
     for (const detail of delta.reasoning_details) {
       if (detail.type === "reasoning.text" && detail.text) {
@@ -69,7 +68,7 @@ export interface OpenAIClientConfig {
   systemInstruction?: string;
   reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
   chatHistory?: OpenAIMessage[];
-  baseUrl?: string; // For OpenAI-compatible providers
+  baseUrl?: string;
   enabledTools?: Record<string, boolean>;
 }
 
@@ -297,7 +296,9 @@ export class OpenAIClient {
       messages: this.chatHistory,
       tools: tools.length > 0 ? tools : undefined,
       temperature: this.config.temperature,
-      reasoning_effort: this.config.reasoningEffort,
+      ...(this.config.baseUrl?.includes("openrouter.ai")
+        ? { reasoning: { effort: this.config.reasoningEffort } }
+        : { reasoning_effort: this.config.reasoningEffort }),
       stream: true,
     });
 
@@ -348,12 +349,7 @@ export class OpenAIClient {
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
     currentMessage: OpenAIAssistantMessageWithReasoning,
   ): void {
-    if (delta.content) {
-      currentMessage.content =
-        (typeof currentMessage.content === "string"
-          ? currentMessage.content
-          : "") + delta.content;
-    }
+    if (delta.content) currentMessage.content += delta.content;
   }
 
   /**
@@ -366,9 +362,7 @@ export class OpenAIClient {
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
     reasoningText: string,
   ): string {
-    const reasoning = extractReasoningFromDelta(delta);
-
-    return reasoning ? reasoningText + reasoning : reasoningText;
+    return reasoningText + extractReasoningFromDelta(delta);
   }
 
   /**
