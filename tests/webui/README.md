@@ -8,7 +8,8 @@ These tests require a fully running Producer Pal setup:
 
 1. **Build the project**: `npm run build:all`
 2. **Ableton Live running** with the Producer Pal device active
-3. **API keys** in `.env` file (e.g., `GEMINI_KEY` for Gemini tests)
+3. **API keys** in `.env` file (e.g., `GEMINI_KEY`, `OPENAI_KEY` or
+   `OPENAI_API_KEY`)
 
 ## Running Tests
 
@@ -36,3 +37,4 @@ This makes them suitable only for local QA testing, not automated CI.
 ## Test Files
 
 - `gemini-flash.spec.mjs` - Tests Quick Connect with Gemini 3 Flash provider
+- `openai-gpt5.spec.mjs` - Tests Quick Connect with OpenAI GPT-5.2 provider
