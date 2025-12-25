@@ -21,13 +21,18 @@ reach out directly.
 
 ### 1.3.x
 
-- Rack macro variation management
-- Support moving/reordering devices
-- A/B comparison of device parameters
-- Arrangement cue support
+- Support moving/reordering devices (including from the track to inside a chain
+  in a rack)
+- Rack chain support: add chains, insert devices into chains
 - Change the samples played by Simpler
 
 ## Released
+
+### 1.3.2 - Rack macros & variations, AB comparison, Arrangement locators
+
+- Rack macro and variation management
+- A/B comparison for device parameters
+- Arrangement locator support
 
 ### 1.3.1 - maintenance (December 2025)
 
@@ -101,3 +106,7 @@ Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
 - Chord notation
 - Pitches as scale/chord degrees (instead of absolute pitches)
 - Microtonal support
+
+### 1.x - Misc
+
+- Take lane support
