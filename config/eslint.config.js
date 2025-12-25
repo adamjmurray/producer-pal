@@ -405,6 +405,7 @@ export default [
         outlet: "readonly",
         post: "readonly",
         Dict: "readonly",
+        Task: "readonly",
         // Vitest globals
         describe: "readonly",
         it: "readonly",

@@ -32,9 +32,33 @@ stop: session and arrangement`,
       .string()
       .optional()
       .describe("bar|beat position in arrangement"),
+    startLocatorId: z
+      .string()
+      .optional()
+      .describe("locator ID for start position (e.g., locator-0)"),
+    startLocatorName: z
+      .string()
+      .optional()
+      .describe("locator name for start position"),
     loop: z.boolean().optional().describe("arrangement loop?"),
     loopStart: z.string().optional().describe("bar|beat position"),
+    loopStartLocatorId: z
+      .string()
+      .optional()
+      .describe("locator ID for loop start (e.g., locator-0)"),
+    loopStartLocatorName: z
+      .string()
+      .optional()
+      .describe("locator name for loop start"),
     loopEnd: z.string().optional().describe("bar|beat position"),
+    loopEndLocatorId: z
+      .string()
+      .optional()
+      .describe("locator ID for loop end (e.g., locator-1)"),
+    loopEndLocatorName: z
+      .string()
+      .optional()
+      .describe("locator name for loop end"),
     autoFollow: z
       .boolean()
       .optional()

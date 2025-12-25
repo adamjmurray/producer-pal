@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { liveGainToDb, dbToLiveGain } from "./gain-utils.js";
+import { liveGainToDb, dbToLiveGain } from "../gain-utils.js";
 
 describe("gain-utils", () => {
   describe("liveGainToDb", () => {
