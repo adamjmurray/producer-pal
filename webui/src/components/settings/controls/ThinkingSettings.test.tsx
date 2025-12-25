@@ -107,7 +107,7 @@ describe("ThinkingSettings", () => {
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
       expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "XHigh" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Extra High" })).toBeDefined();
       // Should not have Gemini-specific options
       expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
       expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
@@ -174,7 +174,7 @@ describe("ThinkingSettings", () => {
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
       expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "XHigh" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Extra High" })).toBeDefined();
       // Should not have Gemini-specific options
       expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
       expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();

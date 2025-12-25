@@ -58,7 +58,7 @@ export function ThinkingSettings({
               <option value="Low">Low</option>
               <option value="Medium">Medium</option>
               <option value="High">High</option>
-              <option value="XHigh">XHigh</option>
+              <option value="XHigh">Extra High</option>
             </>
           ) : (
             <>
