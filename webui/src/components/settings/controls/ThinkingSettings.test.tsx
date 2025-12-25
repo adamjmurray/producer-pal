@@ -179,6 +179,43 @@ describe("ThinkingSettings", () => {
       expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
       expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
     });
+
+    it("shows checkbox when thinking is not Off", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      render(
+        <ThinkingSettings
+          provider="openrouter"
+          model="anthropic/claude-sonnet"
+          thinking="Low"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      const checkbox = screen.getByRole("checkbox");
+      expect(checkbox).toBeDefined();
+      expect(screen.getByText("Show thinking process")).toBeDefined();
+    });
+
+    it("hides checkbox when thinking is Off", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      render(
+        <ThinkingSettings
+          provider="openrouter"
+          model="anthropic/claude-sonnet"
+          thinking="Off"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      expect(screen.queryByRole("checkbox")).toBeNull();
+      expect(screen.queryByText("Show thinking process")).toBeNull();
+    });
   });
 
   describe("common behavior", () => {

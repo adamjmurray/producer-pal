@@ -74,8 +74,6 @@ export function processReasoningDelta(
 
   if (!details) return;
 
-  console.log("=== REASONING DELTA ===", JSON.stringify(details)); // DEBUG
-
   for (const detail of details) {
     const index = (detail.index ?? 0) as number;
     const key = `${detail.type}-${index}`;

@@ -193,6 +193,7 @@ function mapThinkingToReasoningEffort(
  * @param {number} temperature - Temperature value (0-2)
  * @param {string} thinking - Thinking mode setting
  * @param {string} [baseUrl] - Base URL for custom provider
+ * @param {boolean} showThoughts - Whether to include reasoning in response
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {OpenAIMessage[]} [chatHistory] - Optional chat history
  * @returns {any} - Hook return value
@@ -202,6 +203,7 @@ export function buildOpenAIConfig(
   temperature: number,
   thinking: string,
   baseUrl: string | undefined,
+  showThoughts: boolean,
   enabledTools: Record<string, boolean>,
   chatHistory?: OpenAIMessage[],
 ): OpenAIClientConfig {
@@ -224,6 +226,8 @@ export function buildOpenAIConfig(
 
     if (effort) {
       config.reasoningEffort = effort;
+      // Exclude reasoning from response when checkbox is unchecked
+      config.excludeReasoning = !showThoughts;
     }
   } else if (isOpenAIProvider(baseUrl)) {
     // OpenAI: model-specific mapping, client formats as { reasoning_effort }

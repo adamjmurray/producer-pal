@@ -73,7 +73,14 @@ describe("config-builders", () => {
 
   describe("buildOpenAIConfig", () => {
     it("should build basic config", () => {
-      const config = buildOpenAIConfig("gpt-4", 1.0, "Off", undefined, {});
+      const config = buildOpenAIConfig(
+        "gpt-4",
+        1.0,
+        "Off",
+        undefined,
+        true,
+        {},
+      );
 
       expect(config.model).toBe("gpt-4");
       expect(config.temperature).toBe(1.0);
@@ -81,7 +88,14 @@ describe("config-builders", () => {
     });
 
     it("should not include reasoning effort for unsupported models", () => {
-      const config = buildOpenAIConfig("gpt-4", 1.0, "Medium", undefined, {});
+      const config = buildOpenAIConfig(
+        "gpt-4",
+        1.0,
+        "Medium",
+        undefined,
+        true,
+        {},
+      );
 
       expect(config.reasoningEffort).toBeUndefined();
     });
@@ -92,6 +106,7 @@ describe("config-builders", () => {
         1.0,
         "Medium",
         undefined,
+        true,
         {},
       );
 
@@ -105,6 +120,7 @@ describe("config-builders", () => {
           1.0,
           "Low",
           undefined,
+          true,
           {},
         );
 
@@ -117,6 +133,7 @@ describe("config-builders", () => {
           1.0,
           "Minimal",
           undefined,
+          true,
           {},
         );
 
@@ -124,31 +141,59 @@ describe("config-builders", () => {
       });
 
       it("should map Medium to medium", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "Medium", undefined, {});
+        const config = buildOpenAIConfig(
+          "o1",
+          1.0,
+          "Medium",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBe("medium");
       });
 
       it("should map High to high", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "High", undefined, {});
+        const config = buildOpenAIConfig(
+          "o1",
+          1.0,
+          "High",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBe("high");
       });
 
       it("should map XHigh to high (capped)", () => {
-        const config = buildOpenAIConfig("o3", 1.0, "XHigh", undefined, {});
+        const config = buildOpenAIConfig(
+          "o3",
+          1.0,
+          "XHigh",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBe("high");
       });
 
       it("should map Off to low (minimum for o1/o3)", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "Off", undefined, {});
+        const config = buildOpenAIConfig("o1", 1.0, "Off", undefined, true, {});
 
         expect(config.reasoningEffort).toBe("low");
       });
 
       it("should return undefined for Default", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "Default", undefined, {});
+        const config = buildOpenAIConfig(
+          "o1",
+          1.0,
+          "Default",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBeUndefined();
       });
@@ -161,6 +206,7 @@ describe("config-builders", () => {
           1.0,
           "Off",
           undefined,
+          true,
           {},
         );
 
@@ -173,6 +219,7 @@ describe("config-builders", () => {
           1.0,
           "Minimal",
           undefined,
+          true,
           {},
         );
 
@@ -185,6 +232,7 @@ describe("config-builders", () => {
           1.0,
           "Low",
           undefined,
+          true,
           {},
         );
 
@@ -197,6 +245,7 @@ describe("config-builders", () => {
           1.0,
           "Medium",
           undefined,
+          true,
           {},
         );
 
@@ -209,6 +258,7 @@ describe("config-builders", () => {
           1.0,
           "High",
           undefined,
+          true,
           {},
         );
 
@@ -221,6 +271,7 @@ describe("config-builders", () => {
           1.0,
           "XHigh",
           undefined,
+          true,
           {},
         );
 
@@ -233,6 +284,7 @@ describe("config-builders", () => {
           1.0,
           "XHigh",
           undefined,
+          true,
           {},
         );
 
@@ -245,6 +297,7 @@ describe("config-builders", () => {
           1.0,
           "Default",
           undefined,
+          true,
           {},
         );
 
@@ -259,6 +312,7 @@ describe("config-builders", () => {
           1.0,
           "Off",
           undefined,
+          true,
           {},
         );
 
@@ -271,6 +325,7 @@ describe("config-builders", () => {
           1.0,
           "Minimal",
           undefined,
+          true,
           {},
         );
 
@@ -283,6 +338,7 @@ describe("config-builders", () => {
           1.0,
           "Low",
           undefined,
+          true,
           {},
         );
 
@@ -295,6 +351,7 @@ describe("config-builders", () => {
           1.0,
           "Medium",
           undefined,
+          true,
           {},
         );
 
@@ -307,6 +364,7 @@ describe("config-builders", () => {
           1.0,
           "High",
           undefined,
+          true,
           {},
         );
 
@@ -319,6 +377,7 @@ describe("config-builders", () => {
           1.0,
           "XHigh",
           undefined,
+          true,
           {},
         );
 
@@ -331,6 +390,7 @@ describe("config-builders", () => {
           1.0,
           "Default",
           undefined,
+          true,
           {},
         );
 
@@ -344,6 +404,7 @@ describe("config-builders", () => {
         1.0,
         "Medium",
         "https://custom.api/v1",
+        true,
         {},
       );
 
@@ -359,6 +420,7 @@ describe("config-builders", () => {
           1.0,
           "High",
           openRouterUrl,
+          true,
           {},
         );
 
@@ -371,6 +433,7 @@ describe("config-builders", () => {
           1.0,
           "XHigh",
           openRouterUrl,
+          true,
           {},
         );
 
@@ -383,6 +446,7 @@ describe("config-builders", () => {
           1.0,
           "Off",
           openRouterUrl,
+          true,
           {},
         );
 
@@ -395,6 +459,7 @@ describe("config-builders", () => {
           1.0,
           "Minimal",
           openRouterUrl,
+          true,
           {},
         );
 
@@ -407,6 +472,7 @@ describe("config-builders", () => {
           1.0,
           "Low",
           openRouterUrl,
+          true,
           {},
         );
 
@@ -419,6 +485,7 @@ describe("config-builders", () => {
           1.0,
           "Medium",
           openRouterUrl,
+          true,
           {},
         );
 
@@ -431,10 +498,39 @@ describe("config-builders", () => {
           1.0,
           "Default",
           openRouterUrl,
+          true,
           {},
         );
 
         expect(config.reasoningEffort).toBeUndefined();
+      });
+
+      it("should set excludeReasoning when showThoughts is false", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "High",
+          openRouterUrl,
+          false,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+        expect(config.excludeReasoning).toBe(true);
+      });
+
+      it("should not set excludeReasoning when showThoughts is true", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "High",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+        expect(config.excludeReasoning).toBe(false);
       });
     });
 
@@ -445,6 +541,7 @@ describe("config-builders", () => {
         1.0,
         "Off",
         undefined,
+        true,
         {},
         history,
       );

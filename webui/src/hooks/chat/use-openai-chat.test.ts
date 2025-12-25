@@ -43,6 +43,7 @@ describe("useOpenAIChat", () => {
     thinking: "Low",
     temperature: 1.0,
     baseUrl: "https://api.openai.com/v1",
+    showThoughts: true,
     enabledTools: {},
     mcpStatus: "connected" as const,
     mcpError: null,

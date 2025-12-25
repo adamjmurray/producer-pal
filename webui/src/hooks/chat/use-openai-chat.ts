@@ -8,6 +8,7 @@ interface UseOpenAIChatProps {
   thinking: string; // Will be mapped to reasoningEffort
   temperature: number;
   baseUrl?: string;
+  showThoughts: boolean;
   enabledTools: Record<string, boolean>;
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
@@ -36,6 +37,7 @@ interface UseOpenAIChatReturn {
  * @param {string} root0.thinking - Reasoning effort level
  * @param {number} root0.temperature - Temperature for response randomness
  * @param {string} [root0.baseUrl] - Custom base URL for OpenAI-compatible APIs
+ * @param {boolean} root0.showThoughts - Whether to include reasoning in response
  * @param {Record<string, boolean>} root0.enabledTools - Map of enabled MCP tools
  * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
  * @param {string | null} root0.mcpError - MCP connection error if any
@@ -48,6 +50,7 @@ export function useOpenAIChat({
   thinking,
   temperature,
   baseUrl,
+  showThoughts,
   enabledTools,
   mcpStatus,
   mcpError,
@@ -63,6 +66,6 @@ export function useOpenAIChat({
     mcpError,
     checkMcpConnection,
     adapter: openaiAdapter,
-    extraParams: { baseUrl },
+    extraParams: { baseUrl, showThoughts },
   });
 }

@@ -30,6 +30,7 @@ export interface OpenAIClientConfig {
   temperature?: number;
   systemInstruction?: string;
   reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+  excludeReasoning?: boolean;
   chatHistory?: OpenAIMessage[];
   baseUrl?: string;
   enabledTools?: Record<string, boolean>;
@@ -232,11 +233,6 @@ export class OpenAIClient {
   private async *processStreamAndUpdateHistory(
     tools: OpenAI.Chat.ChatCompletionTool[],
   ): AsyncGenerator<OpenAIMessage[]> {
-    console.log(
-      "=== CHAT HISTORY TO API ===",
-      JSON.stringify(this.chatHistory, null, 2),
-    ); // DEBUG
-
     const stream = await this.ai.chat.completions.create({
       model: this.config.model,
       messages: this.chatHistory,
@@ -247,7 +243,9 @@ export class OpenAIClient {
           ? {
               reasoning: {
                 effort: this.config.reasoningEffort,
-                ...(this.config.reasoningEffort === "none" && {
+                // Exclude reasoning when effort is "none" or checkbox is unchecked
+                ...((this.config.reasoningEffort === "none" ||
+                  this.config.excludeReasoning) && {
                   exclude: true,
                 }),
               },
@@ -294,13 +292,6 @@ export class OpenAIClient {
 
       yield this.chatHistory;
     }
-
-    if (reasoningDetailsMap.size > 0)
-      // DEBUG
-      console.log(
-        "=== ACCUMULATED REASONING ===",
-        JSON.stringify(Array.from(reasoningDetailsMap.values()), null, 2),
-      );
   }
 
   /**

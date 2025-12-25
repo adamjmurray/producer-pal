@@ -72,8 +72,8 @@ export function ThinkingSettings({
           )}
         </select>
       </div>
-      {/* Only show "Show thinking process" checkbox for Gemini */}
-      {isGemini && thinking !== "Off" && (
+      {/* Show "Show thinking process" checkbox for Gemini and OpenRouter */}
+      {(isGemini || provider === "openrouter") && thinking !== "Off" && (
         <div className="flex items-center gap-2">
           <input
             type="checkbox"
