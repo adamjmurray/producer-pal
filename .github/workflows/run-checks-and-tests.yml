@@ -145,7 +145,7 @@ jobs:
         run: npm run docs:build
 
       - name: Test documentation site with Playwright
-        run: npx playwright test -c config/playwright.config.mjs
+        run: npx playwright test -c config/playwright.docs.config.mjs
 
       - name: Upload test results
         uses: actions/upload-artifact@v6
