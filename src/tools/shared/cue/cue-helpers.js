@@ -93,3 +93,40 @@ export function findCuesByName(liveSet, cueName) {
 
   return matches;
 }
+
+/**
+ * Resolve a cue by ID or name to its time in beats
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {object} options - Cue identifier options
+ * @param {string} [options.cueId] - Cue ID to find
+ * @param {string} [options.cueName] - Cue name to find
+ * @param {string} toolName - Name of the tool for error messages
+ * @returns {number} Time in beats
+ * @throws {Error} If cue is not found
+ */
+export function resolveCueToBeats(liveSet, { cueId, cueName }, toolName) {
+  if (cueId != null) {
+    const found = findCue(liveSet, { cueId });
+
+    if (!found) {
+      throw new Error(`${toolName} failed: cue not found: ${cueId}`);
+    }
+
+    return found.cue.getProperty("time");
+  }
+
+  if (cueName != null) {
+    const matches = findCuesByName(liveSet, cueName);
+
+    if (matches.length === 0) {
+      throw new Error(
+        `${toolName} failed: no cue found with name "${cueName}"`,
+      );
+    }
+
+    // Use the first matching cue
+    return matches[0].time;
+  }
+
+  throw new Error(`${toolName} failed: cueId or cueName is required`);
+}

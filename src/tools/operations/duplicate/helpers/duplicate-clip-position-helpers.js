@@ -1,4 +1,5 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
+import { resolveCueToBeats } from "#src/tools/shared/cue/cue-helpers.js";
 import {
   parseSceneIndexList,
   parseArrangementStartList,
@@ -40,6 +41,8 @@ function generateClipName(baseName, count, index) {
  * @param {number} toTrackIndex - Destination track index
  * @param {string} toSceneIndex - Comma-separated scene indices for session clips
  * @param {string} arrangementStart - Comma-separated bar|beat positions for arrangement
+ * @param {string} arrangementCueId - Cue ID for arrangement position
+ * @param {string} arrangementCueName - Cue name for arrangement position
  * @param {string} arrangementLength - Duration in bar|beat format
  * @param {object} context - Context object with holdingAreaStartBeats
  * @returns {Array<object>} Array of result objects
@@ -52,6 +55,8 @@ export function duplicateClipWithPositions(
   toTrackIndex,
   toSceneIndex,
   arrangementStart,
+  arrangementCueId,
+  arrangementCueName,
   arrangementLength,
   context,
 ) {
@@ -82,21 +87,25 @@ export function duplicateClipWithPositions(
     }
   } else {
     // Arrangement destination
-    const positions = parseArrangementStartList(arrangementStart);
     const liveSet = new LiveAPI("live_set");
     const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
     const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-    for (let i = 0; i < positions.length; i++) {
-      const objectName = generateClipName(name, positions.length, i);
-      const arrangementStartBeats = barBeatToAbletonBeats(
-        positions[i],
-        songTimeSigNumerator,
-        songTimeSigDenominator,
-      );
+    // Resolve positions from cue (single) or bar|beat (multiple)
+    const positionsInBeats = resolveClipArrangementPositions(
+      liveSet,
+      arrangementStart,
+      arrangementCueId,
+      arrangementCueName,
+      songTimeSigNumerator,
+      songTimeSigDenominator,
+    );
+
+    for (let i = 0; i < positionsInBeats.length; i++) {
+      const objectName = generateClipName(name, positionsInBeats.length, i);
       const result = duplicateClipToArrangement(
         id,
-        arrangementStartBeats,
+        positionsInBeats[i],
         objectName,
         arrangementLength,
         songTimeSigNumerator,
@@ -109,4 +118,41 @@ export function duplicateClipWithPositions(
   }
 
   return createdObjects;
+}
+
+/**
+ * Resolves clip arrangement positions from bar|beat or cue
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {string} arrangementStart - Comma-separated bar|beat positions
+ * @param {string} arrangementCueId - Cue ID for position
+ * @param {string} arrangementCueName - Cue name for position
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number[]} Array of positions in beats
+ */
+function resolveClipArrangementPositions(
+  liveSet,
+  arrangementStart,
+  arrangementCueId,
+  arrangementCueName,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  // Cue-based: single position
+  if (arrangementCueId != null || arrangementCueName != null) {
+    const cueBeats = resolveCueToBeats(
+      liveSet,
+      { cueId: arrangementCueId, cueName: arrangementCueName },
+      "duplicate",
+    );
+
+    return [cueBeats];
+  }
+
+  // Bar|beat positions: multiple positions supported
+  const positions = parseArrangementStartList(arrangementStart);
+
+  return positions.map((pos) =>
+    barBeatToAbletonBeats(pos, timeSigNumerator, timeSigDenominator),
+  );
 }

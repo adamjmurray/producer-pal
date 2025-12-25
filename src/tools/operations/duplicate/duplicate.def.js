@@ -29,6 +29,14 @@ export const toolDefDuplicate = defineTool("ppal-duplicate", {
       .describe(
         "bar|beat position(s), comma-separated for multiple clips (e.g., '1|1' or '1|1,2|1,3|1')",
       ),
+    arrangementCueId: z
+      .string()
+      .optional()
+      .describe("place duplicate at cue position by ID (e.g., 'cue-0')"),
+    arrangementCueName: z
+      .string()
+      .optional()
+      .describe("place duplicate at first cue matching name"),
     arrangementLength: z
       .string()
       .optional()

@@ -234,7 +234,7 @@ describe("duplicate - scene duplication", () => {
           destination: "arrangement",
         }),
       ).toThrow(
-        "duplicate failed: arrangementStart is required when destination is 'arrangement'",
+        "duplicate failed: arrangementStart, arrangementCueId, or arrangementCueName is required when destination is 'arrangement'",
       );
     });
 
