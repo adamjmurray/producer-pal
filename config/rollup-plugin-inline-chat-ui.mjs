@@ -1,8 +1,22 @@
-import { readFileSync } from "fs";
-import { join, dirname } from "path";
+import { execSync } from "child_process";
+import { readdirSync, readFileSync, statSync } from "fs";
+import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+function getFilesRecursively(dir) {
+  const files = [];
+  for (const entry of readdirSync(dir)) {
+    const fullPath = join(dir, entry);
+    if (statSync(fullPath).isDirectory()) {
+      files.push(...getFilesRecursively(fullPath));
+    } else {
+      files.push(fullPath);
+    }
+  }
+  return files;
+}
 
 /**
  * Rollup plugin to inline chat-ui.html as a virtual module.
@@ -12,6 +26,14 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export function inlineChatUI() {
   return {
     name: "inline-chat-ui",
+    buildStart() {
+      // Watch all webui source files
+      const webuiDir = join(__dirname, "../webui");
+      for (const file of getFilesRecursively(webuiDir)) {
+        this.addWatchFile(file);
+      }
+      execSync("npm run ui:build", { stdio: "inherit" });
+    },
     resolveId(id) {
       if (id === "virtual:chat-ui-html") {
         return id; // Mark as virtual module
