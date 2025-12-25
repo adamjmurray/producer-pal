@@ -1,9 +1,12 @@
-import {
-  abletonBeatsToBarBeat,
-  barBeatToAbletonBeats,
-} from "../../notation/barbeat/time/barbeat-time.js";
+import { abletonBeatsToBarBeat } from "../../notation/barbeat/time/barbeat-time.js";
 import { parseCommaSeparatedIds } from "../shared/utils.js";
 import { validateIdTypes } from "../shared/validation/id-validation.js";
+import {
+  resolveLoopEnd,
+  resolveLoopStart,
+  resolveStartTime,
+  validateCueOrTime,
+} from "./playback-helpers.js";
 import { select } from "./select.js";
 
 /**
@@ -13,9 +16,15 @@ import { select } from "./select.js";
  * @param {object} args - The parameters
  * @param {string} args.action - Action to perform
  * @param {string} [args.startTime] - Position in bar|beat format to start playback from in the arrangement
+ * @param {string} [args.startCueId] - Cue ID for start position (mutually exclusive with startTime)
+ * @param {string} [args.startCueName] - Cue name for start position (mutually exclusive with startTime)
  * @param {boolean} [args.loop] - Enable/disable arrangement loop
  * @param {string} [args.loopStart] - Loop start position in bar|beat format in the arrangement
+ * @param {string} [args.loopStartCueId] - Cue ID for loop start (mutually exclusive with loopStart)
+ * @param {string} [args.loopStartCueName] - Cue name for loop start (mutually exclusive with loopStart)
  * @param {string} [args.loopEnd] - Loop end position in bar|beat format in the arrangement
+ * @param {string} [args.loopEndCueId] - Cue ID for loop end (mutually exclusive with loopEnd)
+ * @param {string} [args.loopEndCueName] - Cue name for loop end (mutually exclusive with loopEnd)
  * @param {boolean} [args.autoFollow=true] - For 'play-arrangement' action: whether all tracks should automatically follow the arrangement
  * @param {number} [args.sceneIndex] - Scene index for Session view operations (puts tracks into non-following state)
  * @param {string} [args.clipIds] - Comma-separated clip IDs for Session view operations
@@ -27,9 +36,15 @@ export function playback(
   {
     action,
     startTime,
+    startCueId,
+    startCueName,
     loop,
     loopStart,
+    loopStartCueId,
+    loopStartCueName,
     loopEnd,
+    loopEndCueId,
+    loopEndCueName,
     autoFollow = true,
     sceneIndex,
     clipIds,
@@ -41,50 +56,45 @@ export function playback(
     throw new Error("playback failed: action is required");
   }
 
+  // Validate mutual exclusivity of time and cue parameters
+  validateCueOrTime(startTime, startCueId, startCueName, "startTime");
+  validateCueOrTime(loopStart, loopStartCueId, loopStartCueName, "loopStart");
+  validateCueOrTime(loopEnd, loopEndCueId, loopEndCueName, "loopEnd");
+
   const liveSet = new LiveAPI("live_set");
 
   // Get song time signature for bar|beat conversions
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-  // Convert bar|beat inputs to Ableton beats
-  let startTimeBeats, loopStartBeats, loopEndBeats;
-
-  if (startTime != null) {
-    startTimeBeats = barBeatToAbletonBeats(
-      startTime,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-    liveSet.set("start_time", startTimeBeats);
-  }
+  // Resolve start time from bar|beat or cue
+  const { startTimeBeats, useCueStart } = resolveStartTime(
+    liveSet,
+    { startTime, startCueId, startCueName },
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 
   if (loop != null) {
     liveSet.set("loop", loop);
   }
 
-  if (loopStart != null) {
-    loopStartBeats = barBeatToAbletonBeats(
-      loopStart,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-    liveSet.set("loop_start", loopStartBeats);
-  }
+  // Resolve loop start from bar|beat or cue
+  const loopStartBeats = resolveLoopStart(
+    liveSet,
+    { loopStart, loopStartCueId, loopStartCueName },
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 
-  if (loopEnd != null) {
-    loopEndBeats = barBeatToAbletonBeats(
-      loopEnd,
-      songTimeSigNumerator,
-      songTimeSigDenominator,
-    );
-    // Live API uses loop_length, not loop_end, so we need to calculate the length
-    const actualLoopStartBeats =
-      loopStartBeats ?? liveSet.getProperty("loop_start");
-    const loopLengthBeats = loopEndBeats - actualLoopStartBeats;
-
-    liveSet.set("loop_length", loopLengthBeats);
-  }
+  // Resolve loop end from bar|beat or cue
+  resolveLoopEnd(
+    liveSet,
+    { loopEnd, loopEndCueId, loopEndCueName },
+    loopStartBeats,
+    songTimeSigNumerator,
+    songTimeSigDenominator,
+  );
 
   // Default result values that will be overridden by specific actions
   // (for optimistic results to avoid a sleep() for playback state updates)
@@ -97,6 +107,7 @@ export function playback(
     {
       startTime,
       startTimeBeats,
+      useCueStart,
       autoFollow,
       sceneIndex,
       clipIds,
@@ -180,7 +191,8 @@ export function playback(
  *
  * @param {object} liveSet - LiveAPI instance for live_set
  * @param {string} startTime - Start time in bar|beat format
- * @param {number} startTimeBeats - Start time in beats
+ * @param {number} startTimeBeats - Start time in beats (from time or cue)
+ * @param {boolean} useCueStart - Whether start position came from a cue point
  * @param {boolean} autoFollow - Whether tracks should follow arrangement
  * @param {object} _state - Current playback state (unused)
  * @returns {object} Updated playback state
@@ -189,10 +201,12 @@ function handlePlayArrangement(
   liveSet,
   startTime,
   startTimeBeats,
+  useCueStart,
   autoFollow,
   _state,
 ) {
-  if (startTime == null) {
+  // Default to position 0 if no start position specified (time or cue)
+  if (startTime == null && !useCueStart) {
     liveSet.set("start_time", 0);
     startTimeBeats = 0;
   }
@@ -359,7 +373,14 @@ function handleStopSessionClips(clipIds, state) {
  * @returns {object} Updated playback state
  */
 function handlePlaybackAction(action, liveSet, params, state) {
-  const { startTime, startTimeBeats, autoFollow, sceneIndex, clipIds } = params;
+  const {
+    startTime,
+    startTimeBeats,
+    useCueStart,
+    autoFollow,
+    sceneIndex,
+    clipIds,
+  } = params;
 
   switch (action) {
     case "play-arrangement":
@@ -367,6 +388,7 @@ function handlePlaybackAction(action, liveSet, params, state) {
         liveSet,
         startTime,
         startTimeBeats,
+        useCueStart,
         autoFollow,
         state,
       );

@@ -6,9 +6,9 @@ import {
   liveApiId,
   liveApiSet,
   liveApiType,
-} from "../../test/mock-live-api.js";
-import { LIVE_API_VIEW_NAMES } from "../constants.js";
-import { select } from "./select.js";
+} from "../../../test/mock-live-api.js";
+import { LIVE_API_VIEW_NAMES } from "../../constants.js";
+import { select } from "../select.js";
 
 // Mock the LiveAPI constructor
 vi.mocked(LiveAPI);
@@ -19,7 +19,7 @@ global.LiveAPI = vi.fn(function () {
 });
 
 // Mock utility functions
-vi.mock(import("../shared/utils.js"), () => ({
+vi.mock(import("../../shared/utils.js"), () => ({
   toLiveApiView: vi.fn((view) => {
     const viewMap = { session: 1, arrangement: 2 };
     return viewMap[view] || 1;

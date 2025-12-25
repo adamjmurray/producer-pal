@@ -11,7 +11,7 @@ import {
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../constants.js";
+} from "../../constants.js";
 import { readLiveSet } from "../read-live-set.js";
 
 describe("readLiveSet - basic reading", () => {

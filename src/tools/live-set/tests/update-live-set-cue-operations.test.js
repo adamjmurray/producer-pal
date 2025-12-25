@@ -49,6 +49,16 @@ describe("updateLiveSet - cue operations", () => {
       // Track the cue that gets its name set
       let cueNameSet = null;
 
+      // Mock to return the correct time (16 beats = bar 5|1 in 4/4)
+      liveApiGet.mockImplementation(function (prop) {
+        if (prop === "signature_numerator") return [4];
+        if (prop === "signature_denominator") return [4];
+        if (prop === "is_playing") return [0];
+        if (prop === "cue_points") return children("new_cue");
+        if (prop === "time") return [16]; // 5|1 = 16 beats
+        return [0];
+      });
+
       liveApiSet.mockImplementation(function (prop, value) {
         if (prop === "name") {
           cueNameSet = value;
