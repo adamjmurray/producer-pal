@@ -244,6 +244,22 @@ async function createCue(
     timeSigDenominator,
   );
 
+  // Check if a cue already exists at this position
+  const existing = findCue(liveSet, { timeInBeats: targetBeats });
+
+  if (existing) {
+    console.error(
+      `Cue already exists at ${cueTime} (id: ${getCueId(existing.index)}), skipping create`,
+    );
+
+    return {
+      operation: "skipped",
+      reason: "cue_exists",
+      time: cueTime,
+      existingId: getCueId(existing.index),
+    };
+  }
+
   stopPlaybackIfNeeded(liveSet);
 
   // Move playhead and wait for it to update (race condition fix)
@@ -288,15 +304,21 @@ async function deleteCue(
     throw new Error("delete requires cueId, cueTime, or cueName");
   }
 
-  stopPlaybackIfNeeded(liveSet);
-
   // Delete by name (can match multiple cues)
   if (cueId == null && cueTime == null && cueName != null) {
     const matches = findCuesByName(liveSet, cueName);
 
     if (matches.length === 0) {
-      throw new Error(`No cues found with name: ${cueName}`);
+      console.error(`No cues found with name: ${cueName}, skipping delete`);
+
+      return {
+        operation: "skipped",
+        reason: "no_cues_found",
+        name: cueName,
+      };
     }
+
+    stopPlaybackIfNeeded(liveSet);
 
     // Delete in reverse order to avoid index shifting issues
     const times = matches.map((m) => m.time).sort((a, b) => b - a);
@@ -321,7 +343,13 @@ async function deleteCue(
     const found = findCue(liveSet, { cueId });
 
     if (!found) {
-      throw new Error(`Cue not found: ${cueId}`);
+      console.error(`Cue not found: ${cueId}, skipping delete`);
+
+      return {
+        operation: "skipped",
+        reason: "cue_not_found",
+        id: cueId,
+      };
     }
 
     timeInBeats = found.cue.getProperty("time");
@@ -334,9 +362,17 @@ async function deleteCue(
     const found = findCue(liveSet, { timeInBeats });
 
     if (!found) {
-      throw new Error(`No cue found at position: ${cueTime}`);
+      console.error(`No cue found at position: ${cueTime}, skipping delete`);
+
+      return {
+        operation: "skipped",
+        reason: "cue_not_found",
+        time: cueTime,
+      };
     }
   }
+
+  stopPlaybackIfNeeded(liveSet);
 
   liveSet.set("current_song_time", timeInBeats);
   await waitForPlayheadPosition(liveSet, timeInBeats);
