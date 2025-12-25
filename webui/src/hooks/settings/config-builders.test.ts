@@ -191,6 +191,18 @@ describe("config-builders", () => {
         expect(config.reasoningEffort).toBe("low");
       });
 
+      it("should map Medium to medium", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "Medium",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("medium");
+      });
+
       it("should map High to high", () => {
         const config = buildOpenAIConfig(
           "gpt-5.1-2025-01-01",
@@ -226,6 +238,18 @@ describe("config-builders", () => {
 
         expect(config.reasoningEffort).toBe("xhigh");
       });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "Default",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBeUndefined();
+      });
     });
 
     describe("gpt-5.2+ models", () => {
@@ -251,6 +275,42 @@ describe("config-builders", () => {
         );
 
         expect(config.reasoningEffort).toBe("minimal");
+      });
+
+      it("should map Low to low", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Low",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map Medium to medium", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Medium",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("medium");
+      });
+
+      it("should map High to high", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "High",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
       });
 
       it("should map XHigh to xhigh", () => {
@@ -293,7 +353,7 @@ describe("config-builders", () => {
     describe("OpenRouter", () => {
       const openRouterUrl = "https://openrouter.ai/api/v1";
 
-      it("should map thinking settings directly for OpenRouter", () => {
+      it("should map High to high for OpenRouter", () => {
         const config = buildOpenAIConfig(
           "anthropic/claude-sonnet",
           1.0,
@@ -327,6 +387,42 @@ describe("config-builders", () => {
         );
 
         expect(config.reasoningEffort).toBe("none");
+      });
+
+      it("should map Minimal to minimal for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Minimal",
+          openRouterUrl,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("minimal");
+      });
+
+      it("should map Low to low for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Low",
+          openRouterUrl,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map Medium to medium for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Medium",
+          openRouterUrl,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("medium");
       });
 
       it("should return undefined for Default", () => {
