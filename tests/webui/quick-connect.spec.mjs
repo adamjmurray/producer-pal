@@ -46,6 +46,13 @@ const TEST_CONFIGS = [
     modelLabel: "GPT-5.2",
     envKey: "OPENAI_KEY",
   },
+  {
+    provider: "mistral",
+    providerLabel: "Mistral",
+    model: "mistral-medium-latest",
+    modelLabel: "Mistral Medium",
+    envKey: "MISTRAL_KEY",
+  },
 ];
 
 for (const config of TEST_CONFIGS) {
