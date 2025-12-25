@@ -153,14 +153,24 @@ After testing succeeds:
 - [ ] Create audio clip from sample
 - [ ] Start/stop playback
 
-### Built-in Chat UI - Connection Check
+### Built-in Chat UI - E2E Tests
 
-For each provider, just connect and confirm `ppal-read-live-set` is called:
+Run the automated Playwright tests (requires Ableton Live running with the
+device active):
 
-- [ ] **Gemini**
-- [ ] **OpenAI**
-- [ ] **OpenRouter**
-- [ ] **Ollama** (enable Small Model Mode + minimal toolset first)
+```sh
+npm run ui:test
+```
+
+This tests Quick Connect for Gemini, OpenAI, Mistral, and all OpenRouter models.
+See `tests/webui/README.md` for details.
+
+### Built-in Chat UI - Manual Checks
+
+- [ ] **Manual sanity check** - Pick one provider and do a Quick Connect and
+      then some task like generating a clip
+- [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
+      and a simple task (not automated due to slow response times)
 
 ### LM Studio - Downloaded Portal
 
