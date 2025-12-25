@@ -244,7 +244,14 @@ export class OpenAIClient {
       temperature: this.config.temperature,
       ...(this.config.reasoningEffort
         ? isOpenRouterProvider(this.config.baseUrl)
-          ? { reasoning: { effort: this.config.reasoningEffort } }
+          ? {
+              reasoning: {
+                effort: this.config.reasoningEffort,
+                ...(this.config.reasoningEffort === "none" && {
+                  exclude: true,
+                }),
+              },
+            }
           : { reasoning_effort: this.config.reasoningEffort }
         : {}),
       stream: true,
