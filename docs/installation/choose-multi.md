@@ -6,7 +6,7 @@ Want flexibility to switch between providers or access many models?
 
 [OpenRouter](https://openrouter.ai) provides access to 100+ models through a
 single API key with pay-per-use pricing. Access it via the
-[Built-in Chat UI](./openrouter).
+[Built-in Chat UI](./chat-ui-other-providers#openrouter).
 
 ### Why OpenRouter?
 

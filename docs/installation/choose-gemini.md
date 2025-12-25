@@ -20,6 +20,7 @@ options. A free tier available with rate limits for trying out Producer Pal.
 - Gemini 3 Flash or Pro recommended
 - Free tier: expect to hit rate limits during intensive sessions
 - When you outgrow the free tier:
-  - [OpenRouter](./openrouter) with Gemini - simplest paid option
+  - [OpenRouter](./chat-ui-other-providers#openrouter) with Gemini - simplest
+    paid option
   - [Gemini CLI](./gemini-cli) with a Google AI subscription - higher limits
     without API billing setup
