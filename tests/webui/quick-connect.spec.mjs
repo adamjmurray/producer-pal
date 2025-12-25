@@ -1,5 +1,35 @@
 import { expect, test } from "@playwright/test";
 
+let consoleErrors = [];
+let consoleWarnings = [];
+let consoleLogs = [];
+
+test.beforeEach(({ page }) => {
+  consoleErrors = [];
+  consoleWarnings = [];
+  consoleLogs = [];
+
+  page.on("console", (msg) => {
+    const type = msg.type();
+    const text = msg.text();
+
+    if (type === "error") {
+      // Filter expected 405 on /mcp (stateless endpoint)
+      if (!text.includes("405")) {
+        consoleErrors.push(text);
+      }
+    } else if (type === "warning") {
+      consoleWarnings.push(text);
+    } else if (type === "log") {
+      consoleLogs.push(text);
+    }
+  });
+
+  page.on("pageerror", (error) => {
+    consoleErrors.push(error.message);
+  });
+});
+
 // Provider/model configurations to test
 const TEST_CONFIGS = [
   {
@@ -100,6 +130,11 @@ for (const config of TEST_CONFIGS) {
 
       // Final snapshot for Playwright UI (response already complete at this point)
       await expect(page.locator("body")).toBeVisible();
+
+      // Verify no unexpected console output
+      expect(consoleErrors, "Unexpected console errors").toEqual([]);
+      expect(consoleWarnings, "Unexpected console warnings").toEqual([]);
+      expect(consoleLogs, "Unexpected console logs").toEqual([]);
 
       console.log(
         `Test passed: ${config.providerLabel} ${config.modelLabel} Quick Connect successful`,
