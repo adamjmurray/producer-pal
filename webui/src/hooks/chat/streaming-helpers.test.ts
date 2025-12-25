@@ -53,6 +53,28 @@ describe("streaming-helpers", () => {
 
       expect(result).toBe(false);
     });
+
+    it("should re-throw non-AbortError", async () => {
+      /**
+       * @returns {any} - Hook return value
+       */
+      async function* throwingStream(): AsyncGenerator<
+        GeminiMessage[],
+        void,
+        unknown
+      > {
+        yield [];
+        throw new Error("Network failure");
+      }
+      const formatter = vi.fn(() => [
+        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+      ]);
+      const onUpdate = vi.fn();
+
+      await expect(
+        handleMessageStream(throwingStream(), formatter, onUpdate),
+      ).rejects.toThrow("Network failure");
+    });
   });
 
   describe("createGeminiErrorMessage", () => {
