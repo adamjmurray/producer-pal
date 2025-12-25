@@ -36,5 +36,19 @@ This makes them suitable only for local QA testing, not automated CI.
 
 ## Test Files
 
-- `gemini-flash.spec.mjs` - Tests Quick Connect with Gemini 3 Flash provider
-- `openai-gpt5.spec.mjs` - Tests Quick Connect with OpenAI GPT-5.2 provider
+- `quick-connect.spec.mjs` - Tests Quick Connect across multiple
+  providers/models
+
+## Adding New Provider/Model Tests
+
+Edit `quick-connect.spec.mjs` and add a new entry to `TEST_CONFIGS`:
+
+```javascript
+{
+  provider: "mistral",           // Value for provider select
+  providerLabel: "Mistral",      // Display name for test output
+  model: "mistral-large-latest", // Value for model select
+  modelLabel: "Mistral Large",   // Display name for test output
+  envKey: "MISTRAL_KEY",         // Env var for API key
+},
+```

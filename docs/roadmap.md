@@ -21,9 +21,7 @@ reach out directly.
 
 ### 1.3.x
 
-- Support moving/reordering devices (including from the track to inside a chain
-  in a rack)
-- Rack chain support: add chains, insert devices into chains
+- Support moving/reordering devices (including from a track to inside a rack)
 - Change the samples played by Simpler
 
 ## Released
