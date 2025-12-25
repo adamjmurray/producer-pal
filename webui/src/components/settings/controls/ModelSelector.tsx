@@ -72,6 +72,7 @@ const OPENROUTER_MODELS = [
   { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max" },
   // Paid models - MiniMax
   { value: "minimax/minimax-m2.1", label: "[Paid] MiniMax M2.1" },
+  { value: "moonshotai/kimi-k2-thinking", label: "[Paid] Kimi K2 Thinking" },
   { value: "OTHER", label: "Other..." },
 ];
 

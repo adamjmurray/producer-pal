@@ -2,6 +2,7 @@ import type { GeminiClientConfig } from "#webui/chat/gemini-client";
 import type { OpenAIClientConfig } from "#webui/chat/openai-client";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
+import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 
 /**
  * Builds Gemini client configuration from settings
@@ -57,16 +58,6 @@ function isOpenAIProvider(baseUrl?: string): boolean {
 
   // Check if it's the OpenAI API URL
   return baseUrl === "https://api.openai.com/v1";
-}
-
-/**
- * Check if we're using OpenRouter.
- * OpenRouter supports reasoning with a different format: { reasoning: { effort: "high" } }
- * @param {string} [baseUrl] - Base URL to check
- * @returns {boolean} - True if OpenRouter API
- */
-function isOpenRouterProvider(baseUrl?: string): boolean {
-  return baseUrl?.includes("openrouter.ai") ?? false;
 }
 
 type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";

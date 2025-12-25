@@ -272,6 +272,46 @@ describe("config-builders", () => {
       expect(config.reasoningEffort).toBeUndefined();
     });
 
+    describe("OpenRouter", () => {
+      const openRouterUrl = "https://openrouter.ai/api/v1";
+
+      it("should map thinking settings directly for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "High",
+          openRouterUrl,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+      });
+
+      it("should map XHigh to xhigh for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "XHigh",
+          openRouterUrl,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("xhigh");
+      });
+
+      it("should not include reasoning effort when Off", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Off",
+          openRouterUrl,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBeUndefined();
+      });
+    });
+
     it("should include chat history when provided", () => {
       const history = [{ role: "user" as const, content: "hi" }];
       const config = buildOpenAIConfig(

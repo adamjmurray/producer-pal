@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import OpenAI from "openai";
 import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 
 const MCP_NOT_INITIALIZED_ERROR =
   "MCP client not initialized. Call initialize() first.";
@@ -296,9 +297,11 @@ export class OpenAIClient {
       messages: this.chatHistory,
       tools: tools.length > 0 ? tools : undefined,
       temperature: this.config.temperature,
-      ...(this.config.baseUrl?.includes("openrouter.ai")
-        ? { reasoning: { effort: this.config.reasoningEffort } }
-        : { reasoning_effort: this.config.reasoningEffort }),
+      ...(this.config.reasoningEffort
+        ? isOpenRouterProvider(this.config.baseUrl)
+          ? { reasoning: { effort: this.config.reasoningEffort } }
+          : { reasoning_effort: this.config.reasoningEffort }
+        : {}),
       stream: true,
     });
 
