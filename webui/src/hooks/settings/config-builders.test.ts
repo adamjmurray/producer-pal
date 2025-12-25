@@ -141,8 +141,14 @@ describe("config-builders", () => {
         expect(config.reasoningEffort).toBe("high");
       });
 
-      it("should return undefined for Off", () => {
+      it("should map Off to low (minimum for o1/o3)", () => {
         const config = buildOpenAIConfig("o1", 1.0, "Off", undefined, {});
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig("o1", 1.0, "Default", undefined, {});
 
         expect(config.reasoningEffort).toBeUndefined();
       });
@@ -258,6 +264,18 @@ describe("config-builders", () => {
 
         expect(config.reasoningEffort).toBe("xhigh");
       });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Default",
+          undefined,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBeUndefined();
+      });
     });
 
     it("should not include reasoning effort for custom API", () => {
@@ -299,11 +317,23 @@ describe("config-builders", () => {
         expect(config.reasoningEffort).toBe("xhigh");
       });
 
-      it("should not include reasoning effort when Off", () => {
+      it("should map Off to none for OpenRouter", () => {
         const config = buildOpenAIConfig(
           "anthropic/claude-sonnet",
           1.0,
           "Off",
+          openRouterUrl,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("none");
+      });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Default",
           openRouterUrl,
           {},
         );

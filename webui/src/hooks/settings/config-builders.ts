@@ -72,6 +72,8 @@ function mapThinkingToOpenRouterEffort(
   thinking: string,
 ): ReasoningEffort | undefined {
   switch (thinking) {
+    case "Off":
+      return "none";
     case "Minimal":
       return "minimal";
     case "Low":
@@ -83,7 +85,7 @@ function mapThinkingToOpenRouterEffort(
     case "XHigh":
       return "xhigh";
     default:
-      return undefined; // Off
+      return undefined; // Default - let API use its default
   }
 }
 
@@ -149,8 +151,10 @@ function mapThinkingToReasoningEffort(
 
   // Map thinking UI values to reasoning_effort
   if (isO1O3) {
-    // o1/o3: only supports low, medium, high
+    // o1/o3: only supports low, medium, high (no "none" option)
     switch (thinking) {
+      case "Off":
+        return "low"; // o1/o3 minimum is low
       case "Low":
       case "Minimal":
         return "low";
@@ -160,7 +164,7 @@ function mapThinkingToReasoningEffort(
       case "XHigh":
         return "high";
       default:
-        return undefined; // Off
+        return undefined; // Default - let API use its default
     }
   }
 
@@ -179,7 +183,7 @@ function mapThinkingToReasoningEffort(
     case "XHigh":
       return supportsXHigh(model) ? "xhigh" : "high";
     default:
-      return undefined;
+      return undefined; // Default - let API use its default
   }
 }
 

@@ -101,6 +101,7 @@ describe("ThinkingSettings", () => {
       );
 
       // Should have all OpenAI options
+      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
@@ -167,6 +168,7 @@ describe("ThinkingSettings", () => {
       );
 
       // Should have all OpenAI-style options (same as OpenAI)
+      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();

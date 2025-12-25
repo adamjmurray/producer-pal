@@ -52,6 +52,7 @@ export function ThinkingSettings({
         >
           {useOpenAIOptions ? (
             <>
+              <option value="Default">Default</option>
               <option value="Off">Off</option>
               <option value="Minimal">Minimal</option>
               <option value="Low">Low</option>
