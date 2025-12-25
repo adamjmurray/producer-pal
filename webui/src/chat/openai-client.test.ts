@@ -4,6 +4,7 @@ import {
   extractReasoningFromDelta,
   OpenAIClient,
   type OpenAIAssistantMessageWithReasoning,
+  type ReasoningDetail,
 } from "./openai-client";
 import type { OpenAIToolCall } from "#webui/types/messages";
 
@@ -280,7 +281,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      new Map<string, ReasoningDetail>(),
       null, // finish_reason is null during streaming
     );
 
@@ -313,7 +314,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      new Map<string, ReasoningDetail>(),
       "stop",
     );
 
@@ -346,7 +347,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      new Map<string, ReasoningDetail>(),
       "tool_calls", // finish_reason indicates tool calls are complete
     );
 
@@ -396,7 +397,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      new Map<string, ReasoningDetail>(),
       "tool_calls",
     );
 
@@ -417,14 +418,14 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      new Map<string, ReasoningDetail>(),
       "tool_calls",
     );
 
     expect(result.tool_calls).toBeUndefined();
   });
 
-  it("should include reasoning_details when reasoning text is provided", () => {
+  it("should include reasoning_details when reasoning blocks are provided", () => {
     client = createTestClient();
 
     const currentMessage: OpenAIAssistantMessageWithReasoning = {
@@ -433,11 +434,21 @@ describe("OpenAIClient.buildStreamMessage", () => {
     };
 
     const toolCallsMap = new Map<number, OpenAIToolCall>();
+    const reasoningDetailsMap = new Map<string, ReasoningDetail>([
+      [
+        "reasoning.text-0",
+        {
+          type: "reasoning.text",
+          text: "Thinking about this carefully...",
+          index: 0,
+        },
+      ],
+    ]);
 
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "Thinking about this carefully...",
+      reasoningDetailsMap,
       "stop",
     );
 
@@ -449,7 +460,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     expect(reasoning?.index).toBe(0);
   });
 
-  it("should not include reasoning_details when reasoning text is empty", () => {
+  it("should not include reasoning_details when map is empty", () => {
     client = createTestClient();
 
     const currentMessage: OpenAIAssistantMessageWithReasoning = {
@@ -462,7 +473,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      new Map<string, ReasoningDetail>(),
       "stop",
     );
 
@@ -491,10 +502,21 @@ describe("OpenAIClient.buildStreamMessage", () => {
       ],
     ]);
 
+    const reasoningDetailsMap = new Map<string, ReasoningDetail>([
+      [
+        "reasoning.text-0",
+        {
+          type: "reasoning.text",
+          text: "I need to analyze this data...",
+          index: 0,
+        },
+      ],
+    ]);
+
     const result = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "I need to analyze this data...",
+      reasoningDetailsMap,
       "tool_calls",
     );
 
@@ -538,12 +560,14 @@ describe("OpenAIClient.buildStreamMessage", () => {
       ],
     ]);
 
+    const emptyReasoningMap = new Map<string, ReasoningDetail>();
+
     // Simulating streaming chunks:
     // Chunk 1-2: Tool calls accumulating, finish_reason: null
     const streamingResult = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      emptyReasoningMap,
       null, // Still streaming
     );
     expect(streamingResult.tool_calls).toBeUndefined();
@@ -552,7 +576,7 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const finalizedResult = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      emptyReasoningMap,
       "tool_calls", // Finalized
     );
     expect(finalizedResult.tool_calls).toBeDefined();
@@ -564,10 +588,78 @@ describe("OpenAIClient.buildStreamMessage", () => {
     const preservedResult = client.buildStreamMessage(
       currentMessage,
       toolCallsMap,
-      "",
+      emptyReasoningMap,
       "tool_calls", // Streaming loop passes "tool_calls" (not null) after finalization
     );
     expect(preservedResult.tool_calls).toBeDefined();
     expect(preservedResult.tool_calls).toHaveLength(1);
+  });
+
+  it("should preserve all fields from reasoning blocks including id and format", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "Answer",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>();
+    const reasoningDetailsMap = new Map<string, ReasoningDetail>([
+      [
+        "reasoning.text-0",
+        {
+          type: "reasoning.text",
+          text: "Thinking...",
+          index: 0,
+          id: "block_123",
+          format: "json",
+        },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      reasoningDetailsMap,
+      "stop",
+    );
+
+    expect(result.reasoning_details).toBeDefined();
+    const reasoning = result.reasoning_details?.[0];
+    expect(reasoning?.id).toBe("block_123");
+    expect(reasoning?.format).toBe("json");
+  });
+
+  it("should sort reasoning blocks by index", () => {
+    client = createTestClient();
+
+    const currentMessage: OpenAIAssistantMessageWithReasoning = {
+      role: "assistant",
+      content: "Answer",
+    };
+
+    const toolCallsMap = new Map<number, OpenAIToolCall>();
+    // Add blocks out of order in the map
+    const reasoningDetailsMap = new Map<string, ReasoningDetail>([
+      ["reasoning.text-2", { type: "reasoning.text", text: "Third", index: 2 }],
+      ["reasoning.text-0", { type: "reasoning.text", text: "First", index: 0 }],
+      [
+        "reasoning.text-1",
+        { type: "reasoning.text", text: "Second", index: 1 },
+      ],
+    ]);
+
+    const result = client.buildStreamMessage(
+      currentMessage,
+      toolCallsMap,
+      reasoningDetailsMap,
+      "stop",
+    );
+
+    expect(result.reasoning_details).toBeDefined();
+    expect(result.reasoning_details).toHaveLength(3);
+    expect(result.reasoning_details?.[0]?.text).toBe("First");
+    expect(result.reasoning_details?.[1]?.text).toBe("Second");
+    expect(result.reasoning_details?.[2]?.text).toBe("Third");
   });
 });
