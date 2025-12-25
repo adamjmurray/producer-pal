@@ -13,6 +13,20 @@ Choose your preferred AI platform to get started with Producer Pal:
 
 :::
 
+## Which AI Do You Use?
+
+Pick your preferred AI provider:
+
+- **[Anthropic / Claude](./installation/choose-claude)** — Claude Desktop,
+  claude.ai, or Claude Code
+- **[OpenAI / ChatGPT](./installation/choose-openai)** — ChatGPT web app or
+  Codex CLI
+- **[Google / Gemini](./installation/choose-gemini)** — Built-in Chat UI or
+  Gemini CLI
+- **[Local / Offline](./installation/choose-local)** — Ollama or LM Studio
+- **[Multiple Providers](./installation/choose-multi)** — OpenRouter,
+  flexibility across providers
+
 ## Recommended Options
 
 These are the easiest and most reliable ways to use Producer Pal:

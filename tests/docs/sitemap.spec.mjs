@@ -1,6 +1,6 @@
-import { expect, test } from "@playwright/test";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { expect, test } from "@playwright/test";
 
 // Known external domains that are allowed
 const ALLOWED_EXTERNAL_DOMAINS = [
@@ -54,6 +54,7 @@ function parseSitemap() {
  */
 function toRelativePath(absoluteUrl) {
   const url = new URL(absoluteUrl);
+
   return url.pathname;
 }
 
@@ -63,6 +64,7 @@ function toRelativePath(absoluteUrl) {
 function isExternalUrl(href) {
   try {
     const url = new URL(href, "http://localhost");
+
     return url.hostname !== "localhost";
   } catch {
     return false;
@@ -75,6 +77,7 @@ function isExternalUrl(href) {
 function isAllowedExternalDomain(href) {
   try {
     const url = new URL(href);
+
     return ALLOWED_EXTERNAL_DOMAINS.some((domain) =>
       url.hostname.includes(domain),
     );
@@ -96,11 +99,13 @@ function normalizeUrlForSitemap(href, baseUrl = "https://producer-pal.org") {
     // Handle relative URLs (strip hash fragment for sitemap comparison)
     if (href.startsWith("/")) {
       const pathWithoutHash = href.split("#")[0];
+
       return baseUrl + pathWithoutHash;
     }
 
     // Handle absolute URLs
     const url = new URL(href);
+
     if (url.hostname === "producer-pal.org" || url.hostname === "localhost") {
       // Strip hash fragment for sitemap comparison
       return baseUrl + url.pathname;
@@ -149,6 +154,7 @@ test.describe("Docs Site Sitemap Tests", () => {
     page.on("response", (response) => {
       if (response.status() === 404) {
         const url = response.url();
+
         // Ignore favicon 404s - these are common and usually acceptable
         if (!url.includes("favicon.ico")) {
           consoleErrors.push(`404 Not Found: ${url}`);
@@ -169,11 +175,13 @@ test.describe("Docs Site Sitemap Tests", () => {
 
       // Check that the page loads (title should be present)
       const title = await page.title();
+
       expect(title).toBeTruthy();
       expect(title).not.toBe("");
 
       // Check for navigation links
       const navLinks = await page.locator("nav a").count();
+
       expect(navLinks).toBeGreaterThan(0, "Page should have navigation links");
 
       // Verify no console errors or warnings
@@ -188,6 +196,7 @@ test.describe("Docs Site Sitemap Tests", () => {
 
       for (const link of links) {
         const href = await link.getAttribute("href");
+
         if (!href) continue;
 
         // Skip hash-only links (same page anchors)
@@ -204,6 +213,7 @@ test.describe("Docs Site Sitemap Tests", () => {
         } else {
           // It's an internal link - verify it's in the sitemap
           const normalizedUrl = normalizeUrlForSitemap(href);
+
           if (normalizedUrl && !sitemapUrls.includes(normalizedUrl)) {
             linkValidationErrors.push(
               `Internal link not in sitemap: ${href} (normalized: ${normalizedUrl})`,

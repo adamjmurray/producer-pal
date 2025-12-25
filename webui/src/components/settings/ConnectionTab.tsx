@@ -75,6 +75,7 @@ export function ConnectionTab({
             onChange={(e) => setApiKey((e.target as HTMLInputElement).value)}
             placeholder={`Enter your ${providerLabel} API key`}
             className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+            data-testid="api-key-input"
           />
           {API_KEY_URLS[provider] && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">

@@ -73,6 +73,7 @@ export function App() {
     thinking: settings.thinking,
     temperature: settings.temperature,
     baseUrl,
+    showThoughts: settings.showThoughts,
     enabledTools: settings.enabledTools,
     mcpStatus,
     mcpError,

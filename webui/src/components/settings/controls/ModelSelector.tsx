@@ -21,9 +21,10 @@ const GEMINI_MODELS = [
 
 const OPENAI_MODELS = [
   { value: "gpt-5.2-2025-12-11", label: "GPT-5.2 (most capable)" },
+  { value: "gpt-5.1-codex-max", label: "GPT-5.1 Codex Max" },
   { value: "gpt-5-2025-08-07", label: "GPT-5 (previous version)" },
   { value: "gpt-5-mini-2025-08-07", label: "GPT-5 Mini (fast & affordable)" },
-  { value: "gpt-5-nano-2025-08-07", label: "GPT-5 Nano (ultra fast)" },
+  { value: "gpt-4o-2024-08-06", label: "GPT-4o" },
   { value: "OTHER", label: "Other..." },
 ];
 
@@ -36,7 +37,7 @@ const MISTRAL_MODELS = [
   { value: "OTHER", label: "Other..." },
 ];
 
-const OPENROUTER_MODELS = [
+export const OPENROUTER_MODELS = [
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
@@ -196,6 +197,7 @@ export function ModelSelector({
           handleDropdownChange((e.target as HTMLSelectElement).value)
         }
         className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
+        data-testid="model-select"
       >
         {presetModels.map(({ value, label }) => (
           <option key={value} value={value}>

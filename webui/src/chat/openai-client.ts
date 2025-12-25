@@ -3,63 +3,25 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import OpenAI from "openai";
 import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
 import { getMcpUrl } from "#webui/utils/mcp-url";
+import { isOpenRouterProvider } from "#webui/utils/provider-detection";
+import {
+  processReasoningDelta,
+  type OpenAIAssistantMessageWithReasoning,
+  type ReasoningDetail,
+} from "./openai-reasoning-helpers";
+
+// Re-export for external consumers
+export {
+  extractReasoningFromDelta,
+  processReasoningDelta,
+} from "./openai-reasoning-helpers";
+export type {
+  OpenAIAssistantMessageWithReasoning,
+  ReasoningDetail,
+} from "./openai-reasoning-helpers";
 
 const MCP_NOT_INITIALIZED_ERROR =
   "MCP client not initialized. Call initialize() first.";
-
-/**
- * Reasoning detail structure from OpenRouter/OpenAI streaming responses.
- */
-export interface ReasoningDetail {
-  type: string;
-  text?: string;
-  index?: number;
-}
-
-/**
- * Extended OpenAI assistant message type that includes reasoning fields.
- * These fields are not in the official types yet but are supported by OpenRouter and OpenAI o-series models.
- */
-export interface OpenAIAssistantMessageWithReasoning {
-  role: "assistant";
-  content: string;
-  tool_calls?: OpenAIToolCall[];
-  reasoning_details?: ReasoningDetail[];
-}
-
-/**
- * Processes a streaming delta chunk to extract reasoning content.
- * Handles both OpenAI's reasoning_content field and OpenRouter's reasoning_details array.
- *
- * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - The delta object from a streaming chunk
- * @returns {string} - The reasoning text from this delta, or empty string if none
- */
-export function extractReasoningFromDelta(
-  delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
-): string {
-  // @ts-expect-error - reasoning fields not in official types yet
-  if (delta.reasoning_content) {
-    // @ts-expect-error - reasoning fields not in official types yet
-    return delta.reasoning_content;
-  }
-
-  // @ts-expect-error - reasoning fields not in official types yet
-  if (delta.reasoning_details) {
-    let text = "";
-
-    // Extract text from reasoning_details array (standard OpenRouter format)
-    // @ts-expect-error - reasoning fields not in official types yet
-    for (const detail of delta.reasoning_details) {
-      if (detail.type === "reasoning.text" && detail.text) {
-        text += detail.text;
-      }
-    }
-
-    return text;
-  }
-
-  return "";
-}
 
 // Configuration for OpenAIClient
 export interface OpenAIClientConfig {
@@ -68,36 +30,15 @@ export interface OpenAIClientConfig {
   temperature?: number;
   systemInstruction?: string;
   reasoningEffort?: "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+  excludeReasoning?: boolean;
   chatHistory?: OpenAIMessage[];
-  baseUrl?: string; // For OpenAI-compatible providers
+  baseUrl?: string;
   enabledTools?: Record<string, boolean>;
 }
 
 /**
- * Client for interacting with OpenAI-compatible APIs with MCP (Model Context Protocol) tool support.
- *
- * Returns chat history in OpenAI's raw API format:
- * - `{ role: "system", content: string }` - system prompt (internal)
- * - `{ role: "user", content: string }` - user messages
- * - `{ role: "assistant", content: string, tool_calls?: [...], reasoning_details?: [...] }` - assistant responses
- * - `{ role: "tool", tool_call_id: string, content: string }` - tool results
- *
- * The `reasoning_details` field contains thinking/reasoning content from models that support it
- * (OpenAI o-series, OpenRouter reasoning models). This is kept separate from regular content
- * to maintain proper API contract and enable the UI to display it as collapsible thoughts.
- *
- * Example raw history:
- * ```js
- * [
- *   { role: "system", content: "System prompt" },
- *   { role: "user", content: "Hello" },
- *   { role: "assistant", content: "Hi there!", reasoning_details: [{ type: "reasoning.text", text: "Thinking...", index: 0 }] },
- *   { role: "assistant", content: "", tool_calls: [{ id: "call_123", function: { name: "search", arguments: '{"query":"foo"}' } }] },
- *   { role: "tool", tool_call_id: "call_123", content: '{"text":"result"}' },
- *   { role: "assistant", content: "Based on the search..." }
- * ]
- * ```
- *
+ * Client for OpenAI-compatible APIs with MCP tool support.
+ * Returns chat history in OpenAI's raw format with reasoning_details for thinking content.
  * For UI-friendly format, use formatOpenAIMessages() from openai-formatter.js
  */
 export class OpenAIClient {
@@ -297,7 +238,20 @@ export class OpenAIClient {
       messages: this.chatHistory,
       tools: tools.length > 0 ? tools : undefined,
       temperature: this.config.temperature,
-      reasoning_effort: this.config.reasoningEffort,
+      ...(this.config.reasoningEffort
+        ? isOpenRouterProvider(this.config.baseUrl)
+          ? {
+              reasoning: {
+                effort: this.config.reasoningEffort,
+                // Exclude reasoning when effort is "none" or checkbox is unchecked
+                ...((this.config.reasoningEffort === "none" ||
+                  this.config.excludeReasoning) && {
+                  exclude: true,
+                }),
+              },
+            }
+          : { reasoning_effort: this.config.reasoningEffort }
+        : {}),
       stream: true,
     });
 
@@ -307,7 +261,8 @@ export class OpenAIClient {
       content: "",
     };
     const toolCallsMap = new Map<number, OpenAIToolCall>();
-    let reasoningText = ""; // Accumulate reasoning separately
+    // Accumulate reasoning blocks by index, preserving full structure for API round-tripping
+    const reasoningDetailsMap = new Map<string, ReasoningDetail>();
     let toolCallsFinalized = false; // Track if we've received finish_reason: tool_calls
 
     for await (const chunk of stream) {
@@ -319,7 +274,7 @@ export class OpenAIClient {
 
       // Process delta chunks
       this.processContentDelta(delta, currentMessage);
-      reasoningText = this.processReasoningDelta(delta, reasoningText);
+      processReasoningDelta(delta, reasoningDetailsMap);
       this.processToolCallDeltas(delta, toolCallsMap);
 
       // Once finalized, preserve tool_calls for subsequent chunks (e.g., OpenRouter usage chunks)
@@ -329,7 +284,7 @@ export class OpenAIClient {
       const messageToAdd = this.buildStreamMessage(
         currentMessage,
         toolCallsMap,
-        reasoningText,
+        reasoningDetailsMap,
         toolCallsFinalized ? "tool_calls" : choice.finish_reason,
       );
 
@@ -348,27 +303,7 @@ export class OpenAIClient {
     delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
     currentMessage: OpenAIAssistantMessageWithReasoning,
   ): void {
-    if (delta.content) {
-      currentMessage.content =
-        (typeof currentMessage.content === "string"
-          ? currentMessage.content
-          : "") + delta.content;
-    }
-  }
-
-  /**
-   * Processes reasoning delta from a stream chunk and returns updated reasoning text.
-   * @param {OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta} delta - Delta object from stream chunk
-   * @param {string} reasoningText - Accumulated reasoning text so far
-   * @returns {string} - Updated reasoning text
-   */
-  private processReasoningDelta(
-    delta: OpenAI.Chat.Completions.ChatCompletionChunk.Choice.Delta,
-    reasoningText: string,
-  ): string {
-    const reasoning = extractReasoningFromDelta(delta);
-
-    return reasoning ? reasoningText + reasoning : reasoningText;
+    if (delta.content) currentMessage.content += delta.content;
   }
 
   /**
@@ -418,7 +353,7 @@ export class OpenAIClient {
    * Builds the assistant message with tool calls and reasoning details.
    * @param {OpenAIAssistantMessageWithReasoning} currentMessage - Current message being built
    * @param {Map<number, OpenAIToolCall>} toolCallsMap - Map of accumulated tool calls
-   * @param {string} reasoningText - Accumulated reasoning text
+   * @param {Map<string, ReasoningDetail>} reasoningDetailsMap - Map of reasoning blocks by type-index key
    * @param {string | null} finishReason - Finish reason from the stream chunk
    * @returns {object} - Complete assistant message with all parts
    * @internal - Exported for testing only
@@ -426,7 +361,7 @@ export class OpenAIClient {
   buildStreamMessage(
     currentMessage: OpenAIAssistantMessageWithReasoning,
     toolCallsMap: Map<number, OpenAIToolCall>,
-    reasoningText: string,
+    reasoningDetailsMap: Map<string, ReasoningDetail>,
     finishReason: string | null,
   ): OpenAIAssistantMessageWithReasoning {
     const messageToAdd: OpenAIAssistantMessageWithReasoning = {
@@ -438,14 +373,11 @@ export class OpenAIClient {
           : undefined,
     };
 
-    if (reasoningText) {
-      messageToAdd.reasoning_details = [
-        {
-          type: "reasoning.text",
-          text: reasoningText,
-          index: 0,
-        },
-      ];
+    // Convert Map to sorted array (by index) preserving full block structure
+    if (reasoningDetailsMap.size > 0) {
+      messageToAdd.reasoning_details = Array.from(
+        reasoningDetailsMap.values(),
+      ).sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
     }
 
     return messageToAdd;
@@ -521,7 +453,7 @@ export class OpenAIClient {
       throw new Error("Invalid tool call type");
     }
 
-    const args = JSON.parse(toolCall.function.arguments);
+    const args = JSON.parse(toolCall.function.arguments || "{}");
     const result = await this.mcpClient?.callTool({
       name: toolCall.function.name,
       arguments: args,

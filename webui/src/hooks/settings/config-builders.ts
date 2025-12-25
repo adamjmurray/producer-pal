@@ -2,6 +2,7 @@ import type { GeminiClientConfig } from "#webui/chat/gemini-client";
 import type { OpenAIClientConfig } from "#webui/chat/openai-client";
 import { getThinkingBudget, SYSTEM_INSTRUCTION } from "#webui/lib/config";
 import type { GeminiMessage, OpenAIMessage } from "#webui/types/messages";
+import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 
 /**
  * Builds Gemini client configuration from settings
@@ -49,7 +50,7 @@ export function buildGeminiConfig(
  * Check if we're using the actual OpenAI API (not OpenAI-compatible providers like Groq/Mistral).
  * reasoning_effort is only supported by OpenAI's API.
  * @param {string} [baseUrl] - Base URL to check
- * @returns {any} - Hook return value
+ * @returns {boolean} - True if OpenAI API
  */
 function isOpenAIProvider(baseUrl?: string): boolean {
   // If no baseUrl, OpenAIClient defaults to OpenAI
@@ -60,6 +61,33 @@ function isOpenAIProvider(baseUrl?: string): boolean {
 }
 
 type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+
+/**
+ * Maps thinking UI setting to reasoning effort for OpenRouter.
+ * Simple direct mapping without model-specific logic.
+ * @param {string} thinking - Thinking mode setting from UI
+ * @returns {ReasoningEffort | undefined} - reasoning effort value or undefined
+ */
+function mapThinkingToOpenRouterEffort(
+  thinking: string,
+): ReasoningEffort | undefined {
+  switch (thinking) {
+    case "Off":
+      return "none";
+    case "Minimal":
+      return "minimal";
+    case "Low":
+      return "low";
+    case "Medium":
+      return "medium";
+    case "High":
+      return "high";
+    case "XHigh":
+      return "xhigh";
+    default:
+      return undefined; // Default - let API use its default
+  }
+}
 
 /**
  * Extracts the GPT version number from a model name.
@@ -123,8 +151,10 @@ function mapThinkingToReasoningEffort(
 
   // Map thinking UI values to reasoning_effort
   if (isO1O3) {
-    // o1/o3: only supports low, medium, high
+    // o1/o3: only supports low, medium, high (no "none" option)
     switch (thinking) {
+      case "Off":
+        return "low"; // o1/o3 minimum is low
       case "Low":
       case "Minimal":
         return "low";
@@ -134,7 +164,7 @@ function mapThinkingToReasoningEffort(
       case "XHigh":
         return "high";
       default:
-        return undefined; // Off
+        return undefined; // Default - let API use its default
     }
   }
 
@@ -153,7 +183,7 @@ function mapThinkingToReasoningEffort(
     case "XHigh":
       return supportsXHigh(model) ? "xhigh" : "high";
     default:
-      return undefined;
+      return undefined; // Default - let API use its default
   }
 }
 
@@ -163,6 +193,7 @@ function mapThinkingToReasoningEffort(
  * @param {number} temperature - Temperature value (0-2)
  * @param {string} thinking - Thinking mode setting
  * @param {string} [baseUrl] - Base URL for custom provider
+ * @param {boolean} showThoughts - Whether to include reasoning in response
  * @param {Record<string, boolean>} enabledTools - Tool enabled states
  * @param {OpenAIMessage[]} [chatHistory] - Optional chat history
  * @returns {any} - Hook return value
@@ -172,6 +203,7 @@ export function buildOpenAIConfig(
   temperature: number,
   thinking: string,
   baseUrl: string | undefined,
+  showThoughts: boolean,
   enabledTools: Record<string, boolean>,
   chatHistory?: OpenAIMessage[],
 ): OpenAIClientConfig {
@@ -187,12 +219,22 @@ export function buildOpenAIConfig(
     config.chatHistory = chatHistory;
   }
 
-  // Only include reasoning_effort when using actual OpenAI API (not Groq/Mistral/etc)
-  if (isOpenAIProvider(baseUrl)) {
-    const reasoningEffort = mapThinkingToReasoningEffort(thinking, model);
+  // Only include reasoning when using OpenAI API or OpenRouter (not Groq/Mistral/etc)
+  if (isOpenRouterProvider(baseUrl)) {
+    // OpenRouter: simple direct mapping, client formats as { reasoning: { effort } }
+    const effort = mapThinkingToOpenRouterEffort(thinking);
 
-    if (reasoningEffort) {
-      config.reasoningEffort = reasoningEffort;
+    if (effort) {
+      config.reasoningEffort = effort;
+      // Exclude reasoning from response when checkbox is unchecked
+      config.excludeReasoning = !showThoughts;
+    }
+  } else if (isOpenAIProvider(baseUrl)) {
+    // OpenAI: model-specific mapping, client formats as { reasoning_effort }
+    const effort = mapThinkingToReasoningEffort(thinking, model);
+
+    if (effort) {
+      config.reasoningEffort = effort;
     }
   }
 

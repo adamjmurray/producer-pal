@@ -10,6 +10,7 @@ import {
   processDrumChains,
   processRegularChains,
   processReturnChains,
+  readABCompare,
   readDeviceParameters,
   readMacroVariations,
 } from "./helpers/device-reader-helpers.js";
@@ -190,8 +191,10 @@ export function readDevice(device, options = {}) {
     deviceInfo.collapsed = true;
   }
 
-  // Add variation info for rack devices (spreads empty object if not applicable)
+  // Add variation/macro info for rack devices (spreads empty object if not applicable)
   Object.assign(deviceInfo, readMacroVariations(device));
+  // Add A/B Compare state (spreads empty object if device doesn't support it)
+  Object.assign(deviceInfo, readABCompare(device));
 
   if (deviceType.includes("rack") && (includeChains || includeDrumChains)) {
     if (deviceType === DEVICE_TYPE.DRUM_RACK) {

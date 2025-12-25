@@ -22,7 +22,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   openai: {
     apiKey: "",
     model: "gpt-5.2-2025-12-11",
-    thinking: "Medium",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   openrouter: {
     apiKey: "",
     model: "minimax/minimax-m2:free",
-    thinking: "Auto",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },

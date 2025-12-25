@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
@@ -55,14 +55,17 @@
     "typecheck": "npm run ui:typecheck",
     "ui:build": "vite build --config config/vite.config.mjs",
     "ui:dev": "ENABLE_RAW_LIVE_API=true vite --config config/vite.config.mjs",
-    "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json",
+    "ui:typecheck": "node scripts/validate-webui-extensions.mjs && tsc --project webui/tsconfig.json && tsc --project tests/webui/tsconfig.json",
+    "ui:test": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.ui.config.mjs",
+    "ui:test:dev": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.ui.config.mjs --ui",
+    "ui:test:headed": "node --env-file=.env node_modules/.bin/playwright test -c config/playwright.ui.config.mjs --headed",
     "validate:webui-extensions": "node scripts/validate-webui-extensions.mjs",
     "docs:dev": "vitepress dev docs --port 5174",
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
-    "docs:test": "npm run docs:build && playwright test -c config/playwright.config.mjs",
-    "docs:test:ui": "npm run docs:build && playwright test -c config/playwright.config.mjs --ui",
-    "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.config.mjs --headed"
+    "docs:test": "npm run docs:build && playwright test -c config/playwright.docs.config.mjs",
+    "docs:test:dev": "npm run docs:build && playwright test -c config/playwright.docs.config.mjs --ui",
+    "docs:test:headed": "npm run docs:build && playwright test -c config/playwright.docs.config.mjs --headed"
   },
   "dependencies": {
     "@google/genai": "^1.34.0",

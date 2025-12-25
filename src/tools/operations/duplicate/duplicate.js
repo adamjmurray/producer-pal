@@ -1,5 +1,6 @@
 import { barBeatToAbletonBeats } from "#src/notation/barbeat/time/barbeat-time.js";
 import { select } from "#src/tools/control/select.js";
+import { resolveLocatorToBeats } from "#src/tools/shared/locator/locator-helpers.js";
 import { validateIdType } from "#src/tools/shared/validation/id-validation.js";
 import { duplicateClipWithPositions } from "./helpers/duplicate-clip-position-helpers.js";
 import {
@@ -17,6 +18,39 @@ import {
 } from "./helpers/duplicate-validation-helpers.js";
 
 /**
+ * Resolves arrangement position from bar|beat or locator
+ * @param {LiveAPI} liveSet - The live_set LiveAPI object
+ * @param {string} arrangementStart - Bar|beat position
+ * @param {string} arrangementLocatorId - Locator ID for position
+ * @param {string} arrangementLocatorName - Locator name for position
+ * @param {number} timeSigNumerator - Time signature numerator
+ * @param {number} timeSigDenominator - Time signature denominator
+ * @returns {number} Position in beats
+ */
+function resolveArrangementPosition(
+  liveSet,
+  arrangementStart,
+  arrangementLocatorId,
+  arrangementLocatorName,
+  timeSigNumerator,
+  timeSigDenominator,
+) {
+  if (arrangementLocatorId != null || arrangementLocatorName != null) {
+    return resolveLocatorToBeats(
+      liveSet,
+      { locatorId: arrangementLocatorId, locatorName: arrangementLocatorName },
+      "duplicate",
+    );
+  }
+
+  return barBeatToAbletonBeats(
+    arrangementStart,
+    timeSigNumerator,
+    timeSigDenominator,
+  );
+}
+
+/**
  * Duplicates an object based on its type.
  * Note: Duplicated Arrangement clips will only play if their tracks are currently following the Arrangement timeline.
  * @param {object} args - The parameters
@@ -25,6 +59,8 @@ import {
  * @param {number} [args.count=1] - Number of duplicates to create
  * @param {string} [args.destination] - Destination for clip duplication ("session" or "arrangement"), required when type is "clip"
  * @param {string} [args.arrangementStart] - Start time in bar|beat format for Arrangement view clips (uses song time signature)
+ * @param {string} [args.arrangementLocatorId] - Locator ID for arrangement position (e.g., 'locator-0')
+ * @param {string} [args.arrangementLocatorName] - Locator name for arrangement position
  * @param {string} [args.arrangementLength] - Duration in bar:beat format (e.g., '4:0' = exactly 4 bars)
  * @param {string} [args.name] - Optional name for the duplicated object(s)
  * @param {boolean} [args.withoutClips] - Whether to exclude clips when duplicating tracks or scenes
@@ -43,6 +79,8 @@ export function duplicate(
     count = 1,
     destination,
     arrangementStart,
+    arrangementLocatorId,
+    arrangementLocatorName,
     arrangementLength,
     name,
     withoutClips,
@@ -80,7 +118,12 @@ export function duplicate(
   validateDestinationParameter(type, destination);
 
   // Validate arrangement parameters
-  validateArrangementParameters(destination, arrangementStart);
+  validateArrangementParameters(
+    destination,
+    arrangementStart,
+    arrangementLocatorId,
+    arrangementLocatorName,
+  );
 
   // For clips, use position-based iteration; for tracks/scenes, use count-based
   const createdObjects =
@@ -93,6 +136,8 @@ export function duplicate(
           toTrackIndex,
           toSceneIndex,
           arrangementStart,
+          arrangementLocatorId,
+          arrangementLocatorName,
           arrangementLength,
           context,
         )
@@ -105,6 +150,8 @@ export function duplicate(
           name,
           {
             arrangementStart,
+            arrangementLocatorId,
+            arrangementLocatorName,
             arrangementLength,
             withoutClips,
             withoutDevices,
@@ -172,6 +219,8 @@ function duplicateTrackOrSceneWithCount(
   const createdObjects = [];
   const {
     arrangementStart,
+    arrangementLocatorId,
+    arrangementLocatorName,
     arrangementLength,
     withoutClips,
     withoutDevices,
@@ -190,6 +239,8 @@ function duplicateTrackOrSceneWithCount(
       objectName,
       {
         arrangementStart,
+        arrangementLocatorId,
+        arrangementLocatorName,
         arrangementLength,
         withoutClips,
         withoutDevices,
@@ -249,6 +300,8 @@ function switchViewIfRequested(switchView, destination, type) {
  * @param {number} i - Current duplicate index
  * @param {string} objectName - Name for the duplicated object
  * @param {string} arrangementStart - Start time in bar|beat format
+ * @param {string} arrangementLocatorId - Locator ID for arrangement position
+ * @param {string} arrangementLocatorName - Locator name for arrangement position
  * @param {string} arrangementLength - Duration in bar|beat format
  * @param {boolean} withoutClips - Whether to exclude clips
  * @param {object} context - Context object with holdingAreaStartBeats
@@ -260,6 +313,8 @@ function duplicateSceneToArrangementView(
   i,
   objectName,
   arrangementStart,
+  arrangementLocatorId,
+  arrangementLocatorName,
   arrangementLength,
   withoutClips,
   context,
@@ -269,9 +324,12 @@ function duplicateSceneToArrangementView(
   const songTimeSigNumerator = liveSet.getProperty("signature_numerator");
   const songTimeSigDenominator = liveSet.getProperty("signature_denominator");
 
-  // Convert arrangementStart from bar|beat to Ableton beats once
-  const baseArrangementStartBeats = barBeatToAbletonBeats(
+  // Resolve arrangement start position from bar|beat or locator
+  const baseArrangementStartBeats = resolveArrangementPosition(
+    liveSet,
     arrangementStart,
+    arrangementLocatorId,
+    arrangementLocatorName,
     songTimeSigNumerator,
     songTimeSigDenominator,
   );
@@ -383,6 +441,8 @@ function performDuplication(
 ) {
   const {
     arrangementStart,
+    arrangementLocatorId,
+    arrangementLocatorName,
     arrangementLength,
     withoutClips,
     withoutDevices,
@@ -396,6 +456,8 @@ function performDuplication(
       i,
       objectName,
       arrangementStart,
+      arrangementLocatorId,
+      arrangementLocatorName,
       arrangementLength,
       withoutClips,
       context,

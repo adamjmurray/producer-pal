@@ -19,7 +19,7 @@ The tests validate that all pages in the generated sitemap:
 npm run docs:test
 
 # Run tests with UI mode (for debugging)
-npm run docs:test:ui
+npm run docs:test:dev
 
 # Run tests in headed mode (visible browser)
 npm run docs:test:headed
@@ -27,7 +27,7 @@ npm run docs:test:headed
 
 ## Test Configuration
 
-- **Config file**: `config/playwright.config.mjs`
+- **Config file**: `config/playwright.docs.config.mjs`
 - **Browser**: Chromium (headless)
 - **Workers**: Limited to 2 for stability
 - **Test files**: `tests/docs/*.spec.mjs`

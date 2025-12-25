@@ -565,4 +565,176 @@ describe("updateDevice", () => {
       ]);
     });
   });
+
+  describe("macroCount", () => {
+    beforeEach(() => {
+      liveApiGet.mockImplementation(function (prop) {
+        if (this._path === "id 123") {
+          if (prop === "can_have_chains") return [1];
+          if (prop === "visible_macro_count") return [4];
+        }
+        if (this._path === "id 456") {
+          if (prop === "can_have_chains") return [0];
+        }
+        return [0];
+      });
+    });
+
+    it("should reject non-rack devices with error", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateDevice({
+        ids: "456",
+        macroCount: 8,
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "updateDevice: macro count only available on rack devices",
+      );
+      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(result).toEqual({ id: "456" });
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should call add_macro when increasing count (macros added in pairs)", () => {
+      const result = updateDevice({
+        ids: "123",
+        macroCount: 8, // 4 -> 8 = diff of 4 = 2 pairs
+      });
+
+      expect(liveApiCall).toHaveBeenCalledTimes(2);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "add_macro",
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should call remove_macro when decreasing count (macros removed in pairs)", () => {
+      const result = updateDevice({
+        ids: "123",
+        macroCount: 0, // 4 -> 0 = diff of 4 = 2 pairs
+      });
+
+      expect(liveApiCall).toHaveBeenCalledTimes(2);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "remove_macro",
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should do nothing when count matches", () => {
+      const result = updateDevice({
+        ids: "123",
+        macroCount: 4, // 4 -> 4 = no change
+      });
+
+      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should round odd counts up to next even and warn", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateDevice({
+        ids: "123",
+        macroCount: 7, // rounds to 8, 4 -> 8 = 2 pairs
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "updateDevice: macro count rounded from 7 to 8 (macros come in pairs)",
+      );
+      expect(liveApiCall).toHaveBeenCalledTimes(2);
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "add_macro",
+      );
+      expect(result).toEqual({ id: "123" });
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("abCompare", () => {
+    beforeEach(() => {
+      liveApiGet.mockImplementation(function (prop) {
+        // Device with AB Compare support (id 123)
+        if (this._path === "id 123") {
+          if (prop === "can_compare_ab") return [1];
+        }
+        // Device without AB Compare support (id 456)
+        if (this._path === "id 456") {
+          if (prop === "can_compare_ab") return [0];
+        }
+        return [0];
+      });
+    });
+
+    it("should reject devices without AB Compare support", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const result = updateDevice({
+        ids: "456",
+        abCompare: "b",
+      });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "updateDevice: A/B Compare not available on this device",
+      );
+      expect(liveApiSet).not.toHaveBeenCalled();
+      expect(liveApiCall).not.toHaveBeenCalled();
+      expect(result).toEqual({ id: "456" });
+
+      consoleSpy.mockRestore();
+    });
+
+    it("should set is_using_compare_preset_b to 0 for 'a'", () => {
+      const result = updateDevice({
+        ids: "123",
+        abCompare: "a",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "is_using_compare_preset_b",
+        0,
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should set is_using_compare_preset_b to 1 for 'b'", () => {
+      const result = updateDevice({
+        ids: "123",
+        abCompare: "b",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "is_using_compare_preset_b",
+        1,
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+
+    it("should call save_preset_to_compare_ab_slot for 'save'", () => {
+      const result = updateDevice({
+        ids: "123",
+        abCompare: "save",
+      });
+
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ _path: "id 123" }),
+        "save_preset_to_compare_ab_slot",
+      );
+      expect(result).toEqual({ id: "123" });
+    });
+  });
 });

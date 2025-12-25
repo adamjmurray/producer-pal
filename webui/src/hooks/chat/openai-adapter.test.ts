@@ -17,11 +17,12 @@ vi.mock("../../chat/openai-client", () => ({
 // Mock config builder
 vi.mock("../settings/config-builders", () => ({
   buildOpenAIConfig: vi.fn(
-    (model, temp, thinking, baseUrl, tools, history) => ({
+    (model, temp, thinking, baseUrl, showThoughts, tools, history) => ({
       model,
       temperature: temp,
       thinking,
       baseUrl,
+      showThoughts,
       enabledTools: tools,
       chatHistory: history,
     }),
@@ -104,6 +105,7 @@ describe("openai-adapter", () => {
         1.0,
         "Low",
         "https://api.openai.com/v1",
+        false,
         {},
         undefined,
       );
@@ -119,6 +121,7 @@ describe("openai-adapter", () => {
         1.0,
         "Low",
         "https://custom.api.com/v1",
+        false,
         {},
         undefined,
       );
@@ -132,6 +135,7 @@ describe("openai-adapter", () => {
         1.0,
         "Low",
         undefined,
+        false,
         {},
         undefined,
       );
@@ -145,6 +149,7 @@ describe("openai-adapter", () => {
         1.0,
         "Low",
         undefined,
+        false,
         {},
         undefined,
       );
@@ -162,8 +167,26 @@ describe("openai-adapter", () => {
         1.0,
         "Low",
         "https://api.openai.com/v1",
+        false,
         {},
         chatHistory,
+      );
+    });
+
+    it("extracts showThoughts from extraParams", () => {
+      openaiAdapter.buildConfig("gpt-4", 1.0, "Low", {}, undefined, {
+        baseUrl: "https://openrouter.ai/api/v1",
+        showThoughts: true,
+      });
+
+      expect(buildOpenAIConfig).toHaveBeenCalledWith(
+        "gpt-4",
+        1.0,
+        "Low",
+        "https://openrouter.ai/api/v1",
+        true,
+        {},
+        undefined,
       );
     });
   });
