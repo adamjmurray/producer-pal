@@ -13,9 +13,9 @@ describe("MessageSettingsToolbar", () => {
   const defaultProps = {
     provider: "gemini" as const,
     model: "gemini-2.0-flash-thinking",
-    defaultThinking: "Auto",
+    defaultThinking: "Default",
     defaultTemperature: 1.0,
-    thinking: "Auto",
+    thinking: "Default",
     temperature: 1.0,
     onThinkingChange: mockOnThinkingChange,
     onTemperatureChange: mockOnTemperatureChange,
@@ -53,7 +53,7 @@ describe("MessageSettingsToolbar", () => {
     const select = container.querySelector("select");
     expect(select?.innerHTML).not.toContain("Off");
     expect(select?.innerHTML).not.toContain("Ultra");
-    expect(select?.innerHTML).not.toContain("Auto");
+    expect(select?.innerHTML).not.toContain("Default");
   });
 
   it("shows all thinking options for Gemini", () => {
@@ -62,8 +62,8 @@ describe("MessageSettingsToolbar", () => {
     fireEvent.click(button!);
 
     const select = container.querySelector("select");
+    expect(select?.innerHTML).toContain("Default");
     expect(select?.innerHTML).toContain("Off");
-    expect(select?.innerHTML).toContain("Auto");
     expect(select?.innerHTML).toContain("Ultra");
   });
 

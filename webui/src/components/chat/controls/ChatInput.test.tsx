@@ -12,7 +12,7 @@ const defaultProps = {
   onStop: vi.fn(),
   provider: "gemini" as Provider,
   model: "gemini-2.0-flash-thinking",
-  defaultThinking: "Auto",
+  defaultThinking: "Default",
   defaultTemperature: 1.0,
 };
 
@@ -111,7 +111,7 @@ describe("ChatInput", () => {
 
       expect(handleSend).toHaveBeenCalledOnce();
       expect(handleSend).toHaveBeenCalledWith("Hello", {
-        thinking: "Auto",
+        thinking: "Default",
         temperature: 1.0,
       });
     });
@@ -140,7 +140,7 @@ describe("ChatInput", () => {
 
       expect(handleSend).toHaveBeenCalledOnce();
       expect(handleSend).toHaveBeenCalledWith("Hello", {
-        thinking: "Auto",
+        thinking: "Default",
         temperature: 1.0,
       });
     });
@@ -217,7 +217,7 @@ describe("ChatInput", () => {
       fireEvent.click(button);
 
       expect(handleSend).toHaveBeenCalledWith("Hello", {
-        thinking: "Auto",
+        thinking: "Default",
         temperature: 1.0,
       });
     });
@@ -249,7 +249,7 @@ describe("ChatInput", () => {
       fireEvent.click(sendButton);
 
       expect(handleSend).toHaveBeenCalledWith("Hello", {
-        thinking: "Auto",
+        thinking: "Default",
         temperature: 1.0,
       });
     });

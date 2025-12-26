@@ -11,13 +11,21 @@ import {
   validateMcpConnection,
 } from "./streaming-helpers";
 
-/**
- * Chat client interface that all providers must implement
- */
+/** Per-message overrides for thinking and temperature */
+export interface MessageOverrides {
+  thinking?: string;
+  temperature?: number;
+}
+
+/** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
   chatHistory: TMessage[];
   initialize(): Promise<void>;
-  sendMessage(message: string, signal: AbortSignal): AsyncIterable<TMessage[]>;
+  sendMessage(
+    message: string,
+    signal: AbortSignal,
+    overrides?: MessageOverrides,
+  ): AsyncIterable<TMessage[]>;
 }
 
 /**
@@ -327,7 +335,7 @@ export function useChat<
         abortControllerRef.current = controller;
 
         await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal),
+          (msg) => client.sendMessage(msg, controller.signal, options),
           () => client.chatHistory,
           userMessage,
         );

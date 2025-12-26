@@ -87,8 +87,13 @@ export function MessageSettingsToolbar({
                 }
                 className="w-full px-2 py-1 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
               >
+                {!showSimplifiedOptions && (
+                  <option value="Default">Default</option>
+                )}
                 {!showSimplifiedOptions && <option value="Off">Off</option>}
-                {!showSimplifiedOptions && <option value="Auto">Auto</option>}
+                {!showSimplifiedOptions && (
+                  <option value="Minimal">Minimal</option>
+                )}
                 <option value="Low">Low</option>
                 <option value="Medium">Medium</option>
                 <option value="High">High</option>

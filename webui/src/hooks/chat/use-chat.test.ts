@@ -128,7 +128,7 @@ describe("useChat", () => {
   const defaultProps = {
     apiKey: "test-key",
     model: "test-model",
-    thinking: "Auto",
+    thinking: "Default",
     temperature: 1.0,
     enabledTools: {},
     mcpStatus: "connected" as const,
@@ -247,7 +247,7 @@ describe("useChat", () => {
       expect(mockAdapter.createClient).toHaveBeenCalledWith("test-key", {
         model: "test-model",
         temperature: 1.0,
-        thinking: "Auto",
+        thinking: "Default",
       });
     });
 
@@ -259,7 +259,7 @@ describe("useChat", () => {
       });
 
       expect(result.current.activeModel).toBe("test-model");
-      expect(result.current.activeThinking).toBe("Auto");
+      expect(result.current.activeThinking).toBe("Default");
       expect(result.current.activeTemperature).toBe(1.0);
     });
 

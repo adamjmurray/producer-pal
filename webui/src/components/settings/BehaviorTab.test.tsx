@@ -14,7 +14,7 @@ describe("BehaviorTab", () => {
   const defaultProps = {
     provider: "gemini" as const,
     model: "gemini-2.0-flash-thinking",
-    thinking: "Auto",
+    thinking: "Default",
     setThinking: mockSetThinking,
     temperature: 1.0,
     setTemperature: mockSetTemperature,

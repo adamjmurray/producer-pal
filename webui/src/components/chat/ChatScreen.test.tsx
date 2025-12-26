@@ -24,7 +24,7 @@ describe("ChatScreen", () => {
     activeProvider: "gemini" as const,
     provider: "gemini" as const,
     model: "gemini-2.0-flash-thinking",
-    defaultThinking: "Auto",
+    defaultThinking: "Default",
     defaultTemperature: 1.0,
     enabledToolsCount: 20,
     totalToolsCount: 20,

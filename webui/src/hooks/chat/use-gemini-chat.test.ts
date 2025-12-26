@@ -29,7 +29,7 @@ describe("useGeminiChat", () => {
   const defaultProps = {
     apiKey: "test-key",
     model: "gemini-2.5-flash",
-    thinking: "Auto",
+    thinking: "Default",
     temperature: 1.0,
     showThoughts: false,
     enabledTools: {},

@@ -88,7 +88,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: true },
@@ -97,7 +97,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         undefined,
@@ -108,7 +108,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: true },
@@ -117,7 +117,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         undefined,
@@ -128,7 +128,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: false },
@@ -137,7 +137,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -145,12 +145,18 @@ describe("gemini-adapter", () => {
     });
 
     it("handles missing extraParams gracefully", () => {
-      geminiAdapter.buildConfig("gemini-2.5-flash", 1.0, "Auto", {}, undefined);
+      geminiAdapter.buildConfig(
+        "gemini-2.5-flash",
+        1.0,
+        "Default",
+        {},
+        undefined,
+      );
 
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -161,7 +167,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         {},
@@ -170,7 +176,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -185,7 +191,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         chatHistory,
         { showThoughts: true },
@@ -194,7 +200,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         chatHistory,
