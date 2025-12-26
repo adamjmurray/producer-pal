@@ -29,7 +29,7 @@ export default defineConfig({
       ignoreEmptyLines: true,
       reporter: [
         ["text", { file: "coverage-summary.txt" }],
-        "text", // Also display in console
+        "text-summary", // Minimal console output (just totals)
         "json-summary",
         "json",
         "html",
