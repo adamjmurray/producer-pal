@@ -213,7 +213,7 @@ describe("readLiveSet - inclusion", () => {
       id: "drumrack1",
       name: "Test Drum Rack",
       type: "drum-rack",
-      // drumChains: [ // Only included when drum-chains is requested
+      // drumPads: [ // Only included when drum-pads is requested
       //   {
       //     name: "Test Kick",
       //     note: 60,

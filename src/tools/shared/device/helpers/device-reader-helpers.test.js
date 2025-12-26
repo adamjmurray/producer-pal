@@ -5,7 +5,7 @@ import {
   computeState,
   isInstrumentDevice,
   hasInstrumentInDevices,
-  updateDrumChainSoloStates,
+  updateDrumPadSoloStates,
   readMacroVariations,
   readABCompare,
 } from "./device-reader-helpers.js";
@@ -221,13 +221,13 @@ describe("device-reader-helpers", () => {
     });
   });
 
-  describe("updateDrumChainSoloStates", () => {
+  describe("updateDrumPadSoloStates", () => {
     it("does nothing when no drum chain is soloed", () => {
       const chains = [
         { pitch: "C3", name: "Kick" },
         { pitch: "D3", name: "Snare" },
       ];
-      updateDrumChainSoloStates(chains);
+      updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBeUndefined();
       expect(chains[1].state).toBeUndefined();
     });
@@ -237,7 +237,7 @@ describe("device-reader-helpers", () => {
         { pitch: "C3", name: "Kick", state: STATE.SOLOED },
         { pitch: "D3", name: "Snare" },
       ];
-      updateDrumChainSoloStates(chains);
+      updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
     });
 
@@ -246,7 +246,7 @@ describe("device-reader-helpers", () => {
         { pitch: "C3", name: "Kick", state: STATE.SOLOED },
         { pitch: "D3", name: "Snare", state: STATE.MUTED },
       ];
-      updateDrumChainSoloStates(chains);
+      updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_ALSO_VIA_SOLO);
     });
@@ -256,7 +256,7 @@ describe("device-reader-helpers", () => {
         { pitch: "C3", name: "Kick", state: STATE.SOLOED },
         { pitch: "D3", name: "Snare" },
       ];
-      updateDrumChainSoloStates(chains);
+      updateDrumPadSoloStates(chains);
       expect(chains[0].state).toBe(STATE.SOLOED);
       expect(chains[1].state).toBe(STATE.MUTED_VIA_SOLO);
     });

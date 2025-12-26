@@ -7,7 +7,7 @@ import {
 } from "#src/tools/constants.js";
 import {
   isRedundantDeviceClassName,
-  processDrumChains,
+  processDrumPads,
   processRegularChains,
   processReturnChains,
   readABCompare,
@@ -53,27 +53,27 @@ export function getDeviceType(device) {
 }
 
 /**
- * Clean up internal _processedDrumChains property from device objects
+ * Clean up internal _processedDrumPads property from device objects
  * @param {object | Array} obj - Device object or array of devices to clean
  * @returns {object | Array} Cleaned object/array
  */
-export function cleanupInternalDrumChains(obj) {
+export function cleanupInternalDrumPads(obj) {
   if (!obj || typeof obj !== "object") {
     return obj;
   }
 
   if (Array.isArray(obj)) {
-    return obj.map(cleanupInternalDrumChains);
+    return obj.map(cleanupInternalDrumPads);
   }
 
-  const { _processedDrumChains, ...rest } = obj;
+  const { _processedDrumPads, ...rest } = obj;
 
   if (rest.chains) {
     rest.chains = rest.chains.map((chain) => {
       if (chain.devices) {
         return {
           ...chain,
-          devices: cleanupInternalDrumChains(chain.devices),
+          devices: cleanupInternalDrumPads(chain.devices),
         };
       }
 
@@ -87,7 +87,7 @@ export function cleanupInternalDrumChains(obj) {
 /**
  * Extract track-level drum map from the processed device structure
  * @param {Array} devices - Array of processed device objects
- * @returns {object | null} Object mapping pitch names to drum chain names, or null if none found
+ * @returns {object | null} Object mapping pitch names to drum pad names, or null if none found
  */
 export function getDrumMap(devices) {
   /**
@@ -101,7 +101,7 @@ export function getDrumMap(devices) {
     for (const device of deviceList) {
       if (
         device.type.startsWith(DEVICE_TYPE.DRUM_RACK) &&
-        device._processedDrumChains
+        device._processedDrumPads
       ) {
         drumRacks.push(device);
       }
@@ -126,11 +126,11 @@ export function getDrumMap(devices) {
 
   const drumMap = {};
 
-  drumRacks[0]._processedDrumChains.forEach((drumChain) => {
-    if (drumChain.hasInstrument !== false) {
-      const pitchName = drumChain.pitch;
+  drumRacks[0]._processedDrumPads.forEach((drumPad) => {
+    if (drumPad.hasInstrument !== false) {
+      const pitchName = drumPad.pitch;
 
-      drumMap[pitchName] = drumChain.name;
+      drumMap[pitchName] = drumPad.name;
     }
   });
 
@@ -142,7 +142,7 @@ export function getDrumMap(devices) {
  * @param {object} device - Live API device object
  * @param {object} options - Options for reading device
  * @param {boolean} options.includeChains - Include chains in rack devices
- * @param {boolean} options.includeDrumChains - Include drum pad chains and return chains
+ * @param {boolean} options.includeDrumPads - Include drum pads and return chains
  * @param {boolean} options.includeParams - Include device parameters
  * @param {number} options.depth - Current recursion depth
  * @param {number} options.maxDepth - Maximum recursion depth
@@ -151,7 +151,7 @@ export function getDrumMap(devices) {
 export function readDevice(device, options = {}) {
   const {
     includeChains = true,
-    includeDrumChains = false,
+    includeDrumPads = false,
     includeParams = false,
     includeParamValues = false,
     paramSearch,
@@ -196,13 +196,13 @@ export function readDevice(device, options = {}) {
   // Add A/B Compare state (spreads empty object if device doesn't support it)
   Object.assign(deviceInfo, readABCompare(device));
 
-  if (deviceType.includes("rack") && (includeChains || includeDrumChains)) {
+  if (deviceType.includes("rack") && (includeChains || includeDrumPads)) {
     if (deviceType === DEVICE_TYPE.DRUM_RACK) {
-      processDrumChains(
+      processDrumPads(
         device,
         deviceInfo,
         includeChains,
-        includeDrumChains,
+        includeDrumPads,
         depth,
         maxDepth,
         readDevice,
@@ -212,20 +212,20 @@ export function readDevice(device, options = {}) {
         device,
         deviceInfo,
         includeChains,
-        includeDrumChains,
+        includeDrumPads,
         depth,
         maxDepth,
         readDevice,
       );
     }
 
-    if (includeDrumChains) {
+    if (includeDrumPads) {
       processReturnChains(
         device,
         deviceInfo,
         deviceType,
         includeChains,
-        includeDrumChains,
+        includeDrumPads,
         depth,
         maxDepth,
         readDevice,

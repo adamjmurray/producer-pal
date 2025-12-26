@@ -282,7 +282,7 @@ describe("readLiveSet - basic reading", () => {
     });
   });
 
-  it("includes device information across multiple tracks with includeDrumChains", () => {
+  it("includes device information across multiple tracks with includeDrumPads", () => {
     liveApiId.mockImplementation(function () {
       if (this._path === "live_set") {
         return "live_set_id";
@@ -346,7 +346,7 @@ describe("readLiveSet - basic reading", () => {
         "regular-tracks",
         "instruments",
         "rack-chains",
-        "drum-chains",
+        "drum-pads",
         "audio-effects",
       ],
     });
@@ -467,12 +467,12 @@ describe("readLiveSet - basic reading", () => {
       ],
     });
 
-    // Check that drum rack devices are included (drumChains hidden - drumMap provides the critical pitch-name mapping)
+    // Check that drum rack devices are included (drumPads hidden - drumMap provides the critical pitch-name mapping)
     expect(result.tracks[0].instrument).toEqual(
       expect.objectContaining({
         name: "My Drums",
         type: "drum-rack",
-        // drumChains: expect.any(Array), // Only included when drum-chains is requested
+        // drumPads: expect.any(Array), // Only included when drum-pads is requested
       }),
     );
     expect(result.tracks[0].audioEffects).toEqual([
@@ -480,14 +480,14 @@ describe("readLiveSet - basic reading", () => {
         type: "audio-effect: Reverb",
       }),
     ]);
-    // Drum rack device should be present (drumChains hidden)
+    // Drum rack device should be present (drumPads hidden)
     const drumRack = result.tracks[0].instrument;
     expect(drumRack).toBeDefined();
-    // drumChains hidden - drumMap provides the critical pitch-name mapping
-    // expect(drumRack.drumChains).toBeDefined();
-    // // If drumChains exist, they should not have chain property when includeDrumChains=false
-    // if (drumRack.drumChains && drumRack.drumChains.length > 0) {
-    //   expect(drumRack.drumChains[0].chain).toBeUndefined();
+    // drumPads hidden - drumMap provides the critical pitch-name mapping
+    // expect(drumRack.drumPads).toBeDefined();
+    // // If drumPads exist, they should not have chain property when includeDrumPads=false
+    // if (drumRack.drumPads && drumRack.drumPads.length > 0) {
+    //   expect(drumRack.drumPads[0].chain).toBeUndefined();
     // }
   });
 });

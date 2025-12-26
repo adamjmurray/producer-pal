@@ -103,22 +103,22 @@ export function hasInstrumentInDevices(devices) {
 }
 
 /**
- * Process a single drum pad to extract drum chain info
+ * Process a single drum pad to extract drum pad info
  * @param {object} pad - Drum pad object
  * @param {object} chain - Chain object
  * @param {Array} chainDevices - Devices in the chain
- * @param {boolean} includeDrumChains - Include drum chains
+ * @param {boolean} includeDrumPads - Include drum pads
  * @param {boolean} includeChains - Include chains
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function (to avoid circular dependency)
- * @returns {object} Processed drum chain info
+ * @returns {object} Processed drum pad info
  */
 export function processDrumPad(
   pad,
   chain,
   chainDevices,
-  includeDrumChains,
+  includeDrumPads,
   includeChains,
   depth,
   maxDepth,
@@ -126,7 +126,7 @@ export function processDrumPad(
 ) {
   const readDevice = readDeviceFn;
   const midiNote = pad.getProperty("note");
-  const drumChainInfo = {
+  const drumPadInfo = {
     name: pad.getProperty("name"),
     note: midiNote,
     pitch: midiPitchToName(midiNote),
@@ -137,41 +137,41 @@ export function processDrumPad(
   const isSoloed = pad.getProperty("solo") > 0;
 
   if (isSoloed) {
-    drumChainInfo.state = STATE.SOLOED;
+    drumPadInfo.state = STATE.SOLOED;
   } else if (isMuted) {
-    drumChainInfo.state = STATE.MUTED;
+    drumPadInfo.state = STATE.MUTED;
   }
 
-  if (includeDrumChains) {
+  if (includeDrumPads) {
     const processedChainDevices = chainDevices.map((chainDevice) =>
       readDevice(chainDevice, {
         includeChains,
-        includeDrumChains,
+        includeDrumPads,
         depth: depth + 1,
         maxDepth,
       }),
     );
 
-    drumChainInfo.chain = {
+    drumPadInfo.chain = {
       name: chain.getProperty("name"),
       devices: processedChainDevices,
     };
     const chainState = computeState(chain);
 
     if (chainState !== STATE.ACTIVE) {
-      drumChainInfo.chain.state = chainState;
+      drumPadInfo.chain.state = chainState;
     }
 
     const hasInstrument = hasInstrumentInDevices(processedChainDevices);
 
     if (!hasInstrument) {
-      drumChainInfo.hasInstrument = false;
+      drumPadInfo.hasInstrument = false;
     }
   } else {
     const processedChainDevices = chainDevices.map((chainDevice) =>
       readDevice(chainDevice, {
         includeChains: false,
-        includeDrumChains: false,
+        includeDrumPads: false,
         depth: depth + 1,
         maxDepth,
       }),
@@ -179,58 +179,58 @@ export function processDrumPad(
     const hasInstrument = hasInstrumentInDevices(processedChainDevices);
 
     if (!hasInstrument) {
-      drumChainInfo.hasInstrument = false;
+      drumPadInfo.hasInstrument = false;
     }
   }
 
-  return drumChainInfo;
+  return drumPadInfo;
 }
 
 /**
- * Update drum chain solo states
- * @param {Array} processedDrumChains - Drum chains to update
+ * Update drum pad solo states
+ * @param {Array} processedDrumPads - Drum pads to update
  */
-export function updateDrumChainSoloStates(processedDrumChains) {
-  const hasSoloedDrumChain = processedDrumChains.some(
-    (drumChainInfo) => drumChainInfo.state === STATE.SOLOED,
+export function updateDrumPadSoloStates(processedDrumPads) {
+  const hasSoloedDrumPad = processedDrumPads.some(
+    (drumPadInfo) => drumPadInfo.state === STATE.SOLOED,
   );
 
-  if (!hasSoloedDrumChain) {
+  if (!hasSoloedDrumPad) {
     return;
   }
 
-  processedDrumChains.forEach((drumChainInfo) => {
-    if (drumChainInfo.state === STATE.SOLOED) {
+  processedDrumPads.forEach((drumPadInfo) => {
+    if (drumPadInfo.state === STATE.SOLOED) {
       // Keep soloed state as-is
-    } else if (drumChainInfo.state === STATE.MUTED) {
-      drumChainInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
-    } else if (!drumChainInfo.state) {
-      drumChainInfo.state = STATE.MUTED_VIA_SOLO;
+    } else if (drumPadInfo.state === STATE.MUTED) {
+      drumPadInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
+    } else if (!drumPadInfo.state) {
+      drumPadInfo.state = STATE.MUTED_VIA_SOLO;
     }
   });
 }
 
 /**
- * Process drum chains for drum rack devices
+ * Process drum pads for drum rack devices
  * @param {object} device - Device object
  * @param {object} deviceInfo - Device info to update
  * @param {boolean} includeChains - Include chains
- * @param {boolean} includeDrumChains - Include drum chains
+ * @param {boolean} includeDrumPads - Include drum pads
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function
  */
-export function processDrumChains(
+export function processDrumPads(
   device,
   deviceInfo,
   includeChains,
-  includeDrumChains,
+  includeDrumPads,
   depth,
   maxDepth,
   readDeviceFn,
 ) {
   const drumPads = device.getChildren("drum_pads");
-  const processedDrumChains = drumPads
+  const processedDrumPads = drumPads
     .filter((pad) => pad.getChildIds("chains").length > 0)
     .map((pad) => {
       const chains = pad.getChildren("chains");
@@ -241,7 +241,7 @@ export function processDrumChains(
         pad,
         chain,
         chainDevices,
-        includeDrumChains,
+        includeDrumPads,
         includeChains,
         depth,
         maxDepth,
@@ -249,15 +249,15 @@ export function processDrumChains(
       );
     });
 
-  updateDrumChainSoloStates(processedDrumChains);
+  updateDrumPadSoloStates(processedDrumPads);
 
-  if (includeDrumChains) {
-    deviceInfo.drumChains = processedDrumChains.map(
-      ({ _originalPad, _originalChain, ...drumChainInfo }) => drumChainInfo,
+  if (includeDrumPads) {
+    deviceInfo.drumPads = processedDrumPads.map(
+      ({ _originalPad, _originalChain, ...drumPadInfo }) => drumPadInfo,
     );
   }
 
-  deviceInfo._processedDrumChains = processedDrumChains;
+  deviceInfo._processedDrumPads = processedDrumPads;
 }
 
 /**
@@ -265,7 +265,7 @@ export function processDrumChains(
  * @param {object} device - Device object
  * @param {object} deviceInfo - Device info to update
  * @param {boolean} includeChains - Include chains
- * @param {boolean} includeDrumChains - Include drum chains
+ * @param {boolean} includeDrumPads - Include drum pads
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function
@@ -274,7 +274,7 @@ export function processRegularChains(
   device,
   deviceInfo,
   includeChains,
-  includeDrumChains,
+  includeDrumPads,
   depth,
   maxDepth,
   readDeviceFn,
@@ -297,7 +297,7 @@ export function processRegularChains(
       chainInfo.devices = chain.getChildren("devices").map((chainDevice) =>
         readDevice(chainDevice, {
           includeChains,
-          includeDrumChains,
+          includeDrumPads,
           depth: depth + 1,
           maxDepth,
         }),
@@ -318,7 +318,7 @@ export function processRegularChains(
  * @param {object} deviceInfo - Device info to update
  * @param {string} deviceType - Device type
  * @param {boolean} includeChains - Include chains
- * @param {boolean} includeDrumChains - Include drum chains
+ * @param {boolean} includeDrumPads - Include drum pads
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function
@@ -328,7 +328,7 @@ export function processReturnChains(
   deviceInfo,
   deviceType,
   includeChains,
-  includeDrumChains,
+  includeDrumPads,
   depth,
   maxDepth,
   readDeviceFn,
@@ -351,7 +351,7 @@ export function processReturnChains(
     }
 
     const shouldIncludeDevices =
-      deviceType !== DEVICE_TYPE.DRUM_RACK || includeDrumChains;
+      deviceType !== DEVICE_TYPE.DRUM_RACK || includeDrumPads;
 
     if (shouldIncludeDevices) {
       returnChainInfo.devices = chain
@@ -359,7 +359,7 @@ export function processReturnChains(
         .map((chainDevice) =>
           readDevice(chainDevice, {
             includeChains,
-            includeDrumChains,
+            includeDrumPads,
             depth: depth + 1,
             maxDepth,
           }),

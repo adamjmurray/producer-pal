@@ -134,7 +134,7 @@ describe("readTrack", () => {
         id: "device1",
         name: "My Drums",
         type: "drum-rack",
-        // drumChains: [], // Only included when drum-chains is requested
+        // drumPads: [], // Only included when drum-pads is requested
       });
     });
 
@@ -187,7 +187,7 @@ describe("readTrack", () => {
         id: "device1",
         type: "drum-rack",
         name: "My Drums",
-        // drumChains: [], // Only included when drum-chains is requested
+        // drumPads: [], // Only included when drum-pads is requested
       });
 
       expect(result.audioEffects).toHaveLength(1);

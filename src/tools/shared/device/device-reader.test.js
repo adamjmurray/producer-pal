@@ -6,7 +6,7 @@ import {
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
 import {
-  cleanupInternalDrumChains,
+  cleanupInternalDrumPads,
   getDrumMap,
   getDeviceType,
 } from "./device-reader.js";
@@ -140,34 +140,34 @@ describe("device-reader", () => {
     });
   });
 
-  describe("cleanupInternalDrumChains", () => {
+  describe("cleanupInternalDrumPads", () => {
     it("returns primitive values unchanged", () => {
-      expect(cleanupInternalDrumChains(null)).toBe(null);
-      expect(cleanupInternalDrumChains(undefined)).toBe(undefined);
-      expect(cleanupInternalDrumChains(42)).toBe(42);
-      expect(cleanupInternalDrumChains("test")).toBe("test");
+      expect(cleanupInternalDrumPads(null)).toBe(null);
+      expect(cleanupInternalDrumPads(undefined)).toBe(undefined);
+      expect(cleanupInternalDrumPads(42)).toBe(42);
+      expect(cleanupInternalDrumPads("test")).toBe("test");
     });
 
-    it("removes _processedDrumChains from object", () => {
+    it("removes _processedDrumPads from object", () => {
       const obj = {
         type: "drum-rack",
         name: "Test",
-        _processedDrumChains: [{ pitch: "C3", name: "Kick" }],
+        _processedDrumPads: [{ pitch: "C3", name: "Kick" }],
       };
-      const result = cleanupInternalDrumChains(obj);
+      const result = cleanupInternalDrumPads(obj);
       expect(result).toEqual({
         type: "drum-rack",
         name: "Test",
       });
-      expect(result._processedDrumChains).toBeUndefined();
+      expect(result._processedDrumPads).toBeUndefined();
     });
 
     it("recursively cleans arrays of objects", () => {
       const arr = [
-        { type: "device1", _processedDrumChains: [] },
-        { type: "device2", _processedDrumChains: [] },
+        { type: "device1", _processedDrumPads: [] },
+        { type: "device2", _processedDrumPads: [] },
       ];
-      const result = cleanupInternalDrumChains(arr);
+      const result = cleanupInternalDrumPads(arr);
       expect(result).toEqual([{ type: "device1" }, { type: "device2" }]);
     });
 
@@ -178,14 +178,14 @@ describe("device-reader", () => {
           {
             name: "Chain 1",
             devices: [
-              { type: "device1", _processedDrumChains: [] },
-              { type: "device2", _processedDrumChains: [] },
+              { type: "device1", _processedDrumPads: [] },
+              { type: "device2", _processedDrumPads: [] },
             ],
           },
         ],
-        _processedDrumChains: [],
+        _processedDrumPads: [],
       };
-      const result = cleanupInternalDrumChains(obj);
+      const result = cleanupInternalDrumPads(obj);
       expect(result).toEqual({
         type: "drum-rack",
         chains: [
@@ -211,7 +211,7 @@ describe("device-reader", () => {
       const devices = [
         {
           type: "drum-rack",
-          _processedDrumChains: [
+          _processedDrumPads: [
             { pitch: "C3", name: "Kick", hasInstrument: false },
             { pitch: "D3", name: "Snare", hasInstrument: false },
           ],
@@ -224,7 +224,7 @@ describe("device-reader", () => {
       const devices = [
         {
           type: "drum-rack",
-          _processedDrumChains: [
+          _processedDrumPads: [
             { pitch: "C3", name: "Kick" },
             { pitch: "D3", name: "Snare" },
             { pitch: "F#3", name: "Hi-Hat" },
@@ -242,7 +242,7 @@ describe("device-reader", () => {
       const devices = [
         {
           type: "drum-rack",
-          _processedDrumChains: [
+          _processedDrumPads: [
             { pitch: "C3", name: "Kick" },
             { pitch: "D3", name: "Empty", hasInstrument: false },
             { pitch: "E3", name: "Snare" },
@@ -265,7 +265,7 @@ describe("device-reader", () => {
               devices: [
                 {
                   type: "drum-rack",
-                  _processedDrumChains: [
+                  _processedDrumPads: [
                     { pitch: "C3", name: "Kick" },
                     { pitch: "D3", name: "Snare" },
                   ],
@@ -285,11 +285,11 @@ describe("device-reader", () => {
       const devices = [
         {
           type: "drum-rack",
-          _processedDrumChains: [{ pitch: "C3", name: "First Kick" }],
+          _processedDrumPads: [{ pitch: "C3", name: "First Kick" }],
         },
         {
           type: "drum-rack",
-          _processedDrumChains: [{ pitch: "D3", name: "Second Snare" }],
+          _processedDrumPads: [{ pitch: "D3", name: "Second Snare" }],
         },
       ];
       expect(getDrumMap(devices)).toEqual({

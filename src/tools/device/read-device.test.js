@@ -131,13 +131,13 @@ describe("readDevice", () => {
 
     const result = readDevice({
       deviceId: "drum-rack-123",
-      include: ["drum-chains"],
+      include: ["drum-pads"],
     });
 
     expect(result).toEqual({
       id: "drum-rack-123",
       type: "drum-rack",
-      drumChains: [], // Included because drum-chains was requested
+      drumPads: [], // Included because drum-pads was requested
     });
   });
 

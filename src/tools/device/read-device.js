@@ -1,5 +1,5 @@
 import {
-  cleanupInternalDrumChains,
+  cleanupInternalDrumPads,
   readDevice as readDeviceShared,
 } from "../shared/device/device-reader.js";
 
@@ -19,20 +19,20 @@ export function readDevice({ deviceId, include = ["chains"], paramSearch }) {
   }
 
   const includeChains = include.includes("*") || include.includes("chains");
-  const includeDrumChains =
-    include.includes("*") || include.includes("drum-chains");
+  const includeDrumPads =
+    include.includes("*") || include.includes("drum-pads");
   const includeParamValues =
     include.includes("*") || include.includes("param-values");
   const includeParams = includeParamValues || include.includes("params");
 
   const deviceInfo = readDeviceShared(device, {
     includeChains,
-    includeDrumChains,
+    includeDrumPads,
     includeParams,
     includeParamValues,
     paramSearch,
   });
 
-  // Clean up internal _processedDrumChains property
-  return cleanupInternalDrumChains(deviceInfo);
+  // Clean up internal _processedDrumPads property
+  return cleanupInternalDrumPads(deviceInfo);
 }

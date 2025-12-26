@@ -267,14 +267,14 @@ describe("readTrack", () => {
           "instruments",
           "session-clips",
           "arrangement-clips",
-          "drum-chains",
+          "drum-pads",
         ],
       });
       expect(result.instrument).toEqual({
         id: "drum_rack",
         type: "drum-rack",
         name: "My Drums",
-        drumChains: [
+        drumPads: [
           {
             name: "Kick",
             note: 36,

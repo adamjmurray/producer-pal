@@ -2,7 +2,7 @@ import * as console from "#src/shared/v8-max-console.js";
 import { VERSION } from "#src/shared/version.js";
 import { readClip } from "#src/tools/clip/read/read-clip.js";
 import { STATE } from "#src/tools/constants.js";
-import { cleanupInternalDrumChains } from "#src/tools/shared/device/device-reader.js";
+import { cleanupInternalDrumPads } from "#src/tools/shared/device/device-reader.js";
 import {
   processAvailableRouting,
   processCurrentRouting,
@@ -155,15 +155,15 @@ export function addCategoryIndex(result, category, trackIndex) {
  */
 export function cleanupDeviceChains(result) {
   if (result.midiEffects) {
-    result.midiEffects = cleanupInternalDrumChains(result.midiEffects);
+    result.midiEffects = cleanupInternalDrumPads(result.midiEffects);
   }
 
   if (result.instrument) {
-    result.instrument = cleanupInternalDrumChains(result.instrument);
+    result.instrument = cleanupInternalDrumPads(result.instrument);
   }
 
   if (result.audioEffects) {
-    result.audioEffects = cleanupInternalDrumChains(result.audioEffects);
+    result.audioEffects = cleanupInternalDrumPads(result.audioEffects);
   }
 }
 

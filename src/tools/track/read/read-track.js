@@ -240,7 +240,7 @@ export function readTrackGeneric({
   returnTrackNames,
 }) {
   const {
-    includeDrumChains,
+    includeDrumPads,
     includeDrumMaps,
     includeRackChains,
     includeMidiEffects,
@@ -317,7 +317,7 @@ export function readTrackGeneric({
   const shouldFetchChainsForDrumMaps = includeDrumMaps && !includeRackChains;
   const categorizedDevices = categorizeDevices(
     trackDevices,
-    includeDrumChains,
+    includeDrumPads,
     shouldFetchChainsForDrumMaps ? true : includeRackChains,
   );
 
@@ -354,13 +354,13 @@ export function readTrackGeneric({
 /**
  * Categorize devices into MIDI effects, instruments, and audio effects
  * @param {Array} devices - Array of Live API device objects
- * @param {boolean} includeDrumChains - Whether to include drum pad chains and return chains
+ * @param {boolean} includeDrumPads - Whether to include drum pad chains and return chains
  * @param {boolean} includeRackChains - Whether to include chains in rack devices
  * @returns {object} Object with midiEffects, instrument, and audioEffects arrays
  */
 function categorizeDevices(
   devices,
-  includeDrumChains = false,
+  includeDrumPads = false,
   includeRackChains = true,
 ) {
   const midiEffects = [];
@@ -370,7 +370,7 @@ function categorizeDevices(
   for (const device of devices) {
     const processedDevice = readDevice(device, {
       includeChains: includeRackChains,
-      includeDrumChains,
+      includeDrumPads,
     });
 
     // Use processed device type for proper rack categorization
