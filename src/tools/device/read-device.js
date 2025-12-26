@@ -8,7 +8,7 @@ import {
   readDevice as readDeviceShared,
 } from "../shared/device/device-reader.js";
 import { resolvePathToLiveApi } from "../shared/device/helpers/device-path-helpers.js";
-import { computeState } from "../shared/device/helpers/device-state-helpers.js";
+import { buildChainInfo } from "../shared/device/helpers/device-reader-helpers.js";
 
 // ============================================================================
 // Helper functions (placed after main export per code organization rules)
@@ -139,41 +139,13 @@ function readChain(liveApiPath, path, options) {
     throw new Error(`Chain not found at path: ${path}`);
   }
 
-  const chainInfo = {
-    id: chain.id,
-    path,
-    name: chain.getProperty("name"),
-  };
-
-  const color = chain.getColor();
-
-  if (color) {
-    chainInfo.color = color;
-  }
-
-  // Check if this is a DrumChain (has choke_group property)
-  const chokeGroup = chain.getProperty("choke_group");
-
-  if (chokeGroup > 0) {
-    chainInfo.chokeGroup = chokeGroup;
-  }
-
-  const chainState = computeState(chain);
-
-  if (chainState !== STATE.ACTIVE) {
-    chainInfo.state = chainState;
-  }
-
-  // Read devices in the chain
-  const devices = chain.getChildren("devices");
-
-  chainInfo.devices = devices.map((device) => {
+  const devices = chain.getChildren("devices").map((device) => {
     const deviceInfo = readDeviceShared(device, options);
 
     return cleanupInternalDrumPads(deviceInfo);
   });
 
-  return chainInfo;
+  return buildChainInfo(chain, { path, devices });
 }
 
 /**
@@ -262,40 +234,13 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
  * @returns {object} Chain information
  */
 function readDrumPadChain(chain, path, options) {
-  const chainInfo = {
-    id: chain.id,
-    path,
-    name: chain.getProperty("name"),
-  };
-
-  const color = chain.getColor();
-
-  if (color) {
-    chainInfo.color = color;
-  }
-
-  // DrumChain-specific: choke group
-  const chokeGroup = chain.getProperty("choke_group");
-
-  if (chokeGroup > 0) {
-    chainInfo.chokeGroup = chokeGroup;
-  }
-
-  const chainState = computeState(chain);
-
-  if (chainState !== STATE.ACTIVE) {
-    chainInfo.state = chainState;
-  }
-
-  const devices = chain.getChildren("devices");
-
-  chainInfo.devices = devices.map((device) => {
+  const devices = chain.getChildren("devices").map((device) => {
     const deviceInfo = readDeviceShared(device, options);
 
     return cleanupInternalDrumPads(deviceInfo);
   });
 
-  return chainInfo;
+  return buildChainInfo(chain, { path, devices });
 }
 
 /**
@@ -330,38 +275,13 @@ function buildDrumPadInfo(pad, path, options) {
 
     drumPadInfo.chains = chains.map((chain, index) => {
       const chainPath = `${path}/${index}`;
-      const chainInfo = {
-        id: chain.id,
-        path: chainPath,
-        name: chain.getProperty("name"),
-      };
-
-      const color = chain.getColor();
-
-      if (color) {
-        chainInfo.color = color;
-      }
-
-      // DrumChain-specific: choke group
-      const chokeGroup = chain.getProperty("choke_group");
-
-      if (chokeGroup > 0) {
-        chainInfo.chokeGroup = chokeGroup;
-      }
-
-      const chainState = computeState(chain);
-
-      if (chainState !== STATE.ACTIVE) {
-        chainInfo.state = chainState;
-      }
-
-      chainInfo.devices = chain.getChildren("devices").map((device) => {
+      const devices = chain.getChildren("devices").map((device) => {
         const deviceInfo = readDeviceShared(device, options);
 
         return cleanupInternalDrumPads(deviceInfo);
       });
 
-      return chainInfo;
+      return buildChainInfo(chain, { path: chainPath, devices });
     });
   }
 

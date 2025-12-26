@@ -1,4 +1,4 @@
-import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
+import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { readParameter, readParameterBasic } from "./device-display-helpers.js";
 import {
   buildChainPath,
@@ -10,6 +10,7 @@ import {
   updateDrumPadSoloStates,
 } from "./device-reader-drum-helpers.js";
 import {
+  buildChainInfo,
   computeState,
   hasInstrumentInDevices,
   isInstrumentDevice,
@@ -17,6 +18,7 @@ import {
 
 // Re-export for external use
 export {
+  buildChainInfo,
   processDrumPads,
   updateDrumPadSoloStates,
   computeState,
@@ -69,7 +71,6 @@ export function processRegularChains(
   maxDepth,
   readDeviceFn,
 ) {
-  const readDevice = readDeviceFn;
   const chains = device.getChildren("chains");
   const hasSoloedChain = chains.some((chain) => chain.getProperty("solo") > 0);
   const parentPath = extractDevicePath(device.path);
@@ -77,26 +78,8 @@ export function processRegularChains(
   if (includeChains) {
     deviceInfo.chains = chains.map((chain, index) => {
       const chainPath = parentPath ? buildChainPath(parentPath, index) : null;
-      const chainInfo = {
-        id: chain.id,
-        ...(chainPath && { path: chainPath }),
-        name: chain.getProperty("name"),
-      };
-
-      const color = chain.getColor();
-
-      if (color) {
-        chainInfo.color = color;
-      }
-
-      const chainState = computeState(chain);
-
-      if (chainState !== STATE.ACTIVE) {
-        chainInfo.state = chainState;
-      }
-
-      chainInfo.devices = chain.getChildren("devices").map((chainDevice) =>
-        readDevice(chainDevice, {
+      const devices = chain.getChildren("devices").map((chainDevice) =>
+        readDeviceFn(chainDevice, {
           includeChains,
           includeDrumPads,
           depth: depth + 1,
@@ -104,7 +87,7 @@ export function processRegularChains(
         }),
       );
 
-      return chainInfo;
+      return buildChainInfo(chain, { path: chainPath, devices });
     });
   }
 
@@ -201,25 +184,7 @@ function processReturnChains(
     const chainPath = parentPath
       ? buildReturnChainPath(parentPath, index)
       : null;
-    const info = {
-      id: chain.id,
-      ...(chainPath && { path: chainPath }),
-      name: chain.getProperty("name"),
-    };
-
-    const color = chain.getColor();
-
-    if (color) {
-      info.color = color;
-    }
-
-    const chainState = computeState(chain);
-
-    if (chainState !== STATE.ACTIVE) {
-      info.state = chainState;
-    }
-
-    info.devices = chain.getChildren("devices").map((d) =>
+    const devices = chain.getChildren("devices").map((d) =>
       readDeviceFn(d, {
         includeChains,
         includeReturnChains,
@@ -228,7 +193,7 @@ function processReturnChains(
       }),
     );
 
-    return info;
+    return buildChainInfo(chain, { path: chainPath, devices });
   });
 }
 

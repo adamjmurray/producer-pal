@@ -1,6 +1,48 @@
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 
 /**
+ * Build chain info object with standard properties
+ * @param {object} chain - Chain Live API object
+ * @param {object} options - Build options
+ * @param {string} [options.path] - Optional simplified path
+ * @param {Array} [options.devices] - Pre-processed devices array (skips device fetching)
+ * @returns {object} Chain info object with id, path, name, color, chokeGroup, state
+ */
+export function buildChainInfo(chain, options = {}) {
+  const { path, devices } = options;
+
+  const chainInfo = {
+    id: chain.id,
+    ...(path && { path }),
+    name: chain.getProperty("name"),
+  };
+
+  const color = chain.getColor();
+
+  if (color) {
+    chainInfo.color = color;
+  }
+
+  const chokeGroup = chain.getProperty("choke_group");
+
+  if (chokeGroup > 0) {
+    chainInfo.chokeGroup = chokeGroup;
+  }
+
+  const chainState = computeState(chain);
+
+  if (chainState !== STATE.ACTIVE) {
+    chainInfo.state = chainState;
+  }
+
+  if (devices !== undefined) {
+    chainInfo.devices = devices;
+  }
+
+  return chainInfo;
+}
+
+/**
  * Compute the state of a Live object based on mute/solo properties
  * @param {object} liveObject - Live API object
  * @param {string} category - Category type (default "regular")

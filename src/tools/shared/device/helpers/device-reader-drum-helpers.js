@@ -6,7 +6,7 @@ import {
   extractDevicePath,
 } from "./device-path-helpers.js";
 import {
-  computeState,
+  buildChainInfo,
   hasInstrumentInDevices,
 } from "./device-state-helpers.js";
 
@@ -72,34 +72,11 @@ export function processDrumPad(
     }
 
     const chainPath = drumPadPath ? buildChainPath(drumPadPath, index) : null;
-    const chainInfo = {
-      id: chain.id,
-      ...(chainPath && { path: chainPath }),
-      name: chain.getProperty("name"),
-    };
 
-    const color = chain.getColor();
-
-    if (color) {
-      chainInfo.color = color;
-    }
-
-    // DrumChain-specific: choke group
-    const chokeGroup = chain.getProperty("choke_group");
-
-    if (chokeGroup > 0) {
-      chainInfo.chokeGroup = chokeGroup;
-    }
-
-    const chainState = computeState(chain);
-
-    if (chainState !== STATE.ACTIVE) {
-      chainInfo.state = chainState;
-    }
-
-    chainInfo.devices = processedDevices;
-
-    return chainInfo;
+    return buildChainInfo(chain, {
+      path: chainPath,
+      devices: processedDevices,
+    });
   });
 
   // Only add chains array when both includeDrumPads and includeChains are true
