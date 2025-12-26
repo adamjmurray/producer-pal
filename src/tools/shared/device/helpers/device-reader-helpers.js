@@ -105,10 +105,9 @@ export function hasInstrumentInDevices(devices) {
 /**
  * Process a single drum pad to extract drum pad info
  * @param {object} pad - Drum pad object
- * @param {object} chain - Chain object
- * @param {Array} chainDevices - Devices in the chain
- * @param {boolean} includeDrumPads - Include drum pads
- * @param {boolean} includeChains - Include chains
+ * @param {Array} chains - Array of chain objects from the pad
+ * @param {boolean} includeDrumPads - Include drum pads in output
+ * @param {boolean} includeChains - Include chains data in drum pads
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function (to avoid circular dependency)
@@ -116,8 +115,7 @@ export function hasInstrumentInDevices(devices) {
  */
 export function processDrumPad(
   pad,
-  chain,
-  chainDevices,
+  chains,
   includeDrumPads,
   includeChains,
   depth,
@@ -131,7 +129,6 @@ export function processDrumPad(
     note: midiNote,
     pitch: midiPitchToName(midiNote),
     _originalPad: pad,
-    _originalChain: chain,
   };
   const isMuted = pad.getProperty("mute") > 0;
   const isSoloed = pad.getProperty("solo") > 0;
@@ -142,45 +139,43 @@ export function processDrumPad(
     drumPadInfo.state = STATE.MUTED;
   }
 
-  if (includeDrumPads) {
-    const processedChainDevices = chainDevices.map((chainDevice) =>
+  // Process all chains for hasInstrument check (always needed for drumMap)
+  let anyChainHasInstrument = false;
+  const processedChains = chains.map((chain) => {
+    const chainDevices = chain.getChildren("devices");
+    const processedDevices = chainDevices.map((chainDevice) =>
       readDevice(chainDevice, {
-        includeChains,
-        includeDrumPads,
+        includeChains: includeDrumPads && includeChains,
+        includeDrumPads: includeDrumPads && includeChains,
         depth: depth + 1,
         maxDepth,
       }),
     );
 
-    drumPadInfo.chain = {
+    if (hasInstrumentInDevices(processedDevices)) {
+      anyChainHasInstrument = true;
+    }
+
+    const chainInfo = {
       name: chain.getProperty("name"),
-      devices: processedChainDevices,
+      devices: processedDevices,
     };
     const chainState = computeState(chain);
 
     if (chainState !== STATE.ACTIVE) {
-      drumPadInfo.chain.state = chainState;
+      chainInfo.state = chainState;
     }
 
-    const hasInstrument = hasInstrumentInDevices(processedChainDevices);
+    return chainInfo;
+  });
 
-    if (!hasInstrument) {
-      drumPadInfo.hasInstrument = false;
-    }
-  } else {
-    const processedChainDevices = chainDevices.map((chainDevice) =>
-      readDevice(chainDevice, {
-        includeChains: false,
-        includeDrumPads: false,
-        depth: depth + 1,
-        maxDepth,
-      }),
-    );
-    const hasInstrument = hasInstrumentInDevices(processedChainDevices);
+  // Only add chains array when both includeDrumPads and includeChains are true
+  if (includeDrumPads && includeChains) {
+    drumPadInfo.chains = processedChains;
+  }
 
-    if (!hasInstrument) {
-      drumPadInfo.hasInstrument = false;
-    }
+  if (!anyChainHasInstrument) {
+    drumPadInfo.hasInstrument = false;
   }
 
   return drumPadInfo;
@@ -214,8 +209,8 @@ export function updateDrumPadSoloStates(processedDrumPads) {
  * Process drum pads for drum rack devices
  * @param {object} device - Device object
  * @param {object} deviceInfo - Device info to update
- * @param {boolean} includeChains - Include chains
- * @param {boolean} includeDrumPads - Include drum pads
+ * @param {boolean} includeChains - Include chains in drum pads
+ * @param {boolean} includeDrumPads - Include drum pads in output
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function
@@ -234,13 +229,10 @@ export function processDrumPads(
     .filter((pad) => pad.getChildIds("chains").length > 0)
     .map((pad) => {
       const chains = pad.getChildren("chains");
-      const chain = chains[0];
-      const chainDevices = chain.getChildren("devices");
 
       return processDrumPad(
         pad,
-        chain,
-        chainDevices,
+        chains,
         includeDrumPads,
         includeChains,
         depth,
@@ -253,7 +245,7 @@ export function processDrumPads(
 
   if (includeDrumPads) {
     deviceInfo.drumPads = processedDrumPads.map(
-      ({ _originalPad, _originalChain, ...drumPadInfo }) => drumPadInfo,
+      ({ _originalPad, ...drumPadInfo }) => drumPadInfo,
     );
   }
 

@@ -280,30 +280,34 @@ describe("readTrack", () => {
             note: 36,
             pitch: "C1",
             state: "muted-via-solo",
-            chain: {
-              name: "Kick",
-              state: "muted-via-solo",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
+            chains: [
+              {
+                name: "Kick",
+                state: "muted-via-solo",
+                devices: [
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ],
+              },
+            ],
           },
           {
             name: "Snare",
             note: 38,
             pitch: "D1",
             state: "soloed",
-            chain: {
-              name: "Snare",
-              state: "soloed",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
+            chains: [
+              {
+                name: "Snare",
+                state: "soloed",
+                devices: [
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ],
+              },
+            ],
           },
         ],
       });
