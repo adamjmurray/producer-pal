@@ -67,4 +67,39 @@ describe("applyGeminiOverrides", () => {
       expect(result.thinkingConfig?.includeThoughts).toBe(true);
     });
   });
+
+  describe("showThoughts overrides", () => {
+    it("overrides includeThoughts when showThoughts is false", () => {
+      const config = {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      };
+      const result = applyGeminiOverrides({ showThoughts: false }, config);
+      expect(result.thinkingConfig?.includeThoughts).toBe(false);
+    });
+
+    it("overrides includeThoughts when showThoughts is true", () => {
+      const config = {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: false },
+      };
+      const result = applyGeminiOverrides({ showThoughts: true }, config);
+      expect(result.thinkingConfig?.includeThoughts).toBe(true);
+    });
+
+    it("does not override when thinkingConfig is undefined", () => {
+      const result = applyGeminiOverrides({ showThoughts: false }, {});
+      expect(result.thinkingConfig).toBeUndefined();
+    });
+
+    it("applies showThoughts when thinking is also overridden", () => {
+      const config = {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      };
+      const result = applyGeminiOverrides(
+        { thinking: "High", showThoughts: false },
+        config,
+      );
+      expect(result.thinkingConfig?.thinkingBudget).toBe(8192);
+      expect(result.thinkingConfig?.includeThoughts).toBe(false);
+    });
+  });
 });

@@ -6,11 +6,12 @@ import {
 import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 
 /**
- * Per-message overrides for thinking and temperature settings
+ * Per-message overrides for thinking, temperature, and showThoughts settings
  */
 export interface OpenAIMessageOverrides {
   thinking?: string;
   temperature?: number;
+  showThoughts?: boolean;
 }
 
 /**
@@ -70,6 +71,14 @@ export function calculateEffectiveSettings(
         config.model,
       );
     }
+  }
+
+  // Apply showThoughts override (only affects OpenRouter's excludeReasoning)
+  if (
+    overrides.showThoughts !== undefined &&
+    isOpenRouterProvider(config.baseUrl)
+  ) {
+    excludeReasoning = !overrides.showThoughts;
   }
 
   return { temperature, reasoningEffort, excludeReasoning };

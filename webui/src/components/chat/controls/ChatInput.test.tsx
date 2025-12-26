@@ -14,6 +14,7 @@ const defaultProps = {
   model: "gemini-2.0-flash-thinking",
   defaultThinking: "Default",
   defaultTemperature: 1.0,
+  defaultShowThoughts: true,
 };
 
 describe("ChatInput", () => {
@@ -113,6 +114,7 @@ describe("ChatInput", () => {
       expect(handleSend).toHaveBeenCalledWith("Hello", {
         thinking: "Default",
         temperature: 1.0,
+        showThoughts: true,
       });
     });
 
@@ -142,6 +144,7 @@ describe("ChatInput", () => {
       expect(handleSend).toHaveBeenCalledWith("Hello", {
         thinking: "Default",
         temperature: 1.0,
+        showThoughts: true,
       });
     });
 
@@ -219,6 +222,7 @@ describe("ChatInput", () => {
       expect(handleSend).toHaveBeenCalledWith("Hello", {
         thinking: "Default",
         temperature: 1.0,
+        showThoughts: true,
       });
     });
 
@@ -251,6 +255,39 @@ describe("ChatInput", () => {
       expect(handleSend).toHaveBeenCalledWith("Hello", {
         thinking: "Default",
         temperature: 1.0,
+        showThoughts: true,
+      });
+    });
+
+    it("passes showThoughts: false when checkbox is unchecked", () => {
+      const handleSend = vi.fn();
+      const { container } = render(
+        <ChatInput {...defaultProps} handleSend={handleSend} />,
+      );
+
+      // Expand settings toolbar
+      const expandButton = container.querySelector("button");
+      fireEvent.click(expandButton!);
+
+      // Uncheck showThoughts checkbox
+      const checkbox = container.querySelector(
+        'input[type="checkbox"]',
+      ) as HTMLInputElement;
+      expect(checkbox).toBeDefined();
+      expect(checkbox.checked).toBe(true); // Starts as true (from defaultShowThoughts)
+      fireEvent.click(checkbox);
+      expect(checkbox.checked).toBe(false);
+
+      // Send message and verify showThoughts is false
+      const textarea = screen.getByRole("textbox");
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+      const sendButton = screen.getByRole("button", { name: "Send" });
+      fireEvent.click(sendButton);
+
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: false,
       });
     });
   });

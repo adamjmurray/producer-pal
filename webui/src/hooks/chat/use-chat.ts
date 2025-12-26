@@ -11,10 +11,11 @@ import {
   validateMcpConnection,
 } from "./streaming-helpers";
 
-/** Per-message overrides for thinking and temperature */
+/** Per-message overrides for thinking, temperature, and showThoughts */
 export interface MessageOverrides {
   thinking?: string;
   temperature?: number;
+  showThoughts?: boolean;
 }
 
 /** Chat client interface that all providers must implement */
@@ -108,10 +109,7 @@ interface UseChatReturn {
   activeThinking: string | null;
   activeTemperature: number | null;
   rateLimitState: RateLimitState | null;
-  handleSend: (
-    message: string,
-    options?: { thinking?: string; temperature?: number },
-  ) => Promise<void>;
+  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
@@ -172,10 +170,7 @@ export function useChat<
   }, []);
 
   const initializeChat = useCallback(
-    async (
-      chatHistory?: TMessage[],
-      overrides?: { thinking?: string; temperature?: number },
-    ) => {
+    async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
 
       const effectiveThinking = overrides?.thinking ?? thinking;
@@ -294,10 +289,7 @@ export function useChat<
   );
 
   const handleSend = useCallback(
-    async (
-      message: string,
-      options?: { thinking?: string; temperature?: number },
-    ) => {
+    async (message: string, options?: MessageOverrides) => {
       const userMessage = message.trim();
 
       if (!userMessage) return;

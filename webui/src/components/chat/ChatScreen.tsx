@@ -1,4 +1,7 @@
-import type { RateLimitState } from "#webui/hooks/chat/use-chat";
+import type {
+  MessageOverrides,
+  RateLimitState,
+} from "#webui/hooks/chat/use-chat";
 import type { UIMessage } from "#webui/types/messages";
 import type { Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
@@ -14,10 +17,7 @@ interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   rateLimitState: RateLimitState | null;
-  handleSend: (
-    message: string,
-    options?: { thinking?: string; temperature?: number },
-  ) => Promise<void>;
+  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   activeModel: string | null;
   activeProvider: Provider | null;
@@ -25,6 +25,7 @@ interface ChatScreenProps {
   model: string;
   defaultThinking: string;
   defaultTemperature: number;
+  defaultShowThoughts: boolean;
   enabledToolsCount: number;
   totalToolsCount: number;
   mcpStatus: "connected" | "connecting" | "error";
@@ -49,6 +50,7 @@ interface ChatScreenProps {
  * @param {string} props.model - Model from settings
  * @param {string} props.defaultThinking - Default thinking mode from settings
  * @param {number} props.defaultTemperature - Default temperature from settings
+ * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
  * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
@@ -72,6 +74,7 @@ export function ChatScreen({
   model,
   defaultThinking,
   defaultTemperature,
+  defaultShowThoughts,
   enabledToolsCount,
   totalToolsCount,
   mcpStatus,
@@ -129,6 +132,7 @@ export function ChatScreen({
         model={model}
         defaultThinking={defaultThinking}
         defaultTemperature={defaultTemperature}
+        defaultShowThoughts={defaultShowThoughts}
       />
     </div>
   );

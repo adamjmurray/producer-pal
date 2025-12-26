@@ -1,18 +1,17 @@
 import { useState } from "preact/hooks";
+import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
 import type { Provider } from "../../../types/settings";
 import { MessageSettingsToolbar } from "./MessageSettingsToolbar";
 
 interface ChatInputProps {
-  handleSend: (
-    message: string,
-    options?: { thinking?: string; temperature?: number },
-  ) => Promise<void>;
+  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   isAssistantResponding: boolean;
   onStop: () => void;
   provider: Provider;
   model: string;
   defaultThinking: string;
   defaultTemperature: number;
+  defaultShowThoughts: boolean;
 }
 
 /**
@@ -25,6 +24,7 @@ interface ChatInputProps {
  * @param {string} props.model - Current model
  * @param {string} props.defaultThinking - Default thinking mode from settings
  * @param {number} props.defaultTemperature - Default temperature from settings
+ * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @returns {JSX.Element} - React component
  */
 export function ChatInput({
@@ -35,14 +35,17 @@ export function ChatInput({
   model,
   defaultThinking,
   defaultTemperature,
+  defaultShowThoughts,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(defaultThinking);
   const [temperature, setTemperature] = useState(defaultTemperature);
+  const [showThoughts, setShowThoughts] = useState(defaultShowThoughts);
 
   const handleResetToDefaults = () => {
     setThinking(defaultThinking);
     setTemperature(defaultTemperature);
+    setShowThoughts(defaultShowThoughts);
   };
 
   const handleKeyDown = (e: KeyboardEvent) => {
@@ -50,14 +53,14 @@ export function ChatInput({
       e.preventDefault();
 
       if (!isAssistantResponding && input.trim()) {
-        void handleSend(input, { thinking, temperature });
+        void handleSend(input, { thinking, temperature, showThoughts });
         setInput("");
       }
     }
   };
 
   const handleSendClick = () => {
-    void handleSend(input, { thinking, temperature });
+    void handleSend(input, { thinking, temperature, showThoughts });
     setInput("");
   };
 
@@ -68,10 +71,13 @@ export function ChatInput({
         model={model}
         defaultThinking={defaultThinking}
         defaultTemperature={defaultTemperature}
+        defaultShowThoughts={defaultShowThoughts}
         thinking={thinking}
         temperature={temperature}
+        showThoughts={showThoughts}
         onThinkingChange={setThinking}
         onTemperatureChange={setTemperature}
+        onShowThoughtsChange={setShowThoughts}
         onResetToDefaults={handleResetToDefaults}
       />
       <div className="p-4">

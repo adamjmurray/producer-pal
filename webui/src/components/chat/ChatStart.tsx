@@ -1,11 +1,10 @@
+import type { MessageOverrides } from "#webui/hooks/chat/use-chat";
+
 interface ChatStartProps {
   mcpStatus: "connected" | "connecting" | "error";
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
-  handleSend: (
-    message: string,
-    options?: { thinking?: string; temperature?: number },
-  ) => Promise<void>;
+  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
 }
 
 /**

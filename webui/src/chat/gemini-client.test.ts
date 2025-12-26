@@ -306,6 +306,67 @@ describe("GeminiClient", () => {
       expect(finalHistory![1]!.role).toBe("model");
     });
 
+    it("applies showThoughts override to chat config", async () => {
+      const client = new GeminiClient("test-api-key", {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      });
+
+      // Mock the MCP client
+      const mockMcpClient = {
+        connect: vi.fn(),
+        listTools: vi.fn().mockResolvedValue({ tools: [] }),
+        callTool: vi.fn(),
+      };
+
+      // Track what config is passed to chats.create
+      const createCalls: unknown[] = [];
+      const mockChat = {
+        sendMessageStream: vi.fn().mockImplementation(async function* () {
+          yield {
+            candidates: [
+              {
+                content: {
+                  role: "model",
+                  parts: [{ text: "Response" }],
+                },
+              },
+            ],
+          };
+        }),
+      };
+
+      client.ai = {
+        chats: {
+          create: vi.fn((config) => {
+            createCalls.push(config);
+            return mockChat;
+          }),
+        },
+      } as unknown as typeof client.ai;
+
+      // Set up mocks
+      client.mcpClient = mockMcpClient as unknown as Client;
+      client.chat = mockChat as unknown as Chat;
+      client.chatConfig = {
+        thinkingConfig: { thinkingBudget: 4096, includeThoughts: true },
+      };
+
+      // Send message with showThoughts override
+      const historyUpdates = [];
+      for await (const history of client.sendMessage("test", undefined, {
+        showThoughts: false,
+      })) {
+        historyUpdates.push(history);
+      }
+
+      // Verify chats.create was called with updated thinkingConfig
+      expect(createCalls.length).toBeGreaterThanOrEqual(1);
+      const lastCreateCall = createCalls[createCalls.length - 1] as {
+        config: { thinkingConfig: { includeThoughts: boolean } };
+      };
+      expect(lastCreateCall.config.thinkingConfig.includeThoughts).toBe(false);
+    });
+
     it("stops loop when abort signal is triggered", async () => {
       const client = new GeminiClient("test-api-key");
 

@@ -8,6 +8,7 @@ import { MessageSettingsToolbar } from "./MessageSettingsToolbar";
 describe("MessageSettingsToolbar", () => {
   const mockOnThinkingChange = vi.fn();
   const mockOnTemperatureChange = vi.fn();
+  const mockOnShowThoughtsChange = vi.fn();
   const mockOnResetToDefaults = vi.fn();
 
   const defaultProps = {
@@ -15,10 +16,13 @@ describe("MessageSettingsToolbar", () => {
     model: "gemini-2.0-flash-thinking",
     defaultThinking: "Default",
     defaultTemperature: 1.0,
+    defaultShowThoughts: true,
     thinking: "Default",
     temperature: 1.0,
+    showThoughts: true,
     onThinkingChange: mockOnThinkingChange,
     onTemperatureChange: mockOnTemperatureChange,
+    onShowThoughtsChange: mockOnShowThoughtsChange,
     onResetToDefaults: mockOnResetToDefaults,
   };
 

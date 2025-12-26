@@ -2,11 +2,12 @@ import type { ThinkingConfig } from "@google/genai/web";
 import { getThinkingBudget } from "#webui/lib/config";
 
 /**
- * Per-message overrides for thinking and temperature settings
+ * Per-message overrides for thinking, temperature, and showThoughts settings
  */
 export interface GeminiMessageOverrides {
   thinking?: string;
   temperature?: number;
+  showThoughts?: boolean;
 }
 
 /**
@@ -46,14 +47,23 @@ export function applyGeminiOverrides(
       // Thinking is off
       thinkingConfig = undefined;
     } else {
-      // Keep includeThoughts from original config
-      const includeThoughts = config.thinkingConfig?.includeThoughts ?? true;
+      // Use showThoughts override if provided, otherwise keep from original config
+      const includeThoughts =
+        overrides.showThoughts ??
+        config.thinkingConfig?.includeThoughts ??
+        true;
 
       thinkingConfig = {
         thinkingBudget,
         includeThoughts,
       };
     }
+  } else if (overrides.showThoughts !== undefined && thinkingConfig) {
+    // Only showThoughts was overridden (not thinking level)
+    thinkingConfig = {
+      ...thinkingConfig,
+      includeThoughts: overrides.showThoughts,
+    };
   }
 
   return { temperature, thinkingConfig };

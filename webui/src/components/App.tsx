@@ -161,6 +161,7 @@ export function App() {
       model={settings.model}
       defaultThinking={settings.thinking}
       defaultTemperature={settings.temperature}
+      defaultShowThoughts={settings.showThoughts}
       enabledToolsCount={enabledToolsCount}
       totalToolsCount={VISIBLE_TOOLS.length}
       mcpStatus={mcpStatus}
