@@ -135,7 +135,7 @@ describe("readTrack", () => {
           "drum-pads",
           "drum-maps",
           "clip-notes",
-          "rack-chains",
+          "chains",
           "midi-effects",
           "instruments",
           "audio-effects",

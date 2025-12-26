@@ -234,7 +234,7 @@ describe("readLiveSet - track types", () => {
       include: [
         "drum-pads",
         "clip-notes",
-        "rack-chains",
+        "chains",
         "scenes",
         "midi-effects",
         "instruments",

@@ -183,7 +183,7 @@ describe("includeArrayFromFlags", () => {
 
     expect(result).toEqual([
       "clip-notes",
-      "rack-chains",
+      "chains",
       "scenes",
       "instruments",
       "regular-tracks",
@@ -265,7 +265,7 @@ describe("includeArrayFromFlags", () => {
 
       expect(result).toContain("drum-maps");
       expect(result).toContain("instruments");
-      expect(result).not.toContain("rack-chains");
+      expect(result).not.toContain("chains");
     });
 
     it("includeArrayFromFlags excludes drum-maps when flag is false", () => {
@@ -278,7 +278,7 @@ describe("includeArrayFromFlags", () => {
       const result = includeArrayFromFlags(flags);
 
       expect(result).not.toContain("drum-maps");
-      expect(result).toContain("rack-chains");
+      expect(result).toContain("chains");
       expect(result).toContain("instruments");
     });
   });

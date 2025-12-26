@@ -2,7 +2,7 @@
 const DRUM_PADS = "drum-pads";
 const DRUM_MAPS = "drum-maps";
 const CLIP_NOTES = "clip-notes";
-const RACK_CHAINS = "rack-chains";
+const CHAINS = "chains";
 const MIDI_EFFECTS = "midi-effects";
 const INSTRUMENTS = "instruments";
 const AUDIO_EFFECTS = "audio-effects";
@@ -26,7 +26,7 @@ const ALL_INCLUDE_OPTIONS = {
     DRUM_PADS,
     DRUM_MAPS,
     CLIP_NOTES,
-    RACK_CHAINS,
+    CHAINS,
     "scenes",
     MIDI_EFFECTS,
     INSTRUMENTS,
@@ -49,7 +49,7 @@ const ALL_INCLUDE_OPTIONS = {
     DRUM_PADS,
     DRUM_MAPS,
     CLIP_NOTES,
-    RACK_CHAINS,
+    CHAINS,
     MIDI_EFFECTS,
     INSTRUMENTS,
     AUDIO_EFFECTS,
@@ -147,7 +147,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeDrumPads: includeSet.has(DRUM_PADS),
     includeDrumMaps: includeSet.has(DRUM_MAPS),
     includeClipNotes: includeSet.has(CLIP_NOTES),
-    includeRackChains: includeSet.has(RACK_CHAINS),
+    includeRackChains: includeSet.has(CHAINS),
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has(MIDI_EFFECTS),
     includeInstruments: includeSet.has(INSTRUMENTS),
@@ -176,7 +176,7 @@ const FLAG_TO_OPTION = [
   ["includeDrumPads", DRUM_PADS],
   ["includeDrumMaps", DRUM_MAPS],
   ["includeClipNotes", CLIP_NOTES],
-  ["includeRackChains", RACK_CHAINS],
+  ["includeRackChains", CHAINS],
   ["includeScenes", "scenes"],
   ["includeMidiEffects", MIDI_EFFECTS],
   ["includeInstruments", INSTRUMENTS],

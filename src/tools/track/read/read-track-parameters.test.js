@@ -320,7 +320,7 @@ describe("readTrack", () => {
       expect(result.instrument.chains).toBeUndefined();
     });
 
-    it("drum racks don't have main chains even with rack-chains included", () => {
+    it("drum racks don't have main chains even with chains included", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
           case "live_set tracks 0":
@@ -387,7 +387,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "drum-maps", "rack-chains"],
+        include: ["instruments", "drum-maps", "chains"],
       });
 
       // Should have drumMap
@@ -523,7 +523,7 @@ describe("readTrack", () => {
       expect(result.audioEffects[0].chains).toBeUndefined();
     });
 
-    it("uses drum-maps by default (not rack-chains)", () => {
+    it("uses drum-maps by default (not chains)", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
           case "live_set tracks 0":
@@ -564,7 +564,7 @@ describe("readTrack", () => {
       // Call with NO include param - should use defaults
       const result = readTrack({ trackIndex: 0 });
 
-      // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
+      // Should have instrument but NO chains (proving drum-maps is default, not chains)
       expect(result.instrument).toEqual({
         id: "instrument_rack",
         type: "instrument-rack",

@@ -132,7 +132,7 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
+        "chains",
         "scenes",
         "session-clips",
         "arrangement-clips",
@@ -265,7 +265,7 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
+        "chains",
         "session-clips",
         "arrangement-clips",
         "clip-notes",
@@ -345,7 +345,7 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
+        "chains",
         "drum-pads",
         "audio-effects",
       ],
@@ -459,7 +459,7 @@ describe("readLiveSet - basic reading", () => {
       include: [
         "regular-tracks",
         "instruments",
-        "rack-chains",
+        "chains",
         "audio-effects",
         "session-clips",
         "arrangement-clips",

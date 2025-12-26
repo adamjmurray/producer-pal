@@ -208,7 +208,7 @@ describe("readLiveSet - inclusion", () => {
       C3: "Test Kick",
     });
 
-    // Should have instrument but NO chains (proving drum-maps is default, not rack-chains)
+    // Should have instrument but NO chains (proving drum-maps is default, not chains)
     expect(result.tracks[0].instrument).toEqual({
       id: "drumrack1",
       name: "Test Drum Rack",
