@@ -73,15 +73,31 @@ export function processDrumPad(
 
     const chainPath = drumPadPath ? buildChainPath(drumPadPath, index) : null;
     const chainInfo = {
+      id: chain.id,
       ...(chainPath && { path: chainPath }),
       name: chain.getProperty("name"),
-      devices: processedDevices,
     };
+
+    const color = chain.getColor();
+
+    if (color) {
+      chainInfo.color = color;
+    }
+
+    // DrumChain-specific: choke group
+    const chokeGroup = chain.getProperty("choke_group");
+
+    if (chokeGroup > 0) {
+      chainInfo.chokeGroup = chokeGroup;
+    }
+
     const chainState = computeState(chain);
 
     if (chainState !== STATE.ACTIVE) {
       chainInfo.state = chainState;
     }
+
+    chainInfo.devices = processedDevices;
 
     return chainInfo;
   });

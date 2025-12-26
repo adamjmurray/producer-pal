@@ -140,9 +140,23 @@ function readChain(liveApiPath, path, options) {
   }
 
   const chainInfo = {
+    id: chain.id,
     path,
     name: chain.getProperty("name"),
   };
+
+  const color = chain.getColor();
+
+  if (color) {
+    chainInfo.color = color;
+  }
+
+  // Check if this is a DrumChain (has choke_group property)
+  const chokeGroup = chain.getProperty("choke_group");
+
+  if (chokeGroup > 0) {
+    chainInfo.chokeGroup = chokeGroup;
+  }
 
   const chainState = computeState(chain);
 
@@ -249,9 +263,23 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
  */
 function readDrumPadChain(chain, path, options) {
   const chainInfo = {
+    id: chain.id,
     path,
     name: chain.getProperty("name"),
   };
+
+  const color = chain.getColor();
+
+  if (color) {
+    chainInfo.color = color;
+  }
+
+  // DrumChain-specific: choke group
+  const chokeGroup = chain.getProperty("choke_group");
+
+  if (chokeGroup > 0) {
+    chainInfo.chokeGroup = chokeGroup;
+  }
 
   const chainState = computeState(chain);
 
@@ -303,9 +331,23 @@ function buildDrumPadInfo(pad, path, options) {
     drumPadInfo.chains = chains.map((chain, index) => {
       const chainPath = `${path}/${index}`;
       const chainInfo = {
+        id: chain.id,
         path: chainPath,
         name: chain.getProperty("name"),
       };
+
+      const color = chain.getColor();
+
+      if (color) {
+        chainInfo.color = color;
+      }
+
+      // DrumChain-specific: choke group
+      const chokeGroup = chain.getProperty("choke_group");
+
+      if (chokeGroup > 0) {
+        chainInfo.chokeGroup = chokeGroup;
+      }
 
       const chainState = computeState(chain);
 

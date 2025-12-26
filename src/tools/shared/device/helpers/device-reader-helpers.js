@@ -78,9 +78,17 @@ export function processRegularChains(
     deviceInfo.chains = chains.map((chain, index) => {
       const chainPath = parentPath ? buildChainPath(parentPath, index) : null;
       const chainInfo = {
+        id: chain.id,
         ...(chainPath && { path: chainPath }),
         name: chain.getProperty("name"),
       };
+
+      const color = chain.getColor();
+
+      if (color) {
+        chainInfo.color = color;
+      }
+
       const chainState = computeState(chain);
 
       if (chainState !== STATE.ACTIVE) {
@@ -193,13 +201,24 @@ function processReturnChains(
     const chainPath = parentPath
       ? buildReturnChainPath(parentPath, index)
       : null;
-    const chainState = computeState(chain);
     const info = {
+      id: chain.id,
       ...(chainPath && { path: chainPath }),
       name: chain.getProperty("name"),
     };
 
-    if (chainState !== STATE.ACTIVE) info.state = chainState;
+    const color = chain.getColor();
+
+    if (color) {
+      info.color = color;
+    }
+
+    const chainState = computeState(chain);
+
+    if (chainState !== STATE.ACTIVE) {
+      info.state = chainState;
+    }
+
     info.devices = chain.getChildren("devices").map((d) =>
       readDeviceFn(d, {
         includeChains,
