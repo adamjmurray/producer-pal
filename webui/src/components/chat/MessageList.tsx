@@ -12,10 +12,10 @@ interface MessageListProps {
 
 /**
  * List of chat messages with auto-scroll
- * @param {MessageListProps} root0 - Component props
- * @param {UIMessage[]} root0.messages - Chat messages to display
- * @param {boolean} root0.isAssistantResponding - Whether assistant is responding
- * @param {(messageIndex: number) => Promise<void>} root0.handleRetry - Retry message callback
+ * @param {MessageListProps} props - Component props
+ * @param {UIMessage[]} props.messages - Chat messages to display
+ * @param {boolean} props.isAssistantResponding - Whether assistant is responding
+ * @param {(messageIndex: number) => Promise<void>} props.handleRetry - Retry message callback
  * @returns {JSX.Element} - React component
  */
 export function MessageList({

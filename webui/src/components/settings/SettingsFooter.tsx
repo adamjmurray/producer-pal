@@ -6,10 +6,10 @@ interface SettingsFooterProps {
 
 /**
  * Settings footer component with save/cancel buttons
- * @param {object} root0 - Component props
- * @param {boolean} root0.settingsConfigured - Whether settings have been configured
- * @param {Function} root0.saveSettings - Function to save settings
- * @param {Function} root0.cancelSettings - Function to cancel settings changes
+ * @param {object} props - Component props
+ * @param {boolean} props.settingsConfigured - Whether settings have been configured
+ * @param {Function} props.saveSettings - Function to save settings
+ * @param {Function} props.cancelSettings - Function to cancel settings changes
  * @returns {JSX.Element} Settings footer component
  */
 export function SettingsFooter({

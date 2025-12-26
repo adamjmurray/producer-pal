@@ -9,11 +9,11 @@ interface ToolTogglesProps {
 
 /**
  * Checkboxes for enabling/disabling individual tools
- * @param {ToolTogglesProps} root0 - Component props
- * @param {Record<string, boolean>} root0.enabledTools - Tool enabled states
- * @param {(tools: Record<string, boolean>) => void} root0.setEnabledTools - Setter for tool states
- * @param {() => void} root0.enableAllTools - Enable all tools callback
- * @param {() => void} root0.disableAllTools - Disable all tools callback
+ * @param {ToolTogglesProps} props - Component props
+ * @param {Record<string, boolean>} props.enabledTools - Tool enabled states
+ * @param {(tools: Record<string, boolean>) => void} props.setEnabledTools - Setter for tool states
+ * @param {() => void} props.enableAllTools - Enable all tools callback
+ * @param {() => void} props.disableAllTools - Disable all tools callback
  * @returns {JSX.Element} - React component
  */
 export function ToolToggles({

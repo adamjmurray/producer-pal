@@ -34,18 +34,18 @@ interface ConnectionTabProps {
 
 /**
  * Connection settings tab for provider, API key, and model
- * @param {ConnectionTabProps} root0 - Component props
- * @param {Provider} root0.provider - Current provider
- * @param {(provider: Provider) => void} root0.setProvider - Provider setter callback
- * @param {string} root0.apiKey - API key
- * @param {(apiKey: string) => void} root0.setApiKey - API key setter callback
- * @param {string | null | undefined} root0.baseUrl - Base URL for custom provider
- * @param {(baseUrl: string) => void} [root0.setBaseUrl] - Base URL setter callback
- * @param {number | null | undefined} root0.port - Port for local providers
- * @param {(port: number) => void} [root0.setPort] - Port setter callback
- * @param {string} root0.model - Current model
- * @param {(model: string) => void} root0.setModel - Model setter callback
- * @param {string} root0.providerLabel - Display name for provider
+ * @param {ConnectionTabProps} props - Component props
+ * @param {Provider} props.provider - Current provider
+ * @param {(provider: Provider) => void} props.setProvider - Provider setter callback
+ * @param {string} props.apiKey - API key
+ * @param {(apiKey: string) => void} props.setApiKey - API key setter callback
+ * @param {string | null | undefined} props.baseUrl - Base URL for custom provider
+ * @param {(baseUrl: string) => void} [props.setBaseUrl] - Base URL setter callback
+ * @param {number | null | undefined} props.port - Port for local providers
+ * @param {(port: number) => void} [props.setPort] - Port setter callback
+ * @param {string} props.model - Current model
+ * @param {(model: string) => void} props.setModel - Model setter callback
+ * @param {string} props.providerLabel - Display name for provider
  * @returns {JSX.Element} - React component
  */
 export function ConnectionTab({

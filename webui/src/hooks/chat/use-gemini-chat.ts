@@ -30,16 +30,16 @@ interface UseGeminiChatReturn {
 /**
  * Hook for managing Gemini chat state and message handling
  *
- * @param {UseGeminiChatProps} root0 - Chat configuration
- * @param {string} root0.apiKey - Gemini API key
- * @param {string} root0.model - Gemini model name
- * @param {string} root0.thinking - Thinking mode configuration
- * @param {number} root0.temperature - Temperature for response randomness
- * @param {boolean} root0.showThoughts - Whether to display model thoughts
- * @param {Record<string, boolean>} root0.enabledTools - Map of enabled MCP tools
- * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
- * @param {string | null} root0.mcpError - MCP connection error if any
- * @param {() => Promise<void>} root0.checkMcpConnection - Function to verify MCP connection
+ * @param {UseGeminiChatProps} options - Chat configuration
+ * @param {string} options.apiKey - Gemini API key
+ * @param {string} options.model - Gemini model name
+ * @param {string} options.thinking - Thinking mode configuration
+ * @param {number} options.temperature - Temperature for response randomness
+ * @param {boolean} options.showThoughts - Whether to display model thoughts
+ * @param {Record<string, boolean>} options.enabledTools - Map of enabled MCP tools
+ * @param {"connected" | "connecting" | "error"} options.mcpStatus - MCP connection status
+ * @param {string | null} options.mcpError - MCP connection error if any
+ * @param {() => Promise<void>} options.checkMcpConnection - Function to verify MCP connection
  * @returns {UseGeminiChatReturn} Chat state and handlers
  */
 export function useGeminiChat({
