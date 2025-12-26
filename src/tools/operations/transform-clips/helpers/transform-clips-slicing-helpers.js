@@ -8,8 +8,6 @@ import {
   tileClipToRange,
 } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
-const HOLDING_AREA_START = 40000;
-
 /**
  * Slice unlooped MIDI clips by duplicating and setting markers for each slice.
  * Any slices beyond actual note content will simply be empty.
@@ -156,7 +154,7 @@ export function performSlicing(
   slice,
   _context,
 ) {
-  const holdingAreaStart = _context.holdingAreaStartBeats ?? HOLDING_AREA_START;
+  const holdingAreaStart = _context.holdingAreaStartBeats;
   let totalSlicesCreated = 0;
   // Track position ranges for sliced clips to re-scan after deletion
   const slicedClipRanges = new Map();

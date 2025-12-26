@@ -90,9 +90,7 @@ export function duplicate(
     toTrackIndex,
     toSceneIndex,
   } = {},
-  context = {
-    holdingAreaStartBeats: 40000,
-  },
+  context = {},
 ) {
   // Validate basic inputs
   validateBasicInputs(type, id, count);
