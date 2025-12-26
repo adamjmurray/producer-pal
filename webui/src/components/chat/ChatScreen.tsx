@@ -1,3 +1,4 @@
+import { useState } from "preact/hooks";
 import type {
   MessageOverrides,
   RateLimitState,
@@ -85,6 +86,23 @@ export function ChatScreen({
   onClearConversation,
   onStop,
 }: ChatScreenProps) {
+  // Per-message override state (lifted from ChatInput so ChatStart can also use it)
+  const [thinking, setThinking] = useState(defaultThinking);
+  const [temperature, setTemperature] = useState(defaultTemperature);
+  const [showThoughts, setShowThoughts] = useState(defaultShowThoughts);
+
+  const handleResetToDefaults = () => {
+    setThinking(defaultThinking);
+    setTemperature(defaultTemperature);
+    setShowThoughts(defaultShowThoughts);
+  };
+
+  const currentOverrides: MessageOverrides = {
+    thinking,
+    temperature,
+    showThoughts,
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <ChatHeader
@@ -105,6 +123,7 @@ export function ChatScreen({
             mcpError={mcpError}
             checkMcpConnection={checkMcpConnection}
             handleSend={handleSend}
+            overrides={currentOverrides}
           />
         ) : (
           <MessageList
@@ -133,6 +152,13 @@ export function ChatScreen({
         defaultThinking={defaultThinking}
         defaultTemperature={defaultTemperature}
         defaultShowThoughts={defaultShowThoughts}
+        thinking={thinking}
+        temperature={temperature}
+        showThoughts={showThoughts}
+        onThinkingChange={setThinking}
+        onTemperatureChange={setTemperature}
+        onShowThoughtsChange={setShowThoughts}
+        onResetToDefaults={handleResetToDefaults}
       />
     </div>
   );

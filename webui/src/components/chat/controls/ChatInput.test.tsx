@@ -15,6 +15,13 @@ const defaultProps = {
   defaultThinking: "Default",
   defaultTemperature: 1.0,
   defaultShowThoughts: true,
+  thinking: "Default",
+  temperature: 1.0,
+  showThoughts: true,
+  onThinkingChange: vi.fn(),
+  onTemperatureChange: vi.fn(),
+  onShowThoughtsChange: vi.fn(),
+  onResetToDefaults: vi.fn(),
 };
 
 describe("ChatInput", () => {
@@ -226,19 +233,19 @@ describe("ChatInput", () => {
       });
     });
 
-    it("resets to defaults when reset button clicked", () => {
-      const handleSend = vi.fn();
+    it("calls onResetToDefaults when reset button clicked", () => {
+      const onResetToDefaults = vi.fn();
       const { container } = render(
-        <ChatInput {...defaultProps} handleSend={handleSend} />,
+        <ChatInput
+          {...defaultProps}
+          thinking="High"
+          onResetToDefaults={onResetToDefaults}
+        />,
       );
 
       // Expand settings toolbar
       const expandButton = container.querySelector("button");
       fireEvent.click(expandButton!);
-
-      // Change thinking
-      const select = container.querySelector("select");
-      fireEvent.change(select!, { target: { value: "High" } });
 
       // Reset to defaults
       const resetButton = Array.from(container.querySelectorAll("button")).find(
@@ -246,37 +253,18 @@ describe("ChatInput", () => {
       );
       fireEvent.click(resetButton!);
 
-      // Send message and verify defaults are used
-      const textarea = screen.getByRole("textbox");
-      fireEvent.input(textarea, { target: { value: "Hello" } });
-      const sendButton = screen.getByRole("button", { name: "Send" });
-      fireEvent.click(sendButton);
-
-      expect(handleSend).toHaveBeenCalledWith("Hello", {
-        thinking: "Default",
-        temperature: 1.0,
-        showThoughts: true,
-      });
+      expect(onResetToDefaults).toHaveBeenCalledOnce();
     });
 
-    it("passes showThoughts: false when checkbox is unchecked", () => {
+    it("passes showThoughts: false when showThoughts prop is false", () => {
       const handleSend = vi.fn();
-      const { container } = render(
-        <ChatInput {...defaultProps} handleSend={handleSend} />,
+      render(
+        <ChatInput
+          {...defaultProps}
+          handleSend={handleSend}
+          showThoughts={false}
+        />,
       );
-
-      // Expand settings toolbar
-      const expandButton = container.querySelector("button");
-      fireEvent.click(expandButton!);
-
-      // Uncheck showThoughts checkbox
-      const checkbox = container.querySelector(
-        'input[type="checkbox"]',
-      ) as HTMLInputElement;
-      expect(checkbox).toBeDefined();
-      expect(checkbox.checked).toBe(true); // Starts as true (from defaultShowThoughts)
-      fireEvent.click(checkbox);
-      expect(checkbox.checked).toBe(false);
 
       // Send message and verify showThoughts is false
       const textarea = screen.getByRole("textbox");
@@ -289,6 +277,29 @@ describe("ChatInput", () => {
         temperature: 1.0,
         showThoughts: false,
       });
+    });
+
+    it("calls onShowThoughtsChange when checkbox is clicked", () => {
+      const onShowThoughtsChange = vi.fn();
+      const { container } = render(
+        <ChatInput
+          {...defaultProps}
+          onShowThoughtsChange={onShowThoughtsChange}
+        />,
+      );
+
+      // Expand settings toolbar
+      const expandButton = container.querySelector("button");
+      fireEvent.click(expandButton!);
+
+      // Click showThoughts checkbox
+      const checkbox = container.querySelector(
+        'input[type="checkbox"]',
+      ) as HTMLInputElement;
+      expect(checkbox).toBeDefined();
+      fireEvent.click(checkbox);
+
+      expect(onShowThoughtsChange).toHaveBeenCalledWith(false);
     });
   });
 });

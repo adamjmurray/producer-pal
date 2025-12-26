@@ -12,6 +12,13 @@ interface ChatInputProps {
   defaultThinking: string;
   defaultTemperature: number;
   defaultShowThoughts: boolean;
+  thinking: string;
+  temperature: number;
+  showThoughts: boolean;
+  onThinkingChange: (thinking: string) => void;
+  onTemperatureChange: (temperature: number) => void;
+  onShowThoughtsChange: (showThoughts: boolean) => void;
+  onResetToDefaults: () => void;
 }
 
 /**
@@ -25,6 +32,13 @@ interface ChatInputProps {
  * @param {string} props.defaultThinking - Default thinking mode from settings
  * @param {number} props.defaultTemperature - Default temperature from settings
  * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
+ * @param {string} props.thinking - Current thinking mode
+ * @param {number} props.temperature - Current temperature
+ * @param {boolean} props.showThoughts - Current showThoughts
+ * @param {Function} props.onThinkingChange - Callback for thinking change
+ * @param {Function} props.onTemperatureChange - Callback for temperature change
+ * @param {Function} props.onShowThoughtsChange - Callback for showThoughts change
+ * @param {Function} props.onResetToDefaults - Callback to reset to defaults
  * @returns {JSX.Element} - React component
  */
 export function ChatInput({
@@ -36,17 +50,15 @@ export function ChatInput({
   defaultThinking,
   defaultTemperature,
   defaultShowThoughts,
+  thinking,
+  temperature,
+  showThoughts,
+  onThinkingChange,
+  onTemperatureChange,
+  onShowThoughtsChange,
+  onResetToDefaults,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
-  const [thinking, setThinking] = useState(defaultThinking);
-  const [temperature, setTemperature] = useState(defaultTemperature);
-  const [showThoughts, setShowThoughts] = useState(defaultShowThoughts);
-
-  const handleResetToDefaults = () => {
-    setThinking(defaultThinking);
-    setTemperature(defaultTemperature);
-    setShowThoughts(defaultShowThoughts);
-  };
 
   const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -75,10 +87,10 @@ export function ChatInput({
         thinking={thinking}
         temperature={temperature}
         showThoughts={showThoughts}
-        onThinkingChange={setThinking}
-        onTemperatureChange={setTemperature}
-        onShowThoughtsChange={setShowThoughts}
-        onResetToDefaults={handleResetToDefaults}
+        onThinkingChange={onThinkingChange}
+        onTemperatureChange={onTemperatureChange}
+        onShowThoughtsChange={onShowThoughtsChange}
+        onResetToDefaults={onResetToDefaults}
       />
       <div className="p-4">
         <div className="flex gap-3">

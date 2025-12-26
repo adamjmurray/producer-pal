@@ -5,6 +5,7 @@ interface ChatStartProps {
   mcpError: string | null;
   checkMcpConnection: () => Promise<void>;
   handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
+  overrides: MessageOverrides;
 }
 
 /**
@@ -14,6 +15,7 @@ interface ChatStartProps {
  * @param {string | null} root0.mcpError - MCP error message
  * @param {() => Promise<void>} root0.checkMcpConnection - Check MCP connection callback
  * @param {(message: string) => Promise<void>} root0.handleSend - Send message callback
+ * @param {MessageOverrides} root0.overrides - Per-message overrides
  * @returns {JSX.Element} - React component
  */
 export function ChatStart({
@@ -21,6 +23,7 @@ export function ChatStart({
   mcpError,
   checkMcpConnection,
   handleSend,
+  overrides,
 }: ChatStartProps) {
   return (
     <div className="h-full items-center justify-center flex flex-col gap-8">
@@ -30,7 +33,7 @@ export function ChatStart({
             Start a conversation with Producer Pal
           </p>
           <button
-            onClick={() => void handleSend("Connect to Ableton.")}
+            onClick={() => void handleSend("Connect to Ableton.", overrides)}
             className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
           >
             Quick Connect
