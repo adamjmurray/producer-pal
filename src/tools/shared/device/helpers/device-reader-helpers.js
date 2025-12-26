@@ -1,6 +1,28 @@
-import { midiPitchToName } from "#src/notation/midi-pitch-to-name.js";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 import { readParameter, readParameterBasic } from "./device-display-helpers.js";
+import {
+  buildChainPath,
+  buildReturnChainPath,
+  extractDevicePath,
+} from "./device-path-helpers.js";
+import {
+  processDrumPads,
+  updateDrumPadSoloStates,
+} from "./device-reader-drum-helpers.js";
+import {
+  computeState,
+  hasInstrumentInDevices,
+  isInstrumentDevice,
+} from "./device-state-helpers.js";
+
+// Re-export for external use
+export {
+  processDrumPads,
+  updateDrumPadSoloStates,
+  computeState,
+  hasInstrumentInDevices,
+  isInstrumentDevice,
+};
 
 /**
  * Check if device className is redundant (matches the rack type name)
@@ -29,230 +51,6 @@ export function isRedundantDeviceClassName(deviceType, className) {
 }
 
 /**
- * Compute the state of a Live object based on mute/solo properties
- * @param {object} liveObject - Live API object
- * @param {string} category - Category type (default "regular")
- * @returns {string} State value
- */
-export function computeState(liveObject, category = "regular") {
-  if (category === "master") {
-    return STATE.ACTIVE;
-  }
-
-  const isMuted = liveObject.getProperty("mute") > 0;
-  const isSoloed = liveObject.getProperty("solo") > 0;
-  const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
-
-  if (isSoloed) {
-    return STATE.SOLOED;
-  }
-
-  if (isMuted && isMutedViaSolo) {
-    return STATE.MUTED_ALSO_VIA_SOLO;
-  }
-
-  if (isMutedViaSolo) {
-    return STATE.MUTED_VIA_SOLO;
-  }
-
-  if (isMuted) {
-    return STATE.MUTED;
-  }
-
-  return STATE.ACTIVE;
-}
-
-/**
- * Check if device is an instrument type
- * @param {string} deviceType - Device type string
- * @returns {boolean} True if device is an instrument
- */
-export function isInstrumentDevice(deviceType) {
-  return (
-    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT) ||
-    deviceType.startsWith(DEVICE_TYPE.INSTRUMENT_RACK) ||
-    deviceType.startsWith(DEVICE_TYPE.DRUM_RACK)
-  );
-}
-
-/**
- * Check if any device in the list is an instrument
- * @param {Array} devices - Array of device objects
- * @returns {boolean} True if any instrument found
- */
-export function hasInstrumentInDevices(devices) {
-  if (!devices || devices.length === 0) {
-    return false;
-  }
-
-  for (const device of devices) {
-    if (isInstrumentDevice(device.type)) {
-      return true;
-    }
-
-    if (device.chains) {
-      for (const chain of device.chains) {
-        if (chain.devices && hasInstrumentInDevices(chain.devices)) {
-          return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
-/**
- * Process a single drum pad to extract drum pad info
- * @param {object} pad - Drum pad object
- * @param {Array} chains - Array of chain objects from the pad
- * @param {boolean} includeDrumPads - Include drum pads in output
- * @param {boolean} includeChains - Include chains data in drum pads
- * @param {number} depth - Current depth
- * @param {number} maxDepth - Max depth
- * @param {Function} readDeviceFn - readDevice function (to avoid circular dependency)
- * @returns {object} Processed drum pad info
- */
-export function processDrumPad(
-  pad,
-  chains,
-  includeDrumPads,
-  includeChains,
-  depth,
-  maxDepth,
-  readDeviceFn,
-) {
-  const readDevice = readDeviceFn;
-  const midiNote = pad.getProperty("note");
-  const drumPadInfo = {
-    name: pad.getProperty("name"),
-    note: midiNote,
-    pitch: midiPitchToName(midiNote),
-    _originalPad: pad,
-  };
-  const isMuted = pad.getProperty("mute") > 0;
-  const isSoloed = pad.getProperty("solo") > 0;
-
-  if (isSoloed) {
-    drumPadInfo.state = STATE.SOLOED;
-  } else if (isMuted) {
-    drumPadInfo.state = STATE.MUTED;
-  }
-
-  // Process all chains for hasInstrument check (always needed for drumMap)
-  let anyChainHasInstrument = false;
-  const processedChains = chains.map((chain) => {
-    const chainDevices = chain.getChildren("devices");
-    const processedDevices = chainDevices.map((chainDevice) =>
-      readDevice(chainDevice, {
-        includeChains: includeDrumPads && includeChains,
-        includeDrumPads: includeDrumPads && includeChains,
-        depth: depth + 1,
-        maxDepth,
-      }),
-    );
-
-    if (hasInstrumentInDevices(processedDevices)) {
-      anyChainHasInstrument = true;
-    }
-
-    const chainInfo = {
-      name: chain.getProperty("name"),
-      devices: processedDevices,
-    };
-    const chainState = computeState(chain);
-
-    if (chainState !== STATE.ACTIVE) {
-      chainInfo.state = chainState;
-    }
-
-    return chainInfo;
-  });
-
-  // Only add chains array when both includeDrumPads and includeChains are true
-  if (includeDrumPads && includeChains) {
-    drumPadInfo.chains = processedChains;
-  }
-
-  if (!anyChainHasInstrument) {
-    drumPadInfo.hasInstrument = false;
-  }
-
-  return drumPadInfo;
-}
-
-/**
- * Update drum pad solo states
- * @param {Array} processedDrumPads - Drum pads to update
- */
-export function updateDrumPadSoloStates(processedDrumPads) {
-  const hasSoloedDrumPad = processedDrumPads.some(
-    (drumPadInfo) => drumPadInfo.state === STATE.SOLOED,
-  );
-
-  if (!hasSoloedDrumPad) {
-    return;
-  }
-
-  processedDrumPads.forEach((drumPadInfo) => {
-    if (drumPadInfo.state === STATE.SOLOED) {
-      // Keep soloed state as-is
-    } else if (drumPadInfo.state === STATE.MUTED) {
-      drumPadInfo.state = STATE.MUTED_ALSO_VIA_SOLO;
-    } else if (!drumPadInfo.state) {
-      drumPadInfo.state = STATE.MUTED_VIA_SOLO;
-    }
-  });
-}
-
-/**
- * Process drum pads for drum rack devices
- * @param {object} device - Device object
- * @param {object} deviceInfo - Device info to update
- * @param {boolean} includeChains - Include chains in drum pads
- * @param {boolean} includeDrumPads - Include drum pads in output
- * @param {number} depth - Current depth
- * @param {number} maxDepth - Max depth
- * @param {Function} readDeviceFn - readDevice function
- */
-export function processDrumPads(
-  device,
-  deviceInfo,
-  includeChains,
-  includeDrumPads,
-  depth,
-  maxDepth,
-  readDeviceFn,
-) {
-  const drumPads = device.getChildren("drum_pads");
-  const processedDrumPads = drumPads
-    .filter((pad) => pad.getChildIds("chains").length > 0)
-    .map((pad) => {
-      const chains = pad.getChildren("chains");
-
-      return processDrumPad(
-        pad,
-        chains,
-        includeDrumPads,
-        includeChains,
-        depth,
-        maxDepth,
-        readDeviceFn,
-      );
-    });
-
-  updateDrumPadSoloStates(processedDrumPads);
-
-  if (includeDrumPads) {
-    deviceInfo.drumPads = processedDrumPads.map(
-      ({ _originalPad, ...drumPadInfo }) => drumPadInfo,
-    );
-  }
-
-  deviceInfo._processedDrumPads = processedDrumPads;
-}
-
-/**
  * Process regular (non-drum) rack chains
  * @param {object} device - Device object
  * @param {object} deviceInfo - Device info to update
@@ -274,10 +72,13 @@ export function processRegularChains(
   const readDevice = readDeviceFn;
   const chains = device.getChildren("chains");
   const hasSoloedChain = chains.some((chain) => chain.getProperty("solo") > 0);
+  const parentPath = extractDevicePath(device.path);
 
   if (includeChains) {
-    deviceInfo.chains = chains.map((chain) => {
+    deviceInfo.chains = chains.map((chain, index) => {
+      const chainPath = parentPath ? buildChainPath(parentPath, index) : null;
       const chainInfo = {
+        ...(chainPath && { path: chainPath }),
         name: chain.getProperty("name"),
       };
       const chainState = computeState(chain);
@@ -386,9 +187,17 @@ function processReturnChains(
 
   if (returnChains.length === 0) return;
 
-  deviceInfo.returnChains = returnChains.map((chain) => {
+  const parentPath = extractDevicePath(device.path);
+
+  deviceInfo.returnChains = returnChains.map((chain, index) => {
+    const chainPath = parentPath
+      ? buildReturnChainPath(parentPath, index)
+      : null;
     const chainState = computeState(chain);
-    const info = { name: chain.getProperty("name") };
+    const info = {
+      ...(chainPath && { path: chainPath }),
+      name: chain.getProperty("name"),
+    };
 
     if (chainState !== STATE.ACTIVE) info.state = chainState;
     info.devices = chain.getChildren("devices").map((d) =>
