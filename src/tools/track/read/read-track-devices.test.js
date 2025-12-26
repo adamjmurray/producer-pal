@@ -258,7 +258,9 @@ describe("readTrack", () => {
         name: "My Custom Rack",
         chains: [
           {
+            id: "chain1",
             name: "Piano",
+            color: "#FF0000",
             devices: [
               {
                 id: "nested_device1",
@@ -340,7 +342,9 @@ describe("readTrack", () => {
         name: "Master FX",
         chains: [
           {
+            id: "chain1",
             name: "Filter Chain",
+            color: "#0000FF",
             devices: [
               {
                 id: "nested_effect1",
@@ -437,7 +441,9 @@ describe("readTrack", () => {
         name: "Master FX",
         chains: [
           {
+            id: "outer_chain",
             name: "Wet",
+            color: "#0000FF",
             devices: [
               {
                 id: "inner_rack",
@@ -445,7 +451,9 @@ describe("readTrack", () => {
                 name: "Reverb Chain",
                 chains: [
                   {
+                    id: "inner_chain",
                     name: "Hall",
+                    color: "#00FF00",
                     state: "soloed",
                     devices: [
                       {

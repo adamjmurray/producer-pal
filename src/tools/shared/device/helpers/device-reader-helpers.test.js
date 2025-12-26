@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 import {
+  buildChainInfo,
   isRedundantDeviceClassName,
   computeState,
   isInstrumentDevice,
@@ -11,6 +12,117 @@ import {
 } from "./device-reader-helpers.js";
 
 describe("device-reader-helpers", () => {
+  describe("buildChainInfo", () => {
+    const createMockChain = (overrides = {}) => ({
+      id: "chain-123",
+      getProperty: (prop) => {
+        if (prop === "name") return overrides.name ?? "Test Chain";
+        if (prop === "mute") return overrides.mute ?? 0;
+        if (prop === "solo") return overrides.solo ?? 0;
+        if (prop === "muted_via_solo") return overrides.muted_via_solo ?? 0;
+        if (prop === "choke_group") return overrides.choke_group ?? 0;
+        return 0;
+      },
+      getColor: () => overrides.color ?? null,
+    });
+
+    it("builds chain info with id and name", () => {
+      const chain = createMockChain({ name: "My Chain" });
+      const result = buildChainInfo(chain);
+      expect(result).toEqual({
+        id: "chain-123",
+        name: "My Chain",
+      });
+    });
+
+    it("includes path when provided", () => {
+      const chain = createMockChain();
+      const result = buildChainInfo(chain, { path: "1/0/0" });
+      expect(result.path).toBe("1/0/0");
+    });
+
+    it("omits path when not provided", () => {
+      const chain = createMockChain();
+      const result = buildChainInfo(chain);
+      expect(result.path).toBeUndefined();
+    });
+
+    it("includes color when chain has color", () => {
+      const chain = createMockChain({ color: "#FF5500" });
+      const result = buildChainInfo(chain);
+      expect(result.color).toBe("#FF5500");
+    });
+
+    it("omits color when chain has no color", () => {
+      const chain = createMockChain({ color: null });
+      const result = buildChainInfo(chain);
+      expect(result.color).toBeUndefined();
+    });
+
+    it("includes chokeGroup when greater than 0", () => {
+      const chain = createMockChain({ choke_group: 5 });
+      const result = buildChainInfo(chain);
+      expect(result.chokeGroup).toBe(5);
+    });
+
+    it("omits chokeGroup when 0", () => {
+      const chain = createMockChain({ choke_group: 0 });
+      const result = buildChainInfo(chain);
+      expect(result.chokeGroup).toBeUndefined();
+    });
+
+    it("includes state when muted", () => {
+      const chain = createMockChain({ mute: 1 });
+      const result = buildChainInfo(chain);
+      expect(result.state).toBe(STATE.MUTED);
+    });
+
+    it("includes state when soloed", () => {
+      const chain = createMockChain({ solo: 1 });
+      const result = buildChainInfo(chain);
+      expect(result.state).toBe(STATE.SOLOED);
+    });
+
+    it("omits state when active", () => {
+      const chain = createMockChain();
+      const result = buildChainInfo(chain);
+      expect(result.state).toBeUndefined();
+    });
+
+    it("includes devices when provided", () => {
+      const chain = createMockChain();
+      const devices = [{ id: "dev-1" }, { id: "dev-2" }];
+      const result = buildChainInfo(chain, { devices });
+      expect(result.devices).toEqual(devices);
+    });
+
+    it("omits devices when not provided", () => {
+      const chain = createMockChain();
+      const result = buildChainInfo(chain);
+      expect(result.devices).toBeUndefined();
+    });
+
+    it("builds complete chain info with all properties", () => {
+      const chain = createMockChain({
+        name: "Full Chain",
+        color: "#00FF00",
+        choke_group: 3,
+        mute: 1,
+      });
+      const devices = [{ id: "dev-1" }];
+      const result = buildChainInfo(chain, { path: "1/0/0", devices });
+      expect(result).toEqual({
+        id: "chain-123",
+        path: "1/0/0",
+        name: "Full Chain",
+        color: "#00FF00",
+        chokeGroup: 3,
+        state: STATE.MUTED,
+        devices: [{ id: "dev-1" }],
+      });
+    });
+  });
+
   describe("isRedundantDeviceClassName", () => {
     it("returns true for matching Instrument Rack", () => {
       expect(

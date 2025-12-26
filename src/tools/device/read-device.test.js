@@ -407,4 +407,5 @@ describe("readDevice", () => {
   // extensive LiveAPI mocking including drum pads, chains, and their properties.
   // Skipping these for now to focus on easier wins for test coverage.
   // Params tests are in read-device-params.test.js
+  // Path-based tests are in read-device-path.test.js
 });

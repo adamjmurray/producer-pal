@@ -63,7 +63,9 @@ describe("readTrack", () => {
         type: "instrument-rack",
         chains: [
           {
+            id: "empty_chain",
             name: "Empty Chain",
+            color: "#000000",
             devices: [],
           },
         ],
@@ -151,7 +153,9 @@ describe("readTrack", () => {
         name: "My Custom Rack",
         chains: [
           {
+            id: "chain1",
             name: "Piano",
+            color: "#FF0000",
             devices: [
               {
                 id: "device1",
@@ -161,7 +165,9 @@ describe("readTrack", () => {
             ],
           },
           {
+            id: "chain2",
             name: "Bass",
+            color: "#00FF00",
             state: "muted",
             devices: [
               {
@@ -282,7 +288,9 @@ describe("readTrack", () => {
             state: "muted-via-solo",
             chains: [
               {
+                id: "kick_chain",
                 name: "Kick",
+                color: "#FF0000",
                 state: "muted-via-solo",
                 devices: [
                   expect.objectContaining({
@@ -299,7 +307,9 @@ describe("readTrack", () => {
             state: "soloed",
             chains: [
               {
+                id: "snare_chain",
                 name: "Snare",
+                color: "#00FF00",
                 state: "soloed",
                 devices: [
                   expect.objectContaining({

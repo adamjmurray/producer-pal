@@ -5,6 +5,7 @@ import {
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
 } from "#src/tools/constants.js";
+import { extractDevicePath } from "./helpers/device-path-helpers.js";
 import {
   isRedundantDeviceClassName,
   processDeviceChains,
@@ -169,9 +170,11 @@ export function readDevice(device, options = {}) {
   const className = device.getProperty("class_display_name");
   const userDisplayName = device.getProperty("name");
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
+  const path = extractDevicePath(device.path);
 
   const deviceInfo = {
     id: device.id,
+    ...(path && { path }),
     type: isRedundant ? deviceType : `${deviceType}: ${className}`,
   };
 
