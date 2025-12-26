@@ -46,6 +46,18 @@ const LABEL_PATTERNS = [
 ];
 
 /**
+ * Format parameter name, appending original_name if different (e.g. for rack macros).
+ * @param {object} paramApi - LiveAPI parameter object
+ * @returns {string} Formatted name like "Reverb (Macro 1)" or just "Device On"
+ */
+function formatParamName(paramApi) {
+  const name = paramApi.getProperty("name");
+  const originalName = paramApi.getProperty("original_name");
+
+  return originalName !== name ? `${name} (${originalName})` : name;
+}
+
+/**
  * Parse a label string to extract numeric value and unit.
  * @param {string} label - Display label from str_for_value()
  * @returns {{value: number|string|null, unit: string|null}} Parsed value and unit
@@ -188,13 +200,9 @@ function addStateFlags(result, paramApi, state, automationState) {
  * @returns {object} Parameter info with id and name
  */
 export function readParameterBasic(paramApi) {
-  const name = paramApi.getProperty("name");
-  const originalName = paramApi.getProperty("original_name");
-  const result = { id: paramApi.id, name };
+  const name = formatParamName(paramApi);
 
-  if (originalName !== name) result.originalName = originalName;
-
-  return result;
+  return { id: paramApi.id, name };
 }
 
 /**
@@ -203,7 +211,7 @@ export function readParameterBasic(paramApi) {
  * @returns {object} Parameter info object
  */
 export function readParameter(paramApi) {
-  const name = paramApi.getProperty("name");
+  const name = formatParamName(paramApi);
   const state = PARAM_STATE_MAP[paramApi.getProperty("state")];
   const automationState =
     AUTOMATION_STATE_MAP[paramApi.getProperty("automation_state")];
