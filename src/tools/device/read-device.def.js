@@ -3,13 +3,22 @@ import { defineTool } from "../shared/tool-framework/define-tool.js";
 
 export const toolDefReadDevice = defineTool("ppal-read-device", {
   title: "Read Device",
-  description: "Read information about a specific device by ID.",
+  description:
+    "Read information about a device, chain, or drum pad by ID or path.",
   annotations: {
     readOnlyHint: true,
     destructiveHint: false,
   },
   inputSchema: {
-    deviceId: z.string().describe("Device ID to read"),
+    deviceId: z.string().optional().describe("Device ID to read"),
+    path: z
+      .string()
+      .optional()
+      .describe(
+        "Device/chain/drum-pad path. Track: number, r+number (return), m (master). " +
+          "Chain: number, p+note (drum pad), r+number (return chain). " +
+          "Examples: '1/0' (device), '1/0/0' (chain), '1/0/pC1' (drum pad), '1/0/r0' (return chain)",
+      ),
     include: z
       .array(
         z.enum([

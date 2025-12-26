@@ -4,6 +4,7 @@ import {
   buildChainPath,
   buildReturnChainPath,
   buildDrumPadPath,
+  resolvePathToLiveApi,
 } from "./device-path-helpers.js";
 
 describe("device-path-helpers", () => {
@@ -155,6 +156,196 @@ describe("device-path-helpers", () => {
 
     it("builds drum pad path for return track device", () => {
       expect(buildDrumPadPath("r0/0", "C3")).toBe("r0/0/pC3");
+    });
+  });
+
+  describe("resolvePathToLiveApi", () => {
+    describe("device paths", () => {
+      it("resolves regular track device", () => {
+        expect(resolvePathToLiveApi("1/0")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0",
+          targetType: "device",
+        });
+      });
+
+      it("resolves return track device", () => {
+        expect(resolvePathToLiveApi("r0/0")).toEqual({
+          liveApiPath: "live_set return_tracks 0 devices 0",
+          targetType: "device",
+        });
+      });
+
+      it("resolves master track device", () => {
+        expect(resolvePathToLiveApi("m/0")).toEqual({
+          liveApiPath: "live_set master_track devices 0",
+          targetType: "device",
+        });
+      });
+
+      it("resolves nested device in chain", () => {
+        expect(resolvePathToLiveApi("1/0/0/1")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0 chains 0 devices 1",
+          targetType: "device",
+        });
+      });
+
+      it("resolves deeply nested device", () => {
+        expect(resolvePathToLiveApi("2/0/1/2/3/4")).toEqual({
+          liveApiPath:
+            "live_set tracks 2 devices 0 chains 1 devices 2 chains 3 devices 4",
+          targetType: "device",
+        });
+      });
+    });
+
+    describe("chain paths", () => {
+      it("resolves chain path", () => {
+        expect(resolvePathToLiveApi("1/0/0")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0 chains 0",
+          targetType: "chain",
+        });
+      });
+
+      it("resolves nested chain path", () => {
+        expect(resolvePathToLiveApi("1/0/0/1/2")).toEqual({
+          liveApiPath:
+            "live_set tracks 1 devices 0 chains 0 devices 1 chains 2",
+          targetType: "chain",
+        });
+      });
+
+      it("resolves master track chain", () => {
+        expect(resolvePathToLiveApi("m/0/0")).toEqual({
+          liveApiPath: "live_set master_track devices 0 chains 0",
+          targetType: "chain",
+        });
+      });
+    });
+
+    describe("return chain paths", () => {
+      it("resolves return chain in rack", () => {
+        expect(resolvePathToLiveApi("1/0/r0")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0 return_chains 0",
+          targetType: "return-chain",
+        });
+      });
+
+      it("resolves device in return chain", () => {
+        expect(resolvePathToLiveApi("1/0/r0/1")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0 return_chains 0 devices 1",
+          targetType: "device",
+        });
+      });
+
+      it("resolves return chain in return track rack", () => {
+        expect(resolvePathToLiveApi("r0/0/r1")).toEqual({
+          liveApiPath: "live_set return_tracks 0 devices 0 return_chains 1",
+          targetType: "return-chain",
+        });
+      });
+    });
+
+    describe("drum pad paths", () => {
+      it("resolves drum pad path", () => {
+        expect(resolvePathToLiveApi("1/0/pC1")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0",
+          targetType: "drum-pad",
+          drumPadNote: "C1",
+          remainingSegments: [],
+        });
+      });
+
+      it("resolves drum pad with chain index", () => {
+        expect(resolvePathToLiveApi("1/0/pC1/0")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0",
+          targetType: "drum-pad",
+          drumPadNote: "C1",
+          remainingSegments: ["0"],
+        });
+      });
+
+      it("resolves drum pad with chain and device", () => {
+        expect(resolvePathToLiveApi("1/0/pC1/0/0")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0",
+          targetType: "drum-pad",
+          drumPadNote: "C1",
+          remainingSegments: ["0", "0"],
+        });
+      });
+
+      it("resolves drum pad with sharp note", () => {
+        expect(resolvePathToLiveApi("1/0/pF#2")).toEqual({
+          liveApiPath: "live_set tracks 1 devices 0",
+          targetType: "drum-pad",
+          drumPadNote: "F#2",
+          remainingSegments: [],
+        });
+      });
+
+      it("resolves drum pad with flat note", () => {
+        expect(resolvePathToLiveApi("2/1/pBb0")).toEqual({
+          liveApiPath: "live_set tracks 2 devices 1",
+          targetType: "drum-pad",
+          drumPadNote: "Bb0",
+          remainingSegments: [],
+        });
+      });
+    });
+
+    describe("error handling", () => {
+      it("throws on empty path", () => {
+        expect(() => resolvePathToLiveApi("")).toThrow(
+          "Path must be a non-empty string",
+        );
+      });
+
+      it("throws on null path", () => {
+        expect(() => resolvePathToLiveApi(null)).toThrow(
+          "Path must be a non-empty string",
+        );
+      });
+
+      it("throws on track-only path", () => {
+        expect(() => resolvePathToLiveApi("1")).toThrow(
+          "Path must include at least a device index",
+        );
+      });
+
+      it("throws on invalid track index", () => {
+        expect(() => resolvePathToLiveApi("abc/0")).toThrow(
+          "Invalid track index",
+        );
+      });
+
+      it("throws on invalid return track index", () => {
+        expect(() => resolvePathToLiveApi("rx/0")).toThrow(
+          "Invalid return track index",
+        );
+      });
+
+      it("throws on invalid device index", () => {
+        expect(() => resolvePathToLiveApi("1/abc")).toThrow(
+          "Expected device index",
+        );
+      });
+
+      it("throws on invalid chain index", () => {
+        expect(() => resolvePathToLiveApi("1/0/abc")).toThrow(
+          "Invalid chain index",
+        );
+      });
+
+      it("throws on invalid return chain index", () => {
+        expect(() => resolvePathToLiveApi("1/0/rx")).toThrow(
+          "Invalid return chain index",
+        );
+      });
+
+      it("throws on empty drum pad note", () => {
+        expect(() => resolvePathToLiveApi("1/0/p")).toThrow(
+          "Invalid drum pad note",
+        );
+      });
     });
   });
 });
