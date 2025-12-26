@@ -41,37 +41,36 @@ export const OPENROUTER_MODELS = [
   // Free models
   { value: "z-ai/glm-4.5-air:free", label: "[Free] Z.AI GLM 4.5 Air" },
   { value: "qwen/qwen3-coder:free", label: "[Free] Qwen3 Coder 480B" },
-  { value: "mistralai/devstral-2512:free", label: "[Free] Devstral 2" },
-  { value: "openai/gpt-oss-120b:free", label: "[Free] GPT-OSS 120B" },
+  { value: "mistralai/devstral-2512:free", label: "[Free] Mistral Devstral 2" },
   {
     value: "nvidia/nemotron-3-nano-30b-a3b:free",
-    label: "[Free] Nemotron 3 Nano",
+    label: "[Free] Nvidia Nemotron 3 Nano",
   },
-  // Paid models - Google
+  // Paid models
   {
     value: "google/gemini-3-flash-preview",
-    label: "[Paid] Gemini 3 Flash (preview)",
+    label: "[Paid] Google Gemini 3 Flash",
   },
   {
     value: "google/gemini-3-pro-preview",
-    label: "[Paid] Gemini 3 Pro (preview)",
+    label: "[Paid] Google Gemini 3 Pro",
   },
-  // Paid models - Anthropic
-  { value: "anthropic/claude-sonnet-4.5", label: "[Paid] Claude Sonnet 4.5" },
-  { value: "anthropic/claude-opus-4.5", label: "[Paid] Claude Opus 4.5" },
-  // Paid models - OpenAI
-  { value: "openai/gpt-5.2", label: "[Paid] GPT-5.2" },
-  { value: "openai/gpt-5.1-codex-max", label: "[Paid] GPT-5.1 Codex Max" },
-  // Paid models - xAI
-  { value: "x-ai/grok-4", label: "[Paid] Grok 4" },
-  { value: "x-ai/grok-4.1-fast", label: "[Paid] Grok 4.1 Fast" },
-  // Paid models - Mistral
+  {
+    value: "anthropic/claude-sonnet-4.5",
+    label: "[Paid] Anthropic Claude Sonnet 4.5",
+  },
+  {
+    value: "anthropic/claude-opus-4.5",
+    label: "[Paid] Anthropic Claude Opus 4.5",
+  },
+  { value: "openai/gpt-5.2", label: "[Paid] OpenAI GPT-5.2" },
+  {
+    value: "openai/gpt-5.1-codex-max",
+    label: "[Paid] OpenAI GPT-5.1 Codex Max",
+  },
+  { value: "x-ai/grok-4.1-fast", label: "[Paid] xAI Grok 4.1 Fast" },
   { value: "mistralai/mistral-large-2512", label: "[Paid] Mistral Large" },
-  // Paid models - DeepSeek
-  { value: "deepseek/deepseek-v3.2", label: "[Paid] DeepSeek V3.2" },
-  // Paid models - Qwen
   { value: "qwen/qwen3-max", label: "[Paid] Qwen3 Max" },
-  // Paid models - MiniMax
   { value: "minimax/minimax-m2.1", label: "[Paid] MiniMax M2.1" },
   { value: "OTHER", label: "Other..." },
 ];
