@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { OPENROUTER_MODELS } from "../../webui/src/components/settings/controls/ModelSelector";
+import {
+  DEFAULT_MODELS,
+  OPENROUTER_MODELS,
+} from "../../webui/src/lib/constants/models";
 
 let consoleErrors: string[] = [];
 let consoleWarnings: string[] = [];
@@ -48,22 +51,22 @@ const TEST_CONFIGS = [
   {
     provider: "gemini",
     providerLabel: "Google",
-    model: "gemini-3-flash-preview",
-    modelLabel: "Gemini 3 Flash",
+    model: DEFAULT_MODELS.gemini,
+    modelLabel: "Default",
     envKey: "GEMINI_KEY",
   },
   {
     provider: "openai",
     providerLabel: "OpenAI",
-    model: "gpt-5.2-2025-12-11",
-    modelLabel: "GPT-5.2",
+    model: DEFAULT_MODELS.openai,
+    modelLabel: "Default",
     envKey: "OPENAI_KEY",
   },
   {
     provider: "mistral",
     providerLabel: "Mistral",
-    model: "mistral-medium-latest",
-    modelLabel: "Mistral Medium",
+    model: DEFAULT_MODELS.mistral,
+    modelLabel: "Default",
     envKey: "MISTRAL_KEY",
   },
   ...OPENROUTER_CONFIGS,

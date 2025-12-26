@@ -1,3 +1,4 @@
+import { DEFAULT_MODELS } from "#webui/lib/constants/models";
 import { DEFAULT_ENABLED_TOOLS, TOOLS } from "#webui/lib/constants/tools";
 import type { Provider } from "#webui/types/settings";
 
@@ -14,35 +15,35 @@ export interface ProviderSettings {
 export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   gemini: {
     apiKey: "",
-    model: "gemini-2.5-flash",
+    model: DEFAULT_MODELS.gemini,
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
   },
   openai: {
     apiKey: "",
-    model: "gpt-5.2-2025-12-11",
+    model: DEFAULT_MODELS.openai,
     thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
   mistral: {
     apiKey: "",
-    model: "mistral-medium-latest",
+    model: DEFAULT_MODELS.mistral,
     thinking: "Auto",
     temperature: 1.0,
     showThoughts: true,
   },
   openrouter: {
     apiKey: "",
-    model: "minimax/minimax-m2:free",
+    model: DEFAULT_MODELS.openrouter,
     thinking: "Default",
     temperature: 1.0,
     showThoughts: true,
   },
   lmstudio: {
     apiKey: "",
-    model: "",
+    model: DEFAULT_MODELS.lmstudio,
     port: 1234,
     thinking: "Auto",
     temperature: 1.0,
@@ -50,7 +51,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   ollama: {
     apiKey: "",
-    model: "ministral-3",
+    model: DEFAULT_MODELS.ollama,
     port: 11434,
     thinking: "Auto",
     temperature: 1.0,
@@ -58,7 +59,7 @@ export const DEFAULT_SETTINGS: Record<Provider, ProviderSettings> = {
   },
   custom: {
     apiKey: "",
-    model: "",
+    model: DEFAULT_MODELS.custom,
     baseUrl: "",
     thinking: "Auto",
     temperature: 1.0,
