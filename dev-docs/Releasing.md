@@ -162,13 +162,15 @@ device active):
 npm run ui:test
 ```
 
-This tests Quick Connect for Gemini, OpenAI, Mistral, and all OpenRouter models.
-See `tests/webui/README.md` for details.
+This tests Quick Connect for Gemini, OpenAI, Mistral, and OpenRouter paid
+models. See `tests/webui/README.md` for details.
 
 ### Built-in Chat UI - Manual Checks
 
 - [ ] **Manual sanity check** - Pick one provider and do a Quick Connect and
       then some task like generating a clip
+- [ ] **OpenRouter free model** - Test a free model (e.g., Devstral 2) with
+      Quick Connect (free models are excluded from E2E tests due to rate limits)
 - [ ] **Ollama** - Enable Small Model Mode + minimal toolset, then Quick Connect
       and a simple task (not automated due to slow response times)
 

@@ -31,9 +31,10 @@ test.beforeEach(({ page }) => {
   });
 });
 
-// Generate OpenRouter configs from the shared models list
+// Generate OpenRouter configs from the shared models list (paid models only)
+// Free models are excluded due to rate limits - test those manually
 const OPENROUTER_CONFIGS = OPENROUTER_MODELS.filter(
-  (m) => m.value !== "OTHER",
+  (m) => m.value !== "OTHER" && !m.value.includes(":free"),
 ).map((m) => ({
   provider: "openrouter",
   providerLabel: "OpenRouter",
