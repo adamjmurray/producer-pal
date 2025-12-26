@@ -110,19 +110,19 @@ export function applyMidiTransformIfNeeded(clip, midiParams, rng, warnings) {
 /**
  * Apply parameter transformations to all clips
  * @param {Array<object>} clips - Array of Live API clip objects
- * @param {object} root0 - Transformation parameters object
- * @param {number} root0.gainDbMin - Minimum gain in decibels
- * @param {number} root0.gainDbMax - Maximum gain in decibels
- * @param {number} root0.transposeMin - Minimum transpose amount
- * @param {number} root0.transposeMax - Maximum transpose amount
- * @param {string} root0.transposeValues - Comma-separated list of transpose values
- * @param {Array<number>} root0.transposeValuesArray - Array of transpose values
- * @param {number} root0.velocityMin - Minimum velocity value
- * @param {number} root0.velocityMax - Maximum velocity value
- * @param {number} root0.durationMin - Minimum note duration
- * @param {number} root0.durationMax - Maximum note duration
- * @param {number} root0.velocityRange - Range for velocity variation
- * @param {number} root0.probability - Probability for note generation
+ * @param {object} options - Transformation parameters object
+ * @param {number} options.gainDbMin - Minimum gain in decibels
+ * @param {number} options.gainDbMax - Maximum gain in decibels
+ * @param {number} options.transposeMin - Minimum transpose amount
+ * @param {number} options.transposeMax - Maximum transpose amount
+ * @param {string} options.transposeValues - Comma-separated list of transpose values
+ * @param {Array<number>} options.transposeValuesArray - Array of transpose values
+ * @param {number} options.velocityMin - Minimum velocity value
+ * @param {number} options.velocityMax - Maximum velocity value
+ * @param {number} options.durationMin - Minimum note duration
+ * @param {number} options.durationMax - Maximum note duration
+ * @param {number} options.velocityRange - Range for velocity variation
+ * @param {number} options.probability - Probability for note generation
  * @param {object} rng - Random number generator
  * @param {Set} warnings - Set to track emitted warnings
  */

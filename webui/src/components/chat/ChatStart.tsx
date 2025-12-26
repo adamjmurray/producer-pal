@@ -10,12 +10,12 @@ interface ChatStartProps {
 
 /**
  * Start screen shown when no messages exist
- * @param {ChatStartProps} root0 - Component props
- * @param {"connected" | "connecting" | "error"} root0.mcpStatus - MCP connection status
- * @param {string | null} root0.mcpError - MCP error message
- * @param {() => Promise<void>} root0.checkMcpConnection - Check MCP connection callback
- * @param {(message: string) => Promise<void>} root0.handleSend - Send message callback
- * @param {MessageOverrides} root0.overrides - Per-message overrides
+ * @param {ChatStartProps} props - Component props
+ * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
+ * @param {string | null} props.mcpError - MCP error message
+ * @param {() => Promise<void>} props.checkMcpConnection - Check MCP connection callback
+ * @param {(message: string, options?: MessageOverrides) => Promise<void>} props.handleSend - Send message callback
+ * @param {MessageOverrides} props.overrides - Per-message overrides
  * @returns {JSX.Element} - React component
  */
 export function ChatStart({

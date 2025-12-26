@@ -16,16 +16,16 @@ interface BehaviorTabProps {
 
 /**
  * Behavior tab component for settings
- * @param {object} root0 - Component props
- * @param {Provider} root0.provider - Selected provider
- * @param {string} root0.model - Selected model
- * @param {string} root0.thinking - Thinking mode setting
- * @param {Function} root0.setThinking - Function to update thinking mode
- * @param {number} root0.temperature - Temperature/randomness setting
- * @param {Function} root0.setTemperature - Function to update temperature
- * @param {boolean} root0.showThoughts - Whether to show thought blocks
- * @param {Function} root0.setShowThoughts - Function to toggle thought display
- * @param {Function} root0.resetBehaviorToDefaults - Function to reset behavior settings
+ * @param {object} props - Component props
+ * @param {Provider} props.provider - Selected provider
+ * @param {string} props.model - Selected model
+ * @param {string} props.thinking - Thinking mode setting
+ * @param {Function} props.setThinking - Function to update thinking mode
+ * @param {number} props.temperature - Temperature/randomness setting
+ * @param {Function} props.setTemperature - Function to update temperature
+ * @param {boolean} props.showThoughts - Whether to show thought blocks
+ * @param {Function} props.setShowThoughts - Function to toggle thought display
+ * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
  * @returns {JSX.Element} Behavior tab component
  */
 export function BehaviorTab({
