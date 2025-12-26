@@ -110,11 +110,14 @@ describe("transformClips - slicing unlooped clips", () => {
       setCalls.push({ id: this._id, prop, value });
     });
 
-    transformClips({
-      clipIds: clipId,
-      slice: "1:0.0", // 1 bar = 4 beats slice
-      seed: 12345,
-    });
+    transformClips(
+      {
+        clipIds: clipId,
+        slice: "1:0.0", // 1 bar = 4 beats slice
+        seed: 12345,
+      },
+      { holdingAreaStartBeats: 40000 },
+    );
 
     // Should have 3 duplicate calls: holding, move back, and reveal second slice
     expect(duplicateCalls.length).toBe(3);
@@ -247,11 +250,14 @@ describe("transformClips - slicing unlooped clips", () => {
       setCalls.push({ id: this._id, prop, value });
     });
 
-    transformClips({
-      clipIds: clipId,
-      slice: "1:0.0", // 1 bar = 4 beats slice
-      seed: 12345,
-    });
+    transformClips(
+      {
+        clipIds: clipId,
+        slice: "1:0.0", // 1 bar = 4 beats slice
+        seed: 12345,
+      },
+      { holdingAreaStartBeats: 40000 },
+    );
 
     // Should have 5 duplicate calls: holding, move back, and 3 reveal slices (at 4, 8, 12)
     expect(duplicateCalls.length).toBe(5);

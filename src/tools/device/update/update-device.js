@@ -155,8 +155,8 @@ function setParamValue(param, inputValue) {
 /**
  * Update macro variation state for rack devices
  * @param {object} device - Live API device object
- * @param {string} [action] - Variation action: store, recall, recall-last, delete, randomize
- * @param {number} [index] - Variation index to select (0-based)
+ * @param {string} [action] - Variation action: create, load, delete, revert, randomize
+ * @param {number} [index] - Variation index for load/delete (0-based)
  */
 function updateMacroVariation(device, action, index) {
   const canHaveChains = device.getProperty("can_have_chains");
@@ -169,40 +169,92 @@ function updateMacroVariation(device, action, index) {
     return;
   }
 
-  // Set selected variation index first (if provided)
-  if (index != null) {
-    const variationCount = device.getProperty("variation_count");
-
-    if (index >= variationCount) {
-      console.error(
-        `updateDevice: variation index ${index} out of range (${variationCount} available)`,
-      );
-
-      return;
-    }
-
-    device.set("selected_variation_index", index);
+  if (!validateMacroVariationParams(action, index)) {
+    return;
   }
 
-  // Execute action (if provided)
-  if (action != null) {
-    switch (action) {
-      case "store":
-        device.call("store_variation");
-        break;
-      case "recall":
-        device.call("recall_selected_variation");
-        break;
-      case "recall-last":
-        device.call("recall_last_used_variation");
-        break;
-      case "delete":
-        device.call("delete_selected_variation");
-        break;
-      case "randomize":
-        device.call("randomize_macros");
-        break;
-    }
+  warnIfIndexIgnored(action, index);
+
+  if (!setVariationIndex(device, action, index)) {
+    return;
+  }
+
+  executeMacroVariationAction(device, action);
+}
+
+function validateMacroVariationParams(action, index) {
+  if (index != null && action == null) {
+    console.error(
+      "updateDevice: macroVariationIndex requires macroVariation 'load' or 'delete'",
+    );
+
+    return false;
+  }
+
+  if ((action === "load" || action === "delete") && index == null) {
+    console.error(
+      `updateDevice: macroVariation '${action}' requires macroVariationIndex`,
+    );
+
+    return false;
+  }
+
+  return true;
+}
+
+function warnIfIndexIgnored(action, index) {
+  if (index == null) {
+    return;
+  }
+
+  if (action === "create") {
+    console.error(
+      "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
+    );
+  } else if (action === "revert") {
+    console.error("updateDevice: macroVariationIndex ignored for 'revert'");
+  } else if (action === "randomize") {
+    console.error("updateDevice: macroVariationIndex ignored for 'randomize'");
+  }
+}
+
+function setVariationIndex(device, action, index) {
+  if ((action !== "load" && action !== "delete") || index == null) {
+    return true;
+  }
+
+  const variationCount = device.getProperty("variation_count");
+
+  if (index >= variationCount) {
+    console.error(
+      `updateDevice: variation index ${index} out of range (${variationCount} available)`,
+    );
+
+    return false;
+  }
+
+  device.set("selected_variation_index", index);
+
+  return true;
+}
+
+function executeMacroVariationAction(device, action) {
+  switch (action) {
+    case "create":
+      device.call("store_variation");
+      break;
+    case "load":
+      device.call("recall_selected_variation");
+      break;
+    case "revert":
+      device.call("recall_last_used_variation");
+      break;
+    case "delete":
+      device.call("delete_selected_variation");
+      break;
+    case "randomize":
+      device.call("randomize_macros");
+      break;
   }
 }
 

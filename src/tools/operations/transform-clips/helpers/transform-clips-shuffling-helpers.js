@@ -1,15 +1,20 @@
 import * as console from "#src/shared/v8-max-console.js";
 
-const HOLDING_AREA_START = 40000;
-
 /**
  * Perform shuffling of arrangement clips
  * @param {Array<LiveAPI>} arrangementClips - Array of arrangement clip objects
  * @param {Array<LiveAPI>} clips - Array to update with fresh clips after shuffling
  * @param {Set} warnings - Set to track warnings already issued
  * @param {function(): number} rng - Random number generator function
+ * @param {object} context - Context object with holdingAreaStartBeats
  */
-export function performShuffling(arrangementClips, clips, warnings, rng) {
+export function performShuffling(
+  arrangementClips,
+  clips,
+  warnings,
+  rng,
+  context,
+) {
   if (arrangementClips.length === 0) {
     if (!warnings.has("shuffle-no-arrangement")) {
       console.error("Warning: shuffleOrder requires arrangement clips");
@@ -62,7 +67,7 @@ export function performShuffling(arrangementClips, clips, warnings, rng) {
   const holdingPositions = shuffledClips.map((clip, index) => {
     const trackIndex = clip.trackIndex;
     const track = new LiveAPI(`live_set tracks ${trackIndex}`);
-    const holdingPos = HOLDING_AREA_START + index * 100;
+    const holdingPos = context.holdingAreaStartBeats + index * 100;
     const result = track.call(
       "duplicate_clip_to_arrangement",
       `id ${clip.id}`,

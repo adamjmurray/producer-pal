@@ -37,7 +37,7 @@ This makes them suitable only for local QA testing, not automated CI.
 ## Test Files
 
 - `quick-connect.spec.ts` - Tests Quick Connect across multiple providers/models
-  (includes all OpenRouter models automatically)
+  (includes OpenRouter paid models; free models excluded due to rate limits)
 
 ## Adding New Provider/Model Tests
 
@@ -53,6 +53,7 @@ Edit `quick-connect.spec.ts` and add a new entry to `TEST_CONFIGS`:
 },
 ```
 
-OpenRouter models are automatically imported from `OPENROUTER_MODELS` in
+OpenRouter paid models are automatically imported from `OPENROUTER_MODELS` in
 `webui/src/components/settings/controls/ModelSelector.tsx` and tested with
-`OPENROUTER_KEY`.
+`OPENROUTER_KEY`. Free models (with `:free` suffix) are excluded due to rate
+limits.

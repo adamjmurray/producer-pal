@@ -42,9 +42,20 @@ const context = {
     content: "",
   },
   smallModelMode: false,
-  holdingAreaStartBeats: 40000,
   sampleFolder: null,
 };
+
+/**
+ * Initialize holding area start position from current song_length.
+ * Called at the start of tools that use holding area operations.
+ * This ensures holding area is always just past actual content,
+ * avoiding permanent song_length bloat from hardcoded positions.
+ */
+function initHoldingArea() {
+  const liveSet = new LiveAPI("live_set");
+
+  context.holdingAreaStartBeats = liveSet.get("song_length")[0];
+}
 
 /*
 **IMPORTANT**: Always pass args AND context to tool functions
@@ -63,15 +74,27 @@ const tools = {
   "ppal-update-scene": (args) => updateScene(args, context),
   "ppal-create-clip": (args) => createClip(args, context),
   "ppal-read-clip": (args) => readClip(args, context),
-  "ppal-update-clip": (args) => updateClip(args, context),
-  "ppal-transform-clips": (args) => transformClips(args, context),
+  "ppal-update-clip": (args) => {
+    initHoldingArea();
+
+    return updateClip(args, context);
+  },
+  "ppal-transform-clips": (args) => {
+    initHoldingArea();
+
+    return transformClips(args, context);
+  },
   "ppal-create-device": (args) => createDevice(args, context),
   "ppal-read-device": (args) => readDevice(args, context),
   "ppal-update-device": (args) => updateDevice(args, context),
   "ppal-playback": (args) => playback(args, context),
   "ppal-select": (args) => select(args, context),
   "ppal-delete": (args) => deleteObject(args, context),
-  "ppal-duplicate": (args) => duplicate(args, context),
+  "ppal-duplicate": (args) => {
+    initHoldingArea();
+
+    return duplicate(args, context);
+  },
   "ppal-memory": (args) => memory(args, context),
   "ppal-read-samples": (args) => readSamples(args, context),
 };
@@ -143,15 +166,6 @@ export function projectNotesWritable(writable) {
  */
 export function projectNotes(_text, content) {
   context.projectNotes.content = content ?? "";
-}
-
-/**
- * Set the holding area start position in beats
- *
- * @param {number} beats - Start position in beats
- */
-export function holdingAreaStartBeats(beats) {
-  context.holdingAreaStartBeats = Number(beats) || 40000;
 }
 
 /**

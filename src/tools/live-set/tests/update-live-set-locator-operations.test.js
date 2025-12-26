@@ -23,6 +23,7 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
+        if (prop === "song_length") return [1000]; // Large value so no extension needed
         // Return empty before creation, return locator after
         if (prop === "cue_points") {
           return locatorCreated ? children("new_cue") : children();
@@ -63,6 +64,7 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [0];
+        if (prop === "song_length") return [1000]; // Large value so no extension needed
         if (prop === "cue_points") {
           return locatorCreated ? children("new_cue") : children();
         }
@@ -110,6 +112,7 @@ describe("updateLiveSet - locator operations", () => {
         if (prop === "signature_numerator") return [4];
         if (prop === "signature_denominator") return [4];
         if (prop === "is_playing") return [1];
+        if (prop === "song_length") return [1000]; // Large value so no extension needed
         if (prop === "cue_points") {
           return locatorCreated ? children("new_cue") : children();
         }

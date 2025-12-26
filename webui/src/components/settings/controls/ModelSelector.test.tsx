@@ -31,13 +31,13 @@ describe("ModelSelector", () => {
     );
 
     expect(
-      screen.getByRole("option", { name: /Gemini 2.5 Pro/ }),
+      screen.getByRole("option", { name: /^Gemini 2\.5 Pro$/ }),
     ).toBeDefined();
     expect(
-      screen.getByRole("option", { name: /Gemini 2.5 Flash \(fast/ }),
+      screen.getByRole("option", { name: /^Gemini 2\.5 Flash$/ }),
     ).toBeDefined();
     expect(
-      screen.getByRole("option", { name: /Gemini 2.5 Flash-Lite/ }),
+      screen.getByRole("option", { name: /^Gemini 2\.5 Flash-Lite$/ }),
     ).toBeDefined();
   });
 
@@ -52,10 +52,10 @@ describe("ModelSelector", () => {
     );
 
     const options = screen.getAllByRole("option") as HTMLOptionElement[];
-    expect(options[0]!.value).toBe("gemini-3-pro-preview");
-    expect(options[1]!.value).toBe("gemini-3-flash-preview");
-    expect(options[2]!.value).toBe("gemini-2.5-pro");
-    expect(options[3]!.value).toBe("gemini-2.5-flash");
+    expect(options[0]!.value).toBe("gemini-2.5-flash");
+    expect(options[1]!.value).toBe("gemini-3-pro-preview");
+    expect(options[2]!.value).toBe("gemini-3-flash-preview");
+    expect(options[3]!.value).toBe("gemini-2.5-pro");
     expect(options[4]!.value).toBe("gemini-2.5-flash-lite");
   });
 
@@ -101,13 +101,11 @@ describe("ModelSelector", () => {
           setModel={vi.fn()}
         />,
       );
+      expect(screen.getByRole("option", { name: /^GPT-5\.2$/ })).toBeDefined();
+      expect(screen.getByRole("option", { name: /^GPT-5$/ })).toBeDefined();
       expect(
-        screen.getByRole("option", { name: /GPT-5\.2 \(most capable\)/ }),
+        screen.getByRole("option", { name: /^GPT-5 Mini$/ }),
       ).toBeDefined();
-      expect(
-        screen.getByRole("option", { name: /GPT-5 \(previous version\)/ }),
-      ).toBeDefined();
-      expect(screen.getByRole("option", { name: /GPT-5 Mini/ })).toBeDefined();
     });
 
     it("calls setModel when OpenAI model changes", () => {
