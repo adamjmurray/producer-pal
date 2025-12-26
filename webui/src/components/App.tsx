@@ -155,12 +155,13 @@ export function App() {
       rateLimitState={chat.rateLimitState}
       handleSend={chat.handleSend}
       handleRetry={chat.handleRetry}
-      activeModel={chat.activeModel ?? settings.model}
-      activeThinking={chat.activeThinking}
-      activeTemperature={chat.activeTemperature}
-      activeProvider={settings.provider}
+      activeModel={chat.activeModel}
+      activeProvider={chat.activeModel ? settings.provider : null}
+      provider={settings.provider}
+      model={settings.model}
       defaultThinking={settings.thinking}
       defaultTemperature={settings.temperature}
+      defaultShowThoughts={settings.showThoughts}
       enabledToolsCount={enabledToolsCount}
       totalToolsCount={VISIBLE_TOOLS.length}
       mcpStatus={mcpStatus}

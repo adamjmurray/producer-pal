@@ -21,11 +21,12 @@ describe("ChatScreen", () => {
     handleSend: mockHandleSend,
     handleRetry: mockHandleRetry,
     activeModel: "gemini-1.5-flash",
-    activeThinking: null,
-    activeTemperature: 1.0,
     activeProvider: "gemini" as const,
-    defaultThinking: "Auto",
+    provider: "gemini" as const,
+    model: "gemini-2.0-flash-thinking",
+    defaultThinking: "Default",
     defaultTemperature: 1.0,
+    defaultShowThoughts: true,
     enabledToolsCount: 20,
     totalToolsCount: 20,
     mcpStatus: "connected" as const,
@@ -103,8 +104,6 @@ describe("ChatScreen", () => {
         <ChatScreen
           {...defaultProps}
           activeModel="test-model"
-          activeThinking="extended"
-          activeTemperature={0.7}
           activeProvider="openai"
           messages={[
             {

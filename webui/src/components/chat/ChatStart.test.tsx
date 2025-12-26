@@ -5,6 +5,12 @@ import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatStart } from "./ChatStart";
 
+const defaultOverrides = {
+  thinking: "Default",
+  temperature: 1.0,
+  showThoughts: true,
+};
+
 describe("ChatStart", () => {
   describe("when mcpStatus is connected", () => {
     it("shows start conversation message", () => {
@@ -17,6 +23,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -35,6 +42,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -43,16 +51,22 @@ describe("ChatStart", () => {
       ).toBeDefined();
     });
 
-    it("calls handleSend with Connect to Ableton when Quick Connect is clicked", () => {
+    it("calls handleSend with Connect to Ableton and overrides when Quick Connect is clicked", () => {
       const mcpError = "";
       const checkMcpConnection = vi.fn();
       const handleSend = vi.fn();
+      const overrides = {
+        thinking: "High",
+        temperature: 0.5,
+        showThoughts: false,
+      };
       render(
         <ChatStart
           mcpStatus="connected"
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={overrides}
         />,
       );
 
@@ -60,7 +74,7 @@ describe("ChatStart", () => {
       fireEvent.click(button);
 
       expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Connect to Ableton.");
+      expect(handleSend).toHaveBeenCalledWith("Connect to Ableton.", overrides);
     });
 
     it("does not show error message", () => {
@@ -73,6 +87,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -92,6 +107,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -108,6 +124,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -124,6 +141,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -140,6 +158,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -159,6 +178,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 
@@ -179,6 +199,7 @@ describe("ChatStart", () => {
           mcpError={mcpError}
           checkMcpConnection={checkMcpConnection}
           handleSend={handleSend}
+          overrides={defaultOverrides}
         />,
       );
 

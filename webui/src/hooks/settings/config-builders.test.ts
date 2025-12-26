@@ -170,7 +170,7 @@ describe("config-builders", () => {
         const config = buildOpenAIConfig(
           "o3",
           1.0,
-          "XHigh",
+          "Ultra",
           undefined,
           true,
           {},
@@ -269,7 +269,7 @@ describe("config-builders", () => {
         const config = buildOpenAIConfig(
           "gpt-5.1-2025-01-01",
           1.0,
-          "XHigh",
+          "Ultra",
           undefined,
           true,
           {},
@@ -282,7 +282,7 @@ describe("config-builders", () => {
         const config = buildOpenAIConfig(
           "gpt-5.1-codex-max",
           1.0,
-          "XHigh",
+          "Ultra",
           undefined,
           true,
           {},
@@ -375,7 +375,7 @@ describe("config-builders", () => {
         const config = buildOpenAIConfig(
           "gpt-5.2-2025-12-11",
           1.0,
-          "XHigh",
+          "Ultra",
           undefined,
           true,
           {},
@@ -431,7 +431,7 @@ describe("config-builders", () => {
         const config = buildOpenAIConfig(
           "anthropic/claude-sonnet",
           1.0,
-          "XHigh",
+          "Ultra",
           openRouterUrl,
           true,
           {},

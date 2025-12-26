@@ -1,4 +1,8 @@
-import type { RateLimitState } from "#webui/hooks/chat/use-chat";
+import { useState } from "preact/hooks";
+import type {
+  MessageOverrides,
+  RateLimitState,
+} from "#webui/hooks/chat/use-chat";
 import type { UIMessage } from "#webui/types/messages";
 import type { Provider } from "#webui/types/settings";
 import { ChatStart } from "./ChatStart";
@@ -14,15 +18,15 @@ interface ChatScreenProps {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   rateLimitState: RateLimitState | null;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (messageIndex: number) => Promise<void>;
   activeModel: string | null;
-  activeThinking: string | null;
-  activeTemperature: number | null;
   activeProvider: Provider | null;
-
+  provider: Provider;
+  model: string;
   defaultThinking: string;
   defaultTemperature: number;
+  defaultShowThoughts: boolean;
   enabledToolsCount: number;
   totalToolsCount: number;
   mcpStatus: "connected" | "connecting" | "error";
@@ -42,11 +46,12 @@ interface ChatScreenProps {
  * @param {(message: string) => Promise<void>} props.handleSend - Send message callback
  * @param {(messageIndex: number) => Promise<void>} props.handleRetry - Retry message callback
  * @param {string | null} props.activeModel - Active model identifier
- * @param {string | null} props.activeThinking - Active thinking mode
- * @param {number | null} props.activeTemperature - Active temperature setting
  * @param {Provider | null} props.activeProvider - Active provider
+ * @param {Provider} props.provider - Provider from settings
+ * @param {string} props.model - Model from settings
  * @param {string} props.defaultThinking - Default thinking mode from settings
  * @param {number} props.defaultTemperature - Default temperature from settings
+ * @param {boolean} props.defaultShowThoughts - Default showThoughts from settings
  * @param {number} props.enabledToolsCount - Number of enabled tools
  * @param {number} props.totalToolsCount - Total number of available tools
  * @param {"connected" | "connecting" | "error"} props.mcpStatus - MCP connection status
@@ -63,21 +68,41 @@ export function ChatScreen({
   rateLimitState,
   handleSend,
   handleRetry,
+
   activeModel,
-  activeThinking,
-  activeTemperature,
   activeProvider,
+  provider,
+  model,
   defaultThinking,
   defaultTemperature,
+  defaultShowThoughts,
   enabledToolsCount,
   totalToolsCount,
   mcpStatus,
   mcpError,
   checkMcpConnection,
+
   onOpenSettings,
   onClearConversation,
   onStop,
 }: ChatScreenProps) {
+  // Per-message override state (lifted from ChatInput so ChatStart can also use it)
+  const [thinking, setThinking] = useState(defaultThinking);
+  const [temperature, setTemperature] = useState(defaultTemperature);
+  const [showThoughts, setShowThoughts] = useState(defaultShowThoughts);
+
+  const handleResetToDefaults = () => {
+    setThinking(defaultThinking);
+    setTemperature(defaultTemperature);
+    setShowThoughts(defaultShowThoughts);
+  };
+
+  const currentOverrides: MessageOverrides = {
+    thinking,
+    temperature,
+    showThoughts,
+  };
+
   return (
     <div className="flex flex-col h-screen">
       <ChatHeader
@@ -98,6 +123,7 @@ export function ChatScreen({
             mcpError={mcpError}
             checkMcpConnection={checkMcpConnection}
             handleSend={handleSend}
+            overrides={currentOverrides}
           />
         ) : (
           <MessageList
@@ -121,8 +147,18 @@ export function ChatScreen({
         handleSend={handleSend}
         isAssistantResponding={isAssistantResponding}
         onStop={onStop}
-        thinking={activeThinking ?? defaultThinking}
-        temperature={activeTemperature ?? defaultTemperature}
+        provider={provider}
+        model={model}
+        defaultThinking={defaultThinking}
+        defaultTemperature={defaultTemperature}
+        defaultShowThoughts={defaultShowThoughts}
+        thinking={thinking}
+        temperature={temperature}
+        showThoughts={showThoughts}
+        onThinkingChange={setThinking}
+        onTemperatureChange={setTemperature}
+        onShowThoughtsChange={setShowThoughts}
+        onResetToDefaults={handleResetToDefaults}
       />
     </div>
   );

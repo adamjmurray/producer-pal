@@ -14,7 +14,7 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={true}
           setShowThoughts={setShowThoughts}
@@ -22,7 +22,7 @@ describe("ThinkingSettings", () => {
       );
 
       const select = screen.getByRole("combobox") as HTMLSelectElement;
-      expect(select.value).toBe("Auto");
+      expect(select.value).toBe("Default");
     });
 
     it("displays all thinking options", () => {
@@ -32,15 +32,16 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={true}
           setShowThoughts={setShowThoughts}
         />,
       );
 
+      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Auto" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
       expect(screen.getByRole("option", { name: "High" })).toBeDefined();
@@ -54,7 +55,7 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={true}
           setShowThoughts={setShowThoughts}
@@ -86,7 +87,7 @@ describe("ThinkingSettings", () => {
   });
 
   describe("OpenAI provider", () => {
-    it("renders all OpenAI thinking options", () => {
+    it("renders all thinking options (unified with other providers)", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
       render(
@@ -100,17 +101,14 @@ describe("ThinkingSettings", () => {
         />,
       );
 
-      // Should have all OpenAI options
+      // All providers now have the same unified options
       expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
       expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Extra High" })).toBeDefined();
-      // Should not have Gemini-specific options
-      expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
-      expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
+      expect(screen.getByRole("option", { name: "Ultra" })).toBeDefined();
     });
 
     it("does not show checkbox for OpenAI provider", () => {
@@ -153,7 +151,7 @@ describe("ThinkingSettings", () => {
   });
 
   describe("OpenRouter provider", () => {
-    it("renders OpenAI-style thinking options", () => {
+    it("renders all unified thinking options", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
       render(
@@ -167,17 +165,14 @@ describe("ThinkingSettings", () => {
         />,
       );
 
-      // Should have all OpenAI-style options (same as OpenAI)
+      // All providers now have the same unified options
       expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
       expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "Extra High" })).toBeDefined();
-      // Should not have Gemini-specific options
-      expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
-      expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
+      expect(screen.getByRole("option", { name: "Ultra" })).toBeDefined();
     });
 
     it("shows checkbox when thinking is not Off", () => {
@@ -226,7 +221,7 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={true}
           setShowThoughts={setShowThoughts}
@@ -247,7 +242,7 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={false}
           setShowThoughts={setShowThoughts}
@@ -265,7 +260,7 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={true}
           setShowThoughts={setShowThoughts}
@@ -283,7 +278,7 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={false}
           setShowThoughts={setShowThoughts}
@@ -304,7 +299,7 @@ describe("ThinkingSettings", () => {
         <ThinkingSettings
           provider="gemini"
           model="gemini-2.5-flash"
-          thinking="Auto"
+          thinking="Default"
           setThinking={setThinking}
           showThoughts={true}
           setShowThoughts={setShowThoughts}

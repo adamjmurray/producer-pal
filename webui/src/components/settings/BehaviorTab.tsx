@@ -67,6 +67,10 @@ export function BehaviorTab({
             setTemperature={setTemperature}
           />
         </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400 pt-2 border-t border-gray-300 dark:border-gray-600">
+          These are default values for new conversations. You can adjust
+          thinking and randomness for individual messages during chat.
+        </p>
       </div>
     </div>
   );

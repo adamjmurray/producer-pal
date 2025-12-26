@@ -11,13 +11,22 @@ import {
   validateMcpConnection,
 } from "./streaming-helpers";
 
-/**
- * Chat client interface that all providers must implement
- */
+/** Per-message overrides for thinking, temperature, and showThoughts */
+export interface MessageOverrides {
+  thinking?: string;
+  temperature?: number;
+  showThoughts?: boolean;
+}
+
+/** Chat client interface that all providers must implement */
 export interface ChatClient<TMessage> {
   chatHistory: TMessage[];
   initialize(): Promise<void>;
-  sendMessage(message: string, signal: AbortSignal): AsyncIterable<TMessage[]>;
+  sendMessage(
+    message: string,
+    signal: AbortSignal,
+    overrides?: MessageOverrides,
+  ): AsyncIterable<TMessage[]>;
 }
 
 /**
@@ -100,7 +109,7 @@ interface UseChatReturn {
   activeThinking: string | null;
   activeTemperature: number | null;
   rateLimitState: RateLimitState | null;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
@@ -161,12 +170,16 @@ export function useChat<
   }, []);
 
   const initializeChat = useCallback(
-    async (chatHistory?: TMessage[]) => {
+    async (chatHistory?: TMessage[], overrides?: MessageOverrides) => {
       await validateMcpConnection(mcpStatus, mcpError, checkMcpConnection);
+
+      const effectiveThinking = overrides?.thinking ?? thinking;
+      const effectiveTemperature = overrides?.temperature ?? temperature;
+
       const config = adapter.buildConfig(
         model,
-        temperature,
-        thinking,
+        effectiveTemperature,
+        effectiveThinking,
         enabledTools,
         chatHistory,
         extraParams,
@@ -175,8 +188,8 @@ export function useChat<
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
       setActiveModel(model);
-      setActiveThinking(thinking);
-      setActiveTemperature(temperature);
+      setActiveThinking(effectiveThinking);
+      setActiveTemperature(effectiveTemperature);
     },
     [
       mcpStatus,
@@ -276,7 +289,7 @@ export function useChat<
   );
 
   const handleSend = useCallback(
-    async (message: string) => {
+    async (message: string, options?: MessageOverrides) => {
       const userMessage = message.trim();
 
       if (!userMessage) return;
@@ -300,7 +313,7 @@ export function useChat<
 
       try {
         if (!clientRef.current) {
-          await initializeChat();
+          await initializeChat(undefined, options);
         }
 
         const client = clientRef.current;
@@ -314,7 +327,7 @@ export function useChat<
         abortControllerRef.current = controller;
 
         await executeWithRetry(
-          (msg) => client.sendMessage(msg, controller.signal),
+          (msg) => client.sendMessage(msg, controller.signal, options),
           () => client.chatHistory,
           userMessage,
         );

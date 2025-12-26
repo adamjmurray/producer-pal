@@ -38,8 +38,6 @@ export function ThinkingSettings({
   }
 
   const isGemini = provider === "gemini";
-  // OpenRouter uses OpenAI-style effort levels (not Gemini's budget system)
-  const useOpenAIOptions = provider === "openai" || provider === "openrouter";
 
   return (
     <>
@@ -50,26 +48,13 @@ export function ThinkingSettings({
           onChange={(e) => setThinking((e.target as HTMLSelectElement).value)}
           className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded"
         >
-          {useOpenAIOptions ? (
-            <>
-              <option value="Default">Default</option>
-              <option value="Off">Off</option>
-              <option value="Minimal">Minimal</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="XHigh">Extra High</option>
-            </>
-          ) : (
-            <>
-              <option value="Off">Off</option>
-              <option value="Auto">Auto</option>
-              <option value="Low">Low</option>
-              <option value="Medium">Medium</option>
-              <option value="High">High</option>
-              <option value="Ultra">Ultra</option>
-            </>
-          )}
+          <option value="Default">Default</option>
+          <option value="Off">Off</option>
+          <option value="Minimal">Minimal</option>
+          <option value="Low">Low</option>
+          <option value="Medium">Medium</option>
+          <option value="High">High</option>
+          <option value="Ultra">Ultra</option>
         </select>
       </div>
       {/* Show "Show thinking process" checkbox for Gemini and OpenRouter */}
