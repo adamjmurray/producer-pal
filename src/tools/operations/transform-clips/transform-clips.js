@@ -40,7 +40,7 @@ export { createSeededRNG, randomInRange, shuffleArray };
  * @param {number} [args.velocityRange] - Velocity deviation offset (MIDI clips, -127 to 127)
  * @param {number} [args.probability] - Probability offset (MIDI clips, -1.0 to 1.0)
  * @param {number} [args.seed] - RNG seed for reproducibility
- * @param {object} _context - Internal context object (unused)
+ * @param {object} context - Internal context object with holdingAreaStartBeats
  * @returns {object} Result with clipIds and seed
  */
 export function transformClips(
@@ -64,7 +64,7 @@ export function transformClips(
     probability,
     seed,
   } = {},
-  _context = {},
+  context = {},
 ) {
   // Generate seed if not provided (do this early so it's available for return)
   const actualSeed = seed ?? Date.now();
@@ -121,7 +121,7 @@ export function transformClips(
       clips,
       warnings,
       slice,
-      _context,
+      context,
     );
     // After slicing, re-filter arrangement clips to get fresh objects
     // (the clips array was modified by splice operations during re-scanning)
@@ -136,7 +136,7 @@ export function transformClips(
 
   // Shuffle clip positions if requested
   if (shuffleOrder) {
-    performShuffling(arrangementClips, clips, warnings, rng);
+    performShuffling(arrangementClips, clips, warnings, rng, context);
   }
 
   // Apply randomization to each clip

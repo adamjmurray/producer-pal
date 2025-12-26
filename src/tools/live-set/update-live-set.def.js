@@ -3,7 +3,7 @@ import { defineTool } from "../shared/tool-framework/define-tool.js";
 
 export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
   title: "Update Live Set",
-  description: "Update Live Set global settings",
+  description: "Update Live Set global settings or manage locators",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
@@ -17,6 +17,24 @@ export const toolDefUpdateLiveSet = defineTool("ppal-update-live-set", {
       .describe(
         '"Root ScaleName" ("C Major", "F# Minor", "Bb Dorian"). Empty string disables scale',
       ),
+    locatorOperation: z
+      .enum(["create", "delete", "rename"])
+      .optional()
+      .describe("Locator operation"),
+    locatorId: z
+      .string()
+      .optional()
+      .describe("Locator ID for delete/rename (e.g., locator-0)"),
+    locatorTime: z
+      .string()
+      .optional()
+      .describe(
+        "Bar|beat position (required for create, alt ID for delete/rename)",
+      ),
+    locatorName: z
+      .string()
+      .optional()
+      .describe("Name for create/rename, or name-match filter for delete"),
     // arrangementFollower removed from interface - playback tool handles this via autoFollow parameter
   },
 });

@@ -42,7 +42,7 @@ export function MessageList({
   };
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4" data-testid="message-list">
       {messages.map((message, originalIdx) => {
         // Skip messages without content
         if (!hasContent(message)) {
@@ -66,6 +66,11 @@ export function MessageList({
                   ? "ml-auto text-black bg-blue-100 dark:text-white dark:bg-blue-900"
                   : "bg-gray-100 dark:bg-gray-800"
               } ${message.role === "model" ? "flex-1" : ""} rounded-lg py-0.5 px-3 max-w-[90%]`}
+              data-testid={
+                message.role === "model"
+                  ? "assistant-message-bubble"
+                  : undefined
+              }
             >
               {message.role === "model" && (
                 <AssistantMessage

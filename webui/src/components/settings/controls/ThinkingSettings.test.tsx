@@ -101,12 +101,13 @@ describe("ThinkingSettings", () => {
       );
 
       // Should have all OpenAI options
+      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
       expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
       expect(screen.getByRole("option", { name: "High" })).toBeDefined();
-      expect(screen.getByRole("option", { name: "XHigh" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Extra High" })).toBeDefined();
       // Should not have Gemini-specific options
       expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
       expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
@@ -149,14 +150,16 @@ describe("ThinkingSettings", () => {
       expect(container.textContent).toBe("");
       expect(screen.queryByRole("combobox")).toBeNull();
     });
+  });
 
-    it("renders nothing for openrouter provider", () => {
+  describe("OpenRouter provider", () => {
+    it("renders OpenAI-style thinking options", () => {
       const setThinking = vi.fn();
       const setShowThoughts = vi.fn();
-      const { container } = render(
+      render(
         <ThinkingSettings
           provider="openrouter"
-          model="minimax/minimax-m2:free"
+          model="anthropic/claude-sonnet"
           thinking="Low"
           setThinking={setThinking}
           showThoughts={true}
@@ -164,7 +167,54 @@ describe("ThinkingSettings", () => {
         />,
       );
 
-      expect(container.textContent).toBe("");
+      // Should have all OpenAI-style options (same as OpenAI)
+      expect(screen.getByRole("option", { name: "Default" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Off" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Minimal" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Low" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Medium" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "High" })).toBeDefined();
+      expect(screen.getByRole("option", { name: "Extra High" })).toBeDefined();
+      // Should not have Gemini-specific options
+      expect(screen.queryByRole("option", { name: "Auto" })).toBeNull();
+      expect(screen.queryByRole("option", { name: "Ultra" })).toBeNull();
+    });
+
+    it("shows checkbox when thinking is not Off", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      render(
+        <ThinkingSettings
+          provider="openrouter"
+          model="anthropic/claude-sonnet"
+          thinking="Low"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      const checkbox = screen.getByRole("checkbox");
+      expect(checkbox).toBeDefined();
+      expect(screen.getByText("Show thinking process")).toBeDefined();
+    });
+
+    it("hides checkbox when thinking is Off", () => {
+      const setThinking = vi.fn();
+      const setShowThoughts = vi.fn();
+      render(
+        <ThinkingSettings
+          provider="openrouter"
+          model="anthropic/claude-sonnet"
+          thinking="Off"
+          setThinking={setThinking}
+          showThoughts={true}
+          setShowThoughts={setShowThoughts}
+        />,
+      );
+
+      expect(screen.queryByRole("checkbox")).toBeNull();
+      expect(screen.queryByText("Show thinking process")).toBeNull();
     });
   });
 

@@ -227,7 +227,7 @@ describe("useSettings", () => {
     });
 
     expect(result.current.model).toBe("gpt-5.2-2025-12-11");
-    expect(result.current.thinking).toBe("Medium");
+    expect(result.current.thinking).toBe("Default");
     expect(result.current.temperature).toBe(1.0);
     expect(result.current.showThoughts).toBe(true);
     expect(result.current.apiKey).toBe("");
@@ -557,11 +557,11 @@ describe("useSettings", () => {
       result.current.setThinking("High");
     });
     expect(result.current.thinking).toBe("High");
-    // Switch to OpenAI - thinking should use OpenAI's saved setting (Medium by default)
+    // Switch to OpenAI - thinking should use OpenAI's saved setting (Default by default)
     await act(() => {
       result.current.setProvider("openai");
     });
-    expect(result.current.thinking).toBe("Medium"); // Default for OpenAI
+    expect(result.current.thinking).toBe("Default"); // Default for OpenAI
   });
 
   it("hasApiKey returns false when localStorage has invalid JSON", async () => {

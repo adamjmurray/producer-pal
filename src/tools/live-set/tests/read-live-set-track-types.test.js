@@ -3,9 +3,9 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
-import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../constants.js";
-import { readLiveSet } from "./read-live-set.js";
+} from "../../../test/mock-live-api.js";
+import { LIVE_API_DEVICE_TYPE_INSTRUMENT } from "../../constants.js";
+import { readLiveSet } from "../read-live-set.js";
 
 describe("readLiveSet - track types", () => {
   it("conditionally includes return tracks and master track", () => {
@@ -159,6 +159,7 @@ describe("readLiveSet - track types", () => {
         tracks: children("track1"),
         return_tracks: children("return1"),
         scenes: children("scene1"),
+        cue_points: [],
       },
       "live_set tracks 0": {
         has_midi_input: 1,
@@ -245,6 +246,7 @@ describe("readLiveSet - track types", () => {
         "return-tracks",
         "master-track",
         "color",
+        "locators",
       ],
     });
 

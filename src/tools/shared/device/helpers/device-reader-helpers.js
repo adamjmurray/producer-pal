@@ -371,6 +371,62 @@ export function processReturnChains(
 }
 
 /**
+ * Read macro variation and macro info for rack devices
+ * @param {object} device - LiveAPI device object
+ * @returns {object} Object with variations and/or macros properties if applicable, empty object otherwise
+ */
+export function readMacroVariations(device) {
+  const canHaveChains = device.getProperty("can_have_chains");
+
+  if (!canHaveChains) {
+    return {};
+  }
+
+  const result = {};
+
+  // Variation info
+  const variationCount = device.getProperty("variation_count");
+
+  if (variationCount) {
+    result.variations = {
+      count: variationCount,
+      selected: device.getProperty("selected_variation_index"),
+    };
+  }
+
+  // Macro info
+  const visibleMacroCount = device.getProperty("visible_macro_count");
+
+  if (visibleMacroCount > 0) {
+    result.macros = {
+      count: visibleMacroCount,
+      hasMappings: device.getProperty("has_macro_mappings") > 0,
+    };
+  }
+
+  return result;
+}
+
+/**
+ * Read A/B Compare state for devices that support it
+ * @param {object} device - LiveAPI device object
+ * @returns {object} Object with abCompare property if supported, empty object otherwise
+ */
+export function readABCompare(device) {
+  const canCompareAB = device.getProperty("can_compare_ab");
+
+  if (!canCompareAB) {
+    return {};
+  }
+
+  const isUsingB = device.getProperty("is_using_compare_preset_b") > 0;
+
+  return {
+    abCompare: isUsingB ? "b" : "a",
+  };
+}
+
+/**
  * Read all parameters for a device
  * @param {object} device - LiveAPI device object
  * @param {object} options - Reading options

@@ -134,14 +134,35 @@ export function validateDestinationParameter(type, destination) {
  * Validates arrangement-specific parameters
  * @param {string} destination - Destination for duplication
  * @param {string} arrangementStart - Start time in bar|beat format
+ * @param {string} arrangementLocatorId - Locator ID for arrangement position
+ * @param {string} arrangementLocatorName - Locator name for arrangement position
  */
-export function validateArrangementParameters(destination, arrangementStart) {
-  if (
-    destination === "arrangement" &&
-    (arrangementStart == null || arrangementStart.trim() === "")
-  ) {
+export function validateArrangementParameters(
+  destination,
+  arrangementStart,
+  arrangementLocatorId,
+  arrangementLocatorName,
+) {
+  if (destination !== "arrangement") {
+    return;
+  }
+
+  const hasStart = arrangementStart != null && arrangementStart.trim() !== "";
+  const hasLocatorId = arrangementLocatorId != null;
+  const hasLocatorName = arrangementLocatorName != null;
+  const positionCount = [hasStart, hasLocatorId, hasLocatorName].filter(
+    Boolean,
+  ).length;
+
+  if (positionCount === 0) {
     throw new Error(
-      "duplicate failed: arrangementStart is required when destination is 'arrangement'",
+      "duplicate failed: arrangementStart, arrangementLocatorId, or arrangementLocatorName is required when destination is 'arrangement'",
+    );
+  }
+
+  if (positionCount > 1) {
+    throw new Error(
+      "duplicate failed: arrangementStart, arrangementLocatorId, and arrangementLocatorName are mutually exclusive",
     );
   }
 }

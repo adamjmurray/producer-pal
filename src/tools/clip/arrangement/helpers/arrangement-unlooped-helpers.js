@@ -4,7 +4,6 @@ import {
 } from "../../../shared/arrangement/arrangement-tiling.js";
 import { revealAudioContentAtPosition } from "../../update/helpers/update-clip-audio-helpers.js";
 
-const HOLDING_AREA_START = 40000;
 const EPSILON = 0.001;
 
 /**
@@ -47,8 +46,7 @@ export function handleUnloopedLengthening({
     // Create tiles for remaining space
     let currentPosition = currentEndTime;
     let currentContentOffset = clipStartMarker + currentArrangementLength;
-    const holdingAreaStart =
-      context.holdingAreaStartBeats ?? HOLDING_AREA_START;
+    const holdingAreaStart = context.holdingAreaStartBeats;
 
     while (
       currentPosition <

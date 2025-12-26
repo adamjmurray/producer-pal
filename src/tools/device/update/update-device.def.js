@@ -18,5 +18,32 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .describe(
         'JSON: {"paramId": value}. Values in display units: enum string, note name, pan -1 to 1, or number',
       ),
+    macroVariation: z
+      .enum(["create", "load", "delete", "revert", "randomize"])
+      .optional()
+      .describe(
+        "Rack only: create/load/delete/revert variation, or randomize macros. load/delete require macroVariationIndex. create always appends.",
+      ),
+    macroVariationIndex: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe(
+        "Rack only: variation index for load/delete operations (0-based)",
+      ),
+    macroCount: z
+      .number()
+      .int()
+      .min(0)
+      .max(16)
+      .optional()
+      .describe("Rack only: set visible macro count (0-16)"),
+    abCompare: z
+      .enum(["a", "b", "save"])
+      .optional()
+      .describe(
+        "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
+      ),
   },
 });

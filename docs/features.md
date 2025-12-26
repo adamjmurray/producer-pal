@@ -34,6 +34,8 @@ create.
 - Start/stop playback in Session or Arrangement view
 - Play specific scenes or clips
 - Set loop points and playback position
+- Jump to arrangement locators by ID or name
+- Set loop start/end using locators
 - Control which tracks follow the Arrangement
 - Stop all clips or specific track clips
 
@@ -44,6 +46,7 @@ create.
 - Get complete Live project overview
 - View all tracks, scenes, and clips at once
 - See tempo, time signature, and scale settings
+- View arrangement locators with times and names
 - Check what's playing and track states
 
 ### Update Live Set (`ppal-update-live-set`)
@@ -51,6 +54,7 @@ create.
 - Change tempo
 - Set time signature
 - Set scale
+- Create, rename, or delete arrangement locators
 
 ## Scene Operations
 
@@ -116,6 +120,9 @@ create.
 - View device chains and drum pad chains
 - List parameter names or full parameter details with values
 - Search parameters by name substring
+- View macro variation info for rack devices (count and selected index)
+- View macro count and mapping status for rack devices
+- View A/B Compare state for supported devices
 
 ### Update Device (`ppal-update-device`)
 
@@ -123,6 +130,10 @@ create.
 - Collapse or expand device view in Live's UI
 - Modify device parameters by value or display string
 - Bulk update multiple devices at once
+- Rack macro variations: store, recall, delete, or randomize macro settings
+- Select macro variation by index for recall or delete operations
+- Set visible macro count on rack devices (adds/removes macros)
+- A/B Compare: switch between presets or save current state to other slot
 
 ## Clip Creation & Editing
 
@@ -197,6 +208,8 @@ the correct time positions in Ableton Live clips and the arrangement timeline.
 - Duplicate to Session or Arrangement
 - Duplicate session clips to specific clip slots (any track, any scene)
 - Duplicate to Arrangement at specific bar|beat positions
+- Duplicate to Arrangement at locator positions by ID or name (e.g., "copy that
+  scene to the second chorus")
 - Set arrangement length when duplicating: extend and tile/loop clips to fill
   longer durations automatically
 - Create multiple copies at once (placed sequentially)

@@ -190,12 +190,15 @@ describe("transformClips - slice + shuffle combination", () => {
     });
 
     // Execute slice + shuffle
-    const result = transformClips({
-      clipIds: `${clip1Id},${clip2Id}`,
-      slice: "0:1.0", // 1 beat slices
-      shuffleOrder: true,
-      seed: 12345,
-    });
+    const result = transformClips(
+      {
+        clipIds: `${clip1Id},${clip2Id}`,
+        slice: "0:1.0", // 1 beat slices
+        shuffleOrder: true,
+        seed: 12345,
+      },
+      { holdingAreaStartBeats: 40000 },
+    );
 
     // Should complete without errors and return clip IDs
     // The exact IDs and count depend on shuffle behavior, but should have clips

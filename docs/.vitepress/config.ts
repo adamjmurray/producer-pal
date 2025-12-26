@@ -71,6 +71,16 @@ export default defineConfig({
         ],
       },
       {
+        text: "Choose by Provider",
+        items: [
+          { text: "Claude / Anthropic", link: "/installation/choose-claude" },
+          { text: "ChatGPT / OpenAI", link: "/installation/choose-openai" },
+          { text: "Gemini / Google", link: "/installation/choose-gemini" },
+          { text: "Local / Offline", link: "/installation/choose-local" },
+          { text: "Multiple Providers", link: "/installation/choose-multi" },
+        ],
+      },
+      {
         text: "Built-in Chat UI",
         items: [
           { text: "Overview", link: "/installation/chat-ui" },

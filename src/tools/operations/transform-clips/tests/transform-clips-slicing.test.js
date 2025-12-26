@@ -124,11 +124,14 @@ describe("transformClips - slicing", () => {
       return undefined;
     });
 
-    transformClips({
-      clipIds: clipId,
-      slice: "1:0.0", // 1 bar = 4 beats slice
-      seed: 12345,
-    });
+    transformClips(
+      {
+        clipIds: clipId,
+        slice: "1:0.0", // 1 bar = 4 beats slice
+        seed: 12345,
+      },
+      { holdingAreaStartBeats: 40000 },
+    );
 
     // Should create temp clip to shorten
     expect(liveApiCall).toHaveBeenCalledWith(
@@ -438,11 +441,14 @@ describe("transformClips - slicing", () => {
     // Second clip would also create 64 slices (exceeding limit)
     // Should throw an error when processing second clip
     expect(() =>
-      transformClips({
-        clipIds: `${clip1Id},${clip2Id}`,
-        slice: "0:0.125", // 32nd notes: creates exactly 64 slices for 2-bar clip
-        seed: 12345,
-      }),
+      transformClips(
+        {
+          clipIds: `${clip1Id},${clip2Id}`,
+          slice: "0:0.125", // 32nd notes: creates exactly 64 slices for 2-bar clip
+          seed: 12345,
+        },
+        { holdingAreaStartBeats: 40000 },
+      ),
     ).toThrow(/would create 64 slices.*Maximum 64 slices total/);
   });
 
@@ -606,11 +612,14 @@ describe("transformClips - slicing", () => {
       return undefined;
     });
 
-    const result = transformClips({
-      clipIds: clipId,
-      slice: "0:1.0", // 1 beat slices (creates 3 slices from 3-beat clip)
-      seed: 12345,
-    });
+    const result = transformClips(
+      {
+        clipIds: clipId,
+        slice: "0:1.0", // 1 beat slices (creates 3 slices from 3-beat clip)
+        seed: 12345,
+      },
+      { holdingAreaStartBeats: 40000 },
+    );
 
     // Should return exactly 3 clips (the new sliced clips)
     // Should NOT include the following clip

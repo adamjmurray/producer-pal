@@ -29,12 +29,14 @@ export const openaiAdapter: ChatAdapter<
     extraParams?: Record<string, unknown>,
   ): OpenAIClientConfig {
     const baseUrl = extraParams?.baseUrl as string | undefined;
+    const showThoughts = Boolean(extraParams?.showThoughts);
 
     return buildOpenAIConfig(
       model,
       temperature,
       thinking,
       baseUrl,
+      showThoughts,
       enabledTools,
       chatHistory,
     );

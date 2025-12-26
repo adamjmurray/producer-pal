@@ -13,3 +13,4 @@
 ../docs/.vitepress/cache
 ../docs/.vitepress/dist
 ../src/**/modulation-parser.js
+../test-results

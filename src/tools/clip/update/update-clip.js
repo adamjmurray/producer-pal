@@ -62,9 +62,7 @@ export function updateClip(
     warpSampleTime,
     warpDistance,
   } = {},
-  context = {
-    holdingAreaStartBeats: 40000,
-  },
+  context = {},
 ) {
   if (!ids) {
     throw new Error("updateClip failed: ids is required");

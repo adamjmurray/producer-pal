@@ -73,7 +73,14 @@ describe("config-builders", () => {
 
   describe("buildOpenAIConfig", () => {
     it("should build basic config", () => {
-      const config = buildOpenAIConfig("gpt-4", 1.0, "Off", undefined, {});
+      const config = buildOpenAIConfig(
+        "gpt-4",
+        1.0,
+        "Off",
+        undefined,
+        true,
+        {},
+      );
 
       expect(config.model).toBe("gpt-4");
       expect(config.temperature).toBe(1.0);
@@ -81,7 +88,14 @@ describe("config-builders", () => {
     });
 
     it("should not include reasoning effort for unsupported models", () => {
-      const config = buildOpenAIConfig("gpt-4", 1.0, "Medium", undefined, {});
+      const config = buildOpenAIConfig(
+        "gpt-4",
+        1.0,
+        "Medium",
+        undefined,
+        true,
+        {},
+      );
 
       expect(config.reasoningEffort).toBeUndefined();
     });
@@ -92,6 +106,7 @@ describe("config-builders", () => {
         1.0,
         "Medium",
         undefined,
+        true,
         {},
       );
 
@@ -105,6 +120,7 @@ describe("config-builders", () => {
           1.0,
           "Low",
           undefined,
+          true,
           {},
         );
 
@@ -117,6 +133,7 @@ describe("config-builders", () => {
           1.0,
           "Minimal",
           undefined,
+          true,
           {},
         );
 
@@ -124,25 +141,59 @@ describe("config-builders", () => {
       });
 
       it("should map Medium to medium", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "Medium", undefined, {});
+        const config = buildOpenAIConfig(
+          "o1",
+          1.0,
+          "Medium",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBe("medium");
       });
 
       it("should map High to high", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "High", undefined, {});
+        const config = buildOpenAIConfig(
+          "o1",
+          1.0,
+          "High",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBe("high");
       });
 
       it("should map XHigh to high (capped)", () => {
-        const config = buildOpenAIConfig("o3", 1.0, "XHigh", undefined, {});
+        const config = buildOpenAIConfig(
+          "o3",
+          1.0,
+          "XHigh",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBe("high");
       });
 
-      it("should return undefined for Off", () => {
-        const config = buildOpenAIConfig("o1", 1.0, "Off", undefined, {});
+      it("should map Off to low (minimum for o1/o3)", () => {
+        const config = buildOpenAIConfig("o1", 1.0, "Off", undefined, true, {});
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig(
+          "o1",
+          1.0,
+          "Default",
+          undefined,
+          true,
+          {},
+        );
 
         expect(config.reasoningEffort).toBeUndefined();
       });
@@ -155,6 +206,7 @@ describe("config-builders", () => {
           1.0,
           "Off",
           undefined,
+          true,
           {},
         );
 
@@ -167,6 +219,7 @@ describe("config-builders", () => {
           1.0,
           "Minimal",
           undefined,
+          true,
           {},
         );
 
@@ -179,10 +232,24 @@ describe("config-builders", () => {
           1.0,
           "Low",
           undefined,
+          true,
           {},
         );
 
         expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map Medium to medium", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "Medium",
+          undefined,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("medium");
       });
 
       it("should map High to high", () => {
@@ -191,6 +258,7 @@ describe("config-builders", () => {
           1.0,
           "High",
           undefined,
+          true,
           {},
         );
 
@@ -203,6 +271,7 @@ describe("config-builders", () => {
           1.0,
           "XHigh",
           undefined,
+          true,
           {},
         );
 
@@ -215,10 +284,24 @@ describe("config-builders", () => {
           1.0,
           "XHigh",
           undefined,
+          true,
           {},
         );
 
         expect(config.reasoningEffort).toBe("xhigh");
+      });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.1-2025-01-01",
+          1.0,
+          "Default",
+          undefined,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBeUndefined();
       });
     });
 
@@ -229,6 +312,7 @@ describe("config-builders", () => {
           1.0,
           "Off",
           undefined,
+          true,
           {},
         );
 
@@ -241,10 +325,50 @@ describe("config-builders", () => {
           1.0,
           "Minimal",
           undefined,
+          true,
           {},
         );
 
         expect(config.reasoningEffort).toBe("minimal");
+      });
+
+      it("should map Low to low", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Low",
+          undefined,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map Medium to medium", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Medium",
+          undefined,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("medium");
+      });
+
+      it("should map High to high", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "High",
+          undefined,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
       });
 
       it("should map XHigh to xhigh", () => {
@@ -253,10 +377,24 @@ describe("config-builders", () => {
           1.0,
           "XHigh",
           undefined,
+          true,
           {},
         );
 
         expect(config.reasoningEffort).toBe("xhigh");
+      });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig(
+          "gpt-5.2-2025-12-11",
+          1.0,
+          "Default",
+          undefined,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBeUndefined();
       });
     });
 
@@ -266,10 +404,134 @@ describe("config-builders", () => {
         1.0,
         "Medium",
         "https://custom.api/v1",
+        true,
         {},
       );
 
       expect(config.reasoningEffort).toBeUndefined();
+    });
+
+    describe("OpenRouter", () => {
+      const openRouterUrl = "https://openrouter.ai/api/v1";
+
+      it("should map High to high for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "High",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+      });
+
+      it("should map XHigh to xhigh for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "XHigh",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("xhigh");
+      });
+
+      it("should map Off to none for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Off",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("none");
+      });
+
+      it("should map Minimal to minimal for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Minimal",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("minimal");
+      });
+
+      it("should map Low to low for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Low",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("low");
+      });
+
+      it("should map Medium to medium for OpenRouter", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Medium",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("medium");
+      });
+
+      it("should return undefined for Default", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "Default",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBeUndefined();
+      });
+
+      it("should set excludeReasoning when showThoughts is false", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "High",
+          openRouterUrl,
+          false,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+        expect(config.excludeReasoning).toBe(true);
+      });
+
+      it("should not set excludeReasoning when showThoughts is true", () => {
+        const config = buildOpenAIConfig(
+          "anthropic/claude-sonnet",
+          1.0,
+          "High",
+          openRouterUrl,
+          true,
+          {},
+        );
+
+        expect(config.reasoningEffort).toBe("high");
+        expect(config.excludeReasoning).toBe(false);
+      });
     });
 
     it("should include chat history when provided", () => {
@@ -279,6 +541,7 @@ describe("config-builders", () => {
         1.0,
         "Off",
         undefined,
+        true,
         {},
         history,
       );

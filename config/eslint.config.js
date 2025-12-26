@@ -243,6 +243,7 @@ export default [
       "max-for-live-device/**",
       "node_modules/**",
       "release/**",
+      "test-results/**",
       "src/notation/barbeat/parser/barbeat-parser.js", // Generated parser
       "src/notation/modulation/parser/modulation-parser.js", // Generated parser
       "**/*.d.ts", // TypeScript declaration files
@@ -251,7 +252,7 @@ export default [
 
   // All JavaScript files (any directory)
   {
-    files: ["{src,scripts,webui}/**/*.{js,mjs}"],
+    files: ["{src,scripts,webui,tests}/**/*.{js,mjs}"],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: "module",
@@ -367,6 +368,67 @@ export default [
     },
   },
 
+  // Playwright docs tests (JavaScript)
+  {
+    files: ["tests/docs/**/*.{js,mjs}"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.node,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      import: importPlugin,
+      sonarjs,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...baseRules,
+      "jsdoc/require-jsdoc": "off",
+      "jsdoc/require-param": "off",
+      "jsdoc/require-returns": "off",
+      "no-loop-func": "off", // Common pattern in Playwright tests
+    },
+  },
+
+  // Playwright UI tests (TypeScript)
+  {
+    files: ["tests/webui/**/*.ts"],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: "module",
+        project: "./tests/webui/tsconfig.json",
+      },
+      globals: {
+        ...globals.node,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: "./tests/webui/tsconfig.json",
+        },
+        node: true,
+      },
+    },
+    plugins: {
+      "@stylistic": stylistic,
+      "@typescript-eslint": tsPlugin,
+      import: importPlugin,
+      sonarjs,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...tsPlugin.configs.recommended.rules,
+      ...baseRules,
+      "no-loop-func": "off", // Common pattern in Playwright tests
+    },
+  },
+
   // webui/react-specific rules
   {
     files: ["webui/**/*.{ts,tsx}"],
@@ -405,6 +467,7 @@ export default [
         outlet: "readonly",
         post: "readonly",
         Dict: "readonly",
+        Task: "readonly",
         // Vitest globals
         describe: "readonly",
         it: "readonly",

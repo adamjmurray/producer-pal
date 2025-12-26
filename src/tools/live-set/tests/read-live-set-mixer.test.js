@@ -3,8 +3,8 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../test/mock-live-api.js";
-import { readLiveSet } from "./read-live-set.js";
+} from "../../../test/mock-live-api.js";
+import { readLiveSet } from "../read-live-set.js";
 
 describe("readLiveSet - mixer properties", () => {
   it("includes mixer properties in tracks when mixer include is specified", () => {
