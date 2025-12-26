@@ -3,6 +3,7 @@ const DRUM_PADS = "drum-pads";
 const DRUM_MAPS = "drum-maps";
 const CLIP_NOTES = "clip-notes";
 const CHAINS = "chains";
+const RETURN_CHAINS = "return-chains";
 const MIDI_EFFECTS = "midi-effects";
 const INSTRUMENTS = "instruments";
 const AUDIO_EFFECTS = "audio-effects";
@@ -27,6 +28,7 @@ const ALL_INCLUDE_OPTIONS = {
     DRUM_MAPS,
     CLIP_NOTES,
     CHAINS,
+    RETURN_CHAINS,
     "scenes",
     MIDI_EFFECTS,
     INSTRUMENTS,
@@ -50,6 +52,7 @@ const ALL_INCLUDE_OPTIONS = {
     DRUM_MAPS,
     CLIP_NOTES,
     CHAINS,
+    RETURN_CHAINS,
     MIDI_EFFECTS,
     INSTRUMENTS,
     AUDIO_EFFECTS,
@@ -92,6 +95,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeDrumMaps: Boolean(defaults.includeDrumMaps),
       includeClipNotes: Boolean(defaults.includeClipNotes),
       includeRackChains: Boolean(defaults.includeRackChains),
+      includeReturnChains: Boolean(defaults.includeReturnChains),
       includeScenes: Boolean(defaults.includeScenes),
       includeMidiEffects: Boolean(defaults.includeMidiEffects),
       includeInstruments: Boolean(defaults.includeInstruments),
@@ -124,6 +128,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
       includeDrumMaps: false,
       includeClipNotes: false,
       includeRackChains: false,
+      includeReturnChains: false,
       includeScenes: false,
       includeMidiEffects: false,
       includeInstruments: false,
@@ -148,6 +153,7 @@ export function parseIncludeArray(includeArray, defaults = {}) {
     includeDrumMaps: includeSet.has(DRUM_MAPS),
     includeClipNotes: includeSet.has(CLIP_NOTES),
     includeRackChains: includeSet.has(CHAINS),
+    includeReturnChains: includeSet.has(RETURN_CHAINS),
     includeScenes: hasScenes,
     includeMidiEffects: includeSet.has(MIDI_EFFECTS),
     includeInstruments: includeSet.has(INSTRUMENTS),
@@ -177,6 +183,7 @@ const FLAG_TO_OPTION = [
   ["includeDrumMaps", DRUM_MAPS],
   ["includeClipNotes", CLIP_NOTES],
   ["includeRackChains", CHAINS],
+  ["includeReturnChains", RETURN_CHAINS],
   ["includeScenes", "scenes"],
   ["includeMidiEffects", MIDI_EFFECTS],
   ["includeInstruments", INSTRUMENTS],
@@ -214,6 +221,7 @@ export const READ_SONG_DEFAULTS = {
   includeDrumMaps: true,
   includeClipNotes: false,
   includeRackChains: false,
+  includeReturnChains: false,
   includeScenes: false,
   includeMidiEffects: false,
   includeInstruments: true,
@@ -238,6 +246,7 @@ export const READ_TRACK_DEFAULTS = {
   includeDrumMaps: true,
   includeClipNotes: true,
   includeRackChains: false,
+  includeReturnChains: false,
   includeMidiEffects: false,
   includeInstruments: true,
   includeAudioEffects: false,

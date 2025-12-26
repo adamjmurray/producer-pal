@@ -7,9 +7,7 @@ import {
 } from "#src/tools/constants.js";
 import {
   isRedundantDeviceClassName,
-  processDrumPads,
-  processRegularChains,
-  processReturnChains,
+  processDeviceChains,
   readABCompare,
   readDeviceParameters,
   readMacroVariations,
@@ -142,7 +140,8 @@ export function getDrumMap(devices) {
  * @param {object} device - Live API device object
  * @param {object} options - Options for reading device
  * @param {boolean} options.includeChains - Include chains in rack devices
- * @param {boolean} options.includeDrumPads - Include drum pads and return chains
+ * @param {boolean} options.includeReturnChains - Include return chains in rack devices
+ * @param {boolean} options.includeDrumPads - Include drum pads
  * @param {boolean} options.includeParams - Include device parameters
  * @param {number} options.depth - Current recursion depth
  * @param {number} options.maxDepth - Maximum recursion depth
@@ -151,6 +150,7 @@ export function getDrumMap(devices) {
 export function readDevice(device, options = {}) {
   const {
     includeChains = true,
+    includeReturnChains = false,
     includeDrumPads = false,
     includeParams = false,
     includeParamValues = false,
@@ -196,42 +196,15 @@ export function readDevice(device, options = {}) {
   // Add A/B Compare state (spreads empty object if device doesn't support it)
   Object.assign(deviceInfo, readABCompare(device));
 
-  if (deviceType.includes("rack") && (includeChains || includeDrumPads)) {
-    if (deviceType === DEVICE_TYPE.DRUM_RACK) {
-      processDrumPads(
-        device,
-        deviceInfo,
-        includeChains,
-        includeDrumPads,
-        depth,
-        maxDepth,
-        readDevice,
-      );
-    } else {
-      processRegularChains(
-        device,
-        deviceInfo,
-        includeChains,
-        includeDrumPads,
-        depth,
-        maxDepth,
-        readDevice,
-      );
-    }
-
-    if (includeDrumPads) {
-      processReturnChains(
-        device,
-        deviceInfo,
-        deviceType,
-        includeChains,
-        includeDrumPads,
-        depth,
-        maxDepth,
-        readDevice,
-      );
-    }
-  }
+  // Process chains for rack devices
+  processDeviceChains(device, deviceInfo, deviceType, {
+    includeChains,
+    includeReturnChains,
+    includeDrumPads,
+    depth,
+    maxDepth,
+    readDeviceFn: readDevice,
+  });
 
   if (includeParams) {
     deviceInfo.parameters = readDeviceParameters(device, {

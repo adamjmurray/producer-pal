@@ -19,6 +19,8 @@ export function readDevice({ deviceId, include = ["chains"], paramSearch }) {
   }
 
   const includeChains = include.includes("*") || include.includes("chains");
+  const includeReturnChains =
+    include.includes("*") || include.includes("return-chains");
   const includeDrumPads =
     include.includes("*") || include.includes("drum-pads");
   const includeParamValues =
@@ -27,6 +29,7 @@ export function readDevice({ deviceId, include = ["chains"], paramSearch }) {
 
   const deviceInfo = readDeviceShared(device, {
     includeChains,
+    includeReturnChains,
     includeDrumPads,
     includeParams,
     includeParamValues,

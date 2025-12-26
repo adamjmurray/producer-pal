@@ -24,6 +24,7 @@ Re-read after moves/deletes for updated state.`,
           "audio-effects",
           "all-devices",
           "chains",
+          "return-chains",
           "drum-pads",
           "drum-maps",
           "session-clips",
@@ -39,7 +40,7 @@ Re-read after moves/deletes for updated state.`,
       )
       .default(["regular-tracks", "instruments", "drum-maps"])
       .describe(
-        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, warp-markers, locators, "*" for all (avoid in big sets).',
+        'data: tracks (regular/return/master/all), routings, scenes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, clips (session/arrangement/all), clip-notes, mixer, color, warp-markers, locators, "*" for all (avoid in big sets).',
       ),
   },
 });

@@ -11,11 +11,20 @@ export const toolDefReadDevice = defineTool("ppal-read-device", {
   inputSchema: {
     deviceId: z.string().describe("Device ID to read"),
     include: z
-      .array(z.enum(["*", "chains", "drum-pads", "params", "param-values"]))
+      .array(
+        z.enum([
+          "*",
+          "chains",
+          "return-chains",
+          "drum-pads",
+          "params",
+          "param-values",
+        ]),
+      )
       .default(["chains"])
       .describe(
         "Array of data to include. Options: " +
-          "'*' (all), 'chains', 'drum-pads', " +
+          "'*' (all), 'chains', 'return-chains' (rack send/return chains), 'drum-pads', " +
           "'params' (parameter names only: id, name), " +
           "'param-values' (full parameter details with values/metadata). " +
           "Default: ['chains'].",

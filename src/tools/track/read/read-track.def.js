@@ -32,6 +32,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
           "audio-effects",
           "all-devices",
           "chains",
+          "return-chains",
           "drum-pads",
           "drum-maps",
           "routings",
@@ -51,7 +52,7 @@ export const toolDefReadTrack = defineTool("ppal-read-track", {
         "drum-maps",
       ])
       .describe(
-        'data: clips (session/arrangement/all), clip-notes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), drum-pads, drum-maps, routings (current/available/all), mixer, color, warp-markers, "*" for all',
+        'data: clips (session/arrangement/all), clip-notes, devices (midi-effects/instruments/audio-effects/all), chains (rack chains), return-chains (rack send/return chains), drum-pads, drum-maps, routings (current/available/all), mixer, color, warp-markers, "*" for all',
       ),
   },
 });

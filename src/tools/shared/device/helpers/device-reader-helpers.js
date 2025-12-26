@@ -305,60 +305,102 @@ export function processRegularChains(
 }
 
 /**
- * Process return chains for rack devices
+ * Process all chain types for rack devices
  * @param {object} device - Device object
  * @param {object} deviceInfo - Device info to update
  * @param {string} deviceType - Device type
- * @param {boolean} includeChains - Include chains
- * @param {boolean} includeDrumPads - Include drum pads
- * @param {number} depth - Current depth
- * @param {number} maxDepth - Max depth
- * @param {Function} readDeviceFn - readDevice function
+ * @param {object} options - Processing options
+ * @param {boolean} options.includeChains - Include regular chains
+ * @param {boolean} options.includeReturnChains - Include return chains
+ * @param {boolean} options.includeDrumPads - Include drum pads
+ * @param {number} options.depth - Current depth
+ * @param {number} options.maxDepth - Max depth
+ * @param {Function} options.readDeviceFn - readDevice function
  */
-export function processReturnChains(
+export function processDeviceChains(device, deviceInfo, deviceType, options) {
+  const {
+    includeChains,
+    includeReturnChains,
+    includeDrumPads,
+    depth,
+    maxDepth,
+    readDeviceFn,
+  } = options;
+
+  const isRack = deviceType.includes("rack");
+
+  if (!isRack) {
+    return;
+  }
+
+  // Process regular chains or drum pads
+  if (includeChains || includeDrumPads) {
+    if (deviceType === DEVICE_TYPE.DRUM_RACK) {
+      processDrumPads(
+        device,
+        deviceInfo,
+        includeChains,
+        includeDrumPads,
+        depth,
+        maxDepth,
+        readDeviceFn,
+      );
+    } else {
+      processRegularChains(
+        device,
+        deviceInfo,
+        includeChains,
+        includeDrumPads,
+        depth,
+        maxDepth,
+        readDeviceFn,
+      );
+    }
+  }
+
+  // Process return chains (works for all rack types when requested)
+  if (includeReturnChains) {
+    processReturnChains(
+      device,
+      deviceInfo,
+      includeChains,
+      includeReturnChains,
+      depth,
+      maxDepth,
+      readDeviceFn,
+    );
+  }
+}
+
+// Process return chains for rack devices (internal helper)
+function processReturnChains(
   device,
   deviceInfo,
-  deviceType,
   includeChains,
-  includeDrumPads,
+  includeReturnChains,
   depth,
   maxDepth,
   readDeviceFn,
 ) {
-  const readDevice = readDeviceFn;
   const returnChains = device.getChildren("return_chains");
 
-  if (returnChains.length === 0) {
-    return;
-  }
+  if (returnChains.length === 0) return;
 
   deviceInfo.returnChains = returnChains.map((chain) => {
-    const returnChainInfo = {
-      name: chain.getProperty("name"),
-    };
     const chainState = computeState(chain);
+    const info = { name: chain.getProperty("name") };
 
-    if (chainState !== STATE.ACTIVE) {
-      returnChainInfo.state = chainState;
-    }
+    if (chainState !== STATE.ACTIVE) info.state = chainState;
+    info.devices = chain.getChildren("devices").map((d) =>
+      readDeviceFn(d, {
+        includeChains,
+        includeReturnChains,
+        depth: depth + 1,
+        maxDepth,
+      }),
+    );
 
-    const shouldIncludeDevices =
-      deviceType !== DEVICE_TYPE.DRUM_RACK || includeDrumPads;
-
-    if (shouldIncludeDevices) {
-      returnChainInfo.devices = chain
-        .getChildren("devices")
-        .map((chainDevice) =>
-          readDevice(chainDevice, {
-            includeChains,
-            includeDrumPads,
-            depth: depth + 1,
-            maxDepth,
-          }),
-        );
-    }
-
-    return returnChainInfo;
+    return info;
   });
 }
 
