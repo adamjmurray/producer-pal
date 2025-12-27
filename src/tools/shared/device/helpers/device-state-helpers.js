@@ -6,10 +6,11 @@ import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
  * @param {object} options - Build options
  * @param {string} [options.path] - Optional simplified path
  * @param {Array} [options.devices] - Pre-processed devices array (skips device fetching)
+ * @param {boolean} [options.isDrumPadChain] - True if this chain is inside a drum pad (has choke_group)
  * @returns {object} Chain info object with id, path, name, color, chokeGroup, state
  */
 export function buildChainInfo(chain, options = {}) {
-  const { path, devices } = options;
+  const { path, devices, isDrumPadChain = false } = options;
 
   const chainInfo = {
     id: chain.id,
@@ -23,10 +24,13 @@ export function buildChainInfo(chain, options = {}) {
     chainInfo.color = color;
   }
 
-  const chokeGroup = chain.getProperty("choke_group");
+  // choke_group only exists on drum pad chains
+  if (isDrumPadChain) {
+    const chokeGroup = chain.getProperty("choke_group");
 
-  if (chokeGroup > 0) {
-    chainInfo.chokeGroup = chokeGroup;
+    if (chokeGroup > 0) {
+      chainInfo.chokeGroup = chokeGroup;
+    }
   }
 
   const chainState = computeState(chain);

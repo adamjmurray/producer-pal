@@ -57,25 +57,29 @@ export function processDrumPad(
   // Process all chains for hasInstrument check (always needed for drumMap)
   let anyChainHasInstrument = false;
   const processedChains = chains.map((chain, index) => {
+    const chainPath = drumPadPath ? buildChainPath(drumPadPath, index) : null;
     const chainDevices = chain.getChildren("devices");
-    const processedDevices = chainDevices.map((chainDevice) =>
-      readDevice(chainDevice, {
+    const processedDevices = chainDevices.map((chainDevice, deviceIndex) => {
+      // Build device path with drum pad notation (e.g., "0/0/0/0/pC1/0/0")
+      const devicePath = chainPath ? `${chainPath}/${deviceIndex}` : null;
+
+      return readDevice(chainDevice, {
         includeChains: includeDrumPads && includeChains,
         includeDrumPads: includeDrumPads && includeChains,
         depth: depth + 1,
         maxDepth,
-      }),
-    );
+        parentPath: devicePath,
+      });
+    });
 
     if (hasInstrumentInDevices(processedDevices)) {
       anyChainHasInstrument = true;
     }
 
-    const chainPath = drumPadPath ? buildChainPath(drumPadPath, index) : null;
-
     return buildChainInfo(chain, {
       path: chainPath,
       devices: processedDevices,
+      isDrumPadChain: true,
     });
   });
 

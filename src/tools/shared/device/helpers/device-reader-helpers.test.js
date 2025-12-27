@@ -59,15 +59,15 @@ describe("device-reader-helpers", () => {
       expect(result.color).toBeUndefined();
     });
 
-    it("includes chokeGroup when greater than 0", () => {
+    it("includes chokeGroup when greater than 0 and isDrumPadChain is true", () => {
       const chain = createMockChain({ choke_group: 5 });
-      const result = buildChainInfo(chain);
+      const result = buildChainInfo(chain, { isDrumPadChain: true });
       expect(result.chokeGroup).toBe(5);
     });
 
-    it("omits chokeGroup when 0", () => {
+    it("omits chokeGroup when 0 even with isDrumPadChain true", () => {
       const chain = createMockChain({ choke_group: 0 });
-      const result = buildChainInfo(chain);
+      const result = buildChainInfo(chain, { isDrumPadChain: true });
       expect(result.chokeGroup).toBeUndefined();
     });
 
@@ -110,7 +110,11 @@ describe("device-reader-helpers", () => {
         mute: 1,
       });
       const devices = [{ id: "dev-1" }];
-      const result = buildChainInfo(chain, { path: "1/0/0", devices });
+      const result = buildChainInfo(chain, {
+        path: "1/0/0",
+        devices,
+        isDrumPadChain: true,
+      });
       expect(result).toEqual({
         id: "chain-123",
         path: "1/0/0",
@@ -120,6 +124,12 @@ describe("device-reader-helpers", () => {
         state: STATE.MUTED,
         devices: [{ id: "dev-1" }],
       });
+    });
+
+    it("omits chokeGroup when isDrumPadChain is false or unset", () => {
+      const chain = createMockChain({ choke_group: 5 });
+      const result = buildChainInfo(chain);
+      expect(result.chokeGroup).toBeUndefined();
     });
   });
 

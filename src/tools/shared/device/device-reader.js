@@ -146,6 +146,7 @@ export function getDrumMap(devices) {
  * @param {boolean} options.includeParams - Include device parameters
  * @param {number} options.depth - Current recursion depth
  * @param {number} options.maxDepth - Maximum recursion depth
+ * @param {string} options.parentPath - Override path extraction (used for drum pad devices)
  * @returns {object} Device object with nested structure
  */
 export function readDevice(device, options = {}) {
@@ -158,6 +159,7 @@ export function readDevice(device, options = {}) {
     paramSearch,
     depth = 0,
     maxDepth = 4,
+    parentPath,
   } = options;
 
   if (depth > maxDepth) {
@@ -170,7 +172,8 @@ export function readDevice(device, options = {}) {
   const className = device.getProperty("class_display_name");
   const userDisplayName = device.getProperty("name");
   const isRedundant = isRedundantDeviceClassName(deviceType, className);
-  const path = extractDevicePath(device.path);
+  // Use parentPath if provided (for devices inside drum pads), otherwise extract from Live API path
+  const path = parentPath ?? extractDevicePath(device.path);
 
   const deviceInfo = {
     id: device.id,

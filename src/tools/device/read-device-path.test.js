@@ -140,20 +140,18 @@ describe("readDevice with path parameter", () => {
     });
   });
 
-  it("should read drum chain with chokeGroup property", () => {
+  it("should read chain with color property", () => {
     liveApiId.mockImplementation(function () {
-      return "drum-chain-123";
+      return "chain-123";
     });
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
-          return ["Drum Chain"];
+          return ["Test Chain"];
         case "mute":
           return [0];
         case "solo":
           return [0];
-        case "choke_group":
-          return [5]; // choke group 5
         case "color":
           return [0x00ff00]; // green color
         default:
@@ -170,29 +168,26 @@ describe("readDevice with path parameter", () => {
     const result = readDevice({ path: "1/0/0" });
 
     expect(result).toEqual({
-      id: "drum-chain-123",
+      id: "chain-123",
       path: "1/0/0",
-      name: "Drum Chain",
+      name: "Test Chain",
       color: "#00FF00",
-      chokeGroup: 5,
       devices: [],
     });
   });
 
-  it("should omit chokeGroup when value is 0", () => {
+  it("should omit chokeGroup for regular chains (not drum pad chains)", () => {
     liveApiId.mockImplementation(function () {
       return "chain-no-choke";
     });
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
-          return ["No Choke Chain"];
+          return ["Regular Chain"];
         case "mute":
           return [0];
         case "solo":
           return [0];
-        case "choke_group":
-          return [0]; // no choke group
         case "color":
           return []; // undefined - no color
         default:
@@ -208,6 +203,7 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0/0" });
 
+    // Regular chains don't have choke_group - only drum pad chains do
     expect(result.chokeGroup).toBeUndefined();
   });
 
