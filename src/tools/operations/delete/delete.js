@@ -127,23 +127,36 @@ function deleteClipObject(id, object) {
 }
 
 /**
- * Deletes a device by its ID via the parent track
+ * Deletes a device by its ID via the parent (track or chain)
  * @param {string} id - The object ID
  * @param {object} object - The object to delete
  */
 function deleteDeviceObject(id, object) {
-  // Extract track path from device path (handles regular, return, and master tracks)
-  const trackPath = object.path.replace(/ devices \d+.*$/, "");
+  // Find the LAST "devices X" in the path to handle nested devices
+  // e.g., "live_set tracks 1 devices 0 chains 0 devices 1" -> last match is "devices 1"
+  const deviceMatches = [...object.path.matchAll(/devices (\d+)/g)];
 
-  if (trackPath === object.path) {
+  if (deviceMatches.length === 0) {
     throw new Error(
-      `delete failed: could not extract track path from device "${id}" (path="${object.path}")`,
+      `delete failed: could not find device index in path "${object.path}"`,
     );
   }
 
-  const track = new LiveAPI(trackPath);
+  const lastMatch = deviceMatches[deviceMatches.length - 1];
+  const deviceIndex = Number(lastMatch[1]);
 
-  track.call("delete_device", object.deviceIndex);
+  // Parent path is everything before the last "devices X"
+  const parentPath = object.path.substring(0, lastMatch.index).trim();
+
+  if (!parentPath) {
+    throw new Error(
+      `delete failed: could not extract parent path from device "${id}" (path="${object.path}")`,
+    );
+  }
+
+  const parent = new LiveAPI(parentPath);
+
+  parent.call("delete_device", deviceIndex);
 }
 
 /**
