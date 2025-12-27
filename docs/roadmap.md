@@ -1,7 +1,7 @@
 # Roadmap
 
 [Get Involved](#get-involved) · [In Progress](#in-progress) ·
-[Released](#released) · [Future Plans](#future-plans)
+[Planned Features](#planned-features) · [Changelog](#changelog)
 
 ## Get Involved
 
@@ -17,16 +17,66 @@ Open a
 [GitHub Discussion](https://github.com/adamjmurray/producer-pal/discussions) or
 reach out directly.
 
-## In Progress
+## Planned Features
 
-### 1.3.x
+### 1.4 - Modulation
 
-- Support moving/reordering devices (including from a track to inside a rack)
-- Change the samples played by Simpler
+Enhance `ppal-create-clip`, `ppal-update-clip`, and `ppal-transform-clips` tool
+with more flexible modulation features:
 
-## Released
+- Apply ramps and curves to MIDI velocity, audio gain and other properties
+- Randomize velocity and timing
+- Shuffle and groove support
 
-### 1.3.2 - Rack macros & variations, AB comparison, Arrangement locators
+This is destructive modulation applied by modifying clip properties and the
+notes inside MIDI clips. It is not live modulations such as Max for Live LFOs,
+however, that could possibly be supported too via device control features.
+
+### 1.5 - Code Execution
+
+- Sandboxed JavaScript for algorithmic composition and transformation
+
+### 1.6 - Customization
+
+- Override the Producer Pal skills, system prompt (for the chat UI), and MCP
+  tool descriptions for experimentation and local model optimization purposes.
+- Provide different personas for different tasks (focus on project setup with
+  track/device editing, focus on MIDI editing, focus on arrangement, etc) and
+  make it easy to switch between them for more focus / local model optimization
+
+### 1.7 - Harmony
+
+- Chord notation
+- Pitches as scale/chord degrees (instead of absolute pitches)
+- Microtonal support
+
+### 1.8 - Audio Editing and Synthesis
+
+- Reverse audio clips
+- Generate audio files on demand from a selection of synthesis algorithms and
+  arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
+- Generate novel DSP algorithms
+
+### 1.x - Misc
+
+- Take lane support
+- Speak to Producer Pal instead of typing with:
+  - Google Gemini
+  - OpenAI ChatGPT
+  - Others? Wisprflow? AssemblyAI?
+- Bidirection / TTS: Gemini Live API, OpenAI Live API
+
+## Changelog
+
+### 1.3.3 - Move devices, Rack chain support (December 2025)
+
+- Support moving/reordering devices
+- Support inserting devices into arbitrary rack chains, creating new chains as
+  needed
+- Read samples in Simpler devices (which can then be used to create audio clips)
+- Change thinking & randomness settings per message in the built-in chat UI
+
+### 1.3.2 - Rack macros & variations, AB comparison, Arrangement locators (December 2025)
 
 - Rack macro and variation management
 - A/B comparison for device parameters
@@ -63,48 +113,3 @@ Expanded features and support for multiple AI platforms.
 ### 0.9 - Public Beta with Claude Desktop (July 2025)
 
 Initial public release with Claude Desktop support.
-
-## Future Plans
-
-### 1.4 - Modulation
-
-Enhance `ppal-create-clip`, `ppal-update-clip`, and `ppal-transform-clips` tool
-with more flexible modulation features:
-
-- Apply ramps and curves to MIDI velocity, audio gain and other properties
-- Randomize velocity and timing
-- Shuffle and groove support
-
-This is destructive modulation applied by modifying clip properties and the
-notes inside MIDI clips. It is not live modulations such as Max for Live LFOs,
-however, that could possibly be supported too via device control features.
-
-### 1.5 - Voice Interaction
-
-Bidirectional voice interface: Speak to Producer Pal instead of typing, via:
-
-- Google Gemini
-- Maybe: OpenAI (so far, this works best during prototyping, but costs money per
-  interaction i.e. it is not covered by a flat-rate subscription plan)
-- Local/other options?
-
-### 1.6 - Code Execution
-
-- Sandboxed JavaScript for algorithmic composition and transformation
-
-### 1.7 - Audio Editing and Synthesis
-
-- Reverse audio clips
-- Generate audio files on demand from a selection of synthesis algorithms and
-  arrange them as audio clips or use them in Drum Racks/Simpler/Sampler
-- Generate novel DSP algorithms
-
-### 1.8 - Harmony
-
-- Chord notation
-- Pitches as scale/chord degrees (instead of absolute pitches)
-- Microtonal support
-
-### 1.x - Misc
-
-- Take lane support
