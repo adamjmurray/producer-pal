@@ -212,6 +212,7 @@ export function readDevice(device, options = {}) {
     depth,
     maxDepth,
     readDeviceFn: readDevice,
+    devicePath: path,
   });
 
   if (includeParams) {

@@ -221,7 +221,10 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
   }
 
   const device = devices[deviceIndex];
-  const deviceInfo = readDeviceShared(device, options);
+  const deviceInfo = readDeviceShared(device, {
+    ...options,
+    parentPath: fullPath,
+  });
 
   return cleanupInternalDrumPads(deviceInfo);
 }
@@ -234,8 +237,12 @@ function readDrumPadNestedTarget(pad, remainingSegments, fullPath, options) {
  * @returns {object} Chain information
  */
 function readDrumPadChain(chain, path, options) {
-  const devices = chain.getChildren("devices").map((device) => {
-    const deviceInfo = readDeviceShared(device, options);
+  const devices = chain.getChildren("devices").map((device, index) => {
+    const devicePath = `${path}/${index}`;
+    const deviceInfo = readDeviceShared(device, {
+      ...options,
+      parentPath: devicePath,
+    });
 
     return cleanupInternalDrumPads(deviceInfo);
   });
@@ -273,13 +280,19 @@ function buildDrumPadInfo(pad, path, options) {
   if (options.includeChains || options.includeDrumPads) {
     const chains = pad.getChildren("chains");
 
-    drumPadInfo.chains = chains.map((chain, index) => {
-      const chainPath = `${path}/${index}`;
-      const devices = chain.getChildren("devices").map((device) => {
-        const deviceInfo = readDeviceShared(device, options);
+    drumPadInfo.chains = chains.map((chain, chainIndex) => {
+      const chainPath = `${path}/${chainIndex}`;
+      const devices = chain
+        .getChildren("devices")
+        .map((device, deviceIndex) => {
+          const devicePath = `${chainPath}/${deviceIndex}`;
+          const deviceInfo = readDeviceShared(device, {
+            ...options,
+            parentPath: devicePath,
+          });
 
-        return cleanupInternalDrumPads(deviceInfo);
-      });
+          return cleanupInternalDrumPads(deviceInfo);
+        });
 
       return buildChainInfo(chain, {
         path: chainPath,

@@ -1,10 +1,6 @@
 import { DEVICE_TYPE } from "#src/tools/constants.js";
 import { readParameter, readParameterBasic } from "./device-display-helpers.js";
-import {
-  buildChainPath,
-  buildReturnChainPath,
-  extractDevicePath,
-} from "./device-path-helpers.js";
+import { buildChainPath, buildReturnChainPath } from "./device-path-helpers.js";
 import {
   processDrumPads,
   updateDrumPadSoloStates,
@@ -61,6 +57,7 @@ export function isRedundantDeviceClassName(deviceType, className) {
  * @param {number} depth - Current depth
  * @param {number} maxDepth - Max depth
  * @param {Function} readDeviceFn - readDevice function
+ * @param {string} devicePath - Device path for building nested paths
  */
 export function processRegularChains(
   device,
@@ -70,22 +67,29 @@ export function processRegularChains(
   depth,
   maxDepth,
   readDeviceFn,
+  devicePath,
 ) {
   const chains = device.getChildren("chains");
   const hasSoloedChain = chains.some((chain) => chain.getProperty("solo") > 0);
-  const parentPath = extractDevicePath(device.path);
 
   if (includeChains) {
     deviceInfo.chains = chains.map((chain, index) => {
-      const chainPath = parentPath ? buildChainPath(parentPath, index) : null;
-      const devices = chain.getChildren("devices").map((chainDevice) =>
-        readDeviceFn(chainDevice, {
-          includeChains,
-          includeDrumPads,
-          depth: depth + 1,
-          maxDepth,
-        }),
-      );
+      const chainPath = devicePath ? buildChainPath(devicePath, index) : null;
+      const devices = chain
+        .getChildren("devices")
+        .map((chainDevice, deviceIndex) => {
+          const nestedDevicePath = chainPath
+            ? `${chainPath}/${deviceIndex}`
+            : null;
+
+          return readDeviceFn(chainDevice, {
+            includeChains,
+            includeDrumPads,
+            depth: depth + 1,
+            maxDepth,
+            parentPath: nestedDevicePath,
+          });
+        });
 
       return buildChainInfo(chain, { path: chainPath, devices });
     });
@@ -117,6 +121,7 @@ export function processDeviceChains(device, deviceInfo, deviceType, options) {
     depth,
     maxDepth,
     readDeviceFn,
+    devicePath,
   } = options;
 
   const isRack = deviceType.includes("rack");
@@ -146,6 +151,7 @@ export function processDeviceChains(device, deviceInfo, deviceType, options) {
         depth,
         maxDepth,
         readDeviceFn,
+        devicePath,
       );
     }
   }
@@ -160,6 +166,7 @@ export function processDeviceChains(device, deviceInfo, deviceType, options) {
       depth,
       maxDepth,
       readDeviceFn,
+      devicePath,
     );
   }
 }
@@ -173,25 +180,27 @@ function processReturnChains(
   depth,
   maxDepth,
   readDeviceFn,
+  devicePath,
 ) {
   const returnChains = device.getChildren("return_chains");
 
   if (returnChains.length === 0) return;
 
-  const parentPath = extractDevicePath(device.path);
-
   deviceInfo.returnChains = returnChains.map((chain, index) => {
-    const chainPath = parentPath
-      ? buildReturnChainPath(parentPath, index)
+    const chainPath = devicePath
+      ? buildReturnChainPath(devicePath, index)
       : null;
-    const devices = chain.getChildren("devices").map((d) =>
-      readDeviceFn(d, {
+    const devices = chain.getChildren("devices").map((d, deviceIndex) => {
+      const nestedDevicePath = chainPath ? `${chainPath}/${deviceIndex}` : null;
+
+      return readDeviceFn(d, {
         includeChains,
         includeReturnChains,
         depth: depth + 1,
         maxDepth,
-      }),
-    );
+        parentPath: nestedDevicePath,
+      });
+    });
 
     return buildChainInfo(chain, { path: chainPath, devices });
   });
