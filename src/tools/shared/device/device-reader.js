@@ -199,6 +199,19 @@ export function readDevice(device, options = {}) {
   // Add A/B Compare state (spreads empty object if device doesn't support it)
   Object.assign(deviceInfo, readABCompare(device));
 
+  // Simpler-specific: include loaded sample path
+  if (className === "Simpler") {
+    const samples = device.getChildren("sample");
+
+    if (samples.length > 0) {
+      const samplePath = samples[0].getProperty("file_path");
+
+      if (samplePath) {
+        deviceInfo.sample = samplePath;
+      }
+    }
+  }
+
   // Process chains for rack devices
   processDeviceChains(device, deviceInfo, deviceType, {
     includeChains,
