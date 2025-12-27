@@ -126,6 +126,7 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
 
 describe("useChat", () => {
   const defaultProps = {
+    provider: "gemini" as const,
     apiKey: "test-key",
     model: "test-model",
     thinking: "Default",

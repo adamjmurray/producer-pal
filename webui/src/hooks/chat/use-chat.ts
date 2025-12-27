@@ -6,6 +6,7 @@ import {
   MAX_RETRY_ATTEMPTS,
 } from "#webui/lib/rate-limit";
 import type { UIMessage } from "#webui/types/messages";
+import type { Provider } from "#webui/types/settings";
 import {
   handleMessageStream,
   validateMcpConnection,
@@ -80,6 +81,7 @@ interface UseChatProps<
   TMessage,
   TConfig,
 > {
+  provider: Provider;
   apiKey: string;
   model: string;
   thinking: string;
@@ -106,6 +108,7 @@ interface UseChatReturn {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   activeModel: string | null;
+  activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
   rateLimitState: RateLimitState | null;
@@ -127,6 +130,7 @@ export function useChat<
   TMessage,
   TConfig,
 >({
+  provider,
   apiKey,
   model,
   thinking,
@@ -141,6 +145,7 @@ export function useChat<
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
   const [activeModel, setActiveModel] = useState<string | null>(null);
+  const [activeProvider, setActiveProvider] = useState<Provider | null>(null);
   const [activeThinking, setActiveThinking] = useState<string | null>(null);
   const [activeTemperature, setActiveTemperature] = useState<number | null>(
     null,
@@ -156,6 +161,7 @@ export function useChat<
     setMessages([]);
     clientRef.current = null;
     setActiveModel(null);
+    setActiveProvider(null);
     setActiveThinking(null);
     setActiveTemperature(null);
     setRateLimitState(null);
@@ -188,6 +194,7 @@ export function useChat<
       clientRef.current = adapter.createClient(apiKey, config);
       await clientRef.current.initialize();
       setActiveModel(model);
+      setActiveProvider(provider);
       setActiveThinking(effectiveThinking);
       setActiveTemperature(effectiveTemperature);
     },
@@ -196,6 +203,7 @@ export function useChat<
       mcpError,
       checkMcpConnection,
       model,
+      provider,
       temperature,
       thinking,
       enabledTools,
@@ -407,6 +415,7 @@ export function useChat<
     messages,
     isAssistantResponding,
     activeModel,
+    activeProvider,
     activeThinking,
     activeTemperature,
     rateLimitState,

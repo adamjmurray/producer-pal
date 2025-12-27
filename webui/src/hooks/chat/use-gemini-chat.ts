@@ -1,8 +1,10 @@
 import type { UIMessage } from "#webui/types/messages";
+import type { Provider } from "#webui/types/settings";
 import { geminiAdapter } from "./gemini-adapter";
 import { useChat, type RateLimitState } from "./use-chat";
 
 interface UseGeminiChatProps {
+  provider: Provider;
   apiKey: string;
   model: string;
   thinking: string;
@@ -18,6 +20,7 @@ interface UseGeminiChatReturn {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   activeModel: string | null;
+  activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
   rateLimitState: RateLimitState | null;
@@ -43,6 +46,7 @@ interface UseGeminiChatReturn {
  * @returns {UseGeminiChatReturn} Chat state and handlers
  */
 export function useGeminiChat({
+  provider,
   apiKey,
   model,
   thinking,
@@ -54,6 +58,7 @@ export function useGeminiChat({
   checkMcpConnection,
 }: UseGeminiChatProps): UseGeminiChatReturn {
   return useChat({
+    provider,
     apiKey,
     model,
     thinking,
