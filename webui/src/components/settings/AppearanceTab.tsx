@@ -5,9 +5,9 @@ interface AppearanceTabProps {
 
 /**
  * Appearance tab component for settings
- * @param {object} root0 - Component props
- * @param {string} root0.theme - UI theme setting
- * @param {Function} root0.setTheme - Function to update theme
+ * @param {object} props - Component props
+ * @param {string} props.theme - UI theme setting
+ * @param {Function} props.setTheme - Function to update theme
  * @returns {JSX.Element} Appearance tab component
  */
 export function AppearanceTab({ theme, setTheme }: AppearanceTabProps) {

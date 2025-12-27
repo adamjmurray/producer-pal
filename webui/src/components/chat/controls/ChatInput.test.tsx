@@ -4,16 +4,27 @@
 import { render, screen, fireEvent } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import { ChatInput } from "./ChatInput";
+import type { Provider } from "../../../types/settings";
+
+const defaultProps = {
+  handleSend: vi.fn(),
+  isAssistantResponding: false,
+  onStop: vi.fn(),
+  provider: "gemini" as Provider,
+  model: "gemini-2.0-flash-thinking",
+  defaultThinking: "Default",
+  defaultTemperature: 1.0,
+  defaultShowThoughts: true,
+  thinking: "Default",
+  temperature: 1.0,
+  showThoughts: true,
+  onThinkingChange: vi.fn(),
+  onTemperatureChange: vi.fn(),
+  onShowThoughtsChange: vi.fn(),
+  onResetToDefaults: vi.fn(),
+};
 
 describe("ChatInput", () => {
-  const defaultProps = {
-    handleSend: vi.fn(),
-    isAssistantResponding: false,
-    onStop: vi.fn(),
-    thinking: "Auto",
-    temperature: 1.0,
-  };
-
   describe("rendering", () => {
     it("renders textarea", () => {
       render(<ChatInput {...defaultProps} />);
@@ -36,34 +47,6 @@ describe("ChatInput", () => {
       expect(textarea.getAttribute("placeholder")).toBe(
         "Type a message... (Shift+Enter for new line)",
       );
-    });
-  });
-
-  describe("thinking and temperature display", () => {
-    it("always shows thinking and randomness", () => {
-      render(<ChatInput {...defaultProps} />);
-      expect(screen.getByText(/Thinking: Auto/)).toBeDefined();
-      expect(screen.getByText(/50% random/)).toBeDefined();
-    });
-
-    it("shows different thinking modes", () => {
-      render(<ChatInput {...defaultProps} thinking="High" />);
-      expect(screen.getByText(/Thinking: High/)).toBeDefined();
-    });
-
-    it("shows 0% random when temperature is 0", () => {
-      render(<ChatInput {...defaultProps} temperature={0} />);
-      expect(screen.getByText(/0% random/)).toBeDefined();
-    });
-
-    it("shows 100% random when temperature is 2", () => {
-      render(<ChatInput {...defaultProps} temperature={2} />);
-      expect(screen.getByText(/100% random/)).toBeDefined();
-    });
-
-    it("shows 25% random when temperature is 0.5", () => {
-      render(<ChatInput {...defaultProps} temperature={0.5} />);
-      expect(screen.getByText(/25% random/)).toBeDefined();
     });
   });
 
@@ -135,7 +118,11 @@ describe("ChatInput", () => {
       fireEvent.click(button);
 
       expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Hello");
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
     });
 
     it("clears input after sending", () => {
@@ -161,7 +148,11 @@ describe("ChatInput", () => {
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 
       expect(handleSend).toHaveBeenCalledOnce();
-      expect(handleSend).toHaveBeenCalledWith("Hello");
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
     });
 
     it("clears input after Enter key send", () => {
@@ -221,6 +212,94 @@ describe("ChatInput", () => {
       fireEvent.keyDown(textarea, { key: "Enter", shiftKey: false });
 
       expect(handleSend).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("per-message settings", () => {
+    it("passes default thinking and temperature on send", () => {
+      const handleSend = vi.fn();
+      render(<ChatInput {...defaultProps} handleSend={handleSend} />);
+
+      const textarea = screen.getByRole("textbox");
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+
+      const button = screen.getByRole("button", { name: "Send" });
+      fireEvent.click(button);
+
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: true,
+      });
+    });
+
+    it("calls onResetToDefaults when reset button clicked", () => {
+      const onResetToDefaults = vi.fn();
+      const { container } = render(
+        <ChatInput
+          {...defaultProps}
+          thinking="High"
+          onResetToDefaults={onResetToDefaults}
+        />,
+      );
+
+      // Expand settings toolbar
+      const expandButton = container.querySelector("button");
+      fireEvent.click(expandButton!);
+
+      // Reset to defaults
+      const resetButton = Array.from(container.querySelectorAll("button")).find(
+        (btn) => btn.textContent.includes("Use defaults"),
+      );
+      fireEvent.click(resetButton!);
+
+      expect(onResetToDefaults).toHaveBeenCalledOnce();
+    });
+
+    it("passes showThoughts: false when showThoughts prop is false", () => {
+      const handleSend = vi.fn();
+      render(
+        <ChatInput
+          {...defaultProps}
+          handleSend={handleSend}
+          showThoughts={false}
+        />,
+      );
+
+      // Send message and verify showThoughts is false
+      const textarea = screen.getByRole("textbox");
+      fireEvent.input(textarea, { target: { value: "Hello" } });
+      const sendButton = screen.getByRole("button", { name: "Send" });
+      fireEvent.click(sendButton);
+
+      expect(handleSend).toHaveBeenCalledWith("Hello", {
+        thinking: "Default",
+        temperature: 1.0,
+        showThoughts: false,
+      });
+    });
+
+    it("calls onShowThoughtsChange when checkbox is clicked", () => {
+      const onShowThoughtsChange = vi.fn();
+      const { container } = render(
+        <ChatInput
+          {...defaultProps}
+          onShowThoughtsChange={onShowThoughtsChange}
+        />,
+      );
+
+      // Expand settings toolbar
+      const expandButton = container.querySelector("button");
+      fireEvent.click(expandButton!);
+
+      // Click showThoughts checkbox
+      const checkbox = container.querySelector(
+        'input[type="checkbox"]',
+      ) as HTMLInputElement;
+      expect(checkbox).toBeDefined();
+      fireEvent.click(checkbox);
+
+      expect(onShowThoughtsChange).toHaveBeenCalledWith(false);
     });
   });
 });

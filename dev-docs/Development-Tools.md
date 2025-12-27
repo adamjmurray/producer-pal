@@ -185,6 +185,8 @@ npm run build:all
 
 # Run all tests with coverage
 npm run test:coverage
+# Console shows summary totals; see coverage/coverage-summary.txt for per-file breakdown
+# Or open coverage/index.html for visual report
 
 # Format check
 npm run format:check

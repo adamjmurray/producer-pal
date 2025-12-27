@@ -232,9 +232,9 @@ describe("readLiveSet - track types", () => {
     // Test explicit list - should produce identical result
     const resultExplicit = readLiveSet({
       include: [
-        "drum-chains",
+        "drum-pads",
         "clip-notes",
-        "rack-chains",
+        "chains",
         "scenes",
         "midi-effects",
         "instruments",

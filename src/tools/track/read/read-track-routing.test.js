@@ -245,7 +245,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",

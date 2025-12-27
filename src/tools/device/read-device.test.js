@@ -131,13 +131,13 @@ describe("readDevice", () => {
 
     const result = readDevice({
       deviceId: "drum-rack-123",
-      include: ["drum-chains"],
+      include: ["drum-pads"],
     });
 
     expect(result).toEqual({
       id: "drum-rack-123",
       type: "drum-rack",
-      drumChains: [], // Included because drum-chains was requested
+      drumPads: [], // Included because drum-pads was requested
     });
   });
 
@@ -407,4 +407,113 @@ describe("readDevice", () => {
   // extensive LiveAPI mocking including drum pads, chains, and their properties.
   // Skipping these for now to focus on easier wins for test coverage.
   // Params tests are in read-device-params.test.js
+  // Path-based tests are in read-device-path.test.js
+
+  describe("Simpler sample reading", () => {
+    it("should include sample path for Simpler device with loaded sample", () => {
+      liveApiId.mockImplementation(function () {
+        // Return different IDs based on path
+        if (this._path === "id sample-obj") return "sample-obj";
+        return "device-123";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        // Sample object returns file_path
+        if (this._path === "id sample-obj") {
+          if (prop === "file_path") return ["/path/to/sample.wav"];
+          return [];
+        }
+        // Device properties
+        switch (prop) {
+          case "name":
+            return ["Simpler"];
+          case "class_display_name":
+            return ["Simpler"];
+          case "type":
+            return [1]; // instrument
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          case "sample":
+            return ["id", "sample-obj"]; // Return sample child ID
+          default:
+            return [];
+        }
+      });
+
+      const result = readDevice({ deviceId: "device-123" });
+
+      expect(result).toEqual({
+        id: "device-123",
+        type: "instrument: Simpler",
+        sample: "/path/to/sample.wav",
+      });
+    });
+
+    it("should not include sample for Simpler device without loaded sample", () => {
+      liveApiId.mockImplementation(function () {
+        return "device-123";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        switch (prop) {
+          case "name":
+            return ["Simpler"];
+          case "class_display_name":
+            return ["Simpler"];
+          case "type":
+            return [1]; // instrument
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          case "sample":
+            return []; // No sample children
+          default:
+            return [];
+        }
+      });
+
+      const result = readDevice({ deviceId: "device-123" });
+
+      expect(result).toEqual({
+        id: "device-123",
+        type: "instrument: Simpler",
+      });
+    });
+
+    it("should not include sample for non-Simpler instruments", () => {
+      liveApiId.mockImplementation(function () {
+        return "device-123";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        switch (prop) {
+          case "name":
+            return ["Operator"];
+          case "class_display_name":
+            return ["Operator"];
+          case "type":
+            return [1]; // instrument
+          case "can_have_chains":
+            return [0];
+          case "can_have_drum_pads":
+            return [0];
+          case "is_active":
+            return [1];
+          default:
+            return [];
+        }
+      });
+
+      const result = readDevice({ deviceId: "device-123" });
+
+      expect(result).toEqual({
+        id: "device-123",
+        type: "instrument: Operator",
+      });
+    });
+  });
 });

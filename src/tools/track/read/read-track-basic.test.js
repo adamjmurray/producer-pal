@@ -357,7 +357,7 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes", "rack-chains", "instruments"],
+      include: ["clip-notes", "chains", "instruments"],
     });
 
     // Since clips exist at slots 0 and 2, we should get a count of 2
@@ -387,7 +387,7 @@ describe("readTrack", () => {
 
     const result = readTrack({
       trackIndex: 2,
-      include: ["clip-notes", "rack-chains", "instruments"],
+      include: ["clip-notes", "chains", "instruments"],
     });
 
     expect(result.arrangementClipCount).toBe(2);
@@ -417,7 +417,7 @@ describe("readTrack", () => {
     // Call with includeArrangementClips explicitly false to get count
     const result = readTrack({
       trackIndex: 1,
-      include: ["clip-notes", "rack-chains", "instruments"], // excludes "arrangement-clips"
+      include: ["clip-notes", "chains", "instruments"], // excludes "arrangement-clips"
     });
 
     // Verify that we get a count instead of clip details

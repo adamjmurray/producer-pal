@@ -5,6 +5,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
+  liveApiType,
 } from "../../../test/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "../../../live-api-adapter/live-api-extensions.js";
@@ -12,6 +13,9 @@ import "../../../live-api-adapter/live-api-extensions.js";
 describe("updateDevice - macroVariation", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // macroVariation requires RackDevice type
+    liveApiType.mockImplementation(() => "RackDevice");
 
     liveApiId.mockImplementation(function () {
       switch (this._path) {

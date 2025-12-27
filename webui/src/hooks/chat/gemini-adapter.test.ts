@@ -7,7 +7,7 @@ import { GeminiClient } from "../../chat/gemini-client";
 import type { GeminiMessage } from "../../types/messages";
 import { buildGeminiConfig } from "../settings/config-builders";
 import { formatGeminiMessages } from "../../chat/gemini-formatter";
-import { createGeminiErrorMessage } from "./streaming-helpers";
+import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
 vi.mock("../../chat/gemini-client", () => ({
@@ -42,7 +42,7 @@ vi.mock("../../chat/gemini-formatter", () => ({
   ),
 }));
 
-vi.mock("./streaming-helpers", () => ({
+vi.mock("./helpers/streaming-helpers", () => ({
   createGeminiErrorMessage: vi.fn((error, chatHistory) => [
     ...chatHistory.map((msg: GeminiMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
@@ -88,7 +88,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: true },
@@ -97,7 +97,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         undefined,
@@ -108,7 +108,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: true },
@@ -117,7 +117,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         undefined,
@@ -128,7 +128,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         { showThoughts: false },
@@ -137,7 +137,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -145,12 +145,18 @@ describe("gemini-adapter", () => {
     });
 
     it("handles missing extraParams gracefully", () => {
-      geminiAdapter.buildConfig("gemini-2.5-flash", 1.0, "Auto", {}, undefined);
+      geminiAdapter.buildConfig(
+        "gemini-2.5-flash",
+        1.0,
+        "Default",
+        {},
+        undefined,
+      );
 
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -161,7 +167,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         undefined,
         {},
@@ -170,7 +176,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         false,
         {},
         undefined,
@@ -185,7 +191,7 @@ describe("gemini-adapter", () => {
       geminiAdapter.buildConfig(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         {},
         chatHistory,
         { showThoughts: true },
@@ -194,7 +200,7 @@ describe("gemini-adapter", () => {
       expect(buildGeminiConfig).toHaveBeenCalledWith(
         "gemini-2.5-flash",
         1.0,
-        "Auto",
+        "Default",
         true,
         {},
         chatHistory,

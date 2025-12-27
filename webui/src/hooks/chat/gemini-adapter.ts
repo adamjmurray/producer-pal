@@ -5,7 +5,7 @@ import {
 import { formatGeminiMessages } from "#webui/chat/gemini-formatter";
 import { buildGeminiConfig } from "#webui/hooks/settings/config-builders";
 import type { GeminiMessage } from "#webui/types/messages";
-import { createGeminiErrorMessage } from "./streaming-helpers";
+import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 import type { ChatAdapter } from "./use-chat";
 
 /**

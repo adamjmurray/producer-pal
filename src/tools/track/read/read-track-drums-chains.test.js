@@ -13,7 +13,7 @@ import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
-  describe("drumChains", () => {
+  describe("drumPads", () => {
     it("returns null when the track has no devices", () => {
       liveApiId.mockReturnValue("track1");
       mockLiveApiGet({

@@ -49,7 +49,7 @@ describe("readLiveSet - clips", () => {
 
     // Test with minimal clip loading (no session-clips or arrangement-clips in include)
     const result = readLiveSet({
-      include: ["regular-tracks", "instruments", "rack-chains"],
+      include: ["regular-tracks", "instruments", "chains"],
     });
 
     // When session-clips and arrangement-clips are not in include, we get counts instead of arrays

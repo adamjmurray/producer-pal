@@ -62,12 +62,12 @@ describe("config", () => {
     });
 
     it("returns -1 for Auto level", () => {
-      expect(getThinkingBudget("Auto")).toBe(-1);
+      expect(getThinkingBudget("Default")).toBe(-1);
     });
 
-    it("returns 0 for unknown levels", () => {
-      expect(getThinkingBudget("Unknown")).toBe(0);
-      expect(getThinkingBudget("VeryHigh")).toBe(0);
+    it("returns -1 (Auto) for unknown levels", () => {
+      expect(getThinkingBudget("Unknown")).toBe(-1);
+      expect(getThinkingBudget("VeryHigh")).toBe(-1);
     });
   });
 

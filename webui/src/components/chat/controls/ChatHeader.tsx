@@ -6,6 +6,8 @@ interface ChatHeaderProps {
   mcpStatus: "connected" | "connecting" | "error";
   activeModel: string | null;
   activeProvider: Provider | null;
+  model: string;
+  provider: Provider;
   enabledToolsCount: number;
   totalToolsCount: number;
   hasMessages: boolean;
@@ -54,6 +56,8 @@ export function ChatHeader({
   mcpStatus,
   activeModel,
   activeProvider,
+  model,
+  provider,
   enabledToolsCount,
   totalToolsCount,
   hasMessages,
@@ -106,11 +110,10 @@ export function ChatHeader({
             : "ml-auto flex gap-3 items-baseline"
         }
       >
-        {activeModel && activeProvider && (
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {getProviderName(activeProvider)} | {getModelName(activeModel)}
-          </span>
-        )}
+        <span className="text-xs text-gray-500 dark:text-gray-400">
+          {getProviderName(activeProvider ?? provider)} |{" "}
+          {getModelName(activeModel ?? model)}
+        </span>
         <span className="text-xs text-gray-500 dark:text-gray-400">
           {enabledToolsCount}/{totalToolsCount} tools
         </span>

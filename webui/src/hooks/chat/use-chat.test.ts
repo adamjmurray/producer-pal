@@ -7,7 +7,7 @@ import { useChat, type ChatClient, type ChatAdapter } from "./use-chat";
 import type { UIMessage } from "../../types/messages";
 
 // Mock streaming helpers
-vi.mock("./streaming-helpers", () => ({
+vi.mock("./helpers/streaming-helpers", () => ({
   handleMessageStream: vi.fn(async (stream, formatter, onUpdate) => {
     // Simulate processing the stream
     for await (const chatHistory of stream) {
@@ -126,9 +126,10 @@ const mockAdapter: ChatAdapter<MockChatClient, TestMessage, TestConfig> = {
 
 describe("useChat", () => {
   const defaultProps = {
+    provider: "gemini" as const,
     apiKey: "test-key",
     model: "test-model",
-    thinking: "Auto",
+    thinking: "Default",
     temperature: 1.0,
     enabledTools: {},
     mcpStatus: "connected" as const,
@@ -247,7 +248,7 @@ describe("useChat", () => {
       expect(mockAdapter.createClient).toHaveBeenCalledWith("test-key", {
         model: "test-model",
         temperature: 1.0,
-        thinking: "Auto",
+        thinking: "Default",
       });
     });
 
@@ -259,7 +260,7 @@ describe("useChat", () => {
       });
 
       expect(result.current.activeModel).toBe("test-model");
-      expect(result.current.activeThinking).toBe("Auto");
+      expect(result.current.activeThinking).toBe("Default");
       expect(result.current.activeTemperature).toBe(1.0);
     });
 

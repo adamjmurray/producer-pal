@@ -132,10 +132,10 @@ describe("readTrack", () => {
       const resultExplicit = readTrack({
         trackIndex: 0,
         include: [
-          "drum-chains",
+          "drum-pads",
           "drum-maps",
           "clip-notes",
-          "rack-chains",
+          "chains",
           "midi-effects",
           "instruments",
           "audio-effects",

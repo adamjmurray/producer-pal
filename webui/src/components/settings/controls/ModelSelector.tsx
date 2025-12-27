@@ -16,10 +16,10 @@ interface ModelSelectorProps {
 
 /**
  * Model selection dropdown with provider-specific presets
- * @param {ModelSelectorProps} root0 - Component props
- * @param {Provider} root0.provider - Current provider
- * @param {string} root0.model - Current model
- * @param {(model: string) => void} root0.setModel - Model setter callback
+ * @param {ModelSelectorProps} props - Component props
+ * @param {Provider} props.provider - Current provider
+ * @param {string} props.model - Current model
+ * @param {(model: string) => void} props.setModel - Model setter callback
  * @returns {JSX.Element} - React component
  */
 export function ModelSelector({

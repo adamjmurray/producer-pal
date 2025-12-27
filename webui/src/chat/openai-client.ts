@@ -1,24 +1,30 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import OpenAI from "openai";
+import type { ReasoningEffort } from "#webui/hooks/settings/config-builders";
 import type { OpenAIMessage, OpenAIToolCall } from "#webui/types/messages";
 import { getMcpUrl } from "#webui/utils/mcp-url";
 import { isOpenRouterProvider } from "#webui/utils/provider-detection";
 import {
+  calculateEffectiveSettings,
+  type OpenAIMessageOverrides,
+} from "./helpers/openai-message-overrides";
+import {
   processReasoningDelta,
   type OpenAIAssistantMessageWithReasoning,
   type ReasoningDetail,
-} from "./openai-reasoning-helpers";
+} from "./helpers/openai-reasoning-helpers";
 
 // Re-export for external consumers
 export {
   extractReasoningFromDelta,
   processReasoningDelta,
-} from "./openai-reasoning-helpers";
+} from "./helpers/openai-reasoning-helpers";
 export type {
   OpenAIAssistantMessageWithReasoning,
   ReasoningDetail,
-} from "./openai-reasoning-helpers";
+} from "./helpers/openai-reasoning-helpers";
+export type { OpenAIMessageOverrides } from "./helpers/openai-message-overrides";
 
 const MCP_NOT_INITIALIZED_ERROR =
   "MCP client not initialized. Call initialize() first.";
@@ -126,32 +132,17 @@ export class OpenAIClient {
 
   /**
    * Sends a message to OpenAI and streams back the chat history as it updates.
-   *
-   * This async generator yields the full chat history after each update, allowing
-   * consumers to track the conversation state in real-time. The history includes
-   * the user's message, model responses, tool calls, and tool results.
-   *
-   * Unlike Gemini, OpenAI requires manual tool calling loop:
-   * 1. Stream assistant response
-   * 2. If tool_calls present, execute each via MCP
-   * 3. Add tool result messages
-   * 4. Continue streaming with updated history
-   * 5. Repeat until no tool_calls
-   *
+   * Yields full chat history after each update, executing tool calls automatically.
    * @param {string} message - User message to send
    * @param {AbortSignal} [abortSignal] - Optional abort signal
+   * @param {OpenAIMessageOverrides} [overrides] - Optional per-message overrides
    * @yields Complete chat history in OpenAI's raw format after each update
    * @throws If MCP client is not initialized or if message sending fails
-   *
-   * @example
-   * const stream = client.sendMessage("Hello");
-   * for await (const history of stream) {
-   *   console.log("Current history:", history);
-   * }
    */
   async *sendMessage(
     message: string,
     abortSignal?: AbortSignal,
+    overrides?: OpenAIMessageOverrides,
   ): AsyncGenerator<OpenAIMessage[], void, unknown> {
     if (!this.mcpClient) {
       throw new Error(MCP_NOT_INITIALIZED_ERROR);
@@ -166,6 +157,12 @@ export class OpenAIClient {
     // Get filtered tools
     const tools = await this.getFilteredTools();
 
+    // Calculate effective settings (override or default from config)
+    const effectiveSettings = calculateEffectiveSettings(
+      overrides,
+      this.config,
+    );
+
     // Manual tool calling loop
     let continueLoop = true;
     const maxIterations = 10; // Prevent infinite loops
@@ -175,7 +172,7 @@ export class OpenAIClient {
       iteration++;
 
       // Process the stream and update history with assistant response
-      yield* this.processStreamAndUpdateHistory(tools);
+      yield* this.processStreamAndUpdateHistory(tools, effectiveSettings);
 
       // Handle any tool calls from the assistant's response
       const toolCalls = this.getToolCallsFromLastMessage();
@@ -228,29 +225,38 @@ export class OpenAIClient {
   /**
    * Processes the OpenAI stream and updates chat history with each chunk.
    * @param {OpenAI.Chat.ChatCompletionTool[]} tools - Array of available tools
+   * @param {object} settings - Effective temperature and reasoning settings
+   * @param {number} [settings.temperature] - Temperature value
+   * @param {ReasoningEffort} [settings.reasoningEffort] - Reasoning effort level
+   * @param {boolean} [settings.excludeReasoning] - Whether to exclude reasoning
    * @returns {AsyncGenerator} - Generator yielding chat history updates
    */
   private async *processStreamAndUpdateHistory(
     tools: OpenAI.Chat.ChatCompletionTool[],
+    settings: {
+      temperature: number | undefined;
+      reasoningEffort: ReasoningEffort | undefined;
+      excludeReasoning: boolean | undefined;
+    },
   ): AsyncGenerator<OpenAIMessage[]> {
     const stream = await this.ai.chat.completions.create({
       model: this.config.model,
       messages: this.chatHistory,
       tools: tools.length > 0 ? tools : undefined,
-      temperature: this.config.temperature,
-      ...(this.config.reasoningEffort
+      temperature: settings.temperature,
+      ...(settings.reasoningEffort
         ? isOpenRouterProvider(this.config.baseUrl)
           ? {
               reasoning: {
-                effort: this.config.reasoningEffort,
+                effort: settings.reasoningEffort,
                 // Exclude reasoning when effort is "none" or checkbox is unchecked
-                ...((this.config.reasoningEffort === "none" ||
-                  this.config.excludeReasoning) && {
+                ...((settings.reasoningEffort === "none" ||
+                  settings.excludeReasoning) && {
                   exclude: true,
                 }),
               },
             }
-          : { reasoning_effort: this.config.reasoningEffort }
+          : { reasoning_effort: settings.reasoningEffort }
         : {}),
       stream: true,
     });

@@ -61,33 +61,33 @@ function getProviderLabel(provider: string): string {
 
 /**
  * Settings screen component
- * @param {object} root0 - Component props
- * @param {Provider} root0.provider - Selected provider
- * @param {Function} root0.setProvider - Function to update provider
- * @param {string} root0.apiKey - API key for the provider
- * @param {Function} root0.setApiKey - Function to update API key
- * @param {string} root0.baseUrl - Base URL for custom provider
- * @param {Function} root0.setBaseUrl - Function to update base URL
- * @param {number} root0.port - Port for local provider
- * @param {Function} root0.setPort - Function to update port
- * @param {string} root0.model - Selected model
- * @param {Function} root0.setModel - Function to update model
- * @param {string} root0.thinking - Thinking mode setting
- * @param {Function} root0.setThinking - Function to update thinking mode
- * @param {number} root0.temperature - Temperature/randomness setting
- * @param {Function} root0.setTemperature - Function to update temperature
- * @param {boolean} root0.showThoughts - Whether to show thought blocks
- * @param {Function} root0.setShowThoughts - Function to toggle thought display
- * @param {string} root0.theme - UI theme setting
- * @param {Function} root0.setTheme - Function to update theme
- * @param {object} root0.enabledTools - Map of enabled/disabled tools
- * @param {Function} root0.setEnabledTools - Function to update enabled tools
- * @param {Function} root0.enableAllTools - Function to enable all tools
- * @param {Function} root0.disableAllTools - Function to disable all tools
- * @param {Function} root0.resetBehaviorToDefaults - Function to reset behavior settings
- * @param {Function} root0.saveSettings - Function to save settings
- * @param {Function} root0.cancelSettings - Function to cancel settings changes
- * @param {boolean} root0.settingsConfigured - Whether settings have been configured
+ * @param {object} props - Component props
+ * @param {Provider} props.provider - Selected provider
+ * @param {Function} props.setProvider - Function to update provider
+ * @param {string} props.apiKey - API key for the provider
+ * @param {Function} props.setApiKey - Function to update API key
+ * @param {string} props.baseUrl - Base URL for custom provider
+ * @param {Function} props.setBaseUrl - Function to update base URL
+ * @param {number} props.port - Port for local provider
+ * @param {Function} props.setPort - Function to update port
+ * @param {string} props.model - Selected model
+ * @param {Function} props.setModel - Function to update model
+ * @param {string} props.thinking - Thinking mode setting
+ * @param {Function} props.setThinking - Function to update thinking mode
+ * @param {number} props.temperature - Temperature/randomness setting
+ * @param {Function} props.setTemperature - Function to update temperature
+ * @param {boolean} props.showThoughts - Whether to show thought blocks
+ * @param {Function} props.setShowThoughts - Function to toggle thought display
+ * @param {string} props.theme - UI theme setting
+ * @param {Function} props.setTheme - Function to update theme
+ * @param {object} props.enabledTools - Map of enabled/disabled tools
+ * @param {Function} props.setEnabledTools - Function to update enabled tools
+ * @param {Function} props.enableAllTools - Function to enable all tools
+ * @param {Function} props.disableAllTools - Function to disable all tools
+ * @param {Function} props.resetBehaviorToDefaults - Function to reset behavior settings
+ * @param {Function} props.saveSettings - Function to save settings
+ * @param {Function} props.cancelSettings - Function to cancel settings changes
+ * @param {boolean} props.settingsConfigured - Whether settings have been configured
  * @returns {JSX.Element} Settings screen component
  */
 export function SettingsScreen({

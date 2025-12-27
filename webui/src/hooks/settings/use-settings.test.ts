@@ -16,7 +16,7 @@ describe("useSettings", () => {
 
     expect(result.current.apiKey).toBe("");
     expect(result.current.model).toBe("gemini-2.5-flash");
-    expect(result.current.thinking).toBe("Auto");
+    expect(result.current.thinking).toBe("Default");
     expect(result.current.temperature).toBe(1.0);
     expect(result.current.showThoughts).toBe(true);
     expect(result.current.hasApiKey).toBe(false);
@@ -70,7 +70,7 @@ describe("useSettings", () => {
       JSON.stringify({
         apiKey: "new-key",
         model: "gemini-2.5-flash-lite",
-        thinking: "Auto",
+        thinking: "Default",
         temperature: 1.0,
         showThoughts: true,
       }),
@@ -422,7 +422,7 @@ describe("useSettings", () => {
     });
 
     expect(result.current.temperature).toBe(1.0);
-    expect(result.current.thinking).toBe("Auto"); // Default for gemini
+    expect(result.current.thinking).toBe("Default"); // Default for gemini
     expect(result.current.showThoughts).toBe(true);
   });
 

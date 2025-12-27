@@ -72,7 +72,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
@@ -134,7 +134,7 @@ describe("readTrack", () => {
         id: "device1",
         name: "My Drums",
         type: "drum-rack",
-        // drumChains: [], // Only included when drum-chains is requested
+        // drumPads: [], // Only included when drum-pads is requested
       });
     });
 
@@ -175,7 +175,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
@@ -187,7 +187,7 @@ describe("readTrack", () => {
         id: "device1",
         type: "drum-rack",
         name: "My Drums",
-        // drumChains: [], // Only included when drum-chains is requested
+        // drumPads: [], // Only included when drum-pads is requested
       });
 
       expect(result.audioEffects).toHaveLength(1);
@@ -249,7 +249,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
       expect(result.instrument).toEqual({
@@ -258,7 +258,10 @@ describe("readTrack", () => {
         name: "My Custom Rack",
         chains: [
           {
+            id: "chain1",
+            type: "Chain",
             name: "Piano",
+            color: "#FF0000",
             devices: [
               {
                 id: "nested_device1",
@@ -325,7 +328,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
@@ -340,7 +343,10 @@ describe("readTrack", () => {
         name: "Master FX",
         chains: [
           {
+            id: "chain1",
+            type: "Chain",
             name: "Filter Chain",
+            color: "#0000FF",
             devices: [
               {
                 id: "nested_effect1",
@@ -428,7 +434,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
       expect(result.instrument).toEqual({
@@ -437,7 +443,10 @@ describe("readTrack", () => {
         name: "Master FX",
         chains: [
           {
+            id: "outer_chain",
+            type: "Chain",
             name: "Wet",
+            color: "#0000FF",
             devices: [
               {
                 id: "inner_rack",
@@ -445,7 +454,10 @@ describe("readTrack", () => {
                 name: "Reverb Chain",
                 chains: [
                   {
+                    id: "inner_chain",
+                    type: "Chain",
                     name: "Hall",
+                    color: "#00FF00",
                     state: "soloed",
                     devices: [
                       {

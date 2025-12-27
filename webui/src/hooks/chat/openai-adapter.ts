@@ -5,7 +5,7 @@ import {
 import { formatOpenAIMessages } from "#webui/chat/openai-formatter";
 import { buildOpenAIConfig } from "#webui/hooks/settings/config-builders";
 import type { OpenAIMessage } from "#webui/types/messages";
-import { createOpenAIErrorMessage } from "./streaming-helpers";
+import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 import type { ChatAdapter } from "./use-chat";
 
 /**

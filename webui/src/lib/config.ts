@@ -21,7 +21,8 @@ export const getModelName = (modelId: string): string => {
 export const getThinkingBudget = (level: string): number => {
   switch (level) {
     case "Off":
-      return 0;
+    case "Minimal":
+      return 0; // Gemini doesn't have "Minimal", treat as Off
     case "Low":
       return 2048;
     case "Medium":
@@ -30,10 +31,11 @@ export const getThinkingBudget = (level: string): number => {
       return 8192;
     case "Ultra":
       return 16384;
+    case "Default":
     case "Auto":
-      return -1;
+      return -1; // Let API decide
     default:
-      return 0;
+      return -1; // Default to Auto for unknown values
   }
 };
 

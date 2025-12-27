@@ -56,7 +56,7 @@ describe("readLiveSet - routing", () => {
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "instruments", "rack-chains", "routings"],
+      include: ["regular-tracks", "instruments", "chains", "routings"],
     });
 
     expect(result.tracks[0]).toEqual(
@@ -105,7 +105,7 @@ describe("readLiveSet - routing", () => {
     });
 
     const result = readLiveSet({
-      include: ["regular-tracks", "instruments", "rack-chains"],
+      include: ["regular-tracks", "instruments", "chains"],
     });
 
     expect(result.tracks[0]).toEqual(

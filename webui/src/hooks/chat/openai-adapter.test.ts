@@ -7,7 +7,7 @@ import { OpenAIClient } from "../../chat/openai-client";
 import type { OpenAIMessage } from "../../types/messages";
 import { buildOpenAIConfig } from "../settings/config-builders";
 import { formatOpenAIMessages } from "../../chat/openai-formatter";
-import { createOpenAIErrorMessage } from "./streaming-helpers";
+import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient
 vi.mock("../../chat/openai-client", () => ({
@@ -48,7 +48,7 @@ vi.mock("../../chat/openai-formatter", () => ({
   ),
 }));
 
-vi.mock("./streaming-helpers", () => ({
+vi.mock("./helpers/streaming-helpers", () => ({
   createOpenAIErrorMessage: vi.fn((chatHistory, error) => [
     ...chatHistory.map((msg: OpenAIMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",

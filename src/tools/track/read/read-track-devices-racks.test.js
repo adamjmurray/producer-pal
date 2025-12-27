@@ -54,7 +54,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
       expect(result.instrument).toEqual({
@@ -63,7 +63,10 @@ describe("readTrack", () => {
         type: "instrument-rack",
         chains: [
           {
+            id: "empty_chain",
+            type: "Chain",
             name: "Empty Chain",
+            color: "#000000",
             devices: [],
           },
         ],
@@ -142,7 +145,7 @@ describe("readTrack", () => {
 
       const result = readTrack({
         trackIndex: 0,
-        include: ["instruments", "rack-chains"],
+        include: ["instruments", "chains"],
       });
 
       expect(result.instrument).toEqual({
@@ -151,7 +154,10 @@ describe("readTrack", () => {
         name: "My Custom Rack",
         chains: [
           {
+            id: "chain1",
+            type: "Chain",
             name: "Piano",
+            color: "#FF0000",
             devices: [
               {
                 id: "device1",
@@ -161,7 +167,10 @@ describe("readTrack", () => {
             ],
           },
           {
+            id: "chain2",
+            type: "Chain",
             name: "Bass",
+            color: "#00FF00",
             state: "muted",
             devices: [
               {
@@ -174,6 +183,8 @@ describe("readTrack", () => {
         ],
       });
     });
+    // TODO: Drum pad chains should have type: "DrumChain" (with mappedPitch) in production,
+    // but the mock defaults to "Chain". See read-device-path.test.js for accurate DrumChain tests.
     it("handles drum rack drum chains with hasSoloedChain property", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
@@ -263,47 +274,59 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
-          "drum-chains",
+          "drum-pads",
         ],
       });
       expect(result.instrument).toEqual({
         id: "drum_rack",
         type: "drum-rack",
         name: "My Drums",
-        drumChains: [
+        drumPads: [
           {
+            id: "kick_pad",
             name: "Kick",
             note: 36,
             pitch: "C1",
             state: "muted-via-solo",
-            chain: {
-              name: "Kick",
-              state: "muted-via-solo",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
+            chains: [
+              {
+                id: "kick_chain",
+                type: "Chain",
+                name: "Kick",
+                color: "#FF0000",
+                state: "muted-via-solo",
+                devices: [
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ],
+              },
+            ],
           },
           {
+            id: "snare_pad",
             name: "Snare",
             note: 38,
             pitch: "D1",
             state: "soloed",
-            chain: {
-              name: "Snare",
-              state: "soloed",
-              devices: [
-                expect.objectContaining({
-                  type: "instrument: Simpler",
-                }),
-              ],
-            },
+            chains: [
+              {
+                id: "snare_chain",
+                type: "Chain",
+                name: "Snare",
+                color: "#00FF00",
+                state: "soloed",
+                devices: [
+                  expect.objectContaining({
+                    type: "instrument: Simpler",
+                  }),
+                ],
+              },
+            ],
           },
         ],
       });
@@ -343,7 +366,7 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",

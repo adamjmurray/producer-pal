@@ -1,5 +1,6 @@
 import {
   midiPitchToName,
+  nameToMidiPitch,
   intervalsToPitchClasses,
   PITCH_CLASS_NAMES,
 } from "./midi-pitch-to-name.js";
@@ -106,6 +107,51 @@ describe("intervalsToPitchClasses", () => {
       expect(result[0]).toBe(PITCH_CLASS_NAMES[rootNote]);
       expect(result[1]).toBe(PITCH_CLASS_NAMES[(rootNote + 2) % 12]);
       expect(result[2]).toBe(PITCH_CLASS_NAMES[(rootNote + 4) % 12]);
+    }
+  });
+});
+
+describe("nameToMidiPitch", () => {
+  it("converts note names to MIDI pitch numbers", () => {
+    expect(nameToMidiPitch("C3")).toBe(60); // Middle C
+    expect(nameToMidiPitch("A3")).toBe(69); // A440 (uses C3=60 convention)
+    expect(nameToMidiPitch("C-2")).toBe(0); // Lowest MIDI note
+    expect(nameToMidiPitch("G8")).toBe(127); // Highest MIDI note
+  });
+
+  it("handles sharps", () => {
+    expect(nameToMidiPitch("C#3")).toBe(61);
+    expect(nameToMidiPitch("F#3")).toBe(66);
+    expect(nameToMidiPitch("G#2")).toBe(56);
+  });
+
+  it("handles flats", () => {
+    expect(nameToMidiPitch("Db3")).toBe(61);
+    expect(nameToMidiPitch("Bb3")).toBe(70);
+    expect(nameToMidiPitch("Eb3")).toBe(63);
+  });
+
+  it("handles negative octaves", () => {
+    expect(nameToMidiPitch("C-2")).toBe(0);
+    expect(nameToMidiPitch("C-1")).toBe(12);
+    expect(nameToMidiPitch("B-1")).toBe(23);
+  });
+
+  it("is case-insensitive for pitch class", () => {
+    expect(nameToMidiPitch("c3")).toBe(60);
+    expect(nameToMidiPitch("C3")).toBe(60);
+  });
+
+  it("throws on invalid input", () => {
+    expect(() => nameToMidiPitch("")).toThrow("Invalid note name");
+    expect(() => nameToMidiPitch("X3")).toThrow("Invalid note name format");
+    expect(() => nameToMidiPitch("C")).toThrow("Invalid note name");
+  });
+
+  it("round-trips with midiPitchToName for flat notes", () => {
+    for (let pitch = 0; pitch <= 127; pitch++) {
+      const name = midiPitchToName(pitch);
+      expect(nameToMidiPitch(name)).toBe(pitch);
     }
   });
 });

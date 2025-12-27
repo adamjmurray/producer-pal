@@ -302,11 +302,11 @@ describe("SettingsScreen", () => {
       ).toBeDefined();
     });
 
-    it("shows new conversation message when settings configured", () => {
+    it("does not show browser storage message when settings configured", () => {
       render(<SettingsScreen {...defaultProps} settingsConfigured={true} />);
       expect(
-        screen.getByText("Note: Settings changes apply to new conversations."),
-      ).toBeDefined();
+        screen.queryByText("Settings will be stored in this web browser."),
+      ).toBeNull();
     });
   });
 

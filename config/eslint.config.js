@@ -132,7 +132,7 @@ const jsdocRules = {
       publicOnly: { esm: true }, // Only require JSDoc on exported functions
     },
   ],
-  "jsdoc/require-param": "error",
+  "jsdoc/require-param": ["error", { enableFixer: false }],
   "jsdoc/require-param-description": "error",
   "jsdoc/require-param-type": "error",
   "jsdoc/require-returns": "error",

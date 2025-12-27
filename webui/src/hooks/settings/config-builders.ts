@@ -60,7 +60,13 @@ function isOpenAIProvider(baseUrl?: string): boolean {
   return baseUrl === "https://api.openai.com/v1";
 }
 
-type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
+export type ReasoningEffort =
+  | "none"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh";
 
 /**
  * Maps thinking UI setting to reasoning effort for OpenRouter.
@@ -68,7 +74,7 @@ type ReasoningEffort = "none" | "minimal" | "low" | "medium" | "high" | "xhigh";
  * @param {string} thinking - Thinking mode setting from UI
  * @returns {ReasoningEffort | undefined} - reasoning effort value or undefined
  */
-function mapThinkingToOpenRouterEffort(
+export function mapThinkingToOpenRouterEffort(
   thinking: string,
 ): ReasoningEffort | undefined {
   switch (thinking) {
@@ -82,7 +88,7 @@ function mapThinkingToOpenRouterEffort(
       return "medium";
     case "High":
       return "high";
-    case "XHigh":
+    case "Ultra":
       return "xhigh";
     default:
       return undefined; // Default - let API use its default
@@ -129,15 +135,15 @@ function supportsXHigh(model: string): boolean {
 
 /**
  * Maps thinking UI setting to OpenAI reasoning_effort parameter based on model.
- * - o1/o3: low, medium, high (Minimal→low, XHigh→high)
- * - gpt-5.1: none, minimal, low, medium, high (XHigh→high, except codex-max)
+ * - o1/o3: low, medium, high (Minimal→low, Ultra→high)
+ * - gpt-5.1: none, minimal, low, medium, high (Ultra→high, except codex-max)
  * - gpt-5.2+: none, minimal, low, medium, high, xhigh
  * - Other models: undefined (no reasoning_effort sent)
  * @param {string} thinking - Thinking mode setting from UI
  * @param {string} model - Model identifier
  * @returns {ReasoningEffort | undefined} - reasoning_effort value or undefined
  */
-function mapThinkingToReasoningEffort(
+export function mapThinkingToReasoningEffort(
   thinking: string,
   model: string,
 ): ReasoningEffort | undefined {
@@ -154,14 +160,14 @@ function mapThinkingToReasoningEffort(
     // o1/o3: only supports low, medium, high (no "none" option)
     switch (thinking) {
       case "Off":
+      case "Minimal":
         return "low"; // o1/o3 minimum is low
       case "Low":
-      case "Minimal":
         return "low";
       case "Medium":
         return "medium";
       case "High":
-      case "XHigh":
+      case "Ultra":
         return "high";
       default:
         return undefined; // Default - let API use its default
@@ -180,7 +186,7 @@ function mapThinkingToReasoningEffort(
       return "medium";
     case "High":
       return "high";
-    case "XHigh":
+    case "Ultra":
       return supportsXHigh(model) ? "xhigh" : "high";
     default:
       return undefined; // Default - let API use its default

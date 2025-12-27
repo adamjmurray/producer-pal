@@ -9,7 +9,7 @@ import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack", () => {
-  describe("drumChains", () => {
+  describe("drumPads", () => {
     it("returns null when instrument rack first chain has no devices", () => {
       mockLiveApiGet({
         Track: mockTrackProperties({
@@ -174,11 +174,11 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
-          "drum-chains",
+          "drum-pads",
         ],
       });
 
@@ -186,8 +186,8 @@ describe("readTrack", () => {
       expect(result.id).toBe("track1");
       expect(result.instrument).toBeDefined();
 
-      // drumChains only included when drum-chains is requested
-      // expect(result.instrument.drumChains).toEqual([
+      // drumPads only included when drum-pads is requested
+      // expect(result.instrument.drumPads).toEqual([
       //   expect.objectContaining({
       //     name: "Kick",
       //     note: 36,
@@ -201,9 +201,9 @@ describe("readTrack", () => {
       // ]);
 
       // // The kick pad should not have hasInstrument property
-      // expect(result.instrument.drumChains[0]).not.toHaveProperty("hasInstrument");
+      // expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
       // // The empty pad should have hasInstrument: false
-      // expect(result.instrument.drumChains[1]).toHaveProperty(
+      // expect(result.instrument.drumPads[1]).toHaveProperty(
       //   "hasInstrument",
       //   false,
       // );
@@ -409,18 +409,18 @@ describe("readTrack", () => {
         trackIndex: 0,
         include: [
           "clip-notes",
-          "rack-chains",
+          "chains",
           "instruments",
           "session-clips",
           "arrangement-clips",
-          "drum-chains",
+          "drum-pads",
           "drum-maps", // Need to explicitly request drum-maps now
         ],
       });
 
-      // drumChains only included when drum-chains is requested
+      // drumPads only included when drum-pads is requested
       // Should detect the nested instrument and not add hasInstrument property
-      // expect(result.instrument.drumChains[0]).not.toHaveProperty("hasInstrument");
+      // expect(result.instrument.drumPads[0]).not.toHaveProperty("hasInstrument");
 
       // drumMap should include the drum chain since it has a nested instrument
       expect(result.drumMap).toEqual({

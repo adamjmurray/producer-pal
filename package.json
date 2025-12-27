@@ -1,6 +1,6 @@
 {
   "name": "producer-pal",
-  "version": "1.3.2",
+  "version": "1.3.3",
   "description": "Producer Pal - AI assistant for music composition inside Ableton Live using an MCP server in a Max for Live device",
   "homepage": "https://producer-pal.org",
   "repository": {
@@ -41,6 +41,7 @@
     "format:check": "prettier --config config/prettier.config.mjs --ignore-path config/.prettierignore --check .",
     "lint": "eslint --config config/eslint.config.js .",
     "lint:fix": "npm run lint -- --fix",
+    "loc": "cloc --vcs=git config dev-docs claude-desktop-extension max-for-live-device npm scripts src tests webui docs",
     "knowledge-base": "npm run test:coverage && node scripts/generate-knowledge-base.mjs",
     "kb": "npm run knowledge-base",
     "kb:chatgpt": "npm run knowledge-base -- --concat",
