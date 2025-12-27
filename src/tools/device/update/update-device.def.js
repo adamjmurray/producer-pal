@@ -3,14 +3,16 @@ import { defineTool } from "../../shared/tool-framework/define-tool.js";
 
 export const toolDefUpdateDevice = defineTool("ppal-update-device", {
   title: "Update Device",
-  description: "Update device(s)",
+  description: "Update device(s), chain(s), or drum pad(s)",
   annotations: {
     readOnlyHint: false,
     destructiveHint: true,
   },
   inputSchema: {
-    ids: z.string().describe("comma-separated device ID(s) to update"),
-    name: z.string().optional().describe("device display name"),
+    ids: z
+      .string()
+      .describe("comma-separated ID(s) to update (device, chain, or drum pad)"),
+    name: z.string().optional().describe("display name"),
     collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: z
       .string()
@@ -45,5 +47,19 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .describe(
         "AB Compare: switch to 'a' or 'b' preset, or 'save' current to other slot",
       ),
+    mute: z.boolean().optional().describe("mute state (chains/drum pads only)"),
+    solo: z.boolean().optional().describe("solo state (chains/drum pads only)"),
+    color: z.string().optional().describe("color #RRGGBB (chains only)"),
+    chokeGroup: z
+      .number()
+      .int()
+      .min(0)
+      .max(16)
+      .optional()
+      .describe("choke group 0-16, 0=none (drum chains only)"),
+    mappedPitch: z
+      .string()
+      .optional()
+      .describe("output MIDI note e.g. 'C3' (drum chains only)"),
   },
 });

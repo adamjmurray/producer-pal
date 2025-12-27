@@ -5,6 +5,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiSet,
+  liveApiType,
 } from "../../../test/mock-live-api.js";
 import { updateDevice } from "./update-device.js";
 import "../../../live-api-adapter/live-api-extensions.js";
@@ -12,6 +13,9 @@ import "../../../live-api-adapter/live-api-extensions.js";
 describe("updateDevice", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    // Default: all objects are Device type (valid for update)
+    liveApiType.mockImplementation(() => "Device");
 
     liveApiId.mockImplementation(function () {
       switch (this._path) {
@@ -405,9 +409,15 @@ describe("updateDevice", () => {
   });
 
   // macroVariation tests are in update-device-macro-variation.test.js
+  // Chain and DrumPad tests are in update-device-chains.test.js
 
   describe("macroCount", () => {
     beforeEach(() => {
+      // id 123 is a RackDevice (supports macroCount), id 456 is a regular Device
+      liveApiType.mockImplementation(function () {
+        return this._path === "id 123" ? "RackDevice" : "Device";
+      });
+
       liveApiGet.mockImplementation(function (prop) {
         if (this._path === "id 123") {
           if (prop === "can_have_chains") return [1];
@@ -431,7 +441,7 @@ describe("updateDevice", () => {
       });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        "updateDevice: macro count only available on rack devices",
+        "updateDevice: 'macroCount' not applicable to Device",
       );
       expect(liveApiCall).not.toHaveBeenCalled();
       expect(result).toEqual({ id: "456" });

@@ -1,23 +1,63 @@
 import * as console from "#src/shared/v8-max-console.js";
-import {
-  isPanLabel,
-  isNoteName,
-  noteNameToMidi,
-} from "#src/tools/shared/device/helpers/device-display-helpers.js";
+import { noteNameToMidi } from "#src/tools/shared/device/helpers/device-display-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import {
+  setParamValues,
+  updateABCompare,
+  updateCollapsedState,
+  updateMacroCount,
+  updateMacroVariation,
+} from "./update-device-helpers.js";
+
+// ============================================================================
+// Type detection helpers
+// ============================================================================
+
+function isValidUpdateType(type) {
+  return (
+    type.endsWith("Device") || type.endsWith("Chain") || type === "DrumPad"
+  );
+}
+
+function isDeviceType(type) {
+  return type.endsWith("Device");
+}
+
+function isRackDevice(type) {
+  return type === "RackDevice";
+}
+
+function isChainType(type) {
+  return type.endsWith("Chain");
+}
+
+function warnIfSet(paramName, value, type) {
+  if (value != null) {
+    console.error(`updateDevice: '${paramName}' not applicable to ${type}`);
+  }
+}
+
+// ============================================================================
+// Main export
+// ============================================================================
 
 /**
- * Update device(s) by ID
+ * Update device(s), chain(s), or drum pad(s) by ID
  * @param {object} args - The parameters
- * @param {string} args.ids - Comma-separated device ID(s)
- * @param {string} [args.name] - Device display name
- * @param {boolean} [args.collapsed] - Collapse/expand device view
- * @param {string} [args.params] - JSON: {"paramId": value, ...} - values in display units
- * @param {string} [args.macroVariation] - Rack variation action
- * @param {number} [args.macroVariationIndex] - Rack variation index
- * @param {number} [args.macroCount] - Rack visible macro count (0-16)
- * @param {string} [args.abCompare] - A/B Compare action: a, b, or save
- * @returns {object|Array} Updated device info(s)
+ * @param {string} args.ids - Comma-separated ID(s)
+ * @param {string} [args.name] - Display name
+ * @param {boolean} [args.collapsed] - Collapse/expand device view (devices only)
+ * @param {string} [args.params] - JSON: {"paramId": value} (devices only)
+ * @param {string} [args.macroVariation] - Rack variation action (racks only)
+ * @param {number} [args.macroVariationIndex] - Rack variation index (racks only)
+ * @param {number} [args.macroCount] - Rack visible macro count 0-16 (racks only)
+ * @param {string} [args.abCompare] - A/B Compare action (devices only)
+ * @param {boolean} [args.mute] - Mute state (chains/drum pads only)
+ * @param {boolean} [args.solo] - Solo state (chains/drum pads only)
+ * @param {string} [args.color] - Color #RRGGBB (chains only)
+ * @param {number} [args.chokeGroup] - Choke group 0-16 (drum chains only)
+ * @param {string} [args.mappedPitch] - Output MIDI note (drum chains only)
+ * @returns {object|Array} Updated object info(s)
  */
 export function updateDevice({
   ids,
@@ -28,299 +68,185 @@ export function updateDevice({
   macroVariationIndex,
   macroCount,
   abCompare,
+  mute,
+  solo,
+  color,
+  chokeGroup,
+  mappedPitch,
 }) {
-  const deviceIds = parseCommaSeparatedIds(ids);
-  const updatedDevices = [];
+  const targetIds = parseCommaSeparatedIds(ids);
+  const results = [];
 
-  for (const id of deviceIds) {
-    const device = LiveAPI.from(id);
+  for (const id of targetIds) {
+    const target = LiveAPI.from(id);
 
-    if (!device.exists()) {
+    if (!target.exists()) {
       console.error(`updateDevice: id "${id}" does not exist`);
       continue;
     }
 
-    if (name != null) {
-      device.set("name", name);
-    }
+    const result = updateTarget(target, {
+      name,
+      collapsed,
+      params,
+      macroVariation,
+      macroVariationIndex,
+      macroCount,
+      abCompare,
+      mute,
+      solo,
+      color,
+      chokeGroup,
+      mappedPitch,
+    });
 
-    if (collapsed != null) {
-      updateCollapsedState(device, collapsed);
+    if (result) {
+      results.push(result);
     }
-
-    if (params != null) {
-      setParamValues(params);
-    }
-
-    if (macroVariation != null || macroVariationIndex != null) {
-      updateMacroVariation(device, macroVariation, macroVariationIndex);
-    }
-
-    if (macroCount != null) {
-      updateMacroCount(device, macroCount);
-    }
-
-    if (abCompare != null) {
-      updateABCompare(device, abCompare);
-    }
-
-    updatedDevices.push({ id: device.id });
   }
 
-  if (updatedDevices.length === 0) {
+  if (results.length === 0) {
     return [];
   }
 
-  return updatedDevices.length === 1 ? updatedDevices[0] : updatedDevices;
+  return results.length === 1 ? results[0] : results;
 }
 
-function updateCollapsedState(device, collapsed) {
-  const deviceView = new LiveAPI(`${device.path} view`);
+// ============================================================================
+// Target update logic
+// ============================================================================
 
-  if (deviceView.exists()) {
-    deviceView.set("is_collapsed", collapsed ? 1 : 0);
+function updateTarget(target, options) {
+  const type = target.type;
+
+  // Validate type is updatable
+  if (!isValidUpdateType(type)) {
+    throw new Error(`updateDevice: cannot update ${type} objects`);
   }
+
+  // Universal: name works on all types
+  if (options.name != null) {
+    target.set("name", options.name);
+  }
+
+  if (isDeviceType(type)) {
+    updateDeviceProperties(target, type, options);
+  } else {
+    updateNonDeviceProperties(target, type, options);
+  }
+
+  return { id: target.id };
 }
 
-function setParamValues(paramsJson) {
-  const paramValues = JSON.parse(paramsJson);
+function updateDeviceProperties(target, type, options) {
+  const {
+    collapsed,
+    params,
+    macroVariation,
+    macroVariationIndex,
+    macroCount,
+    abCompare,
+    mute,
+    solo,
+    color,
+    chokeGroup,
+    mappedPitch,
+  } = options;
 
-  for (const [paramId, inputValue] of Object.entries(paramValues)) {
-    const param = LiveAPI.from(paramId);
+  // All *Device types support these
+  if (collapsed != null) {
+    updateCollapsedState(target, collapsed);
+  }
 
-    if (!param.exists()) {
-      console.error(`updateDevice: param id "${paramId}" does not exist`);
-      continue;
+  if (params != null) {
+    setParamValues(params);
+  }
+
+  if (abCompare != null) {
+    updateABCompare(target, abCompare);
+  }
+
+  // Rack-only properties
+  if (isRackDevice(type)) {
+    if (macroVariation != null || macroVariationIndex != null) {
+      updateMacroVariation(target, macroVariation, macroVariationIndex);
     }
 
-    setParamValue(param, inputValue);
+    if (macroCount != null) {
+      updateMacroCount(target, macroCount);
+    }
+  } else {
+    warnIfSet("macroVariation", macroVariation, type);
+    warnIfSet("macroVariationIndex", macroVariationIndex, type);
+    warnIfSet("macroCount", macroCount, type);
   }
+
+  // Warn for non-device properties on devices
+  warnIfSet("mute", mute, type);
+  warnIfSet("solo", solo, type);
+  warnIfSet("color", color, type);
+  warnIfSet("chokeGroup", chokeGroup, type);
+  warnIfSet("mappedPitch", mappedPitch, type);
 }
 
-function setParamValue(param, inputValue) {
-  const isQuantized = param.getProperty("is_quantized") > 0;
+function updateNonDeviceProperties(target, type, options) {
+  const {
+    collapsed,
+    params,
+    macroVariation,
+    macroVariationIndex,
+    macroCount,
+    abCompare,
+    mute,
+    solo,
+    color,
+    chokeGroup,
+    mappedPitch,
+  } = options;
 
-  // 1. Enum - string input with quantized param
-  if (isQuantized && typeof inputValue === "string") {
-    const valueItems = param.get("value_items");
-    const index = valueItems.indexOf(inputValue);
+  // Warn for device-only properties
+  warnIfSet("collapsed", collapsed, type);
+  warnIfSet("params", params, type);
+  warnIfSet("macroVariation", macroVariation, type);
+  warnIfSet("macroVariationIndex", macroVariationIndex, type);
+  warnIfSet("macroCount", macroCount, type);
+  warnIfSet("abCompare", abCompare, type);
 
-    if (index === -1) {
-      console.error(
-        `updateDevice: "${inputValue}" is not valid. Options: ${valueItems.join(", ")}`,
-      );
+  // Mute/solo work on Chain, DrumChain, DrumPad
+  if (mute != null) {
+    target.set("mute", mute ? 1 : 0);
+  }
 
-      return;
+  if (solo != null) {
+    target.set("solo", solo ? 1 : 0);
+  }
+
+  // Color works on Chain and DrumChain (not DrumPad)
+  if (isChainType(type)) {
+    if (color != null) {
+      target.setColor(color);
+    }
+  } else {
+    warnIfSet("color", color, type);
+  }
+
+  // DrumChain only: chokeGroup, mappedPitch
+  if (type === "DrumChain") {
+    if (chokeGroup != null) {
+      target.set("choke_group", chokeGroup);
     }
 
-    param.set("value", index);
+    if (mappedPitch != null) {
+      const midiNote = noteNameToMidi(mappedPitch);
 
-    return;
-  }
-
-  // 2. Note - string matching note pattern (e.g., "C4", "F#-1")
-  if (isNoteName(inputValue)) {
-    const midi = noteNameToMidi(inputValue);
-
-    if (midi == null) {
-      console.error(`updateDevice: invalid note name "${inputValue}"`);
-
-      return;
+      if (midiNote != null) {
+        target.set("out_note", midiNote);
+      } else {
+        console.error(`updateDevice: invalid note name "${mappedPitch}"`);
+      }
     }
-
-    param.set("value", midi);
-
-    return;
-  }
-
-  // 3. Pan - detect via current label, convert -1/1 to internal range
-  const currentValue = param.getProperty("value");
-  const currentLabel = param.call("str_for_value", currentValue);
-
-  if (isPanLabel(currentLabel)) {
-    const min = param.getProperty("min");
-    const max = param.getProperty("max");
-    // Convert -1 to 1 → internal range
-    const internalValue = ((inputValue + 1) / 2) * (max - min) + min;
-
-    param.set("value", internalValue);
-
-    return;
-  }
-
-  // 4. All other numeric - set display_value directly
-  param.set("display_value", inputValue);
-}
-
-/**
- * Update macro variation state for rack devices
- * @param {object} device - Live API device object
- * @param {string} [action] - Variation action: create, load, delete, revert, randomize
- * @param {number} [index] - Variation index for load/delete (0-based)
- */
-function updateMacroVariation(device, action, index) {
-  const canHaveChains = device.getProperty("can_have_chains");
-
-  if (!canHaveChains) {
-    console.error(
-      "updateDevice: macro variations only available on rack devices",
-    );
-
-    return;
-  }
-
-  if (!validateMacroVariationParams(action, index)) {
-    return;
-  }
-
-  warnIfIndexIgnored(action, index);
-
-  if (!setVariationIndex(device, action, index)) {
-    return;
-  }
-
-  executeMacroVariationAction(device, action);
-}
-
-function validateMacroVariationParams(action, index) {
-  if (index != null && action == null) {
-    console.error(
-      "updateDevice: macroVariationIndex requires macroVariation 'load' or 'delete'",
-    );
-
-    return false;
-  }
-
-  if ((action === "load" || action === "delete") && index == null) {
-    console.error(
-      `updateDevice: macroVariation '${action}' requires macroVariationIndex`,
-    );
-
-    return false;
-  }
-
-  return true;
-}
-
-function warnIfIndexIgnored(action, index) {
-  if (index == null) {
-    return;
-  }
-
-  if (action === "create") {
-    console.error(
-      "updateDevice: macroVariationIndex ignored for 'create' (variations always appended)",
-    );
-  } else if (action === "revert") {
-    console.error("updateDevice: macroVariationIndex ignored for 'revert'");
-  } else if (action === "randomize") {
-    console.error("updateDevice: macroVariationIndex ignored for 'randomize'");
-  }
-}
-
-function setVariationIndex(device, action, index) {
-  if ((action !== "load" && action !== "delete") || index == null) {
-    return true;
-  }
-
-  const variationCount = device.getProperty("variation_count");
-
-  if (index >= variationCount) {
-    console.error(
-      `updateDevice: variation index ${index} out of range (${variationCount} available)`,
-    );
-
-    return false;
-  }
-
-  device.set("selected_variation_index", index);
-
-  return true;
-}
-
-function executeMacroVariationAction(device, action) {
-  switch (action) {
-    case "create":
-      device.call("store_variation");
-      break;
-    case "load":
-      device.call("recall_selected_variation");
-      break;
-    case "revert":
-      device.call("recall_last_used_variation");
-      break;
-    case "delete":
-      device.call("delete_selected_variation");
-      break;
-    case "randomize":
-      device.call("randomize_macros");
-      break;
-  }
-}
-
-/**
- * Update visible macro count for rack devices.
- * Macros are added/removed in pairs, so odd counts are rounded up to the next even.
- * @param {object} device - Live API device object
- * @param {number} targetCount - Target number of visible macros (0-16)
- */
-function updateMacroCount(device, targetCount) {
-  const canHaveChains = device.getProperty("can_have_chains");
-
-  if (!canHaveChains) {
-    console.error("updateDevice: macro count only available on rack devices");
-
-    return;
-  }
-
-  // Macros are added/removed in pairs - round up odd numbers to next even
-  let effectiveTarget = targetCount;
-
-  if (targetCount % 2 !== 0) {
-    effectiveTarget = Math.min(targetCount + 1, 16);
-    console.error(
-      `updateDevice: macro count rounded from ${targetCount} to ${effectiveTarget} (macros come in pairs)`,
-    );
-  }
-
-  const currentCount = device.getProperty("visible_macro_count");
-  const diff = effectiveTarget - currentCount;
-  const pairCount = Math.abs(diff) / 2;
-
-  if (diff > 0) {
-    for (let i = 0; i < pairCount; i++) {
-      device.call("add_macro");
-    }
-  } else if (diff < 0) {
-    for (let i = 0; i < pairCount; i++) {
-      device.call("remove_macro");
-    }
-  }
-}
-
-/**
- * Update A/B Compare state for devices that support it
- * @param {object} device - Live API device object
- * @param {string} action - "a", "b", or "save"
- */
-function updateABCompare(device, action) {
-  const canCompareAB = device.getProperty("can_compare_ab");
-
-  if (!canCompareAB) {
-    console.error("updateDevice: A/B Compare not available on this device");
-
-    return;
-  }
-
-  switch (action) {
-    case "a":
-      device.set("is_using_compare_preset_b", 0);
-      break;
-    case "b":
-      device.set("is_using_compare_preset_b", 1);
-      break;
-    case "save":
-      device.call("save_preset_to_compare_ab_slot");
-      break;
+  } else {
+    warnIfSet("chokeGroup", chokeGroup, type);
+    warnIfSet("mappedPitch", mappedPitch, type);
   }
 }
