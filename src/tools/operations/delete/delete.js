@@ -1,20 +1,19 @@
+import * as console from "#src/shared/v8-max-console.js";
 import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
+import { resolvePathToLiveApi } from "../../shared/device/helpers/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "../../shared/utils.js";
 import { validateIdTypes } from "../../shared/validation/id-validation.js";
 
 /**
- * Deletes objects by ids
+ * Deletes objects by ids and/or paths
  * @param {object} args - The parameters
- * @param {string} args.ids - ID or comma-separated list of IDs to delete
+ * @param {string} [args.ids] - ID or comma-separated list of IDs to delete
+ * @param {string} [args.path] - Device path or comma-separated paths to delete (only for type "device")
  * @param {string} args.type - Type of objects to delete ("track", "scene", "clip", or "device")
  * @param {object} _context - Internal context object (unused)
  * @returns {object | Array<object>} Result object(s) with success information
  */
-export function deleteObject({ ids, type } = {}, _context = {}) {
-  if (!ids) {
-    throw new Error("delete failed: ids is required");
-  }
-
+export function deleteObject({ ids, path, type } = {}, _context = {}) {
   if (!type) {
     throw new Error("delete failed: type is required");
   }
@@ -25,8 +24,27 @@ export function deleteObject({ ids, type } = {}, _context = {}) {
     );
   }
 
-  // Parse comma-separated string into array
-  const objectIds = parseCommaSeparatedIds(ids);
+  // Handle path parameter - only valid for devices
+  if (path && type !== "device") {
+    console.error(
+      `delete: path parameter is only valid for type "device", ignoring paths`,
+    );
+  }
+
+  // Collect IDs from both sources
+  const objectIds = ids ? parseCommaSeparatedIds(ids) : [];
+
+  // Resolve paths to IDs for device type
+  if (path && type === "device") {
+    const paths = parseCommaSeparatedIds(path);
+    const pathIds = resolvePathsToIds(paths);
+
+    objectIds.push(...pathIds);
+  }
+
+  if (objectIds.length === 0) {
+    throw new Error("delete failed: ids or path is required");
+  }
 
   const deletedObjects = [];
 
@@ -175,4 +193,39 @@ function deleteObjectByType(type, id, object) {
   } else if (type === "device") {
     deleteDeviceObject(id, object);
   }
+}
+
+/**
+ * Resolves device paths to their IDs
+ * @param {string[]} paths - Array of device paths to resolve
+ * @returns {string[]} Array of resolved device IDs
+ */
+function resolvePathsToIds(paths) {
+  const ids = [];
+
+  for (const devicePath of paths) {
+    try {
+      const resolved = resolvePathToLiveApi(devicePath);
+
+      if (resolved.targetType !== "device") {
+        console.error(
+          `delete: path "${devicePath}" resolves to ${resolved.targetType}, not device`,
+        );
+        continue;
+      }
+
+      const device = new LiveAPI(resolved.liveApiPath);
+
+      if (!device.exists()) {
+        console.error(`delete: device at path "${devicePath}" does not exist`);
+        continue;
+      }
+
+      ids.push(device.id);
+    } catch (e) {
+      console.error(`delete: ${e.message}`);
+    }
+  }
+
+  return ids;
 }

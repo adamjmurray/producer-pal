@@ -11,8 +11,15 @@ export const toolDefDelete = defineTool("ppal-delete", {
   inputSchema: {
     ids: z
       .string()
+      .optional()
       .describe(
         "comma-separated list of object IDs to delete (must be same type)",
+      ),
+    path: z
+      .string()
+      .optional()
+      .describe(
+        "comma-separated device paths to delete (e.g., '0/1', '1/0/2/1') - only for type 'device'",
       ),
     type: z
       .enum(["track", "scene", "clip", "device"])

@@ -238,10 +238,8 @@ describe("deleteObject", () => {
     ]);
   });
 
-  it("should throw an error when ids arg is missing", () => {
-    const expectedError = "delete failed: ids is required";
-    expect(() => deleteObject()).toThrow(expectedError);
-    expect(() => deleteObject({})).toThrow(expectedError);
+  it("should throw an error when neither ids nor path is provided", () => {
+    const expectedError = "delete failed: ids or path is required";
     expect(() => deleteObject({ type: "clip" })).toThrow(expectedError);
   });
 

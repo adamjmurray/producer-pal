@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import * as console from "#src/shared/v8-max-console.js";
 import {
   liveApiCall,
   liveApiId,
@@ -249,6 +250,176 @@ describe("deleteObject device deletion", () => {
         }),
         "delete_device",
         2,
+      );
+    });
+  });
+
+  describe("path-based deletion", () => {
+    it("should delete a device by path", () => {
+      const deviceId = "device_by_path";
+      const devicePath = "live_set tracks 0 devices 1";
+      liveApiId.mockImplementation(function () {
+        // When looking up by path, return the device ID
+        if (this._path === devicePath) {
+          return deviceId;
+        }
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === deviceId || this._path === devicePath) {
+          return devicePath;
+        }
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === deviceId || this._path === devicePath) {
+          return "Device";
+        }
+      });
+
+      const result = deleteObject({ path: "0/1", type: "device" });
+
+      expect(result).toEqual({ id: deviceId, type: "device", deleted: true });
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({ path: "live_set tracks 0" }),
+        "delete_device",
+        1,
+      );
+    });
+
+    it("should delete multiple devices by path", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "dev_0_0";
+        if (this._path === "live_set tracks 1 devices 1") return "dev_1_1";
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "dev_0_0") return "live_set tracks 0 devices 0";
+        if (this._id === "dev_1_1") return "live_set tracks 1 devices 1";
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (["dev_0_0", "dev_1_1"].includes(this._id)) return "Device";
+        if (this._path?.includes("devices")) return "Device";
+      });
+
+      const result = deleteObject({ path: "0/0, 1/1", type: "device" });
+
+      expect(result).toEqual([
+        { id: "dev_0_0", type: "device", deleted: true },
+        { id: "dev_1_1", type: "device", deleted: true },
+      ]);
+    });
+
+    it("should delete devices from both ids and path", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "dev_by_path";
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "dev_by_id") return "live_set tracks 1 devices 1";
+        if (this._id === "dev_by_path") return "live_set tracks 0 devices 0";
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (["dev_by_id", "dev_by_path"].includes(this._id)) return "Device";
+        if (this._path?.includes("devices")) return "Device";
+      });
+
+      const result = deleteObject({
+        ids: "dev_by_id",
+        path: "0/0",
+        type: "device",
+      });
+
+      expect(result).toEqual([
+        { id: "dev_by_id", type: "device", deleted: true },
+        { id: "dev_by_path", type: "device", deleted: true },
+      ]);
+    });
+
+    it("should delete nested device by path", () => {
+      const devicePath = "live_set tracks 1 devices 0 chains 2 devices 1";
+      liveApiId.mockImplementation(function () {
+        if (this._path === devicePath) return "nested_dev";
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "nested_dev" || this._path === devicePath) {
+          return devicePath;
+        }
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === "nested_dev" || this._path === devicePath) {
+          return "Device";
+        }
+      });
+
+      const result = deleteObject({ path: "1/0/2/1", type: "device" });
+
+      expect(result).toEqual({
+        id: "nested_dev",
+        type: "device",
+        deleted: true,
+      });
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({
+          path: "live_set tracks 1 devices 0 chains 2",
+        }),
+        "delete_device",
+        1,
+      );
+    });
+
+    it("should skip invalid paths and continue with valid ones", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "valid_dev";
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "valid_dev") return "live_set tracks 0 devices 0";
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === "valid_dev") return "Device";
+        if (this._path === "live_set tracks 0 devices 0") return "Device";
+      });
+
+      const result = deleteObject({ path: "0/0, 99/99", type: "device" });
+
+      expect(result).toEqual({
+        id: "valid_dev",
+        type: "device",
+        deleted: true,
+      });
+    });
+
+    it("should return empty array when all paths are invalid", () => {
+      liveApiType.mockReturnValue(undefined);
+
+      const result = deleteObject({ path: "99/99", type: "device" });
+
+      expect(result).toEqual([]);
+    });
+
+    it("should warn when path is used with non-device type", () => {
+      const consoleSpy = vi.spyOn(console, "error");
+      liveApiId.mockImplementation(function () {
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "track_1") return "live_set tracks 0";
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === "track_1") return "Track";
+      });
+
+      deleteObject({ ids: "track_1", path: "0/0", type: "track" });
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'delete: path parameter is only valid for type "device", ignoring paths',
       );
     });
   });
