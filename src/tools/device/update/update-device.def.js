@@ -17,9 +17,9 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
       .string()
       .optional()
       .describe(
-        "Device/chain/drum-pad path. Track: number, r+number (return), m (master). " +
+        "Comma-separated device/chain/drum-pad path(s). Track: number, r+number (return), m (master). " +
           "Chain: number, p+note (drum pad), r+number (return chain). " +
-          "Examples: '1/0' (device), '1/0/0' (chain), '1/0/pC1' (drum pad)",
+          "Examples: '1/0' (device), '1/0/0,1/0/1' (chains), '1/0/pC1' (drum pad)",
       ),
     name: z.string().optional().describe("display name (not drum pads)"),
     collapsed: z.boolean().optional().describe("collapse/expand device view"),

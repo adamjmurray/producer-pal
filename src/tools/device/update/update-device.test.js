@@ -159,7 +159,7 @@ describe("updateDevice", () => {
     });
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'updateDevice: id "999" does not exist',
+      'updateDevice: target not found at id "999"',
     );
     expect(result).toEqual([{ id: "123" }, { id: "456" }]);
 

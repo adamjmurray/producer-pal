@@ -66,12 +66,12 @@ describe("updateDevice with path parameter", () => {
       expect(result).toEqual({ id: "device-456" });
     });
 
-    it("should throw error for non-existent device by path", () => {
+    it("should return empty array for non-existent device by path", () => {
       liveApiId.mockReturnValue("0");
 
-      expect(() => updateDevice({ path: "1/0", name: "Test" })).toThrow(
-        "Target not found at path: 1/0",
-      );
+      const result = updateDevice({ path: "1/0", name: "Test" });
+
+      expect(result).toEqual([]);
     });
 
     it("should update device by path on return track", () => {
@@ -160,12 +160,12 @@ describe("updateDevice with path parameter", () => {
       expect(result).toEqual({ id: "chain-123" });
     });
 
-    it("should throw error for non-existent chain by path", () => {
+    it("should return empty array for non-existent chain by path", () => {
       liveApiId.mockReturnValue("0");
 
-      expect(() => updateDevice({ path: "1/0/0", name: "Test" })).toThrow(
-        "Target not found at path: 1/0/0",
-      );
+      const result = updateDevice({ path: "1/0/0", name: "Test" });
+
+      expect(result).toEqual([]);
     });
 
     it("should update return chain by path", () => {
@@ -285,15 +285,15 @@ describe("updateDevice with path parameter", () => {
       expect(result).toEqual({ id: "pad-36" });
     });
 
-    it("should throw error for non-existent drum pad by path", () => {
+    it("should return empty array for non-existent drum pad by path", () => {
       setupDrumPadMocks({
         padIds: ["pad-36"],
         padProperties: { "pad-36": { note: 36, name: "Kick" } }, // C1, not C3
       });
 
-      expect(() => updateDevice({ path: "1/0/pC3", mute: true })).toThrow(
-        "Target not found at path: 1/0/pC3",
-      );
+      const result = updateDevice({ path: "1/0/pC3", mute: true });
+
+      expect(result).toEqual([]);
     });
 
     it("should update drum chain by path", () => {
@@ -334,7 +334,7 @@ describe("updateDevice with path parameter", () => {
       expect(result).toEqual({ id: "chain-1" });
     });
 
-    it("should throw error for invalid chain index in drum pad", () => {
+    it("should return empty array for invalid chain index in drum pad", () => {
       setupDrumPadMocks({
         padIds: ["pad-36"],
         padProperties: {
@@ -342,9 +342,9 @@ describe("updateDevice with path parameter", () => {
         },
       });
 
-      expect(() => updateDevice({ path: "1/0/pC1/5", name: "Test" })).toThrow(
-        "Target not found at path: 1/0/pC1/5",
-      );
+      const result = updateDevice({ path: "1/0/pC1/5", name: "Test" });
+
+      expect(result).toEqual([]);
     });
 
     it("should update device inside drum pad chain by path", () => {
@@ -369,7 +369,7 @@ describe("updateDevice with path parameter", () => {
       expect(result).toEqual({ id: "device-1" });
     });
 
-    it("should throw error for invalid device index in drum pad chain", () => {
+    it("should return empty array for invalid device index in drum pad chain", () => {
       setupDrumPadMocks({
         padIds: ["pad-36"],
         padProperties: {
@@ -378,9 +378,9 @@ describe("updateDevice with path parameter", () => {
         chainProperties: { "chain-1": { name: "Layer 1", deviceIds: [] } },
       });
 
-      expect(() => updateDevice({ path: "1/0/pC1/0/5", name: "Test" })).toThrow(
-        "Target not found at path: 1/0/pC1/0/5",
-      );
+      const result = updateDevice({ path: "1/0/pC1/0/5", name: "Test" });
+
+      expect(result).toEqual([]);
     });
   });
 
@@ -391,10 +391,133 @@ describe("updateDevice with path parameter", () => {
       );
     });
 
-    it("should throw error for track-only path", () => {
-      expect(() => updateDevice({ path: "1", name: "Test" })).toThrow(
-        "Path must include at least a device index",
+    it("should return empty array for track-only path (invalid)", () => {
+      const result = updateDevice({ path: "1", name: "Test" });
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("multiple comma-separated paths", () => {
+    beforeEach(() => {
+      liveApiType.mockReturnValue("Device");
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "device-100";
+        if (this._path === "live_set tracks 0 devices 1") return "device-101";
+        if (this._path === "live_set tracks 1 devices 0") return "device-200";
+        if (this._path === "live_set tracks 1 devices 1") return "0"; // non-existent
+        return "0";
+      });
+    });
+
+    it("should update multiple devices by comma-separated paths", () => {
+      const result = updateDevice({ path: "0/0, 0/1, 1/0", name: "Updated" });
+
+      expect(liveApiSet).toHaveBeenCalledTimes(3);
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-100" }),
+        "name",
+        "Updated",
       );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-101" }),
+        "name",
+        "Updated",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-200" }),
+        "name",
+        "Updated",
+      );
+      expect(result).toEqual([
+        { id: "device-100" },
+        { id: "device-101" },
+        { id: "device-200" },
+      ]);
+    });
+
+    it("should skip non-existent paths and continue with valid ones", () => {
+      const result = updateDevice({ path: "0/0, 1/1, 1/0", name: "Updated" });
+
+      // 1/1 doesn't exist, but 0/0 and 1/0 should be updated
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+    });
+
+    it("should return empty array when all paths are invalid", () => {
+      liveApiId.mockReturnValue("0"); // All paths non-existent
+
+      const result = updateDevice({ path: "0/0, 1/0", name: "Updated" });
+
+      expect(liveApiSet).not.toHaveBeenCalled();
+      expect(result).toEqual([]);
+    });
+
+    it("should return single object when only one path provided", () => {
+      const result = updateDevice({ path: "0/0", name: "Single" });
+
+      expect(result).toEqual({ id: "device-100" });
+    });
+
+    it("should return single object when only one path valid out of many", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "device-100";
+        return "0";
+      });
+
+      const result = updateDevice({ path: "0/0, 1/0, 2/0", name: "Updated" });
+
+      expect(result).toEqual({ id: "device-100" });
+    });
+
+    it("should handle whitespace in comma-separated paths", () => {
+      const result = updateDevice({
+        path: "  0/0  ,  1/0  ",
+        name: "Trimmed",
+      });
+
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+    });
+
+    it("should skip invalid path formats gracefully", () => {
+      // Track-only path is invalid, but device paths should work
+      const result = updateDevice({ path: "0, 0/0, 1/0", name: "Updated" });
+
+      // "0" is invalid (no device index), but "0/0" and "1/0" should work
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(result).toEqual([{ id: "device-100" }, { id: "device-200" }]);
+    });
+  });
+
+  describe("multiple paths with mixed types", () => {
+    it("should update mixed device and chain types", () => {
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 0 devices 0") return "device-100";
+        if (this._path === "live_set tracks 1 devices 0 chains 0")
+          return "chain-200";
+        return "0";
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._path === "live_set tracks 1 devices 0 chains 0")
+          return "Chain";
+        return "Device";
+      });
+
+      const result = updateDevice({ path: "0/0, 1/0/0", name: "Mixed" });
+
+      expect(liveApiSet).toHaveBeenCalledTimes(2);
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "device-100" }),
+        "name",
+        "Mixed",
+      );
+      expect(liveApiSet).toHaveBeenCalledWithThis(
+        expect.objectContaining({ id: "chain-200" }),
+        "name",
+        "Mixed",
+      );
+      expect(result).toEqual([{ id: "device-100" }, { id: "chain-200" }]);
     });
   });
 });

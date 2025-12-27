@@ -102,28 +102,44 @@ export function updateDevice({
     mappedPitch,
   };
 
-  // If path is provided, resolve it to a target
+  // Use path-based or ID-based resolution
   if (path) {
-    const target = resolvePathToTarget(path);
-
-    if (!target) {
-      throw new Error(`Target not found at path: ${path}`);
-    }
-
-    const result = updateTarget(target, updateOptions);
-
-    return result ?? { id: target.id };
+    return updateMultipleTargets(
+      parseCommaSeparatedIds(path),
+      resolvePathToTargetSafe,
+      "path",
+      updateOptions,
+    );
   }
 
-  // Otherwise, use IDs
-  const targetIds = parseCommaSeparatedIds(ids);
+  return updateMultipleTargets(
+    parseCommaSeparatedIds(ids),
+    resolveIdToTarget,
+    "id",
+    updateOptions,
+  );
+}
+
+// ============================================================================
+// Target resolution helpers
+// ============================================================================
+
+/**
+ * Update multiple targets with common logic for path/ID resolution
+ * @param {string[]} items - Array of paths or IDs
+ * @param {Function} resolveItem - Function to resolve item to LiveAPI target
+ * @param {string} itemType - "path" or "id" for error messages
+ * @param {object} updateOptions - Options to pass to updateTarget
+ * @returns {object|Array} Single result or array of results
+ */
+function updateMultipleTargets(items, resolveItem, itemType, updateOptions) {
   const results = [];
 
-  for (const id of targetIds) {
-    const target = LiveAPI.from(id);
+  for (const item of items) {
+    const target = resolveItem(item);
 
-    if (!target.exists()) {
-      console.error(`updateDevice: id "${id}" does not exist`);
+    if (!target) {
+      console.error(`updateDevice: target not found at ${itemType} "${item}"`);
       continue;
     }
 
@@ -141,9 +157,35 @@ export function updateDevice({
   return results.length === 1 ? results[0] : results;
 }
 
+/**
+ * Resolve an ID to a LiveAPI target
+ * @param {string} id - Object ID
+ * @returns {object|null} LiveAPI object or null if not found
+ */
+function resolveIdToTarget(id) {
+  const target = LiveAPI.from(id);
+
+  return target.exists() ? target : null;
+}
+
 // ============================================================================
 // Path resolution
 // ============================================================================
+
+/**
+ * Safely resolve a path to a Live API target, catching errors
+ * @param {string} path - Device/chain/drum-pad path
+ * @returns {object|null} LiveAPI object or null if not found or invalid
+ */
+function resolvePathToTargetSafe(path) {
+  try {
+    return resolvePathToTarget(path);
+  } catch (e) {
+    console.error(`updateDevice: ${e.message}`);
+
+    return null;
+  }
+}
 
 /**
  * Resolve a path to a Live API target (device, chain, or drum pad)
