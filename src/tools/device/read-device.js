@@ -264,6 +264,7 @@ function buildDrumPadInfo(pad, path, options) {
   const isSoloed = pad.getProperty("solo") > 0;
 
   const drumPadInfo = {
+    id: pad.id,
     path,
     name: pad.getProperty("name"),
     note: midiNote,

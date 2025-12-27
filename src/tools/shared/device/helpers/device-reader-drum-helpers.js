@@ -39,6 +39,7 @@ export function processDrumPad(
     ? buildDrumPadPath(parentPath, noteName)
     : null;
   const drumPadInfo = {
+    id: pad.id,
     ...(drumPadPath && { path: drumPadPath }),
     name: pad.getProperty("name"),
     note: midiNote,

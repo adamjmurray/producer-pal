@@ -487,6 +487,7 @@ describe("readDevice with path parameter", () => {
       const result = readDevice({ path: "1/0/pC1", include: [] });
 
       expect(result).toEqual({
+        id: "pad-36",
         path: "1/0/pC1",
         name: "Kick",
         note: 36,

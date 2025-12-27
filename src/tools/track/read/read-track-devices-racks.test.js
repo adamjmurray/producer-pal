@@ -287,6 +287,7 @@ describe("readTrack", () => {
         name: "My Drums",
         drumPads: [
           {
+            id: "kick_pad",
             name: "Kick",
             note: 36,
             pitch: "C1",
@@ -307,6 +308,7 @@ describe("readTrack", () => {
             ],
           },
           {
+            id: "snare_pad",
             name: "Snare",
             note: 38,
             pitch: "D1",
