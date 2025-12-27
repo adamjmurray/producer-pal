@@ -109,6 +109,8 @@ export function ChatScreen({
         mcpStatus={mcpStatus}
         activeModel={activeModel}
         activeProvider={activeProvider}
+        model={model}
+        provider={provider}
         enabledToolsCount={enabledToolsCount}
         totalToolsCount={totalToolsCount}
         hasMessages={messages.length > 0}

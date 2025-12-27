@@ -38,6 +38,7 @@ vi.mock("@modelcontextprotocol/sdk/client/streamableHttp.js", () => ({
 
 describe("useOpenAIChat", () => {
   const defaultProps = {
+    provider: "openai" as const,
     apiKey: "test-key",
     model: "gpt-4",
     thinking: "Low",

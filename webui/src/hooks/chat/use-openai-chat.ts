@@ -1,8 +1,10 @@
 import type { UIMessage } from "#webui/types/messages";
+import type { Provider } from "#webui/types/settings";
 import { openaiAdapter } from "./openai-adapter";
 import { useChat, type RateLimitState } from "./use-chat";
 
 interface UseOpenAIChatProps {
+  provider: Provider;
   apiKey: string;
   model: string;
   thinking: string; // Will be mapped to reasoningEffort
@@ -19,6 +21,7 @@ interface UseOpenAIChatReturn {
   messages: UIMessage[];
   isAssistantResponding: boolean;
   activeModel: string | null;
+  activeProvider: Provider | null;
   activeThinking: string | null;
   activeTemperature: number | null;
   rateLimitState: RateLimitState | null;
@@ -45,6 +48,7 @@ interface UseOpenAIChatReturn {
  * @returns {UseOpenAIChatReturn} Chat state and handlers
  */
 export function useOpenAIChat({
+  provider,
   apiKey,
   model,
   thinking,
@@ -57,6 +61,7 @@ export function useOpenAIChat({
   checkMcpConnection,
 }: UseOpenAIChatProps): UseOpenAIChatReturn {
   return useChat({
+    provider,
     apiKey,
     model,
     thinking,

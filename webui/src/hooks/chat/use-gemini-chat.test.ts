@@ -27,6 +27,7 @@ vi.mock("../config.js", () => ({
 
 describe("useGeminiChat", () => {
   const defaultProps = {
+    provider: "gemini" as const,
     apiKey: "test-key",
     model: "gemini-2.5-flash",
     thinking: "Default",

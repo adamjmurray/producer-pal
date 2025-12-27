@@ -10,6 +10,8 @@ describe("ChatHeader", () => {
     mcpStatus: "connected" as const,
     activeModel: null,
     activeProvider: null,
+    model: "gemini-2.5-pro",
+    provider: "gemini" as const,
     enabledToolsCount: 20,
     totalToolsCount: 20,
     hasMessages: false,
@@ -53,9 +55,10 @@ describe("ChatHeader", () => {
   });
 
   describe("activeModel display", () => {
-    it("does not show model when activeModel is null", () => {
+    it("shows fallback model when activeModel is null", () => {
       render(<ChatHeader {...defaultProps} activeModel={null} />);
-      expect(screen.queryByText(/Gemini/)).toBeNull();
+      // Falls back to model prop from settings
+      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
     });
 
     it("shows provider and model name when both are set", () => {
@@ -102,7 +105,7 @@ describe("ChatHeader", () => {
       expect(screen.getByText("OpenAI | unknown-model")).toBeDefined();
     });
 
-    it("does not show model when activeProvider is null", () => {
+    it("shows fallback provider when activeProvider is null", () => {
       render(
         <ChatHeader
           {...defaultProps}
@@ -110,7 +113,8 @@ describe("ChatHeader", () => {
           activeProvider={null}
         />,
       );
-      expect(screen.queryByText(/Gemini 2.5 Pro/)).toBeNull();
+      // Falls back to provider prop from settings
+      expect(screen.getByText("Google | Gemini 2.5 Pro")).toBeDefined();
     });
   });
 
