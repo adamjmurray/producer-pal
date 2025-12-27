@@ -139,6 +139,11 @@ export class LiveAPI {
       return "Clip";
     }
 
+    // Default chain type for paths like "id chain1" or paths containing "chains"
+    if (this.path?.includes("chain") || this._id?.includes("chain")) {
+      return "Chain";
+    }
+
     return `TODO: Unknown type for path: "${this.path}"`;
   }
 }

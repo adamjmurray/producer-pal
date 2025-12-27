@@ -4,12 +4,13 @@ export const MAX_CLIP_BEATS = 1_000_000;
 export const MAX_ARRANGEMENT_POSITION_BEATS = 1_576_800;
 export const MAX_SLICES = 64;
 
-// State string constants (5 valid states)
+// State string constants (6 valid states)
 export const STATE = {
   ACTIVE: "active",
   MUTED: "muted",
   MUTED_VIA_SOLO: "muted-via-solo",
   MUTED_ALSO_VIA_SOLO: "muted-also-via-solo",
+  MUTED_AND_SOLOED: "muted-and-soloed",
   SOLOED: "soloed",
 };
 

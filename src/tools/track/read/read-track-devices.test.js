@@ -259,6 +259,7 @@ describe("readTrack", () => {
         chains: [
           {
             id: "chain1",
+            type: "Chain",
             name: "Piano",
             color: "#FF0000",
             devices: [
@@ -343,6 +344,7 @@ describe("readTrack", () => {
         chains: [
           {
             id: "chain1",
+            type: "Chain",
             name: "Filter Chain",
             color: "#0000FF",
             devices: [
@@ -442,6 +444,7 @@ describe("readTrack", () => {
         chains: [
           {
             id: "outer_chain",
+            type: "Chain",
             name: "Wet",
             color: "#0000FF",
             devices: [
@@ -452,6 +455,7 @@ describe("readTrack", () => {
                 chains: [
                   {
                     id: "inner_chain",
+                    type: "Chain",
                     name: "Hall",
                     color: "#00FF00",
                     state: "soloed",

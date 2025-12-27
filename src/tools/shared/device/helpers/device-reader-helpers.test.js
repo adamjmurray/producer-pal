@@ -15,24 +15,33 @@ describe("device-reader-helpers", () => {
   describe("buildChainInfo", () => {
     const createMockChain = (overrides = {}) => ({
       id: "chain-123",
+      type: overrides.type ?? "Chain",
       getProperty: (prop) => {
         if (prop === "name") return overrides.name ?? "Test Chain";
         if (prop === "mute") return overrides.mute ?? 0;
         if (prop === "solo") return overrides.solo ?? 0;
         if (prop === "muted_via_solo") return overrides.muted_via_solo ?? 0;
         if (prop === "choke_group") return overrides.choke_group ?? 0;
+        if (prop === "out_note") return overrides.out_note ?? 60;
         return 0;
       },
       getColor: () => overrides.color ?? null,
     });
 
-    it("builds chain info with id and name", () => {
+    it("builds chain info with id, type and name", () => {
       const chain = createMockChain({ name: "My Chain" });
       const result = buildChainInfo(chain);
       expect(result).toEqual({
         id: "chain-123",
+        type: "Chain",
         name: "My Chain",
       });
+    });
+
+    it("includes type from chain.type property", () => {
+      const chain = createMockChain({ type: "DrumChain" });
+      const result = buildChainInfo(chain);
+      expect(result.type).toBe("DrumChain");
     });
 
     it("includes path when provided", () => {
@@ -59,16 +68,28 @@ describe("device-reader-helpers", () => {
       expect(result.color).toBeUndefined();
     });
 
-    it("includes chokeGroup when greater than 0 and isDrumPadChain is true", () => {
-      const chain = createMockChain({ choke_group: 5 });
-      const result = buildChainInfo(chain, { isDrumPadChain: true });
+    it("includes chokeGroup for DrumChain when greater than 0", () => {
+      const chain = createMockChain({ type: "DrumChain", choke_group: 5 });
+      const result = buildChainInfo(chain);
       expect(result.chokeGroup).toBe(5);
     });
 
-    it("omits chokeGroup when 0 even with isDrumPadChain true", () => {
-      const chain = createMockChain({ choke_group: 0 });
-      const result = buildChainInfo(chain, { isDrumPadChain: true });
+    it("omits chokeGroup for DrumChain when 0", () => {
+      const chain = createMockChain({ type: "DrumChain", choke_group: 0 });
+      const result = buildChainInfo(chain);
       expect(result.chokeGroup).toBeUndefined();
+    });
+
+    it("includes mappedPitch for DrumChain", () => {
+      const chain = createMockChain({ type: "DrumChain", out_note: 36 });
+      const result = buildChainInfo(chain);
+      expect(result.mappedPitch).toBe("C1");
+    });
+
+    it("omits mappedPitch for regular Chain", () => {
+      const chain = createMockChain({ type: "Chain", out_note: 36 });
+      const result = buildChainInfo(chain);
+      expect(result.mappedPitch).toBeUndefined();
     });
 
     it("includes state when muted", () => {
@@ -102,10 +123,12 @@ describe("device-reader-helpers", () => {
       expect(result.devices).toBeUndefined();
     });
 
-    it("builds complete chain info with all properties", () => {
+    it("builds complete DrumChain info with all properties", () => {
       const chain = createMockChain({
+        type: "DrumChain",
         name: "Full Chain",
         color: "#00FF00",
+        out_note: 48,
         choke_group: 3,
         mute: 1,
       });
@@ -113,21 +136,22 @@ describe("device-reader-helpers", () => {
       const result = buildChainInfo(chain, {
         path: "1/0/0",
         devices,
-        isDrumPadChain: true,
       });
       expect(result).toEqual({
         id: "chain-123",
         path: "1/0/0",
+        type: "DrumChain",
         name: "Full Chain",
         color: "#00FF00",
+        mappedPitch: "C2",
         chokeGroup: 3,
         state: STATE.MUTED,
         devices: [{ id: "dev-1" }],
       });
     });
 
-    it("omits chokeGroup when isDrumPadChain is false or unset", () => {
-      const chain = createMockChain({ choke_group: 5 });
+    it("omits chokeGroup for regular Chain even if choke_group property exists", () => {
+      const chain = createMockChain({ type: "Chain", choke_group: 5 });
       const result = buildChainInfo(chain);
       expect(result.chokeGroup).toBeUndefined();
     });
@@ -207,7 +231,18 @@ describe("device-reader-helpers", () => {
       expect(computeState(liveObject, "master")).toBe(STATE.ACTIVE);
     });
 
-    it("returns SOLOED when solo is true", () => {
+    it("returns MUTED_AND_SOLOED when both muted and soloed", () => {
+      const liveObject = {
+        getProperty: (prop) => {
+          if (prop === "mute") return 1;
+          if (prop === "solo") return 1;
+          return 0;
+        },
+      };
+      expect(computeState(liveObject)).toBe(STATE.MUTED_AND_SOLOED);
+    });
+
+    it("returns SOLOED when only solo is true", () => {
       const liveObject = {
         getProperty: (prop) => {
           if (prop === "solo") return 1;

@@ -64,6 +64,7 @@ describe("readTrack", () => {
         chains: [
           {
             id: "empty_chain",
+            type: "Chain",
             name: "Empty Chain",
             color: "#000000",
             devices: [],
@@ -154,6 +155,7 @@ describe("readTrack", () => {
         chains: [
           {
             id: "chain1",
+            type: "Chain",
             name: "Piano",
             color: "#FF0000",
             devices: [
@@ -166,6 +168,7 @@ describe("readTrack", () => {
           },
           {
             id: "chain2",
+            type: "Chain",
             name: "Bass",
             color: "#00FF00",
             state: "muted",
@@ -180,6 +183,8 @@ describe("readTrack", () => {
         ],
       });
     });
+    // TODO: Drum pad chains should have type: "DrumChain" (with mappedPitch) in production,
+    // but the mock defaults to "Chain". See read-device-path.test.js for accurate DrumChain tests.
     it("handles drum rack drum chains with hasSoloedChain property", () => {
       liveApiId.mockImplementation(function () {
         switch (this._path) {
@@ -289,6 +294,7 @@ describe("readTrack", () => {
             chains: [
               {
                 id: "kick_chain",
+                type: "Chain",
                 name: "Kick",
                 color: "#FF0000",
                 state: "muted-via-solo",
@@ -308,6 +314,7 @@ describe("readTrack", () => {
             chains: [
               {
                 id: "snare_chain",
+                type: "Chain",
                 name: "Snare",
                 color: "#00FF00",
                 state: "soloed",

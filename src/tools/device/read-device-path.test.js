@@ -3,6 +3,7 @@ import {
   liveApiCall,
   liveApiGet,
   liveApiId,
+  liveApiType,
 } from "../../test/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 
@@ -69,6 +70,7 @@ describe("readDevice with path parameter", () => {
     liveApiId.mockImplementation(function () {
       return "chain-789";
     });
+    liveApiType.mockReturnValue("Chain");
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
@@ -97,6 +99,7 @@ describe("readDevice with path parameter", () => {
     expect(result).toEqual({
       id: "chain-789",
       path: "1/0/0",
+      type: "Chain",
       name: "Chain 1",
       devices: [],
     });
@@ -106,6 +109,7 @@ describe("readDevice with path parameter", () => {
     liveApiId.mockImplementation(function () {
       return "chain-with-color";
     });
+    liveApiType.mockReturnValue("Chain");
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
@@ -134,16 +138,18 @@ describe("readDevice with path parameter", () => {
     expect(result).toEqual({
       id: "chain-with-color",
       path: "1/0/0",
+      type: "Chain",
       name: "Colored Chain",
       color: "#FF5500",
       devices: [],
     });
   });
 
-  it("should read chain with color property", () => {
+  it("should read chain with green color property", () => {
     liveApiId.mockImplementation(function () {
       return "chain-123";
     });
+    liveApiType.mockReturnValue("Chain");
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
@@ -170,16 +176,18 @@ describe("readDevice with path parameter", () => {
     expect(result).toEqual({
       id: "chain-123",
       path: "1/0/0",
+      type: "Chain",
       name: "Test Chain",
       color: "#00FF00",
       devices: [],
     });
   });
 
-  it("should omit chokeGroup for regular chains (not drum pad chains)", () => {
+  it("should omit chokeGroup for regular chains (not DrumChain type)", () => {
     liveApiId.mockImplementation(function () {
       return "chain-no-choke";
     });
+    liveApiType.mockReturnValue("Chain");
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
@@ -203,7 +211,8 @@ describe("readDevice with path parameter", () => {
 
     const result = readDevice({ path: "1/0/0" });
 
-    // Regular chains don't have choke_group - only drum pad chains do
+    // Regular chains (type: "Chain") don't have chokeGroup - only DrumChain type does
+    expect(result.type).toBe("Chain");
     expect(result.chokeGroup).toBeUndefined();
   });
 
@@ -221,6 +230,7 @@ describe("readDevice with path parameter", () => {
     liveApiId.mockImplementation(function () {
       return "return-chain-101";
     });
+    liveApiType.mockReturnValue("Chain");
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
@@ -249,6 +259,7 @@ describe("readDevice with path parameter", () => {
     expect(result).toEqual({
       id: "return-chain-101",
       path: "1/0/r0",
+      type: "Chain",
       name: "Return A",
       color: "#0088FF",
       devices: [],
@@ -259,6 +270,7 @@ describe("readDevice with path parameter", () => {
     liveApiId.mockImplementation(function () {
       return "chain-muted";
     });
+    liveApiType.mockReturnValue("Chain");
     liveApiGet.mockImplementation(function (prop) {
       switch (prop) {
         case "name":
@@ -287,6 +299,7 @@ describe("readDevice with path parameter", () => {
     expect(result).toEqual({
       id: "chain-muted",
       path: "1/0/0",
+      type: "Chain",
       name: "Muted Chain",
       state: "muted",
       devices: [],
@@ -401,6 +414,7 @@ describe("readDevice with path parameter", () => {
         solo: [chainProps.solo ?? 0],
         muted_via_solo: [0],
         choke_group: [chainProps.choke_group ?? 0],
+        out_note: [chainProps.out_note ?? 36],
         color: chainProps.color ? [chainProps.color] : [],
         devices: (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]),
       };
@@ -434,6 +448,15 @@ describe("readDevice with path parameter", () => {
       liveApiId.mockImplementation(function () {
         if (this._path === "live_set tracks 1 devices 0") return deviceId;
         return this._id ?? "0";
+      });
+
+      // Mock chain type - chains in drum pads are DrumChain type
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+        if (id?.startsWith("chain-")) {
+          return chainProperties[id]?.type ?? "DrumChain";
+        }
+        return undefined; // Let default mock handle other types
       });
 
       liveApiGet.mockImplementation(function (prop) {
@@ -500,7 +523,12 @@ describe("readDevice with path parameter", () => {
           "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
         },
         chainProperties: {
-          "chain-1": { name: "Layer 1", color: 0xff0000, choke_group: 2 },
+          "chain-1": {
+            name: "Layer 1",
+            color: 0xff0000,
+            choke_group: 2,
+            out_note: 48,
+          },
         },
       });
 
@@ -510,8 +538,10 @@ describe("readDevice with path parameter", () => {
       expect(result.chains[0]).toEqual({
         id: "chain-1",
         path: "1/0/pC1/0",
+        type: "DrumChain",
         name: "Layer 1",
         color: "#FF0000",
+        mappedPitch: "C2",
         chokeGroup: 2,
         devices: [],
       });
@@ -523,7 +553,9 @@ describe("readDevice with path parameter", () => {
         padProperties: {
           "pad-36": { note: 36, name: "Kick", chainIds: ["chain-1"] },
         },
-        chainProperties: { "chain-1": { name: "Layer 1", color: 0x00ff00 } },
+        chainProperties: {
+          "chain-1": { name: "Layer 1", color: 0x00ff00, out_note: 60 },
+        },
       });
 
       const result = readDevice({ path: "1/0/pC1/0" });
@@ -531,8 +563,10 @@ describe("readDevice with path parameter", () => {
       expect(result).toEqual({
         id: "chain-1",
         path: "1/0/pC1/0",
+        type: "DrumChain",
         name: "Layer 1",
         color: "#00FF00",
+        mappedPitch: "C3",
         devices: [],
       });
     });

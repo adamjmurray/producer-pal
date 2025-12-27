@@ -247,7 +247,7 @@ function readDrumPadChain(chain, path, options) {
     return cleanupInternalDrumPads(deviceInfo);
   });
 
-  return buildChainInfo(chain, { path, devices, isDrumPadChain: true });
+  return buildChainInfo(chain, { path, devices });
 }
 
 /**
@@ -297,7 +297,6 @@ function buildDrumPadInfo(pad, path, options) {
       return buildChainInfo(chain, {
         path: chainPath,
         devices,
-        isDrumPadChain: true,
       });
     });
   }

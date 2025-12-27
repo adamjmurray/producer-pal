@@ -1,3 +1,4 @@
+import { midiPitchToName } from "#src/notation/midi-pitch-to-name.js";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 
 /**
@@ -6,17 +7,22 @@ import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
  * @param {object} options - Build options
  * @param {string} [options.path] - Optional simplified path
  * @param {Array} [options.devices] - Pre-processed devices array (skips device fetching)
- * @param {boolean} [options.isDrumPadChain] - True if this chain is inside a drum pad (has choke_group)
- * @returns {object} Chain info object with id, path, name, color, chokeGroup, state
+ * @returns {object} Chain info object with id, path, type, name, color, mappedPitch, chokeGroup, state
  */
 export function buildChainInfo(chain, options = {}) {
-  const { path, devices, isDrumPadChain = false } = options;
+  const { path, devices } = options;
 
   const chainInfo = {
     id: chain.id,
-    ...(path && { path }),
-    name: chain.getProperty("name"),
   };
+
+  if (path) {
+    chainInfo.path = path;
+  }
+
+  // chain.type returns "Chain" or "DrumChain" from Live API
+  chainInfo.type = chain.type;
+  chainInfo.name = chain.getProperty("name");
 
   const color = chain.getColor();
 
@@ -24,8 +30,15 @@ export function buildChainInfo(chain, options = {}) {
     chainInfo.color = color;
   }
 
-  // choke_group only exists on drum pad chains
-  if (isDrumPadChain) {
+  // DrumChain-only properties: mappedPitch and chokeGroup
+  if (chain.type === "DrumChain") {
+    // out_note is the MIDI pitch sent to the instrument
+    const outNote = chain.getProperty("out_note");
+
+    if (outNote != null) {
+      chainInfo.mappedPitch = midiPitchToName(outNote);
+    }
+
     const chokeGroup = chain.getProperty("choke_group");
 
     if (chokeGroup > 0) {
@@ -60,6 +73,10 @@ export function computeState(liveObject, category = "regular") {
   const isMuted = liveObject.getProperty("mute") > 0;
   const isSoloed = liveObject.getProperty("solo") > 0;
   const isMutedViaSolo = liveObject.getProperty("muted_via_solo") > 0;
+
+  if (isMuted && isSoloed) {
+    return STATE.MUTED_AND_SOLOED;
+  }
 
   if (isSoloed) {
     return STATE.SOLOED;

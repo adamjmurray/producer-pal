@@ -79,7 +79,6 @@ export function processDrumPad(
     return buildChainInfo(chain, {
       path: chainPath,
       devices: processedDevices,
-      isDrumPadChain: true,
     });
   });
 
