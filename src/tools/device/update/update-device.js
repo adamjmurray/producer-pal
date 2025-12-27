@@ -1,5 +1,7 @@
+import { nameToMidiPitch } from "#src/notation/midi-pitch-to-name.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { noteNameToMidi } from "#src/tools/shared/device/helpers/device-display-helpers.js";
+import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 import {
   setParamValues,
@@ -42,9 +44,10 @@ function warnIfSet(paramName, value, type) {
 // ============================================================================
 
 /**
- * Update device(s), chain(s), or drum pad(s) by ID
+ * Update device(s), chain(s), or drum pad(s) by ID or path
  * @param {object} args - The parameters
- * @param {string} args.ids - Comma-separated ID(s)
+ * @param {string} [args.ids] - Comma-separated ID(s)
+ * @param {string} [args.path] - Device/chain/drum-pad path
  * @param {string} [args.name] - Display name (not drum pads)
  * @param {boolean} [args.collapsed] - Collapse/expand device view (devices only)
  * @param {string} [args.params] - JSON: {"paramId": value} (devices only)
@@ -61,6 +64,7 @@ function warnIfSet(paramName, value, type) {
  */
 export function updateDevice({
   ids,
+  path,
   name,
   collapsed,
   params,
@@ -74,6 +78,44 @@ export function updateDevice({
   chokeGroup,
   mappedPitch,
 }) {
+  // Validate: exactly one of ids or path required
+  if (!ids && !path) {
+    throw new Error("Either ids or path must be provided");
+  }
+
+  if (ids && path) {
+    throw new Error("Provide either ids or path, not both");
+  }
+
+  const updateOptions = {
+    name,
+    collapsed,
+    params,
+    macroVariation,
+    macroVariationIndex,
+    macroCount,
+    abCompare,
+    mute,
+    solo,
+    color,
+    chokeGroup,
+    mappedPitch,
+  };
+
+  // If path is provided, resolve it to a target
+  if (path) {
+    const target = resolvePathToTarget(path);
+
+    if (!target) {
+      throw new Error(`Target not found at path: ${path}`);
+    }
+
+    const result = updateTarget(target, updateOptions);
+
+    return result ?? { id: target.id };
+  }
+
+  // Otherwise, use IDs
   const targetIds = parseCommaSeparatedIds(ids);
   const results = [];
 
@@ -85,20 +127,7 @@ export function updateDevice({
       continue;
     }
 
-    const result = updateTarget(target, {
-      name,
-      collapsed,
-      params,
-      macroVariation,
-      macroVariationIndex,
-      macroCount,
-      abCompare,
-      mute,
-      solo,
-      color,
-      chokeGroup,
-      mappedPitch,
-    });
+    const result = updateTarget(target, updateOptions);
 
     if (result) {
       results.push(result);
@@ -110,6 +139,116 @@ export function updateDevice({
   }
 
   return results.length === 1 ? results[0] : results;
+}
+
+// ============================================================================
+// Path resolution
+// ============================================================================
+
+/**
+ * Resolve a path to a Live API target (device, chain, or drum pad)
+ * @param {string} path - Device/chain/drum-pad path
+ * @returns {object|null} LiveAPI object or null if not found
+ */
+function resolvePathToTarget(path) {
+  const resolved = resolvePathToLiveApi(path);
+
+  if (resolved.targetType === "device") {
+    return resolveDeviceTarget(resolved.liveApiPath);
+  }
+
+  if (
+    resolved.targetType === "chain" ||
+    resolved.targetType === "return-chain"
+  ) {
+    return resolveChainTarget(resolved.liveApiPath);
+  }
+
+  if (resolved.targetType === "drum-pad") {
+    return resolveDrumPadTarget(
+      resolved.liveApiPath,
+      resolved.drumPadNote,
+      resolved.remainingSegments,
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Resolve a device from Live API path
+ * @param {string} liveApiPath - Live API canonical path
+ * @returns {object|null} LiveAPI object or null if not found
+ */
+function resolveDeviceTarget(liveApiPath) {
+  const device = new LiveAPI(liveApiPath);
+
+  return device.exists() ? device : null;
+}
+
+/**
+ * Resolve a chain from Live API path
+ * @param {string} liveApiPath - Live API canonical path
+ * @returns {object|null} LiveAPI object or null if not found
+ */
+function resolveChainTarget(liveApiPath) {
+  const chain = new LiveAPI(liveApiPath);
+
+  return chain.exists() ? chain : null;
+}
+
+/**
+ * Resolve a drum pad or nested target from path
+ * @param {string} liveApiPath - Live API path to parent device
+ * @param {string} drumPadNote - Note name of the drum pad (e.g., "C1")
+ * @param {string[]} remainingSegments - Segments after drum pad in path
+ * @returns {object|null} LiveAPI object or null if not found
+ */
+function resolveDrumPadTarget(liveApiPath, drumPadNote, remainingSegments) {
+  const device = new LiveAPI(liveApiPath);
+
+  if (!device.exists()) {
+    return null;
+  }
+
+  // Get drum pads and find the one matching the note
+  const drumPads = device.getChildren("drum_pads");
+  const targetMidiNote = nameToMidiPitch(drumPadNote);
+  const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
+
+  if (!pad) {
+    return null;
+  }
+
+  // If no remaining segments, return the pad itself
+  if (!remainingSegments || remainingSegments.length === 0) {
+    return pad;
+  }
+
+  // Navigate into chains
+  const chains = pad.getChildren("chains");
+  const chainIndex = parseInt(remainingSegments[0], 10);
+
+  if (isNaN(chainIndex) || chainIndex < 0 || chainIndex >= chains.length) {
+    return null;
+  }
+
+  const chain = chains[chainIndex];
+
+  // If only chain index, return the chain
+  if (remainingSegments.length === 1) {
+    return chain;
+  }
+
+  // Navigate to device within chain
+  const deviceIndex = parseInt(remainingSegments[1], 10);
+  const devices = chain.getChildren("devices");
+
+  if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
+    return null;
+  }
+
+  return devices[deviceIndex];
 }
 
 // ============================================================================
