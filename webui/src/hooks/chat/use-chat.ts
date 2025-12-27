@@ -10,7 +10,7 @@ import type { Provider } from "#webui/types/settings";
 import {
   handleMessageStream,
   validateMcpConnection,
-} from "./streaming-helpers";
+} from "./helpers/streaming-helpers";
 
 /** Per-message overrides for thinking, temperature, and showThoughts */
 export interface MessageOverrides {

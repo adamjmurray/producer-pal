@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "preact/hooks";
+import { useConversationLock } from "#webui/hooks/chat/helpers/use-conversation-lock";
 import { useGeminiChat } from "#webui/hooks/chat/use-gemini-chat";
 import { useOpenAIChat } from "#webui/hooks/chat/use-openai-chat";
 import { useMcpConnection } from "#webui/hooks/connection/use-mcp-connection";
@@ -53,6 +54,7 @@ function getBaseUrl(
  *
  * @returns {JSX.Element} - React component
  */
+// eslint-disable-next-line max-lines-per-function
 export function App() {
   const settings = useSettings();
   const { theme, setTheme } = useTheme();
@@ -95,8 +97,13 @@ export function App() {
     checkMcpConnection,
   });
 
-  // Route to appropriate chat based on provider
-  const chat = settings.provider === "gemini" ? geminiChat : openaiChat;
+  // Lock conversation to the provider used when chat started
+  const { chat, wrappedHandleSend, wrappedClearConversation } =
+    useConversationLock({
+      settingsProvider: settings.provider,
+      geminiChat,
+      openaiChat,
+    });
 
   // Calculate tools counts for header display
   const enabledToolsCount = getEnabledToolsCount(settings.enabledTools);
@@ -168,7 +175,7 @@ export function App() {
       messages={chat.messages}
       isAssistantResponding={chat.isAssistantResponding}
       rateLimitState={chat.rateLimitState}
-      handleSend={chat.handleSend}
+      handleSend={wrappedHandleSend}
       handleRetry={chat.handleRetry}
       activeModel={chat.activeModel}
       activeProvider={chat.activeProvider}
@@ -183,7 +190,7 @@ export function App() {
       mcpError={mcpError}
       checkMcpConnection={checkMcpConnection}
       onOpenSettings={() => setShowSettings(true)}
-      onClearConversation={chat.clearConversation}
+      onClearConversation={wrappedClearConversation}
       onStop={chat.stopResponse}
     />
   );

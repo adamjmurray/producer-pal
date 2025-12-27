@@ -7,7 +7,7 @@ import { GeminiClient } from "../../chat/gemini-client";
 import type { GeminiMessage } from "../../types/messages";
 import { buildGeminiConfig } from "../settings/config-builders";
 import { formatGeminiMessages } from "../../chat/gemini-formatter";
-import { createGeminiErrorMessage } from "./streaming-helpers";
+import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
 vi.mock("../../chat/gemini-client", () => ({
@@ -42,7 +42,7 @@ vi.mock("../../chat/gemini-formatter", () => ({
   ),
 }));
 
-vi.mock("./streaming-helpers", () => ({
+vi.mock("./helpers/streaming-helpers", () => ({
   createGeminiErrorMessage: vi.fn((error, chatHistory) => [
     ...chatHistory.map((msg: GeminiMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",

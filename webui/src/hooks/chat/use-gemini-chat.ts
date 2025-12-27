@@ -1,7 +1,11 @@
 import type { UIMessage } from "#webui/types/messages";
 import type { Provider } from "#webui/types/settings";
 import { geminiAdapter } from "./gemini-adapter";
-import { useChat, type RateLimitState } from "./use-chat";
+import {
+  useChat,
+  type MessageOverrides,
+  type RateLimitState,
+} from "./use-chat";
 
 interface UseGeminiChatProps {
   provider: Provider;
@@ -24,7 +28,7 @@ interface UseGeminiChatReturn {
   activeThinking: string | null;
   activeTemperature: number | null;
   rateLimitState: RateLimitState | null;
-  handleSend: (message: string) => Promise<void>;
+  handleSend: (message: string, options?: MessageOverrides) => Promise<void>;
   handleRetry: (mergedMessageIndex: number) => Promise<void>;
   clearConversation: () => void;
   stopResponse: () => void;
