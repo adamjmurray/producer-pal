@@ -383,18 +383,27 @@ describe("updateDevice - Chain and DrumPad support", () => {
       expect(result).toEqual({ id: "789" });
     });
 
-    it("should set name on a DrumPad", () => {
+    it("should warn when name is used on a DrumPad (read-only)", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
       const result = updateDevice({
         ids: "790",
         name: "Hi-Hat",
       });
 
-      expect(liveApiSet).toHaveBeenCalledWithThis(
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "updateDevice: 'name' is read-only for DrumPad",
+      );
+      expect(liveApiSet).not.toHaveBeenCalledWith(
         expect.objectContaining({ _path: "id 790" }),
         "name",
-        "Hi-Hat",
+        expect.anything(),
       );
       expect(result).toEqual({ id: "790" });
+
+      consoleSpy.mockRestore();
     });
   });
 });

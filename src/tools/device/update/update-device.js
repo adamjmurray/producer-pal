@@ -45,7 +45,7 @@ function warnIfSet(paramName, value, type) {
  * Update device(s), chain(s), or drum pad(s) by ID
  * @param {object} args - The parameters
  * @param {string} args.ids - Comma-separated ID(s)
- * @param {string} [args.name] - Display name
+ * @param {string} [args.name] - Display name (not drum pads)
  * @param {boolean} [args.collapsed] - Collapse/expand device view (devices only)
  * @param {string} [args.params] - JSON: {"paramId": value} (devices only)
  * @param {string} [args.macroVariation] - Rack variation action (racks only)
@@ -124,9 +124,13 @@ function updateTarget(target, options) {
     throw new Error(`updateDevice: cannot update ${type} objects`);
   }
 
-  // Universal: name works on all types
+  // Name works on devices and chains, but DrumPad names are read-only
   if (options.name != null) {
-    target.set("name", options.name);
+    if (type === "DrumPad") {
+      console.error("updateDevice: 'name' is read-only for DrumPad");
+    } else {
+      target.set("name", options.name);
+    }
   }
 
   if (isDeviceType(type)) {
