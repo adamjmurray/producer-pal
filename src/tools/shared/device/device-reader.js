@@ -235,6 +235,11 @@ function readSimplerSample(device, className) {
     return {};
   }
 
+  // Multisample mode doesn't expose a single sample file path
+  if (device.getProperty("multi_sample_mode") > 0) {
+    return { multisample: true };
+  }
+
   const samples = device.getChildren("sample");
 
   if (samples.length === 0) {
