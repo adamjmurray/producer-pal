@@ -49,7 +49,7 @@ export function updateDevice({
     }
 
     if (params != null) {
-      setParamValues(device, params);
+      setParamValues(params);
     }
 
     if (macroVariation != null || macroVariationIndex != null) {
@@ -82,20 +82,14 @@ function updateCollapsedState(device, collapsed) {
   }
 }
 
-function setParamValues(device, paramsJson) {
+function setParamValues(paramsJson) {
   const paramValues = JSON.parse(paramsJson);
 
-  for (const [key, inputValue] of Object.entries(paramValues)) {
-    // Special case: Simpler sample
-    if (key === "sample") {
-      updateSimplerSample(device, inputValue);
-      continue;
-    }
-
-    const param = LiveAPI.from(key);
+  for (const [paramId, inputValue] of Object.entries(paramValues)) {
+    const param = LiveAPI.from(paramId);
 
     if (!param.exists()) {
-      console.error(`updateDevice: param id "${key}" does not exist`);
+      console.error(`updateDevice: param id "${paramId}" does not exist`);
       continue;
     }
 
@@ -156,33 +150,6 @@ function setParamValue(param, inputValue) {
 
   // 4. All other numeric - set display_value directly
   param.set("display_value", inputValue);
-}
-
-/**
- * Update the sample loaded in a Simpler device
- * @param {object} device - Live API device object
- * @param {string} filePath - Path to the sample file
- */
-function updateSimplerSample(device, filePath) {
-  const className = device.getProperty("class_display_name");
-
-  if (className !== "Simpler") {
-    console.error(
-      `updateDevice: sample property only works on Simpler devices (got ${className})`,
-    );
-
-    return;
-  }
-
-  const samples = device.getChildren("sample");
-
-  if (samples.length === 0) {
-    console.error("updateDevice: could not access Simpler sample object");
-
-    return;
-  }
-
-  samples[0].call("load_file", filePath);
 }
 
 /**

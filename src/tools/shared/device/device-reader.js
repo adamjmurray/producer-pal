@@ -201,19 +201,8 @@ export function readDevice(device, options = {}) {
   Object.assign(deviceInfo, readMacroVariations(device));
   // Add A/B Compare state (spreads empty object if device doesn't support it)
   Object.assign(deviceInfo, readABCompare(device));
-
-  // Simpler-specific: include loaded sample path
-  if (className === "Simpler") {
-    const samples = device.getChildren("sample");
-
-    if (samples.length > 0) {
-      const samplePath = samples[0].getProperty("file_path");
-
-      if (samplePath) {
-        deviceInfo.sample = samplePath;
-      }
-    }
-  }
+  // Add Simpler sample path (spreads empty object if not Simpler or no sample)
+  Object.assign(deviceInfo, readSimplerSample(device, className));
 
   // Process chains for rack devices
   processDeviceChains(device, deviceInfo, deviceType, {
@@ -233,4 +222,26 @@ export function readDevice(device, options = {}) {
   }
 
   return deviceInfo;
+}
+
+/**
+ * Read sample path from Simpler device
+ * @param {object} device - Live API device object
+ * @param {string} className - Device class display name
+ * @returns {object} Object with sample property, or empty object
+ */
+function readSimplerSample(device, className) {
+  if (className !== "Simpler") {
+    return {};
+  }
+
+  const samples = device.getChildren("sample");
+
+  if (samples.length === 0) {
+    return {};
+  }
+
+  const samplePath = samples[0].getProperty("file_path");
+
+  return samplePath ? { sample: samplePath } : {};
 }
