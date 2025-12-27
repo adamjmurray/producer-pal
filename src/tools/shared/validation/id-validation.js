@@ -90,5 +90,8 @@ function isTypeMatch(actualType, expectedType) {
   // Device subclass match: "hybridreverbdevice" matches "device"
   if (expected === "device" && actual.endsWith("device")) return true;
 
+  // DrumPad match: "drumpad" matches "drum-pad"
+  if (expected === "drum-pad" && actual === "drumpad") return true;
+
   return false;
 }

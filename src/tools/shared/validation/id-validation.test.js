@@ -79,6 +79,14 @@ describe("validateIdType", () => {
       expect(() => validateIdType(id, "device", "testTool")).not.toThrow();
     }
   });
+
+  it("should match DrumPad to drum-pad type", () => {
+    const id = "pad_1";
+    liveApiId.mockReturnValue(id);
+    liveApiType.mockReturnValue("DrumPad");
+
+    expect(() => validateIdType(id, "drum-pad", "testTool")).not.toThrow();
+  });
 });
 
 describe("validateIdTypes", () => {

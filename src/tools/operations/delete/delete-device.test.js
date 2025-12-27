@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.js";
 import {
+  children,
   liveApiCall,
+  liveApiGet,
   liveApiId,
   liveApiPath,
   liveApiType,
@@ -403,7 +405,7 @@ describe("deleteObject device deletion", () => {
       expect(result).toEqual([]);
     });
 
-    it("should warn when path is used with non-device type", () => {
+    it("should warn when path is used with non-device/drum-pad type", () => {
       const consoleSpy = vi.spyOn(console, "error");
       liveApiId.mockImplementation(function () {
         return this._id;
@@ -419,7 +421,190 @@ describe("deleteObject device deletion", () => {
       deleteObject({ ids: "track_1", path: "0/0", type: "track" });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        'delete: path parameter is only valid for type "device", ignoring paths',
+        'delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths',
+      );
+    });
+  });
+
+  describe("drum-pad deletion", () => {
+    it("should delete a drum pad by id", () => {
+      const id = "drum_pad_1";
+      liveApiId.mockImplementation(function () {
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === id) {
+          return "live_set tracks 0 devices 0 drum_pads 36";
+        }
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === id) {
+          return "DrumPad";
+        }
+      });
+
+      const result = deleteObject({ ids: id, type: "drum-pad" });
+
+      expect(result).toEqual({ id, type: "drum-pad", deleted: true });
+      expect(liveApiCall).toHaveBeenCalledWith("delete_all_chains");
+    });
+
+    it("should delete multiple drum pads by id", () => {
+      liveApiId.mockImplementation(function () {
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "pad_1") {
+          return "live_set tracks 0 devices 0 drum_pads 36";
+        }
+        if (this._id === "pad_2") {
+          return "live_set tracks 0 devices 0 drum_pads 37";
+        }
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (["pad_1", "pad_2"].includes(this._id)) {
+          return "DrumPad";
+        }
+      });
+
+      const result = deleteObject({ ids: "pad_1, pad_2", type: "drum-pad" });
+
+      expect(result).toEqual([
+        { id: "pad_1", type: "drum-pad", deleted: true },
+        { id: "pad_2", type: "drum-pad", deleted: true },
+      ]);
+    });
+
+    it("should delete a drum pad by path", () => {
+      const devicePath = "live_set tracks 0 devices 0";
+      const drumPadPath = "live_set tracks 0 devices 0 drum_pads 36";
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id pad_by_path") return "pad_by_path";
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "pad_by_path") return drumPadPath;
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === "pad_by_path") return "DrumPad";
+        if (this._path === devicePath) return "DrumGroupDevice";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        if (this._path === devicePath && prop === "drum_pads") {
+          return children("pad_by_path");
+        }
+        if (this._id === "pad_by_path" && prop === "note") {
+          return [36]; // C1 = MIDI note 36
+        }
+        return [0];
+      });
+
+      const result = deleteObject({ path: "0/0/pC1", type: "drum-pad" });
+
+      expect(result).toEqual({
+        id: "pad_by_path",
+        type: "drum-pad",
+        deleted: true,
+      });
+      expect(liveApiCall).toHaveBeenCalledWith("delete_all_chains");
+    });
+
+    it("should delete drum pads from both ids and path", () => {
+      const devicePath = "live_set tracks 0 devices 0";
+      const drumPadPath = "live_set tracks 0 devices 0 drum_pads 36";
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id pad_by_path") return "pad_by_path";
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "pad_by_id") {
+          return "live_set tracks 0 devices 0 drum_pads 37";
+        }
+        if (this._id === "pad_by_path") {
+          return drumPadPath;
+        }
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (["pad_by_id", "pad_by_path"].includes(this._id)) {
+          return "DrumPad";
+        }
+        if (this._path === devicePath) {
+          return "DrumGroupDevice";
+        }
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        if (this._path === devicePath && prop === "drum_pads") {
+          return children("pad_by_path");
+        }
+        if (this._id === "pad_by_path" && prop === "note") {
+          return [36]; // C1 = MIDI note 36
+        }
+        return [0];
+      });
+
+      const result = deleteObject({
+        ids: "pad_by_id",
+        path: "0/0/pC1",
+        type: "drum-pad",
+      });
+
+      expect(result).toEqual([
+        { id: "pad_by_id", type: "drum-pad", deleted: true },
+        { id: "pad_by_path", type: "drum-pad", deleted: true },
+      ]);
+    });
+
+    it("should skip invalid drum pad paths and continue with valid ones", () => {
+      const validDevicePath = "live_set tracks 0 devices 0";
+      const validPath = "live_set tracks 0 devices 0 drum_pads 36";
+      liveApiId.mockImplementation(function () {
+        if (this._path === "id valid_pad") return "valid_pad";
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === "valid_pad") return validPath;
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === "valid_pad") return "DrumPad";
+        if (this._path === validDevicePath) return "DrumGroupDevice";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        if (this._path === validDevicePath && prop === "drum_pads") {
+          return children("valid_pad");
+        }
+        if (this._id === "valid_pad" && prop === "note") {
+          return [36]; // C1 = MIDI note 36
+        }
+        return [0];
+      });
+
+      const result = deleteObject({
+        path: "0/0/pC1, 99/99/pC1",
+        type: "drum-pad",
+      });
+
+      expect(result).toEqual({
+        id: "valid_pad",
+        type: "drum-pad",
+        deleted: true,
+      });
+    });
+
+    it("should warn when path resolves to device instead of drum-pad", () => {
+      const consoleSpy = vi.spyOn(console, "error");
+
+      // Path 0/0 resolves to device, not drum-pad - this results in no valid IDs
+      expect(() => deleteObject({ path: "0/0", type: "drum-pad" })).toThrow(
+        "delete failed: ids or path is required",
+      );
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        'delete: path "0/0" resolves to device, not drum-pad',
       );
     });
   });
