@@ -12,7 +12,7 @@ export const toolDefUpdateDevice = defineTool("ppal-update-device", {
     ids: z
       .string()
       .describe("comma-separated ID(s) to update (device, chain, or drum pad)"),
-    name: z.string().optional().describe("display name"),
+    name: z.string().optional().describe("display name (not drum pads)"),
     collapsed: z.boolean().optional().describe("collapse/expand device view"),
     params: z
       .string()
