@@ -17,7 +17,12 @@ describe("streaming-helpers", () => {
         for (const h of mockHistory) yield h;
       })();
       const formatter = vi.fn(() => [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
       ]);
       const onUpdate = vi.fn();
 
@@ -41,7 +46,12 @@ describe("streaming-helpers", () => {
         throw new DOMException("Aborted", "AbortError");
       }
       const formatter = vi.fn(() => [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
       ]);
       const onUpdate = vi.fn();
 
@@ -67,7 +77,12 @@ describe("streaming-helpers", () => {
         throw new Error("Network failure");
       }
       const formatter = vi.fn(() => [
-        { role: "user" as const, parts: [], rawHistoryIndex: 0 },
+        {
+          role: "user" as const,
+          parts: [],
+          rawHistoryIndex: 0,
+          timestamp: Date.now(),
+        },
       ]);
       const onUpdate = vi.fn();
 

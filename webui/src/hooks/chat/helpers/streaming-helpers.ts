@@ -80,6 +80,7 @@ export function createOpenAIErrorMessage(
       },
     ],
     rawHistoryIndex: chatHistory.length,
+    timestamp: Date.now(),
   };
 
   return [...formattedHistory, errorMessage_ui];

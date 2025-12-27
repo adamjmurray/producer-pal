@@ -73,6 +73,7 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       render(<ChatScreen {...defaultProps} messages={messages} />);
@@ -87,6 +88,7 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Hello" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       const { container } = render(
@@ -110,6 +112,7 @@ describe("ChatScreen", () => {
               role: "user",
               parts: [{ type: "text", content: "Test" }],
               rawHistoryIndex: 0,
+              timestamp: Date.now(),
             },
           ]}
         />,
@@ -139,11 +142,13 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Test message" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
         {
           role: "model",
           parts: [{ type: "text", content: "Response" }],
           rawHistoryIndex: 1,
+          timestamp: Date.now(),
         },
       ];
       render(<ChatScreen {...defaultProps} messages={messages} />);
@@ -159,6 +164,7 @@ describe("ChatScreen", () => {
           role: "user",
           parts: [{ type: "text", content: "Test" }],
           rawHistoryIndex: 0,
+          timestamp: Date.now(),
         },
       ];
       render(
