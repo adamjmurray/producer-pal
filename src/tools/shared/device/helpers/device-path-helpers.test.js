@@ -1,10 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { liveApiGet, liveApiId, liveApiType } from "#src/test/mock-live-api.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 import {
   extractDevicePath,
   buildChainPath,
   buildReturnChainPath,
   buildDrumPadPath,
   resolvePathToLiveApi,
+  resolveDrumPadFromPath,
 } from "./device-path-helpers.js";
 
 describe("device-path-helpers", () => {
@@ -346,6 +349,179 @@ describe("device-path-helpers", () => {
           "Invalid drum pad note",
         );
       });
+    });
+  });
+
+  describe("resolveDrumPadFromPath", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    // Helper to set up drum pad mocks
+    const setupDrumPadMocks = (config = {}) => {
+      const {
+        deviceId = "drum-rack-1",
+        padIds = ["pad-36"],
+        padProperties = {},
+        chainProperties = {},
+      } = config;
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === "live_set tracks 1 devices 0") return deviceId;
+
+        return this._id ?? "0";
+      });
+
+      liveApiType.mockImplementation(function () {
+        const id = this._id ?? this.id;
+
+        if (id?.startsWith("pad-")) return "DrumPad";
+        if (id?.startsWith("chain-"))
+          return chainProperties[id]?.type ?? "DrumChain";
+        if (id?.startsWith("device-")) return "Device";
+
+        return "RackDevice";
+      });
+
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        if (id === deviceId || this._path?.includes("devices 0")) {
+          if (prop === "drum_pads") return padIds.flatMap((p) => ["id", p]);
+        }
+
+        if (id?.startsWith("pad-")) {
+          const padProps = padProperties[id] ?? {};
+
+          if (prop === "note") return [padProps.note ?? 36];
+          if (prop === "chains")
+            return (padProps.chainIds ?? []).flatMap((c) => ["id", c]);
+        }
+
+        if (id?.startsWith("chain-")) {
+          const chainProps = chainProperties[id] ?? {};
+
+          if (prop === "devices")
+            return (chainProps.deviceIds ?? []).flatMap((d) => ["id", d]);
+        }
+
+        return [];
+      });
+    };
+
+    it("returns drum pad when no remaining segments", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36 } },
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        [],
+      );
+
+      expect(result.target).not.toBeNull();
+      expect(result.target.id).toBe("pad-36");
+      expect(result.targetType).toBe("drum-pad");
+    });
+
+    it("returns chain when one remaining segment", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
+        chainProperties: { "chain-1": {} },
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["0"],
+      );
+
+      expect(result.target).not.toBeNull();
+      expect(result.target.id).toBe("chain-1");
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("returns device when two remaining segments", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
+        chainProperties: { "chain-1": { deviceIds: ["device-1"] } },
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["0", "0"],
+      );
+
+      expect(result.target).not.toBeNull();
+      expect(result.target.id).toBe("device-1");
+      expect(result.targetType).toBe("device");
+    });
+
+    it("returns null for non-existent drum pad note", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36 } }, // C1
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C3", // Different note - MIDI 48
+        [],
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("drum-pad");
+    });
+
+    it("returns null for invalid chain index", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36, chainIds: [] } }, // No chains
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["0"], // Chain index 0 doesn't exist
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("chain");
+    });
+
+    it("returns null for invalid device index", () => {
+      setupDrumPadMocks({
+        padIds: ["pad-36"],
+        padProperties: { "pad-36": { note: 36, chainIds: ["chain-1"] } },
+        chainProperties: { "chain-1": { deviceIds: [] } }, // No devices
+      });
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 1 devices 0",
+        "C1",
+        ["0", "0"], // Device index 0 doesn't exist
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("device");
+    });
+
+    it("returns null when device does not exist", () => {
+      liveApiId.mockReturnValue("0"); // Makes exists() return false
+
+      const result = resolveDrumPadFromPath(
+        "live_set tracks 99 devices 0",
+        "C1",
+        [],
+      );
+
+      expect(result.target).toBeNull();
+      expect(result.targetType).toBe("drum-pad");
     });
   });
 });

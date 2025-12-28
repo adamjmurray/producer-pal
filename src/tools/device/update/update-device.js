@@ -1,7 +1,9 @@
-import { pitchNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
 import { noteNameToMidi } from "#src/tools/shared/device/helpers/device-display-helpers.js";
-import { resolvePathToLiveApi } from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import {
+  resolveDrumPadFromPath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/device-path-helpers.js";
 import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
 import {
   setParamValues,
@@ -207,11 +209,13 @@ function resolvePathToTarget(path) {
   }
 
   if (resolved.targetType === "drum-pad") {
-    return resolveDrumPadTarget(
+    const drumPadResult = resolveDrumPadFromPath(
       resolved.liveApiPath,
       resolved.drumPadNote,
       resolved.remainingSegments,
     );
+
+    return drumPadResult.target;
   }
 
   return null;
@@ -237,60 +241,6 @@ function resolveChainTarget(liveApiPath) {
   const chain = new LiveAPI(liveApiPath);
 
   return chain.exists() ? chain : null;
-}
-
-/**
- * Resolve a drum pad or nested target from path
- * @param {string} liveApiPath - Live API path to parent device
- * @param {string} drumPadNote - Note name of the drum pad (e.g., "C1")
- * @param {string[]} remainingSegments - Segments after drum pad in path
- * @returns {object|null} LiveAPI object or null if not found
- */
-function resolveDrumPadTarget(liveApiPath, drumPadNote, remainingSegments) {
-  const device = new LiveAPI(liveApiPath);
-
-  if (!device.exists()) {
-    return null;
-  }
-
-  // Get drum pads and find the one matching the note
-  const drumPads = device.getChildren("drum_pads");
-  const targetMidiNote = pitchNameToMidi(drumPadNote);
-  const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
-
-  if (!pad) {
-    return null;
-  }
-
-  // If no remaining segments, return the pad itself
-  if (!remainingSegments || remainingSegments.length === 0) {
-    return pad;
-  }
-
-  // Navigate into chains
-  const chains = pad.getChildren("chains");
-  const chainIndex = parseInt(remainingSegments[0], 10);
-
-  if (isNaN(chainIndex) || chainIndex < 0 || chainIndex >= chains.length) {
-    return null;
-  }
-
-  const chain = chains[chainIndex];
-
-  // If only chain index, return the chain
-  if (remainingSegments.length === 1) {
-    return chain;
-  }
-
-  // Navigate to device within chain
-  const deviceIndex = parseInt(remainingSegments[1], 10);
-  const devices = chain.getChildren("devices");
-
-  if (isNaN(deviceIndex) || deviceIndex < 0 || deviceIndex >= devices.length) {
-    return null;
-  }
-
-  return devices[deviceIndex];
 }
 
 // ============================================================================

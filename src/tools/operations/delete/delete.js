@@ -1,9 +1,11 @@
-import { pitchNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
-import { getHostTrackIndex } from "../../shared/arrangement/get-host-track-index.js";
-import { resolvePathToLiveApi } from "../../shared/device/helpers/device-path-helpers.js";
-import { parseCommaSeparatedIds } from "../../shared/utils.js";
-import { validateIdTypes } from "../../shared/validation/id-validation.js";
+import { getHostTrackIndex } from "#src/tools/shared/arrangement/get-host-track-index.js";
+import {
+  resolveDrumPadFromPath,
+  resolvePathToLiveApi,
+} from "#src/tools/shared/device/helpers/device-path-helpers.js";
+import { parseCommaSeparatedIds } from "#src/tools/shared/utils.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 
 const PATH_SUPPORTED_TYPES = ["device", "drum-pad"];
 
@@ -223,33 +225,11 @@ function resolvePathsToIds(paths, type) {
   for (const targetPath of paths) {
     try {
       const resolved = resolvePathToLiveApi(targetPath);
+      const resolvedId = resolvePathToId(resolved, targetPath, type);
 
-      if (resolved.targetType !== type) {
-        console.error(
-          `delete: path "${targetPath}" resolves to ${resolved.targetType}, not ${type}`,
-        );
-        continue;
+      if (resolvedId) {
+        ids.push(resolvedId);
       }
-
-      // For drum pads, we need to look up the pad via the device
-      if (type === "drum-pad") {
-        const drumPad = resolveDrumPad(resolved, targetPath);
-
-        if (drumPad) {
-          ids.push(drumPad.id);
-        }
-
-        continue;
-      }
-
-      const target = new LiveAPI(resolved.liveApiPath);
-
-      if (!target.exists()) {
-        console.error(`delete: ${type} at path "${targetPath}" does not exist`);
-        continue;
-      }
-
-      ids.push(target.id);
     } catch (e) {
       console.error(`delete: ${e.message}`);
     }
@@ -259,34 +239,80 @@ function resolvePathsToIds(paths, type) {
 }
 
 /**
- * Resolves a drum pad from path resolution result
+ * Resolves a single path resolution result to an ID
  * @param {object} resolved - Result from resolvePathToLiveApi
  * @param {string} targetPath - Original path for error messages
- * @returns {LiveAPI|null} The drum pad LiveAPI object or null
+ * @param {string} type - The target type ("device" or "drum-pad")
+ * @returns {string|null} The resolved ID or null
  */
-function resolveDrumPad(resolved, targetPath) {
-  const device = new LiveAPI(resolved.liveApiPath);
+function resolvePathToId(resolved, targetPath, type) {
+  // For drum-pad type, only accept drum-pad paths (no nested navigation)
+  if (type === "drum-pad") {
+    if (resolved.targetType !== "drum-pad") {
+      console.error(
+        `delete: path "${targetPath}" resolves to ${resolved.targetType}, not drum-pad`,
+      );
 
-  if (!device.exists()) {
-    console.error(`delete: drum-pad at path "${targetPath}" does not exist`);
+      return null;
+    }
+
+    // Use shared helper to get just the drum pad (no remaining segments)
+    const result = resolveDrumPadFromPath(
+      resolved.liveApiPath,
+      resolved.drumPadNote,
+      [], // Ignore remaining segments for drum-pad deletion
+    );
+
+    if (!result.target) {
+      console.error(`delete: drum-pad at path "${targetPath}" does not exist`);
+
+      return null;
+    }
+
+    return result.target.id;
+  }
+
+  // For device type, handle both direct device paths and nested device paths in drum pads
+  if (type === "device") {
+    // Direct device path (not through drum pad)
+    if (resolved.targetType === "device") {
+      const target = new LiveAPI(resolved.liveApiPath);
+
+      if (!target.exists()) {
+        console.error(`delete: device at path "${targetPath}" does not exist`);
+
+        return null;
+      }
+
+      return target.id;
+    }
+
+    // Device nested inside a drum pad (path like 1/0/pC1/0/0)
+    if (
+      resolved.targetType === "drum-pad" &&
+      resolved.remainingSegments?.length >= 2
+    ) {
+      const result = resolveDrumPadFromPath(
+        resolved.liveApiPath,
+        resolved.drumPadNote,
+        resolved.remainingSegments,
+      );
+
+      if (!result.target || result.targetType !== "device") {
+        console.error(`delete: device at path "${targetPath}" does not exist`);
+
+        return null;
+      }
+
+      return result.target.id;
+    }
+
+    console.error(
+      `delete: path "${targetPath}" resolves to ${resolved.targetType}, not device`,
+    );
 
     return null;
   }
-
-  // Get drum pads and find the one matching the note
-  const drumPadIds = device.getChildIds("drum_pads");
-  const targetMidiNote = pitchNameToMidi(resolved.drumPadNote);
-
-  for (const padId of drumPadIds) {
-    const pad = new LiveAPI(padId);
-    const padNote = pad.get("note")?.[0];
-
-    if (padNote === targetMidiNote) {
-      return pad;
-    }
-  }
-
-  console.error(`delete: drum-pad at path "${targetPath}" does not exist`);
 
   return null;
 }

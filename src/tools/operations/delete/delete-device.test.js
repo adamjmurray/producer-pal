@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as console from "#src/shared/v8-max-console.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 import {
   children,
   liveApiCall,
@@ -7,7 +8,7 @@ import {
   liveApiId,
   liveApiPath,
   liveApiType,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { deleteObject } from "./delete.js";
 
 describe("deleteObject device deletion", () => {
@@ -422,6 +423,70 @@ describe("deleteObject device deletion", () => {
 
       expect(consoleSpy).toHaveBeenCalledWith(
         'delete: path parameter is only valid for types "device" or "drum-pad", ignoring paths',
+      );
+    });
+
+    it("should delete a device nested inside a drum pad by path", () => {
+      const drumRackPath = "live_set tracks 1 devices 0";
+      const drumPadId = "pad-36";
+      const chainId = "chain-1";
+      const deviceId = "nested-device";
+      const devicePath =
+        "live_set tracks 1 devices 0 drum_pads 36 chains 0 devices 0";
+
+      liveApiId.mockImplementation(function () {
+        if (this._path === drumRackPath) return "drum-rack";
+        if (this._id?.startsWith("id ")) return this._id.slice(3);
+
+        return this._id;
+      });
+      liveApiPath.mockImplementation(function () {
+        if (this._id === deviceId) return devicePath;
+
+        return this._path;
+      });
+      liveApiType.mockImplementation(function () {
+        if (this._id === drumPadId) return "DrumPad";
+        if (this._id === chainId) return "DrumChain";
+        if (this._id === deviceId) return "Device";
+        if (this._path === drumRackPath) return "DrumGroupDevice";
+      });
+      liveApiGet.mockImplementation(function (prop) {
+        const id = this._id ?? this.id;
+
+        if (
+          (this._path === drumRackPath || id === "drum-rack") &&
+          prop === "drum_pads"
+        ) {
+          return children(drumPadId);
+        }
+
+        if (id === drumPadId) {
+          if (prop === "note") return [36]; // C1
+          if (prop === "chains") return children(chainId);
+        }
+
+        if (id === chainId && prop === "devices") {
+          return children(deviceId);
+        }
+
+        return [];
+      });
+
+      const result = deleteObject({ path: "1/0/pC1/0/0", type: "device" });
+
+      expect(result).toEqual({
+        id: deviceId,
+        type: "device",
+        deleted: true,
+      });
+      // Should call delete_device on the chain containing the device
+      expect(liveApiCall).toHaveBeenCalledWithThis(
+        expect.objectContaining({
+          path: "live_set tracks 1 devices 0 drum_pads 36 chains 0",
+        }),
+        "delete_device",
+        0,
       );
     });
   });
