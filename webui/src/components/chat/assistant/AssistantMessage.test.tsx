@@ -22,7 +22,7 @@ describe("AssistantMessage", () => {
       const container = document.querySelector(".flex.flex-col.gap-3.py-2");
 
       expect(container).toBeDefined();
-      expect(container!.children.length).toBe(0);
+      expect(container!.children).toHaveLength(0);
     });
   });
 
@@ -46,7 +46,7 @@ describe("AssistantMessage", () => {
       render(<AssistantMessage parts={parts} />);
       const proseElements = document.querySelectorAll(".prose");
 
-      expect(proseElements.length).toBe(2);
+      expect(proseElements).toHaveLength(2);
     });
   });
 
@@ -188,7 +188,7 @@ describe("AssistantMessage", () => {
 
       const container = document.querySelector(".flex.flex-col.gap-3.py-2");
 
-      expect(container!.children.length).toBe(5);
+      expect(container!.children).toHaveLength(5);
 
       // Verify order by checking child elements
       // First child is AssistantText
@@ -230,7 +230,7 @@ describe("AssistantMessage", () => {
 
       const container = document.querySelector(".flex.flex-col.gap-3.py-2");
 
-      expect(container!.children.length).toBe(3);
+      expect(container!.children).toHaveLength(3);
     });
   });
 });

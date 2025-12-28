@@ -23,14 +23,14 @@ describe("ActivityIndicator", () => {
     const { container } = render(<ActivityIndicator />);
     const paths = container.querySelectorAll("path");
 
-    expect(paths.length).toBe(2);
+    expect(paths).toHaveLength(2);
   });
 
   it("renders circles", () => {
     const { container } = render(<ActivityIndicator />);
     const circles = container.querySelectorAll("circle");
 
-    expect(circles.length).toBe(2);
+    expect(circles).toHaveLength(2);
   });
 
   it("has proper SVG dimensions", () => {

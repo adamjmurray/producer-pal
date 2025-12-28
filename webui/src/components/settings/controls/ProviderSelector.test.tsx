@@ -52,7 +52,7 @@ describe("ProviderSelector", () => {
 
       const options = document.querySelectorAll("option");
 
-      expect(options.length).toBe(7);
+      expect(options).toHaveLength(7);
 
       expect(options[0]!.value).toBe("gemini");
       expect(options[0]!.textContent).toBe("Google");

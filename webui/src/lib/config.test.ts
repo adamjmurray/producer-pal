@@ -97,7 +97,7 @@ describe("config", () => {
     });
 
     it("has 16 tool mappings", () => {
-      expect(Object.keys(toolNames).length).toBe(16);
+      expect(Object.keys(toolNames)).toHaveLength(16);
     });
   });
 });

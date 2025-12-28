@@ -410,7 +410,7 @@ describe("updateClip - Advanced note operations", () => {
     });
 
     // Should have added 3 notes total
-    expect(allAddedNotes.length).toBe(3);
+    expect(allAddedNotes).toHaveLength(3);
 
     // But noteCount should only include notes within the 2-bar playback region
     // C3 at bar 1 (beat 0) and D3 at bar 2 (beat 4) are within 8 beats

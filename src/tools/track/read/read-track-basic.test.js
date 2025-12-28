@@ -303,7 +303,7 @@ describe("readTrack", () => {
 
     const result = readTrack({ trackIndex: 2 });
 
-    expect(result.arrangementClips.length).toBe(2);
+    expect(result.arrangementClips).toHaveLength(2);
     expect(result.arrangementClips[0].id).toBe("arr_clip1");
     expect(result.arrangementClips[1].id).toBe("arr_clip2");
   });

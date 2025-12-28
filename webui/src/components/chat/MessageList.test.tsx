@@ -189,7 +189,7 @@ describe("MessageList", () => {
         />,
       );
 
-      expect(container.querySelectorAll(".rounded-lg").length).toBe(1);
+      expect(container.querySelectorAll(".rounded-lg")).toHaveLength(1);
     });
 
     it("filters message with no parts and no content", () => {
@@ -215,7 +215,7 @@ describe("MessageList", () => {
         />,
       );
 
-      expect(container.querySelectorAll(".rounded-lg").length).toBe(0);
+      expect(container.querySelectorAll(".rounded-lg")).toHaveLength(0);
     });
   });
 

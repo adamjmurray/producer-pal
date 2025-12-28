@@ -555,6 +555,15 @@ export default [
       "import/order": "off",
       // Enforce vi.mock(import('...')) syntax for proper module mocking
       "vitest/prefer-import-in-mock": "error",
+      "vitest/consistent-test-it": ["error", { fn: "it" }], // or "test" - pick one
+      "vitest/no-duplicate-hooks": "error",
+      "vitest/no-test-return-statement": "error",
+      "vitest/prefer-hooks-on-top": "error",
+      "vitest/prefer-hooks-in-order": "error",
+      "vitest/prefer-to-contain": "error",
+      "vitest/prefer-to-have-length": "error",
+      "vitest/prefer-comparison-matcher": "error",
+      // "vitest/prefer-spy-on": "error", // TODO
     },
   },
   {

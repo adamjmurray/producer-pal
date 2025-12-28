@@ -220,7 +220,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
     expect(tileCount).toBe(6);
 
     // Should return original + all tiles
-    expect(result.length).toBe(7);
+    expect(result).toHaveLength(7);
     expect(result[0]).toEqual({ id: clipId });
   });
 
@@ -330,7 +330,7 @@ describe("arrangementLength (unlooped MIDI clips expansion with tiling)", () => 
 
     // Should return original + all tiles
     // Note: 824 is consumed by holding area, 825 is the final partial tile
-    expect(result.length).toBe(5);
+    expect(result).toHaveLength(5);
     expect(result[0]).toEqual({ id: clipId });
     expect(result[4]).toEqual({ id: "825" });
   });

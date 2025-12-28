@@ -186,7 +186,7 @@ describe("Modulation Branch Coverage", () => {
 
       // Assignment was skipped, so velocity should not be in result
       expect(result.velocity).toBeUndefined();
-      expect(Object.keys(result).length).toBe(0);
+      expect(Object.keys(result)).toHaveLength(0);
     });
   });
 });

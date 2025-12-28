@@ -150,14 +150,14 @@ describe("AssistantToolCall", () => {
       render(<AssistantToolCall {...defaultProps} result={null} />);
       const nestedDetails = document.querySelectorAll("details");
 
-      expect(nestedDetails.length).toBe(1); // Only outer details
+      expect(nestedDetails).toHaveLength(1); // Only outer details
     });
 
     it("shows result details when result exists", () => {
       render(<AssistantToolCall {...defaultProps} result="Result text" />);
       const nestedDetails = document.querySelectorAll("details");
 
-      expect(nestedDetails.length).toBe(2); // Outer and inner details
+      expect(nestedDetails).toHaveLength(2); // Outer and inner details
     });
 
     it("shows result preview in summary", () => {

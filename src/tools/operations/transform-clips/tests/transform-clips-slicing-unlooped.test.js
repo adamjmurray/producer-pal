@@ -139,7 +139,7 @@ describe("transformClips - slicing unlooped clips", () => {
     );
 
     // Should have 3 duplicate calls: holding, move back, and reveal second slice
-    expect(duplicateCalls.length).toBe(3);
+    expect(duplicateCalls).toHaveLength(3);
 
     // Third duplicate should be at position 4 (second slice)
     expect(duplicateCalls[2].position).toBe(4);
@@ -303,7 +303,7 @@ describe("transformClips - slicing unlooped clips", () => {
     );
 
     // Should have 5 duplicate calls: holding, move back, and 3 reveal slices (at 4, 8, 12)
-    expect(duplicateCalls.length).toBe(5);
+    expect(duplicateCalls).toHaveLength(5);
 
     // Slices should be at positions 4, 8, 12
     expect(duplicateCalls[2].position).toBe(4);
@@ -407,7 +407,7 @@ describe("transformClips - slicing unlooped clips", () => {
     // Key: No clips should be placed at position 4 (where adjacent clip would be)
     const callsAtBoundary = duplicateCalls.filter((c) => c.position === 4);
 
-    expect(callsAtBoundary.length).toBe(0);
+    expect(callsAtBoundary).toHaveLength(0);
 
     // Should have slices at positions 1, 2, 3 (not 4)
     const slicePositions = duplicateCalls.map((c) => c.position);

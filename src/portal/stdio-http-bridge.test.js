@@ -131,7 +131,7 @@ describe("StdioHttpBridge", () => {
     it("generates fallback tools excluding ppal-raw-live-api", () => {
       const tools = bridge.fallbackTools.tools;
 
-      expect(tools.length).toBe(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
+      expect(tools).toHaveLength(2); // Based on our mock that has 3 tools minus ppal-raw-live-api
       expect(tools.map((t) => t.name)).not.toContain("ppal-raw-live-api");
 
       // Check expected tools are present

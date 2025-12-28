@@ -24,7 +24,7 @@ describe("License embedding", () => {
 
     // Check if the escaped license text is in the device
     expect(
-      deviceContent.includes(escapedLicense),
+      deviceContent,
       `License text not found in ${devicePath}. 
       
 Expected to find the contents of ${licensePath} embedded in the Max device.
@@ -41,6 +41,6 @@ ${escapedLicense.substring(0, 100)}...
 
 First few chars found in device:
 ${deviceContent.substring(deviceContent.indexOf('"text"'), 200)}...`,
-    ).toBe(true);
+    ).toContain(escapedLicense);
   });
 });

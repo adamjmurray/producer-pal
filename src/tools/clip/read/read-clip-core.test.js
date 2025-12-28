@@ -224,7 +224,7 @@ describe("readClip", () => {
     // In 3/4 time, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("3/4");
-    expect(result.length).toBe("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
+    expect(result).toHaveLength("1:1"); // 4 Ableton beats = 1 bar + 1 beat in 3/4
   });
 
   it("should format notes using clip's time signature with Ableton quarter-note conversion", () => {
@@ -291,7 +291,7 @@ describe("readClip", () => {
     // In 6/8 time with Ableton's quarter-note beats, beat 3 should be bar 2 beat 1
     expect(result.notes).toBe("C3 1|1 D3 2|1 E3 2|2");
     expect(result.timeSignature).toBe("6/8");
-    expect(result.length).toBe("1:0"); // 3 Ableton beats = 1 bar in 6/8
+    expect(result).toHaveLength("1:0"); // 3 Ableton beats = 1 bar in 6/8
   });
 
   it("returns null values when no clip exists", () => {
@@ -448,7 +448,7 @@ describe("readClip", () => {
     expect(result.trackIndex).toBe(2);
     expect(result.sceneIndex).toBe(4);
     expect(result.view).toBe("session");
-    expect(result.length).toBe("1:0");
+    expect(result).toHaveLength("1:0");
     expect(result.start).toBe("1|2");
   });
 
@@ -500,7 +500,7 @@ describe("readClip", () => {
     expect(result.arrangementLength).toBe("1:0");
     // But clip properties use clip time signature (6/8)
     expect(result.timeSignature).toBe("6/8");
-    expect(result.length).toBe("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
+    expect(result).toHaveLength("1:2"); // 4 Ableton beats = 1 bar + 2 beats in 6/8
     expect(result.start).toBe("1|3"); // Uses clip time signature and needs to compensate for Ableton using quarter note beats instead of musical beats that respect the time signature
   });
 

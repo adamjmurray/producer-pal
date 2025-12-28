@@ -46,7 +46,7 @@ describe("truncateString", () => {
     const result = truncateString(longString, 100);
 
     expect(result).toBeDefined();
-    expect(result!.length).toBe(100);
+    expect(result!).toHaveLength(100);
     expect(result!.endsWith("…")).toBe(true);
   });
 });

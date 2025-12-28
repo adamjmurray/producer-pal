@@ -321,7 +321,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result.length).toBe(1);
+    expect(result).toHaveLength(1);
     expect(result[0].pitch).toBe(60);
     expect(result[0].start_time).toBe(0);
     expect(result[0].duration).toBeCloseTo(6 + 1 / 3, 10); // 1 bar (4 beats) + 2+1/3 beats = 6+1/3 beats
@@ -354,7 +354,7 @@ describe("bar|beat interpretNotation() - core functionality", () => {
       timeSigDenominator: 4,
     });
 
-    expect(result.length).toBe(2);
+    expect(result).toHaveLength(2);
 
     // First note at 1|2+1/3
     expect(result[0].pitch).toBe(60);

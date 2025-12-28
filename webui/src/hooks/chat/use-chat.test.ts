@@ -376,7 +376,7 @@ describe("useChat", () => {
         await result.current.handleRetry(0);
       });
 
-      expect(result.current.messages.length).toBe(initialLength);
+      expect(result.current.messages).toHaveLength(initialLength);
     });
 
     it("does nothing if message at index is not user role", async () => {
