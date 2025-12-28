@@ -19,7 +19,7 @@ global.LiveAPI = vi.fn(function () {
 });
 
 // Mock utility functions
-vi.mock(import("../../shared/utils.js"), () => ({
+vi.mock(import("#src/tools/shared/utils.js"), () => ({
   toLiveApiView: vi.fn((view) => {
     const viewMap = { session: 1, arrangement: 2 };
     return viewMap[view] || 1;

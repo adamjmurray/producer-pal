@@ -512,6 +512,10 @@ export default [
           selector: "ImportDeclaration[source.value=/^\\.\\.\\x2f\\.\\./]",
           message: "Use path alias (#webui/*) instead of ../../ imports",
         },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\.\\x2f\\.\\./]",
+          message: "Use path alias (#webui/*) instead of ../../ imports",
+        },
       ],
     },
   },
@@ -524,6 +528,10 @@ export default [
         "error",
         {
           selector: "ImportDeclaration[source.value=/^\\.\\.\\x2f\\.\\./]",
+          message: "Use path alias (#src/*) instead of ../../ imports",
+        },
+        {
+          selector: "ImportExpression[source.value=/^\\.\\.\\x2f\\.\\./]",
           message: "Use path alias (#src/*) instead of ../../ imports",
         },
       ],
