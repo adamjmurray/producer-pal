@@ -5,7 +5,7 @@
 import { renderHook, waitFor } from "@testing-library/preact";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
-import { GeminiClient } from "../../chat/gemini-client";
+import { GeminiClient } from "#webui/chat/gemini-client";
 import { useMcpConnection } from "./use-mcp-connection";
 
 // Mock GeminiClient

@@ -7,7 +7,7 @@ import {
   liveApiSet,
   liveApiType,
   mockLiveApiGet,
-} from "../../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { transformClips } from "../transform-clips.js";
 
 describe("transformClips - slicing unlooped clips", () => {

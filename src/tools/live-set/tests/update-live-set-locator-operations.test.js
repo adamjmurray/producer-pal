@@ -5,7 +5,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiSet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { updateLiveSet } from "../update-live-set.js";
 
 describe("updateLiveSet - locator operations", () => {

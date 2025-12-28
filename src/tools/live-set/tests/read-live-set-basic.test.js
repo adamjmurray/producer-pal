@@ -7,11 +7,11 @@ import {
   liveApiId,
   liveApiPath,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 import { readLiveSet } from "../read-live-set.js";
 
 describe("readLiveSet - basic reading", () => {

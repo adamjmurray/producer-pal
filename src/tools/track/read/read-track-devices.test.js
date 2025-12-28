@@ -3,12 +3,12 @@ import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import {
   LIVE_API_DEVICE_TYPE_AUDIO_EFFECT,
   LIVE_API_DEVICE_TYPE_INSTRUMENT,
   LIVE_API_DEVICE_TYPE_MIDI_EFFECT,
-} from "../../constants.js";
+} from "#src/tools/constants.js";
 import { mockTrackProperties } from "./helpers/read-track-test-helpers.js";
 import { readTrack } from "./read-track.js";
 

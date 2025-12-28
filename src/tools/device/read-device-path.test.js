@@ -4,7 +4,7 @@ import {
   liveApiGet,
   liveApiId,
   liveApiType,
-} from "../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { readDevice } from "./read-device.js";
 
 describe("readDevice with path parameter", () => {

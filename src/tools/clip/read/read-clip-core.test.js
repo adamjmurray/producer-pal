@@ -5,7 +5,7 @@ import {
   liveApiPath,
   liveApiType,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { readClip } from "./read-clip.js";
 
 describe("readClip", () => {

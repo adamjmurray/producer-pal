@@ -1,8 +1,8 @@
 import {
   parseCommaSeparatedIds,
   parseTimeSignature,
-} from "../../shared/utils.js";
-import { validateIdTypes } from "../../shared/validation/id-validation.js";
+} from "#src/tools/shared/utils.js";
+import { validateIdTypes } from "#src/tools/shared/validation/id-validation.js";
 import { handleArrangementLengthOperation } from "../arrangement/arrangement-operations.js";
 import {
   validateAndParseArrangementParams,

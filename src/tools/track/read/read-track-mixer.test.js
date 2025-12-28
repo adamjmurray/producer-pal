@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import * as console from "../../../shared/v8-max-console.js";
+import * as console from "#src/shared/v8-max-console.js";
 import {
   children,
   liveApiId,
   mockLiveApiGet,
-} from "../../../test/mock-live-api.js";
+} from "#src/test/mock-live-api.js";
 import { readTrack } from "./read-track.js";
 
 describe("readTrack - mixer properties", () => {

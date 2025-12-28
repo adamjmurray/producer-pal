@@ -9,7 +9,7 @@ vi.mock("../../shared/arrangement/arrangement-tiling.js", () => ({
   createAudioClipInSession: vi.fn(),
 }));
 
-import { createAudioClipInSession } from "../../shared/arrangement/arrangement-tiling.js";
+import { createAudioClipInSession } from "#src/tools/shared/arrangement/arrangement-tiling.js";
 
 describe("update-live-set-helpers", () => {
   beforeEach(() => {

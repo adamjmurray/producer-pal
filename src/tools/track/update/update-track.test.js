@@ -5,10 +5,10 @@ import {
   liveApiPath,
   liveApiSet,
   liveApiType,
-} from "../../../test/mock-live-api.js";
-import { MONITORING_STATE } from "../../constants.js";
+} from "#src/test/mock-live-api.js";
+import { MONITORING_STATE } from "#src/tools/constants.js";
 import { updateTrack } from "./update-track.js";
-import "../../../live-api-adapter/live-api-extensions.js";
+import "#src/live-api-adapter/live-api-extensions.js";
 
 describe("updateTrack", () => {
   beforeEach(() => {
