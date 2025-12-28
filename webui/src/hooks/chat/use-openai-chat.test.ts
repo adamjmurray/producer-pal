@@ -20,7 +20,7 @@ vi.mock(import("openai"), () => ({
 
 // Mock config
 // @ts-expect-error vi.mock partial implementation
-vi.mock(import("../../lib/config"), () => ({
+vi.mock(import("#webui/lib/config"), () => ({
   SYSTEM_INSTRUCTION: "Test instruction",
 }));
 

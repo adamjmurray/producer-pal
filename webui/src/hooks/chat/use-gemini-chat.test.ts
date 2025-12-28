@@ -8,7 +8,7 @@ import { useGeminiChat } from "./use-gemini-chat";
 
 // Mock GeminiClient
 // @ts-expect-error vi.mock partial implementation
-vi.mock(import("../../chat/gemini-client"), () => ({
+vi.mock(import("#webui/chat/gemini-client"), () => ({
   GeminiClient: class MockGeminiClient {
     initialize = vi.fn();
     sendMessage = vi.fn();
@@ -16,13 +16,13 @@ vi.mock(import("../../chat/gemini-client"), () => ({
 }));
 
 // Mock formatter
-vi.mock(import("../../chat/gemini-formatter"), () => ({
+vi.mock(import("#webui/chat/gemini-formatter"), () => ({
   formatGeminiMessages: vi.fn((messages) => messages),
 }));
 
 // Mock config
 // @ts-expect-error vi.mock partial implementation
-vi.mock(import("../../lib/config"), () => ({
+vi.mock(import("#webui/lib/config"), () => ({
   getThinkingBudget: vi.fn(() => ({ mode: "auto" })),
   SYSTEM_INSTRUCTION: "Test instruction",
 }));

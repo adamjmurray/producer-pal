@@ -11,7 +11,7 @@ import { createGeminiErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock GeminiClient
 // @ts-expect-error vi.mock partial implementation
-vi.mock(import("../../chat/gemini-client"), () => ({
+vi.mock(import("#webui/chat/gemini-client"), () => ({
   GeminiClient: vi.fn(),
 }));
 
@@ -30,7 +30,7 @@ vi.mock(import("../settings/config-builders"), () => ({
 }));
 
 // Mock formatters and helpers
-vi.mock(import("../../chat/gemini-formatter"), () => ({
+vi.mock(import("#webui/chat/gemini-formatter"), () => ({
   formatGeminiMessages: vi.fn((messages) =>
     messages.map((msg: GeminiMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",

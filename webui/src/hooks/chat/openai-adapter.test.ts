@@ -11,7 +11,7 @@ import { createOpenAIErrorMessage } from "./helpers/streaming-helpers";
 
 // Mock OpenAIClient
 // @ts-expect-error vi.mock partial implementation
-vi.mock(import("../../chat/openai-client"), () => ({
+vi.mock(import("#webui/chat/openai-client"), () => ({
   OpenAIClient: vi.fn(),
 }));
 
@@ -31,7 +31,7 @@ vi.mock(import("../settings/config-builders"), () => ({
 }));
 
 // Mock formatters and helpers
-vi.mock(import("../../chat/openai-formatter"), () => ({
+vi.mock(import("#webui/chat/openai-formatter"), () => ({
   formatOpenAIMessages: vi.fn((messages) =>
     messages.map((msg: OpenAIMessage, idx: number) => ({
       role: msg.role === "user" ? "user" : "model",
