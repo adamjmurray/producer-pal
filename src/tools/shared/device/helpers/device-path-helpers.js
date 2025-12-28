@@ -1,4 +1,4 @@
-import { pitchNameToMidi } from "#src/shared/pitch.js";
+import { noteNameToMidi } from "#src/shared/pitch.js";
 
 /**
  * Extract simplified path from Live API canonical path
@@ -259,7 +259,12 @@ export function resolveDrumPadFromPath(
 
   // Find the drum pad matching the note
   const drumPads = device.getChildren("drum_pads");
-  const targetMidiNote = pitchNameToMidi(drumPadNote);
+  const targetMidiNote = noteNameToMidi(drumPadNote);
+
+  if (targetMidiNote == null) {
+    return { target: null, targetType: "drum-pad" };
+  }
+
   const pad = drumPads.find((p) => p.getProperty("note") === targetMidiNote);
 
   if (!pad) {

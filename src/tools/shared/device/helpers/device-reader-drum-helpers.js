@@ -1,4 +1,4 @@
-import { midiToPitchName } from "#src/shared/pitch.js";
+import { midiToNoteName } from "#src/shared/pitch.js";
 import { STATE } from "#src/tools/constants.js";
 import {
   buildChainPath,
@@ -34,7 +34,12 @@ export function processDrumPad(
 ) {
   const readDevice = readDeviceFn;
   const midiNote = pad.getProperty("note");
-  const noteName = midiToPitchName(midiNote);
+  const noteName = midiToNoteName(midiNote);
+
+  if (noteName == null) {
+    throw new Error(`Invalid MIDI note from drum pad: ${midiNote}`);
+  }
+
   const drumPadPath = parentPath
     ? buildDrumPadPath(parentPath, noteName)
     : null;

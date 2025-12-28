@@ -1,5 +1,5 @@
+import { noteNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
-import { noteNameToMidi } from "#src/tools/shared/device/helpers/device-display-helpers.js";
 import {
   resolveDrumPadFromPath,
   resolvePathToLiveApi,

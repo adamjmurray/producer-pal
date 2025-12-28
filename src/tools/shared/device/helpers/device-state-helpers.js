@@ -1,4 +1,4 @@
-import { midiToPitchName } from "#src/shared/pitch.js";
+import { midiToNoteName } from "#src/shared/pitch.js";
 import { DEVICE_TYPE, STATE } from "#src/tools/constants.js";
 
 /**
@@ -36,7 +36,11 @@ export function buildChainInfo(chain, options = {}) {
     const outNote = chain.getProperty("out_note");
 
     if (outNote != null) {
-      chainInfo.mappedPitch = midiToPitchName(outNote);
+      const noteName = midiToNoteName(outNote);
+
+      if (noteName != null) {
+        chainInfo.mappedPitch = noteName;
+      }
     }
 
     const chokeGroup = chain.getProperty("choke_group");

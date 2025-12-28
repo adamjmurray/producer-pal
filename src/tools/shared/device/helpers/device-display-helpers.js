@@ -1,8 +1,5 @@
-import {
-  midiToPitchName,
-  pitchNameToMidi,
-  isValidPitchName,
-} from "#src/shared/pitch.js";
+// Note: pitch utilities have been centralized in #src/shared/pitch.js
+// Import from there directly instead of through this file
 
 // Parameter state mapping (0=active, 1=inactive, 2=disabled)
 export const PARAM_STATE_MAP = {
@@ -134,23 +131,6 @@ export function extractMaxPanValue(label) {
   const match = label.match(/^(\d+)[LR]$/);
 
   return match ? parseInt(match[1]) : 50;
-}
-
-// Re-export pitch utilities for backwards compatibility
-// Note: Output now uses flats (Db) instead of sharps (C#)
-export { midiToPitchName as midiToNoteName, isValidPitchName as isNoteName };
-
-/**
- * Convert note name to MIDI note number.
- * @param {string} name - Note name (e.g., "C4", "F#-1", "Db3")
- * @returns {number|null} MIDI note number or null if invalid
- */
-export function noteNameToMidi(name) {
-  try {
-    return pitchNameToMidi(name);
-  } catch {
-    return null;
-  }
 }
 
 function addStateFlags(result, paramApi, state, automationState) {

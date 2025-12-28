@@ -1,9 +1,6 @@
+import { isValidNoteName, noteNameToMidi } from "#src/shared/pitch.js";
 import * as console from "#src/shared/v8-max-console.js";
-import {
-  isPanLabel,
-  isNoteName,
-  noteNameToMidi,
-} from "#src/tools/shared/device/helpers/device-display-helpers.js";
+import { isPanLabel } from "#src/tools/shared/device/helpers/device-display-helpers.js";
 
 // ============================================================================
 // Collapsed state
@@ -67,7 +64,7 @@ function setParamValue(param, inputValue) {
   }
 
   // 2. Note - string matching note pattern (e.g., "C4", "F#-1")
-  if (isNoteName(inputValue)) {
+  if (isValidNoteName(inputValue)) {
     const midi = noteNameToMidi(inputValue);
 
     if (midi == null) {

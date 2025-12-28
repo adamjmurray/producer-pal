@@ -4,9 +4,6 @@ import {
   isPanLabel,
   normalizePan,
   extractMaxPanValue,
-  midiToNoteName,
-  noteNameToMidi,
-  isNoteName,
 } from "./device-display-helpers.js";
 
 describe("device-display-helpers", () => {
@@ -195,50 +192,6 @@ describe("device-display-helpers", () => {
     it("returns default 50 for non-matching labels", () => {
       expect(extractMaxPanValue("C")).toBe(50);
       expect(extractMaxPanValue("invalid")).toBe(50);
-    });
-  });
-
-  describe("midiToNoteName", () => {
-    it("converts MIDI notes to note names (Live convention: C3=60)", () => {
-      expect(midiToNoteName(60)).toBe("C3");
-      expect(midiToNoteName(69)).toBe("A3");
-      expect(midiToNoteName(0)).toBe("C-2");
-      expect(midiToNoteName(127)).toBe("G8");
-      // Uses flats for accidentals (canonical behavior from src/shared/pitch.js)
-      expect(midiToNoteName(61)).toBe("Db3");
-    });
-  });
-
-  describe("noteNameToMidi", () => {
-    it("converts note names to MIDI numbers (Live convention: C3=60)", () => {
-      expect(noteNameToMidi("C3")).toBe(60);
-      expect(noteNameToMidi("A3")).toBe(69);
-      expect(noteNameToMidi("C-2")).toBe(0);
-      expect(noteNameToMidi("G8")).toBe(127);
-      expect(noteNameToMidi("C#3")).toBe(61);
-      expect(noteNameToMidi("Db3")).toBe(61);
-    });
-
-    it("returns null for invalid note names", () => {
-      expect(noteNameToMidi("invalid")).toBe(null);
-      expect(noteNameToMidi("H4")).toBe(null);
-      expect(noteNameToMidi("")).toBe(null);
-    });
-  });
-
-  describe("isNoteName", () => {
-    it("returns true for valid note names", () => {
-      expect(isNoteName("C4")).toBe(true);
-      expect(isNoteName("F#-1")).toBe(true);
-      expect(isNoteName("Bb3")).toBe(true);
-      expect(isNoteName("G#8")).toBe(true);
-    });
-
-    it("returns false for non-note values", () => {
-      expect(isNoteName("50L")).toBe(false);
-      expect(isNoteName("100 Hz")).toBe(false);
-      expect(isNoteName(60)).toBe(false);
-      expect(isNoteName(null)).toBe(false);
     });
   });
 });

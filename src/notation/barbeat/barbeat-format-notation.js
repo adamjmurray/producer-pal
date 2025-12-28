@@ -1,4 +1,4 @@
-import { midiToPitchName } from "#src/shared/pitch.js";
+import { midiToNoteName } from "#src/shared/pitch.js";
 import {
   DEFAULT_BEATS_PER_BAR,
   DEFAULT_DURATION,
@@ -283,7 +283,13 @@ export function formatNotation(clipNotes, options = {}) {
       );
 
       // Add note name
-      elements.push(midiToPitchName(note.pitch));
+      const noteName = midiToNoteName(note.pitch);
+
+      if (noteName == null) {
+        throw new Error(`Invalid MIDI pitch: ${note.pitch}`);
+      }
+
+      elements.push(noteName);
     }
 
     // Output time position after all notes for this time

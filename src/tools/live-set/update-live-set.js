@@ -82,6 +82,10 @@ export async function updateLiveSet(
       const { scaleRoot, scaleName } = parseScale(scale);
       const scaleRootNumber = pitchClassToNumber(scaleRoot);
 
+      if (scaleRootNumber == null) {
+        throw new Error(`Invalid scale root: ${scaleRoot}`);
+      }
+
       liveSet.set("root_note", scaleRootNumber);
       liveSet.set("scale_name", scaleName);
       liveSet.set("scale_mode", 1);

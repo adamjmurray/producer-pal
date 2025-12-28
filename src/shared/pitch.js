@@ -92,12 +92,12 @@ export function isValidMidi(midi) {
 }
 
 /**
- * Check if a string is a valid pitch name (e.g., "C3", "F#4", "Bb-1").
+ * Check if a string is a valid note name (e.g., "C3", "F#4", "Bb-1").
  * Case-insensitive.
  * @param {unknown} name - Value to check
- * @returns {boolean} True if valid pitch name
+ * @returns {boolean} True if valid note name
  */
-export function isValidPitchName(name) {
+export function isValidNoteName(name) {
   if (typeof name !== "string") return false;
 
   const match = name.match(/^([A-Ga-g][#bB]?)(-?\d+)$/);
@@ -125,33 +125,23 @@ export function isValidPitchClassName(name) {
  * Convert pitch class name to semitone number (0-11).
  * Case-insensitive.
  * @param {string} name - Pitch class name (e.g., "C", "F#", "Bb")
- * @returns {number} Semitone number (0-11)
- * @throws {Error} If pitch class name is invalid
+ * @returns {number | null} Semitone number (0-11), or null if invalid
  */
 export function pitchClassToNumber(name) {
   if (typeof name !== "string") {
-    throw new Error(
-      `Invalid pitch class: must be a string, got ${typeof name}`,
-    );
+    return null;
   }
 
   const value = PITCH_CLASS_VALUES_LOWERCASE[name.toLowerCase()];
 
-  if (value === undefined) {
-    throw new Error(
-      `Invalid pitch class "${name}". Valid names: ${VALID_PITCH_CLASS_NAMES.join(", ")}`,
-    );
-  }
-
-  return value;
+  return value ?? null;
 }
 
 /**
  * Convert semitone number to pitch class name.
  * Always outputs using flats (Db, Eb, Gb, Ab, Bb).
  * @param {number} num - Semitone number (0-11)
- * @returns {string} Pitch class name
- * @throws {Error} If number is out of range
+ * @returns {string | null} Pitch class name, or null if invalid
  */
 export function numberToPitchClass(num) {
   if (
@@ -160,26 +150,21 @@ export function numberToPitchClass(num) {
     num < 0 ||
     num > 11
   ) {
-    throw new Error(
-      `Invalid pitch class number: ${num}. Must be integer 0-11.`,
-    );
+    return null;
   }
 
   return PITCH_CLASS_NAMES[num];
 }
 
 /**
- * Convert MIDI note number to pitch name (e.g., 60 → "C3").
+ * Convert MIDI note number to note name (e.g., 60 → "C3").
  * Always outputs using flats (Db, Eb, Gb, Ab, Bb).
  * @param {number} midi - MIDI note number (0-127)
- * @returns {string} Pitch name
- * @throws {Error} If MIDI number is invalid
+ * @returns {string | null} Note name, or null if invalid
  */
-export function midiToPitchName(midi) {
+export function midiToNoteName(midi) {
   if (!isValidMidi(midi)) {
-    throw new Error(
-      `Invalid MIDI note number: ${midi}. Must be integer 0-127.`,
-    );
+    return null;
   }
 
   const pitchClass = midi % 12;
@@ -189,25 +174,26 @@ export function midiToPitchName(midi) {
 }
 
 /**
- * Convert pitch name to MIDI note number (e.g., "C3" → 60).
+ * Convert note name to MIDI note number (e.g., "C3" → 60).
  * Case-insensitive, accepts both sharps and flats.
- * @param {string} name - Pitch name (e.g., "C3", "F#4", "Bb-1", "c#3")
- * @returns {number} MIDI note number (0-127)
- * @throws {Error} If pitch name is invalid or results in out-of-range MIDI
+ * @param {string} name - Note name (e.g., "C3", "F#4", "Bb-1", "c#3")
+ * @returns {number | null} MIDI note number (0-127), or null if invalid
  */
-export function pitchNameToMidi(name) {
+export function noteNameToMidi(name) {
   if (typeof name !== "string" || name.length < 2) {
-    throw new Error(`Invalid note name: ${name}`);
+    return null;
   }
 
   const match = name.match(/^([A-Ga-g][#bB]?)(-?\d+)$/);
 
   if (!match) {
-    throw new Error(`Invalid note name format: ${name}`);
+    return null;
   }
 
   const [, pitchClassName, octaveStr] = match;
-  const pitchClass = pitchClassToNumber(pitchClassName);
+  // Note: pitchClassToNumber won't return null here because the regex
+  // already validates that pitchClassName is a valid pitch class (A-G with optional #/b)
+  const pitchClass = /** @type {number} */ (pitchClassToNumber(pitchClassName));
   const octave = parseInt(octaveStr, 10);
 
   // MIDI note = (octave + 2) * 12 + pitchClass
@@ -215,9 +201,7 @@ export function pitchNameToMidi(name) {
   const midi = (octave + 2) * 12 + pitchClass;
 
   if (midi < 0 || midi > 127) {
-    throw new Error(
-      `Note name "${name}" results in MIDI ${midi}, which is outside valid range 0-127.`,
-    );
+    return null;
   }
 
   return midi;
